@@ -34,6 +34,7 @@ filegroup(
         "//cmd/kubemark:all-srcs",
         "//cmd/linkcheck:all-srcs",
         "//cmd/workload-controller-manager:all-srcs",
+        "//cmd/preferredimports:all-srcs",
     ],
     tags = ["automanaged"],
 )
