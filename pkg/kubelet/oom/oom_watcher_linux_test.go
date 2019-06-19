@@ -34,7 +34,7 @@ func TestBasicIfPossible(t *testing.T) {
 	if requiredAccessibleFilesToRunTest() {
 		fakeRecorder := &record.FakeRecorder{}
 		node := &v1.ObjectReference{}
-		oomWatcher := NewOOMWatcher(fakeRecorder)
+		oomWatcher := NewWatcher(fakeRecorder)
 		assert.NoError(t, oomWatcher.Start(node))
 		// TODO: Improve this test once cadvisor exports events.EventChannel as an interface
 		// and thereby allow using a mock version of cadvisor.
