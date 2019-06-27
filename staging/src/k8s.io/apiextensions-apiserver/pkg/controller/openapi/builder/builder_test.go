@@ -16,7 +16,7 @@ limitations under the License.
 */
 
 // File modified by cherrypick from kubernetes on 02/25/2021
-package openapi
+package builder
 
 import (
 	"reflect"
