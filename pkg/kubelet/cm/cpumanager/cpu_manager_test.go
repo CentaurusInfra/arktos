@@ -35,6 +35,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/state"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	kubeContainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
 
 type mockState struct {
@@ -192,9 +193,10 @@ func TestCPUManagerAdd(t *testing.T) {
 				assignments:   state.ContainerCPUAssignments{},
 				defaultCPUSet: cpuset.NewCPUSet(1, 2, 3, 4),
 			},
-			containerRuntime: mockRuntimeService{
+			testRuntimeService: mockRuntimeService{
 				err: testCase.updateErr,
 			},
+			runtimeManager:    kubeContainer.NewFakeRuntimeManager(nil, nil),
 			activePods:        func() []*v1.Pod { return nil },
 			podStatusProvider: mockPodStatusProvider{},
 		}
@@ -324,9 +326,10 @@ func TestCPUManagerRemove(t *testing.T) {
 			assignments:   state.ContainerCPUAssignments{},
 			defaultCPUSet: cpuset.NewCPUSet(),
 		},
-		containerRuntime:  mockRuntimeService{},
-		activePods:        func() []*v1.Pod { return nil },
-		podStatusProvider: mockPodStatusProvider{},
+		testRuntimeService: mockRuntimeService{},
+		runtimeManager:     kubeContainer.NewFakeRuntimeManager(nil, nil),
+		activePods:         func() []*v1.Pod { return nil },
+		podStatusProvider:  mockPodStatusProvider{},
 	}
 
 	err := mgr.RemoveContainer("fakeID")
@@ -338,10 +341,11 @@ func TestCPUManagerRemove(t *testing.T) {
 		policy: &mockPolicy{
 			err: fmt.Errorf("fake error"),
 		},
-		state:             state.NewMemoryState(),
-		containerRuntime:  mockRuntimeService{},
-		activePods:        func() []*v1.Pod { return nil },
-		podStatusProvider: mockPodStatusProvider{},
+		state:              state.NewMemoryState(),
+		testRuntimeService: mockRuntimeService{},
+		runtimeManager:     kubeContainer.NewFakeRuntimeManager(nil, nil),
+		activePods:         func() []*v1.Pod { return nil },
+		podStatusProvider:  mockPodStatusProvider{},
 	}
 
 	err = mgr.RemoveContainer("fakeID")
@@ -566,9 +570,10 @@ func TestReconcileState(t *testing.T) {
 				assignments:   testCase.stAssignments,
 				defaultCPUSet: testCase.stDefaultCPUSet,
 			},
-			containerRuntime: mockRuntimeService{
+			testRuntimeService: mockRuntimeService{
 				err: testCase.updateErr,
 			},
+			runtimeManager: kubeContainer.NewFakeRuntimeManager(nil, nil),
 			activePods: func() []*v1.Pod {
 				return testCase.activePods
 			},

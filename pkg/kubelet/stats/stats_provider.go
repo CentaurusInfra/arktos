@@ -22,7 +22,6 @@ import (
 	cadvisorapiv1 "github.com/google/cadvisor/info/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	internalapi "k8s.io/cri-api/pkg/apis"
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -39,13 +38,12 @@ func NewCRIStatsProvider(
 	resourceAnalyzer stats.ResourceAnalyzer,
 	podManager kubepod.Manager,
 	runtimeCache kubecontainer.RuntimeCache,
-	runtimeService internalapi.RuntimeService,
-	imageService internalapi.ImageManagerService,
+	runtimeManager kubecontainer.RuntimeManager,
 	logMetricsService LogMetricsService,
 	osInterface kubecontainer.OSInterface,
 ) *StatsProvider {
 	return newStatsProvider(cadvisor, podManager, runtimeCache, newCRIStatsProvider(cadvisor, resourceAnalyzer,
-		runtimeService, imageService, logMetricsService, osInterface))
+		runtimeManager, logMetricsService, osInterface))
 }
 
 // NewCadvisorStatsProvider returns a containerStatsProvider that provides both

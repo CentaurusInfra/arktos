@@ -656,13 +656,12 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	if err != nil {
 		return nil, err
 	}
-	klet.runtimeService = runtimeService
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) && kubeDeps.KubeClient != nil {
 		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient)
 	}
 
-	runtime, err := kuberuntime.NewKubeGenericRuntimeManager(
+	runtimeManager, err := kuberuntime.NewKubeGenericRuntimeManager(
 		kubecontainer.FilterEventRecorder(kubeDeps.Recorder),
 		klet.livenessManager,
 		seccompProfileRoot,
@@ -687,9 +686,10 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	if err != nil {
 		return nil, err
 	}
-	klet.containerRuntime = runtime
-	klet.streamingRuntime = runtime
-	klet.runner = runtime
+	klet.containerRuntime = runtimeManager
+	klet.streamingRuntime = runtimeManager
+	klet.runner = runtimeManager
+	klet.runtimeManager = runtimeManager
 
 	runtimeCache, err := kubecontainer.NewRuntimeCache(klet.containerRuntime)
 	if err != nil {
@@ -711,8 +711,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			klet.resourceAnalyzer,
 			klet.podManager,
 			klet.runtimeCache,
-			runtimeService,
-			imageService,
+			klet.runtimeManager,
 			stats.NewLogMetricsService(),
 			kubecontainer.RealOS{})
 	}
@@ -742,7 +741,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	if containerRuntime == kubetypes.RemoteContainerRuntime && utilfeature.DefaultFeatureGate.Enabled(features.CRIContainerLogRotation) {
 		// setup containerLogManager for CRI container runtime
 		containerLogManager, err := logs.NewContainerLogManager(
-			klet.runtimeService,
+			klet.runtimeManager,
 			kubeCfg.ContainerLogMaxSize,
 			int(kubeCfg.ContainerLogMaxFiles),
 		)
@@ -982,6 +981,9 @@ type Kubelet struct {
 	// Manager for image garbage collection.
 	imageManager images.ImageGCManager
 
+	// Manager for all runtimes.
+	runtimeManager kubecontainer.RuntimeManager
+
 	// Manager for container logs.
 	containerLogManager logs.ContainerLogManager
 
@@ -1026,11 +1028,6 @@ type Kubelet struct {
 
 	// Streaming runtime handles container streaming.
 	streamingRuntime kubecontainer.StreamingRuntime
-
-	// Container runtime service (needed by container runtime Start()).
-	// TODO(CD): try to make this available without holding a reference in this
-	//           struct. For example, by adding a getter to generic runtime.
-	runtimeService internalapi.RuntimeService
 
 	// reasonCache caches the failure reason of the last creation of all containers, which is
 	// used for generating ContainerStatus.
@@ -1365,7 +1362,7 @@ func (kl *Kubelet) initializeRuntimeDependentModules() {
 		klog.Fatalf("Kubelet failed to get node info: %v", err)
 	}
 	// containerManager must start after cAdvisor because it needs filesystem capacity information
-	if err := kl.containerManager.Start(node, kl.GetActivePods, kl.sourcesReady, kl.statusManager, kl.runtimeService); err != nil {
+	if err := kl.containerManager.Start(node, kl.GetActivePods, kl.sourcesReady, kl.statusManager, kl.runtimeManager); err != nil {
 		// Fail kubelet and rely on the babysitter to retry starting kubelet.
 		klog.Fatalf("Failed to start ContainerManager %v", err)
 	}

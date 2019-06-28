@@ -136,6 +136,7 @@ type KubeGenericRuntime interface {
 	kubecontainer.Runtime
 	kubecontainer.StreamingRuntime
 	kubecontainer.ContainerCommandRunner
+	kubecontainer.RuntimeManager
 }
 
 // LegacyLogProvider gives the ability to use unsupported docker log drivers (e.g. journald)
@@ -234,6 +235,24 @@ func NewKubeGenericRuntimeManager(
 	)
 
 	return kubeRuntimeManager, nil
+}
+
+// TODO: handle multple runtimes.
+// GetRuntimeServiceByPod returns the runtime service for a given pod.
+func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error) {
+	return m.runtimeService, nil
+}
+
+// TODO: handle multple runtimes.
+// GetAllRuntimeServices returns all the runtime services.
+func (m *kubeGenericRuntimeManager) GetAllRuntimeServices() ([]internalapi.RuntimeService, error) {
+	return []internalapi.RuntimeService{m.runtimeService}, nil
+}
+
+// TODO: handle multple runtimes.
+// GetAllImageServices returns all the image services.
+func (m *kubeGenericRuntimeManager) GetAllImageServices() ([]internalapi.ImageManagerService, error) {
+	return []internalapi.ImageManagerService{m.imageService}, nil
 }
 
 // Type returns the type of the container runtime.

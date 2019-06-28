@@ -21,7 +21,6 @@ import (
 	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/api/resource"
-	internalapi "k8s.io/cri-api/pkg/apis"
 	podresourcesapi "k8s.io/kubernetes/pkg/kubelet/apis/podresources/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	"k8s.io/kubernetes/pkg/kubelet/config"
@@ -38,7 +37,7 @@ type containerManagerStub struct {
 
 var _ ContainerManager = &containerManagerStub{}
 
-func (cm *containerManagerStub) Start(_ *v1.Node, _ ActivePodsFunc, _ config.SourcesReady, _ status.PodStatusProvider, _ internalapi.RuntimeService) error {
+func (cm *containerManagerStub) Start(_ *v1.Node, _ ActivePodsFunc, _ config.SourcesReady, _ status.PodStatusProvider, _ kubecontainer.RuntimeManager) error {
 	klog.V(2).Infof("Starting stub container manager")
 	return nil
 }

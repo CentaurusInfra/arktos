@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	internalapi "k8s.io/cri-api/pkg/apis"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
 
 const (
@@ -141,13 +142,13 @@ func parseMaxSize(size string) (int64, error) {
 }
 
 type containerLogManager struct {
-	runtimeService internalapi.RuntimeService
+	runtimeManager kubecontainer.RuntimeManager
 	policy         LogRotatePolicy
 	clock          clock.Clock
 }
 
 // NewContainerLogManager creates a new container log manager.
-func NewContainerLogManager(runtimeService internalapi.RuntimeService, maxSize string, maxFiles int) (ContainerLogManager, error) {
+func NewContainerLogManager(runtimeManager kubecontainer.RuntimeManager, maxSize string, maxFiles int) (ContainerLogManager, error) {
 	if maxFiles <= 1 {
 		return nil, fmt.Errorf("invalid MaxFiles %d, must be > 1", maxFiles)
 	}
@@ -157,7 +158,7 @@ func NewContainerLogManager(runtimeService internalapi.RuntimeService, maxSize s
 	}
 	// policy LogRotatePolicy
 	return &containerLogManager{
-		runtimeService: runtimeService,
+		runtimeManager: runtimeManager,
 		policy: LogRotatePolicy{
 			MaxSize:  parsedMaxSize,
 			MaxFiles: maxFiles,
@@ -177,59 +178,68 @@ func (c *containerLogManager) Start() {
 }
 
 func (c *containerLogManager) rotateLogs() error {
-	// TODO(#59998): Use kubelet pod cache.
-	containers, err := c.runtimeService.ListContainers(&runtimeapi.ContainerFilter{})
+
+	runtimeServices, err := c.runtimeManager.GetAllRuntimeServices()
 	if err != nil {
-		return fmt.Errorf("failed to list containers: %v", err)
+		return fmt.Errorf("failed to get all runtime services : %v", err)
 	}
-	// NOTE(random-liu): Figure out whether we need to rotate container logs in parallel.
-	for _, container := range containers {
-		// Only rotate logs for running containers. Non-running containers won't
-		// generate new output, it doesn't make sense to keep an empty latest log.
-		if container.GetState() != runtimeapi.ContainerState_CONTAINER_RUNNING {
-			continue
-		}
-		id := container.GetId()
-		// Note that we should not block log rotate for an error of a single container.
-		status, err := c.runtimeService.ContainerStatus(id)
+
+	for _, runtimeService := range runtimeServices {
+
+		// TODO(#59998): Use kubelet pod cache.
+		containers, err := runtimeService.ListContainers(&runtimeapi.ContainerFilter{})
 		if err != nil {
-			klog.Errorf("Failed to get container status for %q: %v", id, err)
-			continue
+			return fmt.Errorf("failed to list containers: %v", err)
 		}
-		path := status.GetLogPath()
-		info, err := os.Stat(path)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				klog.Errorf("Failed to stat container log %q: %v", path, err)
+		// NOTE(random-liu): Figure out whether we need to rotate container logs in parallel.
+		for _, container := range containers {
+			// Only rotate logs for running containers. Non-running containers won't
+			// generate new output, it doesn't make sense to keep an empty latest log.
+			if container.GetState() != runtimeapi.ContainerState_CONTAINER_RUNNING {
 				continue
 			}
-			// In rotateLatestLog, there are several cases that we may
-			// lose original container log after ReopenContainerLog fails.
-			// We try to recover it by reopening container log.
-			if err := c.runtimeService.ReopenContainerLog(id); err != nil {
-				klog.Errorf("Container %q log %q doesn't exist, reopen container log failed: %v", id, path, err)
-				continue
-			}
-			// The container log should be recovered.
-			info, err = os.Stat(path)
+			id := container.GetId()
+			// Note that we should not block log rotate for an error of a single container.
+			status, err := runtimeService.ContainerStatus(id)
 			if err != nil {
-				klog.Errorf("Failed to stat container log %q after reopen: %v", path, err)
+				klog.Errorf("Failed to get container status for %q: %v", id, err)
 				continue
 			}
-		}
-		if info.Size() < c.policy.MaxSize {
-			continue
-		}
-		// Perform log rotation.
-		if err := c.rotateLog(id, path); err != nil {
-			klog.Errorf("Failed to rotate log %q for container %q: %v", path, id, err)
-			continue
+			path := status.GetLogPath()
+			info, err := os.Stat(path)
+			if err != nil {
+				if !os.IsNotExist(err) {
+					klog.Errorf("Failed to stat container log %q: %v", path, err)
+					continue
+				}
+				// In rotateLatestLog, there are several cases that we may
+				// lose original container log after ReopenContainerLog fails.
+				// We try to recover it by reopening container log.
+				if err := runtimeService.ReopenContainerLog(id); err != nil {
+					klog.Errorf("Container %q log %q doesn't exist, reopen container log failed: %v", id, path, err)
+					continue
+				}
+				// The container log should be recovered.
+				info, err = os.Stat(path)
+				if err != nil {
+					klog.Errorf("Failed to stat container log %q after reopen: %v", path, err)
+					continue
+				}
+			}
+			if info.Size() < c.policy.MaxSize {
+				continue
+			}
+			// Perform log rotation.
+			if err := c.rotateLog(runtimeService, id, path); err != nil {
+				klog.Errorf("Failed to rotate log %q for container %q: %v", path, id, err)
+				continue
+			}
 		}
 	}
 	return nil
 }
 
-func (c *containerLogManager) rotateLog(id, log string) error {
+func (c *containerLogManager) rotateLog(runtimeService internalapi.RuntimeService, id, log string) error {
 	// pattern is used to match all rotated files.
 	pattern := fmt.Sprintf("%s.*", log)
 	logs, err := filepath.Glob(pattern)
@@ -257,7 +267,7 @@ func (c *containerLogManager) rotateLog(id, log string) error {
 		}
 	}
 
-	if err := c.rotateLatestLog(id, log); err != nil {
+	if err := c.rotateLatestLog(runtimeService, id, log); err != nil {
 		return fmt.Errorf("failed to rotate log %q: %v", log, err)
 	}
 
@@ -365,13 +375,14 @@ func (c *containerLogManager) compressLog(log string) error {
 
 // rotateLatestLog rotates latest log without compression, so that container can still write
 // and fluentd can finish reading.
-func (c *containerLogManager) rotateLatestLog(id, log string) error {
+func (c *containerLogManager) rotateLatestLog(runtimeService internalapi.RuntimeService, id, log string) error {
 	timestamp := c.clock.Now().Format(timestampFormat)
 	rotated := fmt.Sprintf("%s.%s", log, timestamp)
 	if err := os.Rename(log, rotated); err != nil {
 		return fmt.Errorf("failed to rotate log %q to %q: %v", log, rotated, err)
 	}
-	if err := c.runtimeService.ReopenContainerLog(id); err != nil {
+
+	if err := runtimeService.ReopenContainerLog(id); err != nil {
 		// Rename the rotated log back, so that we can try rotating it again
 		// next round.
 		// If kubelet gets restarted at this point, we'll lose original log.
