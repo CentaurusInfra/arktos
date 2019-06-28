@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/gofuzz"
+	fuzz "github.com/google/gofuzz"
 
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -139,6 +139,10 @@ func TestDefaulting(t *testing.T) {
 		{Group: "admissionregistration.k8s.io", Version: "v1beta1", Kind: "ValidatingWebhookConfigurationList"}: {},
 		{Group: "admissionregistration.k8s.io", Version: "v1beta1", Kind: "MutatingWebhookConfiguration"}:       {},
 		{Group: "admissionregistration.k8s.io", Version: "v1beta1", Kind: "MutatingWebhookConfigurationList"}:   {},
+		{Group: "admissionregistration.k8s.io", Version: "v1", Kind: "ValidatingWebhookConfiguration"}:          {},
+		{Group: "admissionregistration.k8s.io", Version: "v1", Kind: "ValidatingWebhookConfigurationList"}:      {},
+		{Group: "admissionregistration.k8s.io", Version: "v1", Kind: "MutatingWebhookConfiguration"}:            {},
+		{Group: "admissionregistration.k8s.io", Version: "v1", Kind: "MutatingWebhookConfigurationList"}:        {},
 		{Group: "auditregistration.k8s.io", Version: "v1alpha1", Kind: "AuditSink"}:                             {},
 		{Group: "auditregistration.k8s.io", Version: "v1alpha1", Kind: "AuditSinkList"}:                         {},
 		{Group: "networking.k8s.io", Version: "v1", Kind: "NetworkPolicy"}:                                      {},
