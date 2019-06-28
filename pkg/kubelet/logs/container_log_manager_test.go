@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	critest "k8s.io/cri-api/pkg/apis/testing"
+	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
 
 func TestGetAllLogs(t *testing.T) {
@@ -85,7 +86,7 @@ func TestRotateLogs(t *testing.T) {
 	now := time.Now()
 	f := critest.NewFakeRuntimeService()
 	c := &containerLogManager{
-		runtimeService: f,
+		runtimeManager: kubecontainer.NewFakeRuntimeManager(f, nil),
 		policy: LogRotatePolicy{
 			MaxSize:  testMaxSize,
 			MaxFiles: testMaxFiles,
@@ -301,7 +302,7 @@ func TestRotateLatestLog(t *testing.T) {
 		now := time.Now()
 		f := critest.NewFakeRuntimeService()
 		c := &containerLogManager{
-			runtimeService: f,
+			runtimeManager: kubecontainer.NewFakeRuntimeManager(f, nil),
 			policy:         LogRotatePolicy{MaxFiles: test.maxFiles},
 			clock:          clock.NewFakeClock(now),
 		}
@@ -313,7 +314,7 @@ func TestRotateLatestLog(t *testing.T) {
 		defer testFile.Close()
 		testLog := testFile.Name()
 		rotatedLog := fmt.Sprintf("%s.%s", testLog, now.Format(timestampFormat))
-		err = c.rotateLatestLog("test-id", testLog)
+		err = c.rotateLatestLog(f, "test-id", testLog)
 		assert.Equal(t, test.expectError, err != nil)
 		_, err = os.Stat(testLog)
 		assert.Equal(t, test.expectOriginal, err == nil)

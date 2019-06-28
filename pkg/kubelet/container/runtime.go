@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/flowcontrol"
+	internalapi "k8s.io/cri-api/pkg/apis"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/volume"
@@ -136,6 +137,19 @@ type ImageService interface {
 	RemoveImage(image ImageSpec) error
 	// Returns Image statistics.
 	ImageStats() (*ImageStats, error)
+}
+
+// RuntimeManager interface manages the multiple CRI runtimes.
+type RuntimeManager interface {
+	// GetRuntimeServiceByPod returns the specific runtime service for
+	// a given pod.
+	GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error)
+
+	// GetAllRuntimeServices returns all runtime services.
+	GetAllRuntimeServices() ([]internalapi.RuntimeService, error)
+
+	// GetAllImageServices returns all image services.
+	GetAllImageServices() ([]internalapi.ImageManagerService, error)
 }
 
 type ContainerAttacher interface {

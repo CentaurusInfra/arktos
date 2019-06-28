@@ -37,6 +37,7 @@ import (
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
+	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	kubecontainertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
 	"k8s.io/kubernetes/pkg/kubelet/leaky"
@@ -222,8 +223,7 @@ func TestCRIListPodStats(t *testing.T) {
 		resourceAnalyzer,
 		mockPodManager,
 		mockRuntimeCache,
-		fakeRuntimeService,
-		fakeImageService,
+		kubecontainer.NewFakeRuntimeManager(fakeRuntimeService, fakeImageService),
 		fakeLogStatsProvider,
 		fakeOS,
 	)
@@ -405,8 +405,7 @@ func TestCRIListPodCPUAndMemoryStats(t *testing.T) {
 		resourceAnalyzer,
 		mockPodManager,
 		mockRuntimeCache,
-		fakeRuntimeService,
-		nil,
+		kubecontainer.NewFakeRuntimeManager(fakeRuntimeService, nil),
 		nil,
 		&kubecontainertest.FakeOS{},
 	)
@@ -525,8 +524,7 @@ func TestCRIImagesFsStats(t *testing.T) {
 		resourceAnalyzer,
 		mockPodManager,
 		mockRuntimeCache,
-		fakeRuntimeService,
-		fakeImageService,
+		kubecontainer.NewFakeRuntimeManager(fakeRuntimeService, fakeImageService),
 		fakeLogStatsProvider,
 		&kubecontainertest.FakeOS{},
 	)

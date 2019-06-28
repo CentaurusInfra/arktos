@@ -20,6 +20,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/state"
+	"k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 )
 
@@ -27,7 +28,7 @@ type fakeManager struct {
 	state state.State
 }
 
-func (m *fakeManager) Start(activePods ActivePodsFunc, podStatusProvider status.PodStatusProvider, containerRuntime runtimeService) {
+func (m *fakeManager) Start(activePods ActivePodsFunc, podStatusProvider status.PodStatusProvider, runtimeManager container.RuntimeManager) {
 	klog.Info("[fake cpumanager] Start()")
 }
 
