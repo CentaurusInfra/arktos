@@ -71,6 +71,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&LimitRangeList{},
 		&ResourceQuota{},
 		&ResourceQuotaList{},
+		&Tenant{},
+		&TenantList{},
 		&Namespace{},
 		&NamespaceList{},
 		&ServiceAccount{},

@@ -24,6 +24,13 @@ import (
 )
 
 const (
+	// TenantDefault means the object is in the default tenant which is applied when not specified by clients
+	TenantDefault string = "default"
+	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
+	TenantAll string = ""
+	// TenantNodeLease is the tenant where we place node lease objects (used for node heartbeats)
+	TenantNodeLease string = "system"
+
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
 	NamespaceDefault string = "default"
 	// NamespaceAll is the default argument to specify on a context when you want to list or filter resources across all namespaces
@@ -4303,6 +4310,68 @@ type FinalizerName string
 const (
 	FinalizerKubernetes FinalizerName = "kubernetes"
 )
+
+// TenantSpec describes the attributes on a Tenant.
+type TenantSpec struct {
+	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
+	// More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/
+	// +optional
+	Finalizers []FinalizerName `json:"finalizers,omitempty" protobuf:"bytes,1,rep,name=finalizers,casttype=FinalizerName"`
+}
+
+// TenantStatus is information about the current status of a Tenant.
+type TenantStatus struct {
+	// Phase is the current lifecycle phase of the tenant.
+	// More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/
+	// +optional
+	Phase TenantPhase `json:"phase,omitempty" protobuf:"bytes,1,opt,name=phase,casttype=TenantPhase"`
+}
+
+type TenantPhase string
+
+// These are the valid phases of a tenant.
+const (
+	// TenantActive means the tenant is available for use in the system
+	TenantActive TenantPhase = "Active"
+	// TenantTerminating means the tenant is undergoing graceful termination
+	TenantTerminating TenantPhase = "Terminating"
+)
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:skipVerbs=deleteCollection
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Tenant provides a scope for Names.
+// Use of multiple Tenants is optional.
+type Tenant struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Spec defines the behavior of the Tenant.
+	// +optional
+	Spec TenantSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+
+	// Status describes the current status of a Tenant.
+	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
+	// +optional
+	Status TenantStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TenantList is a list of Tenants.
+type TenantList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Items is the list of Tenant objects in the list.
+	Items []Tenant `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
 
 // NamespaceSpec describes the attributes on a Namespace.
 type NamespaceSpec struct {

@@ -19,7 +19,7 @@ package v1
 import (
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/parsers"
@@ -304,6 +304,11 @@ func SetDefaults_HTTPGetAction(obj *v1.HTTPGetAction) {
 	}
 	if obj.Scheme == "" {
 		obj.Scheme = v1.URISchemeHTTP
+	}
+}
+func SetDefaults_TenantStatus(obj *v1.TenantStatus) {
+	if obj.Phase == "" {
+		obj.Phase = v1.TenantActive
 	}
 }
 func SetDefaults_NamespaceStatus(obj *v1.NamespaceStatus) {
