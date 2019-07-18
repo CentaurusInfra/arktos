@@ -92,6 +92,10 @@ func (c *FakeCoreV1) ServiceAccounts(namespace string) v1.ServiceAccountInterfac
 	return &FakeServiceAccounts{c, namespace}
 }
 
+func (c *FakeCoreV1) Tenants() v1.TenantInterface {
+	return &FakeTenants{c}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeCoreV1) RESTClient() rest.Interface {

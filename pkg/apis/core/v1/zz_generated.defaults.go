@@ -59,6 +59,8 @@ func RegisterDefaults(scheme *runtime.Scheme) error {
 	scheme.AddTypeDefaultingFunc(&v1.SecretList{}, func(obj interface{}) { SetObjectDefaults_SecretList(obj.(*v1.SecretList)) })
 	scheme.AddTypeDefaultingFunc(&v1.Service{}, func(obj interface{}) { SetObjectDefaults_Service(obj.(*v1.Service)) })
 	scheme.AddTypeDefaultingFunc(&v1.ServiceList{}, func(obj interface{}) { SetObjectDefaults_ServiceList(obj.(*v1.ServiceList)) })
+	scheme.AddTypeDefaultingFunc(&v1.Tenant{}, func(obj interface{}) { SetObjectDefaults_Tenant(obj.(*v1.Tenant)) })
+	scheme.AddTypeDefaultingFunc(&v1.TenantList{}, func(obj interface{}) { SetObjectDefaults_TenantList(obj.(*v1.TenantList)) })
 	return nil
 }
 
@@ -642,5 +644,16 @@ func SetObjectDefaults_ServiceList(in *v1.ServiceList) {
 	for i := range in.Items {
 		a := &in.Items[i]
 		SetObjectDefaults_Service(a)
+	}
+}
+
+func SetObjectDefaults_Tenant(in *v1.Tenant) {
+	SetDefaults_TenantStatus(&in.Status)
+}
+
+func SetObjectDefaults_TenantList(in *v1.TenantList) {
+	for i := range in.Items {
+		a := &in.Items[i]
+		SetObjectDefaults_Tenant(a)
 	}
 }

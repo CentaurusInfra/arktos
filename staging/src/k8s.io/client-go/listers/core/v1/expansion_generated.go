@@ -109,3 +109,7 @@ type ServiceAccountListerExpansion interface{}
 // ServiceAccountNamespaceListerExpansion allows custom methods to be added to
 // ServiceAccountNamespaceLister.
 type ServiceAccountNamespaceListerExpansion interface{}
+
+// TenantListerExpansion allows custom methods to be added to
+// TenantLister.
+type TenantListerExpansion interface{}

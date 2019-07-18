@@ -56,6 +56,8 @@ type Interface interface {
 	Services() ServiceInformer
 	// ServiceAccounts returns a ServiceAccountInformer.
 	ServiceAccounts() ServiceAccountInformer
+	// Tenants returns a TenantInformer.
+	Tenants() TenantInformer
 }
 
 type version struct {
@@ -147,4 +149,9 @@ func (v *version) Services() ServiceInformer {
 // ServiceAccounts returns a ServiceAccountInformer.
 func (v *version) ServiceAccounts() ServiceAccountInformer {
 	return &serviceAccountInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Tenants returns a TenantInformer.
+func (v *version) Tenants() TenantInformer {
+	return &tenantInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

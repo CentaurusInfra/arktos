@@ -42,6 +42,7 @@ type CoreV1Interface interface {
 	SecretsGetter
 	ServicesGetter
 	ServiceAccountsGetter
+	TenantsGetter
 }
 
 // CoreV1Client is used to interact with features provided by the  group.
@@ -111,6 +112,10 @@ func (c *CoreV1Client) Services(namespace string) ServiceInterface {
 
 func (c *CoreV1Client) ServiceAccounts(namespace string) ServiceAccountInterface {
 	return newServiceAccounts(c, namespace)
+}
+
+func (c *CoreV1Client) Tenants() TenantInterface {
+	return newTenants(c)
 }
 
 // NewForConfig creates a new CoreV1Client for the given config.
