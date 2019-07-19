@@ -210,6 +210,11 @@ var ValidateServiceName = apimachineryvalidation.NameIsDNS1035Label
 // trailing dashes are allowed.
 var ValidateNodeName = apimachineryvalidation.NameIsDNSSubdomain
 
+// ValidateTenantName can be used to check whether the given tenant name is valid.
+// Prefix indicates this name will be used as part of generation, in which case
+// trailing dashes are allowed.
+var ValidateTenantName = apimachineryvalidation.ValidateTenantName
+
 // ValidateNamespaceName can be used to check whether the given namespace name is valid.
 // Prefix indicates this name will be used as part of generation, in which case
 // trailing dashes are allowed.
@@ -5047,6 +5052,55 @@ func ValidateResourceQuotaStatusUpdate(newResourceQuota, oldResourceQuota *core.
 		allErrs = append(allErrs, ValidateResourceQuantityValue(string(k), v, resPath)...)
 	}
 	newResourceQuota.Spec = oldResourceQuota.Spec
+	return allErrs
+}
+
+// ValidateTenant tests if required fields are set.
+func ValidateTenant(tenant *core.Tenant) field.ErrorList {
+	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, ValidateTenantName, field.NewPath("metadata"))
+	for i := range tenant.Spec.Finalizers {
+		allErrs = append(allErrs, validateFinalizerName(string(tenant.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
+	}
+	return allErrs
+}
+
+// ValidateTenantUpdate tests to make sure a tenant update can be applied.
+// newTenant is updated with fields that cannot be changed
+func ValidateTenantUpdate(newTenant *core.Tenant, oldTenant *core.Tenant) field.ErrorList {
+	allErrs := ValidateObjectMetaUpdate(&newTenant.ObjectMeta, &oldTenant.ObjectMeta, field.NewPath("metadata"))
+	newTenant.Spec.Finalizers = oldTenant.Spec.Finalizers
+	newTenant.Status = oldTenant.Status
+	return allErrs
+}
+
+// ValidateTenantStatusUpdate tests to see if the update is legal for an end user to make. newTenant is updated with fields
+// that cannot be changed.
+func ValidateTenantStatusUpdate(newTenant, oldTenant *core.Tenant) field.ErrorList {
+	allErrs := ValidateObjectMetaUpdate(&newTenant.ObjectMeta, &oldTenant.ObjectMeta, field.NewPath("metadata"))
+	newTenant.Spec = oldTenant.Spec
+	if newTenant.DeletionTimestamp.IsZero() {
+		if newTenant.Status.Phase != core.TenantActive {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("status", "Phase"), newTenant.Status.Phase, "may only be 'Active' if `deletionTimestamp` is empty"))
+		}
+	} else {
+		if newTenant.Status.Phase != core.TenantTerminating {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("status", "Phase"), newTenant.Status.Phase, "may only be 'Terminating' if `deletionTimestamp` is not empty"))
+		}
+	}
+	return allErrs
+}
+
+// ValidateTenantFinalizeUpdate tests to see if the update is legal for an end user to make.
+// newTenant is updated with fields that cannot be changed.
+func ValidateTenantFinalizeUpdate(newTenant, oldTenant *core.Tenant) field.ErrorList {
+	allErrs := ValidateObjectMetaUpdate(&newTenant.ObjectMeta, &oldTenant.ObjectMeta, field.NewPath("metadata"))
+
+	fldPath := field.NewPath("spec", "finalizers")
+	for i := range newTenant.Spec.Finalizers {
+		idxPath := fldPath.Index(i)
+		allErrs = append(allErrs, validateFinalizerName(string(newTenant.Spec.Finalizers[i]), idxPath)...)
+	}
+	newTenant.Status = oldTenant.Status
 	return allErrs
 }
 
