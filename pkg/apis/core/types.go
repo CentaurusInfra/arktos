@@ -25,6 +25,19 @@ import (
 )
 
 const (
+	// TenantDefault means the object is in the default tenant which is applied when not specified by clients
+	TenantDefault = "default"
+	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
+	TenantAll = ""
+	// TenantNone is the argument for a context when there is no tenant.
+	TenantNone = ""
+	// tenantSystem is the system tenant where we place system components.
+	TenantSystem = "system"
+	// TenantPublic is the tenant where we place public info (ConfigMaps)
+	TenantPublic = "public"
+	// TenantNodeLease is the tenant where we place node lease objects (used for node heartbeats)
+	TenantNodeLease = "system"
+
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
 	NamespaceDefault = "default"
 	// NamespaceAll is the default argument to specify on a context when you want to list or filter resources across all namespaces
@@ -3884,6 +3897,60 @@ type NamespaceList struct {
 	metav1.ListMeta
 
 	Items []Namespace
+}
+
+// TenantSpec describes the attributes on a Tenant
+type TenantSpec struct {
+	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage
+	Finalizers []FinalizerName
+}
+
+// TenantStatus is information about the current status of a Tenant.
+type TenantStatus struct {
+	// Phase is the current lifecycle phase of the Tenant.
+	// +optional
+	Phase TenantPhase
+}
+
+type TenantPhase string
+
+// These are the valid phases of a Tenant.
+const (
+	// TenantActive means the Tenant is available for use in the system
+	TenantActive TenantPhase = "Active"
+	// TenantTerminating means the Tenant is undergoing graceful termination
+	TenantTerminating TenantPhase = "Terminating"
+)
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// A Tenant provides a scope for Names.
+// Use of multiple Tenants is optional
+type Tenant struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ObjectMeta
+
+	// Spec defines the behavior of the Tenant.
+	// +optional
+	Spec TenantSpec
+
+	// Status describes the current status of a Tenant
+	// +optional
+	Status TenantStatus
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TenantList is a list of Tenants.
+type TenantList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	Items []Tenant
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

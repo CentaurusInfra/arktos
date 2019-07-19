@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -992,6 +992,16 @@ func TestSetDefaulServiceExternalTraffic(t *testing.T) {
 	out = obj.(*v1.Service)
 	if out.Spec.ExternalTrafficPolicy != v1.ServiceExternalTrafficPolicyTypeCluster {
 		t.Errorf("Expected ExternalTrafficPolicy to be %v, got %v", v1.ServiceExternalTrafficPolicyTypeCluster, out.Spec.ExternalTrafficPolicy)
+	}
+}
+
+func TestSetDefaultTenant(t *testing.T) {
+	s := &v1.Tenant{}
+	obj2 := roundTrip(t, runtime.Object(s))
+	s2 := obj2.(*v1.Tenant)
+
+	if s2.Status.Phase != v1.TenantActive {
+		t.Errorf("Expected phase %v, got %v", v1.TenantActive, s2.Status.Phase)
 	}
 }
 

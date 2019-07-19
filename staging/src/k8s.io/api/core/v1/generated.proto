@@ -4546,6 +4546,49 @@ message Taint {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Time timeAdded = 4;
 }
 
+// Tenant provides a scope for Names.
+// Use of multiple Tenants is optional.
+message Tenant {
+  // Standard object's metadata.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // Spec defines the behavior of the Tenant.
+  // +optional
+  optional TenantSpec spec = 2;
+
+  // Status describes the current status of a Tenant.
+  // More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
+  // +optional
+  optional TenantStatus status = 3;
+}
+
+// TenantList is a list of Tenants.
+message TenantList {
+  // Standard list metadata.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  // Items is the list of Tenant objects in the list.
+  repeated Tenant items = 2;
+}
+
+// TenantSpec describes the attributes on a Tenant.
+message TenantSpec {
+  // Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
+  // More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/
+  // +optional
+  repeated string finalizers = 1;
+}
+
+// TenantStatus is information about the current status of a Tenant.
+message TenantStatus {
+  // Phase is the current lifecycle phase of the tenant.
+  // More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/
+  // +optional
+  optional string phase = 1;
+}
+
 // The pod this Toleration is attached to tolerates any taint that matches
 // the triple <key,value,effect> using the matching operator <operator>.
 message Toleration {

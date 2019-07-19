@@ -2208,6 +2208,45 @@ func (Taint) SwaggerDoc() map[string]string {
 	return map_Taint
 }
 
+var map_Tenant = map[string]string{
+	"":         "Tenant provides a scope for Names. Use of multiple Tenants is optional.",
+	"metadata": "Standard object's metadata.",
+	"spec":     "Spec defines the behavior of the Tenant.",
+	"status":   "Status describes the current status of a Tenant. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status",
+}
+
+func (Tenant) SwaggerDoc() map[string]string {
+	return map_Tenant
+}
+
+var map_TenantList = map[string]string{
+	"":         "TenantList is a list of Tenants.",
+	"metadata": "Standard list metadata.",
+	"items":    "Items is the list of Tenant objects in the list.",
+}
+
+func (TenantList) SwaggerDoc() map[string]string {
+	return map_TenantList
+}
+
+var map_TenantSpec = map[string]string{
+	"":           "TenantSpec describes the attributes on a Tenant.",
+	"finalizers": "Finalizers is an opaque list of values that must be empty to permanently remove object from storage. More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/",
+}
+
+func (TenantSpec) SwaggerDoc() map[string]string {
+	return map_TenantSpec
+}
+
+var map_TenantStatus = map[string]string{
+	"":      "TenantStatus is information about the current status of a Tenant.",
+	"phase": "Phase is the current lifecycle phase of the tenant. More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/",
+}
+
+func (TenantStatus) SwaggerDoc() map[string]string {
+	return map_TenantStatus
+}
+
 var map_Toleration = map[string]string{
 	"":                  "The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.",
 	"key":               "Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.",

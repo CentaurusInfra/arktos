@@ -451,6 +451,12 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 				sio.FSType = "xfs"
 			}
 		},
+		func(s *core.TenantSpec, c fuzz.Continue) {
+			s.Finalizers = []core.FinalizerName{core.FinalizerKubernetes}
+		},
+		func(s *core.TenantStatus, c fuzz.Continue) {
+			s.Phase = core.TenantActive
+		},
 		func(s *core.NamespaceSpec, c fuzz.Continue) {
 			s.Finalizers = []core.FinalizerName{core.FinalizerKubernetes}
 		},
