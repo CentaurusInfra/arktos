@@ -25,6 +25,19 @@ import (
 )
 
 const (
+	// TenantDefault means the object is in the default tenant which is applied when not specified by clients
+	TenantDefault = "default"
+	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
+	TenantAll = ""
+	// TenantNone is the argument for a context when there is no tenant.
+	TenantNone = ""
+	// tenantSystem is the system tenant where we place system components.
+	TenantSystem = "system"
+	// TenantPublic is the tenant where we place public info (ConfigMaps)
+	TenantPublic = "public"
+	// TenantNodeLease is the tenant where we place node lease objects (used for node heartbeats)
+	TenantNodeLease = "system"
+
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
 	NamespaceDefault = "default"
 	// NamespaceAll is the default argument to specify on a context when you want to list or filter resources across all namespaces
@@ -39,19 +52,6 @@ const (
 	NamespaceNodeLease = "kube-node-lease"
 	// TerminationMessagePathDefault means the default path to capture the application termination message running in a container
 	TerminationMessagePathDefault = "/dev/termination-log"
-
-	// tenantDefault means the object is in the default tenant which is applied when not specified by clients
-	tenantDefault = "default"
-	// tenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
-	tenantAll = ""
-	// tenantNone is the argument for a context when there is no tenant.
-	tenantNone = ""
-	// tenantSystem is the system tenant where we place system components.
-	tenantSystem = "system"
-	// tenantPublic is the tenant where we place public info (ConfigMaps)
-	tenantPublic = "public"
-	// tenantNodeLease is the tenant where we place node lease objects (used for node heartbeats)
-	tenantNodeLease = "system"
 )
 
 // Volume represents a named volume in a pod that may be accessed by any containers in the pod.
