@@ -258,11 +258,14 @@ func (c *CompatibilityTestOptions) Run(t *testing.T) {
 				c.runCurrentVersionTest(t, gvk)
 			})
 
-			for _, previousVersionDir := range c.TestDataDirsPreviousVersions {
+			// Comment out compatibility test with the previous versions, as we are adding "tenant" in api url,
+			// which is a breaking change to the protobuf format.
+			// TODO: Clean out all the code and test data about compatibility with the previous versions.
+			/*for _, previousVersionDir := range c.TestDataDirsPreviousVersions {
 				t.Run(filepath.Base(previousVersionDir), func(t *testing.T) {
 					c.runPreviousVersionTest(t, gvk, previousVersionDir)
 				})
-			}
+			} */
 
 		})
 	}

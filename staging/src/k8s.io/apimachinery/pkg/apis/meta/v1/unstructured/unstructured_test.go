@@ -102,6 +102,7 @@ func TestUnstructuredMetadataOmitempty(t *testing.T) {
 	// to check that omitempty fields having zero values are never set
 	u.SetName("")
 	u.SetGenerateName("")
+	u.SetTenant("")
 	u.SetNamespace("")
 	u.SetSelfLink("")
 	u.SetUID("")
@@ -145,6 +146,7 @@ func setObjectMeta(u *unstructured.Unstructured, objectMeta *metav1.ObjectMeta) 
 func setObjectMetaUsingAccessors(u, uCopy *unstructured.Unstructured) {
 	uCopy.SetName(u.GetName())
 	uCopy.SetGenerateName(u.GetGenerateName())
+	uCopy.SetTenant(u.GetTenant())
 	uCopy.SetNamespace(u.GetNamespace())
 	uCopy.SetSelfLink(u.GetSelfLink())
 	uCopy.SetUID(u.GetUID())

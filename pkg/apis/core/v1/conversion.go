@@ -59,6 +59,7 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "metadata.name",
+				"metadata.tenant",
 				"metadata.namespace",
 				"spec.nodeName",
 				"spec.restartPolicy",
@@ -98,6 +99,7 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "metadata.name",
+				"metadata.tenant",
 				"metadata.namespace",
 				"status.replicas":
 				return label, value, nil
@@ -394,6 +396,7 @@ func AddFieldLabelConversionsForEvent(scheme *runtime.Scheme) error {
 				"reason",
 				"source",
 				"type",
+				"metadata.tenant",
 				"metadata.namespace",
 				"metadata.name":
 				return label, value, nil

@@ -245,6 +245,8 @@ type SelfLinker interface {
 	Name(obj Object) (string, error)
 	// Knowing Namespace is sometimes necessary to use a SelfLinker
 	Namespace(obj Object) (string, error)
+	// Knowing Tenant is sometimes necessary to use a SelfLinker
+	Tenant(obj Object) (string, error)
 }
 
 // Object interface must be supported by all API types registered with Scheme. Since objects in a scheme are

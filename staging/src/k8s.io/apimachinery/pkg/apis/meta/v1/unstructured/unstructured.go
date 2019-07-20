@@ -230,6 +230,18 @@ func (u *Unstructured) SetKind(kind string) {
 	u.setNestedField(kind, "kind")
 }
 
+func (u *Unstructured) GetTenant() string {
+	return getNestedString(u.Object, "metadata", "tenant")
+}
+
+func (u *Unstructured) SetTenant(tenant string) {
+	if len(tenant) == 0 {
+		RemoveNestedField(u.Object, "metadata", "tenant")
+		return
+	}
+	u.setNestedField(tenant, "metadata", "tenant")
+}
+
 func (u *Unstructured) GetNamespace() string {
 	return getNestedString(u.Object, "metadata", "namespace")
 }

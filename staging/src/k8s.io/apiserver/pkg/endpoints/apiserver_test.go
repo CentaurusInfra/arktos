@@ -3691,10 +3691,12 @@ type setTestSelfLinker struct {
 	alternativeSet sets.String
 	name           string
 	namespace      string
+	tenant         string
 	called         bool
 	err            error
 }
 
+func (s *setTestSelfLinker) Tenant(runtime.Object) (string, error)    { return s.tenant, s.err }
 func (s *setTestSelfLinker) Namespace(runtime.Object) (string, error) { return s.namespace, s.err }
 func (s *setTestSelfLinker) Name(runtime.Object) (string, error)      { return s.name, s.err }
 func (s *setTestSelfLinker) SelfLink(runtime.Object) (string, error)  { return "", s.err }
