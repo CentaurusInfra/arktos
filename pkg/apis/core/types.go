@@ -2005,6 +2005,32 @@ type ResourceRequirements struct {
 	Requests ResourceList
 }
 
+// Colection of fields that are common to Container and VirtualMachine objects
+type CommonInfo struct {
+	// Name of the container specified as a DNS_LABEL.
+	// Each container in a pod must have a unique name (DNS_LABEL).
+	// Cannot be updated.
+	Name string
+	// Required.
+	Image string
+	// Compute resource requirements.
+	// +optional
+	Resources ResourceRequirements
+	// +optional
+	VolumeMounts []VolumeMount
+	// Required: Policy for pulling images for this container
+	ImagePullPolicy PullPolicy
+}
+
+// Attributes that are specific to VMs
+type VirtualMachine struct {
+	// Common information
+	CommonInfo
+	//For e.g VM flavor
+	VmFlavor string
+	//... TBD ...
+}
+
 // Container represents a single container that is expected to be run on the host.
 type Container struct {
 	// Required: This must be a DNS_LABEL.  Each container in a pod must
@@ -2604,6 +2630,8 @@ type PodSpec struct {
 	InitContainers []Container
 	// List of containers belonging to the pod.
 	Containers []Container
+	// List of VMs belonging to the pod.
+	VirtualMachines []VirtualMachine
 	// +optional
 	RestartPolicy RestartPolicy
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.

@@ -308,6 +308,11 @@ func SetObjectDefaults_Pod(in *v1.Pod) {
 			}
 		}
 	}
+	for i := range in.Spec.VirtualMachines {
+		a := &in.Spec.VirtualMachines[i]
+		SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
+		SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_PodList(in *v1.PodList) {
@@ -453,6 +458,11 @@ func SetObjectDefaults_PodTemplate(in *v1.PodTemplate) {
 				}
 			}
 		}
+	}
+	for i := range in.Template.Spec.VirtualMachines {
+		a := &in.Template.Spec.VirtualMachines[i]
+		SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
+		SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
 	}
 }
 
@@ -601,6 +611,11 @@ func SetObjectDefaults_ReplicationController(in *v1.ReplicationController) {
 					}
 				}
 			}
+		}
+		for i := range in.Spec.Template.Spec.VirtualMachines {
+			a := &in.Spec.Template.Spec.VirtualMachines[i]
+			SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
+			SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
 		}
 	}
 }
