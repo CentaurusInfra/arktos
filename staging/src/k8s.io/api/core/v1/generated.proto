@@ -402,6 +402,7 @@ message ClientIPConfig {
   optional int32 timeoutSeconds = 1;
 }
 
+// Colection of fields that are common to Container and VirtualMachine objects
 message CommonInfo {
   // Name of the container specified as a DNS_LABEL.
   // Each container in a pod must have a unique name (DNS_LABEL).
@@ -4700,6 +4701,7 @@ message TypedLocalObjectReference {
   optional string name = 3;
 }
 
+// Attributes that are specific to VMs
 message VirtualMachine {
   // Common information
   optional CommonInfo commonInfo = 1;

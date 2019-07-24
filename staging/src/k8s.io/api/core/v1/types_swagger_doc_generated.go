@@ -217,6 +217,19 @@ func (ClientIPConfig) SwaggerDoc() map[string]string {
 	return map_ClientIPConfig
 }
 
+var map_CommonInfo = map[string]string{
+	"":                "Colection of fields that are common to Container and VirtualMachine objects",
+	"name":            "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+	"image":           "Image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+	"resources":       "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+	"volumeMounts":    "Pod volumes to mount into the workload's filesystem. Cannot be updated.",
+	"imagePullPolicy": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+}
+
+func (CommonInfo) SwaggerDoc() map[string]string {
+	return map_CommonInfo
+}
+
 var map_ComponentCondition = map[string]string{
 	"":        "Information about the condition of a component.",
 	"type":    "Type of condition for a component. Valid value: \"Healthy\"",
@@ -1529,6 +1542,7 @@ var map_PodSpec = map[string]string{
 	"volumes":                       "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
 	"initContainers":                "List of initialization containers belonging to the pod. Init containers are executed in order prior to containers being started. If any init container fails, the pod is considered to have failed and is handled according to its restartPolicy. The name for an init container or normal container must be unique among all containers. Init containers may not have Lifecycle actions, Readiness probes, or Liveness probes. The resourceRequirements of an init container are taken into account during scheduling by finding the highest request/limit for each resource type, and then using the max of of that value or the sum of the normal containers. Limits are applied to init containers in a similar fashion. Init containers cannot currently be added or removed. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/",
 	"containers":                    "List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.",
+	"virtualMachines":               "List of VMs belonging to the pod.",
 	"restartPolicy":                 "Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy",
 	"terminationGracePeriodSeconds": "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
 	"activeDeadlineSeconds":         "Optional duration in seconds the pod may be active on the node relative to StartTime before the system will actively try to mark it failed and kill associated containers. Value must be a positive integer.",
@@ -2288,6 +2302,15 @@ var map_TypedLocalObjectReference = map[string]string{
 
 func (TypedLocalObjectReference) SwaggerDoc() map[string]string {
 	return map_TypedLocalObjectReference
+}
+
+var map_VirtualMachine = map[string]string{
+	"":         "Attributes that are specific to VMs",
+	"vmFlavor": "For e.g VM flavor",
+}
+
+func (VirtualMachine) SwaggerDoc() map[string]string {
+	return map_VirtualMachine
 }
 
 var map_Volume = map[string]string{
