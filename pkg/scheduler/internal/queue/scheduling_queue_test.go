@@ -776,57 +776,55 @@ func TestSchedulingQueue_Close(t *testing.T) {
 // unschedulable go behind other pods with the same priority. This behavior
 // ensures that an unschedulable pod does not block head of the queue when there
 // are frequent events that move pods to the active queue.
-
-// Disable this test temporarily as it fails race test frequently
-//func TestRecentlyTriedPodsGoBack(t *testing.T) {
-//	q := NewPriorityQueue(nil, nil)
-//	// Add a few pods to priority queue.
-//	for i := 0; i < 5; i++ {
-//		p := v1.Pod{
-//			ObjectMeta: metav1.ObjectMeta{
-//				Name:      fmt.Sprintf("test-pod-%v", i),
-//				Namespace: "ns1",
-//				UID:       types.UID(fmt.Sprintf("tp00%v", i)),
-//			},
-//			Spec: v1.PodSpec{
-//				Priority: &highPriority,
-//			},
-//			Status: v1.PodStatus{
-//				NominatedNodeName: "node1",
-//			},
-//		}
-//		q.Add(&p)
-//	}
-//	// Simulate a pod being popped by the scheduler, determined unschedulable, and
-//	// then moved back to the active queue.
-//	p1, err := q.Pop()
-//	if err != nil {
-//		t.Errorf("Error while popping the head of the queue: %v", err)
-//	}
-//	// Update pod condition to unschedulable.
-//	podutil.UpdatePodCondition(&p1.Status, &v1.PodCondition{
-//		Type:          v1.PodScheduled,
-//		Status:        v1.ConditionFalse,
-//		Reason:        v1.PodReasonUnschedulable,
-//		Message:       "fake scheduling failure",
-//		LastProbeTime: metav1.Now(),
-//	})
-//	// Put in the unschedulable queue.
-//	q.AddUnschedulableIfNotPresent(p1, q.SchedulingCycle())
-//	// Move all unschedulable pods to the active queue.
-//	q.MoveAllToActiveQueue()
-//	// Simulation is over. Now let's pop all pods. The pod popped first should be
-//	// the last one we pop here.
-//	for i := 0; i < 5; i++ {
-//		p, err := q.Pop()
-//		if err != nil {
-//			t.Errorf("Error while popping pods from the queue: %v", err)
-//		}
-//		if (i == 4) != (p1 == p) {
-//			t.Errorf("A pod tried before is not the last pod popped: i: %v, pod name: %v", i, p.Name)
-//		}
-//	}
-//}
+func TestRecentlyTriedPodsGoBack(t *testing.T) {
+	q := NewPriorityQueue(nil, nil)
+	// Add a few pods to priority queue.
+	for i := 0; i < 5; i++ {
+		p := v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("test-pod-%v", i),
+				Namespace: "ns1",
+				UID:       types.UID(fmt.Sprintf("tp00%v", i)),
+			},
+			Spec: v1.PodSpec{
+				Priority: &highPriority,
+			},
+			Status: v1.PodStatus{
+				NominatedNodeName: "node1",
+			},
+		}
+		q.Add(&p)
+	}
+	// Simulate a pod being popped by the scheduler, determined unschedulable, and
+	// then moved back to the active queue.
+	p1, err := q.Pop()
+	if err != nil {
+		t.Errorf("Error while popping the head of the queue: %v", err)
+	}
+	// Update pod condition to unschedulable.
+	podutil.UpdatePodCondition(&p1.Status, &v1.PodCondition{
+		Type:          v1.PodScheduled,
+		Status:        v1.ConditionFalse,
+		Reason:        v1.PodReasonUnschedulable,
+		Message:       "fake scheduling failure",
+		LastProbeTime: metav1.Now(),
+	})
+	// Put in the unschedulable queue.
+	q.AddUnschedulableIfNotPresent(p1, q.SchedulingCycle())
+	// Move all unschedulable pods to the active queue.
+	q.MoveAllToActiveQueue()
+	// Simulation is over. Now let's pop all pods. The pod popped first should be
+	// the last one we pop here.
+	for i := 0; i < 5; i++ {
+		p, err := q.Pop()
+		if err != nil {
+			t.Errorf("Error while popping pods from the queue: %v", err)
+		}
+		if (i == 4) != (p1 == p) {
+			t.Errorf("A pod tried before is not the last pod popped: i: %v, pod name: %v", i, p.Name)
+		}
+	}
+}
 
 // TestPodFailedSchedulingMultipleTimesDoesNotBlockNewerPod tests
 // that a pod determined as unschedulable multiple times doesn't block any newer pod.
