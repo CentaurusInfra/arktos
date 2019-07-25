@@ -4,47 +4,48 @@
   "metadata": {
     "name": "2",
     "generateName": "3",
-    "namespace": "4",
-    "selfLink": "5",
+    "tenant": "4",
+    "namespace": "5",
+    "selfLink": "6",
     "uid": "ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e",
     "resourceVersion": "16964250748386560239",
     "generation": 8071137005907523419,
     "creationTimestamp": null,
     "deletionGracePeriodSeconds": -4955867275792137171,
     "labels": {
-      "7": "8"
+      "8": "9"
     },
     "annotations": {
-      "9": "10"
+      "10": "11"
     },
     "ownerReferences": [
       {
-        "apiVersion": "11",
-        "kind": "12",
-        "name": "13",
+        "apiVersion": "12",
+        "kind": "13",
+        "name": "14",
         "uid": "Dz廔ȇ{sŊƏp",
         "controller": false,
         "blockOwnerDeletion": true
       }
     ],
     "finalizers": [
-      "14"
+      "15"
     ],
-    "clusterName": "15",
+    "clusterName": "16",
     "managedFields": [
       {
-        "manager": "16",
+        "manager": "17",
         "operation": "鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]",
-        "apiVersion": "17",
-        "fields": {"18":{"19":null}}
+        "apiVersion": "18",
+        "fields": {"19":{"20":null}}
       }
     ]
   },
   "spec": {
     "scaleTargetRef": {
-      "kind": "24",
-      "name": "25",
-      "apiVersion": "26"
+      "kind": "25",
+      "name": "26",
+      "apiVersion": "27"
     },
     "minReplicas": -1978186127,
     "maxReplicas": 2114329341,
@@ -53,11 +54,11 @@
         "type": "6/ʕVŚ(ĿȊ甞谐颋ǅSǡƏS$+",
         "object": {
           "target": {
-            "kind": "27",
-            "name": "28",
-            "apiVersion": "29"
+            "kind": "28",
+            "name": "29",
+            "apiVersion": "30"
           },
-          "metricName": "30",
+          "metricName": "31",
           "targetValue": "810",
           "selector": {
             "matchLabels": {
@@ -76,7 +77,7 @@
           "averageValue": "591"
         },
         "pods": {
-          "metricName": "37",
+          "metricName": "38",
           "targetAverageValue": "109",
           "selector": {
             "matchLabels": {
@@ -99,7 +100,7 @@
           "targetAverageValue": "274"
         },
         "external": {
-          "metricName": "44",
+          "metricName": "45",
           "metricSelector": {
             "matchLabels": {
               "cd525-6ni4-g3-s-98w-4-27/03f_--0..L.0qQ6W-.d.20h-OK-_8gI_z_-tY-R6S17_.8n": "7z.WH-.._Td2-N_Y.t--_0..--_6yV07-_._N"
@@ -126,11 +127,11 @@
         "type": ":贅wE@Ȗs«öʮĀ\u003cé瞾",
         "object": {
           "target": {
-            "kind": "51",
-            "name": "52",
-            "apiVersion": "53"
+            "kind": "52",
+            "name": "53",
+            "apiVersion": "54"
           },
-          "metricName": "54",
+          "metricName": "55",
           "currentValue": "811",
           "selector": {
             "matchLabels": {
@@ -146,7 +147,7 @@
           "averageValue": "404"
         },
         "pods": {
-          "metricName": "61",
+          "metricName": "62",
           "currentAverageValue": "777",
           "selector": {
             "matchLabels": {
@@ -166,7 +167,7 @@
           "currentAverageValue": "559"
         },
         "external": {
-          "metricName": "68",
+          "metricName": "69",
           "metricSelector": {
             "matchLabels": {
               "uB7": "f.gb_2_-8-----yJY.__-X_.8xNN"
@@ -188,8 +189,8 @@
         "type": "v1b繐汚磉",
         "status": "蠂Ü[ƛ^輅9ɛ棕",
         "lastTransitionTime": "2685-12-24T19:19:52Z",
-        "reason": "75",
-        "message": "76"
+        "reason": "76",
+        "message": "77"
       }
     ]
   }
