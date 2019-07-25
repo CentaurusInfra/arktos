@@ -1708,6 +1708,12 @@ type VolumeMount struct {
 	// This field is beta in 1.15.
 	// +optional
 	SubPathExpr string
+	// For VirtualMachine workload only
+	// BootOrder defines the boot sequence of the volume attached to the VM
+	// a negative number indicates mounted device is not a boot device of the VM
+	// Default to -1l
+	// +optional
+	BootOrder int32
 }
 
 // MountPropagationMode describes mount propagation.
@@ -2104,6 +2110,70 @@ type Container struct {
 	TTY bool
 }
 
+// DEV note: the network related struct should be align with network component in Cloud Fabric
+// Network interface type used in the VM workload
+// Nic info will be provided at the pod level so they can be used by both Container and VM workload
+type Nic struct {
+	// the interface name to be used in the VM or container
+	Name string
+	// the subnetName where the Nic belongs to
+	SubnetName string // optional, the subnetName  of the nic. default to subnet where the VM is created from
+	// PortId from the IaaS layer for the Nic
+	PortId string // optional, the portID with user precreated port ( ENI ).
+	// IpAddress is the user specified IP, instead of dynamically allocated one
+	IpAddress string // optional, user specified IP address to the Nic. default dynamically allocatedIP on the subnet
+	// any user specified data for the Nic
+	// optional, default to empty
+	Tag string
+	// optional, default to false
+	Ipv6Enabled bool
+}
+
+// Virtual machine struct defines the information of a VM in the system
+type VirtualMachine struct {
+	// Required: This must be a DNS_LABEL.  Each workloadd in a pod must
+	// have a unique name.
+	Name string
+	// Required.
+	Image string
+
+	// +optional
+	ImagePullPolicy PullPolicy
+
+	// Required
+	Resources ResourceRequirements
+
+	// +optional
+	VolumeMounts []VolumeMount
+
+	// Either keyPair or the publicKeystring must be provided, used to logon to the VM
+	KeyPair   string
+	PublicKey string
+	//// for current release of Cloud Fabric, setting root/admin password at VM creation time is not supported
+	//// Admin Password     string
+	//
+	//// +optional, default to empty string. Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
+	//UserData string
+	//// boot devices and boot order
+	//BootDevices []BootDevice
+	//
+	//+optional, default none, array cert ID that used to verify the image
+	//TrustedImageCertificate []string
+	//
+	//+optional. need further define
+	//IAMRole string
+	//
+	//+optional, stop | terminate VM. default to stop
+	//ShutdownBehavior string
+	//+optional, default notEnabled
+	//EnalbeTerminationProtection bool
+	//
+	//+optional
+	//Tag string
+	//+optional
+	//ExtraParameter ExtraParams
+}
+
 // Handler defines a specific action that should be taken
 // TODO: pass structured data to these actions, and document that data here.
 type Handler struct {
@@ -2213,6 +2283,65 @@ type ContainerStatus struct {
 	ImageID      string
 	// +optional
 	ContainerID string
+}
+
+type VmState int32
+
+// Dev note:
+// Note: set of state were taken from Openstack nova
+// VM state represent stable VM state that is presented to users
+// The below virtual machine state were taken from nova api
+// Nova define a set of state collections which shall be in the action controller logic (see action controller spec)
+//// states we can soft reboot from. this should be an array of VirtualMachineState
+//ALLOW_SOFT_REBOOT
+//// states we allow hard reboot from
+//ALLOW_HARD_REBOOT
+//// states we allow to trigger crash dump
+//ALLOW_TRIGGER_CRASH_DUMP
+//// states we allow resources to be freed in
+//ALLOW_RESOURCE_REMOVAL
+const (
+	VmActive           VmState = 1 << iota
+	VmPaused                   //VmState = 2
+	VmSuspended                //VmState = 4
+	VmStopped                  //VmState = 8
+	VmRescued                  //VmState = 16
+	VmResized                  //VmState = 32
+	VmSoftDeleted              //VmState = 64
+	VmDeleted                  //VmState = 128
+	VmError                    //VmState = 256
+	VmShelved                  //VmState =512
+	VmShelvedOffloaded         //VmState = 1024
+)
+
+type VmPowerState string
+
+// Dev note:
+// VM power state represent the state retrieved from the unerlying hypervisor
+//
+const (
+	NoState   VmPowerState = "nosate"
+	Running   VmPowerState = "running"
+	Paused    VmPowerState = "paused"
+	Shutdown  VmPowerState = "shutdown"
+	Crashed   VmPowerState = "crashed"
+	Suspended VmPowerState = "suspended"
+)
+
+type VirtualMachineStatus struct {
+	// VM name
+	Name             string
+	VirtualMachineId string
+	// image
+	ImageId string
+	Image   string
+
+	// state of the virtual machine
+	State                VmState
+	LastTerminationState VmState
+	PowerState           VmPowerState
+	Ready                bool
+	RestartCount         int32
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -2625,13 +2754,22 @@ type PodReadinessGate struct {
 
 // PodSpec is a description of a pod
 type PodSpec struct {
+	// List of network interfaces
+	Nics []Nic
+
 	Volumes []Volume
 	// List of initialization containers belonging to the pod.
 	InitContainers []Container
 	// List of containers belonging to the pod.
 	Containers []Container
-	// List of VMs belonging to the pod.
-	VirtualMachines []VirtualMachine
+
+	// ThevirtualMachines belonging to the pod.
+	// for the current release, assume:
+	// 1. a pod has either container type or VM type, but not both
+	// 2. a pod only has one VM
+	// +optional
+	VirtualMachine *VirtualMachine
+
 	// +optional
 	RestartPolicy RestartPolicy
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
@@ -2933,6 +3071,10 @@ type PodStatus struct {
 	// when we have done this.
 	// +optional
 	ContainerStatuses []ContainerStatus
+	// Virtual machine status
+	// currently a pod can only have one virtual machine
+	// +optional
+	VirtualMachineStatus *VirtualMachineStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

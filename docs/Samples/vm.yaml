@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    testlable1: label1
+  name: testpod
+  namespace: default
+spec:
+  virtualMachine:
+    image: busybox
+    imagePullPolicy: Always
+    name: test
+    resources:
+      limits:
+        memory: "200Mi"
+        cpu: 2
+    keyPair: "testkeypair"
+    volumeMounts:
+      - mountPath: "/dev/sda1"
+        name: testvol
+  volumes:
+    - name: testvol
+  nics:
+    - name: nic0
+      subnetName: subnet1
+      portId: "12345"
+      ipv6Enabled: false

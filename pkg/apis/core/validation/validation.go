@@ -2620,8 +2620,11 @@ func validateInitContainers(containers, otherContainers []core.Container, device
 func validateContainers(containers []core.Container, isInitContainers bool, volumes map[string]core.VolumeSource, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if len(containers) == 0 {
-		return append(allErrs, field.Required(fldPath, ""))
+	// Dev note:
+	// for Cloud Fabric, the containers are optional filed as well
+	// podspec validation logic shall validate either containers | virtualMachine is specified
+	if containers == nil || len(containers) == 0 {
+		return allErrs
 	}
 
 	allNames := sets.String{}
