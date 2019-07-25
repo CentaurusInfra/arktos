@@ -592,8 +592,29 @@ endif
 
 
 ifeq ($(PRINT_HELP),y)
+define BAZEL_TEST_RACE_HELP_INFO
+# Test with bazel
+# Run unit tests with go race detection
+#
+# Example:
+# make bazel-test-race
+endef
+bazel-test-race:
+	@echo "$$BAZEL_TEST_RACE_HELP_INFO"
+else
+# //hack:verify-all is a manual target.
+# Some things in vendor don't build due to empty target lists for cross-platform rules.
+bazel-test-race:
+	bazel test --config=unit-race -- \
+	  //... \
+	  //hack:verify-all \
+	  -//vendor/...
+endif
+
+ifeq ($(PRINT_HELP),y)
 define BAZEL_TEST_HELP_INFO
 # Test with bazel
+# Run unit tests without go race detection
 #
 # Example:
 # make bazel-test
