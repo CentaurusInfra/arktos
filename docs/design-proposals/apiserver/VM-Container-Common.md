@@ -266,7 +266,25 @@ type VirtualMachine struct {
 
 #### VM YAML definition
 
-TBD
+```text
+apiVersion: batch/v1
+kind: Job
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      virtualMachine:
+      - name: vm1
+        vmFlavor: "ARM64"
+        image: <someURL>/vm1.img
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+```
 
 ## Affected Components
 
