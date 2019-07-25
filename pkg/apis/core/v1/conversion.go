@@ -111,6 +111,9 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 	if err := AddFieldLabelConversionsForEvent(scheme); err != nil {
 		return err
 	}
+	if err := AddFieldLabelConversionsForTenant(scheme); err != nil {
+		return err
+	}
 	if err := AddFieldLabelConversionsForNamespace(scheme); err != nil {
 		return err
 	}
@@ -392,6 +395,19 @@ func AddFieldLabelConversionsForEvent(scheme *runtime.Scheme) error {
 				"source",
 				"type",
 				"metadata.namespace",
+				"metadata.name":
+				return label, value, nil
+			default:
+				return "", "", fmt.Errorf("field label not supported: %s", label)
+			}
+		})
+}
+
+func AddFieldLabelConversionsForTenant(scheme *runtime.Scheme) error {
+	return scheme.AddFieldLabelConversionFunc(SchemeGroupVersion.WithKind("Tenant"),
+		func(label, value string) (string, string, error) {
+			switch label {
+			case "status.phase",
 				"metadata.name":
 				return label, value, nil
 			default:

@@ -56,6 +56,11 @@ func NameIsDNS1035Label(name string, prefix bool) []string {
 	return validation.IsDNS1035Label(name)
 }
 
+// ValidateTenantName can be used to check whether the given tenant name is valid.
+// Prefix indicates this name will be used as part of generation, in which case
+// trailing dashes are allowed.
+var ValidateTenantName = NameIsDNSLabel
+
 // ValidateNamespaceName can be used to check whether the given namespace name is valid.
 // Prefix indicates this name will be used as part of generation, in which case
 // trailing dashes are allowed.
