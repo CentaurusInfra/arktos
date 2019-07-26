@@ -175,6 +175,11 @@ func SetObjectDefaults_Deployment(in *v1beta1.Deployment) {
 			}
 		}
 	}
+	for i := range in.Spec.Template.Spec.VirtualMachines {
+		a := &in.Spec.Template.Spec.VirtualMachines[i]
+		v1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_DeploymentList(in *v1beta1.DeploymentList) {
@@ -321,6 +326,11 @@ func SetObjectDefaults_StatefulSet(in *v1beta1.StatefulSet) {
 				}
 			}
 		}
+	}
+	for i := range in.Spec.Template.Spec.VirtualMachines {
+		a := &in.Spec.Template.Spec.VirtualMachines[i]
+		v1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
 	}
 	for i := range in.Spec.VolumeClaimTemplates {
 		a := &in.Spec.VolumeClaimTemplates[i]

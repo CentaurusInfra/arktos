@@ -402,6 +402,42 @@ message ClientIPConfig {
   optional int32 timeoutSeconds = 1;
 }
 
+// Colection of fields that are common to Container and VirtualMachine objects
+message CommonInfo {
+  // Name of the container specified as a DNS_LABEL.
+  // Each container in a pod must have a unique name (DNS_LABEL).
+  // Cannot be updated.
+  optional string name = 1;
+
+  // Image name.
+  // More info: https://kubernetes.io/docs/concepts/containers/images
+  // This field is optional to allow higher level config management to default or override
+  // container images in workload controllers like Deployments and StatefulSets.
+  // +optional
+  optional string image = 2;
+
+  // Compute Resources required by this container.
+  // Cannot be updated.
+  // More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  // +optional
+  optional ResourceRequirements resources = 8;
+
+  // Pod volumes to mount into the workload's filesystem.
+  // Cannot be updated.
+  // +optional
+  // +patchMergeKey=mountPath
+  // +patchStrategy=merge
+  repeated VolumeMount volumeMounts = 9;
+
+  // Image pull policy.
+  // One of Always, Never, IfNotPresent.
+  // Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+  // Cannot be updated.
+  // More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+  // +optional
+  optional string imagePullPolicy = 14;
+}
+
 // Information about the condition of a component.
 message ComponentCondition {
   // Type of condition for a component.
@@ -3032,6 +3068,11 @@ message PodSpec {
   // +patchStrategy=merge
   repeated Container containers = 2;
 
+  // List of VMs belonging to the pod.
+  // +patchMergeKey=name
+  // +patchStrategy=merge
+  repeated VirtualMachine virtualMachines = 32;
+
   // Restart policy for all containers within the pod.
   // One of Always, OnFailure, Never.
   // Default to Always.
@@ -4658,6 +4699,15 @@ message TypedLocalObjectReference {
 
   // Name is the name of resource being referenced
   optional string name = 3;
+}
+
+// Attributes that are specific to VMs
+message VirtualMachine {
+  // Common information
+  optional CommonInfo commonInfo = 1;
+
+  // For e.g VM flavor
+  optional string vmFlavor = 2;
 }
 
 // Volume represents a named volume in a pod that may be accessed by any container in the pod.

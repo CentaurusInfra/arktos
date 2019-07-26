@@ -2108,6 +2108,47 @@ const (
 	TerminationMessagePathDefault string = "/dev/termination-log"
 )
 
+// Colection of fields that are common to Container and VirtualMachine objects
+type CommonInfo struct {
+	// Name of the container specified as a DNS_LABEL.
+	// Each container in a pod must have a unique name (DNS_LABEL).
+	// Cannot be updated.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// Image name.
+	// More info: https://kubernetes.io/docs/concepts/containers/images
+	// This field is optional to allow higher level config management to default or override
+	// container images in workload controllers like Deployments and StatefulSets.
+	// +optional
+	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
+	// Compute Resources required by this container.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// +optional
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	// Pod volumes to mount into the workload's filesystem.
+	// Cannot be updated.
+	// +optional
+	// +patchMergeKey=mountPath
+	// +patchStrategy=merge
+	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	// Image pull policy.
+	// One of Always, Never, IfNotPresent.
+	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+	// +optional
+	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,14,opt,name=imagePullPolicy,casttype=PullPolicy"`
+}
+
+// Attributes that are specific to VMs
+type VirtualMachine struct {
+	// Common information
+	CommonInfo `json:",inline" protobuf:"bytes,1,opt,name=commonInfo"`
+	//For e.g VM flavor
+	VmFlavor string `json:"vmFlavor,omitempty" protobuf:"bytes,2,opt,name=vmFlavor"`
+	//... TBD ...
+}
+
 // A single application container that you want to run within a pod.
 type Container struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -2850,6 +2891,10 @@ type PodSpec struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	Containers []Container `json:"containers" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,2,rep,name=containers"`
+	// List of VMs belonging to the pod.
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	VirtualMachines []VirtualMachine `json:"virtualMachines,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,32,rep,name=virtualMachines"`
 	// Restart policy for all containers within the pod.
 	// One of Always, OnFailure, Never.
 	// Default to Always.
