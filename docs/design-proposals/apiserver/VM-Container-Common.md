@@ -305,7 +305,7 @@ Controllers:
 Other components:
 * TBD
 
-## Affected Files
+## Affected Files (Files that use v1.Container{} initializer)
 |File name| Number of occurrences|
 |---------|----------------------|
 |cmd/kubeadm/app/util/staticpod/utils_test.go|2|
