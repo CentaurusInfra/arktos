@@ -965,7 +965,6 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "resourceVersion": "10"
             },
             "spec": {
-                "containers": null,
                 "dnsPolicy": "ClusterFirst",
                 "enableServiceLinks": true,
                 "restartPolicy": "Always",
@@ -984,7 +983,6 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "resourceVersion": "11"
             },
             "spec": {
-                "containers": null,
                 "dnsPolicy": "ClusterFirst",
                 "enableServiceLinks": true,
                 "restartPolicy": "Always",

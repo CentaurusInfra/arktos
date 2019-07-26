@@ -2586,10 +2586,11 @@ func validatePullPolicy(policy core.PullPolicy, fldPath *field.Path) field.Error
 	return allErrors
 }
 
-func validateInitContainers(containers, otherContainers []core.Container, deviceVolumes map[string]core.VolumeSource, fldPath *field.Path) field.ErrorList {
+func validateInitContainers(podWithVm bool, containers, otherContainers []core.Container, deviceVolumes map[string]core.VolumeSource, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
+
 	if len(containers) > 0 {
-		allErrs = append(allErrs, validateContainers(containers, true, deviceVolumes, fldPath)...)
+		allErrs = append(allErrs, validateContainers(podWithVm, containers, true, deviceVolumes, fldPath)...)
 	}
 
 	allNames := sets.String{}
@@ -2617,14 +2618,22 @@ func validateInitContainers(containers, otherContainers []core.Container, device
 	return allErrs
 }
 
-func validateContainers(containers []core.Container, isInitContainers bool, volumes map[string]core.VolumeSource, fldPath *field.Path) field.ErrorList {
+// Cloud Fabric:
+// added new parameter to indicate if the parent pod is VM pod. the container UT doesn't have the podspec so
+// add this flag to guide the validation behavior
+func validateContainers(podWithVm bool, containers []core.Container, isInitContainers bool, volumes map[string]core.VolumeSource, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	// Dev note:
-	// for Cloud Fabric, the containers are optional filed as well
+	// for Cloud Fabric, the containers are optional filed
 	// podspec validation logic shall validate either containers | virtualMachine is specified
-	if containers == nil || len(containers) == 0 {
-		return allErrs
+	if podWithVm == true {
+		if containers == nil || len(containers) == 0 {
+			return allErrs
+		}
+	}
+
+	if len(containers) == 0 {
+		return append(allErrs, field.Required(fldPath, ""))
 	}
 
 	allNames := sets.String{}
@@ -3039,13 +3048,32 @@ func ValidatePod(pod *core.Pod) field.ErrorList {
 // This includes checking formatting and uniqueness.  It also canonicalizes the
 // structure by setting default values and implementing any backwards-compatibility
 // tricks.
+// Cloud Fabric:
+// TODO: 830 release
+//       with VM type support, podspec.containers is no longer required filed, instead the following validation rules
+//       shall be validated and enforced
+//       1. a pod can container either containers or virtual machine workload, complete the validation rules
+//          add validation code for spec.containers == nil && spec.virtualMachines == nil condition
+//          and fix related UT tests in pkg/apis/core/validation/ and pkg/apps/validation/
+//       2. new error definitions for invalid spec
+//       3. new function for validating virtual machine spec
 func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	if spec.VirtualMachine != nil && spec.Containers != nil {
+		allErrs = append(allErrs, field.Forbidden(field.NewPath("containers,virtualMachine"), "containers and virtualMachine workloads in same pod"))
+	}
+
 	vols, vErrs := ValidateVolumes(spec.Volumes, fldPath.Child("volumes"))
 	allErrs = append(allErrs, vErrs...)
-	allErrs = append(allErrs, validateContainers(spec.Containers, false, vols, fldPath.Child("containers"))...)
-	allErrs = append(allErrs, validateInitContainers(spec.InitContainers, spec.Containers, vols, fldPath.Child("initContainers"))...)
+
+	if spec.VirtualMachine != nil {
+		allErrs = append(allErrs, validateContainers(true, spec.Containers, false, vols, fldPath.Child("containers"))...)
+		allErrs = append(allErrs, validateInitContainers(true, spec.InitContainers, spec.Containers, vols, fldPath.Child("initContainers"))...)
+	} else {
+		allErrs = append(allErrs, validateContainers(false, spec.Containers, false, vols, fldPath.Child("containers"))...)
+		allErrs = append(allErrs, validateInitContainers(false, spec.InitContainers, spec.Containers, vols, fldPath.Child("initContainers"))...)
+	}
 	allErrs = append(allErrs, validateRestartPolicy(&spec.RestartPolicy, fldPath.Child("restartPolicy"))...)
 	allErrs = append(allErrs, validateDNSPolicy(&spec.DNSPolicy, fldPath.Child("dnsPolicy"))...)
 	allErrs = append(allErrs, unversionedvalidation.ValidateLabels(spec.NodeSelector, fldPath.Child("nodeSelector"))...)

@@ -1708,12 +1708,6 @@ type VolumeMount struct {
 	// This field is beta in 1.15.
 	// +optional
 	SubPathExpr string
-	// For VirtualMachine workload only
-	// BootOrder defines the boot sequence of the volume attached to the VM
-	// a negative number indicates mounted device is not a boot device of the VM
-	// Default to -1l
-	// +optional
-	BootOrder int32
 }
 
 // MountPropagationMode describes mount propagation.
@@ -2028,15 +2022,6 @@ type CommonInfo struct {
 	ImagePullPolicy PullPolicy
 }
 
-// Attributes that are specific to VMs
-type VirtualMachine struct {
-	// Common information
-	CommonInfo
-	//For e.g VM flavor
-	VmFlavor string
-	//... TBD ...
-}
-
 // Container represents a single container that is expected to be run on the host.
 type Container struct {
 	// Required: This must be a DNS_LABEL.  Each container in a pod must
@@ -2110,68 +2095,44 @@ type Container struct {
 	TTY bool
 }
 
-// DEV note: the network related struct should be align with network component in Cloud Fabric
 // Network interface type used in the VM workload
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 type Nic struct {
-	// the interface name to be used in the VM or container
+	// The interface name to be used in the VM or container
+	// Required
 	Name string
-	// the subnetName where the Nic belongs to
-	SubnetName string // optional, the subnetName  of the nic. default to subnet where the VM is created from
+	// The subnetName where the Nic belongs to
+	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
+	SubnetName string
 	// PortId from the IaaS layer for the Nic
-	PortId string // optional, the portID with user precreated port ( ENI ).
+	// +optional, the portID with user precreated port ( ENI ).
+	PortId string
 	// IpAddress is the user specified IP, instead of dynamically allocated one
-	IpAddress string // optional, user specified IP address to the Nic. default dynamically allocatedIP on the subnet
+	// +optional
+	IpAddress string
 	// any user specified data for the Nic
-	// optional, default to empty
+	// +optional
 	Tag string
-	// optional, default to false
+	// +optional, default to false
 	Ipv6Enabled bool
 }
 
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
-	// Required: This must be a DNS_LABEL.  Each workloadd in a pod must
-	// have a unique name.
-	Name string
-	// Required.
-	Image string
-
-	// +optional
-	ImagePullPolicy PullPolicy
-
 	// Required
-	Resources ResourceRequirements
-
-	// +optional
-	VolumeMounts []VolumeMount
-
+	CommonInfo
 	// Either keyPair or the publicKeystring must be provided, used to logon to the VM
-	KeyPair   string
-	PublicKey string
-	//// for current release of Cloud Fabric, setting root/admin password at VM creation time is not supported
-	//// Admin Password     string
-	//
-	//// +optional, default to empty string. Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
-	//UserData string
-	//// boot devices and boot order
-	//BootDevices []BootDevice
-	//
-	//+optional, default none, array cert ID that used to verify the image
-	//TrustedImageCertificate []string
-	//
-	//+optional. need further define
-	//IAMRole string
-	//
-	//+optional, stop | terminate VM. default to stop
-	//ShutdownBehavior string
-	//+optional, default notEnabled
-	//EnalbeTerminationProtection bool
-	//
-	//+optional
-	//Tag string
-	//+optional
-	//ExtraParameter ExtraParams
+	KeyPairName string
+	PublicKey   string
+	// +optional, default to empty string. Configuration information or scripts to use upon launch.
+	// Must be Base64 encoded. Restricted to 65535 bytes.
+	UserData []byte
+	// +optional, default none, array cert ID that used to verify the image
+	TrustedImageCertificate []string
+	// +optional, stop | terminate VM. default to stop
+	ShutdownBehavior string
+	// +optional, user specified bootable volume for the VM
+	BootVolume string
 }
 
 // Handler defines a specific action that should be taken
@@ -2287,19 +2248,7 @@ type ContainerStatus struct {
 
 type VmState int32
 
-// Dev note:
-// Note: set of state were taken from Openstack nova
 // VM state represent stable VM state that is presented to users
-// The below virtual machine state were taken from nova api
-// Nova define a set of state collections which shall be in the action controller logic (see action controller spec)
-//// states we can soft reboot from. this should be an array of VirtualMachineState
-//ALLOW_SOFT_REBOOT
-//// states we allow hard reboot from
-//ALLOW_HARD_REBOOT
-//// states we allow to trigger crash dump
-//ALLOW_TRIGGER_CRASH_DUMP
-//// states we allow resources to be freed in
-//ALLOW_RESOURCE_REMOVAL
 const (
 	VmActive           VmState = 1 << iota
 	VmPaused                   //VmState = 2
@@ -2316,9 +2265,7 @@ const (
 
 type VmPowerState string
 
-// Dev note:
 // VM power state represent the state retrieved from the unerlying hypervisor
-//
 const (
 	NoState   VmPowerState = "nosate"
 	Running   VmPowerState = "running"
@@ -2328,14 +2275,14 @@ const (
 	Suspended VmPowerState = "suspended"
 )
 
+// VirtualMachineStatus holds the details of the current status of a given virtual machine instance
 type VirtualMachineStatus struct {
-	// VM name
+	// Virtual machine name
 	Name             string
 	VirtualMachineId string
 	// image
 	ImageId string
 	Image   string
-
 	// state of the virtual machine
 	State                VmState
 	LastTerminationState VmState
@@ -2754,6 +2701,9 @@ type PodReadinessGate struct {
 
 // PodSpec is a description of a pod
 type PodSpec struct {
+	// The name of the VPC the VM belongs to
+	// required for VM workload
+	VPC string
 	// List of network interfaces
 	Nics []Nic
 
@@ -2763,7 +2713,7 @@ type PodSpec struct {
 	// List of containers belonging to the pod.
 	Containers []Container
 
-	// ThevirtualMachines belonging to the pod.
+	// The virtual machine belonging to the pod.
 	// for the current release, assume:
 	// 1. a pod has either container type or VM type, but not both
 	// 2. a pod only has one VM

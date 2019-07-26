@@ -1794,12 +1794,6 @@ type VolumeMount struct {
 	// This field is beta in 1.15.
 	// +optional
 	SubPathExpr string `json:"subPathExpr,omitempty" protobuf:"bytes,6,opt,name=subPathExpr"`
-	// For VirtualMachine workload only
-	// BootOrder defines the boot sequence of the volume attached to the VM
-	// a negative number indicates mounted device is not a boot device of the VM
-	// Default to -1
-	// +optional
-	BootOrder int32 `json:"bootOrder,omitempty" protobuf:"varint,7,opt,name=bootOrder"`
 }
 
 // MountPropagationMode describes mount propagation.
@@ -2146,15 +2140,6 @@ type CommonInfo struct {
 	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,14,opt,name=imagePullPolicy,casttype=PullPolicy"`
 }
 
-// Attributes that are specific to VMs
-type VirtualMachine struct {
-	// Common information
-	CommonInfo `json:",inline" protobuf:"bytes,1,opt,name=commonInfo"`
-	//For e.g VM flavor
-	VmFlavor string `json:"vmFlavor,omitempty" protobuf:"bytes,2,opt,name=vmFlavor"`
-	//... TBD ...
-}
-
 // A single application container that you want to run within a pod.
 type Container struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -2308,14 +2293,13 @@ type Container struct {
 	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
 }
 
-// DEV note: the network related struct should be align with network component in Cloud Fabric
 // Network interface type used in the VM workload
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 type Nic struct {
-	// the interface name to be used in the VM or container
+	// The interface name to be used in the VM or container
 	// Required
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-	// the subnetName where the Nic belongs to
+	// The subnetName where the Nic belongs to
 	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
 	SubnetName string `json:"subnetName" protobuf:"bytes,2,opt,name=subnetName"`
 	// PortId from the IaaS layer for the Nic
@@ -2334,49 +2318,21 @@ type Nic struct {
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
 	// Required
-	// have a unique name.
-	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-	// Required
-	Image string `json:"image" protobuf:"bytes,2,opt,name=image"`
-	// +optional
-	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,3,opt,name=imagePullPolicy"`
-
-	// Compute resource requirements.
-	// Required
-	Resources ResourceRequirements `json:"resources" protobuf:"bytes,5,opt,name=resources"`
-
-	// +optional
-	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" protobuf:"bytes,6,rep,name=volumeMounts"`
-
+	CommonInfo `json:",inline" protobuf:"bytes,12,opt,name=commonInfo"`
 	// either keyPair or the publicKeystring must be provided, used to logon to the VM
 	// +optional
-	KeyPair   string `json:"keyPair,omitempty" protobuf:"bytes,9,opt,name=keyPair"`
-	PublicKey string `json:"publicKey,omitempty" protobuf:"bytes,10,opt,name=publicKey"`
-	// for current release of Cloud Fabric, setting root/admin password at VM creation time is not supported
-	// Admin Password     string
-
-	////default to empty string. Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
-	//// +optional
-	//UserData string `json:"userData,omitempty" protobuf:"bytes,11,opt,name=userData"`
-	//// boot devices and boot order
-	//// optional
-	//BootDevices []BootDevice `json:"bootDevices,omitempty" protobuf:"bytes,12,rep,name=bootDevices"`
-
+	KeyPairName string `json:"keyPairName,omitempty" protobuf:"bytes,7,opt,name=keyPairName"`
+	// +optional
+	PublicKey string `json:"publicKey,omitempty" protobuf:"bytes,8,opt,name=publicKey"`
+	// Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
+	// +optional
+	UserData []byte `json:"userData,omitempty" protobuf:"bytes,9,opt,name=userData"`
 	// +optional, default none, array cert ID that used to verify the image
-	// TrustedImageCertificate []string
-
-	//// +optional. need further define
-	//// IAMRole string
-	//
-	//// +optional, stop | terminate VM. default to stop
-	//// ShutdownBehavior string
-	//// +optional, default notEnabled
-	//// EnalbeTerminationProtection bool
-
-	//// +optional
-	////Tag string
-	//// +optional
-	////ExtraParameter ExtraParams
+	TrustedImageCertificate []string `json:"trustedImageCertificate,omitempty" protobuf:"bytes,10,opt,name=trustedImageCertificate"`
+	// +optional, stop | terminate VM. default to stop
+	ShutdownBehavior string `json:"shutdownBehavior,omitempty" protobuf:"bytes,11,opt,name=shutdownBehavior"`
+	// +optional, if not specified, the first volume in the volume slice will be used
+	BootVolume string `json:"bootVolume,omitempty" protobuf:"bytes,13,opt,name=bootVolume"`
 }
 
 // Handler defines a specific action that should be taken
@@ -2519,19 +2475,7 @@ type ContainerStatus struct {
 
 type VmState int32
 
-// Dev note:
-// Note: set of state were taken from Openstack nova
-// VM state represent stable VM state that is presented to users
-// The below virtual machine state were taken from nova api
-// Nova define a set of state collections which shall be in the action controller logic (see action controller spec)
-//// states we can soft reboot from. this should be an array of VirtualMachineState
-//ALLOW_SOFT_REBOOT
-//// states we allow hard reboot from
-//ALLOW_HARD_REBOOT
-//// states we allow to trigger crash dump
-//ALLOW_TRIGGER_CRASH_DUMP
-//// states we allow resources to be freed in
-//ALLOW_RESOURCE_REMOVAL
+// VM state represent stable VM state that is presented to users.
 const (
 	VmActive           VmState = 1 << iota
 	VmPaused                   //VmState = 2
@@ -2548,9 +2492,7 @@ const (
 
 type VmPowerState string
 
-// Dev note:
-// VM power state represent the state retrieved from the unerlying hypervisor
-//
+// VM power state represents the state retrieved from the underlying hypervisor
 const (
 	NoState   VmPowerState = "nosate"
 	Running   VmPowerState = "running"
@@ -2560,8 +2502,8 @@ const (
 	Suspended VmPowerState = "suspended"
 )
 
+// VirtualMachineStatus holds the details of the current status of a given virtual machine instance
 type VirtualMachineStatus struct {
-	// VM name
 	// Required
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// +optional
@@ -2571,7 +2513,6 @@ type VirtualMachineStatus struct {
 	ImageId string `json:"imageId,omitempty" protobuf:"bytes,3,opt,name=imageId"`
 	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,4,opt,name=image"`
-
 	// state of the virtual machine
 	// +optional
 	State VmState `json:"state,omitempty" protobuf:"bytes,5,opt,name=state"`
@@ -3007,11 +2948,15 @@ type PodReadinessGate struct {
 
 // PodSpec is a description of a pod.
 type PodSpec struct {
+	// The name of the VPC the VM belongs to
+	// required for VM workload only to keep the container workload unchanged
+	// +optional
+	VPC string `json:"vpc,omitempty" protobuf:"bytes,33,rep,name=vpc"`
 	// List of network interfaces
 	// +optional
 	// +patchMergeKey=name
 	// +patchStrategy=merge,retainKeys
-	Nics []Nic `json:"nics,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,43,rep,name=nics"`
+	Nics []Nic `json:"nics,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,34,rep,name=nics"`
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
 	// +optional
@@ -3045,7 +2990,7 @@ type PodSpec struct {
 	// List of virtualMachines belonging to the pod.
 	// Cannot be updated.
 	// +optional
-	VirtualMachine *VirtualMachine `json:"virtualMachine,omitempty" protobuf:"bytes,42,opt,name=virtualMachine"`
+	VirtualMachine *VirtualMachine `json:"virtualMachine,omitempty" protobuf:"bytes,32,opt,name=virtualMachine"`
 	// Restart policy for all containers within the pod.
 	// One of Always, OnFailure, Never.
 	// Default to Always.
@@ -3398,7 +3343,7 @@ type PodStatus struct {
 	// Virtual machine status
 	// currently a pod can only have one virtual machine
 	// +optional
-	VirtualMachineStatus *VirtualMachineStatus `json:"virtualMachineStatus,omitempty" protobuf:"bytes,20,opt,name=virtualMachineStatus"`
+	VirtualMachineStatus *VirtualMachineStatus `json:"virtualMachineStatus,omitempty" protobuf:"bytes,12,opt,name=virtualMachineStatus"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
