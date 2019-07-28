@@ -1908,6 +1908,33 @@ message NamespaceStatus {
   optional string phase = 1;
 }
 
+// Network interface type used in the VM workload
+// Nic info will be provided at the pod level so they can be used by both Container and VM workload
+message Nic {
+  // The interface name to be used in the VM or container
+  // Required
+  optional string name = 1;
+
+  // The subnetName where the Nic belongs to
+  // +optional, the subnetName  of the nic. default to subnet where the VM is created from
+  optional string subnetName = 2;
+
+  // PortId from the IaaS layer for the Nic
+  // +optional, the portID with user precreated port ( ENI ).
+  optional string portId = 3;
+
+  // IpAddress is the user specified IP, instead of dynamically allocated one
+  // +optional
+  optional string ipAddress = 4;
+
+  // any user specified data for the Nic
+  // +optional
+  optional string tag = 5;
+
+  // +optional, default to false
+  optional bool ipv6Enabled = 6;
+}
+
 // Node is a worker node in Kubernetes.
 // Each node will have a unique identifier in the cache (i.e. in etcd).
 message Node {
@@ -3036,6 +3063,17 @@ message PodSignature {
 
 // PodSpec is a description of a pod.
 message PodSpec {
+  // The name of the VPC the VM belongs to
+  // required for VM workload only to keep the container workload unchanged
+  // +optional
+  optional string vpc = 33;
+
+  // List of network interfaces
+  // +optional
+  // +patchMergeKey=name
+  // +patchStrategy=merge,retainKeys
+  repeated Nic nics = 34;
+
   // List of volumes that can be mounted by containers belonging to the pod.
   // More info: https://kubernetes.io/docs/concepts/storage/volumes
   // +optional
@@ -3066,12 +3104,13 @@ message PodSpec {
   // Cannot be updated.
   // +patchMergeKey=name
   // +patchStrategy=merge
+  // +optional
   repeated Container containers = 2;
 
-  // List of VMs belonging to the pod.
-  // +patchMergeKey=name
-  // +patchStrategy=merge
-  repeated VirtualMachine virtualMachines = 32;
+  // List of virtualMachines belonging to the pod.
+  // Cannot be updated.
+  // +optional
+  optional VirtualMachine virtualMachine = 32;
 
   // Restart policy for all containers within the pod.
   // One of Always, OnFailure, Never.
@@ -3340,6 +3379,11 @@ message PodStatus {
   // More info: https://git.k8s.io/community/contributors/design-proposals/node/resource-qos.md
   // +optional
   optional string qosClass = 9;
+
+  // Virtual machine status
+  // currently a pod can only have one virtual machine
+  // +optional
+  optional VirtualMachineStatus virtualMachineStatus = 12;
 }
 
 // PodStatusResult is a wrapper for PodStatus returned by kubelet that can be encode/decoded
@@ -4701,13 +4745,62 @@ message TypedLocalObjectReference {
   optional string name = 3;
 }
 
-// Attributes that are specific to VMs
+// Virtual machine struct defines the information of a VM in the system
 message VirtualMachine {
-  // Common information
-  optional CommonInfo commonInfo = 1;
+  // Required
+  optional CommonInfo commonInfo = 12;
 
-  // For e.g VM flavor
-  optional string vmFlavor = 2;
+  // either keyPair or the publicKeystring must be provided, used to logon to the VM
+  // +optional
+  optional string keyPairName = 7;
+
+  // +optional
+  optional string publicKey = 8;
+
+  // Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
+  // +optional
+  optional bytes userData = 9;
+
+  // +optional, default none, array cert ID that used to verify the image
+  repeated string trustedImageCertificate = 10;
+
+  // +optional, stop | terminate VM. default to stop
+  optional string shutdownBehavior = 11;
+
+  // +optional, if not specified, the first volume in the volume slice will be used
+  optional string bootVolume = 13;
+}
+
+// VirtualMachineStatus holds the details of the current status of a given virtual machine instance
+message VirtualMachineStatus {
+  // Required
+  optional string name = 1;
+
+  // +optional
+  optional string virtualMachineId = 2;
+
+  // image
+  // +optional
+  optional string imageId = 3;
+
+  // +optional
+  optional string image = 4;
+
+  // state of the virtual machine
+  // +optional
+  optional int32 state = 5;
+
+  // +optional
+  optional int32 lastTerminationState = 6;
+
+  // +optional
+  optional string powerState = 7;
+
+  // +optional
+  optional bool ready = 8;
+
+  // +optional
+  optional int32 restartCount = 9;
 }
 
 // Volume represents a named volume in a pod that may be accessed by any container in the pod.

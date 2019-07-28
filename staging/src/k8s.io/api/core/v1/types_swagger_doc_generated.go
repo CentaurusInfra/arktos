@@ -989,6 +989,19 @@ func (NamespaceStatus) SwaggerDoc() map[string]string {
 	return map_NamespaceStatus
 }
 
+var map_Nic = map[string]string{
+	"":           "Network interface type used in the VM workload Nic info will be provided at the pod level so they can be used by both Container and VM workload",
+	"name":       "The interface name to be used in the VM or container Required",
+	"subnetName": "The subnetName where the Nic belongs to",
+	"portId":     "PortId from the IaaS layer for the Nic",
+	"ipAddress":  "IpAddress is the user specified IP, instead of dynamically allocated one",
+	"tag":        "any user specified data for the Nic",
+}
+
+func (Nic) SwaggerDoc() map[string]string {
+	return map_Nic
+}
+
 var map_Node = map[string]string{
 	"":         "Node is a worker node in Kubernetes. Each node will have a unique identifier in the cache (i.e. in etcd).",
 	"metadata": "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata",
@@ -1539,10 +1552,12 @@ func (PodSignature) SwaggerDoc() map[string]string {
 
 var map_PodSpec = map[string]string{
 	"":                              "PodSpec is a description of a pod.",
+	"vpc":                           "The name of the VPC the VM belongs to required for VM workload only to keep the container workload unchanged",
+	"nics":                          "List of network interfaces",
 	"volumes":                       "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
 	"initContainers":                "List of initialization containers belonging to the pod. Init containers are executed in order prior to containers being started. If any init container fails, the pod is considered to have failed and is handled according to its restartPolicy. The name for an init container or normal container must be unique among all containers. Init containers may not have Lifecycle actions, Readiness probes, or Liveness probes. The resourceRequirements of an init container are taken into account during scheduling by finding the highest request/limit for each resource type, and then using the max of of that value or the sum of the normal containers. Limits are applied to init containers in a similar fashion. Init containers cannot currently be added or removed. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/",
 	"containers":                    "List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.",
-	"virtualMachines":               "List of VMs belonging to the pod.",
+	"virtualMachine":                "List of virtualMachines belonging to the pod. Cannot be updated.",
 	"restartPolicy":                 "Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy",
 	"terminationGracePeriodSeconds": "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
 	"activeDeadlineSeconds":         "Optional duration in seconds the pod may be active on the node relative to StartTime before the system will actively try to mark it failed and kill associated containers. Value must be a positive integer.",
@@ -1590,6 +1605,7 @@ var map_PodStatus = map[string]string{
 	"initContainerStatuses": "The list has one entry per init container in the manifest. The most recent successful init container will have ready = true, the most recently started container will have startTime set. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status",
 	"containerStatuses":     "The list has one entry per container in the manifest. Each entry is currently the output of `docker inspect`. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status",
 	"qosClass":              "The Quality of Service (QOS) classification assigned to the pod based on resource requirements See PodQOSClass type for available QOS classes More info: https://git.k8s.io/community/contributors/design-proposals/node/resource-qos.md",
+	"virtualMachineStatus":  "Virtual machine status currently a pod can only have one virtual machine",
 }
 
 func (PodStatus) SwaggerDoc() map[string]string {
@@ -2305,12 +2321,24 @@ func (TypedLocalObjectReference) SwaggerDoc() map[string]string {
 }
 
 var map_VirtualMachine = map[string]string{
-	"":         "Attributes that are specific to VMs",
-	"vmFlavor": "For e.g VM flavor",
+	"":            "Virtual machine struct defines the information of a VM in the system",
+	"keyPairName": "either keyPair or the publicKeystring must be provided, used to logon to the VM",
+	"userData":    "Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.",
 }
 
 func (VirtualMachine) SwaggerDoc() map[string]string {
 	return map_VirtualMachine
+}
+
+var map_VirtualMachineStatus = map[string]string{
+	"":        "VirtualMachineStatus holds the details of the current status of a given virtual machine instance",
+	"name":    "Required",
+	"imageId": "image",
+	"state":   "state of the virtual machine",
+}
+
+func (VirtualMachineStatus) SwaggerDoc() map[string]string {
+	return map_VirtualMachineStatus
 }
 
 var map_Volume = map[string]string{
