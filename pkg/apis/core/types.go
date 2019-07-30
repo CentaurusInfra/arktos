@@ -2022,15 +2022,6 @@ type CommonInfo struct {
 	ImagePullPolicy PullPolicy
 }
 
-// Attributes that are specific to VMs
-type VirtualMachine struct {
-	// Common information
-	CommonInfo
-	//For e.g VM flavor
-	VmFlavor string
-	//... TBD ...
-}
-
 // Container represents a single container that is expected to be run on the host.
 type Container struct {
 	// Required: This must be a DNS_LABEL.  Each container in a pod must
@@ -2102,6 +2093,46 @@ type Container struct {
 	StdinOnce bool
 	// +optional
 	TTY bool
+}
+
+// Network interface type used in the VM workload
+// Nic info will be provided at the pod level so they can be used by both Container and VM workload
+type Nic struct {
+	// The interface name to be used in the VM or container
+	// Required
+	Name string
+	// The subnetName where the Nic belongs to
+	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
+	SubnetName string
+	// PortId from the IaaS layer for the Nic
+	// +optional, the portID with user precreated port ( ENI ).
+	PortId string
+	// IpAddress is the user specified IP, instead of dynamically allocated one
+	// +optional
+	IpAddress string
+	// any user specified data for the Nic
+	// +optional
+	Tag string
+	// +optional, default to false
+	Ipv6Enabled bool
+}
+
+// Virtual machine struct defines the information of a VM in the system
+type VirtualMachine struct {
+	// Required
+	CommonInfo
+	// Either keyPair or the publicKeystring must be provided, used to logon to the VM
+	KeyPairName string
+	PublicKey   string
+	// +optional, default to empty string. Configuration information or scripts to use upon launch.
+	// Must be Base64 encoded. Restricted to 65535 bytes.
+	UserData []byte
+	// +optional, default none, array cert ID that used to verify the image
+	TrustedImageCertificate []string
+	// +optional, stop | terminate VM. default to stop
+	ShutdownBehavior string
+	// +optional, user specified bootable volume for the VM
+	BootVolume string
 }
 
 // Handler defines a specific action that should be taken
@@ -2213,6 +2244,51 @@ type ContainerStatus struct {
 	ImageID      string
 	// +optional
 	ContainerID string
+}
+
+type VmState int32
+
+// VM state represent stable VM state that is presented to users
+const (
+	VmActive           VmState = 1 << iota
+	VmPaused                   //VmState = 2
+	VmSuspended                //VmState = 4
+	VmStopped                  //VmState = 8
+	VmRescued                  //VmState = 16
+	VmResized                  //VmState = 32
+	VmSoftDeleted              //VmState = 64
+	VmDeleted                  //VmState = 128
+	VmError                    //VmState = 256
+	VmShelved                  //VmState =512
+	VmShelvedOffloaded         //VmState = 1024
+)
+
+type VmPowerState string
+
+// VM power state represent the state retrieved from the unerlying hypervisor
+const (
+	NoState   VmPowerState = "nosate"
+	Running   VmPowerState = "running"
+	Paused    VmPowerState = "paused"
+	Shutdown  VmPowerState = "shutdown"
+	Crashed   VmPowerState = "crashed"
+	Suspended VmPowerState = "suspended"
+)
+
+// VirtualMachineStatus holds the details of the current status of a given virtual machine instance
+type VirtualMachineStatus struct {
+	// Virtual machine name
+	Name             string
+	VirtualMachineId string
+	// image
+	ImageId string
+	Image   string
+	// state of the virtual machine
+	State                VmState
+	LastTerminationState VmState
+	PowerState           VmPowerState
+	Ready                bool
+	RestartCount         int32
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -2625,13 +2701,25 @@ type PodReadinessGate struct {
 
 // PodSpec is a description of a pod
 type PodSpec struct {
+	// The name of the VPC the VM belongs to
+	// required for VM workload
+	VPC string
+	// List of network interfaces
+	Nics []Nic
+
 	Volumes []Volume
 	// List of initialization containers belonging to the pod.
 	InitContainers []Container
 	// List of containers belonging to the pod.
 	Containers []Container
-	// List of VMs belonging to the pod.
-	VirtualMachines []VirtualMachine
+
+	// The virtual machine belonging to the pod.
+	// for the current release, assume:
+	// 1. a pod has either container type or VM type, but not both
+	// 2. a pod only has one VM
+	// +optional
+	VirtualMachine *VirtualMachine
+
 	// +optional
 	RestartPolicy RestartPolicy
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
@@ -2933,6 +3021,10 @@ type PodStatus struct {
 	// when we have done this.
 	// +optional
 	ContainerStatuses []ContainerStatus
+	// Virtual machine status
+	// currently a pod can only have one virtual machine
+	// +optional
+	VirtualMachineStatus *VirtualMachineStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

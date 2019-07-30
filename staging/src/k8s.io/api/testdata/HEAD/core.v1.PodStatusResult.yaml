@@ -116,3 +116,12 @@ status:
   podIP: "30"
   qosClass: ƕP喂ƈ
   reason: "27"
+  virtualMachineStatus:
+    image: "62"
+    imageId: "61"
+    lastTerminationState: -1579157235
+    name: "59"
+    powerState: 6ĴC浔Ű壝ž(-譵ņ錕?øē
+    restartCount: 1944931763
+    state: 712024464
+    virtualMachineId: "60"

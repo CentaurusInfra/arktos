@@ -179,10 +179,9 @@ func SetObjectDefaults_DaemonSet(in *v1.DaemonSet) {
 			}
 		}
 	}
-	for i := range in.Spec.Template.Spec.VirtualMachines {
-		a := &in.Spec.Template.Spec.VirtualMachines[i]
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
+	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Limits)
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Requests)
 	}
 }
 
@@ -331,10 +330,9 @@ func SetObjectDefaults_Deployment(in *v1.Deployment) {
 			}
 		}
 	}
-	for i := range in.Spec.Template.Spec.VirtualMachines {
-		a := &in.Spec.Template.Spec.VirtualMachines[i]
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
+	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Limits)
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Requests)
 	}
 }
 
@@ -483,10 +481,9 @@ func SetObjectDefaults_ReplicaSet(in *v1.ReplicaSet) {
 			}
 		}
 	}
-	for i := range in.Spec.Template.Spec.VirtualMachines {
-		a := &in.Spec.Template.Spec.VirtualMachines[i]
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
+	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Limits)
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Requests)
 	}
 }
 
@@ -635,10 +632,9 @@ func SetObjectDefaults_StatefulSet(in *v1.StatefulSet) {
 			}
 		}
 	}
-	for i := range in.Spec.Template.Spec.VirtualMachines {
-		a := &in.Spec.Template.Spec.VirtualMachines[i]
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
+	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Limits)
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Requests)
 	}
 	for i := range in.Spec.VolumeClaimTemplates {
 		a := &in.Spec.VolumeClaimTemplates[i]

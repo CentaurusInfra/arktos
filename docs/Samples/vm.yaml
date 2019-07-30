@@ -1,0 +1,39 @@
+# Simple yaml file for new virtual machine type in Cloud Fabric
+# The pod spec can either contains []containers OR virtualMachine
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    testlable1: label1
+  name: testpod
+  namespace: default
+spec:
+  virtualMachine:
+    image: busybox
+    imagePullPolicy: Always
+    name: test
+    resources:
+      limits:
+        memory: "200Mi"
+        cpu: 2
+    keyPairName: "testkeypair"
+# Specify the bootable volume for the VM if needed. if no bootVolume specified, the first volume in the volumes slice
+# will be assumed the boot volume of the VM
+    bootVolume: "testvol2"
+    volumeMounts:
+      - mountPath: "/dev/sda1"
+        name: testvol
+  volumes:
+    - name: testvol
+    - name: testvol2
+
+# The name of the VPC the VM belongs to
+  vpc: "testvpc"
+# Network interface defined at the pod level. both containers and virtual machine type will use the nic defined here
+# name is required. all others are optional. please refer to the doc for the Nic type defined in pkg/apis/core/types.go
+# for details
+  nics:
+    - name: nic0
+      subnetName: subnet1
+      portId: "12345"
+      ipv6Enabled: false

@@ -173,10 +173,9 @@ func SetObjectDefaults_Job(in *v1.Job) {
 			}
 		}
 	}
-	for i := range in.Spec.Template.Spec.VirtualMachines {
-		a := &in.Spec.Template.Spec.VirtualMachines[i]
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Limits)
-		corev1.SetDefaults_ResourceList(&a.CommonInfo.Resources.Requests)
+	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Limits)
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Requests)
 	}
 }
 
