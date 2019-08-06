@@ -28,9 +28,11 @@ type ObjectMetaAccessor interface {
 
 // Object lets you work with object metadata from any of the versioned or
 // internal API objects. Attempting to set or retrieve a field on an object that does
-// not support that field (Name, UID, Namespace on lists) will be a no-op and return
+// not support that field (Name, UID, Tenant, Namespace on lists) will be a no-op and return
 // a default value.
 type Object interface {
+	GetTenant() string
+	SetTenant(tenant string)
 	GetNamespace() string
 	SetNamespace(namespace string)
 	GetName() string
@@ -133,6 +135,9 @@ func (obj *TypeMeta) GroupVersionKind() schema.GroupVersionKind {
 func (obj *ListMeta) GetListMeta() ListInterface { return obj }
 
 func (obj *ObjectMeta) GetObjectMeta() Object { return obj }
+
+func (meta *ObjectMeta) GetTenant() string       { return meta.Tenant }
+func (meta *ObjectMeta) SetTenant(tenant string) { meta.Tenant = tenant }
 
 // Namespace implements metav1.Object for any object with an ObjectMeta typed field. Allows
 // fast, direct access to metadata fields for API objects.

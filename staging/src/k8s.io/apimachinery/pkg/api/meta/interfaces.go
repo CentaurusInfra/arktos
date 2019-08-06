@@ -37,7 +37,7 @@ type Type metav1.Type
 
 // MetadataAccessor lets you work with object and list metadata from any of the versioned or
 // internal API objects. Attempting to set or retrieve a field on an object that does
-// not support that field (Name, UID, Namespace on lists) will be a no-op and return
+// not support that field (Name, UID, Tenant, Namespace on lists) will be a no-op and return
 // a default value.
 //
 // MetadataAccessor exposes Interface in a way that can be used with multiple objects.
@@ -47,6 +47,9 @@ type MetadataAccessor interface {
 
 	Kind(obj runtime.Object) (string, error)
 	SetKind(obj runtime.Object, kind string) error
+
+	Tenant(obj runtime.Object) (string, error)
+	SetTenant(obj runtime.Object, tenant string) error
 
 	Namespace(obj runtime.Object) (string, error)
 	SetNamespace(obj runtime.Object, namespace string) error
@@ -78,6 +81,7 @@ type MetadataAccessor interface {
 type RESTScopeName string
 
 const (
+	RESTScopeNameTenant    RESTScopeName = "tenant"
 	RESTScopeNameNamespace RESTScopeName = "namespace"
 	RESTScopeNameRoot      RESTScopeName = "root"
 )
