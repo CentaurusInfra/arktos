@@ -2099,7 +2099,7 @@ type Container struct {
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 type Nic struct {
 	// The interface name to be used in the VM or container
-	// Required
+	// +optional
 	Name string
 	// The subnetName where the Nic belongs to
 	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
