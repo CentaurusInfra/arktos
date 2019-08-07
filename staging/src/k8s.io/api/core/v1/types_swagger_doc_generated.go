@@ -991,7 +991,7 @@ func (NamespaceStatus) SwaggerDoc() map[string]string {
 
 var map_Nic = map[string]string{
 	"":           "Network interface type used in the VM workload Nic info will be provided at the pod level so they can be used by both Container and VM workload",
-	"name":       "The interface name to be used in the VM or container Required",
+	"name":       "The interface name to be used in the VM or container",
 	"subnetName": "The subnetName where the Nic belongs to",
 	"portId":     "PortId from the IaaS layer for the Nic",
 	"ipAddress":  "IpAddress is the user specified IP, instead of dynamically allocated one",
