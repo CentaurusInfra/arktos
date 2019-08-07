@@ -1894,7 +1894,7 @@ message NamespaceStatus {
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 message Nic {
   // The interface name to be used in the VM or container
-  // Required
+  // +optional
   optional string name = 1;
 
   // The subnetName where the Nic belongs to

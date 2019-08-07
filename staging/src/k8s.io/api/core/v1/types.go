@@ -2279,11 +2279,11 @@ type Container struct {
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 type Nic struct {
 	// The interface name to be used in the VM or container
-	// Required
-	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// +optional
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 	// The subnetName where the Nic belongs to
 	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
-	SubnetName string `json:"subnetName" protobuf:"bytes,2,opt,name=subnetName"`
+	SubnetName string `json:"subnetName,omitempty" protobuf:"bytes,2,opt,name=subnetName"`
 	// PortId from the IaaS layer for the Nic
 	// +optional, the portID with user precreated port ( ENI ).
 	PortId string `json:"portId,omitempty" protobuf:"bytes,3,opt,name=portId"`
