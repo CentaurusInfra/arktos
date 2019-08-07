@@ -2111,7 +2111,7 @@ const (
 // Colection of fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
 	// Name of the container specified as a DNS_LABEL.
-	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Image name.
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 	// Compute Resources required by this container.
@@ -2279,11 +2279,11 @@ type Container struct {
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 type Nic struct {
 	// The interface name to be used in the VM or container
-	// +optional
-	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	// Required
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// The subnetName where the Nic belongs to
 	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
-	SubnetName string `json:"subnetName,omitempty" protobuf:"bytes,2,opt,name=subnetName"`
+	SubnetName string `json:"subnetName" protobuf:"bytes,2,opt,name=subnetName"`
 	// PortId from the IaaS layer for the Nic
 	// +optional, the portID with user precreated port ( ENI ).
 	PortId string `json:"portId,omitempty" protobuf:"bytes,3,opt,name=portId"`
@@ -2302,7 +2302,7 @@ type VirtualMachine struct {
 	// Name of the container specified as a DNS_LABEL.
 	// Each container in a pod must have a unique name (DNS_LABEL).
 	// Cannot be updated.
-	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Image name.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
 	// This field is optional to allow higher level config management to default or override
