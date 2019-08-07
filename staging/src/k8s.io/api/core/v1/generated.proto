@@ -405,37 +405,19 @@ message ClientIPConfig {
 // Colection of fields that are common to Container and VirtualMachine objects
 message CommonInfo {
   // Name of the container specified as a DNS_LABEL.
-  // Each container in a pod must have a unique name (DNS_LABEL).
-  // Cannot be updated.
   optional string name = 1;
 
   // Image name.
-  // More info: https://kubernetes.io/docs/concepts/containers/images
-  // This field is optional to allow higher level config management to default or override
-  // container images in workload controllers like Deployments and StatefulSets.
-  // +optional
   optional string image = 2;
 
   // Compute Resources required by this container.
-  // Cannot be updated.
-  // More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
-  // +optional
-  optional ResourceRequirements resources = 8;
+  optional ResourceRequirements resources = 3;
 
   // Pod volumes to mount into the workload's filesystem.
-  // Cannot be updated.
-  // +optional
-  // +patchMergeKey=mountPath
-  // +patchStrategy=merge
-  repeated VolumeMount volumeMounts = 9;
+  repeated VolumeMount volumeMounts = 4;
 
   // Image pull policy.
-  // One of Always, Never, IfNotPresent.
-  // Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
-  // Cannot be updated.
-  // More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-  // +optional
-  optional string imagePullPolicy = 14;
+  optional string imagePullPolicy = 5;
 }
 
 // Information about the condition of a component.
@@ -3112,6 +3094,9 @@ message PodSpec {
   // +optional
   optional VirtualMachine virtualMachine = 32;
 
+  // Common info for VM or Containers
+  repeated CommonInfo workloadInfo = 35;
+
   // Restart policy for all containers within the pod.
   // One of Always, OnFailure, Never.
   // Default to Always.
@@ -4747,28 +4732,58 @@ message TypedLocalObjectReference {
 
 // Virtual machine struct defines the information of a VM in the system
 message VirtualMachine {
-  // Required
-  optional CommonInfo commonInfo = 12;
+  // Name of the container specified as a DNS_LABEL.
+  // Each container in a pod must have a unique name (DNS_LABEL).
+  // Cannot be updated.
+  optional string name = 1;
+
+  // Image name.
+  // More info: https://kubernetes.io/docs/concepts/containers/images
+  // This field is optional to allow higher level config management to default or override
+  // container images in workload controllers like Deployments and StatefulSets.
+  // +optional
+  optional string image = 2;
+
+  // Compute Resources required by this container.
+  // Cannot be updated.
+  // More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  // +optional
+  optional ResourceRequirements resources = 3;
+
+  // Pod volumes to mount into the workload's filesystem.
+  // Cannot be updated.
+  // +optional
+  // +patchMergeKey=mountPath
+  // +patchStrategy=merge
+  repeated VolumeMount volumeMounts = 4;
+
+  // Image pull policy.
+  // One of Always, Never, IfNotPresent.
+  // Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+  // Cannot be updated.
+  // More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+  // +optional
+  optional string imagePullPolicy = 5;
 
   // either keyPair or the publicKeystring must be provided, used to logon to the VM
   // +optional
-  optional string keyPairName = 7;
+  optional string keyPairName = 6;
 
   // +optional
-  optional string publicKey = 8;
+  optional string publicKey = 7;
 
   // Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
   // +optional
-  optional bytes userData = 9;
+  optional bytes userData = 8;
 
   // +optional, default none, array cert ID that used to verify the image
-  repeated string trustedImageCertificate = 10;
+  repeated string trustedImageCertificate = 9;
 
   // +optional, stop | terminate VM. default to stop
-  optional string shutdownBehavior = 11;
+  optional string shutdownBehavior = 10;
 
   // +optional, if not specified, the first volume in the volume slice will be used
-  optional string bootVolume = 13;
+  optional string bootVolume = 11;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance

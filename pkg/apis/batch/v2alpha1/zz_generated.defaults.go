@@ -175,8 +175,13 @@ func SetObjectDefaults_CronJob(in *v2alpha1.CronJob) {
 		}
 	}
 	if in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine != nil {
-		v1.SetDefaults_ResourceList(&in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Limits)
-		v1.SetDefaults_ResourceList(&in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Requests)
+		v1.SetDefaults_ResourceList(&in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine.Resources.Limits)
+		v1.SetDefaults_ResourceList(&in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine.Resources.Requests)
+	}
+	for i := range in.Spec.JobTemplate.Spec.Template.Spec.WorkloadInfo {
+		a := &in.Spec.JobTemplate.Spec.Template.Spec.WorkloadInfo[i]
+		v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 }
 
@@ -325,7 +330,12 @@ func SetObjectDefaults_JobTemplate(in *v2alpha1.JobTemplate) {
 		}
 	}
 	if in.Template.Spec.Template.Spec.VirtualMachine != nil {
-		v1.SetDefaults_ResourceList(&in.Template.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Limits)
-		v1.SetDefaults_ResourceList(&in.Template.Spec.Template.Spec.VirtualMachine.CommonInfo.Resources.Requests)
+		v1.SetDefaults_ResourceList(&in.Template.Spec.Template.Spec.VirtualMachine.Resources.Limits)
+		v1.SetDefaults_ResourceList(&in.Template.Spec.Template.Spec.VirtualMachine.Resources.Requests)
+	}
+	for i := range in.Template.Spec.Template.Spec.WorkloadInfo {
+		a := &in.Template.Spec.Template.Spec.WorkloadInfo[i]
+		v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 }

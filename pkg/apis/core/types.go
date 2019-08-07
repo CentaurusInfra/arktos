@@ -2005,20 +2005,12 @@ type ResourceRequirements struct {
 	Requests ResourceList
 }
 
-// Colection of fields that are common to Container and VirtualMachine objects
+// Colection of pointers to fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
-	// Name of the container specified as a DNS_LABEL.
-	// Each container in a pod must have a unique name (DNS_LABEL).
-	// Cannot be updated.
-	Name string
-	// Required.
-	Image string
-	// Compute resource requirements.
-	// +optional
-	Resources ResourceRequirements
-	// +optional
-	VolumeMounts []VolumeMount
-	// Required: Policy for pulling images for this container
+	Name            string
+	Image           string
+	Resources       ResourceRequirements
+	VolumeMounts    []VolumeMount
 	ImagePullPolicy PullPolicy
 }
 
@@ -2119,8 +2111,19 @@ type Nic struct {
 
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
-	// Required
-	CommonInfo
+	// Name of the container specified as a DNS_LABEL.
+	// Each container in a pod must have a unique name (DNS_LABEL).
+	// Cannot be updated.
+	Name string
+	// Required.
+	Image string
+	// Compute resource requirements.
+	// +optional
+	Resources ResourceRequirements
+	// +optional
+	VolumeMounts []VolumeMount
+	// Required: Policy for pulling images for this container
+	ImagePullPolicy PullPolicy
 	// Either keyPair or the publicKeystring must be provided, used to logon to the VM
 	KeyPairName string
 	PublicKey   string
@@ -2712,13 +2715,14 @@ type PodSpec struct {
 	InitContainers []Container
 	// List of containers belonging to the pod.
 	Containers []Container
-
 	// The virtual machine belonging to the pod.
 	// for the current release, assume:
 	// 1. a pod has either container type or VM type, but not both
 	// 2. a pod only has one VM
 	// +optional
 	VirtualMachine *VirtualMachine
+	// Common info for VM or Containers
+	WorkloadInfo []CommonInfo
 
 	// +optional
 	RestartPolicy RestartPolicy
@@ -2834,6 +2838,29 @@ type PodSpec struct {
 	// If not specified, the default is true.
 	// +optional
 	EnableServiceLinks *bool
+}
+
+func (ps PodSpec) Workloads() []CommonInfo {
+	if len(ps.WorkloadInfo) == 0 {
+		if ps.VirtualMachine != nil {
+			ps.WorkloadInfo = make([]CommonInfo, 1)
+			ps.WorkloadInfo[0].Name = ps.VirtualMachine.Name
+			ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
+			ps.WorkloadInfo[0].ImagePullPolicy = ps.VirtualMachine.ImagePullPolicy
+			ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
+			ps.WorkloadInfo[0].VolumeMounts = ps.VirtualMachine.VolumeMounts
+		} else {
+			ps.WorkloadInfo = make([]CommonInfo, len(ps.Containers))
+			for i := range ps.Containers {
+				ps.WorkloadInfo[i].Name = ps.Containers[i].Name
+				ps.WorkloadInfo[i].Image = ps.Containers[i].Image
+				ps.WorkloadInfo[i].ImagePullPolicy = ps.Containers[i].ImagePullPolicy
+				ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
+				ps.WorkloadInfo[i].VolumeMounts = ps.Containers[i].VolumeMounts
+			}
+		}
+	}
+	return ps.WorkloadInfo
 }
 
 // HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the
