@@ -5708,6 +5708,7 @@ func autoConvert_v1_PodSpec_To_core_PodSpec(in *v1.PodSpec, out *core.PodSpec, s
 	out.InitContainers = *(*[]core.Container)(unsafe.Pointer(&in.InitContainers))
 	out.Containers = *(*[]core.Container)(unsafe.Pointer(&in.Containers))
 	out.VirtualMachine = (*core.VirtualMachine)(unsafe.Pointer(in.VirtualMachine))
+	out.WorkloadInfo = *(*[]core.CommonInfo)(unsafe.Pointer(&in.WorkloadInfo))
 	out.RestartPolicy = core.RestartPolicy(in.RestartPolicy)
 	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
 	out.ActiveDeadlineSeconds = (*int64)(unsafe.Pointer(in.ActiveDeadlineSeconds))
@@ -5764,6 +5765,7 @@ func autoConvert_core_PodSpec_To_v1_PodSpec(in *core.PodSpec, out *v1.PodSpec, s
 	out.InitContainers = *(*[]v1.Container)(unsafe.Pointer(&in.InitContainers))
 	out.Containers = *(*[]v1.Container)(unsafe.Pointer(&in.Containers))
 	out.VirtualMachine = (*v1.VirtualMachine)(unsafe.Pointer(in.VirtualMachine))
+	out.WorkloadInfo = *(*[]v1.CommonInfo)(unsafe.Pointer(&in.WorkloadInfo))
 	out.RestartPolicy = v1.RestartPolicy(in.RestartPolicy)
 	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
 	out.ActiveDeadlineSeconds = (*int64)(unsafe.Pointer(in.ActiveDeadlineSeconds))
@@ -7563,9 +7565,13 @@ func Convert_core_TypedLocalObjectReference_To_v1_TypedLocalObjectReference(in *
 }
 
 func autoConvert_v1_VirtualMachine_To_core_VirtualMachine(in *v1.VirtualMachine, out *core.VirtualMachine, s conversion.Scope) error {
-	if err := Convert_v1_CommonInfo_To_core_CommonInfo(&in.CommonInfo, &out.CommonInfo, s); err != nil {
+	out.Name = in.Name
+	out.Image = in.Image
+	if err := Convert_v1_ResourceRequirements_To_core_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
 		return err
 	}
+	out.VolumeMounts = *(*[]core.VolumeMount)(unsafe.Pointer(&in.VolumeMounts))
+	out.ImagePullPolicy = core.PullPolicy(in.ImagePullPolicy)
 	out.KeyPairName = in.KeyPairName
 	out.PublicKey = in.PublicKey
 	out.UserData = *(*[]byte)(unsafe.Pointer(&in.UserData))
@@ -7581,9 +7587,13 @@ func Convert_v1_VirtualMachine_To_core_VirtualMachine(in *v1.VirtualMachine, out
 }
 
 func autoConvert_core_VirtualMachine_To_v1_VirtualMachine(in *core.VirtualMachine, out *v1.VirtualMachine, s conversion.Scope) error {
-	if err := Convert_core_CommonInfo_To_v1_CommonInfo(&in.CommonInfo, &out.CommonInfo, s); err != nil {
+	out.Name = in.Name
+	out.Image = in.Image
+	if err := Convert_core_ResourceRequirements_To_v1_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
 		return err
 	}
+	out.VolumeMounts = *(*[]v1.VolumeMount)(unsafe.Pointer(&in.VolumeMounts))
+	out.ImagePullPolicy = v1.PullPolicy(in.ImagePullPolicy)
 	out.KeyPairName = in.KeyPairName
 	out.PublicKey = in.PublicKey
 	out.UserData = *(*[]byte)(unsafe.Pointer(&in.UserData))

@@ -2111,33 +2111,15 @@ const (
 // Colection of fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
 	// Name of the container specified as a DNS_LABEL.
-	// Each container in a pod must have a unique name (DNS_LABEL).
-	// Cannot be updated.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Image name.
-	// More info: https://kubernetes.io/docs/concepts/containers/images
-	// This field is optional to allow higher level config management to default or override
-	// container images in workload controllers like Deployments and StatefulSets.
-	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 	// Compute Resources required by this container.
-	// Cannot be updated.
-	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
-	// +optional
-	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
 	// Pod volumes to mount into the workload's filesystem.
-	// Cannot be updated.
-	// +optional
-	// +patchMergeKey=mountPath
-	// +patchStrategy=merge
-	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" protobuf:"bytes,4,opt,name=volumeMounts"`
 	// Image pull policy.
-	// One of Always, Never, IfNotPresent.
-	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
-	// Cannot be updated.
-	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	// +optional
-	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,14,opt,name=imagePullPolicy,casttype=PullPolicy"`
+	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,5,opt,name=imagePullPolicy,casttype=PullPolicy"`
 }
 
 // A single application container that you want to run within a pod.
@@ -2317,22 +2299,48 @@ type Nic struct {
 
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
-	// Required
-	CommonInfo `json:",inline" protobuf:"bytes,12,opt,name=commonInfo"`
+	// Name of the container specified as a DNS_LABEL.
+	// Each container in a pod must have a unique name (DNS_LABEL).
+	// Cannot be updated.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// Image name.
+	// More info: https://kubernetes.io/docs/concepts/containers/images
+	// This field is optional to allow higher level config management to default or override
+	// container images in workload controllers like Deployments and StatefulSets.
+	// +optional
+	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
+	// Compute Resources required by this container.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// +optional
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
+	// Pod volumes to mount into the workload's filesystem.
+	// Cannot be updated.
+	// +optional
+	// +patchMergeKey=mountPath
+	// +patchStrategy=merge
+	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,4,rep,name=volumeMounts"`
+	// Image pull policy.
+	// One of Always, Never, IfNotPresent.
+	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+	// +optional
+	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,5,opt,name=imagePullPolicy,casttype=PullPolicy"`
 	// either keyPair or the publicKeystring must be provided, used to logon to the VM
 	// +optional
-	KeyPairName string `json:"keyPairName,omitempty" protobuf:"bytes,7,opt,name=keyPairName"`
+	KeyPairName string `json:"keyPairName,omitempty" protobuf:"bytes,6,opt,name=keyPairName"`
 	// +optional
-	PublicKey string `json:"publicKey,omitempty" protobuf:"bytes,8,opt,name=publicKey"`
+	PublicKey string `json:"publicKey,omitempty" protobuf:"bytes,7,opt,name=publicKey"`
 	// Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
 	// +optional
-	UserData []byte `json:"userData,omitempty" protobuf:"bytes,9,opt,name=userData"`
+	UserData []byte `json:"userData,omitempty" protobuf:"bytes,8,opt,name=userData"`
 	// +optional, default none, array cert ID that used to verify the image
-	TrustedImageCertificate []string `json:"trustedImageCertificate,omitempty" protobuf:"bytes,10,opt,name=trustedImageCertificate"`
+	TrustedImageCertificate []string `json:"trustedImageCertificate,omitempty" protobuf:"bytes,9,opt,name=trustedImageCertificate"`
 	// +optional, stop | terminate VM. default to stop
-	ShutdownBehavior string `json:"shutdownBehavior,omitempty" protobuf:"bytes,11,opt,name=shutdownBehavior"`
+	ShutdownBehavior string `json:"shutdownBehavior,omitempty" protobuf:"bytes,10,opt,name=shutdownBehavior"`
 	// +optional, if not specified, the first volume in the volume slice will be used
-	BootVolume string `json:"bootVolume,omitempty" protobuf:"bytes,13,opt,name=bootVolume"`
+	BootVolume string `json:"bootVolume,omitempty" protobuf:"bytes,11,opt,name=bootVolume"`
 }
 
 // Handler defines a specific action that should be taken
@@ -2991,6 +2999,9 @@ type PodSpec struct {
 	// Cannot be updated.
 	// +optional
 	VirtualMachine *VirtualMachine `json:"virtualMachine,omitempty" protobuf:"bytes,32,opt,name=virtualMachine"`
+	// Common info for VM or Containers
+	WorkloadInfo []CommonInfo `json:"workloadInfo,omitempty" protobuf:"bytes,35,rep,name=workloadInfo"`
+
 	// Restart policy for all containers within the pod.
 	// One of Always, OnFailure, Never.
 	// Default to Always.
@@ -3149,6 +3160,29 @@ type PodSpec struct {
 	// This field is alpha-level and is only honored by servers that enable the NonPreemptingPriority feature.
 	// +optional
 	PreemptionPolicy *PreemptionPolicy `json:"preemptionPolicy,omitempty" protobuf:"bytes,31,opt,name=preemptionPolicy"`
+}
+
+func (ps PodSpec) Workloads() []CommonInfo {
+	if len(ps.WorkloadInfo) == 0 {
+		if ps.VirtualMachine != nil {
+			ps.WorkloadInfo = make([]CommonInfo, 1)
+			ps.WorkloadInfo[0].Name = ps.VirtualMachine.Name
+			ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
+			ps.WorkloadInfo[0].ImagePullPolicy = ps.VirtualMachine.ImagePullPolicy
+			ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
+			ps.WorkloadInfo[0].VolumeMounts = ps.VirtualMachine.VolumeMounts
+		} else {
+			ps.WorkloadInfo = make([]CommonInfo, len(ps.Containers))
+			for i := range ps.Containers {
+				ps.WorkloadInfo[i].Name = ps.Containers[i].Name
+				ps.WorkloadInfo[i].Image = ps.Containers[i].Image
+				ps.WorkloadInfo[i].ImagePullPolicy = ps.Containers[i].ImagePullPolicy
+				ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
+				ps.WorkloadInfo[i].VolumeMounts = ps.Containers[i].VolumeMounts
+			}
+		}
+	}
+	return ps.WorkloadInfo
 }
 
 const (
