@@ -68,6 +68,7 @@ func ValidateCustomResourceDefinition(obj *apiextensions.CustomResourceDefinitio
 		requireImmutableNames:                    false,
 		requireOpenAPISchema:                     requireOpenAPISchema(requestGV, nil),
 		requireValidPropertyType:                 requireValidPropertyType(requestGV, nil),
+		requireStructuralSchema:                  requireStructuralSchema(requestGV, nil),
 	}
 
 	allErrs := genericvalidation.ValidateObjectMeta(&obj.ObjectMeta, true, false, nameValidationFn, field.NewPath("metadata"))
@@ -91,6 +92,8 @@ type validationOptions struct {
 	requireOpenAPISchema bool
 	// requireValidPropertyType requires property types specified in the validation schema to be valid openapi v3 types
 	requireValidPropertyType bool
+	// requireStructuralSchema indicates that any schemas present must be structural
+	requireStructuralSchema bool
 }
 
 // ValidateCustomResourceDefinitionUpdate statically validates
@@ -101,6 +104,7 @@ func ValidateCustomResourceDefinitionUpdate(obj, oldObj *apiextensions.CustomRes
 		requireImmutableNames:                    apiextensions.IsCRDConditionTrue(oldObj, apiextensions.Established),
 		requireOpenAPISchema:                     requireOpenAPISchema(requestGV, &oldObj.Spec),
 		requireValidPropertyType:                 requireValidPropertyType(requestGV, &oldObj.Spec),
+		requireStructuralSchema:                  requireStructuralSchema(requestGV, &oldObj.Spec),
 	}
 
 	allErrs := genericvalidation.ValidateObjectMetaUpdate(&obj.ObjectMeta, &oldObj.ObjectMeta, field.NewPath("metadata"))
@@ -147,9 +151,9 @@ func ValidateUpdateCustomResourceDefinitionStatus(obj, oldObj *apiextensions.Cus
 }
 
 // validateCustomResourceDefinitionVersion statically validates.
-func validateCustomResourceDefinitionVersion(version *apiextensions.CustomResourceDefinitionVersion, fldPath *field.Path, mustBeStructural, statusEnabled bool, opts validationOptions) field.ErrorList {
+func validateCustomResourceDefinitionVersion(version *apiextensions.CustomResourceDefinitionVersion, fldPath *field.Path, statusEnabled bool, opts validationOptions) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validateCustomResourceDefinitionValidation(version.Schema, mustBeStructural, statusEnabled, opts, fldPath.Child("schema"))...)
+	allErrs = append(allErrs, validateCustomResourceDefinitionValidation(version.Schema, statusEnabled, opts, fldPath.Child("schema"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionSubresources(version.Subresources, fldPath.Child("subresources"))...)
 	for i := range version.AdditionalPrinterColumns {
 		allErrs = append(allErrs, ValidateCustomResourceColumnDefinition(&version.AdditionalPrinterColumns[i], fldPath.Child("additionalPrinterColumns").Index(i))...)
@@ -171,9 +175,8 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 	allErrs = append(allErrs, validateEnumStrings(fldPath.Child("scope"), string(spec.Scope), []string{string(apiextensions.ClusterScoped), string(apiextensions.TenantScoped), string(apiextensions.NamespaceScoped)}, true)...)
 
 	// enabling pruning requires structural schemas
-	mustBeStructural := false
 	if spec.PreserveUnknownFields == nil || *spec.PreserveUnknownFields == false {
-		mustBeStructural = true
+		opts.requireStructuralSchema = true
 	}
 
 	if opts.requireOpenAPISchema {
@@ -197,13 +200,13 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 		}
 	}
 	if opts.allowDefaults && specHasDefaults(spec) {
-		mustBeStructural = true
+		opts.requireStructuralSchema = true
 		if spec.PreserveUnknownFields == nil || *spec.PreserveUnknownFields == true {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("preserveUnknownFields"), true, "must be false in order to use defaults in the schema"))
 		}
 	}
 	if specHasKubernetesExtensions(spec) {
-		mustBeStructural = true
+		opts.requireStructuralSchema = true
 	}
 
 	storageFlagCount := 0
@@ -222,7 +225,7 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("versions").Index(i).Child("name"), spec.Versions[i].Name, strings.Join(errs, ",")))
 		}
 		subresources := getSubresourcesForVersion(spec, version.Name)
-		allErrs = append(allErrs, validateCustomResourceDefinitionVersion(&version, fldPath.Child("versions").Index(i), mustBeStructural, hasStatusEnabled(subresources), opts)...)
+		allErrs = append(allErrs, validateCustomResourceDefinitionVersion(&version, fldPath.Child("versions").Index(i), hasStatusEnabled(subresources), opts)...)
 	}
 
 	// The top-level and per-version fields are mutual exclusive
@@ -277,7 +280,7 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 	}
 
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionNames(&spec.Names, fldPath.Child("names"))...)
-	allErrs = append(allErrs, validateCustomResourceDefinitionValidation(spec.Validation, mustBeStructural, hasAnyStatusEnabled(spec), opts, fldPath.Child("validation"))...)
+	allErrs = append(allErrs, validateCustomResourceDefinitionValidation(spec.Validation, hasAnyStatusEnabled(spec), opts, fldPath.Child("validation"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionSubresources(spec.Subresources, fldPath.Child("subresources"))...)
 
 	for i := range spec.AdditionalPrinterColumns {
@@ -614,7 +617,7 @@ type specStandardValidator interface {
 }
 
 // validateCustomResourceDefinitionValidation statically validates
-func validateCustomResourceDefinitionValidation(customResourceValidation *apiextensions.CustomResourceValidation, mustBeStructural, statusSubresourceEnabled bool, opts validationOptions, fldPath *field.Path) field.ErrorList {
+func validateCustomResourceDefinitionValidation(customResourceValidation *apiextensions.CustomResourceValidation, statusSubresourceEnabled bool, opts validationOptions, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if customResourceValidation == nil {
@@ -660,7 +663,7 @@ func validateCustomResourceDefinitionValidation(customResourceValidation *apiext
 		}
 		allErrs = append(allErrs, ValidateCustomResourceDefinitionOpenAPISchema(schema, fldPath.Child("openAPIV3Schema"), openAPIV3Schema, true)...)
 
-		if mustBeStructural {
+		if opts.requireStructuralSchema {
 			if ss, err := structuralschema.NewStructural(schema); err != nil {
 				// if the generic schema validation did its job, we should never get an error here. Hence, we hide it if there are validation errors already.
 				if len(allErrs) == 0 {
@@ -1177,6 +1180,41 @@ func schemaHasKubernetesExtensions(s *apiextensions.JSONSchemaProps) bool {
 	}
 
 	return false
+}
+
+// requireStructuralSchema returns true if schemas specified must be structural
+func requireStructuralSchema(requestGV schema.GroupVersion, oldCRDSpec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if requestGV == v1beta1.SchemeGroupVersion {
+		// for compatibility
+		return false
+	}
+	if oldCRDSpec != nil && specHasNonStructuralSchema(oldCRDSpec) {
+		// don't tighten validation on existing persisted data
+		return false
+	}
+	return true
+}
+
+func specHasNonStructuralSchema(spec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if spec.Validation != nil && schemaIsNonStructural(spec.Validation.OpenAPIV3Schema) {
+		return true
+	}
+	for _, v := range spec.Versions {
+		if v.Schema != nil && schemaIsNonStructural(v.Schema.OpenAPIV3Schema) {
+			return true
+		}
+	}
+	return false
+}
+func schemaIsNonStructural(schema *apiextensions.JSONSchemaProps) bool {
+	if schema == nil {
+		return false
+	}
+	ss, err := structuralschema.NewStructural(schema)
+	if err != nil {
+		return true
+	}
+	return len(structuralschema.ValidateStructural(ss, nil)) > 0
 }
 
 // requireValidPropertyType returns true if valid openapi v3 types should be required for the given API version
