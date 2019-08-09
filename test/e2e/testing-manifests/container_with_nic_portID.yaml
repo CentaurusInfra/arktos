@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: container-with-nic-portid
+spec:
+  containers:
+    - name: container1
+      image: ubuntu
+      command: ["/bin/bash", "-ec", "while :; do echo '.'; sleep 5 ; done"]
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+        requests:
+          cpu: "1"
+          memory: "1Gi"
+  vpc: demo
+  nics:
+    - portId: 04fe371d-fddf-43c4-9419-b7d9cd4a2197
