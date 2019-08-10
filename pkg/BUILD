@@ -58,6 +58,7 @@ filegroup(
         "//pkg/client/metrics/prometheus:all-srcs",
         "//pkg/client/testdata:all-srcs",
         "//pkg/client/tests:all-srcs",
+        "//pkg/cloudfabric-controller:all-srcs",
         "//pkg/cloudprovider:all-srcs",
         "//pkg/controller:all-srcs",
         "//pkg/credentialprovider:all-srcs",
