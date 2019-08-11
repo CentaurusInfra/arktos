@@ -506,7 +506,7 @@ func (h *HTTPExtender) IsInterested(pod *v1.Pod) bool {
 	if h.managedResources.Len() == 0 {
 		return true
 	}
-	if h.hasManagedResources(pod.Spec.Containers) {
+	if h.hasManagedWorkloadResources(pod.Spec.Workloads()) {
 		return true
 	}
 	if h.hasManagedResources(pod.Spec.InitContainers) {
@@ -524,6 +524,23 @@ func (h *HTTPExtender) hasManagedResources(containers []v1.Container) bool {
 			}
 		}
 		for resourceName := range container.Resources.Limits {
+			if h.managedResources.Has(string(resourceName)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (h *HTTPExtender) hasManagedWorkloadResources(workloads []v1.CommonInfo) bool {
+	for i := range workloads {
+		workload := workloads[i]
+		for resourceName := range workload.Resources.Requests {
+			if h.managedResources.Has(string(resourceName)) {
+				return true
+			}
+		}
+		for resourceName := range workload.Resources.Limits {
 			if h.managedResources.Has(string(resourceName)) {
 				return true
 			}
