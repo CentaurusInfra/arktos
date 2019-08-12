@@ -26,9 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-//"k8s.io/apimachinery/pkg/util/diff"
-//"k8s.io/klog"
 )
 
 func TestNewResource(t *testing.T) {
