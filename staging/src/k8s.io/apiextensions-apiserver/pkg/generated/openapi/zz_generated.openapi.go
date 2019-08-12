@@ -2056,6 +2056,12 @@ func schema_pkg_apis_meta_v1_ObjectMeta(ref common.ReferenceCallback) common.Ope
 							Format:      "",
 						},
 					},
+					"hashkey": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
 					"resourceVersion": {
 						SchemaProps: spec.SchemaProps{
 							Description: "An opaque value that represents the internal version of this object that can be used by clients to determine when objects have changed. May be used for optimistic concurrency, change detection, and the watch operation on a resource or set of resources. Clients must treat these values as opaque and passed unmodified back to the server. They may only be valid for a particular resource or set of resources.\n\nPopulated by the system. Read-only. Value must be treated as opaque by clients and . More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency",
@@ -2226,6 +2232,12 @@ func schema_pkg_apis_meta_v1_OwnerReference(ref common.ReferenceCallback) common
 							Format:      "",
 						},
 					},
+					"hashkey": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
 					"controller": {
 						SchemaProps: spec.SchemaProps{
 							Description: "If true, this reference points to the managing controller.",
@@ -2241,7 +2253,7 @@ func schema_pkg_apis_meta_v1_OwnerReference(ref common.ReferenceCallback) common
 						},
 					},
 				},
-				Required: []string{"apiVersion", "kind", "name", "uid"},
+				Required: []string{"apiVersion", "kind", "name", "uid", "hashkey"},
 			},
 		},
 	}

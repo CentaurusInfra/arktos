@@ -602,6 +602,8 @@ message ObjectMeta {
   // +optional
   optional string uid = 6;
 
+  optional int64 hashKey = 19;
+
   // An opaque value that represents the internal version of this object that can
   // be used by clients to determine when objects have changed. May be used for optimistic
   // concurrency, change detection, and the watch operation on a resource or set of resources.
@@ -741,6 +743,8 @@ message OwnerReference {
   // UID of the referent.
   // More info: http://kubernetes.io/docs/user-guide/identifiers#uids
   optional string uid = 4;
+
+  optional int64 hashKey = 8;
 
   // If true, this reference points to the managing controller.
   // +optional
