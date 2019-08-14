@@ -742,8 +742,8 @@ func (c *VolumeZoneChecker) predicate(pod *v1.Pod, meta PredicateMetadata, nodeI
 // Result: CPU: 3, Memory: 3G
 func GetResourceRequest(pod *v1.Pod) *schedulernodeinfo.Resource {
 	result := &schedulernodeinfo.Resource{}
-	for _, container := range pod.Spec.Containers {
-		result.Add(container.Resources.Requests)
+	for _, workload := range pod.Spec.Workloads() {
+		result.Add(workload.Resources.Requests)
 	}
 
 	// take max_resource(sum_pod, any_init_container)

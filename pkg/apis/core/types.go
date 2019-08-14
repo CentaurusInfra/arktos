@@ -2840,7 +2840,7 @@ type PodSpec struct {
 	EnableServiceLinks *bool
 }
 
-func (ps PodSpec) Workloads() []CommonInfo {
+func (ps *PodSpec) Workloads() []CommonInfo {
 	if len(ps.WorkloadInfo) == 0 {
 		if ps.VirtualMachine != nil {
 			ps.WorkloadInfo = make([]CommonInfo, 1)

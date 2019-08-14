@@ -3162,7 +3162,7 @@ type PodSpec struct {
 	PreemptionPolicy *PreemptionPolicy `json:"preemptionPolicy,omitempty" protobuf:"bytes,31,opt,name=preemptionPolicy"`
 }
 
-func (ps PodSpec) Workloads() []CommonInfo {
+func (ps *PodSpec) Workloads() []CommonInfo {
 	if len(ps.WorkloadInfo) == 0 {
 		if ps.VirtualMachine != nil {
 			ps.WorkloadInfo = make([]CommonInfo, 1)

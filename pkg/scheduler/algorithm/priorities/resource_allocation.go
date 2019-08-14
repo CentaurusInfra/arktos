@@ -93,9 +93,9 @@ func (r *ResourceAllocationPriority) PriorityMap(
 
 func getNonZeroRequests(pod *v1.Pod) *schedulernodeinfo.Resource {
 	result := &schedulernodeinfo.Resource{}
-	for i := range pod.Spec.Containers {
-		container := &pod.Spec.Containers[i]
-		cpu, memory := priorityutil.GetNonzeroRequests(&container.Resources.Requests)
+	for i := range pod.Spec.Workloads() {
+		workload := &pod.Spec.Workloads()[i]
+		cpu, memory := priorityutil.GetNonzeroRequests(&workload.Resources.Requests)
 		result.MilliCPU += cpu
 		result.Memory += memory
 	}
