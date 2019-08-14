@@ -37,6 +37,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -535,7 +536,7 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 	} else {
 		// backwards compatible: if no hashkey, calculate and filter
 		if rs.HashKey == 0 {
-			hashKey := controller.GetHashOfUUID(rs.UID)
+			hashKey := fuzzer.GetHashOfUUID(rs.UID)
 			if hashKey != rs.HashKey {
 				rs.HashKey = hashKey
 				klog.Infof("replica set %s/%s was not initialized with hash key uuid %s, caculated as %v", rs.Namespace, rs.Name, rs.UID, rs.HashKey)

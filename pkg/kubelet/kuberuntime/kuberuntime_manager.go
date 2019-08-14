@@ -26,6 +26,7 @@ import (
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -890,6 +891,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 			Name:      name,
 			Namespace: namespace,
 			UID:       uid,
+			HashKey:   fuzzer.GetHashOfUUID(uid),
 		},
 	})
 	klog.V(4).Infof("getSandboxIDByPodUID got sandbox IDs %q for pod %q", podSandboxIDs, podFullName)

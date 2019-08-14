@@ -326,7 +326,7 @@ func (gb *GraphBuilder) enqueueVirtualDeleteEvent(ref objectReference) {
 		eventType: deleteEvent,
 		obj: &metaonly.MetadataOnlyObject{
 			TypeMeta:   metav1.TypeMeta{APIVersion: ref.APIVersion, Kind: ref.Kind},
-			ObjectMeta: metav1.ObjectMeta{Namespace: ref.Namespace, UID: ref.UID, Name: ref.Name},
+			ObjectMeta: metav1.ObjectMeta{Namespace: ref.Namespace, UID: ref.UID, HashKey: ref.HashKey, Name: ref.Name},
 		},
 	})
 }
