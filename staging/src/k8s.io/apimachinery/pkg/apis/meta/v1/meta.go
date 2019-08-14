@@ -41,6 +41,8 @@ type Object interface {
 	SetGenerateName(name string)
 	GetUID() types.UID
 	SetUID(uid types.UID)
+	GetHashKey() int64
+	SetHashKey(hashKey int64)
 	GetResourceVersion() string
 	SetResourceVersion(version string)
 	GetGeneration() int64
@@ -149,6 +151,8 @@ func (meta *ObjectMeta) GetGenerateName() string             { return meta.Gener
 func (meta *ObjectMeta) SetGenerateName(generateName string) { meta.GenerateName = generateName }
 func (meta *ObjectMeta) GetUID() types.UID                   { return meta.UID }
 func (meta *ObjectMeta) SetUID(uid types.UID)                { meta.UID = uid }
+func (meta *ObjectMeta) GetHashKey() int64                   { return meta.HashKey }
+func (meta *ObjectMeta) SetHashKey(hashKey int64)            { meta.HashKey = hashKey }
 func (meta *ObjectMeta) GetResourceVersion() string          { return meta.ResourceVersion }
 func (meta *ObjectMeta) SetResourceVersion(version string)   { meta.ResourceVersion = version }
 func (meta *ObjectMeta) GetGeneration() int64                { return meta.Generation }

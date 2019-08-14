@@ -361,6 +361,7 @@ func getObjectMetaAndOwnerReferences() (myAPIObject2 MyAPIObject2, metaOwnerRefe
 			Kind:               references[i].Kind,
 			Name:               references[i].Name,
 			UID:                references[i].UID,
+			HashKey:            references[i].HashKey,
 			APIVersion:         references[i].APIVersion,
 			Controller:         references[i].Controller,
 			BlockOwnerDeletion: references[i].BlockOwnerDeletion,

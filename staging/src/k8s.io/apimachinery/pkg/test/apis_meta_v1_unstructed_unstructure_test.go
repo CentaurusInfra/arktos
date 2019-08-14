@@ -270,6 +270,7 @@ func TestUnstructuredSetters(t *testing.T) {
 				"namespace":                  "test_namespace",
 				"generateName":               "test_generateName",
 				"uid":                        "test_uid",
+				"hashkey":                    int64(1),
 				"resourceVersion":            "test_resourceVersion",
 				"selfLink":                   "test_selfLink",
 				"creationTimestamp":          "2009-11-10T23:00:00Z",
@@ -288,12 +289,14 @@ func TestUnstructuredSetters(t *testing.T) {
 						"name":       "poda",
 						"apiVersion": "v1",
 						"uid":        "1",
+						"hashkey":    int64(2),
 					},
 					map[string]interface{}{
 						"kind":               "Pod",
 						"name":               "podb",
 						"apiVersion":         "v1",
 						"uid":                "2",
+						"hashkey":            int64(3),
 						"controller":         true,
 						"blockOwnerDeletion": true,
 					},
@@ -313,6 +316,7 @@ func TestUnstructuredSetters(t *testing.T) {
 	unstruct.SetName("test_name")
 	unstruct.SetGenerateName("test_generateName")
 	unstruct.SetUID(types.UID("test_uid"))
+	unstruct.SetHashKey(int64(1))
 	unstruct.SetResourceVersion("test_resourceVersion")
 	unstruct.SetSelfLink("test_selfLink")
 	unstruct.SetCreationTimestamp(metav1.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
@@ -326,12 +330,14 @@ func TestUnstructuredSetters(t *testing.T) {
 			Name:       "poda",
 			APIVersion: "v1",
 			UID:        "1",
+			HashKey:    2,
 		},
 		{
 			Kind:               "Pod",
 			Name:               "podb",
 			APIVersion:         "v1",
 			UID:                "2",
+			HashKey:            3,
 			Controller:         &trueVar,
 			BlockOwnerDeletion: &trueVar,
 		},

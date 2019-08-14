@@ -48,6 +48,7 @@ func NewControllerRef(owner Object, gvk schema.GroupVersionKind) *OwnerReference
 		Kind:               gvk.Kind,
 		Name:               owner.GetName(),
 		UID:                owner.GetUID(),
+		HashKey:            owner.GetHashKey(),
 		BlockOwnerDeletion: &blockOwnerDeletion,
 		Controller:         &isController,
 	}

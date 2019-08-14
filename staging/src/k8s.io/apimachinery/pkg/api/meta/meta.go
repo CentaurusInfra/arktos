@@ -126,6 +126,7 @@ func AsPartialObjectMetadata(m metav1.Object) *metav1.PartialObjectMetadata {
 				Namespace:                  m.GetNamespace(),
 				SelfLink:                   m.GetSelfLink(),
 				UID:                        m.GetUID(),
+				HashKey:                    m.GetHashKey(),
 				ResourceVersion:            m.GetResourceVersion(),
 				Generation:                 m.GetGeneration(),
 				CreationTimestamp:          m.GetCreationTimestamp(),
