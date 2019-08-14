@@ -19,6 +19,8 @@ package scheduler
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/fields"
+	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/labels"
 	"sort"
 	"sync"
 	"testing"
@@ -35,9 +37,28 @@ import (
 
 var timeForControllerToProgress = 500 * time.Millisecond
 
+//TODO: get the tenant for this function
 func getPodFromClientset(clientset *fake.Clientset) GetPodFunc {
-	return func(name, namespace, tenant string) (*v1.Pod, error) {
+	return func(name, namespace string) (*v1.Pod, error) {
 		return clientset.CoreV1().PodsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
+	}
+}
+
+func getPodsAssignedToNode(c *fake.Clientset) GetPodsByNodeNameFunc {
+	return func(nodeName string) ([]*v1.Pod, error) {
+		selector := fields.SelectorFromSet(fields.Set{"spec.nodeName": nodeName})
+		pods, err := c.CoreV1().Pods(v1.NamespaceAll).List(metav1.ListOptions{
+			FieldSelector: selector.String(),
+			LabelSelector: labels.Everything().String(),
+		})
+		if err != nil {
+			return []*v1.Pod{}, fmt.Errorf("failed to get Pods assigned to node %v", nodeName)
+		}
+		rPods := make([]*v1.Pod, len(pods.Items))
+		for i := range pods.Items {
+			rPods[i] = &pods.Items[i]
+		}
+		return rPods, nil
 	}
 }
 
