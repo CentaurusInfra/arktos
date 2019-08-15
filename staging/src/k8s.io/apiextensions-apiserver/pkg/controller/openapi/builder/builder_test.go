@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/go-openapi/spec"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -30,6 +32,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apiserver/pkg/endpoints"
+	"k8s.io/apiserver/pkg/features"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
 func TestNewBuilder(t *testing.T) {
@@ -419,6 +424,116 @@ func TestNewBuilder(t *testing.T) {
 	}
 }
 
+func TestCRDRouteParameterBuilder(t *testing.T) {
+	testCRDKind := "Foo"
+	testCRDGroup := "foo-group"
+	testCRDVersion := "foo-version"
+	testCRDResourceName := "foos"
+
+	testCases := []struct {
+		scope apiextensions.ResourceScope
+		paths map[string]struct {
+			expectNamespaceParam bool
+			expectNameParam      bool
+			expectedActions      sets.String
+		}
+	}{
+		{
+			scope: apiextensions.NamespaceScoped,
+			paths: map[string]struct {
+				expectNamespaceParam bool
+				expectNameParam      bool
+				expectedActions      sets.String
+			}{
+				"/apis/foo-group/foo-version/foos":                                      {expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("list")},
+				"/apis/foo-group/foo-version/namespaces/{namespace}/foos":               {expectNamespaceParam: true, expectNameParam: false, expectedActions: sets.NewString("post", "list", "deletecollection")},
+				"/apis/foo-group/foo-version/namespaces/{namespace}/foos/{name}":        {expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "put", "patch", "delete")},
+				"/apis/foo-group/foo-version/namespaces/{namespace}/foos/{name}/scale":  {expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+				"/apis/foo-group/foo-version/namespaces/{namespace}/foos/{name}/status": {expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+			},
+		},
+		{
+			scope: apiextensions.ClusterScoped,
+			paths: map[string]struct {
+				expectNamespaceParam bool
+				expectNameParam      bool
+				expectedActions      sets.String
+			}{
+				"/apis/foo-group/foo-version/foos":               {expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("post", "list", "deletecollection")},
+				"/apis/foo-group/foo-version/foos/{name}":        {expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "put", "patch", "delete")},
+				"/apis/foo-group/foo-version/foos/{name}/scale":  {expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+				"/apis/foo-group/foo-version/foos/{name}/status": {expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		testNamespacedCRD := &apiextensions.CustomResourceDefinition{
+			Spec: apiextensions.CustomResourceDefinitionSpec{
+				Scope: testCase.scope,
+				Group: testCRDGroup,
+				Names: apiextensions.CustomResourceDefinitionNames{
+					Kind:   testCRDKind,
+					Plural: testCRDResourceName,
+				},
+				Versions: []apiextensions.CustomResourceDefinitionVersion{
+					{
+						Name: testCRDVersion,
+					},
+				},
+				Subresources: &apiextensions.CustomResourceSubresources{
+					Status: &apiextensions.CustomResourceSubresourceStatus{},
+					Scale:  &apiextensions.CustomResourceSubresourceScale{},
+				},
+			},
+		}
+		swagger, err := BuildSwagger(testNamespacedCRD, testCRDVersion, Options{V2: true, StripDefaults: true})
+		require.NoError(t, err)
+		require.Equal(t, len(testCase.paths), len(swagger.Paths.Paths), testCase.scope)
+		for path, expected := range testCase.paths {
+			t.Run(path, func(t *testing.T) {
+				path, ok := swagger.Paths.Paths[path]
+				if !ok {
+					t.Errorf("unexpected path %v", path)
+				}
+
+				hasNamespaceParam := false
+				hasNameParam := false
+				for _, param := range path.Parameters {
+					if param.In == "path" && param.Name == "namespace" {
+						hasNamespaceParam = true
+					}
+					if param.In == "path" && param.Name == "name" {
+						hasNameParam = true
+					}
+				}
+				assert.Equal(t, expected.expectNamespaceParam, hasNamespaceParam)
+				assert.Equal(t, expected.expectNameParam, hasNameParam)
+
+				actions := sets.NewString()
+				for _, operation := range []*spec.Operation{path.Get, path.Post, path.Put, path.Patch, path.Delete} {
+					if operation != nil {
+						action, ok := operation.VendorExtensible.Extensions.GetString(endpoints.ROUTE_META_ACTION)
+						if ok {
+							actions.Insert(action)
+						}
+						if action == "patch" {
+							expected := []string{"application/json-patch+json", "application/merge-patch+json"}
+							if utilfeature.DefaultFeatureGate.Enabled(features.ServerSideApply) {
+								expected = append(expected, "application/apply-patch+yaml")
+							}
+							assert.Equal(t, operation.Consumes, expected)
+						} else {
+							assert.Equal(t, operation.Consumes, []string{"application/json", "application/yaml"})
+						}
+					}
+				}
+				assert.Equal(t, expected.expectedActions, actions)
+			})
+		}
+	}
+}
+
 func properties(p map[string]spec.Schema) sets.String {
 	ret := sets.NewString()
 	for k := range p {
@@ -444,21 +559,49 @@ func TestBuildSwagger(t *testing.T) {
 		name         string
 		schema       string
 		wantedSchema string
+		opts         Options
 	}{
 		{
 			"nil",
 			"",
 			`{"type":"object","x-kubernetes-group-version-kind":[{"group":"bar.k8s.io","kind":"Foo","version":"v1"}]}`,
+			Options{V2: true, StripDefaults: true},
 		},
 		{
 			"with properties",
 			`{"type":"object","properties":{"spec":{"type":"object"},"status":{"type":"object"}}}`,
 			`{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"},"metadata":{"$ref":"#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"},"spec":{"type":"object"},"status":{"type":"object"}},"x-kubernetes-group-version-kind":[{"group":"bar.k8s.io","kind":"Foo","version":"v1"}]}`,
+			Options{V2: true, StripDefaults: true},
 		},
 		{
 			"with invalid-typed properties",
 			`{"type":"object","properties":{"spec":{"type":"bug"},"status":{"type":"object"}}}`,
 			`{"type":"object","x-kubernetes-group-version-kind":[{"group":"bar.k8s.io","kind":"Foo","version":"v1"}]}`,
+			Options{V2: true, StripDefaults: true},
+		},
+		{
+			"with stripped defaults",
+			`{"type":"object","properties":{"foo":{"type":"string","default":"bar"}}}`,
+			`{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"},"metadata":{"$ref":"#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"},"foo":{"type":"string"}},"x-kubernetes-group-version-kind":[{"group":"bar.k8s.io","kind":"Foo","version":"v1"}]}`,
+			Options{V2: true, StripDefaults: true},
+		},
+		{
+			"with stripped defaults",
+			`{"type":"object","properties":{"foo":{"type":"string","default":"bar"}}}`,
+			`{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"},"metadata":{"$ref":"#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"},"foo":{"type":"string"}},"x-kubernetes-group-version-kind":[{"group":"bar.k8s.io","kind":"Foo","version":"v1"}]}`,
+			Options{V2: true, StripDefaults: true},
+		},
+		{
+			"v2",
+			`{"type":"object","properties":{"foo":{"type":"string","oneOf":[{"pattern":"a"},{"pattern":"b"}]}}}`,
+			`{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"},"metadata":{"$ref":"#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"},"foo":{"type":"string"}},"x-kubernetes-group-version-kind":[{"group":"bar.k8s.io","kind":"Foo","version":"v1"}]}`,
+			Options{V2: true, StripDefaults: true},
+		},
+		{
+			"v3",
+			`{"type":"object","properties":{"foo":{"type":"string","oneOf":[{"pattern":"a"},{"pattern":"b"}]}}}`,
+			`{"type":"object","properties":{"apiVersion":{"type":"string"},"kind":{"type":"string"},"metadata":{"$ref":"#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"},"foo":{"type":"string","oneOf":[{"pattern":"a"},{"pattern":"b"}]}},"x-kubernetes-group-version-kind":[{"group":"bar.k8s.io","kind":"Foo","version":"v1"}]}`,
+			Options{V2: false, StripDefaults: true},
 		},
 	}
 	for _, tt := range tests {
@@ -490,7 +633,7 @@ func TestBuildSwagger(t *testing.T) {
 					Scope:      apiextensions.NamespaceScoped,
 					Validation: validation,
 				},
-			}, "v1")
+			}, "v1", tt.opts)
 			if err != nil {
 				t.Fatal(err)
 			}
