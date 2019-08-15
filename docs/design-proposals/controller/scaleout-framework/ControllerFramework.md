@@ -221,6 +221,12 @@ Controllers:
 
 ![alt text](NotUsed-DesignBackup/ConsistentHash-1/S3-NewControllerInstance-Sequential-v2.png "New Controller Instance Registration and Lock/Unlock")
 
+* Phase I controller hash key generation algorithm:
+    * When the first controller instance start, it will take all the workloads (hash key = max int64, lower bound = 0)
+    * When a new controller instance starts, it will find the first longest interval (by workload number or just key range before workload number is implemented), split it to half and take the first part:
+        * Assume the longest interval is (a, b] (b is the hash key for controller instance i), the interval for the new instance will be (a, (a+b)/2], the new interval for instance i will be ((a+b)/2, b]
+
+
 ##### Controller Workload Periodical Adjustment
 
 ![alt text](NotUsed-DesignBackup/ConsistentHash-1/S3-ControllerHashKeyCU-v1.png "Controller hash key auto adjustment")
