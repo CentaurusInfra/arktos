@@ -30,6 +30,8 @@ const (
 	ContainersNotReady       = "ContainersNotReady"
 	ContainersNotInitialized = "ContainersNotInitialized"
 	ReadinessGatesNotReady   = "ReadinessGatesNotReady"
+	VmNotReady               = "VirtualMachineNotReady"
+	UnknownVmStatus          = "UnknownVirtualMachineStatus"
 )
 
 // GenerateContainersReadyCondition returns the status of "ContainersReady" condition.
@@ -91,15 +93,26 @@ func GenerateContainersReadyCondition(spec *v1.PodSpec, containerStatuses []v1.C
 // GeneratePodReadyCondition returns "Ready" condition of a pod.
 // The status of "Ready" condition is "True", if all containers in a pod are ready
 // AND all matching conditions specified in the ReadinessGates have status equal to "True".
-func GeneratePodReadyCondition(spec *v1.PodSpec, conditions []v1.PodCondition, containerStatuses []v1.ContainerStatus, podPhase v1.PodPhase) v1.PodCondition {
-	containersReady := GenerateContainersReadyCondition(spec, containerStatuses, podPhase)
-	// If the status of ContainersReady is not True, return the same status, reason and message as ContainersReady.
-	if containersReady.Status != v1.ConditionTrue {
-		return v1.PodCondition{
-			Type:    v1.PodReady,
-			Status:  containersReady.Status,
-			Reason:  containersReady.Reason,
-			Message: containersReady.Message,
+func GeneratePodReadyCondition(spec *v1.PodSpec, conditions []v1.PodCondition, containerStatuses []v1.ContainerStatus, vmStatus *v1.VirtualMachineStatus, podPhase v1.PodPhase) v1.PodCondition {
+	if vmStatus != nil {
+		if !vmStatus.Ready {
+			return v1.PodCondition{
+				Type:    v1.PodReady,
+				Status:  v1.ConditionFalse,
+				Reason:  VmNotReady,
+				Message: VmNotReady,
+			}
+		}
+	} else {
+		containersReady := GenerateContainersReadyCondition(spec, containerStatuses, podPhase)
+		// If the status of ContainersReady is not True, return the same status, reason and message as ContainersReady.
+		if containersReady.Status != v1.ConditionTrue {
+			return v1.PodCondition{
+				Type:    v1.PodReady,
+				Status:  containersReady.Status,
+				Reason:  containersReady.Reason,
+				Message: containersReady.Message,
+			}
 		}
 	}
 
@@ -184,5 +197,31 @@ func GeneratePodInitializedCondition(spec *v1.PodSpec, containerStatuses []v1.Co
 	return v1.PodCondition{
 		Type:   v1.PodInitialized,
 		Status: v1.ConditionTrue,
+	}
+}
+
+// GenerateVmReadyCondition returns the status of "VmReady" condition.
+// The status of "VmReady" condition is true when the VM is in the ready state
+func GenerateVmReadyCondition(spec *v1.PodSpec, vmStatus *v1.VirtualMachineStatus, podPhase v1.PodPhase) v1.PodCondition {
+	if vmStatus == nil {
+		return v1.PodCondition{
+			Type:   v1.VmReady,
+			Status: v1.ConditionFalse,
+			Reason: UnknownVmStatus,
+		}
+	}
+
+	if vmStatus.Ready {
+		return v1.PodCondition{
+			Type:   v1.VmReady,
+			Status: v1.ConditionTrue,
+			Reason: PodCompleted,
+		}
+	}
+
+	return v1.PodCondition{
+		Type:   v1.VmReady,
+		Status: v1.ConditionFalse,
+		Reason: VmNotReady,
 	}
 }
