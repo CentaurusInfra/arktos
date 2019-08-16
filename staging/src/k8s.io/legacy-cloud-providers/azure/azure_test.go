@@ -711,7 +711,7 @@ func TestServiceDefaultsToNoSessionPersistence(t *testing.T) {
 		t.Error(err)
 	}
 
-	if lbRule.LoadDistribution != network.Default {
+	if lbRule.LoadDistribution != network.LoadDistributionDefault {
 		t.Errorf("Expected LB rule to have default load distribution but was %s", lbRule.LoadDistribution)
 	}
 }
@@ -734,7 +734,7 @@ func TestServiceRespectsNoSessionAffinity(t *testing.T) {
 		t.Error(err)
 	}
 
-	if lbRule.LoadDistribution != network.Default {
+	if lbRule.LoadDistribution != network.LoadDistributionDefault {
 		t.Errorf("Expected LB rule to have default load distribution but was %s", lbRule.LoadDistribution)
 	}
 }
@@ -757,7 +757,7 @@ func TestServiceRespectsClientIPSessionAffinity(t *testing.T) {
 		t.Error(err)
 	}
 
-	if lbRule.LoadDistribution != network.SourceIP {
+	if lbRule.LoadDistribution != network.LoadDistributionSourceIP {
 		t.Errorf("Expected LB rule to have SourceIP load distribution but was %s", lbRule.LoadDistribution)
 	}
 }

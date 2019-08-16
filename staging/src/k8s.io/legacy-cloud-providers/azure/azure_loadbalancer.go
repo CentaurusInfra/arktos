@@ -947,9 +947,9 @@ func (az *Cloud) reconcileLoadBalancerRule(
 				})
 			}
 
-			loadDistribution := network.Default
+			loadDistribution := network.LoadDistributionDefault
 			if service.Spec.SessionAffinity == v1.ServiceAffinityClientIP {
-				loadDistribution = network.SourceIP
+				loadDistribution = network.LoadDistributionSourceIP
 			}
 
 			expectedRule := network.LoadBalancingRule{
