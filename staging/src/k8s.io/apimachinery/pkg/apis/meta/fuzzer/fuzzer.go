@@ -18,6 +18,8 @@ package fuzzer
 
 import (
 	"fmt"
+	"hash/fnv"
+	"math"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -185,6 +187,7 @@ func v1FuzzerFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
 
 			j.ResourceVersion = strconv.FormatUint(c.RandUint64(), 10)
 			j.UID = types.UID(c.RandString())
+			j.HashKey = GetHashOfUUID(j.UID)
 
 			var sec, nsec int64
 			c.Fuzz(&sec)
@@ -335,3 +338,19 @@ var Funcs = fuzzer.MergeFuzzerFuncs(
 	v1FuzzerFuncs,
 	v1beta1FuzzerFuncs,
 )
+
+// hash function can only get uint32, uint64
+// k8s code base does not deal with uint32 properly
+// uint64 > MaxInt64 will have issue in converter. Need to map to 0 - maxInt64
+func GetHashOfUUID(idToHash types.UID) int64 {
+	idStr := string(idToHash)
+
+	h := fnv.New64a()
+	h.Write([]byte(idStr))
+	rawKey := h.Sum64()
+	if rawKey > math.MaxInt64 {
+		rawKey -= math.MaxInt64
+	}
+
+	return int64(rawKey)
+}

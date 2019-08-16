@@ -27,6 +27,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -94,6 +95,7 @@ func (d *dockerService) GetContainerLogTail(uid kubetypes.UID, name, namespace s
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			UID:       uid,
+			HashKey:   fuzzer.GetHashOfUUID(uid),
 			Name:      name,
 			Namespace: namespace,
 		},

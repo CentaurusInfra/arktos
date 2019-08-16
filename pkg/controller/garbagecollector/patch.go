@@ -142,6 +142,7 @@ func (n *node) unblockOwnerReferencesStrategicMergePatch() ([]byte, error) {
 	}
 	dummy.ObjectMeta.SetOwnerReferences(blockingRefs)
 	dummy.ObjectMeta.UID = n.identity.UID
+	dummy.ObjectMeta.HashKey = n.identity.HashKey
 	return json.Marshal(dummy)
 }
 

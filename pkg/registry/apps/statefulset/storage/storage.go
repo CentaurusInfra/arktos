@@ -244,6 +244,7 @@ func scaleFromStatefulSet(ss *apps.StatefulSet) (*autoscaling.Scale, error) {
 			Name:              ss.Name,
 			Namespace:         ss.Namespace,
 			UID:               ss.UID,
+			HashKey:           ss.HashKey,
 			ResourceVersion:   ss.ResourceVersion,
 			CreationTimestamp: ss.CreationTimestamp,
 		},

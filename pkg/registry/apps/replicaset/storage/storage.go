@@ -257,6 +257,7 @@ func scaleFromReplicaSet(rs *apps.ReplicaSet) (*autoscaling.Scale, error) {
 			Name:              rs.Name,
 			Namespace:         rs.Namespace,
 			UID:               rs.UID,
+			HashKey:           rs.HashKey,
 			ResourceVersion:   rs.ResourceVersion,
 			CreationTimestamp: rs.CreationTimestamp,
 		},

@@ -18,7 +18,6 @@ package controller
 
 import (
 	"fmt"
-	"hash/fnv"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -36,7 +35,6 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	"k8s.io/utils/integer"
-	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -728,20 +726,4 @@ func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, nam
 		return coreClient.ServiceAccounts(namespace).Get(name, metav1.GetOptions{})
 	}
 	return sa, err
-}
-
-// hash function can only get uint32, uint64
-// k8s code base does not deal with uint32 properly
-// uint64 > MaxInt64 will have issue in converter. Need to map to 0 - maxInt64
-func GetHashOfUUID(idToHash types.UID) int64 {
-	idStr := string(idToHash)
-
-	h := fnv.New64a()
-	h.Write([]byte(idStr))
-	rawKey := h.Sum64()
-	if rawKey > math.MaxInt64 {
-		rawKey -= math.MaxInt64
-	}
-
-	return int64(rawKey)
 }
