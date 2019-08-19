@@ -1527,7 +1527,19 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 		metrics.DeprecatedPodStartLatency.Observe(metrics.SinceInMicroseconds(firstSeenTime))
 	}
 
+	// debug logging
+	if existingStatus.Phase == v1.PodRunning && apiPodStatus.Phase == v1.PodPending {
+		klog.V(6).Infof("POD phase Running->Pending. %v, %v", pod.Name, pod.UID)
+	}
+	if existingStatus.Phase == v1.PodPending && apiPodStatus.Phase == v1.PodRunning {
+		klog.V(6).Infof("POD phase Pending->Running. %v, %v", pod.Name, pod.UID)
+	}
+
 	runnable := kl.canRunPod(pod)
+
+	// TODO: for VM type, the state or power state currently does not define a "waiting" state
+	//       consider add one similar to container workload to reflect pod not admitted situation
+	//       low priority, users can use pod status here
 	if !runnable.Admit {
 		// Pod is not runnable; update the Pod and Container statuses to why.
 		apiPodStatus.Reason = runnable.Reason
@@ -1588,6 +1600,11 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 			if containerStatus.State.Running != nil {
 				firstSync = false
 				break
+			}
+		}
+		if apiPodStatus.VirtualMachineStatus != nil {
+			if apiPodStatus.VirtualMachineStatus.PowerState != v1.Running {
+				firstSync = false
 			}
 		}
 		// Don't kill containers in pod if pod's cgroups already

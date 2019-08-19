@@ -2333,6 +2333,8 @@ const (
 	PodReasonUnschedulable = "Unschedulable"
 	// ContainersReady indicates whether all containers in the pod are ready.
 	ContainersReady PodConditionType = "ContainersReady"
+	// VmReady indicates whether the virtual machine in the pod is ready
+	VmReady PodConditionType = "VirtualMachineReady"
 )
 
 type PodCondition struct {

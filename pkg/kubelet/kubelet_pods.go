@@ -1255,6 +1255,7 @@ func getPhase(spec *v1.PodSpec, info []v1.ContainerStatus) v1.PodPhase {
 	stopped := 0
 	succeeded := 0
 	for _, container := range spec.Containers {
+		klog.V(6).Infof("check container status for container: %v", container.Name)
 		containerStatus, ok := podutil.GetContainerStatus(info, container.Name)
 		if !ok {
 			unknown++
@@ -1340,7 +1341,22 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 	// Assume info is ready to process
 	spec := &pod.Spec
 	allStatus := append(append([]v1.ContainerStatus{}, s.ContainerStatuses...), s.InitContainerStatuses...)
-	s.Phase = getPhase(spec, allStatus)
+
+	//TODO: handle more situations for VM type
+	if pod.Spec.VirtualMachine != nil {
+
+		if s.VirtualMachineStatus != nil && s.VirtualMachineStatus.State == v1.VmActive {
+			klog.V(4).Infof("Set Phase Running for VM pod: %v", pod.Name)
+			s.Phase = v1.PodRunning
+		} else {
+			s.Phase = v1.PodPending
+		}
+	} else {
+		s.Phase = getPhase(spec, allStatus)
+	}
+
+	klog.V(4).Infof("Got phase: pod %v, phase %v", pod.Name, s.Phase)
+
 	// Check for illegal phase transition
 	if pod.Status.Phase == v1.PodFailed || pod.Status.Phase == v1.PodSucceeded {
 		// API server shows terminal phase; transitions are not allowed
@@ -1351,9 +1367,16 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 		}
 	}
 	kl.probeManager.UpdatePodStatus(pod.UID, s)
-	s.Conditions = append(s.Conditions, status.GeneratePodInitializedCondition(spec, s.InitContainerStatuses, s.Phase))
-	s.Conditions = append(s.Conditions, status.GeneratePodReadyCondition(spec, s.Conditions, s.ContainerStatuses, s.Phase))
-	s.Conditions = append(s.Conditions, status.GenerateContainersReadyCondition(spec, s.ContainerStatuses, s.Phase))
+
+	if pod.Spec.VirtualMachine != nil {
+		s.Conditions = append(s.Conditions, status.GenerateVmReadyCondition(spec, s.VirtualMachineStatus, s.Phase))
+	} else {
+		s.Conditions = append(s.Conditions, status.GeneratePodInitializedCondition(spec, s.InitContainerStatuses, s.Phase))
+		s.Conditions = append(s.Conditions, status.GenerateContainersReadyCondition(spec, s.ContainerStatuses, s.Phase))
+	}
+
+	s.Conditions = append(s.Conditions, status.GeneratePodReadyCondition(spec, s.Conditions, s.ContainerStatuses, s.VirtualMachineStatus, s.Phase))
+
 	// Status manager will take care of the LastTransitionTimestamp, either preserve
 	// the timestamp from apiserver, or set a new one. When kubelet sees the pod,
 	// `PodScheduled` condition must be true.
@@ -1381,6 +1404,11 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 // the given internal pod status.  It is purely transformative and does not
 // alter the kubelet state at all.
 func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontainer.PodStatus) *v1.PodStatus {
+	vmPod := false
+	if pod.Spec.VirtualMachine != nil {
+		vmPod = true
+	}
+
 	var apiPodStatus v1.PodStatus
 	apiPodStatus.PodIP = podStatus.IP
 	// set status for Pods created on versions of kube older than 1.6
@@ -1388,7 +1416,41 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 
 	oldPodStatus, found := kl.statusManager.GetPodStatus(pod.UID)
 	if !found {
+		klog.V(6).Infof("pod not found in the status manager map")
 		oldPodStatus = pod.Status
+	}
+
+	// for Cloud Fabric 830 release, the runtime status is retrieved from the virtlet runtime
+	// so set the VM status per the virtlet VM container status
+	// TODO: redefine VM state and powerState to match current containerRuntime state
+	//       OR switch to using libvirt VM runtime state which matches with current VM power state
+	if vmPod {
+		if len(podStatus.ContainerStatuses) == 0 {
+			klog.Errorf("VM container does not exist")
+			return &apiPodStatus
+		}
+		klog.V(4).Infof("Set virtual machine status for pod: %v", pod.Name)
+		apiPodStatus.VirtualMachineStatus = &v1.VirtualMachineStatus{Name: pod.Name}
+
+		switch podStatus.ContainerStatuses[0].State {
+		case kubecontainer.ContainerStateRunning:
+			apiPodStatus.VirtualMachineStatus.State = v1.VmActive
+			apiPodStatus.VirtualMachineStatus.PowerState = v1.Running
+			apiPodStatus.VirtualMachineStatus.RestartCount++
+			apiPodStatus.VirtualMachineStatus.Ready = true
+		case kubecontainer.ContainerStateExited:
+			apiPodStatus.VirtualMachineStatus.State = v1.VmDeleted
+			apiPodStatus.VirtualMachineStatus.PowerState = v1.NoState
+			apiPodStatus.VirtualMachineStatus.Ready = false
+		default:
+			// default VM state ( container state unknown )
+			apiPodStatus.VirtualMachineStatus.State = v1.VmSuspended
+			apiPodStatus.VirtualMachineStatus.PowerState = v1.NoState
+			apiPodStatus.VirtualMachineStatus.Ready = false
+		}
+
+		// TODO: once the vm status is the only one for podStatus for container type
+		// return &apiPodStatus
 	}
 
 	apiPodStatus.ContainerStatuses = kl.convertToAPIContainerStatuses(

@@ -168,10 +168,12 @@ func (m *manager) GetPodStatus(uid types.UID) (v1.PodStatus, bool) {
 	m.podStatusesLock.RLock()
 	defer m.podStatusesLock.RUnlock()
 	status, ok := m.podStatuses[types.UID(m.podManager.TranslatePodUID(uid))]
+	klog.V(6).Infof("PodStatus, status: %v, message: %v, phase: %v, reason: %v", status, status.status.Message, status.status.Phase, status.status.Reason)
 	return status.status, ok
 }
 
 func (m *manager) SetPodStatus(pod *v1.Pod, status v1.PodStatus) {
+	klog.V(6).Infof("SetPodStatus, Pod %v, status: %v, message: %v, phase: %v, reason: %v", pod, status, status.Message, status.Phase, status.Reason)
 	m.podStatusesLock.Lock()
 	defer m.podStatusesLock.Unlock()
 
@@ -242,7 +244,7 @@ func (m *manager) SetContainerReadiness(podUID types.UID, containerID kubecontai
 			status.Conditions = append(status.Conditions, condition)
 		}
 	}
-	updateConditionFunc(v1.PodReady, GeneratePodReadyCondition(&pod.Spec, status.Conditions, status.ContainerStatuses, status.Phase))
+	updateConditionFunc(v1.PodReady, GeneratePodReadyCondition(&pod.Spec, status.Conditions, status.ContainerStatuses, status.VirtualMachineStatus, status.Phase))
 	updateConditionFunc(v1.ContainersReady, GenerateContainersReadyCondition(&pod.Spec, status.ContainerStatuses, status.Phase))
 	m.updateStatusInternal(pod, status, false)
 }
@@ -663,7 +665,7 @@ func NeedToReconcilePodReadiness(pod *v1.Pod) bool {
 	if len(pod.Spec.ReadinessGates) == 0 {
 		return false
 	}
-	podReadyCondition := GeneratePodReadyCondition(&pod.Spec, pod.Status.Conditions, pod.Status.ContainerStatuses, pod.Status.Phase)
+	podReadyCondition := GeneratePodReadyCondition(&pod.Spec, pod.Status.Conditions, pod.Status.ContainerStatuses, pod.Status.VirtualMachineStatus, pod.Status.Phase)
 	i, curCondition := podutil.GetPodConditionFromList(pod.Status.Conditions, v1.PodReady)
 	// Only reconcile if "Ready" condition is present and Status or Message is not expected
 	if i >= 0 && (curCondition.Status != podReadyCondition.Status || curCondition.Message != podReadyCondition.Message) {
