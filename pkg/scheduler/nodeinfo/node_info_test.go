@@ -372,7 +372,7 @@ func TestNewNodeInfo(t *testing.T) {
 	if ni.generation <= gen {
 		t.Errorf("generation is not incremented. previous: %v, current: %v", gen, ni.generation)
 	}
-	for i, _ := range expected.pods {
+	for i := range expected.pods {
 		_ = expected.pods[i].Spec.Workloads()
 	}
 	expected.generation = ni.generation
@@ -697,7 +697,7 @@ func TestNodeInfoAddPod(t *testing.T) {
 		}
 		gen = ni.generation
 	}
-	for i, _ := range expected.pods {
+	for i := range expected.pods {
 		_ = expected.pods[i].Spec.Workloads()
 	}
 
@@ -920,7 +920,7 @@ func TestNodeInfoRemovePod(t *testing.T) {
 				t.Errorf("generation is not incremented. Prev: %v, current: %v", gen, ni.generation)
 			}
 		}
-		for i, _ := range test.expectedNodeInfo.pods {
+		for i := range test.expectedNodeInfo.pods {
 			_ = test.expectedNodeInfo.pods[i].Spec.Workloads()
 		}
 
