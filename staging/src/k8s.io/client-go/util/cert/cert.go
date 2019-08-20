@@ -26,8 +26,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"net"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -182,6 +184,16 @@ func GenerateSelfSignedCertKeyWithFixtures(host string, alternateIPs []net.IP, a
 	// Generate key
 	keyBuffer := bytes.Buffer{}
 	if err := pem.Encode(&keyBuffer, &pem.Block{Type: keyutil.RSAPrivateKeyBlockType, Bytes: x509.MarshalPKCS1PrivateKey(priv)}); err != nil {
+		return nil, nil, err
+	}
+	
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.MkdirAll(dir + "/" + fixtureDirectory, 0755)
+	if err != nil {
 		return nil, nil, err
 	}
 
