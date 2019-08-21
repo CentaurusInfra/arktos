@@ -48,6 +48,7 @@ go_library(
         "//pkg/kubelet/util/cache:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",
         "//pkg/kubelet/util/logreduction:go_default_library",
+        "//pkg/kubelet/util/podConverter:go_default_library",
         "//pkg/security/apparmor:go_default_library",
         "//pkg/securitycontext:go_default_library",
         "//pkg/util/parsers:go_default_library",

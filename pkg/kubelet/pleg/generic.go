@@ -206,6 +206,14 @@ func (g *GenericPLEG) relist() {
 		return
 	}
 
+	// Debug logging
+	klog.V(6).Infof("GenericPLEG: got %d of pods from runtime:", len(podList))
+	for _, p := range podList {
+		for _, c := range p.Containers {
+			klog.V(6).Infof("\tPod: %s, container name:%s, container ID: %s", p.Name, c.Name, c.ID.ID)
+		}
+	}
+
 	g.updateRelistTime(timestamp)
 
 	pods := kubecontainer.Pods(podList)
