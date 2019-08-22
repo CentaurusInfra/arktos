@@ -64,7 +64,6 @@ import (
 	"k8s.io/kubernetes/pkg/registry/core/service/portallocator"
 	servicestore "k8s.io/kubernetes/pkg/registry/core/service/storage"
 	serviceaccountstore "k8s.io/kubernetes/pkg/registry/core/serviceaccount/storage"
-	tenantstore "k8s.io/kubernetes/pkg/registry/core/tenant/storage"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 )
 
@@ -128,8 +127,6 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 	configMapStorage := configmapstore.NewREST(restOptionsGetter)
 
 	namespaceStorage, namespaceStatusStorage, namespaceFinalizeStorage := namespacestore.NewREST(restOptionsGetter)
-
-	tenantStorage, tenantStatusStorage, tenantFinalizeStorage := tenantstore.NewREST(restOptionsGetter)
 
 	endpointsStorage := endpointsstore.NewREST(restOptionsGetter)
 
@@ -222,9 +219,6 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		"namespaces":                    namespaceStorage,
 		"namespaces/status":             namespaceStatusStorage,
 		"namespaces/finalize":           namespaceFinalizeStorage,
-		"tenants":                       tenantStorage,
-		"tenants/status":                tenantStatusStorage,
-		"tenants/finalize":              tenantFinalizeStorage,
 		"secrets":                       secretStorage,
 		"serviceAccounts":               serviceAccountStorage,
 		"persistentVolumes":             persistentVolumeStorage,
