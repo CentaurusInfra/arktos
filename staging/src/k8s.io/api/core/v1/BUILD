@@ -42,7 +42,6 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/intstr:go_default_library",
         "//vendor/github.com/gogo/protobuf/proto:go_default_library",
         "//vendor/github.com/gogo/protobuf/sortkeys:go_default_library",
-        "//vendor/k8s.io/klog:go_default_library",
     ],
 )
 

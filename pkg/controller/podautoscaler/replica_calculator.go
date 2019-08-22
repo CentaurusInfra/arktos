@@ -399,9 +399,9 @@ func calculatePodRequests(pods []*v1.Pod, resource v1.ResourceName) (map[string]
 	requests := make(map[string]int64, len(pods))
 	for _, pod := range pods {
 		podSum := int64(0)
-		for _, container := range pod.Spec.Containers {
-			if containerRequest, ok := container.Resources.Requests[resource]; ok {
-				podSum += containerRequest.MilliValue()
+		for _, workload := range pod.Spec.Workloads() {
+			if workloadRequest, ok := workload.Resources.Requests[resource]; ok {
+				podSum += workloadRequest.MilliValue()
 			} else {
 				return nil, fmt.Errorf("missing request for %s", resource)
 			}
