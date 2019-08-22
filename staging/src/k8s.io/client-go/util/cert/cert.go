@@ -193,13 +193,14 @@ func GenerateSelfSignedCertKeyWithFixtures(host string, alternateIPs []net.IP, a
 			log.Fatal(err)
 		}
 
-		if _, err := os.Stat("/path/to/whatever"); os.IsNotExist(err) {
-			err = os.MkdirAll(dir + "/" + fixtureDirectory, 0755)
+		fixturePath := path.Join(dir, fixtureDirectory)
+		if _, err := os.Stat(fixturePath); os.IsNotExist(err) {
+			err = os.MkdirAll(fixturePath, 0755)
 			if err != nil {
 				return nil, nil, err
 			}
 		}
-		
+
 		if err := ioutil.WriteFile(certFixturePath, certBuffer.Bytes(), 0644); err != nil {
 			return nil, nil, fmt.Errorf("failed to write cert fixture to %s: %v", certFixturePath, err)
 		}
