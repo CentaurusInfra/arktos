@@ -186,18 +186,20 @@ func GenerateSelfSignedCertKeyWithFixtures(host string, alternateIPs []net.IP, a
 	if err := pem.Encode(&keyBuffer, &pem.Block{Type: keyutil.RSAPrivateKeyBlockType, Bytes: x509.MarshalPKCS1PrivateKey(priv)}); err != nil {
 		return nil, nil, err
 	}
-	
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = os.MkdirAll(dir + "/" + fixtureDirectory, 0755)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if len(fixtureDirectory) > 0 {
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if _, err := os.Stat("/path/to/whatever"); os.IsNotExist(err) {
+			err = os.MkdirAll(dir + "/" + fixtureDirectory, 0755)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		
 		if err := ioutil.WriteFile(certFixturePath, certBuffer.Bytes(), 0644); err != nil {
 			return nil, nil, fmt.Errorf("failed to write cert fixture to %s: %v", certFixturePath, err)
 		}
