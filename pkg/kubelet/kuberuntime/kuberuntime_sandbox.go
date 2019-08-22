@@ -62,6 +62,8 @@ func (m *kubeGenericRuntimeManager) createPodSandbox(pod *v1.Pod, attempt uint32
 		}
 	}
 
+	// debugging dump the PodSandboxConfig
+	klog.V(6).Info("PodSandboxConfig: %s", podSandboxConfig.String())
 	podSandBoxID, err := m.runtimeService.RunPodSandbox(podSandboxConfig, runtimeHandler)
 	if err != nil {
 		message := fmt.Sprintf("CreatePodSandbox for pod %q failed: %v", format.Pod(pod), err)
