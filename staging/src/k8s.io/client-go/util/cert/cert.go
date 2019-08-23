@@ -26,8 +26,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"net"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -186,6 +188,19 @@ func GenerateSelfSignedCertKeyWithFixtures(host string, alternateIPs []net.IP, a
 	}
 
 	if len(fixtureDirectory) > 0 {
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fixturePath := path.Join(dir, fixtureDirectory)
+		if _, err := os.Stat(fixturePath); os.IsNotExist(err) {
+			err = os.MkdirAll(fixturePath, 0755)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
 		if err := ioutil.WriteFile(certFixturePath, certBuffer.Bytes(), 0644); err != nil {
 			return nil, nil, fmt.Errorf("failed to write cert fixture to %s: %v", certFixturePath, err)
 		}

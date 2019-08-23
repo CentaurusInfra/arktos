@@ -324,6 +324,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 			if podDeletionTimestamp {
 				pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 			}
+			pod.Spec.Workloads()
 			obj.Items = append(obj.Items, pod)
 		}
 		return true, obj, nil
