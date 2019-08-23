@@ -139,3 +139,36 @@ func InitTestErrorHandler(t *testing.T) {
 		t.Errorf("Error running command (exit code %d): %s", code, str)
 	})
 }
+
+//TestDataWithHashKey the test data for range selector
+func TestDataWithHashKey() *corev1.PodList {
+	pods := &corev1.PodList{
+		ListMeta: metav1.ListMeta{
+			ResourceVersion: "15",
+		},
+		Items: []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", ResourceVersion: "10", HashKey: 10},
+				Spec: corev1.PodSpec{
+					RestartPolicy:                 corev1.RestartPolicyAlways,
+					DNSPolicy:                     corev1.DNSClusterFirst,
+					TerminationGracePeriodSeconds: &grace,
+					SecurityContext:               &corev1.PodSecurityContext{},
+					EnableServiceLinks:            &enableServiceLinks,
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "bar", Namespace: "test", ResourceVersion: "11", HashKey: 30},
+				Spec: corev1.PodSpec{
+					RestartPolicy:                 corev1.RestartPolicyAlways,
+					DNSPolicy:                     corev1.DNSClusterFirst,
+					TerminationGracePeriodSeconds: &grace,
+					SecurityContext:               &corev1.PodSecurityContext{},
+					EnableServiceLinks:            &enableServiceLinks,
+				},
+			},
+		},
+	}
+
+	return pods
+}

@@ -1649,3 +1649,42 @@ func watchBody(codec runtime.Codec, events []watch.Event) io.ReadCloser {
 	}
 	return json.Framer.NewFrameReader(ioutil.NopCloser(buf))
 }
+
+func TestGetMultipleTypeObjectsWithLabelRangeSelector(t *testing.T) {
+	pods := cmdtesting.TestDataWithHashKey()
+
+	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	defer tf.Cleanup()
+	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+
+	tf.UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Query().Get(metav1.LabelSelectorQueryParam("v1")) != "a='{gt:10,lt:50}'" {
+				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
+			}
+			switch req.URL.Path {
+			case "/namespaces/test/pods":
+				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
+			default:
+				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
+				return nil, nil
+			}
+		}),
+	}
+
+	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	cmd := NewCmdGet("kubectl", tf, streams)
+	cmd.SetOutput(buf)
+
+	cmd.Flags().Set("selector", "a='{gt:10,lt:50}'")
+	cmd.Run(cmd, []string{"pods"})
+
+	expected := `NAME   READY   STATUS   RESTARTS   AGE
+foo    0/0              0          <unknown>
+bar    0/0              0          <unknown>
+`
+	if e, a := expected, buf.String(); e != a {
+		t.Errorf("expected\n%v\ngot\n%v", e, a)
+	}
+}
