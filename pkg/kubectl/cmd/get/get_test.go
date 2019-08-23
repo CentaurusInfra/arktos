@@ -1661,13 +1661,13 @@ func TestGetMultipleTypeObjectsWithLabelRangeSelector(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			if req.URL.Query().Get(metav1.LabelSelectorQueryParam("v1")) != "a='{gt:10,lt:50}'" {
-				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
+				t.Fatalf("The request does not have expected range params. Request url: %#v,and request: %#v", req.URL, req)
 			}
 			switch req.URL.Path {
 			case "/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
 			default:
-				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
+				t.Fatalf("The request url path does not start with /namespaces/test/pods. Request url: %#v,and request: %#v", req.URL, req)
 				return nil, nil
 			}
 		}),
