@@ -18,6 +18,7 @@ package podConverter
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
@@ -50,9 +51,12 @@ const (
 
 const (
 	defaultVirtletRootVolumeSize = "4Gi"
-	defaultVirtletRuntimeKeyName = "kubernetes.io/target-runtime"
+	VirtletRuntimeKeyName        = "kubernetes.io/target-runtime"
 	// the criproxy uses for the virtlet runtime endpoint prefix
 	defaultVirtletRuntimeValue = "virtlet.cloud"
+
+	VPCKeyName  = "VPC"
+	NICsKeyName = "Nics"
 )
 
 const stringEmpty = ""
@@ -73,7 +77,7 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 		cpod.Annotations = make(map[string]string)
 	}
 	cpod.Annotations[rootVolumeSizeKeyName] = defaultVirtletRootVolumeSize
-	cpod.Annotations[defaultVirtletRuntimeKeyName] = defaultVirtletRuntimeValue
+	cpod.Annotations[VirtletRuntimeKeyName] = defaultVirtletRuntimeValue
 
 	// setup the annotations from the pod.podspec.virtualMachine
 	// TODO: add more per the need for more VM types
@@ -87,6 +91,18 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 			return nil
 		}
 		cpod.Annotations[cloudInitUserDataKeyName] = string(userData)
+	}
+
+	if pod.Spec.VPC != stringEmpty {
+		cpod.Annotations[VPCKeyName] = pod.Spec.VPC
+	}
+	if pod.Spec.Nics != nil {
+		s, err := json.Marshal(pod.Spec.Nics)
+		if err != nil {
+			fmt.Errorf("failed to get Nics with error: %v", err)
+			return nil
+		}
+		cpod.Annotations[NICsKeyName] = string(s)
 	}
 
 	// create a container per the virtlet requirements
