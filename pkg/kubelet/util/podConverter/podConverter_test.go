@@ -26,7 +26,7 @@ import (
 )
 
 func TestPodConverter(t *testing.T) {
-	sshkey := "testsshvalue"
+	sshkey := "testsshkeyvalue"
 	userData := "mount /dev/testpvc, /mnt"
 	testVpc := "testsVpc"
 
