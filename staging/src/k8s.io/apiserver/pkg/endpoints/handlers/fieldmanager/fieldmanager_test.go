@@ -54,12 +54,15 @@ func NewTestFieldManager(t *testing.T) *fieldmanager.FieldManager {
 		Version: "v1",
 	}
 
-	return fieldmanager.NewCRDFieldManager(
+	f, _ := fieldmanager.NewCRDFieldManager(
+		nil,
 		&fakeObjectConvertor{},
 		&fakeObjectDefaulter{},
 		gv,
 		gv,
+		true,
 	)
+	return f
 }
 
 func TestFieldManagerCreation(t *testing.T) {
