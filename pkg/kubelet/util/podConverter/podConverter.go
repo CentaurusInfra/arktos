@@ -56,7 +56,7 @@ const (
 	defaultVirtletRuntimeValue = "virtlet.cloud"
 
 	VPCKeyName  = "VPC"
-	NICsKeyName = "Nics"
+	NICsKeyName = "NICs"
 )
 
 const stringEmpty = ""
