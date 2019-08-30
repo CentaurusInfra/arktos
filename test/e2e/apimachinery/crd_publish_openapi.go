@@ -34,7 +34,6 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	utildiff "k8s.io/apimachinery/pkg/util/diff"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8sclientset "k8s.io/client-go/kubernetes"
@@ -502,8 +501,7 @@ func waitForDefinition(c k8sclientset.Interface, name string, schema []byte) err
 			// drop properties and extension that we added
 			dropDefaults(&d)
 			if !apiequality.Semantic.DeepEqual(expect, d) {
-				diff := utildiff.ObjectGoPrintSideBySide(expect, d)
-				return false, fmt.Sprintf("spec.SwaggerProps.Definitions[\"%s\"] not match; expect: %v, actual: %v\n%v", name, expect, d, diff)
+				return false, fmt.Sprintf("spec.SwaggerProps.Definitions[\"%s\"] not match; expect: %v, actual: %v", name, expect, d)
 			}
 		}
 		return true, ""
@@ -623,7 +621,6 @@ properties:
       bars:
         description: List of Bars and their specs.
         type: array
-        x-kubernetes-list-type: atomic
         items:
           type: object
           required:
@@ -640,7 +637,6 @@ properties:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: atomic
   status:
     description: Status of Foo
     type: object
@@ -648,7 +644,6 @@ properties:
       bars:
         description: List of Bars and their statuses.
         type: array
-        x-kubernetes-list-type: atomic
         items:
           type: object
           properties:
@@ -680,7 +675,6 @@ properties:
       bars:
         description: List of Bars and their statuses.
         type: array
-        x-kubernetes-list-type: atomic
         items:
           type: object`)
 
@@ -702,7 +696,6 @@ properties:
       bars:
         description: List of Bars and their statuses.
         type: array
-        x-kubernetes-list-type: atomic
         items:
           type: object`)
 
@@ -724,6 +717,5 @@ properties:
       bars:
         description: List of Bars and their statuses.
         type: array
-        x-kubernetes-list-type: atomic
         items:
           type: object`)
