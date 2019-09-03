@@ -352,6 +352,7 @@ func scaleFromDeployment(deployment *apps.Deployment) (*autoscaling.Scale, error
 			Name:              deployment.Name,
 			Namespace:         deployment.Namespace,
 			UID:               deployment.UID,
+			HashKey:           deployment.HashKey,
 			ResourceVersion:   deployment.ResourceVersion,
 			CreationTimestamp: deployment.CreationTimestamp,
 		},

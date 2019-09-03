@@ -576,7 +576,7 @@ func (sched *Scheduler) scheduleOne() {
 		}
 
 		err := sched.bind(assumedPod, &v1.Binding{
-			ObjectMeta: metav1.ObjectMeta{Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID},
+			ObjectMeta: metav1.ObjectMeta{Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID, HashKey: assumedPod.HashKey},
 			Target: v1.ObjectReference{
 				Kind: "Node",
 				Name: scheduleResult.SuggestedHost,

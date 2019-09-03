@@ -21,7 +21,7 @@ import (
 	"net"
 	"net/url"
 	"sort"
-
+	"encoding/json"
 	"k8s.io/api/core/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -31,6 +31,11 @@ import (
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
+)
+
+const (
+	VPCKeyName  = "VPC"
+	NICsKeyName = "NICs"
 )
 
 // createPodSandbox creates a pod sandbox and returns (podSandBoxID, message, error).
@@ -62,6 +67,8 @@ func (m *kubeGenericRuntimeManager) createPodSandbox(pod *v1.Pod, attempt uint32
 		}
 	}
 
+	// debugging dump the PodSandboxConfig
+	klog.V(6).Infof("PodSandboxConfig: %s", podSandboxConfig.String())
 	podSandBoxID, err := m.runtimeService.RunPodSandbox(podSandboxConfig, runtimeHandler)
 	if err != nil {
 		message := fmt.Sprintf("CreatePodSandbox for pod %q failed: %v", format.Pod(pod), err)
@@ -86,6 +93,26 @@ func (m *kubeGenericRuntimeManager) generatePodSandboxConfig(pod *v1.Pod, attemp
 		},
 		Labels:      newPodLabels(pod),
 		Annotations: newPodAnnotations(pod),
+	}
+
+	// Alkaid add VPC, NICs info as podspec, so add it to the SandboxConfig as annotations so the runtime service can use them
+	// TODO: if the podConverter is kept for long term in Alkaid, consider consolidate the set annotation code with it
+	if podSandboxConfig.Annotations == nil {
+		podSandboxConfig.Annotations = make(map[string]string)
+	}
+	if pod.Spec.VPC != "" {
+		if _, found := podSandboxConfig.Annotations[VPCKeyName]; !found {
+			podSandboxConfig.Annotations[VPCKeyName] = pod.Spec.VPC
+		}
+	}
+	if pod.Spec.Nics != nil {
+		if _, found := podSandboxConfig.Annotations[NICsKeyName]; !found {
+			s, err := json.Marshal(pod.Spec.Nics)
+			if err != nil {
+				return nil, err
+			}
+			podSandboxConfig.Annotations[NICsKeyName] = string(s)
+		}
 	}
 
 	dnsConfig, err := m.runtimeHelper.GetPodDNS(pod)

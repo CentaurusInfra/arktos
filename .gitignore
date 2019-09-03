@@ -59,6 +59,7 @@ network_closure.sh
 
 # Also ignore etcd installed by hack/install-etcd.sh
 /third_party/etcd*
+!/third_party/etcd.BUILD
 /default.etcd
 
 # User cluster configs

@@ -19,6 +19,7 @@ package kuberuntime
 import (
 	"errors"
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/util/podConverter"
 	"os"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -477,6 +479,13 @@ func containerSucceeded(c *v1.Container, podStatus *kubecontainer.PodStatus) boo
 // computePodActions checks whether the pod spec has changed and returns the changes if true.
 func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *kubecontainer.PodStatus) podActions {
 	klog.V(5).Infof("Syncing Pod %q: %+v", format.Pod(pod), pod)
+	klog.V(5).Infof("podstatus %v", podStatus)
+	if podStatus.SandboxStatuses != nil {
+		klog.V(5).Infof("pod sandbox length %v", len(podStatus.SandboxStatuses))
+		for _, sb := range podStatus.SandboxStatuses {
+			klog.V(5).Infof("pod sandbox status %v", sb)
+		}
+	}
 
 	createPodSandbox, attempt, sandboxID := m.podSandboxChanged(pod, podStatus)
 	changes := podActions{
@@ -617,6 +626,25 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 	return changes
 }
 
+func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, podStatus *kubecontainer.PodStatus, pullSecrets []v1.Secret, backOff *flowcontrol.Backoff) (result kubecontainer.PodSyncResult) {
+	if pod.Spec.VirtualMachine != nil {
+		return m.SyncPodVm(pod, podStatus, pullSecrets, backOff)
+	}
+	return m.SyncPodContainer(pod, podStatus, pullSecrets, backOff)
+}
+
+func (m *kubeGenericRuntimeManager) SyncPodVm(podin *v1.Pod, podStatus *kubecontainer.PodStatus, pullSecrets []v1.Secret, backOff *flowcontrol.Backoff) (result kubecontainer.PodSyncResult) {
+	klog.V(4).Infof("SyncOp VM POD for pod %q", format.Pod(podin))
+	pod := podConverter.ConvertVmPodToContainerPod(podin)
+	if pod == nil {
+		klog.Errorf("failed to get converted pod")
+		return
+	}
+	result = m.SyncPodContainer(pod, podStatus, pullSecrets, backOff)
+	podConverter.DumpPodSyncResult(result)
+	return result
+}
+
 // SyncPod syncs the running pod into the desired pod by executing following steps:
 //
 //  1. Compute sandbox and container changes.
@@ -625,7 +653,7 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 //  4. Create sandbox if necessary.
 //  5. Create init containers.
 //  6. Create normal containers.
-func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, podStatus *kubecontainer.PodStatus, pullSecrets []v1.Secret, backOff *flowcontrol.Backoff) (result kubecontainer.PodSyncResult) {
+func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kubecontainer.PodStatus, pullSecrets []v1.Secret, backOff *flowcontrol.Backoff) (result kubecontainer.PodSyncResult) {
 	// Step 1: Compute sandbox and container changes.
 	podContainerChanges := m.computePodActions(pod, podStatus)
 	klog.V(3).Infof("computePodActions got %+v for pod %q", podContainerChanges, format.Pod(pod))
@@ -890,6 +918,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 			Name:      name,
 			Namespace: namespace,
 			UID:       uid,
+			HashKey:   fuzzer.GetHashOfUUID(uid),
 		},
 	})
 	klog.V(4).Infof("getSandboxIDByPodUID got sandbox IDs %q for pod %q", podSandboxIDs, podFullName)
@@ -920,6 +949,10 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 	}
 	m.logReduction.ClearID(podFullName)
 
+	//TODO: Ideally for VM type, construct the podStatus for VM type before return
+	//      Since for Cloud Fabric 830 release, the runtime is virtlet and it cannot determine
+	//      pod workload type here, we rely on the calling functions to update the podStatus
+	//      with VirtualMachineStatus, for virtlet, it is the container status.
 	return &kubecontainer.PodStatus{
 		ID:                uid,
 		Name:              name,

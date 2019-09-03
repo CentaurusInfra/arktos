@@ -282,7 +282,11 @@ func (r *RemoteRuntimeService) ListContainers(filter *runtimeapi.ContainerFilter
 }
 
 // ContainerStatus returns the container status.
+// TODO: check how virtlet, criproxy knows the containerID for cloudFabric vm type ?
+//       one solution is to add the containerID faked in the podConvert as annotation to the pod, and remove it when we move to directly calling libvirt as VM runtime
+//
 func (r *RemoteRuntimeService) ContainerStatus(containerID string) (*runtimeapi.ContainerStatus, error) {
+	klog.V(6).Infof("Get container status from remote runtime service for containerID: %s", containerID)
 	ctx, cancel := getContextWithTimeout(r.timeout)
 	defer cancel()
 
@@ -305,6 +309,7 @@ func (r *RemoteRuntimeService) ContainerStatus(containerID string) (*runtimeapi.
 		}
 	}
 
+	klog.V(6).Infof("Container status from remote runtime service: %v", resp.Status)
 	return resp.Status, nil
 }
 

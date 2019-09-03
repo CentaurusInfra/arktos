@@ -24,6 +24,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -143,7 +144,7 @@ func (plugin *azureFilePlugin) newUnmounterInternal(volName string, podUID types
 	return &azureFileUnmounter{&azureFile{
 		volName:         volName,
 		mounter:         mounter,
-		pod:             &v1.Pod{ObjectMeta: metav1.ObjectMeta{UID: podUID}},
+		pod:             &v1.Pod{ObjectMeta: metav1.ObjectMeta{UID: podUID, HashKey: fuzzer.GetHashOfUUID(podUID)}},
 		plugin:          plugin,
 		MetricsProvider: volume.NewMetricsStatFS(getPath(podUID, volName, plugin.host)),
 	}}, nil

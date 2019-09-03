@@ -133,6 +133,7 @@ func scaleFromRC(rc *api.ReplicationController) *autoscaling.Scale {
 			Name:              rc.Name,
 			Namespace:         rc.Namespace,
 			UID:               rc.UID,
+			HashKey:           rc.HashKey,
 			ResourceVersion:   rc.ResourceVersion,
 			CreationTimestamp: rc.CreationTimestamp,
 		},

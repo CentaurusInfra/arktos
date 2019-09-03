@@ -2333,6 +2333,8 @@ const (
 	PodReasonUnschedulable = "Unschedulable"
 	// ContainersReady indicates whether all containers in the pod are ready.
 	ContainersReady PodConditionType = "ContainersReady"
+	// VmReady indicates whether the virtual machine in the pod is ready
+	VmReady PodConditionType = "VirtualMachineReady"
 )
 
 type PodCondition struct {
@@ -2840,7 +2842,7 @@ type PodSpec struct {
 	EnableServiceLinks *bool
 }
 
-func (ps PodSpec) Workloads() []CommonInfo {
+func (ps *PodSpec) Workloads() []CommonInfo {
 	if len(ps.WorkloadInfo) == 0 {
 		if ps.VirtualMachine != nil {
 			ps.WorkloadInfo = make([]CommonInfo, 1)

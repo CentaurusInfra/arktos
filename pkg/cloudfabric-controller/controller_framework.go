@@ -58,7 +58,7 @@ type ControllerBase struct {
 	controller_key int64
 
 	worker_number int
-	controllerMap []controllerInstance
+	controllers   []controllerInstance
 	curPos        int
 
 	queue workqueue.RateLimitingInterface
@@ -90,7 +90,7 @@ func NewControllerBase(controller_type string, client clientset.Interface) (*Con
 		state:                  ControllerStateInit,
 		controller_instance_id: uuid.NewUUID(),
 		worker_number:          getDefaultNumberOfWorker(controller_type),
-		controllerMap:          readControllers(controller_type),
+		controllers:            readControllers(controller_type),
 		curPos:                 -1,
 
 		queue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
@@ -99,7 +99,7 @@ func NewControllerBase(controller_type string, client clientset.Interface) (*Con
 	controller.controller_key = controller.generateKey()
 
 	// First controller instance. No need to wait for others
-	if len(controller.controllerMap) == 0 {
+	if len(controller.controllers) == 0 {
 		controller.state = ControllerStateActive
 	} else {
 		controller.state = ControllerStateLocked
@@ -189,7 +189,7 @@ func (c *ControllerBase) IsInRange(key int64) bool {
 		return false
 	}
 
-	if key > c.controller_key || key <= c.controllerMap[c.curPos].lowerboundKey {
+	if key > c.controller_key || key <= c.controllers[c.curPos].lowerboundKey {
 		return false
 	}
 
@@ -197,7 +197,7 @@ func (c *ControllerBase) IsInRange(key int64) bool {
 }
 
 func (c *ControllerBase) generateKey() int64 {
-	if len(c.controllerMap) == 0 {
+	if len(c.controllers) == 0 {
 		return math.MaxInt64
 	}
 
@@ -211,8 +211,8 @@ func (c *ControllerBase) getMaxInterval() (int64, int64) {
 
 	maxWorkloadNum := -1
 
-	for i := 0; i < len(c.controllerMap); i++ {
-		item := c.controllerMap[i]
+	for i := 0; i < len(c.controllers); i++ {
+		item := c.controllers[i]
 
 		if item.workloadNum > maxWorkloadNum {
 			maxWorkloadNum = item.workloadNum
@@ -225,16 +225,16 @@ func (c *ControllerBase) getMaxInterval() (int64, int64) {
 }
 
 func (c *ControllerBase) getControllers() []controllerInstance {
-	if c.controllerMap == nil {
+	if c.controllers == nil {
 		return readControllers(c.controller_type)
 	}
 
-	return c.controllerMap
+	return c.controllers
 }
 
 func (c *ControllerBase) updateControllers(newControllerInstances []controllerInstance) {
 	// Compare
-	isUpdated, isSelfUpdated, newLowerBound, newUpperbound, newPos := c.tryConsolitateControllerInstanceMap(newControllerInstances)
+	isUpdated, isSelfUpdated, newLowerBound, newUpperbound, newPos := c.tryConsolidateControllerInstances(newControllerInstances)
 	if !isUpdated && !isSelfUpdated {
 		return
 	}
@@ -244,7 +244,7 @@ func (c *ControllerBase) updateControllers(newControllerInstances []controllerIn
 		c.curPos = newPos
 	}
 	if isUpdated {
-		c.controllerMap = newControllerInstances
+		c.controllers = newControllerInstances
 	}
 
 	if c.state == ControllerStateWait {
@@ -261,8 +261,8 @@ func (c *ControllerBase) updateControllers(newControllerInstances []controllerIn
 }
 
 // Assume both old & new controller instances are sorted by controller key
-func (c *ControllerBase) tryConsolitateControllerInstanceMap(newControllerInstances []controllerInstance) (isUpdated bool, isSelfUpdated bool, newLowerbound int64, newUpperbound int64, newPos int) {
-	oldControllerInstances := c.controllerMap
+func (c *ControllerBase) tryConsolidateControllerInstances(newControllerInstances []controllerInstance) (isUpdated bool, isSelfUpdated bool, newLowerbound int64, newUpperbound int64, newPos int) {
+	oldControllerInstances := c.controllers
 
 	isUpdated = false
 	if len(oldControllerInstances) != len(newControllerInstances) {
@@ -272,7 +272,7 @@ func (c *ControllerBase) tryConsolitateControllerInstanceMap(newControllerInstan
 	// find position in new controller instances - assume current controller is in new controller instance list (deal with edge cases later)
 	newPos = -1
 	for i := 0; i < len(newControllerInstances); i++ {
-		if newControllerInstances[i].controllerKey == c.controller_key {
+		if newControllerInstances[i].instanceId == c.controller_instance_id {
 			newPos = i
 			break
 		}
@@ -289,16 +289,16 @@ func (c *ControllerBase) tryConsolitateControllerInstanceMap(newControllerInstan
 		isUpdated = true
 	}
 
-	if c.curPos == -1 || c.controllerMap[c.curPos].lowerboundKey != newControllerInstances[newPos].lowerboundKey {
+	if c.curPos == -1 || c.controllers[c.curPos].lowerboundKey != newControllerInstances[newPos].lowerboundKey {
 		return true, true, newControllerInstances[newPos].lowerboundKey, c.controller_key, newPos
 	}
 
 	if !isUpdated {
 		for i := 0; i < len(newControllerInstances); i++ {
-			if c.controllerMap[i].lowerboundKey != newControllerInstances[i].lowerboundKey ||
-				c.controllerMap[i].workloadNum != newControllerInstances[i].workloadNum ||
-				c.controllerMap[i].controllerKey != newControllerInstances[i].controllerKey ||
-				c.controllerMap[i].instanceId != newControllerInstances[i].instanceId {
+			if c.controllers[i].lowerboundKey != newControllerInstances[i].lowerboundKey ||
+				c.controllers[i].workloadNum != newControllerInstances[i].workloadNum ||
+				c.controllers[i].controllerKey != newControllerInstances[i].controllerKey ||
+				c.controllers[i].instanceId != newControllerInstances[i].instanceId {
 				isUpdated = true
 			}
 		}

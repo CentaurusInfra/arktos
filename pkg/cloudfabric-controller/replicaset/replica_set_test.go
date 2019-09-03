@@ -31,6 +31,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -118,7 +119,7 @@ func newReplicaSet(replicas int, selectorMap map[string]string) *apps.ReplicaSet
 		},
 	}
 
-	rs.HashKey = controller.GetHashOfUUID(rs.UID)
+	rs.HashKey = fuzzer.GetHashOfUUID(rs.UID)
 	return rs
 }
 
@@ -1114,7 +1115,7 @@ func TestDoNotPatchPodWithOtherControlRef(t *testing.T) {
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(rs)
 	var trueVar = true
 	otherControllerReference := metav1.OwnerReference{UID: uuid.NewUUID(), APIVersion: "v1beta1", Kind: "ReplicaSet", Name: "AnotherRS", Controller: &trueVar}
-	otherControllerReference.HashKey = controller.GetHashOfUUID(otherControllerReference.UID)
+	otherControllerReference.HashKey = fuzzer.GetHashOfUUID(otherControllerReference.UID)
 	// add to podLister a matching Pod controlled by another controller. Expect no patch.
 	pod := newPod("pod", rs, v1.PodRunning, nil, true)
 	pod.OwnerReferences = []metav1.OwnerReference{otherControllerReference}

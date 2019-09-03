@@ -2571,6 +2571,8 @@ const (
 	PodReady PodConditionType = "Ready"
 	// PodScheduled represents status of the scheduling process for this pod.
 	PodScheduled PodConditionType = "PodScheduled"
+	// VmReady indicates whether the virtual machine in the pod is ready
+	VmReady PodConditionType = "VirtualMachineReady"
 )
 
 // These are reasons for a pod's transition to a condition.
@@ -3162,7 +3164,7 @@ type PodSpec struct {
 	PreemptionPolicy *PreemptionPolicy `json:"preemptionPolicy,omitempty" protobuf:"bytes,31,opt,name=preemptionPolicy"`
 }
 
-func (ps PodSpec) Workloads() []CommonInfo {
+func (ps *PodSpec) Workloads() []CommonInfo {
 	if len(ps.WorkloadInfo) == 0 {
 		if ps.VirtualMachine != nil {
 			ps.WorkloadInfo = make([]CommonInfo, 1)
