@@ -77,7 +77,7 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 	err = scheme.AddFieldLabelConversionFunc(SchemeGroupVersion.WithKind("StatefulSet"),
 		func(label, value string) (string, string, error) {
 			switch label {
-			case "metadata.name", "metadata.namespace", "status.successful":
+			case "metadata.name", "metadata.namespace", "status.successful", "metadata.hashkey":
 				return label, value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported for appsv1beta2.StatefulSet: %s", label)
