@@ -47,6 +47,9 @@ func TestJobStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("Job must be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("Job must be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("Job should not allow create on update")
 	}
@@ -213,6 +216,9 @@ func TestJobStatusStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !StatusStrategy.NamespaceScoped() {
 		t.Errorf("Job must be namespace scoped")
+	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("Job must be tenant scoped")
 	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("Job should not allow create on update")

@@ -121,3 +121,12 @@ func TestStrategyCreate(t *testing.T) {
 		}
 	}
 }
+
+func TestStrategy_Scope(t *testing.T) {
+	if Strategy.NamespaceScoped() {
+		t.Error("CSR strategy must not be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("CSR strategy must be tenant scoped")
+	}
+}

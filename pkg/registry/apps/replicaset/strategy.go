@@ -74,6 +74,11 @@ func (rsStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (rsStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a ReplicaSet before creation.
 func (rsStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	rs := obj.(*apps.ReplicaSet)

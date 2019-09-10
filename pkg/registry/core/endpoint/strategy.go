@@ -43,6 +43,11 @@ func (endpointsStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (endpointsStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears fields that are not allowed to be set by end users on creation.
 func (endpointsStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 }

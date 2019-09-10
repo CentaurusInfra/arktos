@@ -50,6 +50,10 @@ func (r *REST) NamespaceScoped() bool {
 	return false
 }
 
+func (r *REST) TenantScoped() bool {
+	return true
+}
+
 func (r *REST) New() runtime.Object {
 	return &authentication.TokenReview{}
 }

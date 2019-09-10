@@ -44,6 +44,10 @@ func (r *REST) NamespaceScoped() bool {
 	return false
 }
 
+func (r *REST) TenantScoped() bool {
+	return true
+}
+
 // New creates a new selfsubjectrulesreview object.
 func (r *REST) New() runtime.Object {
 	return &authorizationapi.SelfSubjectRulesReview{}

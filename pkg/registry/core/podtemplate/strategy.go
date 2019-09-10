@@ -43,6 +43,11 @@ func (podTemplateStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (podTemplateStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears fields that are not allowed to be set by end users on creation.
 func (podTemplateStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	template := obj.(*api.PodTemplate)

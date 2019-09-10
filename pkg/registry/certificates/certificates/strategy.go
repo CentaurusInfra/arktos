@@ -45,6 +45,11 @@ func (csrStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is true as this resource need to be under a given tenant
+func (csrStrategy) TenantScoped() bool {
+	return true
+}
+
 // AllowCreateOnUpdate is false for CSRs.
 func (csrStrategy) AllowCreateOnUpdate() bool {
 	return false

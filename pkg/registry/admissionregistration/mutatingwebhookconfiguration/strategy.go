@@ -42,6 +42,11 @@ func (mutatingWebhookConfigurationStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is false as it is cluster-scoped
+func (mutatingWebhookConfigurationStrategy) TenantScoped() bool {
+	return false
+}
+
 // PrepareForCreate clears the status of an mutatingWebhookConfiguration before creation.
 func (mutatingWebhookConfigurationStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	ic := obj.(*admissionregistration.MutatingWebhookConfiguration)

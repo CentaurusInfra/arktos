@@ -64,6 +64,11 @@ func (cronJobStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (cronJobStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a scheduled job before creation.
 func (cronJobStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	cronJob := obj.(*batch.CronJob)

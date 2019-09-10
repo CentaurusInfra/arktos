@@ -42,6 +42,11 @@ func (validatingWebhookConfigurationStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is false as it is cluster-scoped
+func (validatingWebhookConfigurationStrategy) TenantScoped() bool {
+	return false
+}
+
 // PrepareForCreate clears the status of an validatingWebhookConfiguration before creation.
 func (validatingWebhookConfigurationStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	ic := obj.(*admissionregistration.ValidatingWebhookConfiguration)

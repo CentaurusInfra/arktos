@@ -42,6 +42,11 @@ func (ingressStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (ingressStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of an Ingress before creation.
 func (ingressStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	ingress := obj.(*networking.Ingress)

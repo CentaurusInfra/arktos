@@ -66,6 +66,11 @@ func (daemonSetStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (daemonSetStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a daemon set before creation.
 func (daemonSetStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	daemonSet := obj.(*apps.DaemonSet)

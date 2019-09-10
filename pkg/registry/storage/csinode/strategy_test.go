@@ -51,6 +51,9 @@ func TestCSINodeStrategy(t *testing.T) {
 	if Strategy.NamespaceScoped() {
 		t.Errorf("CSINode must not be namespace scoped")
 	}
+	if Strategy.TenantScoped() {
+		t.Errorf("CSINode must not be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("CSINode should not allow create on update")
 	}

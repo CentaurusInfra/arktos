@@ -58,6 +58,11 @@ func (nodeStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is false as it is cluster-scoped
+func (nodeStrategy) TenantScoped() bool {
+	return false
+}
+
 // AllowCreateOnUpdate is false for nodes.
 func (nodeStrategy) AllowCreateOnUpdate() bool {
 	return false

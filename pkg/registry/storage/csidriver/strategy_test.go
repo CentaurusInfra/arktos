@@ -48,6 +48,9 @@ func TestCSIDriverStrategy(t *testing.T) {
 	if Strategy.NamespaceScoped() {
 		t.Errorf("CSIDriver must not be namespace scoped")
 	}
+	if Strategy.TenantScoped() {
+		t.Errorf("CSIDriver must not be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("CSIDriver should not allow create on update")
 	}

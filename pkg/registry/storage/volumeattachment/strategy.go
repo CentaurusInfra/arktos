@@ -47,6 +47,11 @@ func (volumeAttachmentStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is true as this resource need to be under a given tenant
+func (volumeAttachmentStrategy) TenantScoped() bool {
+	return true
+}
+
 // ResetBeforeCreate clears the Status field which is not allowed to be set by end users on creation.
 func (volumeAttachmentStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	var groupVersion schema.GroupVersion

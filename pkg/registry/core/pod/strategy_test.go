@@ -456,3 +456,12 @@ func TestPortForwardLocation(t *testing.T) {
 		}
 	}
 }
+
+func TestStrategy_Scope(t *testing.T) {
+	if !Strategy.NamespaceScoped() {
+		t.Error("Pod strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("Pod strategy must be tenant scoped")
+	}
+}

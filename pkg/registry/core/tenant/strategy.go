@@ -47,6 +47,11 @@ func (tenantStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is false as it is cluster-scoped
+func (tenantStrategy) TenantScoped() bool {
+	return false
+}
+
 // PrepareForCreate clears fields that are not allowed to be set by end users on creation.
 func (tenantStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	// on create, status is active
