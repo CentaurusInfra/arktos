@@ -69,6 +69,13 @@ func TestConvertDownwardAPIFieldLabel(t *testing.T) {
 			expectedLabel: "spec.nodeName",
 			expectedValue: "127.0.0.1",
 		},
+		{
+			version:       "v1",
+			label:         "metadata.hashkey",
+			value:         "10",
+			expectedLabel: "metadata.hashkey",
+			expectedValue: "10",
+		},
 	}
 	for _, tc := range testCases {
 		label, value, err := ConvertDownwardAPIFieldLabel(tc.version, tc.label, tc.value)

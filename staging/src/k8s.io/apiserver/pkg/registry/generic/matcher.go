@@ -17,6 +17,7 @@ limitations under the License.
 package generic
 
 import (
+	"strconv"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 )
@@ -26,17 +27,20 @@ func ObjectMetaFieldsSet(objectMeta *metav1.ObjectMeta, hasNamespaceField bool) 
 	if !hasNamespaceField {
 		return fields.Set{
 			"metadata.name": objectMeta.Name,
+			"metadata.hashkey": strconv.FormatInt(objectMeta.HashKey,10),
 		}
 	}
 	return fields.Set{
 		"metadata.name":      objectMeta.Name,
 		"metadata.namespace": objectMeta.Namespace,
+		"metadata.hashkey":   strconv.FormatInt(objectMeta.HashKey,10),
 	}
 }
 
 // AdObjectMetaField add fields that represent the ObjectMeta to source.
 func AddObjectMetaFieldsSet(source fields.Set, objectMeta *metav1.ObjectMeta, hasNamespaceField bool) fields.Set {
 	source["metadata.name"] = objectMeta.Name
+	source["metadata.hashkey"] = strconv.FormatInt(objectMeta.HashKey,10)
 	if hasNamespaceField {
 		source["metadata.namespace"] = objectMeta.Namespace
 	}
