@@ -577,10 +577,10 @@ func (n *NodeInfo) RemovePod(pod *v1.Pod) error {
 
 func calculateResource(pod *v1.Pod) (res Resource, non0CPU int64, non0Mem int64) {
 	resPtr := &res
-	for _, c := range pod.Spec.Containers {
-		resPtr.Add(c.Resources.Requests)
+	for _, w := range pod.Spec.Workloads() {
+		resPtr.Add(w.Resources.Requests)
 
-		non0CPUReq, non0MemReq := priorityutil.GetNonzeroRequests(&c.Resources.Requests)
+		non0CPUReq, non0MemReq := priorityutil.GetNonzeroRequests(&w.Resources.Requests)
 		non0CPU += non0CPUReq
 		non0Mem += non0MemReq
 		// No non-zero resources for GPUs or opaque resources.

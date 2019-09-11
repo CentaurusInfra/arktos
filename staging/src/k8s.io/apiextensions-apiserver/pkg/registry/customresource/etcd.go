@@ -358,6 +358,7 @@ func scaleFromCustomResource(cr *unstructured.Unstructured, specReplicasPath, st
 			Name:              cr.GetName(),
 			Namespace:         cr.GetNamespace(),
 			UID:               cr.GetUID(),
+			HashKey:           cr.GetHashKey(),
 			ResourceVersion:   cr.GetResourceVersion(),
 			CreationTimestamp: cr.GetCreationTimestamp(),
 		},

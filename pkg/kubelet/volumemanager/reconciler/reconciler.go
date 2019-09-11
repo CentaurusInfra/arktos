@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -457,9 +458,11 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 	}
 
 	// Create pod object
+	uid := types.UID(volume.podName)
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			UID: types.UID(volume.podName),
+			UID:     uid,
+			HashKey: fuzzer.GetHashOfUUID(uid),
 		},
 	}
 	mapperPlugin, err := rc.volumePluginMgr.FindMapperPluginByName(volume.pluginName)

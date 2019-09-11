@@ -18,6 +18,7 @@ package customresource
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/validate"
 
@@ -189,10 +190,12 @@ func objectMetaFieldsSet(objectMeta metav1.Object, namespaceScoped bool) fields.
 		return fields.Set{
 			"metadata.name":      objectMeta.GetName(),
 			"metadata.namespace": objectMeta.GetNamespace(),
+			"metadata.hashkey":   strconv.FormatInt(objectMeta.GetHashKey(), 10),
 		}
 	}
 	return fields.Set{
 		"metadata.name": objectMeta.GetName(),
+		"metadata.hashkey": strconv.FormatInt(objectMeta.GetHashKey(), 10),
 	}
 }
 

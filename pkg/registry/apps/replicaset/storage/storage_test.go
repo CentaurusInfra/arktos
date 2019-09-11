@@ -274,6 +274,7 @@ func TestScaleGet(t *testing.T) {
 			Name:              name,
 			Namespace:         metav1.NamespaceDefault,
 			UID:               rs.UID,
+			HashKey:           rs.HashKey,
 			ResourceVersion:   rs.ResourceVersion,
 			CreationTimestamp: rs.CreationTimestamp,
 		},

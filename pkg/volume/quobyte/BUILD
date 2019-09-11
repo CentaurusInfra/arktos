@@ -20,6 +20,7 @@ go_library(
         "//pkg/volume/util:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/resource:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/apis/meta/fuzzer:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",
         "//staging/src/k8s.io/cloud-provider/volume/helpers:go_default_library",

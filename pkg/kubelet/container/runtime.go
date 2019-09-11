@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/flowcontrol"
@@ -350,6 +351,19 @@ func (podStatus *PodStatus) GetRunningContainerStatuses() []*ContainerStatus {
 	return runningContainerStatuses
 }
 
+func (podStatus *PodStatus) DumpStatus() {
+	klog.V(6).Infof("dump pod status, pod name: %s, length of containerStatuses: %v, length of sandboxStatuses: %v",
+		podStatus.Name, len(podStatus.ContainerStatuses), len(podStatus.SandboxStatuses))
+	for _, containerStatus := range podStatus.ContainerStatuses {
+		klog.V(6).Infof("dump pod status, container name: %s, state: %v , status: %v",
+			containerStatus.Name, containerStatus.State, containerStatus)
+	}
+
+	for _, sandboxStatus := range podStatus.SandboxStatuses {
+		klog.V(6).Infof("dump pod status, sandbox name: %s, state: %v", sandboxStatus.Metadata.Name, sandboxStatus.State)
+	}
+}
+
 // Basic information about a container image.
 type Image struct {
 	// ID of the image.
@@ -579,9 +593,11 @@ func (p *Pod) FindSandboxByID(id ContainerID) *Container {
 
 // ToAPIPod converts Pod to v1.Pod. Note that if a field in v1.Pod has no
 // corresponding field in Pod, the field would not be populated.
+//TODO: support VM type
 func (p *Pod) ToAPIPod() *v1.Pod {
 	var pod v1.Pod
 	pod.UID = p.ID
+	pod.HashKey = fuzzer.GetHashOfUUID(p.ID)
 	pod.Name = p.Name
 	pod.Namespace = p.Namespace
 
