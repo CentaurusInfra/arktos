@@ -50,6 +50,10 @@ func (apiServerStrategy) NamespaceScoped() bool {
 	return false
 }
 
+func (apiServerStrategy) TenantScoped() bool {
+	return false
+}
+
 func (apiServerStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	apiservice := obj.(*apiregistration.APIService)
 	apiservice.Status = apiregistration.APIServiceStatus{}
@@ -94,8 +98,10 @@ type apiServerStatusStrategy struct {
 func NewStatusStrategy(typer runtime.ObjectTyper) rest.RESTUpdateStrategy {
 	return apiServerStatusStrategy{typer, names.SimpleNameGenerator}
 }
-
 func (apiServerStatusStrategy) NamespaceScoped() bool {
+	return false
+}
+func (apiServerStatusStrategy) TenantScoped() bool {
 	return false
 }
 

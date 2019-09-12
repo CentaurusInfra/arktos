@@ -69,6 +69,10 @@ func (fischerStrategy) NamespaceScoped() bool {
 	return false
 }
 
+func (fischerStrategy) TenantScoped() bool {
+	return false
+}
+
 func (fischerStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 }
 
