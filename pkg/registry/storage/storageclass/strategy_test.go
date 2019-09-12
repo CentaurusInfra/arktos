@@ -30,6 +30,9 @@ func TestStorageClassStrategy(t *testing.T) {
 	if Strategy.NamespaceScoped() {
 		t.Errorf("StorageClass must not be namespace scoped")
 	}
+	if Strategy.TenantScoped() {
+		t.Errorf("StorageClass must not be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("StorageClass should not allow create on update")
 	}

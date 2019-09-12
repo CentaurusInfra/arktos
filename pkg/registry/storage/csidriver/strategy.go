@@ -41,6 +41,11 @@ func (csiDriverStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is false as it is cluster-scoped
+func (csiDriverStrategy) TenantScoped() bool {
+	return false
+}
+
 // ResetBeforeCreate clears the Status field which is not allowed to be set by end users on creation.
 func (csiDriverStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 }

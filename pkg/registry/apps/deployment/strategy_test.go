@@ -247,3 +247,12 @@ func TestDeploymentDefaultGarbageCollectionPolicy(t *testing.T) {
 		}
 	}
 }
+
+func TestStrategy_Scope(t *testing.T) {
+	if !Strategy.NamespaceScoped() {
+		t.Error("Deployment strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("Deployment strategy must be tenant scoped")
+	}
+}

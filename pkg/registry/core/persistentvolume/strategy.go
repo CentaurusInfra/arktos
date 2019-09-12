@@ -48,6 +48,11 @@ func (persistentvolumeStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is true as this resource need to be under a given tenant
+func (persistentvolumeStrategy) TenantScoped() bool {
+	return true
+}
+
 // ResetBeforeCreate clears the Status field which is not allowed to be set by end users on creation.
 func (persistentvolumeStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	pv := obj.(*api.PersistentVolume)

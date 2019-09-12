@@ -112,3 +112,12 @@ func TestSelectableFieldLabelConversions(t *testing.T) {
 		nil,
 	)
 }
+
+func TestStrategy_Scope(t *testing.T) {
+	if !Strategy.NamespaceScoped() {
+		t.Error("Secret strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("Secret strategy must be tenant scoped")
+	}
+}

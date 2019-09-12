@@ -29,6 +29,9 @@ func TestResourceQuotaStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("ResourceQuota should be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("ResourceQuota should be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("ResourceQuota should not allow create on update")
 	}

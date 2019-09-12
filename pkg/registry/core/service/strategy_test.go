@@ -217,6 +217,9 @@ func TestServiceStatusStrategy(t *testing.T) {
 	if !StatusStrategy.NamespaceScoped() {
 		t.Errorf("Service must be namespace scoped")
 	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("Service must be tenant scoped")
+	}
 	oldService := makeValidService()
 	newService := makeValidService()
 	oldService.ResourceVersion = "4"

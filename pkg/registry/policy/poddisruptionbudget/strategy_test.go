@@ -30,6 +30,9 @@ func TestPodDisruptionBudgetStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("PodDisruptionBudget must be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("PodDisruptionBudget must be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("PodDisruptionBudget should not allow create on update")
 	}
@@ -101,6 +104,9 @@ func TestPodDisruptionBudgetStatusStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !StatusStrategy.NamespaceScoped() {
 		t.Errorf("PodDisruptionBudgetStatus must be namespace scoped")
+	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("PodDisruptionBudgetStatus must be tenant scoped")
 	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("PodDisruptionBudgetStatus should not allow create on update")

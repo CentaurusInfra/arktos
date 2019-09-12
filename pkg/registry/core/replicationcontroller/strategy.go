@@ -73,6 +73,11 @@ func (rcStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (rcStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a replication controller before creation.
 func (rcStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	controller := obj.(*api.ReplicationController)

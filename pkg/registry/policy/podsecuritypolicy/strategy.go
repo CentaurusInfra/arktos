@@ -47,6 +47,11 @@ func (strategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is true as this resource need to be under a given tenant
+func (strategy) TenantScoped() bool {
+	return true
+}
+
 func (strategy) AllowCreateOnUpdate() bool {
 	return false
 }

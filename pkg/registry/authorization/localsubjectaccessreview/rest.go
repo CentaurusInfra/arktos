@@ -43,6 +43,10 @@ func (r *REST) NamespaceScoped() bool {
 	return true
 }
 
+func (r *REST) TenantScoped() bool {
+	return true
+}
+
 func (r *REST) New() runtime.Object {
 	return &authorizationapi.LocalSubjectAccessReview{}
 }

@@ -33,6 +33,9 @@ func TestTenantStrategy(t *testing.T) {
 	if Strategy.NamespaceScoped() {
 		t.Errorf("Tenants should not be namespace scoped")
 	}
+	if Strategy.TenantScoped() {
+		t.Errorf("Tenants should not be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("Tenants should not allow create on update")
 	}
@@ -73,6 +76,9 @@ func TestTenantStatusStrategy(t *testing.T) {
 	if StatusStrategy.NamespaceScoped() {
 		t.Errorf("Tenants should not be namespace scoped")
 	}
+	if StatusStrategy.TenantScoped() {
+		t.Errorf("Tenants should not be tenant scoped")
+	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("Tenants should not allow create on update")
 	}
@@ -106,6 +112,9 @@ func TestTenantFinalizeStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if FinalizeStrategy.NamespaceScoped() {
 		t.Errorf("Tenants should not be namespace scoped")
+	}
+	if FinalizeStrategy.TenantScoped() {
+		t.Errorf("Tenants should not be tenant scoped")
 	}
 	if FinalizeStrategy.AllowCreateOnUpdate() {
 		t.Errorf("Tenants should not allow create on update")

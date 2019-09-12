@@ -49,6 +49,11 @@ func (strategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (strategy) TenantScoped() bool {
+	return true
+}
+
 // AllowCreateOnUpdate is true for Roles.
 func (strategy) AllowCreateOnUpdate() bool {
 	return true

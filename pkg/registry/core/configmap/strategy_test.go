@@ -29,6 +29,9 @@ func TestConfigMapStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("ConfigMap must be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("ConfigMap must be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("ConfigMap should not allow create on update")
 	}

@@ -48,6 +48,11 @@ func (strategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (strategy) TenantScoped() bool {
+	return true
+}
+
 func (strategy) Canonicalize(obj runtime.Object) {
 }
 

@@ -42,6 +42,11 @@ func (priorityClassStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is true as this resource need to be under a given tenant
+func (priorityClassStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a PriorityClass before creation.
 func (priorityClassStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	pc := obj.(*scheduling.PriorityClass)

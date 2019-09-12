@@ -33,6 +33,9 @@ func TestNamespaceStrategy(t *testing.T) {
 	if Strategy.NamespaceScoped() {
 		t.Errorf("Namespaces should not be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("Namespaces should be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("Namespaces should not allow create on update")
 	}
@@ -73,6 +76,9 @@ func TestNamespaceStatusStrategy(t *testing.T) {
 	if StatusStrategy.NamespaceScoped() {
 		t.Errorf("Namespaces should not be namespace scoped")
 	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("Namespaces should be tenant scoped")
+	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("Namespaces should not allow create on update")
 	}
@@ -106,6 +112,9 @@ func TestNamespaceFinalizeStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if FinalizeStrategy.NamespaceScoped() {
 		t.Errorf("Namespaces should not be namespace scoped")
+	}
+	if !FinalizeStrategy.TenantScoped() {
+		t.Errorf("Namespaces should be tenant scoped")
 	}
 	if FinalizeStrategy.AllowCreateOnUpdate() {
 		t.Errorf("Namespaces should not allow create on update")

@@ -34,3 +34,12 @@ func TestSelectableFieldLabelConversions(t *testing.T) {
 		map[string]string{"name": "metadata.name"},
 	)
 }
+
+func TestStrategyScope(t *testing.T) {
+	if Strategy.NamespaceScoped() {
+		t.Error("Persistentvolume strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("Persistentvolume strategy must be tenant scoped")
+	}
+}

@@ -26,9 +26,12 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
-func TestStrategy_NamespaceScoped(t *testing.T) {
+func TestStrategy_Scope(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Error("ControllerRevision strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("ControllerRevision strategy must be tenant scoped")
 	}
 }
 
