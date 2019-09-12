@@ -30,7 +30,7 @@ import (
 // This test verifies that the legacy urls before the introduction of multi-tenancy still work.
 // Validations are added to check the tenant value is set as expected for the legacy urls.
 // This test should be removed when we no longer support the legacy urls..
-func TestLegacyGetAPIRequestInfo(t *testing.T) {
+func TestGetAPIRequestInfo(t *testing.T) {
 	namespaceAll := metav1.NamespaceAll
 	successCases := []struct {
 		method              string
@@ -160,7 +160,7 @@ func TestLegacyGetAPIRequestInfo(t *testing.T) {
 }
 
 // Here we test the multi-tenancy aware api urls.
-func TestGetAPIRequestInfo(t *testing.T) {
+func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 	namespaceAll := metav1.NamespaceAll
 	tenantAll := metav1.TenantAll
 	successCases := []struct {
@@ -212,6 +212,8 @@ func TestGetAPIRequestInfo(t *testing.T) {
 		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo/proxy/subpath", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "proxy", "foo", []string{"pods", "foo", "proxy", "subpath"}},
 		{"PUT", "/api/v1/tenants/fake_te/namespaces/fake_ns/finalize", "update", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "finalize", "fake_ns", []string{"namespaces", "fake_ns", "finalize"}},
 		{"PUT", "/api/v1/tenants/fake_te/namespaces/fake_ns/status", "update", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "status", "fake_ns", []string{"namespaces", "fake_ns", "status"}},
+		{"PUT", "/api/v1/tenants/fake_te/finalize", "update", "api", "", "v1", "fake_te", "", "tenants", "finalize", "fake_te", []string{"tenants", "fake_te", "finalize"}},
+		{"PUT", "/api/v1/tenants/fake_te/status", "update", "api", "", "v1", "fake_te", "", "tenants", "status", "fake_te", []string{"tenants", "fake_te", "status"}},
 
 		// verb identification
 		{"PATCH", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "patch", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},

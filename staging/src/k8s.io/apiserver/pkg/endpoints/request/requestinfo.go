@@ -199,9 +199,9 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 		if len(currentParts) > 1 {
 			requestInfo.Tenant = currentParts[1]
 
-			// There should namespace name or resource kind after tenant name,
+			// There should be namespace name or resource kind after tenant name,
 			// move currentParts to include it as a resource in its own right
-			if len(currentParts) > 2 {
+			if len(currentParts) > 2 && !namespaceSubresources.Has(currentParts[2]) {
 				currentParts = currentParts[2:]
 			}
 		}
