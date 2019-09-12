@@ -357,6 +357,10 @@ func (storage *SimpleRESTStorage) NamespaceScoped() bool {
 	return true
 }
 
+func (storage *SimpleRESTStorage) TenantScoped() bool {
+	return true
+}
+
 func (storage *SimpleRESTStorage) Export(ctx context.Context, name string, opts metav1.ExportOptions) (runtime.Object, error) {
 	obj, err := storage.Get(ctx, name, &metav1.GetOptions{})
 	if err != nil {
@@ -622,6 +626,10 @@ func (r *GetWithOptionsRootRESTStorage) NamespaceScoped() bool {
 	return false
 }
 
+func (r *GetWithOptionsRootRESTStorage) TenantScoped() bool {
+	return false
+}
+
 func (r *GetWithOptionsRootRESTStorage) Get(ctx context.Context, name string, options runtime.Object) (runtime.Object, error) {
 	if _, ok := options.(*genericapitesting.SimpleGetOptions); !ok {
 		return nil, fmt.Errorf("Unexpected options object: %#v", options)
@@ -809,6 +817,10 @@ func TestNotFound(t *testing.T) {
 type UnimplementedRESTStorage struct{}
 
 func (UnimplementedRESTStorage) NamespaceScoped() bool {
+	return true
+}
+
+func (UnimplementedRESTStorage) TenantScoped() bool {
 	return true
 }
 
