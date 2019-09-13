@@ -23,6 +23,27 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 )
 
+// TestTenantContext validates that a tenant can be get/set on a context object
+func TestTenantContext(t *testing.T) {
+	ctx := NewDefaultContext()
+	result, ok := TenantFrom(ctx)
+	if !ok {
+		t.Fatalf("Error getting tenant")
+	}
+	if metav1.TenantDefault != result {
+		t.Fatalf("Expected: %s, Actual: %s", metav1.TenantDefault, result)
+	}
+
+	ctx = NewContext()
+	result, ok = TenantFrom(ctx)
+	if !ok {
+		t.Fatalf("Should be ok as we allow emtpy tenant for backward compability.")
+	}
+	if result != metav1.TenantDefault {
+		t.Fatalf("Expected: %s, Actual: %s", metav1.TenantDefault, result)
+	}
+}
+
 // TestNamespaceContext validates that a namespace can be get/set on a context object
 func TestNamespaceContext(t *testing.T) {
 	ctx := NewDefaultContext()
