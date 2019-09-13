@@ -91,9 +91,11 @@ type testRESTStrategy struct {
 	namespaceScoped          bool
 	allowCreateOnUpdate      bool
 	allowUnconditionalUpdate bool
+	tenantScoped             bool
 }
 
 func (t *testRESTStrategy) NamespaceScoped() bool          { return t.namespaceScoped }
+func (t *testRESTStrategy) TenantScoped() bool             { return t.tenantScoped }
 func (t *testRESTStrategy) AllowCreateOnUpdate() bool      { return t.allowCreateOnUpdate }
 func (t *testRESTStrategy) AllowUnconditionalUpdate() bool { return t.allowUnconditionalUpdate }
 
@@ -307,7 +309,7 @@ func TestStoreCreate(t *testing.T) {
 	destroyFunc, registry := NewTestGenericStoreRegistry(t)
 	defer destroyFunc()
 	// re-define delete strategy to have graceful delete capability
-	defaultDeleteStrategy := testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true}
+	defaultDeleteStrategy := testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true, true}
 	registry.DeleteStrategy = testGracefulStrategy{defaultDeleteStrategy}
 	registry.Decorator = func(obj runtime.Object) error {
 		pod := obj.(*example.Pod)
@@ -708,7 +710,7 @@ func TestGracefulStoreCanDeleteIfExistingGracePeriodZero(t *testing.T) {
 	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "test")
 	destroyFunc, registry := NewTestGenericStoreRegistry(t)
 	registry.EnableGarbageCollection = false
-	defaultDeleteStrategy := testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true}
+	defaultDeleteStrategy := testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true, true}
 	registry.DeleteStrategy = testGracefulStrategy{defaultDeleteStrategy}
 	defer destroyFunc()
 
@@ -733,7 +735,7 @@ func TestGracefulStoreHandleFinalizers(t *testing.T) {
 
 	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), "test")
 	destroyFunc, registry := NewTestGenericStoreRegistry(t)
-	defaultDeleteStrategy := testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true}
+	defaultDeleteStrategy := testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true, true}
 	registry.DeleteStrategy = testGracefulStrategy{defaultDeleteStrategy}
 	defer destroyFunc()
 
@@ -909,7 +911,7 @@ func TestStoreDeleteWithOrphanDependents(t *testing.T) {
 	nilOrphanOptions := &metav1.DeleteOptions{}
 
 	// defaultDeleteStrategy doesn't implement rest.GarbageCollectionDeleteStrategy.
-	defaultDeleteStrategy := &testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true}
+	defaultDeleteStrategy := &testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true, true}
 	// orphanDeleteStrategy indicates the default garbage collection policy is
 	// to orphan dependentes.
 	orphanDeleteStrategy := &testOrphanDeleteStrategy{defaultDeleteStrategy}
@@ -1152,7 +1154,7 @@ func TestStoreDeletionPropagation(t *testing.T) {
 	initialGeneration := int64(1)
 
 	// defaultDeleteStrategy doesn't implement rest.GarbageCollectionDeleteStrategy.
-	defaultDeleteStrategy := &testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true}
+	defaultDeleteStrategy := &testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true, true}
 	// orphanDeleteStrategy indicates the default garbage collection policy is
 	// to orphan dependentes.
 	orphanDeleteStrategy := &testOrphanDeleteStrategy{defaultDeleteStrategy}
@@ -1538,7 +1540,7 @@ func TestStoreWatch(t *testing.T) {
 func newTestGenericStoreRegistry(t *testing.T, scheme *runtime.Scheme, hasCacheEnabled bool) (factory.DestroyFunc, *Store) {
 	podPrefix := "/pods"
 	server, sc := etcdtesting.NewUnsecuredEtcd3TestClientServer(t)
-	strategy := &testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true}
+	strategy := &testRESTStrategy{scheme, names.SimpleNameGenerator, true, false, true, true}
 
 	sc.Codec = apitesting.TestStorageCodec(codecs, examplev1.SchemeGroupVersion)
 	s, dFunc, err := factory.Create(*sc)

@@ -44,6 +44,8 @@ type RESTCreateStrategy interface {
 
 	// NamespaceScoped returns true if the object must be within a namespace.
 	NamespaceScoped() bool
+	// TenantScoped returns true if the object must be within a tenant.
+	TenantScoped() bool
 	// PrepareForCreate is invoked on create before validation to normalize
 	// the object.  For example: remove fields that are not to be persisted,
 	// sort order-insensitive list fields, etc.  This should not remove fields
