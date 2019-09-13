@@ -1092,8 +1092,15 @@ func schema_pkg_apis_meta_v1_APIResource(ref common.ReferenceCallback) common.Op
 							Format:      "",
 						},
 					},
+					"tenanted": {
+						SchemaProps: spec.SchemaProps{
+							Description: "tenanted indicates if a resource is tenanted or not.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"name", "singularName", "namespaced", "kind", "verbs"},
+				Required: []string{"name", "singularName", "namespaced", "kind", "verbs", "tenanted"},
 			},
 		},
 	}
