@@ -180,8 +180,8 @@ Here is the sequence flow in the case of Alioth VPC service:
 
 As you can see most parts of the flow are same, including pod watching, calling VPC API, etc. The difference is mainly about how Alioth updates ports and how Alioth CNI plugin works:
 
-* Alioth control plane will update transit switches to ensure packets are correctly forwarded, and also notify host agent to create a new endpoint.
-* Alioth CNI Agent doesn't create tap, linux bridge or veth devices which are required in the Neutron case. Alioth CNI plugin only waits until a virtual network interface with a given name to appear.
+* Alioth CNI plugin identifies the virtual interface (a veth vtep inside the VPC specific netns) that Alioth control plane has provisioned, and move the device to the desired CNI netns, restores its network related setting like ip address, gateway, etc. This is quite different from the Neutron case where CNI plugin has to create quite some devices like tap/bridge/veth pair, Alioth CNI plugin does not create new device, instead it moves the identified device to the target netns, ensuring proper device configurations after the netns move.
+* Alioth control plane will update transit switches to ensure packets are correctly forwarded, and also notify host agent to create the new endpoint, which CNI plugin is expecting.
 
 The section of Alioth CNI plugin also describes the interaction.
 
@@ -238,7 +238,6 @@ Our VM runtime is evolved from the Virtlet project. It currently creates a bridg
 The following changes are required:
 
 * Pass the Nic configurations to CNI plugin through its **Extra Arguments** field.
-* Use the TAP device created by the CNI plugin. 
 
 ### Neutron CNI Plugin
 
@@ -263,14 +262,13 @@ The below diagram shows the ownership of above devices:
 
 ### Alioth CNI Plugin
 
-Similar to the Neutron CNI plugin, Alioth CNI plugin also needs to interact with Alioth data plane components on the host to initialize and destroy a port.
-
 Alioth has a much-simplified data plane components on each computing host. It basically creates a veth pair for each port, attaches its eBPF program to one end of the pair, and leaves the other end of the pair to pods. The other end of the veth pair will be listed in the host namespace as a virtual interface.
 
 The current agreement between Alkaid and Alioth is:
 
-* The virtual interface will follow a naming rule. For example, "eth{portID}". The detailed portID format hasn't been decided yet. But it needs to be unique at least on its own host machine.
-* Once the virtual interface (one end of the veth pair created by Alioth agent) appears, it means the preparation work on Alioth side has been done and the port is ready for Alkaid to use.
+* The virtual interface will follow a naming rule. For example, "veth{portID}". The detailed portID format hasn't been decided yet. But it needs to be unique at least on its own host machine.
+* Alioth agent puts the virtual interface inside of VPC specific netns. The name of VPC specific netns should be "vpc{full-vpc-id}"
+* Once the virtual interface (one end of the veth pair created by Alioth agent) appears inside of the VPC netns, it means the preparation work on Alioth side has been done and the port is ready for Alkaid to use.
 
 Therefore, the Alioth CNI plugin only needs to query and wait until a virtual interface with the expected name appears in the host namespace.
 
