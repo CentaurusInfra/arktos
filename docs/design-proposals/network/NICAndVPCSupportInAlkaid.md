@@ -35,7 +35,7 @@ The below diagram shows the relationship among these services:
 Alkaid supports different VPC implementations as long as they provide an API to manage the lifecycle of port resources. For now we support two different implementations:
 
 * OpenStack Neutron
-* Alkaid Networking (Alioth)
+* Alkaid Networking (Alcor)
 
 Different VPC implementation has different data plane components on computing hosts, and this requires different operations to attach a workload to the network. Alkaid leverages CNI plugin mechanism to support these different operations.
 
@@ -172,18 +172,18 @@ Flow explanations:
 * After the Neutron CNI plugin receives the Neutron notification that all flow update is done, it returns and the TAP device is ready for a VM to use.
 * The VM runtime performs some necessary wiring work to connect the TAP device to the QEMU VM.
 
-### Integration with Alioth
+### Integration with Alcor
 
-Here is the sequence flow in the case of Alioth VPC service:
+Here is the sequence flow in the case of Alcor VPC service:
 
-![alt text](NICandVPC-Sequence-Alioth.png "The creation flow of a VM pod with Alioth VPC")
+![alt text](NICandVPC-Sequence-Alcor.png "The creation flow of a VM pod with Alcor VPC")
 
-As you can see most parts of the flow are same, including pod watching, calling VPC API, etc. The difference is mainly about how Alioth updates ports and how Alioth CNI plugin works:
+As you can see most parts of the flow are same, including pod watching, calling VPC API, etc. The difference is mainly about how Alcor updates ports and how Alcor CNI plugin works:
 
-* Alioth CNI plugin identifies the virtual interface (a veth vtep inside the VPC specific netns) that Alioth control plane has provisioned, and move the device to the desired CNI netns, restores its network related setting like ip address, gateway, etc. This is quite different from the Neutron case where CNI plugin has to create quite some devices like tap/bridge/veth pair, Alioth CNI plugin does not create new device, instead it moves the identified device to the target netns, ensuring proper device configurations after the netns move.
-* Alioth control plane will update transit switches to ensure packets are correctly forwarded, and also notify host agent to create the new endpoint, which CNI plugin is expecting.
+* Alcor CNI plugin identifies the virtual interface (a veth vtep inside the VPC specific netns) that Alcor control plane has provisioned, and move the virtual interface to the desired CNI netns, restores its network related setting like ip address, mac address, gateway, etc. This is quite different from the Neutron case where CNI plugin has to create quite many devices like tap/bridge/veth pair, Alcor CNI plugin does not create new device, instead it moves the identified device to the target netns, ensuring proper device configurations after the netns move.
+* Alcor control plane will update Mizar dataplane to ensure packets are correctly forwarded, and also notify Alcor Control Agent to create the new endpoint, which CNI plugin is expecting.
 
-The section of Alioth CNI plugin also describes the interaction.
+The section of Alcor CNI plugin also describes the interaction.
 
 ## Code Changes
 
@@ -260,17 +260,17 @@ The below diagram shows the ownership of above devices:
 
 ![alt text](NICandVPC-NeutronIntegration.png "The Neutron Integration")
 
-### Alioth CNI Plugin
+### Alcor CNI Plugin
 
-Alioth has a much-simplified data plane components on each computing host. It basically creates a veth pair for each port, attaches its eBPF program to one end of the pair, and leaves the other end of the pair to pods. The other end of the veth pair will be listed in the host namespace as a virtual interface.
+Alcor has a much-simplified data plane components on each computing host. It basically creates a veth pair for each port, attaches its eBPF program to one end of the pair, and leaves the other end of the pair to pods. The other end of the veth pair will be listed in the host namespace as a virtual interface.
 
-The current agreement between Alkaid and Alioth is:
+The current agreement between Alkaid and Alcor is:
 
-* The virtual interface will follow a naming rule. For example, "veth{portID}". The detailed portID format hasn't been decided yet. But it needs to be unique at least on its own host machine.
-* Alioth agent puts the virtual interface inside of VPC specific netns. The name of VPC specific netns should be "vpc{full-vpc-id}"
-* Once the virtual interface (one end of the veth pair created by Alioth agent) appears inside of the VPC netns, it means the preparation work on Alioth side has been done and the port is ready for Alkaid to use.
+* The virtual interface will follow a naming rule. For example, "veth{11-char-prefix-of-portID}".
+* Alcor agent puts the virtual interface inside of VPC specific netns. The name of VPC specific netns should be "vpc-ns{full-vpc-id}"
+* Once the virtual interface (one end of the veth pair created by Alcor agent) appears inside of the VPC netns, it means the preparation work on Alcor side has been done and the port is ready for Alkaid to use.
 
-Therefore, the Alioth CNI plugin only needs to query and wait until a virtual interface with the expected name appears in the host namespace.
+Therefore, the Alcor CNI plugin only needs to query and wait until a virtual interface with the expected name appears in the host namespace.
 
 ## Appendix: Design Decisions
 
