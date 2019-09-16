@@ -45,7 +45,20 @@ func TestParseTags(t *testing.T) {
 		},
 		"genclient:nonNamespaced": {
 			lines:      []string{`+genclient`, `+genclient:nonNamespaced`},
-			expectTags: Tags{GenerateClient: true, NonNamespaced: true},
+			expectTags: Tags{GenerateClient: true, NonNamespaced: true, NonTenanted: false},
+		},
+		"genclient:nonTenanted & nonNamespaced": {
+			lines:      []string{`+genclient`, `+genclient:nonNamespaced`, `+genclient:nonTenanted`},
+			expectTags: Tags{GenerateClient: true, NonNamespaced: true, NonTenanted: true},
+		},
+		"genclient:nonTenantedButNamespaced": {
+			// a resource cannot be namespaced but non-tenanted
+			lines:       []string{`+genclient`, `+genclient:nonTenanted`},
+			expectError: true,
+		},
+		"genclient:Namespaced and tenated": {
+			lines:      []string{`+genclient`},
+			expectTags: Tags{GenerateClient: true, NonNamespaced: false, NonTenanted: false},
 		},
 		"genclient:noVerbs": {
 			lines:      []string{`+genclient`, `+genclient:noVerbs`},
