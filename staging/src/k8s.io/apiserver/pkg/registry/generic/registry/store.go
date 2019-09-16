@@ -268,6 +268,18 @@ func (e *Store) NamespaceScoped() bool {
 	panic("programmer error: no CRUD for resource, you're crazy, override NamespaceScoped too")
 }
 
+// TenantScoped indicates whether the resource is tenanted
+func (e *Store) TenantScoped() bool {
+	if e.CreateStrategy != nil {
+		return e.CreateStrategy.TenantScoped()
+	}
+	if e.UpdateStrategy != nil {
+		return e.UpdateStrategy.TenantScoped()
+	}
+
+	panic("programmer error: no CRUD for resource, you're crazy, override TenantScoped too")
+}
+
 // GetCreateStrategy implements GenericStore.
 func (e *Store) GetCreateStrategy() rest.RESTCreateStrategy {
 	return e.CreateStrategy

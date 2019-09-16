@@ -102,6 +102,9 @@ message APIResource {
   // This field will remain optional even if it graduates.
   // +optional
   optional string storageVersionHash = 10;
+
+  // tenanted indicates if a resource is tenanted or not.
+  optional bool tenanted = 11;
 }
 
 // APIResourceList is a list of APIResource, it is used to expose the name of the

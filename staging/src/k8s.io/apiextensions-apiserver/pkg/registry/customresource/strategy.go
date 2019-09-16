@@ -51,6 +51,7 @@ type customResourceStrategy struct {
 	schemas         map[string]*structuralschema.Structural
 	status          *apiextensions.CustomResourceSubresourceStatus
 	scale           *apiextensions.CustomResourceSubresourceScale
+	tenantScoped    bool
 }
 
 func NewStrategy(typer runtime.ObjectTyper, namespaceScoped bool, kind schema.GroupVersionKind, schemaValidator, statusSchemaValidator *validate.SchemaValidator, schemas map[string]*structuralschema.Structural, status *apiextensions.CustomResourceSubresourceStatus, scale *apiextensions.CustomResourceSubresourceScale) customResourceStrategy {
@@ -72,6 +73,10 @@ func NewStrategy(typer runtime.ObjectTyper, namespaceScoped bool, kind schema.Gr
 
 func (a customResourceStrategy) NamespaceScoped() bool {
 	return a.namespaceScoped
+}
+
+func (a customResourceStrategy) TenantScoped() bool {
+	return a.tenantScoped
 }
 
 // PrepareForCreate clears the status of a CustomResource before creation.
@@ -194,7 +199,7 @@ func objectMetaFieldsSet(objectMeta metav1.Object, namespaceScoped bool) fields.
 		}
 	}
 	return fields.Set{
-		"metadata.name": objectMeta.GetName(),
+		"metadata.name":    objectMeta.GetName(),
 		"metadata.hashkey": strconv.FormatInt(objectMeta.GetHashKey(), 10),
 	}
 }

@@ -133,6 +133,10 @@ func (rs *REST) NamespaceScoped() bool {
 	return rs.services.NamespaceScoped()
 }
 
+func (rs *REST) TenantScoped() bool {
+	return rs.services.TenantScoped()
+}
+
 func (rs *REST) New() runtime.Object {
 	return rs.services.New()
 }
