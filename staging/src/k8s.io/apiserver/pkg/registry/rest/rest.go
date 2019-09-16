@@ -63,6 +63,8 @@ type Storage interface {
 type Scoper interface {
 	// NamespaceScoped returns true if the storage is namespaced
 	NamespaceScoped() bool
+	// TenantScoped returns true if the storage is tenanted
+	TenantScoped() bool
 }
 
 // KindProvider specifies a different kind for its API than for its internal storage.  This is necessary for external

@@ -92,6 +92,10 @@ func (r *REST) NamespaceScoped() bool {
 	return r.store.NamespaceScoped()
 }
 
+func (r *REST) TenantScoped() bool {
+	return r.store.TenantScoped()
+}
+
 func (r *REST) New() runtime.Object {
 	return r.store.New()
 }
