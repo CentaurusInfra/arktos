@@ -25,6 +25,7 @@ import (
 // +resourceName=nodes
 // +genclient:readonly
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // resource usage metrics of a node.

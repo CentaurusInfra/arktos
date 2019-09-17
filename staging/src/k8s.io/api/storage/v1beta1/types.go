@@ -23,6 +23,7 @@ import (
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // StorageClass describes the parameters for a class of storage for
@@ -219,6 +220,7 @@ type VolumeError struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CSIDriver captures information about a Container Storage Interface (CSI)
@@ -297,6 +299,7 @@ type CSIDriverSpec struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CSINode holds information about all CSI drivers installed on a node.

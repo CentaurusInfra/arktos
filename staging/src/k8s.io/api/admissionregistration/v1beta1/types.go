@@ -112,6 +112,7 @@ const (
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ValidatingWebhookConfiguration describes the configuration of and admission webhook that accept or reject and object without changing it.
@@ -142,6 +143,7 @@ type ValidatingWebhookConfigurationList struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // MutatingWebhookConfiguration describes the configuration of and admission webhook that accept or reject and may change the object.
