@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/selection"
@@ -173,6 +174,228 @@ func (t *notHasTerm) DeepCopySelector() Selector {
 	*out = *t
 	return out
 }
+
+
+type lessTerm struct {
+	field, value string
+}
+
+func (t *lessTerm) Matches(ls Fields) bool {
+	lvalue, err := strconv.ParseInt(ls.Get(t.field), 10, 64)
+	if err == nil {
+		rvalue, err := strconv.ParseInt(t.value, 10, 64)
+		if err == nil {
+			return lvalue < rvalue
+		}
+	}
+	return ls.Get(t.field) < t.value
+}
+
+func (t *lessTerm) Empty() bool {
+	return false
+}
+
+func (t *lessTerm) RequiresExactMatch(field string) (value string, found bool) {
+	return "", false
+}
+
+func (t *lessTerm) Transform(fn TransformFunc) (Selector, error) {
+	field, value, err := fn(t.field, t.value)
+	if err != nil {
+		return nil, err
+	}
+	if len(field) == 0 && len(value) == 0 {
+		return Everything(), nil
+	}
+	return &lessTerm{field, value}, nil
+}
+
+func (t *lessTerm) Requirements() Requirements {
+	return []Requirement{{
+		Field:    t.field,
+		Operator: selection.LessThan,
+		Value:    t.value,
+	}}
+}
+
+func (t *lessTerm) String() string {
+	return fmt.Sprintf("%v<%v", t.field, EscapeValue(t.value))
+}
+
+func (t *lessTerm) DeepCopySelector() Selector {
+	if t == nil {
+		return nil
+	}
+	out := new(lessTerm)
+	*out = *t
+	return out
+}
+
+type lessEqualTerm struct {
+	field, value string
+}
+
+func (t *lessEqualTerm) Matches(ls Fields) bool {
+	lvalue, err := strconv.ParseInt(ls.Get(t.field), 10, 64)
+	if err == nil {
+		rvalue, err := strconv.ParseInt(t.value, 10, 64)
+		if err == nil {
+			return lvalue <= rvalue
+		}
+	}
+	return ls.Get(t.field) <= t.value
+}
+
+func (t *lessEqualTerm) Empty() bool {
+	return false
+}
+
+func (t *lessEqualTerm) RequiresExactMatch(field string) (value string, found bool) {
+	return "", false
+}
+
+func (t *lessEqualTerm) Transform(fn TransformFunc) (Selector, error) {
+	field, value, err := fn(t.field, t.value)
+	if err != nil {
+		return nil, err
+	}
+	if len(field) == 0 && len(value) == 0 {
+		return Everything(), nil
+	}
+	return &lessEqualTerm{field, value}, nil
+}
+
+func (t *lessEqualTerm) Requirements() Requirements {
+	return []Requirement{{
+		Field:    t.field,
+		Operator: selection.LessThanEqual,
+		Value:    t.value,
+	}}
+}
+
+func (t *lessEqualTerm) String() string {
+	return fmt.Sprintf("%v<=%v", t.field, EscapeValue(t.value))
+}
+
+func (t *lessEqualTerm) DeepCopySelector() Selector {
+	if t == nil {
+		return nil
+	}
+	out := new(lessEqualTerm)
+	*out = *t
+	return out
+}
+
+type greaterTerm struct {
+	field, value string
+}
+
+func (t *greaterTerm) Matches(ls Fields) bool {
+	lvalue, err := strconv.ParseInt(ls.Get(t.field), 10, 64)
+	if err == nil {
+		rvalue, err := strconv.ParseInt(t.value, 10, 64)
+		if err == nil {
+			return lvalue > rvalue
+		}
+	}
+	return ls.Get(t.field) > t.value
+}
+
+func (t *greaterTerm) Empty() bool {
+	return false
+}
+
+func (t *greaterTerm) RequiresExactMatch(field string) (value string, found bool) {
+	return "", false
+}
+
+func (t *greaterTerm) Transform(fn TransformFunc) (Selector, error) {
+	field, value, err := fn(t.field, t.value)
+	if err != nil {
+		return nil, err
+	}
+	if len(field) == 0 && len(value) == 0 {
+		return Everything(), nil
+	}
+	return &greaterTerm{field, value}, nil
+}
+
+func (t *greaterTerm) Requirements() Requirements {
+	return []Requirement{{
+		Field:    t.field,
+		Operator: selection.GreaterThan,
+		Value:    t.value,
+	}}
+}
+
+func (t *greaterTerm) String() string {
+	return fmt.Sprintf("%v>%v", t.field, EscapeValue(t.value))
+}
+
+func (t *greaterTerm) DeepCopySelector() Selector {
+	if t == nil {
+		return nil
+	}
+	out := new(greaterTerm)
+	*out = *t
+	return out
+}
+
+type greaterEqualTerm struct {
+	field, value string
+}
+
+func (t *greaterEqualTerm) Matches(ls Fields) bool {
+	lvalue, err := strconv.ParseInt(ls.Get(t.field), 10, 64)
+	if err == nil {
+		rvalue, err := strconv.ParseInt(t.value, 10, 64)
+		if err == nil {
+			return lvalue >= rvalue
+		}
+	}
+	return ls.Get(t.field) >= t.value
+}
+
+func (t *greaterEqualTerm) Empty() bool {
+	return false
+}
+
+func (t *greaterEqualTerm) RequiresExactMatch(field string) (value string, found bool) {
+	return "", false
+}
+
+func (t *greaterEqualTerm) Transform(fn TransformFunc) (Selector, error) {
+	field, value, err := fn(t.field, t.value)
+	if err != nil {
+		return nil, err
+	}
+	if len(field) == 0 && len(value) == 0 {
+		return Everything(), nil
+	}
+	return &greaterEqualTerm{field, value}, nil
+}
+
+func (t *greaterEqualTerm) Requirements() Requirements {
+	return []Requirement{{
+		Field:    t.field,
+		Operator: selection.GreaterThanEqual,
+		Value:    t.value,
+	}}
+}
+
+func (t *greaterEqualTerm) String() string {
+	return fmt.Sprintf("%v>=%v", t.field, EscapeValue(t.value))
+}
+
+func (t *greaterEqualTerm) DeepCopySelector() Selector {
+	if t == nil {
+		return nil
+	}
+	out := new(greaterEqualTerm)
+	*out = *t
+	return out
+}
+
 
 type andTerm []Selector
 
@@ -403,12 +626,16 @@ const (
 	notEqualOperator    = "!="
 	doubleEqualOperator = "=="
 	equalOperator       = "="
+	lessThanOperator    = "=lt:"
+	greaterThanOperator = "=gt:"
+	lessThanEqualOperator = "=lte:"
+	greaterThanEqualOperator = "=gte:"
 )
 
 // termOperators holds the recognized operators supported in fieldSelectors.
 // doubleEqualOperator and equal are equivalent, but doubleEqualOperator is checked first
 // to avoid leaving a leading = character on the rhs value.
-var termOperators = []string{notEqualOperator, doubleEqualOperator, equalOperator}
+var termOperators = []string{lessThanEqualOperator, greaterThanEqualOperator, lessThanOperator,greaterThanOperator, notEqualOperator, doubleEqualOperator, equalOperator}
 
 // splitTerm returns the lhs, operator, and rhs parsed from the given term, along with an indicator of whether the parse was successful.
 // no escaping of special characters is supported in the lhs value, so the first occurrence of a recognized operator is used as the split point.
@@ -448,6 +675,14 @@ func parseSelector(selector string, fn TransformFunc) (Selector, error) {
 			items = append(items, &hasTerm{field: lhs, value: unescapedRHS})
 		case equalOperator:
 			items = append(items, &hasTerm{field: lhs, value: unescapedRHS})
+		case lessThanOperator:
+			items = append(items, &lessTerm{field: lhs, value: unescapedRHS})
+		case lessThanEqualOperator:
+			items = append(items, &lessEqualTerm{field: lhs, value: unescapedRHS})
+		case greaterThanOperator:
+			items = append(items, &greaterTerm{field: lhs, value: unescapedRHS})
+		case greaterThanEqualOperator:
+			items = append(items, &greaterEqualTerm{field: lhs, value: unescapedRHS})
 		default:
 			return nil, fmt.Errorf("invalid selector: '%s'; can't understand '%s'", selector, part)
 		}
