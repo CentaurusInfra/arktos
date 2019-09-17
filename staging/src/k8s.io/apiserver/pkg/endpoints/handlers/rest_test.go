@@ -281,6 +281,11 @@ func (p *testPatcher) Get(ctx context.Context, name string, options *metav1.GetO
 type testNamer struct {
 	namespace string
 	name      string
+	tenant    string
+}
+
+func (p *testNamer) Tenant(req *http.Request) (tenant string, err error) {
+	return p.tenant, nil
 }
 
 func (p *testNamer) Namespace(req *http.Request) (namespace string, err error) {
@@ -344,6 +349,7 @@ type patchTestCase struct {
 func (tc *patchTestCase) Run(t *testing.T) {
 	t.Logf("Starting test %s", tc.name)
 
+	tenant := tc.startingPod.Tenant
 	namespace := tc.startingPod.Namespace
 	name := tc.startingPod.Name
 
@@ -364,8 +370,9 @@ func (tc *patchTestCase) Run(t *testing.T) {
 
 	ctx := request.NewDefaultContext()
 	ctx = request.WithNamespace(ctx, namespace)
+	ctx = request.WithTenant(ctx, tenant)
 
-	namer := &testNamer{namespace, name}
+	namer := &testNamer{namespace, name, tenant}
 	creater := runtime.ObjectCreater(scheme)
 	defaulter := runtime.ObjectDefaulter(scheme)
 	convertor := runtime.UnsafeObjectConvertor(scheme)
@@ -544,6 +551,7 @@ func TestNumberConversion(t *testing.T) {
 }
 
 func TestPatchResourceNumberConversion(t *testing.T) {
+	tenant := "baz"
 	namespace := "bar"
 	name := "foo"
 	uid := types.UID("uid")
@@ -560,22 +568,23 @@ func TestPatchResourceNumberConversion(t *testing.T) {
 		expectedPod: &example.Pod{},
 	}
 
-	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "")
+	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "", tenant)
 
 	// Patch tries to change to 30.
-	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "")
+	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "", tenant)
 
 	// Someone else already changed it to 30.
 	// This should be fine since it's not a "meaningful conflict".
 	// Previously this was detected as a meaningful conflict because int64(30) != float64(30).
-	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), &thirty, "anywhere")
+	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), &thirty, "anywhere", tenant)
 
-	setTcPod(tc.expectedPod, name, namespace, uid, "2", "", &thirty, "anywhere")
+	setTcPod(tc.expectedPod, name, namespace, uid, "2", "", &thirty, "anywhere", tenant)
 
 	tc.Run(t)
 }
 
 func TestPatchResourceWithVersionConflict(t *testing.T) {
+	tenant := "baz"
 	namespace := "bar"
 	name := "foo"
 	uid := types.UID("uid")
@@ -592,18 +601,19 @@ func TestPatchResourceWithVersionConflict(t *testing.T) {
 		expectedPod: &example.Pod{},
 	}
 
-	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "")
+	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "", tenant)
 
-	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "")
+	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "", tenant)
 
-	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), &fifteen, "anywhere")
+	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), &fifteen, "anywhere", tenant)
 
-	setTcPod(tc.expectedPod, name, namespace, uid, "2", "", &thirty, "anywhere")
+	setTcPod(tc.expectedPod, name, namespace, uid, "2", "", &thirty, "anywhere", tenant)
 
 	tc.Run(t)
 }
 
 func TestPatchResourceWithStaleVersionConflict(t *testing.T) {
+	tenant := "baz"
 	namespace := "bar"
 	name := "foo"
 	uid := types.UID("uid")
@@ -621,6 +631,7 @@ func TestPatchResourceWithStaleVersionConflict(t *testing.T) {
 	// starting pod is at rv=2
 	tc.startingPod.Name = name
 	tc.startingPod.Namespace = namespace
+	tc.startingPod.Tenant = tenant
 	tc.startingPod.UID = uid
 	tc.startingPod.ResourceVersion = "2"
 	tc.startingPod.APIVersion = examplev1.SchemeGroupVersion.String()
@@ -671,6 +682,7 @@ func TestPatchResourceWithRacingVersionConflict(t *testing.T) {
 }
 
 func TestPatchResourceWithConflict(t *testing.T) {
+	tenant := "baz"
 	namespace := "bar"
 	name := "foo"
 	uid := types.UID("uid")
@@ -686,14 +698,15 @@ func TestPatchResourceWithConflict(t *testing.T) {
 
 	// See issue #63104 for discussion of how much sense this makes.
 
-	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), nil, "here")
+	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), nil, "here", tenant)
 
-	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), nil, "there")
+	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), nil, "there", tenant)
 
-	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), nil, "anywhere")
+	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), nil, "anywhere", tenant)
 
 	tc.expectedPod.Name = name
 	tc.expectedPod.Namespace = namespace
+	tc.expectedPod.Tenant = tenant
 	tc.expectedPod.UID = uid
 	tc.expectedPod.ResourceVersion = "2"
 	tc.expectedPod.APIVersion = examplev1.SchemeGroupVersion.String()
@@ -703,6 +716,7 @@ func TestPatchResourceWithConflict(t *testing.T) {
 }
 
 func TestPatchWithAdmissionRejection(t *testing.T) {
+	tenant := "baz"
 	namespace := "bar"
 	name := "foo"
 	uid := types.UID("uid")
@@ -756,17 +770,18 @@ func TestPatchWithAdmissionRejection(t *testing.T) {
 			expectedError: test.expectedError,
 		}
 
-		setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "")
+		setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "", tenant)
 
-		setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "")
+		setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "", tenant)
 
-		setTcPod(tc.updatePod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "")
+		setTcPod(tc.updatePod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "", tenant)
 
 		tc.Run(t)
 	}
 }
 
 func TestPatchWithVersionConflictThenAdmissionFailure(t *testing.T) {
+	tenant := "baz"
 	namespace := "bar"
 	name := "foo"
 	uid := types.UID("uid")
@@ -793,11 +808,11 @@ func TestPatchWithVersionConflictThenAdmissionFailure(t *testing.T) {
 		expectedError: "admission failure",
 	}
 
-	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "")
+	setTcPod(tc.startingPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &fifteen, "", tenant)
 
-	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "")
+	setTcPod(tc.changedPod, name, namespace, uid, "1", examplev1.SchemeGroupVersion.String(), &thirty, "", tenant)
 
-	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), &fifteen, "anywhere")
+	setTcPod(tc.updatePod, name, namespace, uid, "2", examplev1.SchemeGroupVersion.String(), &fifteen, "anywhere", tenant)
 
 	tc.Run(t)
 }
@@ -931,9 +946,10 @@ func TestFinishRequest(t *testing.T) {
 	}
 }
 
-func setTcPod(tcPod *example.Pod, name string, namespace string, uid types.UID, resourceVersion string, apiVersion string, activeDeadlineSeconds *int64, nodeName string) {
+func setTcPod(tcPod *example.Pod, name string, namespace string, uid types.UID, resourceVersion string, apiVersion string, activeDeadlineSeconds *int64, nodeName string, tenant string) {
 	tcPod.Name = name
 	tcPod.Namespace = namespace
+	tcPod.Tenant = tenant
 	tcPod.UID = uid
 	tcPod.ResourceVersion = resourceVersion
 	if len(apiVersion) != 0 {
