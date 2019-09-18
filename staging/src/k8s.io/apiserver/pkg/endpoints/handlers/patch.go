@@ -295,6 +295,7 @@ type patcher struct {
 	updatedObjectInfo rest.UpdatedObjectInfo
 	mechanism         patchMechanism
 	forceAllowCreate  bool
+	tenant            string
 }
 
 type patchMechanism interface {
@@ -492,7 +493,7 @@ func (p *patcher) applyPatch(_ context.Context, _, currentObject runtime.Object)
 		return nil, errors.NewConflict(p.resource.GroupResource(), p.name, fmt.Errorf("uid mismatch: the provided object specified uid %s, and no existing object was found", accessor.GetUID()))
 	}
 
-	if err := checkName(objToUpdate, p.name, p.namespace, p.namer); err != nil {
+	if err := checkName(objToUpdate, p.name, p.namespace, p.tenant, p.namer); err != nil {
 		return nil, err
 	}
 	return objToUpdate, nil
@@ -530,6 +531,7 @@ func (p *patcher) applyAdmission(ctx context.Context, patchedObject runtime.Obje
 // patchResource divides PatchResource for easier unit testing
 func (p *patcher) patchResource(ctx context.Context, scope *RequestScope) (runtime.Object, bool, error) {
 	p.namespace = request.NamespaceValue(ctx)
+	p.tenant = request.TenantValue(ctx)
 	switch p.patchType {
 	case types.JSONPatchType, types.MergePatchType:
 		p.mechanism = &jsonPatcher{
