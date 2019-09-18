@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
@@ -37,7 +38,7 @@ type ScopeNamer interface {
 	Name(req *http.Request) (namespace, name string, err error)
 	// ObjectName returns the namespace and name from an object if they exist, or an error if the object
 	// does not support names.
-	ObjectName(obj runtime.Object) (namespace, name string, err error)
+	ObjectName(obj runtime.Object) (tenant, namespace, name string, err error)
 	// SetSelfLink sets the provided URL onto the object. The method should return nil if the object
 	// does not support selfLinks.
 	SetSelfLink(obj runtime.Object, url string) error
@@ -57,6 +58,8 @@ type ContextBasedNaming struct {
 
 	SelfLinkPathPrefix string
 	SelfLinkPathSuffix string
+
+	TenantScoped bool
 }
 
 // ContextBasedNaming implements ScopeNamer
@@ -114,7 +117,7 @@ func fastURLPathEncode(path string) string {
 }
 
 func (n ContextBasedNaming) GenerateLink(requestInfo *request.RequestInfo, obj runtime.Object) (uri string, err error) {
-	namespace, name, err := n.ObjectName(obj)
+	tenant, namespace, name, err := n.ObjectName(obj)
 	if err == errEmptyName && len(requestInfo.Name) > 0 {
 		name = requestInfo.Name
 	} else if err != nil {
@@ -123,16 +126,29 @@ func (n ContextBasedNaming) GenerateLink(requestInfo *request.RequestInfo, obj r
 	if len(namespace) == 0 && len(requestInfo.Namespace) > 0 {
 		namespace = requestInfo.Namespace
 	}
+	if len(tenant) == 0 && len(requestInfo.Tenant) > 0 {
+		tenant = requestInfo.Tenant
+	}
 
 	if n.ClusterScoped {
 		return n.SelfLinkPathPrefix + url.QueryEscape(name) + n.SelfLinkPathSuffix, nil
 	}
 
 	builder := strings.Builder{}
-	builder.Grow(len(n.SelfLinkPathPrefix) + len(namespace) + len(requestInfo.Resource) + len(name) + len(n.SelfLinkPathSuffix) + 8)
+	// 42 = (the length of "tenants/", "namespaces/", 3 additional "/" and the ending character) * 2
+	builder.Grow(len(n.SelfLinkPathPrefix) + len(tenant) + len(namespace) + len(requestInfo.Resource) + len(name) + len(n.SelfLinkPathSuffix) + 42)
 	builder.WriteString(n.SelfLinkPathPrefix)
-	builder.WriteString(namespace)
-	builder.WriteByte('/')
+	// for backward compatibility with code before multi-tenancy, the "tenants/{tenant}"" segment is skipped if tenant == "default"
+	if len(tenant) > 0 && tenant != metav1.TenantDefault {
+		builder.WriteString("tenants/")
+		builder.WriteString(tenant)
+		builder.WriteByte('/')
+	}
+	if !n.TenantScoped && len(namespace) > 0 {
+		builder.WriteString("namespaces/")
+		builder.WriteString(namespace)
+		builder.WriteByte('/')
+	}
 	builder.WriteString(requestInfo.Resource)
 	builder.WriteByte('/')
 	builder.WriteString(name)
@@ -147,19 +163,23 @@ func (n ContextBasedNaming) GenerateListLink(req *http.Request) (uri string, err
 	return fastURLPathEncode(req.URL.Path), nil
 }
 
-func (n ContextBasedNaming) ObjectName(obj runtime.Object) (namespace, name string, err error) {
+func (n ContextBasedNaming) ObjectName(obj runtime.Object) (tenant, namespace, name string, err error) {
 	name, err = n.SelfLinker.Name(obj)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if len(name) == 0 {
-		return "", "", errEmptyName
+		return "", "", "", errEmptyName
 	}
 	namespace, err = n.SelfLinker.Namespace(obj)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	return namespace, name, err
+	tenant, err = n.SelfLinker.Tenant(obj)
+	if err != nil {
+		return "", "", "", err
+	}
+	return tenant, namespace, name, err
 }
 
 // errEmptyName is returned when API requests do not fill the name section of the path.
