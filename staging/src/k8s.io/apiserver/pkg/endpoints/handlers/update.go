@@ -61,8 +61,15 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 			scope.err(err, w, req)
 			return
 		}
+		tenant, err := scope.Namer.Tenant(req)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
+
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		ctx = request.WithTenant(ctx, tenant)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {

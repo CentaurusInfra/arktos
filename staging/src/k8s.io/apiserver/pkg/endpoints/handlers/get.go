@@ -56,8 +56,15 @@ func getResourceHandler(scope *RequestScope, getter getterFunc) http.HandlerFunc
 			scope.err(err, w, req)
 			return
 		}
+		tenant, err := scope.Namer.Tenant(req)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
+
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		ctx = request.WithTenant(ctx, tenant)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {
@@ -181,8 +188,15 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope *RequestScope, forceWatc
 			hasName = false
 		}
 
+		tenant, err := scope.Namer.Tenant(req)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
+
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		ctx = request.WithTenant(ctx, tenant)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {

@@ -46,6 +46,9 @@ type ScopeNamer interface {
 	GenerateLink(requestInfo *request.RequestInfo, obj runtime.Object) (uri string, err error)
 	// GenerateListLink creates an encoded URI for a list that represents the canonical path and query.
 	GenerateListLink(req *http.Request) (uri string, err error)
+	// Tenant returns the appropriate tenant value from the request (may be empty) or an
+	// error.
+	Tenant(req *http.Request) (tenant string, err error)
 }
 
 type ContextBasedNaming struct {
@@ -61,6 +64,14 @@ var _ ScopeNamer = ContextBasedNaming{}
 
 func (n ContextBasedNaming) SetSelfLink(obj runtime.Object, url string) error {
 	return n.SelfLinker.SetSelfLink(obj, url)
+}
+
+func (n ContextBasedNaming) Tenant(req *http.Request) (tenant string, err error) {
+	requestInfo, ok := request.RequestInfoFrom(req.Context())
+	if !ok {
+		return "", fmt.Errorf("missing requestInfo")
+	}
+	return requestInfo.Tenant, nil
 }
 
 func (n ContextBasedNaming) Namespace(req *http.Request) (namespace string, err error) {

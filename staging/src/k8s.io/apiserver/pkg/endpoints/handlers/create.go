@@ -58,8 +58,8 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 		timeout := parseTimeout(req.URL.Query().Get("timeout"))
 
 		var (
-			namespace, name string
-			err             error
+			tenant, namespace, name string
+			err                     error
 		)
 		if includeName {
 			namespace, name, err = scope.Namer.Name(req)
@@ -71,8 +71,15 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 			return
 		}
 
+		tenant, err = scope.Namer.Tenant(req)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
+
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		ctx = request.WithTenant(ctx, tenant)
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {
 			scope.err(err, w, req)
