@@ -300,8 +300,8 @@ func (p *testNamer) Name(req *http.Request) (namespace, name string, err error) 
 
 // ObjectName returns the namespace and name from an object if they exist, or an error if the object
 // does not support names.
-func (p *testNamer) ObjectName(obj runtime.Object) (namespace, name string, err error) {
-	return p.namespace, p.name, nil
+func (p *testNamer) ObjectName(obj runtime.Object) (tenant, namespace, name string, err error) {
+	return p.tenant, p.namespace, p.name, nil
 }
 
 // SetSelfLink sets the provided URL onto the object. The method should return nil if the object

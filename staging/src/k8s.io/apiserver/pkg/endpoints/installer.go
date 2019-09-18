@@ -416,6 +416,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			ClusterScoped:      true,
 			SelfLinkPathPrefix: gpath.Join(a.prefix, resource) + "/",
 			SelfLinkPathSuffix: suffix,
+			TenantScoped:       false,
 		}
 
 		// Handler for standard REST verbs (GET, PUT, POST and DELETE).
@@ -463,8 +464,9 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		namer := handlers.ContextBasedNaming{
 			SelfLinker:         a.group.Linker,
 			ClusterScoped:      false,
-			SelfLinkPathPrefix: gpath.Join(a.prefix, namespaceParamName) + "/",
+			SelfLinkPathPrefix: a.prefix + "/",
 			SelfLinkPathSuffix: itemPathSuffix,
+			TenantScoped:       false,
 		}
 
 		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false}, isLister)
