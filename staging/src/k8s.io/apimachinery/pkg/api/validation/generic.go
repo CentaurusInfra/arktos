@@ -61,6 +61,9 @@ func NameIsDNS1035Label(name string, prefix bool) []string {
 // trailing dashes are allowed.
 var ValidateTenantName = NameIsDNSLabel
 
+// ValidateControllerTypeName can be used to check whether the given controller type name is valid.
+var ValidateControllerTypeName = NameIsDNSLabel
+
 // ValidateNamespaceName can be used to check whether the given namespace name is valid.
 // Prefix indicates this name will be used as part of generation, in which case
 // trailing dashes are allowed.

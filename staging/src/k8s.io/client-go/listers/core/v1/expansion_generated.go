@@ -30,6 +30,10 @@ type ConfigMapListerExpansion interface{}
 // ConfigMapNamespaceLister.
 type ConfigMapNamespaceListerExpansion interface{}
 
+// ControllerInstanceListerExpansion allows custom methods to be added to
+// ControllerInstanceLister.
+type ControllerInstanceListerExpansion interface{}
+
 // EndpointsListerExpansion allows custom methods to be added to
 // EndpointsLister.
 type EndpointsListerExpansion interface{}

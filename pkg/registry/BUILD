@@ -53,6 +53,7 @@ filegroup(
         "//pkg/registry/coordination/rest:all-srcs",
         "//pkg/registry/core/componentstatus:all-srcs",
         "//pkg/registry/core/configmap:all-srcs",
+        "//pkg/registry/core/controllerinstance:all-srcs",
         "//pkg/registry/core/endpoint:all-srcs",
         "//pkg/registry/core/event:all-srcs",
         "//pkg/registry/core/limitrange:all-srcs",

@@ -45,6 +45,7 @@ import (
 	"k8s.io/kubernetes/pkg/master/ports"
 	"k8s.io/kubernetes/pkg/registry/core/componentstatus"
 	configmapstore "k8s.io/kubernetes/pkg/registry/core/configmap/storage"
+	controllerstore "k8s.io/kubernetes/pkg/registry/core/controllerinstance/storage"
 	endpointsstore "k8s.io/kubernetes/pkg/registry/core/endpoint/storage"
 	eventstore "k8s.io/kubernetes/pkg/registry/core/event/storage"
 	limitrangestore "k8s.io/kubernetes/pkg/registry/core/limitrange/storage"
@@ -55,7 +56,7 @@ import (
 	podstore "k8s.io/kubernetes/pkg/registry/core/pod/storage"
 	podtemplatestore "k8s.io/kubernetes/pkg/registry/core/podtemplate/storage"
 	"k8s.io/kubernetes/pkg/registry/core/rangeallocation"
-	controllerstore "k8s.io/kubernetes/pkg/registry/core/replicationcontroller/storage"
+	replicationcontrollerstore "k8s.io/kubernetes/pkg/registry/core/replicationcontroller/storage"
 	resourcequotastore "k8s.io/kubernetes/pkg/registry/core/resourcequota/storage"
 	secretstore "k8s.io/kubernetes/pkg/registry/core/secret/storage"
 	"k8s.io/kubernetes/pkg/registry/core/service/allocator"
@@ -128,6 +129,8 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 
 	namespaceStorage, namespaceStatusStorage, namespaceFinalizeStorage := namespacestore.NewREST(restOptionsGetter)
 
+	controllerStorage := controllerstore.NewREST(restOptionsGetter)
+
 	endpointsStorage := endpointsstore.NewREST(restOptionsGetter)
 
 	nodeStorage, err := nodestore.NewStorage(restOptionsGetter, c.KubeletClientConfig, c.ProxyTransport)
@@ -171,6 +174,8 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 	})
 	restStorage.ServiceClusterIPAllocator = serviceClusterIPRegistry
 
+	replicationControllerStorage := replicationcontrollerstore.NewStorage(restOptionsGetter)
+
 	var serviceNodePortRegistry rangeallocation.RangeRegistry
 	serviceNodePortAllocator := portallocator.NewPortAllocatorCustom(c.ServiceNodePortRange, func(max int, rangeSpec string) allocator.Interface {
 		mem := allocator.NewAllocationMap(max, rangeSpec)
@@ -180,8 +185,6 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		return etcd
 	})
 	restStorage.ServiceNodePortAllocator = serviceNodePortRegistry
-
-	controllerStorage := controllerstore.NewStorage(restOptionsGetter)
 
 	serviceRest, serviceRestProxy := servicestore.NewREST(serviceRESTStorage, endpointsStorage, podStorage.Pod, serviceClusterIPAllocator, serviceNodePortAllocator, c.ProxyTransport)
 
@@ -198,8 +201,8 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 
 		"podTemplates": podTemplateStorage,
 
-		"replicationControllers":        controllerStorage.Controller,
-		"replicationControllers/status": controllerStorage.Status,
+		"replicationControllers":        replicationControllerStorage.Controller,
+		"replicationControllers/status": replicationControllerStorage.Status,
 
 		"services":        serviceRest,
 		"services/proxy":  serviceRestProxy,
@@ -213,12 +216,15 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 
 		"events": eventStorage,
 
-		"limitRanges":                   limitRangeStorage,
-		"resourceQuotas":                resourceQuotaStorage,
-		"resourceQuotas/status":         resourceQuotaStatusStorage,
-		"namespaces":                    namespaceStorage,
-		"namespaces/status":             namespaceStatusStorage,
-		"namespaces/finalize":           namespaceFinalizeStorage,
+		"limitRanges":           limitRangeStorage,
+		"resourceQuotas":        resourceQuotaStorage,
+		"resourceQuotas/status": resourceQuotaStatusStorage,
+		"namespaces":            namespaceStorage,
+		"namespaces/status":     namespaceStatusStorage,
+		"namespaces/finalize":   namespaceFinalizeStorage,
+
+		"controllerinstances": controllerStorage,
+
 		"secrets":                       secretStorage,
 		"serviceAccounts":               serviceAccountStorage,
 		"persistentVolumes":             persistentVolumeStorage,
@@ -230,7 +236,7 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		"componentStatuses": componentstatus.NewStorage(componentStatusStorage{c.StorageFactory}.serversToValidate),
 	}
 	if legacyscheme.Scheme.IsVersionRegistered(schema.GroupVersion{Group: "autoscaling", Version: "v1"}) {
-		restStorageMap["replicationControllers/scale"] = controllerStorage.Scale
+		restStorageMap["replicationControllers/scale"] = replicationControllerStorage.Scale
 	}
 	if legacyscheme.Scheme.IsVersionRegistered(schema.GroupVersion{Group: "policy", Version: "v1beta1"}) {
 		restStorageMap["pods/eviction"] = podStorage.Eviction

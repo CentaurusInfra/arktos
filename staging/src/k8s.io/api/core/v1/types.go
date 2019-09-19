@@ -5715,3 +5715,43 @@ const (
 	// and data streams for a single forwarded connection
 	PortForwardRequestIDHeader = "requestID"
 )
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstance contains controller instances with ids and last health check timestamp
+type ControllerInstance struct {
+	metav1.TypeMeta `json:",inline"`
+
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// A string that designate the type of the controller instance
+	ControllerType string `json:"controllerType" protobuf:"bytes,2,opt,name=controllerType"`
+
+	// A UUID that representing an controller instance
+	UID types.UID `json:"uid" protobuf:"bytes,3,opt,name=uid,casttype=k8s.io/apimachinery/pkg/types.UID"`
+
+	//  An int64 integer that identifies the upperbound of workload instances managed by this controller instance
+	HashKey int64 `json:"hashKey" protobuf:"varint,4,opt,name=hashKey"`
+
+	// WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck
+	// +optional
+	WorkloadNum int32 `json:"workloadNum,omitempty" protobuf:"varint,5,opt,name=workloadNum"`
+
+	// IsLocked is bool that identifies the lock status of the controller instance
+	IsLocked bool `json:"isLocked,omitempty" protobuf:"varint,6,opt,name=isLocked"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstanceList is a list of controller instances that have same controller type
+type ControllerInstanceList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of controller instance
+	Items []ControllerInstance `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
+}

@@ -1498,7 +1498,7 @@ func (t *Tester) testListTableConversion(obj runtime.Object, assignFn AssignFunc
 		for j, cell := range row.Cells {
 			// do not add to this test without discussion - may break clients
 			switch cell.(type) {
-			case float64, int64, int32, int, string, bool:
+			case float64, int64, int32, int, string, bool, types.UID:
 			case []interface{}:
 			case nil:
 			default:
