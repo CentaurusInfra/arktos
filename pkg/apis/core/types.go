@@ -5025,6 +5025,8 @@ const (
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ControllerInstance contains controller instances with ids and last health check timestamp

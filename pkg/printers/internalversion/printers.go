@@ -258,7 +258,7 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(namespaceColumnDefinitions, printNamespaceList)
 
 	controllerInstanceColumnDefinitions := []metav1beta1.TableColumnDefinition{
-		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "Name", Type: "string", Format: "name", Description: "Name"},
 		{Name: "ControllerType", Type: "string", Format: "name", Description: "The controller type of the controller instance."},
 		{Name: "UID", Type: "string", Format: "name", Description: "The UUID of the controller instance."},
 		{Name: "HashKey", Type: "integer", Description: "The hash key of the controller instance."},

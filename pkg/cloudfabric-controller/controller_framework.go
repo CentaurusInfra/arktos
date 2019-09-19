@@ -121,7 +121,7 @@ func NewControllerBase(controller_type string, client clientset.Interface) (*Con
 
 	err = controller.registController()
 	if err != nil {
-		klog.Fatalf("Controller %s cannot be registed.", controller_type)
+		klog.Fatalf("Controller %s cannot be registered.", controller_type)
 	}
 
 	return controller, err
