@@ -69,16 +69,6 @@ func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh ch
 	return ret, informers
 }
 
-func skipListerFunc(verb string, url url.URL) bool {
-	if verb != "GET" {
-		return false
-	}
-	if strings.HasSuffix(url.Path, "/pods") || strings.Contains(url.Path, "/replicasets") {
-		return true
-	}
-	return false
-}
-
 var alwaysReady = func() bool { return true }
 
 func newReplicaSet(replicas int, selectorMap map[string]string) *apps.ReplicaSet {
@@ -199,7 +189,7 @@ func validateSyncReplicaSet(t *testing.T, fakePodControl *controller.FakePodCont
 }
 
 func TestSyncReplicaSetDoesNothing(t *testing.T) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := fake.NewSimpleClientset()
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -217,7 +207,7 @@ func TestSyncReplicaSetDoesNothing(t *testing.T) {
 }
 
 func TestDeleteFinalStateUnknown(t *testing.T) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := fake.NewSimpleClientset()
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -278,12 +268,19 @@ func TestSyncReplicaSetCreateFailures(t *testing.T) {
 	}
 }
 
+func skipHttpFunc(verb string, url url.URL) bool {
+	if verb == "PUT" && strings.Contains(url.Path, "/replicasets/") {
+		return false
+	}
+	return true
+}
+
 func TestSyncReplicaSetDormancy(t *testing.T) {
 	// Setup a test server so we can lie about the current state of pods
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:    200,
 		ResponseBody:  "{}",
-		SkipRequestFn: skipListerFunc,
+		SkipRequestFn: skipHttpFunc,
 		T:             t,
 	}
 	testServer := httptest.NewServer(&fakeHandler)
@@ -349,7 +346,8 @@ func TestSyncReplicaSetDormancy(t *testing.T) {
 func TestPodControllerLookup(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	manager, informers := testNewReplicaSetControllerFromClient(clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}), stopCh, BurstReplicas)
+	client := fake.NewSimpleClientset()
+	manager, informers := testNewReplicaSetControllerFromClient(client, stopCh, BurstReplicas)
 	testCases := []struct {
 		inRSs     []*apps.ReplicaSet
 		pod       *v1.Pod
@@ -877,7 +875,7 @@ func (fe FakeRSExpectations) SatisfiedExpectations(controllerKey string) bool {
 // TestRSSyncExpectations tests that a pod cannot sneak in between counting active pods
 // and checking expectations.
 func TestRSSyncExpectations(t *testing.T) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := fake.NewSimpleClientset()
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -958,7 +956,7 @@ func shuffle(controllers []*apps.ReplicaSet) []*apps.ReplicaSet {
 }
 
 func TestOverlappingRSs(t *testing.T) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := fake.NewSimpleClientset()
 	labelMap := map[string]string{"foo": "bar"}
 
 	stopCh := make(chan struct{})
@@ -1001,7 +999,7 @@ func TestOverlappingRSs(t *testing.T) {
 }
 
 func TestDeletionTimestamp(t *testing.T) {
-	c := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	c := fake.NewSimpleClientset()
 	labelMap := map[string]string{"foo": "bar"}
 	stopCh := make(chan struct{})
 	defer close(stopCh)

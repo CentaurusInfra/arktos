@@ -32,14 +32,14 @@ import (
 	"k8s.io/kubernetes/pkg/registry/core/controllerinstance"
 )
 
-// REST implements a RESTStorage for ConfigMap
+// REST implements a RESTStorage for ControllerInstance
 type REST struct {
 	*genericregistry.Store
 }
 
 const TTL = 300 // time-to-live in seconds
 
-// NewREST returns a RESTStorage object that will work with ConfigMap objects.
+// NewREST returns a RESTStorage object that will work with ControllerInstance objects.
 func NewREST(optsGetter generic.RESTOptionsGetter) *REST {
 	store := &genericregistry.Store{
 		NewFunc:     func() runtime.Object { return &api.ControllerInstance{} },

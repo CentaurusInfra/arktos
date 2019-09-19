@@ -28,13 +28,13 @@ import (
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 )
 
-// strategy implements behavior for ConfigMap objects
+// strategy implements behavior for ControllerInstance objects
 type strategy struct {
 	runtime.ObjectTyper
 	names.NameGenerator
 }
 
-// Strategy is the default logic that applies when creating and updating ConfigMap
+// Strategy is the default logic that applies when creating and updating ControllerInstance
 // objects via the REST API.
 var Strategy = strategy{legacyscheme.Scheme, names.SimpleNameGenerator}
 

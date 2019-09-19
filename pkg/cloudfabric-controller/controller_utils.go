@@ -35,6 +35,7 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	"k8s.io/utils/integer"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -726,4 +727,43 @@ func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, nam
 		return coreClient.ServiceAccounts(namespace).Get(name, metav1.GetOptions{})
 	}
 	return sa, err
+}
+
+// Sort Controller Instances by controller key
+func SortControllerInstancesByKey(controllerInstancesInStorage []v1.ControllerInstance) []controllerInstance {
+	// copy map
+	var sortedControllerInstances []controllerInstance
+	for _, instanceInStorage := range controllerInstancesInStorage {
+		instance := controllerInstance{
+			instanceId:    instanceInStorage.UID,
+			controllerKey: instanceInStorage.HashKey,
+			workloadNum:   instanceInStorage.WorkloadNum,
+			isLocked:      instanceInStorage.IsLocked,
+		}
+		sortedControllerInstances = append(sortedControllerInstances, instance)
+	}
+
+	sort.Slice(sortedControllerInstances, func(i, j int) bool {
+		return sortedControllerInstances[i].controllerKey < sortedControllerInstances[j].controllerKey
+	})
+
+	if len(sortedControllerInstances) > 0 {
+		sortedControllerInstances[0].lowerboundKey = 0
+	}
+
+	for i := 1; i < len(sortedControllerInstances); i++ {
+		sortedControllerInstances[i].lowerboundKey = sortedControllerInstances[i-1].controllerKey
+	}
+
+	return sortedControllerInstances
+}
+
+func isControllerInstanceExisted(controllerInstancesInStorage []v1.ControllerInstance, instanceId types.UID) bool {
+	for _, instance := range controllerInstancesInStorage {
+		if instance.UID == instanceId {
+			return true
+		}
+	}
+
+	return false
 }
