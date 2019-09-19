@@ -449,6 +449,28 @@ func (ContainerStatus) SwaggerDoc() map[string]string {
 	return map_ContainerStatus
 }
 
+var map_ControllerInstance = map[string]string{
+	"":               "ControllerInstance contains controller instances with ids and last health check timestamp",
+	"controllerType": "A string that designate the type of the controller instance",
+	"uid":            "A UUID that representing an controller instance",
+	"hashKey":        "\n An int64 integer that identifies the upperbound of workload instances managed by this controller instance",
+	"workloadNum":    "WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck",
+	"isLocked":       "IsLocked is bool that identifies the lock status of the controller instance",
+}
+
+func (ControllerInstance) SwaggerDoc() map[string]string {
+	return map_ControllerInstance
+}
+
+var map_ControllerInstanceList = map[string]string{
+	"":      "ControllerInstanceList is a list of controller instances that have same controller type",
+	"items": "List of controller instance",
+}
+
+func (ControllerInstanceList) SwaggerDoc() map[string]string {
+	return map_ControllerInstanceList
+}
+
 var map_DaemonEndpoint = map[string]string{
 	"":     "DaemonEndpoint contains information about a single Daemon endpoint.",
 	"Port": "Port number of the given endpoint.",

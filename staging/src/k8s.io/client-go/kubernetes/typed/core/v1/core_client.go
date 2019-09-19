@@ -28,6 +28,7 @@ type CoreV1Interface interface {
 	RESTClient() rest.Interface
 	ComponentStatusesGetter
 	ConfigMapsGetter
+	ControllerInstancesGetter
 	EndpointsGetter
 	EventsGetter
 	LimitRangesGetter
@@ -56,6 +57,10 @@ func (c *CoreV1Client) ComponentStatuses() ComponentStatusInterface {
 
 func (c *CoreV1Client) ConfigMaps(namespace string) ConfigMapInterface {
 	return newConfigMaps(c, namespace)
+}
+
+func (c *CoreV1Client) ControllerInstances() ControllerInstanceInterface {
+	return newControllerInstances(c)
 }
 
 func (c *CoreV1Client) Endpoints(namespace string) EndpointsInterface {

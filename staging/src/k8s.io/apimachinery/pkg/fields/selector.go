@@ -175,7 +175,6 @@ func (t *notHasTerm) DeepCopySelector() Selector {
 	return out
 }
 
-
 type lessTerm struct {
 	field, value string
 }
@@ -395,7 +394,6 @@ func (t *greaterEqualTerm) DeepCopySelector() Selector {
 	*out = *t
 	return out
 }
-
 
 type andTerm []Selector
 
@@ -623,19 +621,19 @@ func splitTerms(fieldSelector string) []string {
 }
 
 const (
-	notEqualOperator    = "!="
-	doubleEqualOperator = "=="
-	equalOperator       = "="
-	lessThanOperator    = "=lt:"
-	greaterThanOperator = "=gt:"
-	lessThanEqualOperator = "=lte:"
+	notEqualOperator         = "!="
+	doubleEqualOperator      = "=="
+	equalOperator            = "="
+	lessThanOperator         = "=lt:"
+	greaterThanOperator      = "=gt:"
+	lessThanEqualOperator    = "=lte:"
 	greaterThanEqualOperator = "=gte:"
 )
 
 // termOperators holds the recognized operators supported in fieldSelectors.
 // doubleEqualOperator and equal are equivalent, but doubleEqualOperator is checked first
 // to avoid leaving a leading = character on the rhs value.
-var termOperators = []string{lessThanEqualOperator, greaterThanEqualOperator, lessThanOperator,greaterThanOperator, notEqualOperator, doubleEqualOperator, equalOperator}
+var termOperators = []string{lessThanEqualOperator, greaterThanEqualOperator, lessThanOperator, greaterThanOperator, notEqualOperator, doubleEqualOperator, equalOperator}
 
 // splitTerm returns the lhs, operator, and rhs parsed from the given term, along with an indicator of whether the parse was successful.
 // no escaping of special characters is supported in the lhs value, so the first occurrence of a recognized operator is used as the split point.

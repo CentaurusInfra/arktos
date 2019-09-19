@@ -17,11 +17,8 @@ limitations under the License.
 package kuberuntime
 
 import (
-	"fmt"
-	"net"
-	"net/url"
-	"sort"
 	"encoding/json"
+	"fmt"
 	"k8s.io/api/core/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -31,6 +28,9 @@ import (
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
+	"net"
+	"net/url"
+	"sort"
 )
 
 const (
