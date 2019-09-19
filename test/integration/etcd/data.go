@@ -39,6 +39,10 @@ func GetEtcdStorageData() map[schema.GroupVersionResource]StorageData {
 func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionResource]StorageData {
 	etcdStorageData := map[schema.GroupVersionResource]StorageData{
 		// k8s.io/kubernetes/pkg/api/v1
+		gvr("", "v1", "controllerinstances"): {
+			Stub:             `{"metadata": {"name": "instance1"}, "controllerType": "rs", "uid": "instance1", "hashKey": 1234, "workloadNum": 100, "isLocked": false}`,
+			ExpectedEtcdPath: "/registry/controllerinstances/instance1",
+		},
 		gvr("", "v1", "configmaps"): {
 			Stub:             `{"data": {"foo": "bar"}, "metadata": {"name": "cm1"}}`,
 			ExpectedEtcdPath: "/registry/configmaps/" + namespace + "/cm1",
