@@ -2297,6 +2297,16 @@ type Nic struct {
 	Ipv6Enabled bool `json:"ipv6Enabled,omitempty" protobuf:"varint,6,opt,name=ipv6Enabled"`
 }
 
+type VmPowerSpec string
+
+// VM power spec represents the desired power state of the VM
+const (
+	VmPowerSpecRunning   VmPowerSpec = "running"
+	VmPowerSpecPaused    VmPowerSpec = "paused"
+	VmPowerSpecShutdown  VmPowerSpec = "shutdown"
+	VmPowerSpecSuspended VmPowerSpec = "suspended"
+)
+
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -2341,6 +2351,8 @@ type VirtualMachine struct {
 	ShutdownBehavior string `json:"shutdownBehavior,omitempty" protobuf:"bytes,10,opt,name=shutdownBehavior"`
 	// +optional, if not specified, the first volume in the volume slice will be used
 	BootVolume string `json:"bootVolume,omitempty" protobuf:"bytes,11,opt,name=bootVolume"`
+	// +optional, default running
+	PowerSpec VmPowerSpec `json:"powerSpec,omitempty" protobuf:"bytes,12,opt,name=powerSpec"`
 }
 
 // Handler defines a specific action that should be taken
@@ -2502,7 +2514,7 @@ type VmPowerState string
 
 // VM power state represents the state retrieved from the underlying hypervisor
 const (
-	NoState   VmPowerState = "nosate"
+	NoState   VmPowerState = "nostate"
 	Running   VmPowerState = "running"
 	Paused    VmPowerState = "paused"
 	Shutdown  VmPowerState = "shutdown"

@@ -4814,6 +4814,9 @@ message VirtualMachine {
 
   // +optional, if not specified, the first volume in the volume slice will be used
   optional string bootVolume = 11;
+
+  // +optional, default running
+  optional string powerSpec = 12;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance
