@@ -2109,6 +2109,16 @@ type Nic struct {
 	Ipv6Enabled bool
 }
 
+type VmPowerSpec string
+
+// VM power spec represents the desired power state of the VM
+const (
+	VmPowerSpecRunning   VmPowerSpec = "running"
+	VmPowerSpecPaused    VmPowerSpec = "paused"
+	VmPowerSpecShutdown  VmPowerSpec = "shutdown"
+	VmPowerSpecSuspended VmPowerSpec = "suspended"
+)
+
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -2136,6 +2146,8 @@ type VirtualMachine struct {
 	ShutdownBehavior string
 	// +optional, user specified bootable volume for the VM
 	BootVolume string
+	// +optional, default running
+	PowerSpec VmPowerSpec
 }
 
 // Handler defines a specific action that should be taken
