@@ -2007,10 +2007,17 @@ type ResourceRequirements struct {
 
 // Colection of pointers to fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
-	Name            string
-	Image           string
-	Resources       ResourceRequirements
-	VolumeMounts    []VolumeMount
+	// Required: This must be a DNS_LABEL.  Each container in a pod must
+	// have a unique name.
+	Name string
+	// Required.
+	Image string
+	// Compute resource requirements.
+	// +optional
+	Resources ResourceRequirements
+	// +optional
+	VolumeMounts []VolumeMount
+	// Required: Policy for pulling images for this container
 	ImagePullPolicy PullPolicy
 }
 
