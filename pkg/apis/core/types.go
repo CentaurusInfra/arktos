@@ -2007,10 +2007,18 @@ type ResourceRequirements struct {
 
 // Colection of pointers to fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
-	Name            string
-	Image           string
-	Resources       ResourceRequirements
-	VolumeMounts    []VolumeMount
+	// Required: This must be a DNS_LABEL.  Each container in a pod must
+	// have a unique name.
+	Name string
+	// +optional
+	Image string
+	// Compute resource requirements.
+	// +optional
+	Resources ResourceRequirements
+	// +optional
+	VolumeMounts []VolumeMount
+	// Policy for pulling images for this container
+	// +optional
 	ImagePullPolicy PullPolicy
 }
 
@@ -2019,7 +2027,7 @@ type Container struct {
 	// Required: This must be a DNS_LABEL.  Each container in a pod must
 	// have a unique name.
 	Name string
-	// Required.
+	// +optional
 	Image string
 	// Optional: The docker image's entrypoint is used if this is not provided; cannot be updated.
 	// Variable references $(VAR_NAME) are expanded using the container's environment.  If a variable
@@ -2070,7 +2078,8 @@ type Container struct {
 	TerminationMessagePath string
 	// +optional
 	TerminationMessagePolicy TerminationMessagePolicy
-	// Required: Policy for pulling images for this container
+	// Policy for pulling images for this container
+	// +optional
 	ImagePullPolicy PullPolicy
 	// Optional: SecurityContext defines the security options the container should be run with.
 	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
@@ -2121,18 +2130,19 @@ const (
 
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
-	// Name of the container specified as a DNS_LABEL.
+	// Required. Name of the container specified as a DNS_LABEL.
 	// Each container in a pod must have a unique name (DNS_LABEL).
 	// Cannot be updated.
 	Name string
-	// Required.
+	// +optional
 	Image string
 	// Compute resource requirements.
 	// +optional
 	Resources ResourceRequirements
 	// +optional
 	VolumeMounts []VolumeMount
-	// Required: Policy for pulling images for this container
+	// Policy for pulling images for this container
+	// +optional
 	ImagePullPolicy PullPolicy
 	// Either keyPair or the publicKeystring must be provided, used to logon to the VM
 	KeyPairName string

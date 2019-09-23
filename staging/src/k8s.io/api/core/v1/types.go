@@ -2110,15 +2110,19 @@ const (
 
 // Colection of fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
-	// Name of the container specified as a DNS_LABEL.
+	// Required. Name of the container specified as a DNS_LABEL.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Image name.
+	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 	// Compute Resources required by this container.
+	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
 	// Pod volumes to mount into the workload's filesystem.
+	// +optional
 	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" protobuf:"bytes,4,opt,name=volumeMounts"`
 	// Image pull policy.
+	// +optional
 	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,5,opt,name=imagePullPolicy,casttype=PullPolicy"`
 }
 
