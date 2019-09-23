@@ -35,8 +35,8 @@ func TestGetAttrs(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "f0118",
 			Namespace: "default",
-	                HashKey:   10,
-                },
+			HashKey:   10,
+		},
 		InvolvedObject: api.ObjectReference{
 			Kind:            "Pod",
 			Name:            "foo",
@@ -55,7 +55,7 @@ func TestGetAttrs(t *testing.T) {
 		"metadata.name":                  "f0118",
 		"metadata.namespace":             "default",
 		"metadata.hashkey":               "10",
-                "involvedObject.kind":            "Pod",
+		"involvedObject.kind":            "Pod",
 		"involvedObject.name":            "foo",
 		"involvedObject.namespace":       "baz",
 		"involvedObject.uid":             "long uid string",

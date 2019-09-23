@@ -71,6 +71,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TenantList{},
 		&Namespace{},
 		&NamespaceList{},
+		&ControllerInstance{},
+		&ControllerInstanceList{},
 		&Secret{},
 		&SecretList{},
 		&ServiceAccount{},

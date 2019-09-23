@@ -441,7 +441,7 @@ func AddFieldLabelConversionsForSecret(scheme *runtime.Scheme) error {
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "type",
-			    "metadata.hashkey",
+				"metadata.hashkey",
 				"metadata.namespace",
 				"metadata.name":
 				return label, value, nil

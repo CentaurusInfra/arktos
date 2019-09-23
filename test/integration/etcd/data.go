@@ -39,6 +39,10 @@ func GetEtcdStorageData() map[schema.GroupVersionResource]StorageData {
 func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionResource]StorageData {
 	etcdStorageData := map[schema.GroupVersionResource]StorageData{
 		// k8s.io/kubernetes/pkg/api/v1
+		gvr("", "v1", "controllerinstances"): {
+			Stub:             `{"metadata": {"name": "instance1"}, "controllerType": "rs", "uid": "instance1", "hashKey": 1234, "workloadNum": 100, "isLocked": false}`,
+			ExpectedEtcdPath: "/registry/controllerinstances/instance1",
+		},
 		gvr("", "v1", "configmaps"): {
 			Stub:             `{"data": {"foo": "bar"}, "metadata": {"name": "cm1"}}`,
 			ExpectedEtcdPath: "/registry/configmaps/" + namespace + "/cm1",
@@ -70,6 +74,10 @@ func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionRes
 		gvr("", "v1", "namespaces"): {
 			Stub:             `{"metadata": {"name": "namespace1"}, "spec": {"finalizers": ["kubernetes"]}}`,
 			ExpectedEtcdPath: "/registry/namespaces/namespace1",
+		},
+		gvr("", "v1", "tenants"): {
+			Stub:             `{"metadata": {"name": "tenant1"}, "spec": {"finalizers": ["kubernetes"]}}`,
+			ExpectedEtcdPath: "/registry/tenants/tenant1",
 		},
 		gvr("", "v1", "nodes"): {
 			Stub:             `{"metadata": {"name": "node1"}, "spec": {"unschedulable": true}}`,

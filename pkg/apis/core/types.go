@@ -2118,6 +2118,16 @@ type Nic struct {
 	Ipv6Enabled bool
 }
 
+type VmPowerSpec string
+
+// VM power spec represents the desired power state of the VM
+const (
+	VmPowerSpecRunning   VmPowerSpec = "running"
+	VmPowerSpecPaused    VmPowerSpec = "paused"
+	VmPowerSpecShutdown  VmPowerSpec = "shutdown"
+	VmPowerSpecSuspended VmPowerSpec = "suspended"
+)
+
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
 	// Required. Name of the container specified as a DNS_LABEL.
@@ -2146,6 +2156,8 @@ type VirtualMachine struct {
 	ShutdownBehavior string
 	// +optional, user specified bootable volume for the VM
 	BootVolume string
+	// +optional, default running
+	PowerSpec VmPowerSpec
 }
 
 // Handler defines a specific action that should be taken
@@ -5032,3 +5044,44 @@ const (
 	// DefaultHardPodAffinityWeight defines the weight of the implicit PreferredDuringScheduling affinity rule.
 	DefaultHardPodAffinitySymmetricWeight int32 = 1
 )
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstance contains controller instances with ids and last health check timestamp
+type ControllerInstance struct {
+	metav1.TypeMeta
+
+	metav1.ObjectMeta
+
+	// A string that designate the type of the controller instance
+	ControllerType string
+
+	// A UUID that representing an controller instance
+	UID types.UID
+
+	//  An int64 integer that identifies the upperbound of workload instances managed by this controller instance
+	HashKey int64
+
+	// WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck
+	// +optional
+	WorkloadNum int32
+
+	// IsLocked is bool that identifies the lock status of the controller instance
+	IsLocked bool
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstanceList holds the controller instance list for same controller type
+type ControllerInstanceList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	// List of controller instance
+	Items []ControllerInstance
+}
