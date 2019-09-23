@@ -40,10 +40,13 @@ type Config struct {
 	Client *clientset.Clientset
 
 	// the rest config for the master
-	CloudFabricConfig *restclient.Config
+	ControllerManagerConfig *restclient.Config
 
 	// the event sink
 	EventRecorder record.EventRecorder
+
+	// the controller type config
+	ControllerTypeConfig ControllerConfig
 }
 
 type completedConfig struct {
