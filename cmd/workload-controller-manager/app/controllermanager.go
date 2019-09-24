@@ -98,7 +98,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	}
 
 	rootClientBuilder := controller.SimpleControllerClientBuilder{
-		ClientConfig: c.CloudFabricConfig,
+		ClientConfig: c.ControllerManagerConfig,
 	}
 
 	clientBuilder := rootClientBuilder
