@@ -131,8 +131,8 @@ func createPod(s storage.Interface, obj *example.Pod) error {
 }
 
 func updatePod(t *testing.T, s storage.Interface, obj, old *example.Pod) *example.Pod {
-	updateFn := func(input runtime.Object, res storage.ResponseMeta) (runtime.Object, *uint64, error) {
-		return obj.DeepCopyObject(), nil, nil
+	updateFn := func(input runtime.Object, res storage.ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
+		return obj.DeepCopyObject(), nil, nil, nil
 	}
 	key := "pods/" + obj.Namespace + "/" + obj.Name
 	if err := s.GuaranteedUpdate(context.TODO(), key, &example.Pod{}, old == nil, nil, updateFn); err != nil {
