@@ -28,6 +28,10 @@ type FakeCoreV1 struct {
 	*testing.Fake
 }
 
+func (c *FakeCoreV1) Actions(namespace string) v1.ActionInterface {
+	return &FakeActions{c, namespace}
+}
+
 func (c *FakeCoreV1) ComponentStatuses() v1.ComponentStatusInterface {
 	return &FakeComponentStatuses{c}
 }

@@ -162,6 +162,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Coordination().V1beta1().Leases().Informer()}, nil
 
 		// Group=core, Version=v1
+	case corev1.SchemeGroupVersion.WithResource("actions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1().Actions().Informer()}, nil
 	case corev1.SchemeGroupVersion.WithResource("componentstatuses"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1().ComponentStatuses().Informer()}, nil
 	case corev1.SchemeGroupVersion.WithResource("configmaps"):

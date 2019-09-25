@@ -8,6 +8,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "action.go",
         "componentstatus.go",
         "configmap.go",
         "controllerinstance.go",

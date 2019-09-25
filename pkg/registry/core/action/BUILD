@@ -20,7 +20,6 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/registry/rest:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/storage:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/storage/names:go_default_library",
-        "//vendor/k8s.io/klog:go_default_library",
     ],
 )
 

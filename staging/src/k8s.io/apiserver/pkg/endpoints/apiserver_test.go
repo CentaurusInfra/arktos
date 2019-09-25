@@ -853,8 +853,8 @@ func TestNotFound(t *testing.T) {
 // before multi-tenancy change.
 // TestNotFound() should be removed when we no longer support the legacy apis before multi-tenancy.
 
-// Many test cases below in this test file have two versions. One for backward compatibility with the API server befor Multi-Teanacy change, and the other 
-// (with WithMultiTenancy in the test case names) is for the behavior in a Multi-Tenancy cluster. 
+// Many test cases below in this test file have two versions. One for backward compatibility with the API server befor Multi-Teanacy change, and the other
+// (with WithMultiTenancy in the test case names) is for the behavior in a Multi-Tenancy cluster.
 // The legacy test cases should be removed when we no longer support the legacy apis.
 func TestNotFoundWithMulitTenancy(t *testing.T) {
 	type T struct {

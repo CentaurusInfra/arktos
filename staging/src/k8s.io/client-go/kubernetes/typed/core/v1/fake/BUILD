@@ -9,6 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
+        "fake_action.go",
         "fake_componentstatus.go",
         "fake_configmap.go",
         "fake_controllerinstance.go",

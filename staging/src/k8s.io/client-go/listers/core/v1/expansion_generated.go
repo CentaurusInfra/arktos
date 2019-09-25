@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1
 
+// ActionListerExpansion allows custom methods to be added to
+// ActionLister.
+type ActionListerExpansion interface{}
+
+// ActionNamespaceListerExpansion allows custom methods to be added to
+// ActionNamespaceLister.
+type ActionNamespaceListerExpansion interface{}
+
 // ComponentStatusListerExpansion allows custom methods to be added to
 // ComponentStatusLister.
 type ComponentStatusListerExpansion interface{}

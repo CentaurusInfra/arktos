@@ -18,6 +18,8 @@ limitations under the License.
 
 package v1
 
+type ActionExpansion interface{}
+
 type ComponentStatusExpansion interface{}
 
 type ConfigMapExpansion interface{}
