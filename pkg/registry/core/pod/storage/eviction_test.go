@@ -171,7 +171,7 @@ func newFailDeleteUpdateStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServe
 		DeleteCollectionWorkers: 3,
 		ResourcePrefix:          "pods",
 	}
-	storage := NewStorage(restOptions, nil, nil, nil)
+	storage := NewStorage(restOptions, nil, nil, nil, nil)
 	storage.Pod.Store.Storage = genericregistry.DryRunnableStorage{
 		Storage: FailDeleteUpdateStorage{storage.Pod.Store.Storage.Storage},
 		Codec:   apitesting.TestStorageCodec(codecs, examplev1.SchemeGroupVersion),

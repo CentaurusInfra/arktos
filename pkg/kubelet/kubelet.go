@@ -1919,6 +1919,8 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 			// These are pods restored from the checkpoint. Treat them as new
 			// pods.
 			handler.HandlePodAdditions(u.Pods)
+		case kubetypes.ACTION:
+			klog.Infof("VDBG: SRC: %q. POD %q ACTION CALLED", u.Source, format.Pods(u.Pods))
 		case kubetypes.SET:
 			// TODO: Do we want to support this?
 			klog.Errorf("Kubelet does not support snapshot update")

@@ -42,6 +42,7 @@ var NoStorageVersionHash = sets.NewString(
 // GVRToStorageVersionHash shouldn't change unless we intentionally change the
 // storage version of a resource.
 var GVRToStorageVersionHash = map[string]string{
+	"v1/actions":                "CDVjb9Zn97o=",
 	"v1/configmaps":             "qFsyl6wFWjQ=",
 	"v1/controllerinstances":    "HX8UpZZPgz8=",
 	"v1/endpoints":              "fWeeMqaN/OA=",

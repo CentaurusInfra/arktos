@@ -21,6 +21,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strings"
+
+	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +51,7 @@ import (
 type PodStorage struct {
 	Pod         *REST
 	Binding     *BindingREST
+	Action      *ActionREST
 	Eviction    *EvictionREST
 	Status      *StatusREST
 	Log         *podrest.LogREST
@@ -63,7 +68,7 @@ type REST struct {
 }
 
 // NewStorage returns a RESTStorage object that will work against pods.
-func NewStorage(optsGetter generic.RESTOptionsGetter, k client.ConnectionInfoGetter, proxyTransport http.RoundTripper, podDisruptionBudgetClient policyclient.PodDisruptionBudgetsGetter) PodStorage {
+func NewStorage(optsGetter generic.RESTOptionsGetter, k client.ConnectionInfoGetter, proxyTransport http.RoundTripper, podDisruptionBudgetClient policyclient.PodDisruptionBudgetsGetter, actionStore *genericregistry.Store) PodStorage {
 
 	store := &genericregistry.Store{
 		NewFunc:                  func() runtime.Object { return &api.Pod{} },
@@ -89,6 +94,7 @@ func NewStorage(optsGetter generic.RESTOptionsGetter, k client.ConnectionInfoGet
 	return PodStorage{
 		Pod:         &REST{store, proxyTransport},
 		Binding:     &BindingREST{store: store},
+		Action:      &ActionREST{store: store, ActionStore: actionStore},
 		Eviction:    newEvictionStorage(store, podDisruptionBudgetClient),
 		Status:      &StatusREST{store: &statusStore},
 		Log:         &podrest.LogREST{Store: store, KubeletConn: k},
@@ -211,6 +217,123 @@ func (r *BindingREST) assignPod(ctx context.Context, podID string, machine strin
 		}
 	}
 	return
+}
+
+// ActionREST implements the REST endpoint for invoking Action on a Pod.
+type ActionREST struct {
+	store       *genericregistry.Store
+	ActionStore *genericregistry.Store
+}
+
+// NamespaceScoped fulfill rest.Scoper
+func (r *ActionREST) NamespaceScoped() bool {
+	return r.store.NamespaceScoped()
+}
+
+// New creates a new last-reboot resource
+func (r *ActionREST) New() runtime.Object {
+	return &api.CustomAction{}
+}
+
+var _ = rest.Creater(&ActionREST{})
+
+func getActionSpec(pod *api.Pod, actionName string, actionRequest *api.CustomAction) (actionObj *api.Action, err error) {
+	var actionSpec api.ActionSpec
+	switch actionName {
+	case "reboot":
+		actionSpec = api.ActionSpec{
+			NodeName: pod.Spec.NodeName,
+			PodAction: &api.PodAction{
+				PodName: pod.Name,
+				RebootAction: &api.RebootAction{
+					DelayInSeconds: actionRequest.RebootParams.DelayInSeconds,
+				},
+			},
+		}
+	default:
+		return nil, errors.NewBadRequest(fmt.Sprintf("Unsupported action '%s' for Pod '%s'", actionName, pod.Name))
+
+	}
+
+	actionObject := &api.Action{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Action",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: actionName,
+		},
+		Spec: actionSpec,
+	}
+	return actionObject, nil
+}
+
+func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (out runtime.Object, err error) {
+	customAction := obj.(*api.CustomAction)
+
+	klog.Infof("VDBG CUSTOM_ACTION OBJ:\n-------------\n%+v\n------------\n", customAction)
+
+	//TODO: Get rid of this hack, figure out how to get RequestInfo and Name as a struct from context
+	ctxtStr := fmt.Sprintf("%+v", ctx)
+	re := regexp.MustCompile("RequestInfo\\{(.*?)\\}")
+	match := re.FindStringSubmatch(ctxtStr)
+	if match == nil {
+		return nil, errors.NewBadRequest("RequestInfo not found in context")
+	}
+	rePod := regexp.MustCompile(`Name:"(.*?)"`)
+	matchPod := rePod.FindStringSubmatch(match[1])
+	if matchPod == nil {
+		return nil, errors.NewBadRequest("Pod name not found in context")
+	}
+
+	podObj, getErr := r.store.Get(ctx, matchPod[1], &metav1.GetOptions{})
+	if podObj == nil {
+		return nil, getErr
+	}
+	pod := podObj.(*api.Pod)
+
+	actionName := strings.ToLower(customAction.ActionName)
+	actionSpec, actionErr := getActionSpec(pod, actionName, customAction)
+	if actionErr != nil {
+		return nil, actionErr
+	}
+
+	runtimeObj, err := r.ActionStore.Create(ctx, actionSpec, nil, &metav1.CreateOptions{})
+	if err == nil {
+		actionObj := runtimeObj.(*api.Action)
+		out = &metav1.Status{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Action",
+			},
+			ListMeta: metav1.ListMeta{
+				SelfLink:        actionObj.SelfLink,
+				ResourceVersion: actionObj.ResourceVersion,
+			},
+			Status:  metav1.StatusSuccess,
+			Message: fmt.Sprintf("Created action '%s' for Pod '%s'", actionName, pod.Name),
+			Details: &metav1.StatusDetails{
+				UID: actionObj.UID,
+			},
+		}
+	} else {
+		out = &metav1.Status{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Action",
+			},
+			Status:  metav1.StatusFailure,
+			Message: fmt.Sprintf("Failed to create action '%s' for Pod '%s'", actionName, pod.Name),
+			Reason:  metav1.StatusReason(err.Error()),
+		}
+	}
+	return out, err
+}
+
+// Get retrieves the object from the storage. It is required to support Patch.
+func (r *ActionREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	//TODO: FIX THIS
+	return r.store.Get(ctx, name, options)
 }
 
 // StatusREST implements the REST endpoint for changing the status of a pod.

@@ -4139,6 +4139,111 @@ type Binding struct {
 	Target ObjectReference
 }
 
+type RebootParams struct {
+	DelayInSeconds int32
+}
+
+type SnapshotParams struct {
+	SnapshotLocation string
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CustomAction object - Specified when invoking action subresource for Pod
+type CustomAction struct {
+	metav1.TypeMeta
+	// ObjectMeta describes the object to which this Action applies
+	// +optional
+	metav1.ObjectMeta
+
+	// Name of the action e.g. Reboot, Snapshot, ...
+	ActionName string
+
+	// Action specific parameters
+	RebootParams   RebootParams
+	SnapshotParams SnapshotParams
+}
+
+type RebootAction struct {
+	DelayInSeconds int32
+}
+
+type RebootStatus struct {
+	RebootSuccessful bool
+}
+
+type SnapshotAction struct {
+	SnapshotLocation string
+}
+
+type SnapshotStatus struct {
+	SnapshotSizeInBytes int64
+}
+
+type PodAction struct {
+	PodName        string
+	PodID          string
+	RebootAction   *RebootAction
+	SnapshotAction *SnapshotAction
+}
+
+type PodActionStatus struct {
+	PodName        string
+	PodID          string
+	RebootStatus   *RebootStatus
+	SnapshotStatus *SnapshotStatus
+}
+
+type NodeAction struct {
+	RebootAction *RebootAction
+}
+
+type NodeActionStatus struct {
+	RebootStatus *RebootStatus
+}
+
+type ActionSpec struct {
+	NodeName   string
+	PodAction  *PodAction
+	NodeAction *NodeAction
+}
+
+type ActionStatus struct {
+	Complete         bool
+	PodActionStatus  *PodActionStatus
+	NodeActionStatus *NodeActionStatus
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+//  Action object - Created and persisted in etcd in response to invocation of pods/action subresource
+type Action struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ObjectMeta
+
+	// Spec defines the Action desired by the caller.
+	// +optional
+	Spec ActionSpec
+
+	// Status represents the current information about a pod. This data may not be up
+	// to date.
+	// +optional
+	Status ActionStatus
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ActionList is a list of events.
+type ActionList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	// Items is a list of Action objects
+	Items []Action
+}
+
 // Preconditions must be fulfilled before an operation (update, delete, etc.) is carried out.
 type Preconditions struct {
 	// Specifies the target UID.

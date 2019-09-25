@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package core
+package actions
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // GroupName is the group name use in this package
-const GroupName = ""
+const GroupName = "actions.k8s.io"
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
@@ -39,67 +39,16 @@ func Resource(resource string) schema.GroupResource {
 }
 
 var (
+	// SchemeBuilder points to a list of functions added to Scheme.
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-	AddToScheme   = SchemeBuilder.AddToScheme
+	// AddToScheme applies all the stored functions to the scheme.
+	AddToScheme = SchemeBuilder.AddToScheme
 )
 
 func addKnownTypes(scheme *runtime.Scheme) error {
-	if err := scheme.AddIgnoredConversionType(&metav1.TypeMeta{}, &metav1.TypeMeta{}); err != nil {
-		return err
-	}
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Pod{},
-		&PodList{},
-		&PodStatusResult{},
-		&PodTemplate{},
-		&PodTemplateList{},
-		&ReplicationControllerList{},
-		&ReplicationController{},
-		&ServiceList{},
-		&Service{},
-		&ServiceProxyOptions{},
-		&NodeList{},
-		&Node{},
-		&NodeProxyOptions{},
-		&Endpoints{},
-		&EndpointsList{},
-		&Binding{},
-		&Event{},
-		&EventList{},
-		&List{},
-		&LimitRange{},
-		&LimitRangeList{},
-		&ResourceQuota{},
-		&ResourceQuotaList{},
-		&Tenant{},
-		&TenantList{},
-		&Namespace{},
-		&NamespaceList{},
-		&ControllerInstance{},
-		&ControllerInstanceList{},
-		&ServiceAccount{},
-		&ServiceAccountList{},
-		&Secret{},
-		&SecretList{},
-		&PersistentVolume{},
-		&PersistentVolumeList{},
-		&PersistentVolumeClaim{},
-		&PersistentVolumeClaimList{},
-		&PodAttachOptions{},
-		&PodLogOptions{},
-		&PodExecOptions{},
-		&PodPortForwardOptions{},
-		&PodProxyOptions{},
-		&ComponentStatus{},
-		&ComponentStatusList{},
-		&SerializedReference{},
-		&RangeAllocation{},
-		&ConfigMap{},
-		&ConfigMapList{},
-		&CustomAction{},
-		&Action{},
-		&ActionList{},
+		&core.Action{},
+		&core.ActionList{},
 	)
-
 	return nil
 }

@@ -76,6 +76,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/util/dryrun:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/typed/policy/v1beta1:go_default_library",
         "//staging/src/k8s.io/client-go/util/retry:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
     ],
 )
 

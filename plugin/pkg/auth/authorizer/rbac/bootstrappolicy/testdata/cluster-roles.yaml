@@ -252,6 +252,7 @@ items:
     - events
     - limitranges
     - namespaces/status
+    - pods/action
     - pods/log
     - pods/status
     - replicationcontrollers/status
@@ -743,6 +744,14 @@ items:
   - apiGroups:
     - ""
     resources:
+    - pods/action
+    verbs:
+    - create
+    - get
+    - update
+  - apiGroups:
+    - ""
+    resources:
     - pods/status
     verbs:
     - patch
@@ -898,6 +907,16 @@ items:
     - create
     - patch
     - update
+  - apiGroups:
+    - ""
+    resources:
+    - actions
+    verbs:
+    - get
+    - list
+    - patch
+    - update
+    - watch
   - apiGroups:
     - ""
     resources:
