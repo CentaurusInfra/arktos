@@ -185,7 +185,7 @@ func (f *FieldManager) Apply(liveObj runtime.Object, patch []byte, fieldManager 
 	}
 	internal.RemoveObjectManagedFields(liveObjVersioned)
 
-	patchObjTyped, err := f.typeConverter.YAMLToTyped(patch)
+	patchObjTyped, err := f.typeConverter.ObjectToTyped(patchObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create typed patch object: %v", err)
 	}
