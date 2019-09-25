@@ -124,8 +124,7 @@ type Store struct {
 	// TTLOnUpdateFunc returns the TTL (time to live) that objects should be
 	// persisted with after current update.
 	// The existing parameter is the current TTL or the default for this
-	// operation. The update parameter indicates whether this is an operation
-	// against an existing object.
+	// operation.
 	//
 	// Objects that are persisted with a TTL are evicted once the TTL expires.
 	TTLOnUpdateFunc func(obj runtime.Object, existing uint64) (uint64, error)
