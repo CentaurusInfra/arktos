@@ -219,7 +219,7 @@ func (ClientIPConfig) SwaggerDoc() map[string]string {
 
 var map_CommonInfo = map[string]string{
 	"":                "Colection of fields that are common to Container and VirtualMachine objects",
-	"name":            "Name of the container specified as a DNS_LABEL.",
+	"name":            "Required. Name of the container specified as a DNS_LABEL.",
 	"image":           "Image name.",
 	"resources":       "Compute Resources required by this container.",
 	"volumeMounts":    "Pod volumes to mount into the workload's filesystem.",
