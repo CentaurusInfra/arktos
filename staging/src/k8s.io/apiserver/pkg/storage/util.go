@@ -29,9 +29,9 @@ type SimpleUpdateFunc func(runtime.Object) (runtime.Object, error)
 
 // SimpleUpdateFunc converts SimpleUpdateFunc into UpdateFunc
 func SimpleUpdate(fn SimpleUpdateFunc) UpdateFunc {
-	return func(input runtime.Object, _ ResponseMeta) (runtime.Object, *uint64, error) {
+	return func(input runtime.Object, _ ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
 		out, err := fn(input)
-		return out, nil, err
+		return out, nil, nil, err
 	}
 }
 

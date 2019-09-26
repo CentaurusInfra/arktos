@@ -117,8 +117,8 @@ func TestDryRunUpdateMissingObjectFails(t *testing.T) {
 
 	obj := UnstructuredOrDie(`{"kind": "Pod"}`)
 
-	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, err error) {
-		return input, nil, errors.New("UpdateFunction shouldn't be called")
+	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, updateTtl *uint64, err error) {
+		return input, nil, nil, errors.New("UpdateFunction shouldn't be called")
 	}
 
 	err := s.GuaranteedUpdate(context.Background(), "key", obj, false, nil, updateFunc, true)
@@ -138,13 +138,13 @@ func TestDryRunUpdatePreconditions(t *testing.T) {
 		t.Fatalf("Failed to create new object: %v", err)
 	}
 
-	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, err error) {
+	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, updateTtl *uint64, err error) {
 		u, ok := input.(*unstructured.Unstructured)
 		if !ok {
-			return input, nil, errors.New("Input object is not unstructured")
+			return input, nil, nil, errors.New("Input object is not unstructured")
 		}
 		unstructured.SetNestedField(u.Object, "value", "field")
-		return u, nil, nil
+		return u, nil, nil, nil
 	}
 	wrongID := types.UID("wrong-uid")
 	myID := types.UID("my-uid")
@@ -171,13 +171,13 @@ func TestDryRunUpdateDoesntUpdate(t *testing.T) {
 		t.Fatalf("Failed to create new object: %v", err)
 	}
 
-	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, err error) {
+	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, updateTtl *uint64, err error) {
 		u, ok := input.(*unstructured.Unstructured)
 		if !ok {
-			return input, nil, errors.New("Input object is not unstructured")
+			return input, nil, nil, errors.New("Input object is not unstructured")
 		}
 		unstructured.SetNestedField(u.Object, "value", "field")
-		return u, nil, nil
+		return u, nil, nil, nil
 	}
 
 	err = s.GuaranteedUpdate(context.Background(), "key", obj, false, nil, updateFunc, true)
@@ -203,13 +203,13 @@ func TestDryRunUpdateReturnsObject(t *testing.T) {
 		t.Fatalf("Failed to create new object: %v", err)
 	}
 
-	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, err error) {
+	updateFunc := func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, updateTtl *uint64, err error) {
 		u, ok := input.(*unstructured.Unstructured)
 		if !ok {
-			return input, nil, errors.New("Input object is not unstructured")
+			return input, nil, nil, errors.New("Input object is not unstructured")
 		}
 		unstructured.SetNestedField(u.Object, "value", "field")
-		return u, nil, nil
+		return u, nil, nil, nil
 	}
 
 	err = s.GuaranteedUpdate(context.Background(), "key", obj, false, nil, updateFunc, true)

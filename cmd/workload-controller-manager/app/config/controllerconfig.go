@@ -30,6 +30,7 @@ type controllerType struct {
 	Type    string `json:"type"`
 	Workers int32  `json:"workers"`
 }
+
 // LocalConfig is the config to load all the local configurations
 type LocalConfig interface {
 	Get() (map[string]interface{}, error)

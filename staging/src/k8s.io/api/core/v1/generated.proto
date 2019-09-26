@@ -404,19 +404,23 @@ message ClientIPConfig {
 
 // Colection of fields that are common to Container and VirtualMachine objects
 message CommonInfo {
-  // Name of the container specified as a DNS_LABEL.
+  // Required. Name of the container specified as a DNS_LABEL.
   optional string name = 1;
 
   // Image name.
+  // +optional
   optional string image = 2;
 
   // Compute Resources required by this container.
+  // +optional
   optional ResourceRequirements resources = 3;
 
   // Pod volumes to mount into the workload's filesystem.
+  // +optional
   repeated VolumeMount volumeMounts = 4;
 
   // Image pull policy.
+  // +optional
   optional string imagePullPolicy = 5;
 }
 
