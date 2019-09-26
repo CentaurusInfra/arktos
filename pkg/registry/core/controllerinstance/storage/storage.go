@@ -43,6 +43,9 @@ func NewREST(optsGetter generic.RESTOptionsGetter) *REST {
 		TTLFunc: func(runtime.Object, uint64, bool) (uint64, error) {
 			return TTL, nil
 		},
+		TTLOnUpdateFunc: func(runtime.Object, uint64) (uint64, error) {
+			return TTL, nil
+		},
 		DefaultQualifiedResource: api.Resource("controllerinstances"),
 
 		CreateStrategy: controllerinstance.Strategy,

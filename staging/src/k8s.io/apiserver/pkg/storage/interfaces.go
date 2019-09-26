@@ -93,7 +93,7 @@ var Everything = SelectionPredicate{
 // Pass an UpdateFunc to Interface.GuaranteedUpdate to make an update
 // that is guaranteed to succeed.
 // See the comment for GuaranteedUpdate for more details.
-type UpdateFunc func(input runtime.Object, res ResponseMeta) (output runtime.Object, ttl *uint64, err error)
+type UpdateFunc func(input runtime.Object, res ResponseMeta) (output runtime.Object, ttl *uint64, updatettl *uint64, err error)
 
 // ValidateObjectFunc is a function to act on a given object. An error may be returned
 // if the hook cannot be completed. The function may NOT transform the provided

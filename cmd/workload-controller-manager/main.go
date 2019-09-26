@@ -115,9 +115,9 @@ func main() {
 	//eventRecorder := createRecorder(client, WorkloadControllerManagerUserAgent)
 
 	c := &controllerManagerConfig.Config{
-		Client:                      client,
-		ControllerManagerConfig:     controllerManagerKubeConfig,
-		ControllerTypeConfig:        controllerconfig,
+		Client:                  client,
+		ControllerManagerConfig: controllerManagerKubeConfig,
+		ControllerTypeConfig:    controllerconfig,
 		//EventRecorder:        eventRecorder,
 	}
 

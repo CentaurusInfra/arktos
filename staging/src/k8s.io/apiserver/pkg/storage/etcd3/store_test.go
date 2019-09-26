@@ -502,9 +502,10 @@ func TestGuaranteedUpdateWithTTL(t *testing.T) {
 
 	out := &example.Pod{}
 	err := store.GuaranteedUpdate(ctx, key, out, true, nil,
-		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, error) {
+		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
 			ttl := uint64(1)
-			return input, &ttl, nil
+			updateTtl := uint64(1)
+			return input, &ttl, &updateTtl, nil
 		})
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
@@ -543,8 +544,8 @@ func TestGuaranteedUpdateChecksStoredData(t *testing.T) {
 	input.ResourceVersion = strconv.FormatInt(resp.Header.Revision, 10)
 	out := &example.Pod{}
 	err = store.GuaranteedUpdate(ctx, key, out, true, nil,
-		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, error) {
-			return input, nil, nil
+		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
+			return input, nil, nil, nil
 		}, input)
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
@@ -559,8 +560,8 @@ func TestGuaranteedUpdateChecksStoredData(t *testing.T) {
 	input = out
 	out = &example.Pod{}
 	err = store.GuaranteedUpdate(ctx, key, out, true, nil,
-		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, error) {
-			return input, nil, nil
+		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
+			return input, nil, nil, nil
 		}, input)
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
@@ -573,8 +574,8 @@ func TestGuaranteedUpdateChecksStoredData(t *testing.T) {
 
 	// this update should write to etcd because the transformer reported stale
 	err = store.GuaranteedUpdate(ctx, key, out, true, nil,
-		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, error) {
-			return input, nil, nil
+		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
+			return input, nil, nil, nil
 		}, input)
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
@@ -733,14 +734,14 @@ func TestTransformationFailure(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	// GuaranteedUpdate without suggestion should return an error
-	if err := store.GuaranteedUpdate(ctx, preset[1].key, &example.Pod{}, false, nil, func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, err error) {
-		return input, nil, nil
+	if err := store.GuaranteedUpdate(ctx, preset[1].key, &example.Pod{}, false, nil, func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, updateTtl *uint64, err error) {
+		return input, nil, nil, nil
 	}); !storage.IsInternalError(err) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	// GuaranteedUpdate with suggestion should return an error if we don't change the object
-	if err := store.GuaranteedUpdate(ctx, preset[1].key, &example.Pod{}, false, nil, func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, err error) {
-		return input, nil, nil
+	if err := store.GuaranteedUpdate(ctx, preset[1].key, &example.Pod{}, false, nil, func(input runtime.Object, res storage.ResponseMeta) (output runtime.Object, ttl *uint64, updateTtl *uint64, err error) {
+		return input, nil, nil, nil
 	}, preset[1].obj); err == nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -1274,8 +1275,8 @@ func TestListInconsistentContinuation(t *testing.T) {
 		},
 	}
 	if err := store.GuaranteedUpdate(ctx, preset[2].key, preset[2].storedObj, false, nil,
-		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, error) {
-			return newPod, nil, nil
+		func(_ runtime.Object, _ storage.ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
+			return newPod, nil, nil, nil
 		}, newPod); err != nil {
 		t.Fatalf("update failed: %v", err)
 	}
