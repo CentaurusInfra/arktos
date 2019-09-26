@@ -63,7 +63,6 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//pkg/cloudfabric-controller/api/types/v1alpha1:all-srcs",
-        "//pkg/cloudfabric-controller/clientset/v1alpha1:all-srcs",
         "//pkg/cloudfabric-controller/replicaset:all-srcs",
         "//pkg/cloudfabric-controller/testutil:all-srcs",
     ],
