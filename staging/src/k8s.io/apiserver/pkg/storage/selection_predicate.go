@@ -43,6 +43,19 @@ func DefaultClusterScopedAttr(obj runtime.Object) (labels.Set, fields.Set, error
 	return labels.Set(metadata.GetLabels()), fieldSet, nil
 }
 
+func DefaultTenantScopedAttr(obj runtime.Object) (labels.Set, fields.Set, error) {
+	metadata, err := meta.Accessor(obj)
+	if err != nil {
+		return nil, nil, err
+	}
+	fieldSet := fields.Set{
+		"metadata.name":   metadata.GetName(),
+		"metadata.tenant": metadata.GetTenant(),
+	}
+
+	return labels.Set(metadata.GetLabels()), fieldSet, nil
+}
+
 func DefaultNamespaceScopedAttr(obj runtime.Object) (labels.Set, fields.Set, error) {
 	metadata, err := meta.Accessor(obj)
 	if err != nil {
@@ -51,6 +64,7 @@ func DefaultNamespaceScopedAttr(obj runtime.Object) (labels.Set, fields.Set, err
 	fieldSet := fields.Set{
 		"metadata.name":      metadata.GetName(),
 		"metadata.namespace": metadata.GetNamespace(),
+		"metadata.tenant":    metadata.GetTenant(),
 	}
 
 	return labels.Set(metadata.GetLabels()), fieldSet, nil
