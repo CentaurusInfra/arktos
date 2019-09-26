@@ -31,6 +31,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 // TODO: allow for global factory override
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorageForResource(t, batch.SchemeGroupVersion.WithResource("cronjobs").GroupResource())
@@ -49,6 +51,7 @@ func validNewCronJob() *batch.CronJob {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: batch.CronJobSpec{
 			Schedule:          "* * * * ?",

@@ -51,6 +51,7 @@ func newStorage(t *testing.T) (*DeploymentStorage, *etcdtesting.EtcdTestServer) 
 	return &deploymentStorage, server
 }
 
+var tenant = "foo-tenant"
 var namespace = "foo-namespace"
 var name = "foo-deployment"
 
@@ -59,6 +60,7 @@ func validNewDeployment() *apps.Deployment {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		Spec: apps.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a": "b"}},
@@ -205,7 +207,8 @@ func TestScaleGet(t *testing.T) {
 	defer storage.Deployment.Store.DestroyFunc()
 	var deployment apps.Deployment
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
-	key := "/deployments/" + namespace + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/deployments/" + tenant + "/" + namespace + "/" + name
 	if err := storage.Deployment.Storage.Create(ctx, key, &validDeployment, &deployment, 0, false); err != nil {
 		t.Fatalf("error setting new deployment (key: %s) %v: %v", key, validDeployment, err)
 	}
@@ -218,6 +221,7 @@ func TestScaleGet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			Namespace:         namespace,
+			Tenant:            tenant,
 			UID:               deployment.UID,
 			HashKey:           deployment.HashKey,
 			ResourceVersion:   deployment.ResourceVersion,
@@ -247,7 +251,8 @@ func TestScaleUpdate(t *testing.T) {
 	defer storage.Deployment.Store.DestroyFunc()
 	var deployment apps.Deployment
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
-	key := "/deployments/" + namespace + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/deployments/" + tenant + "/" + namespace + "/" + name
 	if err := storage.Deployment.Storage.Create(ctx, key, &validDeployment, &deployment, 0, false); err != nil {
 		t.Fatalf("error setting new deployment (key: %s) %v: %v", key, validDeployment, err)
 	}
@@ -284,7 +289,8 @@ func TestStatusUpdate(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Deployment.Store.DestroyFunc()
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
-	key := "/deployments/" + namespace + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/deployments/" + tenant + "/" + namespace + "/" + name
 	if err := storage.Deployment.Storage.Create(ctx, key, &validDeployment, nil, 0, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -317,6 +323,7 @@ func TestStatusUpdate(t *testing.T) {
 
 func TestEtcdCreateDeploymentRollback(t *testing.T) {
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	testCases := map[string]struct {
 		rollback apps.DeploymentRollback
@@ -386,6 +393,7 @@ func TestCreateDeploymentRollbackValidation(t *testing.T) {
 	}
 
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	if _, err := storage.Deployment.Create(ctx, validNewDeployment(), rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -411,6 +419,7 @@ func TestEtcdCreateDeploymentRollbackNoDeployment(t *testing.T) {
 	defer storage.Deployment.Store.DestroyFunc()
 	rollbackStorage := storage.Rollback
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	_, err := rollbackStorage.Create(ctx, name, &apps.DeploymentRollback{
 		Name:               name,

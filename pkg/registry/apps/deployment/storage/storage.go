@@ -351,6 +351,7 @@ func scaleFromDeployment(deployment *apps.Deployment) (*autoscaling.Scale, error
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              deployment.Name,
 			Namespace:         deployment.Namespace,
+			Tenant:            deployment.Tenant,
 			UID:               deployment.UID,
 			HashKey:           deployment.HashKey,
 			ResourceVersion:   deployment.ResourceVersion,

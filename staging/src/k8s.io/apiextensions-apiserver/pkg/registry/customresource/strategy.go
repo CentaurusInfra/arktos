@@ -76,7 +76,7 @@ func (a customResourceStrategy) NamespaceScoped() bool {
 }
 
 func (a customResourceStrategy) TenantScoped() bool {
-	return a.tenantScoped
+	return a.tenantScoped || a.namespaceScoped
 }
 
 // PrepareForCreate clears the status of a CustomResource before creation.

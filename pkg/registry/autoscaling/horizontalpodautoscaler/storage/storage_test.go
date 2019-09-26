@@ -37,6 +37,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, autoscaling.GroupName)
 	restOptions := generic.RESTOptions{
@@ -55,6 +57,7 @@ func validNewHorizontalPodAutoscaler(name string) *autoscaling.HorizontalPodAuto
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: autoscaling.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -177,7 +180,8 @@ func TestUpdateStatus(t *testing.T) {
 	storage, statusStorage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	key, _ := storage.KeyFunc(ctx, "foo")
 	autoscalerStart := validNewHorizontalPodAutoscaler("foo")
 	err := storage.Storage.Create(ctx, key, autoscalerStart, nil, 0, false)
@@ -189,6 +193,7 @@ func TestUpdateStatus(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Status: autoscaling.HorizontalPodAutoscalerStatus{
 			Conditions: []autoscaling.HorizontalPodAutoscalerCondition{

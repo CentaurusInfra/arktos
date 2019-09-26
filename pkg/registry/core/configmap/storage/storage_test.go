@@ -30,6 +30,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
 	restOptions := generic.RESTOptions{
@@ -46,6 +48,7 @@ func validNewConfigMap() *api.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
+			Tenant:    tenant,
 			Labels: map[string]string{
 				"label-1": "value-1",
 				"label-2": "value-2",

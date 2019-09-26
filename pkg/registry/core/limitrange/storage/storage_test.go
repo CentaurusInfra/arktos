@@ -31,6 +31,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
 	restOptions := generic.RESTOptions{
@@ -47,6 +49,7 @@ func validNewLimitRange() *api.LimitRange {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: api.LimitRangeSpec{
 			Limits: []api.LimitRangeItem{

@@ -32,6 +32,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, networking.GroupName)
 	restOptions := generic.RESTOptions{
@@ -48,6 +50,7 @@ func validNetworkPolicy() *networking.NetworkPolicy {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
+			Tenant:    tenant,
 		},
 		Spec: networking.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{

@@ -41,11 +41,12 @@ func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 	return NewREST(restOptions, testTTL), server
 }
 
-func validNewEvent(namespace string) *api.Event {
+func validNewEvent(namespace, tenant string) *api.Event {
 	return &api.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		Reason: "forTesting",
 		InvolvedObject: api.ObjectReference{
@@ -60,7 +61,7 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store)
-	event := validNewEvent(test.TestNamespace())
+	event := validNewEvent(test.TestNamespace(), test.TestTenant())
 	event.ObjectMeta = metav1.ObjectMeta{}
 	test.TestCreate(
 		// valid
@@ -77,7 +78,7 @@ func TestUpdate(t *testing.T) {
 	test := genericregistrytest.New(t, storage.Store).AllowCreateOnUpdate()
 	test.TestUpdate(
 		// valid
-		validNewEvent(test.TestNamespace()),
+		validNewEvent(test.TestNamespace(), test.TestTenant()),
 		// valid updateFunc
 		func(obj runtime.Object) runtime.Object {
 			object := obj.(*api.Event)
@@ -98,7 +99,7 @@ func TestDelete(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store)
-	test.TestDelete(validNewEvent(test.TestNamespace()))
+	test.TestDelete(validNewEvent(test.TestNamespace(), test.TestTenant()))
 }
 
 func TestShortNames(t *testing.T) {
