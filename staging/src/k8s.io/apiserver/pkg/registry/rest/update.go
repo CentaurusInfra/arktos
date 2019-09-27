@@ -98,6 +98,13 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 	} else if len(objectMeta.GetNamespace()) > 0 {
 		objectMeta.SetNamespace(metav1.NamespaceNone)
 	}
+	if strategy.TenantScoped() {
+		if !ValidTenant(ctx, objectMeta) {
+			return errors.NewBadRequest("the tenant of the provided object does not match the tenant sent on the request")
+		}
+	} else if len(objectMeta.GetTenant()) > 0 {
+		objectMeta.SetTenant(metav1.TenantNone)
+	}
 
 	// Ensure requests cannot update generation
 	oldMeta, err := meta.Accessor(old)

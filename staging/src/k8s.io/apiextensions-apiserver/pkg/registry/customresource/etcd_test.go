@@ -46,6 +46,8 @@ import (
 	"k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (customresource.CustomResourceStorage, *etcdtesting.EtcdTestServer) {
 	server, etcdStorage := etcdtesting.NewUnsecuredEtcd3TestClientServer(t)
 	etcdStorage.Codec = unstructuredJsonCodec{}
@@ -114,6 +116,7 @@ func newStorage(t *testing.T) (customresource.CustomResourceStorage, *etcdtestin
 // createCustomResource is a helper function that returns a CustomResource with the updated resource version.
 func createCustomResource(storage *customresource.REST, cr unstructured.Unstructured, t *testing.T) (unstructured.Unstructured, error) {
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), cr.GetNamespace())
+	ctx = genericapirequest.WithTenant(ctx, cr.GetTenant())
 	obj, err := storage.Create(ctx, &cr, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("Failed to create CustomResource, %v", err)
@@ -128,6 +131,7 @@ func validNewCustomResource() *unstructured.Unstructured {
 			"apiVersion": "mygroup.example.com/v1beta1",
 			"kind":       "Noxu",
 			"metadata": map[string]interface{}{
+				"tenant":            "test-te",
 				"namespace":         "default",
 				"name":              "foo",
 				"creationTimestamp": time.Now().Add(-time.Hour*12 - 30*time.Minute).UTC().Format(time.RFC3339),
@@ -154,6 +158,7 @@ func TestCreate(t *testing.T) {
 	test := registrytest.New(t, storage.CustomResource.Store)
 	cr := validNewCustomResource()
 	cr.SetNamespace("")
+	cr.SetTenant(tenant)
 	test.TestCreate(
 		cr,
 	)
@@ -189,7 +194,8 @@ func TestGenerationNumber(t *testing.T) {
 	defer storage.CustomResource.Store.DestroyFunc()
 	modifiedRno := *validNewCustomResource()
 	modifiedRno.SetGeneration(10)
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	cr, err := createCustomResource(storage.CustomResource, modifiedRno, t)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -254,7 +260,8 @@ func TestColumns(t *testing.T) {
 	defer storage.CustomResource.Store.DestroyFunc()
 
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/noxus/" + metav1.NamespaceDefault + "/foo"
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/noxus/" + tenant + "/" + metav1.NamespaceDefault + "/foo"
 	validCustomResource := validNewCustomResource()
 	if err := storage.CustomResource.Storage.Create(ctx, key, validCustomResource, nil, 0, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -324,7 +331,8 @@ func TestStatusUpdate(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.CustomResource.Store.DestroyFunc()
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/noxus/" + metav1.NamespaceDefault + "/foo"
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/noxus/" + tenant + "/" + metav1.NamespaceDefault + "/foo"
 	validCustomResource := validNewCustomResource()
 	if err := storage.CustomResource.Storage.Create(ctx, key, validCustomResource, nil, 0, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -376,7 +384,8 @@ func TestScaleGet(t *testing.T) {
 
 	var cr unstructured.Unstructured
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/noxus/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/noxus/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	if err := storage.CustomResource.Storage.Create(ctx, key, &validCustomResource, &cr, 0, false); err != nil {
 		t.Fatalf("error setting new custom resource (key: %s) %v: %v", key, validCustomResource, err)
 	}
@@ -389,6 +398,7 @@ func TestScaleGet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              cr.GetName(),
 			Namespace:         metav1.NamespaceDefault,
+			Tenant:            tenant,
 			UID:               cr.GetUID(),
 			HashKey:           cr.GetHashKey(),
 			ResourceVersion:   cr.GetResourceVersion(),
@@ -419,7 +429,8 @@ func TestScaleGetWithoutSpecReplicas(t *testing.T) {
 
 	var cr unstructured.Unstructured
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/noxus/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/noxus/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	withoutSpecReplicas := validCustomResource.DeepCopy()
 	unstructured.RemoveNestedField(withoutSpecReplicas.Object, "spec", "replicas")
 	if err := storage.CustomResource.Storage.Create(ctx, key, withoutSpecReplicas, &cr, 0, false); err != nil {
@@ -444,7 +455,8 @@ func TestScaleUpdate(t *testing.T) {
 
 	var cr unstructured.Unstructured
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/noxus/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/noxus/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	if err := storage.CustomResource.Storage.Create(ctx, key, &validCustomResource, &cr, 0, false); err != nil {
 		t.Fatalf("error setting new custom resource (key: %s) %v: %v", key, validCustomResource, err)
 	}
@@ -496,7 +508,8 @@ func TestScaleUpdateWithoutSpecReplicas(t *testing.T) {
 
 	var cr unstructured.Unstructured
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/noxus/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/noxus/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	withoutSpecReplicas := validCustomResource.DeepCopy()
 	unstructured.RemoveNestedField(withoutSpecReplicas.Object, "spec", "replicas")
 	if err := storage.CustomResource.Storage.Create(ctx, key, withoutSpecReplicas, &cr, 0, false); err != nil {

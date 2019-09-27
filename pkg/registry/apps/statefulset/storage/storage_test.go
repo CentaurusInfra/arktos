@@ -36,6 +36,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 // TODO: allow for global factory override
 func newStorage(t *testing.T) (StatefulSetStorage, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, apps.GroupName)
@@ -49,6 +51,7 @@ func validNewStatefulSet() *apps.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 			Labels:    map[string]string{"a": "b"},
 		},
 		Spec: apps.StatefulSetSpec{
@@ -100,7 +103,8 @@ func TestStatusUpdate(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.StatefulSet.Store.DestroyFunc()
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/statefulsets/" + metav1.NamespaceDefault + "/foo"
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/statefulsets/" + tenant + "/" + metav1.NamespaceDefault + "/foo"
 	validStatefulSet := validNewStatefulSet()
 	if err := storage.StatefulSet.Storage.Create(ctx, key, validStatefulSet, nil, 0, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -209,7 +213,8 @@ func TestScaleGet(t *testing.T) {
 
 	var sts apps.StatefulSet
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/statefulsets/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/statefulsets/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	if err := storage.StatefulSet.Storage.Create(ctx, key, &validStatefulSet, &sts, 0, false); err != nil {
 		t.Fatalf("error setting new statefulset (key: %s) %v: %v", key, validStatefulSet, err)
 	}
@@ -222,6 +227,7 @@ func TestScaleGet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			Namespace:         metav1.NamespaceDefault,
+			Tenant:            tenant,
 			UID:               sts.UID,
 			HashKey:           sts.HashKey,
 			ResourceVersion:   sts.ResourceVersion,
@@ -254,7 +260,8 @@ func TestScaleUpdate(t *testing.T) {
 
 	var sts apps.StatefulSet
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/statefulsets/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/statefulsets/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	if err := storage.StatefulSet.Storage.Create(ctx, key, &validStatefulSet, &sts, 0, false); err != nil {
 		t.Fatalf("error setting new statefulset (key: %s) %v: %v", key, validStatefulSet, err)
 	}
@@ -263,6 +270,7 @@ func TestScaleUpdate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: autoscaling.ScaleSpec{
 			Replicas: int32(replicas),

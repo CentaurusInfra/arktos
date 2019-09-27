@@ -34,6 +34,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, storageapi.GroupName)
 	restOptions := generic.RESTOptions{
@@ -50,7 +52,8 @@ func validNewVolumeAttachment(name string) *storageapi.VolumeAttachment {
 	pvName := "foo"
 	return &storageapi.VolumeAttachment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:   name,
+			Tenant: tenant,
 		},
 		Spec: storageapi.VolumeAttachmentSpec{
 			Attacher: "valid-attacher",
@@ -66,16 +69,16 @@ func TestCreate(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).ClusterScope()
+	test := genericregistrytest.New(t, storage.Store).TenantScope()
 	volumeAttachment := validNewVolumeAttachment("foo")
-	volumeAttachment.ObjectMeta = metav1.ObjectMeta{GenerateName: "foo"}
+	volumeAttachment.ObjectMeta = metav1.ObjectMeta{GenerateName: "foo", Tenant: tenant}
 	pvName := "foo"
 	test.TestCreate(
 		// valid
 		volumeAttachment,
 		// invalid
 		&storageapi.VolumeAttachment{
-			ObjectMeta: metav1.ObjectMeta{Name: "*BadName!"},
+			ObjectMeta: metav1.ObjectMeta{Name: "*BadName!", Tenant: tenant},
 			Spec: storageapi.VolumeAttachmentSpec{
 				Attacher: "invalid-attacher-!@#$%^&*()",
 				Source: storageapi.VolumeAttachmentSource{
@@ -91,7 +94,7 @@ func TestUpdate(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).ClusterScope()
+	test := genericregistrytest.New(t, storage.Store).TenantScope()
 
 	test.TestUpdate(
 		// valid
@@ -116,7 +119,7 @@ func TestDelete(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).ClusterScope().ReturnDeletedObject()
+	test := genericregistrytest.New(t, storage.Store).TenantScope().ReturnDeletedObject()
 	test.TestDelete(validNewVolumeAttachment("foo"))
 }
 
@@ -124,7 +127,7 @@ func TestGet(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).ClusterScope()
+	test := genericregistrytest.New(t, storage.Store).TenantScope()
 	test.TestGet(validNewVolumeAttachment("foo"))
 }
 
@@ -132,7 +135,7 @@ func TestList(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).ClusterScope()
+	test := genericregistrytest.New(t, storage.Store).TenantScope()
 	test.TestList(validNewVolumeAttachment("foo"))
 }
 
@@ -140,7 +143,7 @@ func TestWatch(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).ClusterScope()
+	test := genericregistrytest.New(t, storage.Store).TenantScope()
 	test.TestWatch(
 		validNewVolumeAttachment("foo"),
 		// matching labels
@@ -164,7 +167,7 @@ func TestEtcdStatusUpdate(t *testing.T) {
 	storage, statusStorage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), tenant)
 
 	attachment := validNewVolumeAttachment("foo")
 	if _, err := storage.Create(ctx, attachment, rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {

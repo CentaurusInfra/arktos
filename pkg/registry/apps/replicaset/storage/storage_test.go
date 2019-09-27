@@ -39,6 +39,8 @@ import (
 
 const defaultReplicas = 100
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*ReplicaSetStorage, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "extensions")
 	restOptions := generic.RESTOptions{StorageConfig: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1, ResourcePrefix: "replicasets"}
@@ -49,6 +51,7 @@ func newStorage(t *testing.T) (*ReplicaSetStorage, *etcdtesting.EtcdTestServer) 
 // createReplicaSet is a helper function that returns a ReplicaSet with the updated resource version.
 func createReplicaSet(storage *REST, rs apps.ReplicaSet, t *testing.T) (apps.ReplicaSet, error) {
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), rs.Namespace)
+	ctx = genericapirequest.WithTenant(ctx, rs.Tenant)
 	obj, err := storage.Create(ctx, &rs, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("Failed to create ReplicaSet, %v", err)
@@ -62,6 +65,7 @@ func validNewReplicaSet() *apps.ReplicaSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: apps.ReplicaSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a": "b"}},
@@ -157,6 +161,7 @@ func TestGenerationNumber(t *testing.T) {
 	modifiedSno.Generation = 100
 	modifiedSno.Status.ObservedGeneration = 10
 	ctx := genericapirequest.NewDefaultContext()
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	rs, err := createReplicaSet(storage.ReplicaSet, modifiedSno, t)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -259,7 +264,8 @@ func TestScaleGet(t *testing.T) {
 
 	var rs apps.ReplicaSet
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/replicasets/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/replicasets/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	if err := storage.ReplicaSet.Storage.Create(ctx, key, &validReplicaSet, &rs, 0, false); err != nil {
 		t.Fatalf("error setting new replica set (key: %s) %v: %v", key, validReplicaSet, err)
 	}
@@ -273,6 +279,7 @@ func TestScaleGet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			Namespace:         metav1.NamespaceDefault,
+			Tenant:            tenant,
 			UID:               rs.UID,
 			HashKey:           rs.HashKey,
 			ResourceVersion:   rs.ResourceVersion,
@@ -305,7 +312,8 @@ func TestScaleUpdate(t *testing.T) {
 
 	var rs apps.ReplicaSet
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/replicasets/" + metav1.NamespaceDefault + "/" + name
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/replicasets/" + tenant + "/" + metav1.NamespaceDefault + "/" + name
 	if err := storage.ReplicaSet.Storage.Create(ctx, key, &validReplicaSet, &rs, 0, false); err != nil {
 		t.Fatalf("error setting new replica set (key: %s) %v: %v", key, validReplicaSet, err)
 	}
@@ -347,7 +355,8 @@ func TestStatusUpdate(t *testing.T) {
 	defer storage.ReplicaSet.Store.DestroyFunc()
 
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/replicasets/" + metav1.NamespaceDefault + "/foo"
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/replicasets/" + tenant + "/" + metav1.NamespaceDefault + "/foo"
 	if err := storage.ReplicaSet.Storage.Create(ctx, key, &validReplicaSet, nil, 0, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

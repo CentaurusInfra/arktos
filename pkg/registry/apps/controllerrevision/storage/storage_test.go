@@ -37,13 +37,15 @@ func TestCreate(t *testing.T) {
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store)
 	var (
-		valid       = stripObjectMeta(newControllerRevision("validname", metav1.NamespaceDefault, newObject(), 0))
-		badRevision = stripObjectMeta(newControllerRevision("validname", "validns", newObject(), -1))
-		emptyName   = stripObjectMeta(newControllerRevision("", "validns", newObject(), 0))
-		invalidName = stripObjectMeta(newControllerRevision("NoUppercaseOrSpecialCharsLike=Equals", "validns", newObject(), 0))
-		emptyNs     = stripObjectMeta(newControllerRevision("validname", "", newObject(), 100))
-		invalidNs   = stripObjectMeta(newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", newObject(), 100))
-		nilData     = stripObjectMeta(newControllerRevision("validname", "validns", nil, 0))
+		valid       = stripObjectMeta(newControllerRevision("validname", metav1.NamespaceDefault, "validte", newObject(), 0))
+		badRevision = stripObjectMeta(newControllerRevision("validname", "validns", "validte", newObject(), -1))
+		emptyName   = stripObjectMeta(newControllerRevision("", "validns", "validte", newObject(), 0))
+		invalidName = stripObjectMeta(newControllerRevision("NoUppercaseOrSpecialCharsLike=Equals", "validns", "validte", newObject(), 0))
+		emptyNs     = stripObjectMeta(newControllerRevision("validname", "", "validte", newObject(), 100))
+		invalidNs   = stripObjectMeta(newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", "validte", newObject(), 100))
+		emptyTenant     = stripObjectMeta(newControllerRevision("validname", "validns", "", newObject(), 100))
+		invalidTenant   = stripObjectMeta(newControllerRevision("validname", "validns", "NoUppercaseOrSpecialCharsLike=Equals", newObject(), 100))
+		nilData     = stripObjectMeta(newControllerRevision("validname", "validns", "validte", nil, 0))
 	)
 	test.TestCreate(
 		valid,
@@ -52,6 +54,8 @@ func TestCreate(t *testing.T) {
 		invalidName,
 		emptyNs,
 		invalidNs,
+		emptyTenant,
+		invalidTenant,
 		nilData)
 }
 
@@ -85,7 +89,7 @@ func TestUpdate(t *testing.T) {
 		return update
 	}
 
-	test.TestUpdate(stripObjectMeta(newControllerRevision("validname", metav1.NamespaceDefault, newObject(), 0)),
+	test.TestUpdate(stripObjectMeta(newControllerRevision("validname", metav1.NamespaceDefault, "validte", newObject(), 0)),
 		addLabel,
 		updateData)
 }
@@ -95,7 +99,7 @@ func TestGet(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store)
-	test.TestGet(newControllerRevision("valid", metav1.NamespaceDefault, newObject(), 0))
+	test.TestGet(newControllerRevision("valid", metav1.NamespaceDefault, "validte", newObject(), 0))
 }
 
 func TestList(t *testing.T) {
@@ -103,7 +107,7 @@ func TestList(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store)
-	test.TestList(newControllerRevision("valid", metav1.NamespaceDefault, newObject(), 0))
+	test.TestList(newControllerRevision("valid", metav1.NamespaceDefault, "validte", newObject(), 0))
 }
 
 func TestDelete(t *testing.T) {
@@ -111,7 +115,7 @@ func TestDelete(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store)
-	test.TestDelete(newControllerRevision("valid", metav1.NamespaceDefault, newObject(), 0))
+	test.TestDelete(newControllerRevision("valid", metav1.NamespaceDefault, "validte", newObject(), 0))
 }
 
 func TestWatch(t *testing.T) {
@@ -120,7 +124,7 @@ func TestWatch(t *testing.T) {
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store)
 	test.TestWatch(
-		newControllerRevision("valid", metav1.NamespaceDefault, newObject(), 0),
+		newControllerRevision("valid", metav1.NamespaceDefault, "validte", newObject(), 0),
 		[]labels.Set{
 			{"foo": "bar"},
 		},
@@ -136,11 +140,12 @@ func TestWatch(t *testing.T) {
 	)
 }
 
-func newControllerRevision(name, namespace string, data runtime.Object, revision int64) *apps.ControllerRevision {
+func newControllerRevision(name, namespace, tenant string, data runtime.Object, revision int64) *apps.ControllerRevision {
 	return &apps.ControllerRevision{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 			Labels:    map[string]string{"foo": "bar"},
 		},
 		Data:     data,
@@ -166,7 +171,7 @@ func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 
 func newObject() runtime.Object {
 	return &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: "validte"},
 		Spec: apps.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 			Template: api.PodTemplateSpec{

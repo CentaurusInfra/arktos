@@ -256,6 +256,7 @@ func scaleFromReplicaSet(rs *apps.ReplicaSet) (*autoscaling.Scale, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              rs.Name,
 			Namespace:         rs.Namespace,
+			Tenant:            rs.Tenant,
 			UID:               rs.UID,
 			HashKey:           rs.HashKey,
 			ResourceVersion:   rs.ResourceVersion,

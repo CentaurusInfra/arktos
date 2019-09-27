@@ -41,3 +41,14 @@ func ValidNamespace(ctx context.Context, resource metav1.Object) bool {
 	}
 	return ns == resource.GetNamespace() && ok
 }
+
+// ValidTenant returns false if the tenant on the context differs from
+// the resource.  If the resource has no tenant, it is set to the value in
+// the context.
+func ValidTenant(ctx context.Context, resource metav1.Object) bool {
+	te, ok := genericapirequest.TenantFrom(ctx)
+	if len(resource.GetTenant()) == 0 {
+		resource.SetTenant(te)
+	}
+	return te == resource.GetTenant() && ok
+}
