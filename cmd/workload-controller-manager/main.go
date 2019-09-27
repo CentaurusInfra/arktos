@@ -21,15 +21,10 @@ import (
 	"fmt"
 	"os"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/component-base/logs"
 	"k8s.io/kubernetes/cmd/workload-controller-manager/app"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller/api/types/v1alpha1"
-	clientV1alpha1 "k8s.io/kubernetes/pkg/cloudfabric-controller/clientset/v1alpha1"
 
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -52,7 +47,7 @@ func init() {
 }
 
 func main() {
-	var config *rest.Config
+
 	var err error
 
 	logs.InitLogs()
@@ -66,31 +61,9 @@ func main() {
 		fmt.Println("using controller configuration from ", controllerconfigfilepath)
 	}
 
-	if kubeconfig == "" {
-		fmt.Println("using in-cluster configuration")
-		config, err = rest.InClusterConfig()
-	} else {
-		fmt.Println("using configuration from ", kubeconfig)
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-	}
-
 	if err != nil {
 		panic(err)
 	}
-
-	v1alpha1.AddToScheme(scheme.Scheme)
-
-	clientSet, err := clientV1alpha1.NewForConfig(config)
-	if err != nil {
-		panic(err)
-	}
-
-	controllermanagers, err := clientSet.ControllerManagers("default").List(metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("controllermanagers found: %+v\n", controllermanagers)
 
 	/*
 		store := WatchResources(clientSet)
