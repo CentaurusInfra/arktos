@@ -146,8 +146,15 @@ func ConnectResource(connecter rest.Connecter, scope *RequestScope, admit admiss
 			scope.err(err, w, req)
 			return
 		}
+		tenant, err := scope.Namer.Tenant(req)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
+
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		ctx = request.WithTenant(ctx, tenant)
 		ae := request.AuditEventFrom(ctx)
 		admit = admission.WithAudit(admit, ae)
 
