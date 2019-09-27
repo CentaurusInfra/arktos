@@ -34,6 +34,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
 	restOptions := generic.RESTOptions{
@@ -51,6 +53,7 @@ func validNewResourceQuota() *api.ResourceQuota {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: api.ResourceQuotaSpec{
 			Hard: api.ResourceList{
@@ -86,9 +89,10 @@ func TestCreateSetsFields(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	resourcequota := validNewResourceQuota()
-	_, err := storage.Create(genericapirequest.NewDefaultContext(), resourcequota, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	_, err := storage.Create(ctx, resourcequota, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -158,7 +162,9 @@ func TestUpdateStatus(t *testing.T) {
 	storage, status, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	key, _ := storage.KeyFunc(ctx, "foo")
 	resourcequotaStart := validNewResourceQuota()
@@ -171,6 +177,7 @@ func TestUpdateStatus(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Status: api.ResourceQuotaStatus{
 			Used: api.ResourceList{

@@ -51,6 +51,10 @@ func (r *Storage) NamespaceScoped() bool {
 	return false
 }
 
+func (r *Storage) TenantScoped() bool {
+	return false
+}
+
 func (r *Storage) StorageVersion() runtime.GroupVersioner {
 	svp, ok := r.StandardStorage.(rest.StorageVersionProvider)
 	if !ok {

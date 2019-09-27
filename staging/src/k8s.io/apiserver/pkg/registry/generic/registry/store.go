@@ -82,13 +82,13 @@ type Store struct {
 	// NewFunc returns a new instance of the type this registry returns for a
 	// GET of a single object, e.g.:
 	//
-	// curl GET /apis/group/version/namespaces/my-ns/myresource/name-of-object
+	// curl GET /apis/group/version/tenants/my-test/namespaces/my-ns/myresource/name-of-object
 	NewFunc func() runtime.Object
 
 	// NewListFunc returns a new list of the type this registry; it is the
 	// type returned when the resource is listed, e.g.:
 	//
-	// curl GET /apis/group/version/namespaces/my-ns/myresource
+	// curl GET /apis/group/version/tenants/my-test/namespaces/my-ns/myresource
 	NewListFunc func() runtime.Object
 
 	// DefaultQualifiedResource is the pluralized name of the resource.
@@ -104,7 +104,7 @@ type Store struct {
 	KeyRootFunc func(ctx context.Context) string
 
 	// KeyFunc returns the key for a specific object in the collection.
-	// KeyFunc is called for Create/Update/Get/Delete. Note that 'namespace'
+	// KeyFunc is called for Create/Update/Get/Delete. Note that 'namespace' and 'tenant'
 	// can be gotten from ctx.
 	//
 	// KeyFunc and KeyRootFunc must be supplied together or not at all.
@@ -120,6 +120,14 @@ type Store struct {
 	//
 	// Objects that are persisted with a TTL are evicted once the TTL expires.
 	TTLFunc func(obj runtime.Object, existing uint64, update bool) (uint64, error)
+
+	// TTLOnUpdateFunc returns the TTL (time to live) that objects should be
+	// persisted with after current update.
+	// The existing parameter is the current TTL or the default for this
+	// operation.
+	//
+	// Objects that are persisted with a TTL are evicted once the TTL expires.
+	TTLOnUpdateFunc func(obj runtime.Object, existing uint64) (uint64, error)
 
 	// PredicateFunc returns a matcher corresponding to the provided labels
 	// and fields. The SelectionPredicate returned should return true if the
@@ -203,39 +211,100 @@ const (
 	resourceCountPollPeriodJitter = 1.2
 )
 
-// NamespaceKeyRootFunc is the default function for constructing storage paths
+// NamespaceKeyRootFunc is the default function for constructing storage paths for namespace-scope objects
 // to resource directories enforcing namespace rules.
 func NamespaceKeyRootFunc(ctx context.Context, prefix string) string {
 	key := prefix
+
+	te, ok := genericapirequest.TenantFrom(ctx)
+	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
+	if ok && len(te) > 0 && te != metav1.TenantDefault  {
+		key = key + "/" + te
+	}
+	
 	ns, ok := genericapirequest.NamespaceFrom(ctx)
-	if ok && len(ns) > 0 {
+	if !ok {
+		return key
+	}
+	if len(ns) > 0 {
 		key = key + "/" + ns
 	}
+
 	return key
 }
 
-// NamespaceKeyFunc is the default function for constructing storage paths to
-// a resource relative to the given prefix enforcing namespace rules. If the
-// context does not contain a namespace, it errors.
+// TenantKeyRootFunc is the default function for constructing storage paths for tenant-scope objects
+// to resource directories enforcing tenant rules.
+func TenantKeyRootFunc(ctx context.Context, prefix string) string {
+	key := prefix
+
+	te, ok := genericapirequest.TenantFrom(ctx)
+	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
+	if ok && len(te) > 0 && te != metav1.TenantDefault  {
+		key = key + "/" + te
+	}
+
+	return key
+}
+
+// NamespaceKeyFunc is the default function for constructing storage paths to a
+// namespace-scope resource relative to the given prefix enforcing tenant/namespace rules. If the
+// context does not contain a tenant/namespace, it errors.
 func NamespaceKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
-	key := NamespaceKeyRootFunc(ctx, prefix)
-	ns, ok := genericapirequest.NamespaceFrom(ctx)
+	var te, ns string
+	var ok bool
+
+	te, ok = genericapirequest.TenantFrom(ctx)
+	if !ok || len(te) == 0 {
+		// not doing anything for now
+		// When the multi-tenancy change for client-go is done, uncomment the following line
+		// to make empty tenant an error.
+		// return "", kubeerr.NewBadRequest("Tenant parameter required.")
+	}
+
+	ns, ok = genericapirequest.NamespaceFrom(ctx)
 	if !ok || len(ns) == 0 {
 		return "", kubeerr.NewBadRequest("Namespace parameter required.")
 	}
+
 	if len(name) == 0 {
 		return "", kubeerr.NewBadRequest("Name parameter required.")
 	}
 	if msgs := path.IsValidPathSegmentName(name); len(msgs) != 0 {
 		return "", kubeerr.NewBadRequest(fmt.Sprintf("Name parameter invalid: %q: %s", name, strings.Join(msgs, ";")))
 	}
+	key := NamespaceKeyRootFunc(ctx, prefix)
+	key = key + "/" + name
+	return key, nil
+}
+
+// TenantKeyFunc is the default function for constructing storage paths to
+// a tenant-scope resource relative to the given prefix enforcing tenant rules. If the
+// context does not contain a tenant, it errors.
+func TenantKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
+	te, ok := genericapirequest.TenantFrom(ctx)
+	if !ok || len(te) == 0 {
+		// not doing anything for now
+		// When the multi-tenancy change for client-go is done, uncomment the following line
+		// to make empty tenant an error.
+		// return "", kubeerr.NewBadRequest("Tenant parameter required.")
+	}
+
+	if len(name) == 0 {
+		return "", kubeerr.NewBadRequest("Name parameter required.")
+	}
+	if msgs := path.IsValidPathSegmentName(name); len(msgs) != 0 {
+		return "", kubeerr.NewBadRequest(fmt.Sprintf("Name parameter invalid: %q: %s", name, strings.Join(msgs, ";")))
+	}
+	key := TenantKeyRootFunc(ctx, prefix)
 	key = key + "/" + name
 	return key, nil
 }
 
 // NoNamespaceKeyFunc is the default function for constructing storage paths
-// to a resource relative to the given prefix without a namespace.
-func NoNamespaceKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
+// to a cluster-scope resource relative to the given prefix.
+func ClusterKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
+
 	if len(name) == 0 {
 		return "", kubeerr.NewBadRequest("Name parameter required.")
 	}
@@ -266,6 +335,18 @@ func (e *Store) NamespaceScoped() bool {
 	}
 
 	panic("programmer error: no CRUD for resource, you're crazy, override NamespaceScoped too")
+}
+
+// TenantScoped indicates whether the resource is tenanted
+func (e *Store) TenantScoped() bool {
+	if e.CreateStrategy != nil {
+		return e.CreateStrategy.TenantScoped()
+	}
+	if e.UpdateStrategy != nil {
+		return e.UpdateStrategy.TenantScoped()
+	}
+
+	panic("programmer error: no CRUD for resource, you're crazy, override TenantScoped too")
 }
 
 // GetCreateStrategy implements GenericStore.
@@ -339,6 +420,7 @@ func (e *Store) Create(ctx context.Context, obj runtime.Object, createValidation
 	if err := rest.BeforeCreate(e.CreateStrategy, ctx, obj); err != nil {
 		return nil, err
 	}
+
 	// at this point we have a fully formed object.  It is time to call the validators that the apiserver
 	// handling chain wants to enforce.
 	if createValidation != nil {
@@ -355,12 +437,15 @@ func (e *Store) Create(ctx context.Context, obj runtime.Object, createValidation
 	if err != nil {
 		return nil, err
 	}
+
 	qualifiedResource := e.qualifiedResourceFromContext(ctx)
+
 	ttl, err := e.calculateTTL(obj, 0, false)
 	if err != nil {
 		return nil, err
 	}
 	out := e.NewFunc()
+
 	if err := e.Storage.Create(ctx, key, obj, out, ttl, dryrun.IsDryRun(options.DryRun)); err != nil {
 		err = storeerr.InterpretCreateError(err, qualifiedResource, name)
 		err = rest.CheckGeneratedNameError(e.CreateStrategy, err, obj)
@@ -380,6 +465,7 @@ func (e *Store) Create(ctx context.Context, obj runtime.Object, createValidation
 		}
 		return nil, err
 	}
+
 	if e.AfterCreate != nil {
 		if err := e.AfterCreate(out); err != nil {
 			return nil, err
@@ -471,11 +557,11 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 	out := e.NewFunc()
 	// deleteObj is only used in case a deletion is carried out
 	var deleteObj runtime.Object
-	err = e.Storage.GuaranteedUpdate(ctx, key, out, true, storagePreconditions, func(existing runtime.Object, res storage.ResponseMeta) (runtime.Object, *uint64, error) {
+	err = e.Storage.GuaranteedUpdate(ctx, key, out, true, storagePreconditions, func(existing runtime.Object, res storage.ResponseMeta) (runtime.Object, *uint64, *uint64, error) {
 		// Given the existing object, get the new object
 		obj, err := objInfo.UpdatedObject(ctx, existing)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		// If AllowUnconditionalUpdate() is true and the object specified by
@@ -484,36 +570,41 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 		// the user matches the version of latest storage object.
 		resourceVersion, err := e.Storage.Versioner().ObjectResourceVersion(obj)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		doUnconditionalUpdate := resourceVersion == 0 && e.UpdateStrategy.AllowUnconditionalUpdate()
 
 		version, err := e.Storage.Versioner().ObjectResourceVersion(existing)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
+
 		if version == 0 {
 			if !e.UpdateStrategy.AllowCreateOnUpdate() && !forceAllowCreate {
-				return nil, nil, kubeerr.NewNotFound(qualifiedResource, name)
+				return nil, nil, nil, kubeerr.NewNotFound(qualifiedResource, name)
 			}
 			creating = true
 			creatingObj = obj
 			if err := rest.BeforeCreate(e.CreateStrategy, ctx, obj); err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			// at this point we have a fully formed object.  It is time to call the validators that the apiserver
 			// handling chain wants to enforce.
 			if createValidation != nil {
 				if err := createValidation(obj.DeepCopyObject()); err != nil {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 			}
 			ttl, err := e.calculateTTL(obj, 0, false)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
-			return obj, &ttl, nil
+			return obj, &ttl, nil, nil
+		}
+
+		if err != nil {
+			return nil, nil, nil, err
 		}
 
 		creating = false
@@ -523,7 +614,7 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 			// storage object's resource version.
 			err = e.Storage.Versioner().UpdateObject(obj, res.ResourceVersion)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		} else {
 			// Check if the object's resource version matches the latest
@@ -534,36 +625,37 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 				// leave the Kind field empty. See the discussion in #18526.
 				qualifiedKind := schema.GroupKind{Group: qualifiedResource.Group, Kind: qualifiedResource.Resource}
 				fieldErrList := field.ErrorList{field.Invalid(field.NewPath("metadata").Child("resourceVersion"), resourceVersion, "must be specified for an update")}
-				return nil, nil, kubeerr.NewInvalid(qualifiedKind, name, fieldErrList)
+				return nil, nil, nil, kubeerr.NewInvalid(qualifiedKind, name, fieldErrList)
 			}
 			if resourceVersion != version {
-				return nil, nil, kubeerr.NewConflict(qualifiedResource, name, fmt.Errorf(OptimisticLockErrorMsg))
+				return nil, nil, nil, kubeerr.NewConflict(qualifiedResource, name, fmt.Errorf(OptimisticLockErrorMsg))
 			}
 		}
 		if err := rest.BeforeUpdate(e.UpdateStrategy, ctx, obj, existing); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		// at this point we have a fully formed object.  It is time to call the validators that the apiserver
 		// handling chain wants to enforce.
 		if updateValidation != nil {
 			if err := updateValidation(obj.DeepCopyObject(), existing.DeepCopyObject()); err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		}
 		// Check the default delete-during-update conditions, and store-specific conditions if provided
 		if ShouldDeleteDuringUpdate(ctx, key, obj, existing) &&
 			(e.ShouldDeleteDuringUpdate == nil || e.ShouldDeleteDuringUpdate(ctx, key, obj, existing)) {
 			deleteObj = obj
-			return nil, nil, errEmptiedFinalizers
+			return nil, nil, nil, errEmptiedFinalizers
 		}
 		ttl, err := e.calculateTTL(obj, res.TTL, true)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
-		if int64(ttl) != res.TTL {
-			return obj, &ttl, nil
+		updatettl, err := e.calculateUpdateTTL(obj, 0)
+		if int64(ttl) != res.TTL || int64(updatettl) != res.TTL {
+			return obj, &ttl, &updatettl, nil
 		}
-		return obj, nil, nil
+		return obj, nil, nil, nil
 	}, dryrun.IsDryRun(options.DryRun))
 
 	if err != nil {
@@ -611,11 +703,13 @@ func (e *Store) Get(ctx context.Context, name string, options *metav1.GetOptions
 	if err := e.Storage.Get(ctx, key, options.ResourceVersion, obj, false); err != nil {
 		return nil, storeerr.InterpretGetError(err, e.qualifiedResourceFromContext(ctx), name)
 	}
+
 	if e.Decorator != nil {
 		if err := e.Decorator(obj); err != nil {
 			return nil, err
 		}
 	}
+
 	return obj, nil
 }
 
@@ -890,6 +984,7 @@ func (e *Store) Delete(ctx context.Context, name string, deleteValidation rest.V
 	if err != nil {
 		return nil, false, err
 	}
+
 	obj := e.NewFunc()
 	qualifiedResource := e.qualifiedResourceFromContext(ctx)
 	if err = e.Storage.Get(ctx, key, "", obj, false); err != nil {
@@ -1149,12 +1244,32 @@ func (e *Store) calculateTTL(obj runtime.Object, defaultTTL int64, update bool) 
 	return ttl, err
 }
 
+// calculateUpdateTTL is a helper for retrieving the updated TTL for an object or
+// returning an error if the TTL cannot be calculated.
+// This is only for update object - not used for new object due to backwards compatibility.
+// 		For new object, use calculateTTL defined above and TTLFunc
+// The defaultTTL is changed to 1 if less than zero. Zero means no TTL, not expire immediately.
+func (e *Store) calculateUpdateTTL(obj runtime.Object, defaultTTLOnUpdate int64) (ttl uint64, err error) {
+	// etcd may return a negative TTL for a node if the expiration has not
+	// occurred due to server lag - we will ensure that the value is at least
+	// set.
+	if defaultTTLOnUpdate < 0 {
+		defaultTTLOnUpdate = 1
+	}
+	ttl = uint64(defaultTTLOnUpdate)
+	if e.TTLOnUpdateFunc != nil {
+		ttl, err = e.TTLOnUpdateFunc(obj, ttl)
+	}
+	return ttl, err
+}
+
 // exportObjectMeta unsets the fields on the given object that should not be
 // present when the object is exported.
 func exportObjectMeta(accessor metav1.Object, exact bool) {
 	accessor.SetUID("")
 	if !exact {
 		accessor.SetNamespace("")
+		accessor.SetTenant("")
 	}
 	accessor.SetCreationTimestamp(metav1.Time{})
 	accessor.SetDeletionTimestamp(nil)
@@ -1203,12 +1318,14 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 		return fmt.Errorf("store for %s must set both KeyRootFunc and KeyFunc or neither", e.DefaultQualifiedResource.String())
 	}
 
-	var isNamespaced bool
+	var isNamespaced, isTenanted bool
 	switch {
 	case e.CreateStrategy != nil:
 		isNamespaced = e.CreateStrategy.NamespaceScoped()
+		isTenanted = e.CreateStrategy.TenantScoped()
 	case e.UpdateStrategy != nil:
 		isNamespaced = e.UpdateStrategy.NamespaceScoped()
+		isTenanted = e.CreateStrategy.TenantScoped()
 	default:
 		return fmt.Errorf("store for %s must have CreateStrategy or UpdateStrategy set", e.DefaultQualifiedResource.String())
 	}
@@ -1223,10 +1340,15 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 
 	attrFunc := options.AttrFunc
 	if attrFunc == nil {
-		if isNamespaced {
-			attrFunc = storage.DefaultNamespaceScopedAttr
-		} else {
+		switch {
+		case !isNamespaced && !isTenanted:
 			attrFunc = storage.DefaultClusterScopedAttr
+		case !isNamespaced && isTenanted:
+			attrFunc = storage.DefaultTenantScopedAttr
+		case isNamespaced && isTenanted:
+			attrFunc = storage.DefaultNamespaceScopedAttr
+		default:
+			return fmt.Errorf("Resource scope for %s is not supported.", e.DefaultQualifiedResource.String())
 		}
 	}
 	if e.PredicateFunc == nil {
@@ -1255,19 +1377,27 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 
 	// Set the default behavior for storage key generation
 	if e.KeyRootFunc == nil && e.KeyFunc == nil {
-		if isNamespaced {
+		switch {
+		case !isNamespaced && !isTenanted:
+			e.KeyRootFunc = func(ctx context.Context) string {
+				return prefix
+			}
+			e.KeyFunc = func(ctx context.Context, name string) (string, error) {
+				return ClusterKeyFunc(ctx, prefix, name)
+			}
+		case !isNamespaced && isTenanted:
+			e.KeyRootFunc = func(ctx context.Context) string {
+				return TenantKeyRootFunc(ctx, prefix)
+			}
+			e.KeyFunc = func(ctx context.Context, name string) (string, error) {
+				return TenantKeyFunc(ctx, prefix, name)
+			}
+		case isNamespaced && isTenanted:
 			e.KeyRootFunc = func(ctx context.Context) string {
 				return NamespaceKeyRootFunc(ctx, prefix)
 			}
 			e.KeyFunc = func(ctx context.Context, name string) (string, error) {
 				return NamespaceKeyFunc(ctx, prefix, name)
-			}
-		} else {
-			e.KeyRootFunc = func(ctx context.Context) string {
-				return prefix
-			}
-			e.KeyFunc = func(ctx context.Context, name string) (string, error) {
-				return NoNamespaceKeyFunc(ctx, prefix, name)
 			}
 		}
 	}
@@ -1280,11 +1410,18 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 			return "", err
 		}
 
-		if isNamespaced {
-			return e.KeyFunc(genericapirequest.WithNamespace(genericapirequest.NewContext(), accessor.GetNamespace()), accessor.GetName())
+		switch {
+		case !isNamespaced && !isTenanted:
+			return e.KeyFunc(genericapirequest.NewContext(), accessor.GetName())
+		case !isNamespaced && isTenanted:
+			return e.KeyFunc(genericapirequest.WithTenant(genericapirequest.NewContext(), accessor.GetTenant()), accessor.GetName())
+		case isNamespaced && isTenanted:
+			ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), accessor.GetTenant())
+			ctx = genericapirequest.WithNamespace(ctx, accessor.GetNamespace())
+			return e.KeyFunc(ctx, accessor.GetName())
+		default:
+			return "", fmt.Errorf("Unrecognized resource scope!")
 		}
-
-		return e.KeyFunc(genericapirequest.NewContext(), accessor.GetName())
 	}
 
 	triggerFunc := options.TriggerFunc

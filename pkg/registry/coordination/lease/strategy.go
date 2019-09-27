@@ -41,6 +41,11 @@ func (leaseStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (leaseStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate prepares Lease for creation.
 func (leaseStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 }

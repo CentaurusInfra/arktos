@@ -41,6 +41,11 @@ func (podPresetStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (podPresetStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a Pod Preset before creation.
 func (podPresetStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	pip := obj.(*settings.PodPreset)

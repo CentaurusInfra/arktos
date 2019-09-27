@@ -10,6 +10,7 @@ go_library(
     srcs = [
         "componentstatus.go",
         "configmap.go",
+        "controllerinstance.go",
         "endpoints.go",
         "event.go",
         "expansion_generated.go",

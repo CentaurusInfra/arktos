@@ -60,6 +60,7 @@ var map_APIResource = map[string]string{
 	"shortNames":         "shortNames is a list of suggested short names of the resource.",
 	"categories":         "categories is a list of the grouped resources this resource belongs to (e.g. 'all')",
 	"storageVersionHash": "The hash value of the storage version, the version this resource is converted to when written to the data store. Value must be treated as opaque by clients. Only equality comparison on the value is valid. This is an alpha feature and may change or be removed in the future. The field is populated by the apiserver only if the StorageVersionHash feature gate is enabled. This field will remain optional even if it graduates.",
+	"tenanted":           "tenanted indicates if a resource is tenanted or not.",
 }
 
 func (APIResource) SwaggerDoc() map[string]string {

@@ -43,6 +43,7 @@ var NoStorageVersionHash = sets.NewString(
 // storage version of a resource.
 var GVRToStorageVersionHash = map[string]string{
 	"v1/configmaps":             "qFsyl6wFWjQ=",
+	"v1/controllerinstances":    "HX8UpZZPgz8=",
 	"v1/endpoints":              "fWeeMqaN/OA=",
 	"v1/events":                 "r2yiGXH7wu8=",
 	"v1/limitranges":            "EBKMFVe6cwo=",
@@ -57,6 +58,7 @@ var GVRToStorageVersionHash = map[string]string{
 	"v1/secrets":                "S6u1pOWzb84=",
 	"v1/serviceaccounts":        "pbx9ZvyFpBE=",
 	"v1/services":               "0/CO1lhkEBI=",
+	"v1/tenants":                "ZUXbyzlkOgQ=",
 	"autoscaling/v1/horizontalpodautoscalers":      "oQlkt7f5j/A=",
 	"autoscaling/v2beta1/horizontalpodautoscalers": "oQlkt7f5j/A=",
 	"autoscaling/v2beta2/horizontalpodautoscalers": "oQlkt7f5j/A=",

@@ -31,6 +31,9 @@ func TestCronJobStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("CronJob must be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("CronJob must be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("CronJob should not allow create on update")
 	}
@@ -114,6 +117,9 @@ func TestCronJobStatusStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !StatusStrategy.NamespaceScoped() {
 		t.Errorf("CronJob must be namespace scoped")
+	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("CronJob must be tenant scoped")
 	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("CronJob should not allow create on update")

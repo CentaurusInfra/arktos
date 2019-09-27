@@ -2007,10 +2007,18 @@ type ResourceRequirements struct {
 
 // Colection of pointers to fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
-	Name            string
-	Image           string
-	Resources       ResourceRequirements
-	VolumeMounts    []VolumeMount
+	// Required: This must be a DNS_LABEL.  Each container in a pod must
+	// have a unique name.
+	Name string
+	// +optional
+	Image string
+	// Compute resource requirements.
+	// +optional
+	Resources ResourceRequirements
+	// +optional
+	VolumeMounts []VolumeMount
+	// Policy for pulling images for this container
+	// +optional
 	ImagePullPolicy PullPolicy
 }
 
@@ -2019,7 +2027,7 @@ type Container struct {
 	// Required: This must be a DNS_LABEL.  Each container in a pod must
 	// have a unique name.
 	Name string
-	// Required.
+	// +optional
 	Image string
 	// Optional: The docker image's entrypoint is used if this is not provided; cannot be updated.
 	// Variable references $(VAR_NAME) are expanded using the container's environment.  If a variable
@@ -2070,7 +2078,8 @@ type Container struct {
 	TerminationMessagePath string
 	// +optional
 	TerminationMessagePolicy TerminationMessagePolicy
-	// Required: Policy for pulling images for this container
+	// Policy for pulling images for this container
+	// +optional
 	ImagePullPolicy PullPolicy
 	// Optional: SecurityContext defines the security options the container should be run with.
 	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
@@ -2109,20 +2118,31 @@ type Nic struct {
 	Ipv6Enabled bool
 }
 
+type VmPowerSpec string
+
+// VM power spec represents the desired power state of the VM
+const (
+	VmPowerSpecRunning   VmPowerSpec = "running"
+	VmPowerSpecPaused    VmPowerSpec = "paused"
+	VmPowerSpecShutdown  VmPowerSpec = "shutdown"
+	VmPowerSpecSuspended VmPowerSpec = "suspended"
+)
+
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
-	// Name of the container specified as a DNS_LABEL.
+	// Required. Name of the container specified as a DNS_LABEL.
 	// Each container in a pod must have a unique name (DNS_LABEL).
 	// Cannot be updated.
 	Name string
-	// Required.
+	// +optional
 	Image string
 	// Compute resource requirements.
 	// +optional
 	Resources ResourceRequirements
 	// +optional
 	VolumeMounts []VolumeMount
-	// Required: Policy for pulling images for this container
+	// Policy for pulling images for this container
+	// +optional
 	ImagePullPolicy PullPolicy
 	// Either keyPair or the publicKeystring must be provided, used to logon to the VM
 	KeyPairName string
@@ -2136,6 +2156,8 @@ type VirtualMachine struct {
 	ShutdownBehavior string
 	// +optional, user specified bootable volume for the VM
 	BootVolume string
+	// +optional, default running
+	PowerSpec VmPowerSpec
 }
 
 // Handler defines a specific action that should be taken
@@ -4073,6 +4095,7 @@ const (
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // A Tenant provides a scope for Names.
@@ -5021,3 +5044,44 @@ const (
 	// DefaultHardPodAffinityWeight defines the weight of the implicit PreferredDuringScheduling affinity rule.
 	DefaultHardPodAffinitySymmetricWeight int32 = 1
 )
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstance contains controller instances with ids and last health check timestamp
+type ControllerInstance struct {
+	metav1.TypeMeta
+
+	metav1.ObjectMeta
+
+	// A string that designate the type of the controller instance
+	ControllerType string
+
+	// A UUID that representing an controller instance
+	UID types.UID
+
+	//  An int64 integer that identifies the upperbound of workload instances managed by this controller instance
+	HashKey int64
+
+	// WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck
+	// +optional
+	WorkloadNum int32
+
+	// IsLocked is bool that identifies the lock status of the controller instance
+	IsLocked bool
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstanceList holds the controller instance list for same controller type
+type ControllerInstanceList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	// List of controller instance
+	Items []ControllerInstance
+}

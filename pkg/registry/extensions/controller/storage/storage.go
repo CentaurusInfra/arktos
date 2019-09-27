@@ -154,6 +154,10 @@ func (r *RcREST) NamespaceScoped() bool {
 	return true
 }
 
+func (r *RcREST) TenantScoped() bool {
+	return true
+}
+
 func (r *RcREST) New() runtime.Object {
 	return &extensions.ReplicationControllerDummy{}
 }

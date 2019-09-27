@@ -44,6 +44,8 @@ import (
 	"k8s.io/kubernetes/pkg/securitycontext"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *BindingREST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
 	restOptions := generic.RESTOptions{
@@ -63,6 +65,7 @@ func validNewPod() *api.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: api.PodSpec{
 			RestartPolicy: api.RestartPolicyAlways,
@@ -105,6 +108,7 @@ func TestCreate(t *testing.T) {
 	// Make an invalid pod with an an incorrect label.
 	invalidPod := validNewPod()
 	invalidPod.Namespace = test.TestNamespace()
+	invalidPod.Tenant = test.TestTenant()
 	invalidPod.Labels = map[string]string{
 		"invalid/label/to/cause/validation/failure": "bar",
 	}
@@ -177,6 +181,7 @@ func newFailDeleteStorage(t *testing.T, called *bool) (*REST, *etcdtesting.EtcdT
 func TestIgnoreDeleteNotFound(t *testing.T) {
 	pod := validNewPod()
 	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	testContext = genericapirequest.WithTenant(testContext, tenant)
 	called := false
 	registry, server := newFailDeleteStorage(t, &called)
 	defer server.Terminate(t)
@@ -226,11 +231,14 @@ func TestCreateSetsFields(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
 	pod := validNewPod()
-	_, err := storage.Create(genericapirequest.NewDefaultContext(), pod, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	testContext = genericapirequest.WithTenant(testContext, tenant)
+	_, err := storage.Create(testContext, pod, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	ctx := genericapirequest.NewDefaultContext()
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	object, err := storage.Get(ctx, "foo", &metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -336,7 +344,8 @@ func TestResourceLocation(t *testing.T) {
 		},
 	}
 
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	for _, tc := range testCases {
 		storage, _, _, server := newStorage(t)
 		key, _ := storage.KeyFunc(ctx, tc.pod.Name)
@@ -345,7 +354,7 @@ func TestResourceLocation(t *testing.T) {
 		}
 
 		redirector := rest.Redirector(storage)
-		location, _, err := redirector.ResourceLocation(genericapirequest.NewDefaultContext(), tc.query)
+		location, _, err := redirector.ResourceLocation(ctx, tc.query)
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -407,7 +416,8 @@ func TestConvertToTableList(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	columns := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
@@ -424,7 +434,7 @@ func TestConvertToTableList(t *testing.T) {
 	condition1 := "condition1"
 	condition2 := "condition2"
 	pod1 := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "foo", CreationTimestamp: metav1.NewTime(time.Now().Add(-370 * 24 * time.Hour))},
+		ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "test-ns", Name: "foo", CreationTimestamp: metav1.NewTime(time.Now().Add(-370 * 24 * time.Hour))},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{Name: "ctr1"},
@@ -512,7 +522,8 @@ func TestEtcdCreate(t *testing.T) {
 	storage, bindingStorage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	_, err := storage.Create(ctx, validNewPod(), rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -520,7 +531,7 @@ func TestEtcdCreate(t *testing.T) {
 
 	// Suddenly, a wild scheduler appears:
 	_, err = bindingStorage.Create(ctx, &api.Binding{
-		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 		Target:     api.ObjectReference{Name: "machine"},
 	}, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
@@ -539,14 +550,15 @@ func TestEtcdCreateBindingNoPod(t *testing.T) {
 	storage, bindingStorage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	// Assume that a pod has undergone the following:
 	// - Create (apiserver)
 	// - Schedule (scheduler)
 	// - Delete (apiserver)
 	_, err := bindingStorage.Create(ctx, &api.Binding{
-		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 		Target:     api.ObjectReference{Name: "machine"},
 	}, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err == nil {
@@ -571,6 +583,7 @@ func TestEtcdCreateFailsWithoutNamespace(t *testing.T) {
 	defer storage.Store.DestroyFunc()
 	pod := validNewPod()
 	pod.Namespace = ""
+	pod.Tenant = tenant
 	_, err := storage.Create(genericapirequest.NewContext(), pod, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	// Accept "namespace" or "Namespace".
 	if err == nil || !strings.Contains(err.Error(), "amespace") {
@@ -582,7 +595,8 @@ func TestEtcdCreateWithContainersNotFound(t *testing.T) {
 	storage, bindingStorage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	_, err := storage.Create(ctx, validNewPod(), rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -591,6 +605,7 @@ func TestEtcdCreateWithContainersNotFound(t *testing.T) {
 	// Suddenly, a wild scheduler appears:
 	_, err = bindingStorage.Create(ctx, &api.Binding{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:      tenant,
 			Namespace:   metav1.NamespaceDefault,
 			Name:        "foo",
 			Annotations: map[string]string{"label1": "value1"},
@@ -616,7 +631,8 @@ func TestEtcdCreateWithConflict(t *testing.T) {
 	storage, bindingStorage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	_, err := storage.Create(ctx, validNewPod(), rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
@@ -626,6 +642,7 @@ func TestEtcdCreateWithConflict(t *testing.T) {
 	// Suddenly, a wild scheduler appears:
 	binding := api.Binding{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:      tenant,
 			Namespace:   metav1.NamespaceDefault,
 			Name:        "foo",
 			Annotations: map[string]string{"label1": "value1"},
@@ -647,7 +664,8 @@ func TestEtcdCreateWithExistingContainers(t *testing.T) {
 	storage, bindingStorage, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	_, err := storage.Create(ctx, validNewPod(), rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -655,7 +673,7 @@ func TestEtcdCreateWithExistingContainers(t *testing.T) {
 
 	// Suddenly, a wild scheduler appears:
 	_, err = bindingStorage.Create(ctx, &api.Binding{
-		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 		Target:     api.ObjectReference{Name: "machine"},
 	}, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
@@ -669,7 +687,8 @@ func TestEtcdCreateWithExistingContainers(t *testing.T) {
 }
 
 func TestEtcdCreateBinding(t *testing.T) {
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	testCases := map[string]struct {
 		binding api.Binding
@@ -677,28 +696,28 @@ func TestEtcdCreateBinding(t *testing.T) {
 	}{
 		"noName": {
 			binding: api.Binding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 				Target:     api.ObjectReference{},
 			},
 			errOK: func(err error) bool { return err != nil },
 		},
 		"badKind": {
 			binding: api.Binding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 				Target:     api.ObjectReference{Name: "machine1", Kind: "unknown"},
 			},
 			errOK: func(err error) bool { return err != nil },
 		},
 		"emptyKind": {
 			binding: api.Binding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 				Target:     api.ObjectReference{Name: "machine2"},
 			},
 			errOK: func(err error) bool { return err == nil },
 		},
 		"kindNode": {
 			binding: api.Binding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 				Target:     api.ObjectReference{Name: "machine3", Kind: "Node"},
 			},
 			errOK: func(err error) bool { return err == nil },
@@ -730,7 +749,8 @@ func TestEtcdUpdateNotScheduled(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	if _, err := storage.Create(ctx, validNewPod(), rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -756,13 +776,15 @@ func TestEtcdUpdateScheduled(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	key, _ := storage.KeyFunc(ctx, "foo")
 	err := storage.Storage.Create(ctx, key, &api.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: api.PodSpec{
 			NodeName: "machine",
@@ -830,13 +852,15 @@ func TestEtcdUpdateStatus(t *testing.T) {
 	storage, _, statusStorage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 
 	key, _ := storage.KeyFunc(ctx, "foo")
 	podStart := api.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: api.PodSpec{
 			NodeName: "machine",

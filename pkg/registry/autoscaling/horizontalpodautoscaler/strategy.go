@@ -42,6 +42,11 @@ func (autoscalerStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (autoscalerStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears fields that are not allowed to be set by end users on creation.
 func (autoscalerStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	newHPA := obj.(*autoscaling.HorizontalPodAutoscaler)

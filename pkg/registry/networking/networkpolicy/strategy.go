@@ -42,6 +42,11 @@ func (networkPolicyStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (networkPolicyStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a NetworkPolicy before creation.
 func (networkPolicyStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	networkPolicy := obj.(*networking.NetworkPolicy)

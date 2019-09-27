@@ -31,6 +31,9 @@ func TestStatefulSetStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("StatefulSet must be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("StatefulSet must be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("StatefulSet should not allow create on update")
 	}
@@ -151,6 +154,9 @@ func TestStatefulSetStatusStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !StatusStrategy.NamespaceScoped() {
 		t.Errorf("StatefulSet must be namespace scoped")
+	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("StatefulSet must be tenant scoped")
 	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("StatefulSet should not allow create on update")

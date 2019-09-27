@@ -19,6 +19,7 @@ package event
 import (
 	"context"
 	"fmt"
+	"testing"
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -47,6 +48,11 @@ func (eventStrategy) DefaultGarbageCollectionPolicy(ctx context.Context) rest.Ga
 }
 
 func (eventStrategy) NamespaceScoped() bool {
+	return true
+}
+
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (eventStrategy) TenantScoped() bool {
 	return true
 }
 
@@ -111,4 +117,13 @@ func EventToSelectableFields(event *api.Event) fields.Set {
 		"type":                           event.Type,
 	}
 	return generic.MergeFieldsSets(objectMetaFieldsSet, specificFieldsSet)
+}
+
+func TestStrategy_Scope(t *testing.T) {
+	if !Strategy.NamespaceScoped() {
+		t.Error("Event strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("Event strategy must be tenant scoped")
+	}
 }

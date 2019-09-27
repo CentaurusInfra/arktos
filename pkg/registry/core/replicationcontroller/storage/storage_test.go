@@ -37,6 +37,7 @@ import (
 )
 
 const (
+	tenant    = "test-te"
 	namespace = metav1.NamespaceDefault
 	name      = "foo"
 )
@@ -56,6 +57,7 @@ func newStorage(t *testing.T) (ControllerStorage, *etcdtesting.EtcdTestServer) {
 // createController is a helper function that returns a controller with the updated resource version.
 func createController(storage *REST, rc api.ReplicationController, t *testing.T) (api.ReplicationController, error) {
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), rc.Namespace)
+	ctx = genericapirequest.WithTenant(ctx, rc.Tenant)
 	obj, err := storage.Create(ctx, &rc, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("Failed to create controller, %v", err)
@@ -69,6 +71,7 @@ func validNewController() *api.ReplicationController {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		Spec: api.ReplicationControllerSpec{
 			Selector: map[string]string{"a": "b"},
@@ -159,7 +162,8 @@ func TestGenerationNumber(t *testing.T) {
 	modifiedSno := *validNewController()
 	modifiedSno.Generation = 100
 	modifiedSno.Status.ObservedGeneration = 10
-	ctx := genericapirequest.NewDefaultContext()
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	rc, err := createController(storage.Controller, modifiedSno, t)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -261,6 +265,7 @@ func TestScaleGet(t *testing.T) {
 	defer storage.Controller.Store.DestroyFunc()
 
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	rc, err := createController(storage.Controller, *validController, t)
 	if err != nil {
 		t.Fatalf("error setting new replication controller %v: %v", *validController, err)
@@ -270,6 +275,7 @@ func TestScaleGet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			Namespace:         namespace,
+			Tenant:            tenant,
 			UID:               rc.UID,
 			HashKey:           rc.HashKey,
 			ResourceVersion:   rc.ResourceVersion,
@@ -299,13 +305,14 @@ func TestScaleUpdate(t *testing.T) {
 	defer storage.Controller.Store.DestroyFunc()
 
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace)
+	ctx = genericapirequest.WithTenant(ctx, tenant)
 	rc, err := createController(storage.Controller, *validController, t)
 	if err != nil {
 		t.Fatalf("error setting new replication controller %v: %v", *validController, err)
 	}
 	replicas := int32(12)
 	update := autoscaling.Scale{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Tenant: tenant},
 		Spec: autoscaling.ScaleSpec{
 			Replicas: replicas,
 		},

@@ -46,12 +46,21 @@ func New(t *testing.T, storage *genericregistry.Store) *Tester {
 	}
 }
 
+func (t *Tester) TestTenant() string {
+	return t.tester.TestTenant()
+}
+
 func (t *Tester) TestNamespace() string {
 	return t.tester.TestNamespace()
 }
 
 func (t *Tester) ClusterScope() *Tester {
 	t.tester = t.tester.ClusterScope()
+	return t
+}
+
+func (t *Tester) TenantScope() *Tester {
+	t.tester = t.tester.TenantScope()
 	return t
 }
 

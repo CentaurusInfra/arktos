@@ -243,6 +243,7 @@ func scaleFromStatefulSet(ss *apps.StatefulSet) (*autoscaling.Scale, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              ss.Name,
 			Namespace:         ss.Namespace,
+			Tenant:            ss.Tenant,
 			UID:               ss.UID,
 			HashKey:           ss.HashKey,
 			ResourceVersion:   ss.ResourceVersion,

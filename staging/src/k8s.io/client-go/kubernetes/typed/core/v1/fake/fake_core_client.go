@@ -36,6 +36,10 @@ func (c *FakeCoreV1) ConfigMaps(namespace string) v1.ConfigMapInterface {
 	return &FakeConfigMaps{c, namespace}
 }
 
+func (c *FakeCoreV1) ControllerInstances() v1.ControllerInstanceInterface {
+	return &FakeControllerInstances{c}
+}
+
 func (c *FakeCoreV1) Endpoints(namespace string) v1.EndpointsInterface {
 	return &FakeEndpoints{c, namespace}
 }

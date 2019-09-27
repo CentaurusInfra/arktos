@@ -72,6 +72,9 @@ func TestIngressStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("Ingress must be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("Ingress must be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("Ingress should not allow create on update")
 	}
@@ -102,6 +105,9 @@ func TestIngressStatusStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !StatusStrategy.NamespaceScoped() {
 		t.Errorf("Ingress must be namespace scoped")
+	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("Ingress must be tenant scoped")
 	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("Ingress should not allow create on update")

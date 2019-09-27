@@ -1,0 +1,12 @@
+{
+    "controllers": [
+        {
+            "type":    "node",
+            "workers":     5
+        },
+        {
+            "type":    "replicaset",
+            "workers":    10
+        }
+    ]
+}

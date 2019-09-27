@@ -162,6 +162,7 @@ type RoleList struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ClusterRole is a cluster level, logical grouping of PolicyRules that can be referenced as a unit by a RoleBinding or ClusterRoleBinding.
@@ -191,6 +192,7 @@ type AggregationRule struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ClusterRoleBinding references a ClusterRole, but not contain it.  It can reference a ClusterRole in the global namespace,

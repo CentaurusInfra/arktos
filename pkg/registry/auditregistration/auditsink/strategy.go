@@ -42,6 +42,11 @@ func (auditSinkStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is true as this resource need to be under a given tenant
+func (auditSinkStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of an AuditSink before creation.
 func (auditSinkStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	ic := obj.(*audit.AuditSink)

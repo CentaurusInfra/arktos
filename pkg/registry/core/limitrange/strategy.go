@@ -41,6 +41,11 @@ func (limitrangeStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (limitrangeStrategy) TenantScoped() bool {
+	return true
+}
+
 func (limitrangeStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	limitRange := obj.(*api.LimitRange)
 	if len(limitRange.Name) == 0 {

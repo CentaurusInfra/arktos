@@ -63,6 +63,7 @@ type action struct {
 	Params        []*restful.Parameter // List of parameters associated with the action.
 	Namer         handlers.ScopeNamer
 	AllNamespaces bool // true iff the action is namespaced but works on aggregate result for all namespaces
+	AllTenants    bool // true iff the action is tenanted but works on aggregate result for all tenants
 }
 
 // An interface to see if one storage supports override its default verb for monitoring
@@ -210,6 +211,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 	// If there is a subresource, namespace scoping is defined by the parent resource
 	namespaceScoped := true
+	tenantScoped := true
 	if isSubresource {
 		parentStorage, ok := a.group.Storage[resource]
 		if !ok {
@@ -220,6 +222,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			return nil, fmt.Errorf("%q must implement scoper", resource)
 		}
 		namespaceScoped = scoper.NamespaceScoped()
+		tenantScoped = scoper.TenantScoped()
 
 	} else {
 		scoper, ok := storage.(rest.Scoper)
@@ -227,6 +230,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			return nil, fmt.Errorf("%q must implement scoper", resource)
 		}
 		namespaceScoped = scoper.NamespaceScoped()
+		tenantScoped = scoper.TenantScoped()
 	}
 
 	// what verbs are supported by the storage, used to know what verbs we support per path
@@ -394,8 +398,8 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 
 	// Get the list of actions for the given scope.
 	switch {
-	case !namespaceScoped:
-		// Handle non-namespace scoped resources like nodes.
+	case !namespaceScoped && !tenantScoped:
+		// Handle cluster-scope scoped resources like nodes.
 		resourcePath := resource
 		resourceParams := params
 		itemPath := resourcePath + "/{name}"
@@ -410,41 +414,136 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		}
 		apiResource.Name = path
 		apiResource.Namespaced = false
+		apiResource.Tenanted = false
 		apiResource.Kind = resourceKind
 		namer := handlers.ContextBasedNaming{
 			SelfLinker:         a.group.Linker,
 			ClusterScoped:      true,
 			SelfLinkPathPrefix: gpath.Join(a.prefix, resource) + "/",
 			SelfLinkPathSuffix: suffix,
+			TenantScoped:       false,
 		}
 
 		// Handler for standard REST verbs (GET, PUT, POST and DELETE).
 		// Add actions at the resource path: /api/apiVersion/resource
-		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false}, isLister)
-		actions = appendIf(actions, action{"POST", resourcePath, resourceParams, namer, false}, isCreater)
-		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, resourceParams, namer, false}, isCollectionDeleter)
+		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false, false}, isLister)
+		actions = appendIf(actions, action{"POST", resourcePath, resourceParams, namer, false, false}, isCreater)
+		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, resourceParams, namer, false, false}, isCollectionDeleter)
 		// DEPRECATED in 1.11
-		actions = appendIf(actions, action{"WATCHLIST", "watch/" + resourcePath, resourceParams, namer, false}, allowWatchList)
+		actions = appendIf(actions, action{"WATCHLIST", "watch/" + resourcePath, resourceParams, namer, false, false}, allowWatchList)
 
 		// Add actions at the item path: /api/apiVersion/resource/{name}
-		actions = appendIf(actions, action{"GET", itemPath, nameParams, namer, false}, isGetter)
+		actions = appendIf(actions, action{"GET", itemPath, nameParams, namer, false, false}, isGetter)
 		if getSubpath {
-			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", proxyParams, namer, false}, isGetter)
+			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", proxyParams, namer, false, false}, isGetter)
 		}
-		actions = appendIf(actions, action{"PUT", itemPath, nameParams, namer, false}, isUpdater)
-		actions = appendIf(actions, action{"PATCH", itemPath, nameParams, namer, false}, isPatcher)
-		actions = appendIf(actions, action{"DELETE", itemPath, nameParams, namer, false}, isGracefulDeleter)
+		actions = appendIf(actions, action{"PUT", itemPath, nameParams, namer, false, false}, isUpdater)
+		actions = appendIf(actions, action{"PATCH", itemPath, nameParams, namer, false, false}, isPatcher)
+		actions = appendIf(actions, action{"DELETE", itemPath, nameParams, namer, false, false}, isGracefulDeleter)
 		// DEPRECATED in 1.11
-		actions = appendIf(actions, action{"WATCH", "watch/" + itemPath, nameParams, namer, false}, isWatcher)
-		actions = appendIf(actions, action{"CONNECT", itemPath, nameParams, namer, false}, isConnecter)
-		actions = appendIf(actions, action{"CONNECT", itemPath + "/{path:*}", proxyParams, namer, false}, isConnecter && connectSubpath)
-	default:
-		namespaceParamName := "namespaces"
-		// Handler for standard REST verbs (GET, PUT, POST and DELETE).
-		namespaceParam := ws.PathParameter("namespace", "object name and auth scope, such as for teams and projects").DataType("string")
-		namespacedPath := namespaceParamName + "/{namespace}/" + resource
-		namespaceParams := []*restful.Parameter{namespaceParam}
+		actions = appendIf(actions, action{"WATCH", "watch/" + itemPath, nameParams, namer, false, false}, isWatcher)
+		actions = appendIf(actions, action{"CONNECT", itemPath, nameParams, namer, false, false}, isConnecter)
+		actions = appendIf(actions, action{"CONNECT", itemPath + "/{path:*}", proxyParams, namer, false, false}, isConnecter && connectSubpath)
+	case !namespaceScoped && tenantScoped:
+		// Handle tenant-scoped resources like persistent volumes.
+		tenantParamName := "tenants"
+		tenantParam := ws.PathParameter("tenant", "object name and auth scope, for different end users").DataType("string")
+		tenantParams := []*restful.Parameter{tenantParam}
 
+		tenantPath := tenantParamName + "/{tenant}/" + resource
+		resourcePath := tenantPath
+		resourceParams := tenantParams
+		itemPath := resourcePath + "/{name}"
+		nameParams := append(tenantParams, nameParam)
+		proxyParams := append(nameParams, pathParam)
+		itemPathSuffix := ""
+		if isSubresource {
+			itemPathSuffix = "/" + subresource
+			itemPath = itemPath + itemPathSuffix
+			resourcePath = itemPath
+			resourceParams = nameParams
+		}
+		apiResource.Name = path
+		apiResource.Namespaced = false
+		apiResource.Tenanted = true
+		apiResource.Kind = resourceKind
+		namer := handlers.ContextBasedNaming{
+			SelfLinker:         a.group.Linker,
+			ClusterScoped:      false,
+			SelfLinkPathPrefix: a.prefix + "/",
+			SelfLinkPathSuffix: itemPathSuffix,
+			TenantScoped:       true,
+		}
+
+		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false, false}, isLister)
+		actions = appendIf(actions, action{"POST", resourcePath, resourceParams, namer, false, false}, isCreater)
+		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, resourceParams, namer, false, false}, isCollectionDeleter)
+		// DEPRECATED in 1.11
+		actions = appendIf(actions, action{"WATCHLIST", "watch/" + resourcePath, resourceParams, namer, false, false}, allowWatchList)
+
+		actions = appendIf(actions, action{"GET", itemPath, nameParams, namer, false, false}, isGetter)
+		if getSubpath {
+			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", proxyParams, namer, false, false}, isGetter)
+		}
+		actions = appendIf(actions, action{"PUT", itemPath, nameParams, namer, false, false}, isUpdater)
+		actions = appendIf(actions, action{"PATCH", itemPath, nameParams, namer, false, false}, isPatcher)
+		actions = appendIf(actions, action{"DELETE", itemPath, nameParams, namer, false, false}, isGracefulDeleter)
+		// DEPRECATED in 1.11
+		actions = appendIf(actions, action{"WATCH", "watch/" + itemPath, nameParams, namer, false, false}, isWatcher)
+		actions = appendIf(actions, action{"CONNECT", itemPath, nameParams, namer, false, false}, isConnecter)
+		actions = appendIf(actions, action{"CONNECT", itemPath + "/{path:*}", proxyParams, namer, false, false}, isConnecter && connectSubpath)
+
+		// list or post across tenants.
+		if !isSubresource {
+			// across the tenants
+			actions = appendIf(actions, action{"LIST", resource, tenantParams, namer, true, true}, isLister)
+			actions = appendIf(actions, action{"WATCHLIST", "watch/" + resource, tenantParams, namer, true, true}, allowWatchList)
+		}
+
+		// the folloiwing is for backward-compatible APIs before multi-tenancy, should be removed when we no longer support it
+		resourcePath = resource
+		itemPath = resourcePath + "/{name}"
+		resourceParams = params
+		nameParams = append(params, nameParam)
+		proxyParams = append(nameParams, pathParam)
+		itemPathSuffix = ""
+		if isSubresource {
+			itemPathSuffix = "/" + subresource
+			itemPath = itemPath + itemPathSuffix
+			resourcePath = itemPath
+			resourceParams = nameParams
+		}
+		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false, false}, isLister)
+		actions = appendIf(actions, action{"POST", resourcePath, resourceParams, namer, false, false}, isCreater)
+		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, resourceParams, namer, false, false}, isCollectionDeleter)
+		// DEPRECATED in 1.11
+		actions = appendIf(actions, action{"WATCHLIST", "watch/" + resourcePath, resourceParams, namer, false, false}, allowWatchList)
+
+		// Add actions at the item path: /api/apiVersion/resource/{name}
+		actions = appendIf(actions, action{"GET", itemPath, nameParams, namer, false, false}, isGetter)
+		if getSubpath {
+			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", proxyParams, namer, false, false}, isGetter)
+		}
+		actions = appendIf(actions, action{"PUT", itemPath, nameParams, namer, false, false}, isUpdater)
+		actions = appendIf(actions, action{"PATCH", itemPath, nameParams, namer, false, false}, isPatcher)
+		actions = appendIf(actions, action{"DELETE", itemPath, nameParams, namer, false, false}, isGracefulDeleter)
+		// DEPRECATED in 1.11
+		actions = appendIf(actions, action{"WATCH", "watch/" + itemPath, nameParams, namer, false, false}, isWatcher)
+		actions = appendIf(actions, action{"CONNECT", itemPath, nameParams, namer, false, false}, isConnecter)
+		actions = appendIf(actions, action{"CONNECT", itemPath + "/{path:*}", proxyParams, namer, false, false}, isConnecter && connectSubpath)
+
+	case namespaceScoped && tenantScoped:
+		// Handle namespace-scoped resources like pods.
+		tenantParamName := "tenants"
+		tenantParam := ws.PathParameter("tenant", "object name and auth scope, for different end users").DataType("string")
+		tenantParams := []*restful.Parameter{tenantParam}
+
+		namespaceParamName := "namespaces"
+		namespaceParam := ws.PathParameter("namespace", "object name and auth scope, such as for teams and projects").DataType("string")
+		namespaceParams := []*restful.Parameter{tenantParam, namespaceParam}
+
+		tenantPath := tenantParamName + "/{tenant}/"
+		namespacedPath := tenantPath + namespaceParamName + "/{namespace}/" + resource
 		resourcePath := namespacedPath
 		resourceParams := namespaceParams
 		itemPath := namespacedPath + "/{name}"
@@ -459,40 +558,79 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		}
 		apiResource.Name = path
 		apiResource.Namespaced = true
+		apiResource.Tenanted = true
 		apiResource.Kind = resourceKind
 		namer := handlers.ContextBasedNaming{
 			SelfLinker:         a.group.Linker,
 			ClusterScoped:      false,
-			SelfLinkPathPrefix: gpath.Join(a.prefix, namespaceParamName) + "/",
+			SelfLinkPathPrefix: a.prefix + "/",
 			SelfLinkPathSuffix: itemPathSuffix,
+			TenantScoped:       false,
 		}
 
-		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false}, isLister)
-		actions = appendIf(actions, action{"POST", resourcePath, resourceParams, namer, false}, isCreater)
-		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, resourceParams, namer, false}, isCollectionDeleter)
+		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false, false}, isLister)
+		actions = appendIf(actions, action{"POST", resourcePath, resourceParams, namer, false, false}, isCreater)
+		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, resourceParams, namer, false, false}, isCollectionDeleter)
 		// DEPRECATED in 1.11
-		actions = appendIf(actions, action{"WATCHLIST", "watch/" + resourcePath, resourceParams, namer, false}, allowWatchList)
+		actions = appendIf(actions, action{"WATCHLIST", "watch/" + resourcePath, resourceParams, namer, false, false}, allowWatchList)
 
-		actions = appendIf(actions, action{"GET", itemPath, nameParams, namer, false}, isGetter)
+		actions = appendIf(actions, action{"GET", itemPath, nameParams, namer, false, false}, isGetter)
 		if getSubpath {
-			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", proxyParams, namer, false}, isGetter)
+			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", proxyParams, namer, false, false}, isGetter)
 		}
-		actions = appendIf(actions, action{"PUT", itemPath, nameParams, namer, false}, isUpdater)
-		actions = appendIf(actions, action{"PATCH", itemPath, nameParams, namer, false}, isPatcher)
-		actions = appendIf(actions, action{"DELETE", itemPath, nameParams, namer, false}, isGracefulDeleter)
+		actions = appendIf(actions, action{"PUT", itemPath, nameParams, namer, false, false}, isUpdater)
+		actions = appendIf(actions, action{"PATCH", itemPath, nameParams, namer, false, false}, isPatcher)
+		actions = appendIf(actions, action{"DELETE", itemPath, nameParams, namer, false, false}, isGracefulDeleter)
 		// DEPRECATED in 1.11
-		actions = appendIf(actions, action{"WATCH", "watch/" + itemPath, nameParams, namer, false}, isWatcher)
-		actions = appendIf(actions, action{"CONNECT", itemPath, nameParams, namer, false}, isConnecter)
-		actions = appendIf(actions, action{"CONNECT", itemPath + "/{path:*}", proxyParams, namer, false}, isConnecter && connectSubpath)
+		actions = appendIf(actions, action{"WATCH", "watch/" + itemPath, nameParams, namer, false, false}, isWatcher)
+		actions = appendIf(actions, action{"CONNECT", itemPath, nameParams, namer, false, false}, isConnecter)
+		actions = appendIf(actions, action{"CONNECT", itemPath + "/{path:*}", proxyParams, namer, false, false}, isConnecter && connectSubpath)
 
-		// list or post across namespace.
-		// For ex: LIST all pods in all namespaces by sending a LIST request at /api/apiVersion/pods.
+		// list or post across tenants or namespaces.
+		// For ex: LIST all pods in all namespaces by sending a LIST request at /api/apiVersion/tenatnt/{tenant}/pods or /api/apiVersion/pods
 		// TODO: more strongly type whether a resource allows these actions on "all namespaces" (bulk delete)
 		if !isSubresource {
-			actions = appendIf(actions, action{"LIST", resource, params, namer, true}, isLister)
-			// DEPRECATED in 1.11
-			actions = appendIf(actions, action{"WATCHLIST", "watch/" + resource, params, namer, true}, allowWatchList)
+			// across all the namespaces under one tenant
+			actions = appendIf(actions, action{"LIST", tenantPath + resource, tenantParams, namer, true, false}, isLister)
+			actions = appendIf(actions, action{"WATCHLIST", "watch/" + tenantPath + resource, tenantParams, namer, true, false}, allowWatchList)
+			// across all the namespaces of all tenants
+			actions = appendIf(actions, action{"LIST", resource, params, namer, true, true}, isLister)
+			actions = appendIf(actions, action{"WATCHLIST", "watch/" + resource, params, namer, true, true}, allowWatchList)
 		}
+
+		// the folloiwing is for backward-compatible APIs before multi-tenancy, should be removed when we no longer support it
+		resourcePath = namespaceParamName + "/{namespace}/" + resource
+		itemPath = resourcePath + "/{name}"
+		resourceParams = []*restful.Parameter{namespaceParam}
+		nameParams = append(resourceParams, nameParam)
+		proxyParams = append(nameParams, pathParam)
+		if isSubresource {
+			itemPathSuffix = "/" + subresource
+			itemPath = itemPath + itemPathSuffix
+			resourcePath = itemPath
+			resourceParams = nameParams
+		}
+
+		actions = appendIf(actions, action{"LIST", resourcePath, resourceParams, namer, false, false}, isLister)
+		actions = appendIf(actions, action{"POST", resourcePath, resourceParams, namer, false, false}, isCreater)
+		actions = appendIf(actions, action{"DELETECOLLECTION", resourcePath, resourceParams, namer, false, false}, isCollectionDeleter)
+		// DEPRECATED in 1.11
+		actions = appendIf(actions, action{"WATCHLIST", "watch/" + resourcePath, resourceParams, namer, false, false}, allowWatchList)
+
+		actions = appendIf(actions, action{"GET", itemPath, nameParams, namer, false, false}, isGetter)
+		if getSubpath {
+			actions = appendIf(actions, action{"GET", itemPath + "/{path:*}", proxyParams, namer, false, false}, isGetter)
+		}
+		actions = appendIf(actions, action{"PUT", itemPath, nameParams, namer, false, false}, isUpdater)
+		actions = appendIf(actions, action{"PATCH", itemPath, nameParams, namer, false, false}, isPatcher)
+		actions = appendIf(actions, action{"DELETE", itemPath, nameParams, namer, false, false}, isGracefulDeleter)
+		// DEPRECATED in 1.11
+		actions = appendIf(actions, action{"WATCH", "watch/" + itemPath, nameParams, namer, false, false}, isWatcher)
+		actions = appendIf(actions, action{"CONNECT", itemPath, nameParams, namer, false, false}, isConnecter)
+		actions = appendIf(actions, action{"CONNECT", itemPath + "/{path:*}", proxyParams, namer, false, false}, isConnecter && connectSubpath)
+
+	default:
+		return nil, fmt.Errorf("Unsupported scope type: namespaced but not tenanted.")
 	}
 
 	// Create Routes for the actions.
@@ -571,21 +709,46 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 		}
 		reqScope.Namer = action.Namer
 
-		requestScope := "cluster"
-		var namespaced string
+		var requestScope string
+		var scoped string
 		var operationSuffix string
-		if apiResource.Namespaced {
+		switch {
+		case apiResource.Namespaced && apiResource.Tenanted:
 			requestScope = "namespace"
-			namespaced = "Namespaced"
+			scoped = "Namespaced"
+			if !strings.Contains(action.Path, "tenants/{tenant}") {
+				scoped = "LegacyNamespaced"
+			}
+		case !apiResource.Namespaced && apiResource.Tenanted:
+			requestScope = "tenant"
+			scoped = "tenanted"
+			if !strings.Contains(action.Path, "tenants/{tenant}") {
+				scoped = "LegacyTenanted"
+			}
+		case !apiResource.Namespaced && !apiResource.Tenanted:
+			requestScope = "cluster"
+			scoped = ""
+		default:
+			//should not hit
+			return nil, fmt.Errorf("Unsupported scope type: namespaced but not tenanted.")
 		}
+
 		if strings.HasSuffix(action.Path, "/{path:*}") {
 			requestScope = "resource"
 			operationSuffix = operationSuffix + "WithPath"
 		}
-		if action.AllNamespaces {
+
+		switch {
+		case action.AllNamespaces && action.AllTenants:
 			requestScope = "cluster"
-			operationSuffix = operationSuffix + "ForAllNamespaces"
-			namespaced = ""
+			operationSuffix = operationSuffix + "ForWholeScope"
+			scoped = ""
+		case action.AllNamespaces && !action.AllTenants:
+			requestScope = "tenant"
+			operationSuffix = operationSuffix + "ForOneTenant"
+			scoped = "tenanted"
+		case !action.AllNamespaces && action.AllTenants:
+			return nil, fmt.Errorf("This action would like to operate on a specific namespace across tenants, which is not supported.: %v", action)
 		}
 
 		if kubeVerb, found := toDiscoveryKubeVerb[action.Verb]; found {
@@ -640,7 +803,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.GET(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("read"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("read"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(append(storageMeta.ProducesMIMETypes(action.Verb), mediaTypes...)...).
 				Returns(http.StatusOK, "OK", producedObject).
 				Writes(producedObject)
@@ -668,7 +831,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.GET(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("list"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("list"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(append(storageMeta.ProducesMIMETypes(action.Verb), allMediaTypes...)...).
 				Returns(http.StatusOK, "OK", versionedList).
 				Writes(versionedList)
@@ -700,7 +863,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.PUT(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("replace"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("replace"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(append(storageMeta.ProducesMIMETypes(action.Verb), mediaTypes...)...).
 				Returns(http.StatusOK, "OK", producedObject).
 				// TODO: in some cases, the API may return a v1.Status instead of the versioned object
@@ -731,7 +894,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
 				Consumes(supportedTypes...).
-				Operation("patch"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("patch"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(append(storageMeta.ProducesMIMETypes(action.Verb), mediaTypes...)...).
 				Returns(http.StatusOK, "OK", producedObject).
 				Reads(metav1.Patch{}).
@@ -757,7 +920,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.POST(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("create"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("create"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(append(storageMeta.ProducesMIMETypes(action.Verb), mediaTypes...)...).
 				Returns(http.StatusOK, "OK", producedObject).
 				// TODO: in some cases, the API may return a v1.Status instead of the versioned object
@@ -781,7 +944,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.DELETE(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("delete"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("delete"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(append(storageMeta.ProducesMIMETypes(action.Verb), mediaTypes...)...).
 				Writes(versionedStatus).
 				Returns(http.StatusOK, "OK", versionedStatus).
@@ -804,7 +967,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.DELETE(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("deletecollection"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("deletecollection"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(append(storageMeta.ProducesMIMETypes(action.Verb), mediaTypes...)...).
 				Writes(versionedStatus).
 				Returns(http.StatusOK, "OK", versionedStatus)
@@ -831,7 +994,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.GET(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("watch"+namespaced+kind+strings.Title(subresource)+operationSuffix).
+				Operation("watch"+scoped+kind+strings.Title(subresource)+operationSuffix).
 				Produces(allMediaTypes...).
 				Returns(http.StatusOK, "OK", versionedWatchEvent).
 				Writes(versionedWatchEvent)
@@ -851,7 +1014,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			route := ws.GET(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-				Operation("watch"+namespaced+kind+strings.Title(subresource)+"List"+operationSuffix).
+				Operation("watch"+scoped+kind+strings.Title(subresource)+"List"+operationSuffix).
 				Produces(allMediaTypes...).
 				Returns(http.StatusOK, "OK", versionedWatchEvent).
 				Writes(versionedWatchEvent)
@@ -874,7 +1037,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 				route := ws.Method(method).Path(action.Path).
 					To(handler).
 					Doc(doc).
-					Operation("connect" + strings.Title(strings.ToLower(method)) + namespaced + kind + strings.Title(subresource) + operationSuffix).
+					Operation("connect" + strings.Title(strings.ToLower(method)) + scoped + kind + strings.Title(subresource) + operationSuffix).
 					Produces("*/*").
 					Consumes("*/*").
 					Writes(connectProducedObject)

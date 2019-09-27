@@ -34,6 +34,9 @@ func TestControllerStrategy(t *testing.T) {
 	if !Strategy.NamespaceScoped() {
 		t.Errorf("ReplicationController must be namespace scoped")
 	}
+	if !Strategy.TenantScoped() {
+		t.Errorf("ReplicationController must be tenant scoped")
+	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("ReplicationController should not allow create on update")
 	}
@@ -92,6 +95,9 @@ func TestControllerStatusStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !StatusStrategy.NamespaceScoped() {
 		t.Errorf("ReplicationController must be namespace scoped")
+	}
+	if !StatusStrategy.TenantScoped() {
+		t.Errorf("ReplicationController must be tenant scoped")
 	}
 	if StatusStrategy.AllowCreateOnUpdate() {
 		t.Errorf("ReplicationController should not allow create on update")

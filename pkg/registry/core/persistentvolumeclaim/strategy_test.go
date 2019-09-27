@@ -118,3 +118,12 @@ func TestDropConditions(t *testing.T) {
 		}
 	}
 }
+
+func TestStrategy_Scope(t *testing.T) {
+	if !Strategy.NamespaceScoped() {
+		t.Error("Persistentvolumeclaim strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("persistentvolumeclaim strategy must be tenant scoped")
+	}
+}

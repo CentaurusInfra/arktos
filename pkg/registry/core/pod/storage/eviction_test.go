@@ -51,7 +51,7 @@ func TestEviction(t *testing.T) {
 		{
 			name: "matching pdbs with no disruptions allowed",
 			pdbs: []runtime.Object{&policyv1beta1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant},
 				Spec:       policyv1beta1.PodDisruptionBudgetSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a": "true"}}},
 				Status:     policyv1beta1.PodDisruptionBudgetStatus{PodDisruptionsAllowed: 0},
 			}},
@@ -61,13 +61,13 @@ func TestEviction(t *testing.T) {
 				pod.Spec.NodeName = "foo"
 				return pod
 			}(),
-			eviction:    &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}, DeleteOptions: metav1.NewDeleteOptions(0)},
+			eviction:    &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant}, DeleteOptions: metav1.NewDeleteOptions(0)},
 			expectError: true,
 		},
 		{
 			name: "matching pdbs with disruptions allowed",
 			pdbs: []runtime.Object{&policyv1beta1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant},
 				Spec:       policyv1beta1.PodDisruptionBudgetSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a": "true"}}},
 				Status:     policyv1beta1.PodDisruptionBudgetStatus{PodDisruptionsAllowed: 1},
 			}},
@@ -77,13 +77,13 @@ func TestEviction(t *testing.T) {
 				pod.Spec.NodeName = "foo"
 				return pod
 			}(),
-			eviction:      &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}, DeleteOptions: metav1.NewDeleteOptions(0)},
+			eviction:      &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant}, DeleteOptions: metav1.NewDeleteOptions(0)},
 			expectDeleted: true,
 		},
 		{
 			name: "non-matching pdbs",
 			pdbs: []runtime.Object{&policyv1beta1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant},
 				Spec:       policyv1beta1.PodDisruptionBudgetSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"b": "true"}}},
 				Status:     policyv1beta1.PodDisruptionBudgetStatus{PodDisruptionsAllowed: 0},
 			}},
@@ -93,7 +93,7 @@ func TestEviction(t *testing.T) {
 				pod.Spec.NodeName = "foo"
 				return pod
 			}(),
-			eviction:      &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}, DeleteOptions: metav1.NewDeleteOptions(0)},
+			eviction:      &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant}, DeleteOptions: metav1.NewDeleteOptions(0)},
 			expectDeleted: true,
 		},
 	}
@@ -101,6 +101,7 @@ func TestEviction(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+			testContext = genericapirequest.WithTenant(testContext, tenant)
 			storage, _, _, server := newStorage(t)
 			defer server.Terminate(t)
 			defer storage.Store.DestroyFunc()
@@ -230,7 +231,7 @@ func TestEvictionDryRun(t *testing.T) {
 				return pod
 			}(),
 			pdbs: []runtime.Object{&policyv1beta1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant},
 				Spec:       policyv1beta1.PodDisruptionBudgetSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a": "true"}}},
 				Status:     policyv1beta1.PodDisruptionBudgetStatus{PodDisruptionsAllowed: 1},
 			}},
@@ -240,6 +241,7 @@ func TestEvictionDryRun(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			testContext := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+			testContext = genericapirequest.WithTenant(testContext, tenant)
 			storage, server := newFailDeleteUpdateStorage(t)
 			defer server.Terminate(t)
 			defer storage.Store.DestroyFunc()
@@ -253,7 +255,7 @@ func TestEvictionDryRun(t *testing.T) {
 
 			client := fake.NewSimpleClientset(tc.pdbs...)
 			evictionRest := newEvictionStorage(storage.Store, client.PolicyV1beta1())
-			eviction := &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}, DeleteOptions: tc.evictionOptions}
+			eviction := &policy.Eviction{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default", Tenant: tenant}, DeleteOptions: tc.evictionOptions}
 			_, err := evictionRest.Create(testContext, eviction, nil, tc.requestOptions)
 			if err != nil {
 				t.Fatalf("Failed to run eviction: %v", err)

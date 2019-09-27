@@ -40,6 +40,8 @@ type RESTUpdateStrategy interface {
 	runtime.ObjectTyper
 	// NamespaceScoped returns true if the object must be within a namespace.
 	NamespaceScoped() bool
+	// TenantScoped returns true if the object must be within a tenant.
+	TenantScoped() bool
 	// AllowCreateOnUpdate returns true if the object can be created by a PUT.
 	AllowCreateOnUpdate() bool
 	// PrepareForUpdate is invoked on update before validation to normalize
@@ -95,6 +97,13 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 		}
 	} else if len(objectMeta.GetNamespace()) > 0 {
 		objectMeta.SetNamespace(metav1.NamespaceNone)
+	}
+	if strategy.TenantScoped() {
+		if !ValidTenant(ctx, objectMeta) {
+			return errors.NewBadRequest("the tenant of the provided object does not match the tenant sent on the request")
+		}
+	} else if len(objectMeta.GetTenant()) > 0 {
+		objectMeta.SetTenant(metav1.TenantNone)
 	}
 
 	// Ensure requests cannot update generation

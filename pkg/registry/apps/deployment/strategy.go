@@ -68,6 +68,11 @@ func (deploymentStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (deploymentStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears fields that are not allowed to be set by end users on creation.
 func (deploymentStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	deployment := obj.(*apps.Deployment)

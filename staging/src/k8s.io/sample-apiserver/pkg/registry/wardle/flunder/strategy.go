@@ -70,6 +70,10 @@ func (flunderStrategy) NamespaceScoped() bool {
 	return true
 }
 
+func (flunderStrategy) TenantScoped() bool {
+	return true
+}
+
 func (flunderStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 }
 

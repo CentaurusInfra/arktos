@@ -47,6 +47,11 @@ func (namespaceStrategy) NamespaceScoped() bool {
 	return false
 }
 
+//TenantScoped is true as this resource need to be under a given tenant
+func (namespaceStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears fields that are not allowed to be set by end users on creation.
 func (namespaceStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	// on create, status is active

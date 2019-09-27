@@ -65,6 +65,11 @@ func (statefulSetStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (statefulSetStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of an StatefulSet before creation.
 func (statefulSetStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	statefulSet := obj.(*apps.StatefulSet)

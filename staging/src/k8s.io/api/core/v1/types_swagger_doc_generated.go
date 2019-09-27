@@ -219,7 +219,7 @@ func (ClientIPConfig) SwaggerDoc() map[string]string {
 
 var map_CommonInfo = map[string]string{
 	"":                "Colection of fields that are common to Container and VirtualMachine objects",
-	"name":            "Name of the container specified as a DNS_LABEL.",
+	"name":            "Required. Name of the container specified as a DNS_LABEL.",
 	"image":           "Image name.",
 	"resources":       "Compute Resources required by this container.",
 	"volumeMounts":    "Pod volumes to mount into the workload's filesystem.",
@@ -447,6 +447,28 @@ var map_ContainerStatus = map[string]string{
 
 func (ContainerStatus) SwaggerDoc() map[string]string {
 	return map_ContainerStatus
+}
+
+var map_ControllerInstance = map[string]string{
+	"":               "ControllerInstance contains controller instances with ids and last health check timestamp",
+	"controllerType": "A string that designate the type of the controller instance",
+	"uid":            "A UUID that representing an controller instance",
+	"hashKey":        "\n An int64 integer that identifies the upperbound of workload instances managed by this controller instance",
+	"workloadNum":    "WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck",
+	"isLocked":       "IsLocked is bool that identifies the lock status of the controller instance",
+}
+
+func (ControllerInstance) SwaggerDoc() map[string]string {
+	return map_ControllerInstance
+}
+
+var map_ControllerInstanceList = map[string]string{
+	"":      "ControllerInstanceList is a list of controller instances that have same controller type",
+	"items": "List of controller instance",
+}
+
+func (ControllerInstanceList) SwaggerDoc() map[string]string {
+	return map_ControllerInstanceList
 }
 
 var map_DaemonEndpoint = map[string]string{

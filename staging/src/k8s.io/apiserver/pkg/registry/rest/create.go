@@ -44,6 +44,8 @@ type RESTCreateStrategy interface {
 
 	// NamespaceScoped returns true if the object must be within a namespace.
 	NamespaceScoped() bool
+	// TenantScoped returns true if the object must be within a tenant.
+	TenantScoped() bool
 	// PrepareForCreate is invoked on create before validation to normalize
 	// the object.  For example: remove fields that are not to be persisted,
 	// sort order-insensitive list fields, etc.  This should not remove fields
@@ -83,6 +85,14 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx context.Context, obj runtime.
 		}
 	} else if len(objectMeta.GetNamespace()) > 0 {
 		objectMeta.SetNamespace(metav1.NamespaceNone)
+	}
+
+	if strategy.TenantScoped() {
+		if !ValidTenant(ctx, objectMeta) {
+			return errors.NewBadRequest("the tenant of the provided object does not match the tenant sent on the request")
+		}
+	} else if len(objectMeta.GetTenant()) > 0 {
+		objectMeta.SetTenant(metav1.TenantNone)
 	}
 	objectMeta.SetDeletionTimestamp(nil)
 	objectMeta.SetDeletionGracePeriodSeconds(nil)

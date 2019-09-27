@@ -49,6 +49,11 @@ func (persistentvolumeclaimStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (persistentvolumeclaimStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the Status field which is not allowed to be set by end users on creation.
 func (persistentvolumeclaimStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	pvc := obj.(*api.PersistentVolumeClaim)

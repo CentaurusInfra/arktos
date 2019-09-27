@@ -72,6 +72,11 @@ func (jobStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (jobStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of a job before creation.
 func (jobStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	job := obj.(*batch.Job)

@@ -99,6 +99,7 @@ var (
 	// customTestFuncs holds custom test functions by resource and verb.
 	customTestFuncs = map[schema.GroupVersionResource]map[string]testFunc{
 		gvr("", "v1", "namespaces"): {"delete": testNamespaceDelete},
+		gvr("", "v1", "tenants"):    {"delete": testTenantDelete},
 
 		gvr("apps", "v1beta1", "deployments/rollback"):       {"create": testDeploymentRollback},
 		gvr("extensions", "v1beta1", "deployments/rollback"): {"create": testDeploymentRollback},
@@ -843,11 +844,19 @@ func unimplemented(c *testContext) {
 // custom methods
 //
 
-// testNamespaceDelete verifies namespace-specific delete behavior:
-// - ensures admission is called on first delete (which only sets deletionTimestamp and terminating state)
-// - removes finalizer from namespace
-// - ensures admission is called on final delete once finalizers are removed
+func testTenantDelete(c *testContext) {
+	testDeleteWithFinalizer(c)
+}
+
 func testNamespaceDelete(c *testContext) {
+	testDeleteWithFinalizer(c)
+}
+
+// testDeleteWithFinalizer verifies delete behavior with resources with a finalizer:
+// - ensures admission is called on first delete (which only sets deletionTimestamp and terminating state)
+// - removes finalizer from the resource
+// - ensures admission is called on final delete once finalizers are removed
+func testDeleteWithFinalizer(c *testContext) {
 	obj, err := createOrGetResource(c.client, c.gvr, c.resource)
 	if err != nil {
 		c.t.Error(err)
@@ -864,7 +873,7 @@ func testNamespaceDelete(c *testContext) {
 	}
 	c.admissionHolder.verify(c.t)
 
-	// do the finalization so the namespace can be deleted
+	// do the finalization so the resource can be deleted
 	obj, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
 	if err != nil {
 		c.t.Error(err)
@@ -880,10 +889,10 @@ func testNamespaceDelete(c *testContext) {
 		c.t.Error(err)
 		return
 	}
-	// verify namespace is gone
+	// verify the resource is gone
 	obj, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
 	if err == nil || !errors.IsNotFound(err) {
-		c.t.Errorf("expected namespace to be gone, got %#v, %v", obj, err)
+		c.t.Errorf("expected %s to be gone, got %#v, %v", c.gvr.Resource, obj, err)
 	}
 }
 
@@ -1119,6 +1128,7 @@ func testNoPruningCustomFancy(c *testContext) {
 func newWebhookHandler(t *testing.T, holder *holder, phase string, converted bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
+
 		data, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			t.Error(err)

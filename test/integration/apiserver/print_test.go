@@ -211,10 +211,6 @@ func TestServerSidePrint(t *testing.T) {
 		// read table definition as returned by the server
 		mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
-			if gvk.Kind == "Tenant" {
-				t.Logf("Expected error in getting map for resource Kind=Tenant. Skipping for now.")
-				continue
-			}
 			t.Errorf("unexpected error getting mapping for GVK %s: %v", gvk, err)
 			continue
 		}

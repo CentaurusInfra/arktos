@@ -42,6 +42,11 @@ func (podDisruptionBudgetStrategy) NamespaceScoped() bool {
 	return true
 }
 
+//TenantScoped is true as all namespace-scoped objects are also tenant-scoped
+func (podDisruptionBudgetStrategy) TenantScoped() bool {
+	return true
+}
+
 // PrepareForCreate clears the status of an PodDisruptionBudget before creation.
 func (podDisruptionBudgetStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	podDisruptionBudget := obj.(*policy.PodDisruptionBudget)

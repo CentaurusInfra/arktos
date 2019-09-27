@@ -52,6 +52,7 @@ type Tester struct {
 	generatesName       bool
 	returnDeletedObject bool
 	namer               func(int) string
+	tenantScope         bool
 }
 
 func New(t *testing.T, storage rest.Storage) *Tester {
@@ -75,6 +76,13 @@ func (t *Tester) Namer(namer func(int) string) *Tester {
 
 func (t *Tester) ClusterScope() *Tester {
 	t.clusterScope = true
+	t.tenantScope = false
+	return t
+}
+
+func (t *Tester) TenantScope() *Tester {
+	t.clusterScope = false
+	t.tenantScope = true
 	return t
 }
 
@@ -96,19 +104,37 @@ func (t *Tester) ReturnDeletedObject() *Tester {
 // TestNamespace returns the namespace that will be used when creating contexts.
 // Returns NamespaceNone for cluster-scoped objects.
 func (t *Tester) TestNamespace() string {
-	if t.clusterScope {
+	if t.clusterScope || t.tenantScope {
 		return metav1.NamespaceNone
 	}
-	return "test"
+	return "test-ns"
+}
+
+// TestTenant returns the tenant that will be used when creating contexts.
+// Returns TenantNone for cluster-scoped objects.
+func (t *Tester) TestTenant() string {
+	if t.clusterScope {
+		return metav1.TenantNone
+	}
+	return "test-te"
 }
 
 // TestContext returns a namespaced context that will be used when making storage calls.
 // Namespace is determined by TestNamespace()
 func (t *Tester) TestContext() context.Context {
-	if t.clusterScope {
+	switch {
+	case !t.tenantScope && t.clusterScope:
+		return genericapirequest.NewContext()
+	case t.tenantScope && !t.clusterScope:
+		return genericapirequest.WithTenant(genericapirequest.NewContext(), t.TestTenant())
+	case !t.tenantScope && !t.clusterScope:
+		ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), t.TestTenant())
+		ctx = genericapirequest.WithNamespace(ctx, t.TestNamespace())
+		return ctx
+	default:
+		t.Fatalf("Unexpected resource scope: tenant-scoped and cluster-scoped at the same time.")
 		return genericapirequest.NewContext()
 	}
-	return genericapirequest.WithNamespace(genericapirequest.NewContext(), t.TestNamespace())
 }
 
 func (t *Tester) getObjectMetaOrFail(obj runtime.Object) metav1.Object {
@@ -122,10 +148,18 @@ func (t *Tester) getObjectMetaOrFail(obj runtime.Object) metav1.Object {
 func (t *Tester) setObjectMeta(obj runtime.Object, name string) {
 	meta := t.getObjectMetaOrFail(obj)
 	meta.SetName(name)
-	if t.clusterScope {
+	switch {
+	case !t.tenantScope && t.clusterScope:
+		meta.SetTenant(metav1.TenantNone)
 		meta.SetNamespace(metav1.NamespaceNone)
-	} else {
+	case t.tenantScope && !t.clusterScope:
+		meta.SetTenant(genericapirequest.TenantValue(t.TestContext()))
+		meta.SetNamespace(metav1.NamespaceNone)
+	case !t.tenantScope && !t.clusterScope:
+		meta.SetTenant(genericapirequest.TenantValue(t.TestContext()))
 		meta.SetNamespace(genericapirequest.NamespaceValue(t.TestContext()))
+	default:
+		t.Fatalf("Unexpected resource scope: tenant-scoped and cluster-scoped at the same time.")
 	}
 	meta.SetGenerateName("")
 	meta.SetGeneration(1)
@@ -154,19 +188,48 @@ func (t *Tester) TestCreate(valid runtime.Object, createFn CreateFunc, getFn Get
 	t.testCreateEquals(valid.DeepCopyObject(), getFn)
 	t.testCreateAlreadyExisting(valid.DeepCopyObject(), createFn, dryRunOpts)
 	t.testCreateAlreadyExisting(valid.DeepCopyObject(), createFn, opts)
-	if t.clusterScope {
+	switch {
+	case !t.tenantScope && t.clusterScope:
 		t.testCreateDiscardsObjectNamespace(valid.DeepCopyObject(), dryRunOpts)
 		t.testCreateDiscardsObjectNamespace(valid.DeepCopyObject(), opts)
+		t.testCreateDiscardsObjectTenant(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateDiscardsObjectTenant(valid.DeepCopyObject(), opts)
+
 		t.testCreateIgnoresContextNamespace(valid.DeepCopyObject(), dryRunOpts)
 		t.testCreateIgnoresContextNamespace(valid.DeepCopyObject(), opts)
+		t.testCreateIgnoresContextTenant(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateIgnoresContextTenant(valid.DeepCopyObject(), opts)
+
 		t.testCreateIgnoresMismatchedNamespace(valid.DeepCopyObject(), dryRunOpts)
 		t.testCreateIgnoresMismatchedNamespace(valid.DeepCopyObject(), opts)
+		t.testCreateIgnoresMismatchedTenant(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateIgnoresMismatchedTenant(valid.DeepCopyObject(), opts)
+
 		t.testCreateResetsUserData(valid.DeepCopyObject(), dryRunOpts)
 		t.testCreateResetsUserData(valid.DeepCopyObject(), opts)
-	} else {
+
+	case t.tenantScope && !t.clusterScope:
+		t.testCreateDiscardsObjectNamespace(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateDiscardsObjectNamespace(valid.DeepCopyObject(), opts)
+
+		t.testCreateIgnoresContextNamespace(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateIgnoresContextNamespace(valid.DeepCopyObject(), opts)
+
+		t.testCreateIgnoresMismatchedNamespace(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateIgnoresMismatchedNamespace(valid.DeepCopyObject(), opts)
+
+		t.testCreateRejectsMismatchedTenant(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateRejectsMismatchedTenant(valid.DeepCopyObject(), opts)
+
+	case !t.tenantScope && !t.clusterScope:
+		t.testCreateRejectsMismatchedTenant(valid.DeepCopyObject(), dryRunOpts)
+		t.testCreateRejectsMismatchedTenant(valid.DeepCopyObject(), opts)
 		t.testCreateRejectsMismatchedNamespace(valid.DeepCopyObject(), dryRunOpts)
 		t.testCreateRejectsMismatchedNamespace(valid.DeepCopyObject(), opts)
+	default:
+		t.Fatalf("Unexpected resource scope: tenant-scoped and cluster-scoped at the same time.")
 	}
+
 	t.testCreateInvokesValidation(dryRunOpts, invalid...)
 	t.testCreateInvokesValidation(opts, invalid...)
 	t.testCreateValidatesNames(valid.DeepCopyObject(), dryRunOpts)
@@ -183,9 +246,20 @@ func (t *Tester) TestUpdate(valid runtime.Object, createFn CreateFunc, getFn Get
 	t.testUpdateFailsOnVersionTooOld(valid.DeepCopyObject(), createFn, getFn)
 	t.testUpdateOnNotFound(valid.DeepCopyObject(), dryRunOpts)
 	t.testUpdateOnNotFound(valid.DeepCopyObject(), opts)
-	if !t.clusterScope {
+
+	switch {
+	case !t.tenantScope && t.clusterScope:
+		//nothing
+	case t.tenantScope && !t.clusterScope:
+		t.testUpdateRejectsMismatchedTenant(valid.DeepCopyObject(), createFn, getFn)
+
+	case !t.tenantScope && !t.clusterScope:
+		t.testUpdateRejectsMismatchedTenant(valid.DeepCopyObject(), createFn, getFn)
 		t.testUpdateRejectsMismatchedNamespace(valid.DeepCopyObject(), createFn, getFn)
+	default:
+		t.Fatalf("Unexpected resource scope: tenant-scoped and cluster-scoped at the same time.")
 	}
+
 	t.testUpdateInvokesValidation(valid.DeepCopyObject(), createFn, invalidUpdateFn...)
 	t.testUpdateWithWrongUID(valid.DeepCopyObject(), createFn, getFn, dryRunOpts)
 	t.testUpdateWithWrongUID(valid.DeepCopyObject(), createFn, getFn, opts)
@@ -223,9 +297,21 @@ func (t *Tester) TestDeleteGraceful(valid runtime.Object, createFn CreateFunc, g
 func (t *Tester) TestGet(valid runtime.Object) {
 	t.testGetFound(valid.DeepCopyObject())
 	t.testGetNotFound(valid.DeepCopyObject())
-	t.testGetMimatchedNamespace(valid.DeepCopyObject())
-	if !t.clusterScope {
+
+	switch {
+	case !t.tenantScope && t.clusterScope:
+		//nothing
+	case t.tenantScope && !t.clusterScope:
+		t.testGetMimatchedTenant(valid.DeepCopyObject())
+		t.testGetDifferentTenant(valid.DeepCopyObject())
+
+	case !t.tenantScope && !t.clusterScope:
+		t.testGetMimatchedTenant(valid.DeepCopyObject())
+		t.testGetDifferentTenant(valid.DeepCopyObject())
+		t.testGetMimatchedNamespace(valid.DeepCopyObject())
 		t.testGetDifferentNamespace(valid.DeepCopyObject())
+	default:
+		t.Fatalf("Unexpected resource scope: tenant-scoped and cluster-scoped at the same time.")
 	}
 }
 
@@ -355,7 +441,8 @@ func (t *Tester) testCreateDiscardsObjectNamespace(valid runtime.Object, opts me
 	objectMeta := t.getObjectMetaOrFail(valid)
 
 	// Ignore non-empty namespace in object meta
-	objectMeta.SetNamespace("not-default")
+	objectMeta.SetNamespace("not-default-1")
+	objectMeta.SetTenant(t.TestTenant())
 
 	// Ideally, we'd get an error back here, but at least verify the namespace wasn't persisted
 	created, err := t.storage.(rest.Creater).Create(t.TestContext(), valid.DeepCopyObject(), rest.ValidateAllObjectFunc, &opts)
@@ -366,6 +453,25 @@ func (t *Tester) testCreateDiscardsObjectNamespace(valid runtime.Object, opts me
 	createdObjectMeta := t.getObjectMetaOrFail(created)
 	if createdObjectMeta.GetNamespace() != metav1.NamespaceNone {
 		t.Errorf("Expected empty namespace on created object, got '%v'", createdObjectMeta.GetNamespace())
+	}
+}
+
+func (t *Tester) testCreateDiscardsObjectTenant(valid runtime.Object, opts metav1.CreateOptions) {
+	objectMeta := t.getObjectMetaOrFail(valid)
+
+	// Ignore non-empty namespace in object meta
+	objectMeta.SetNamespace(t.TestNamespace())
+	objectMeta.SetTenant("not-default-2")
+
+	// Ideally, we'd get an error back here, but at least verify the namespace wasn't persisted
+	created, err := t.storage.(rest.Creater).Create(t.TestContext(), valid.DeepCopyObject(), rest.ValidateAllObjectFunc, &opts)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	defer t.delete(t.TestContext(), created)
+	createdObjectMeta := t.getObjectMetaOrFail(created)
+	if createdObjectMeta.GetTenant() != metav1.TenantNone {
+		t.Errorf("Expected empty tenant on created object, got '%v'", createdObjectMeta.GetTenant())
 	}
 }
 
@@ -388,6 +494,7 @@ func (t *Tester) testCreateHasMetadata(valid runtime.Object) {
 	objectMeta := t.getObjectMetaOrFail(valid)
 	objectMeta.SetName(t.namer(1))
 	objectMeta.SetNamespace(t.TestNamespace())
+	objectMeta.SetTenant(t.TestTenant())
 
 	obj, err := t.storage.(rest.Creater).Create(t.TestContext(), valid, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
@@ -402,9 +509,27 @@ func (t *Tester) testCreateHasMetadata(valid runtime.Object) {
 	}
 }
 
+func (t *Tester) testCreateIgnoresContextTenant(valid runtime.Object, opts metav1.CreateOptions) {
+	// Ignore non-empty namespace in context
+	ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), "not-default-te2")
+	ctx = genericapirequest.WithNamespace(ctx, t.TestNamespace())
+
+	// Ideally, we'd get an error back here, but at least verify the namespace wasn't persisted
+	created, err := t.storage.(rest.Creater).Create(ctx, valid.DeepCopyObject(), rest.ValidateAllObjectFunc, &opts)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	defer t.delete(ctx, created)
+	createdObjectMeta := t.getObjectMetaOrFail(created)
+	if createdObjectMeta.GetTenant() != metav1.TenantNone {
+		t.Errorf("Expected empty tenant on created object, got '%v'", createdObjectMeta.GetTenant())
+	}
+}
+
 func (t *Tester) testCreateIgnoresContextNamespace(valid runtime.Object, opts metav1.CreateOptions) {
 	// Ignore non-empty namespace in context
-	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), "not-default2")
+	ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), t.TestTenant())
+	ctx = genericapirequest.WithNamespace(ctx, "not-default-ns2")
 
 	// Ideally, we'd get an error back here, but at least verify the namespace wasn't persisted
 	created, err := t.storage.(rest.Creater).Create(ctx, valid.DeepCopyObject(), rest.ValidateAllObjectFunc, &opts)
@@ -422,8 +547,11 @@ func (t *Tester) testCreateIgnoresMismatchedNamespace(valid runtime.Object, opts
 	objectMeta := t.getObjectMetaOrFail(valid)
 
 	// Ignore non-empty namespace in object meta
-	objectMeta.SetNamespace("not-default")
-	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), "not-default2")
+	objectMeta.SetTenant(t.TestTenant())
+	objectMeta.SetNamespace("not-default-3")
+
+	ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), t.TestTenant())
+	ctx = genericapirequest.WithNamespace(ctx, "not-default2")
 
 	// Ideally, we'd get an error back here, but at least verify the namespace wasn't persisted
 	created, err := t.storage.(rest.Creater).Create(ctx, valid.DeepCopyObject(), rest.ValidateAllObjectFunc, &opts)
@@ -434,6 +562,28 @@ func (t *Tester) testCreateIgnoresMismatchedNamespace(valid runtime.Object, opts
 	createdObjectMeta := t.getObjectMetaOrFail(created)
 	if createdObjectMeta.GetNamespace() != metav1.NamespaceNone {
 		t.Errorf("Expected empty namespace on created object, got '%v'", createdObjectMeta.GetNamespace())
+	}
+}
+
+func (t *Tester) testCreateIgnoresMismatchedTenant(valid runtime.Object, opts metav1.CreateOptions) {
+	objectMeta := t.getObjectMetaOrFail(valid)
+
+	// Ignore non-empty tenant in object meta
+	objectMeta.SetNamespace(t.TestNamespace())
+	objectMeta.SetTenant("not-default-4")
+
+	ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), "not-default-4-different")
+	ctx = genericapirequest.WithNamespace(ctx, t.TestNamespace())
+
+	// Ideally, we'd get an error back here, but at least verify the tenant/namespace wasn't persisted
+	created, err := t.storage.(rest.Creater).Create(ctx, valid.DeepCopyObject(), rest.ValidateAllObjectFunc, &opts)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	defer t.delete(ctx, created)
+	createdObjectMeta := t.getObjectMetaOrFail(created)
+	if createdObjectMeta.GetTenant() != metav1.TenantNone {
+		t.Errorf("Expected empty tenant on created object, got '%v'", createdObjectMeta.GetTenant())
 	}
 }
 
@@ -473,9 +623,22 @@ func (t *Tester) testCreateInvokesValidation(opts metav1.CreateOptions, invalid 
 	}
 }
 
+func (t *Tester) testCreateRejectsMismatchedTenant(valid runtime.Object, opts metav1.CreateOptions) {
+	objectMeta := t.getObjectMetaOrFail(valid)
+	objectMeta.SetTenant("not-default-5")
+
+	_, err := t.storage.(rest.Creater).Create(t.TestContext(), valid, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err == nil {
+		t.Errorf("Expected an error, but we didn't get one")
+	} else if !strings.Contains(err.Error(), "does not match the tenant sent on the request") {
+		t.Errorf("Expected 'does not match the tenant sent on the request' error, got '%v'", err.Error())
+	}
+}
+
 func (t *Tester) testCreateRejectsMismatchedNamespace(valid runtime.Object, opts metav1.CreateOptions) {
 	objectMeta := t.getObjectMetaOrFail(valid)
-	objectMeta.SetNamespace("not-default")
+	objectMeta.SetTenant(t.TestTenant())
+	objectMeta.SetNamespace("not-default-6")
 
 	_, err := t.storage.(rest.Creater).Create(t.TestContext(), valid, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err == nil {
@@ -590,7 +753,7 @@ func (t *Tester) testUpdateInvokesValidation(obj runtime.Object, createFn Create
 	ctx := t.TestContext()
 
 	foo := obj.DeepCopyObject()
-	t.setObjectMeta(foo, t.namer(4))
+	t.setObjectMeta(foo, t.namer(14))
 	if err := createFn(ctx, foo); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -759,7 +922,7 @@ func (t *Tester) testUpdateOnNotFound(obj runtime.Object, opts metav1.UpdateOpti
 	}
 }
 
-func (t *Tester) testUpdateRejectsMismatchedNamespace(obj runtime.Object, createFn CreateFunc, getFn GetFunc) {
+func (t *Tester) testUpdateRejectsMismatchedTenant(obj runtime.Object, createFn CreateFunc, getFn GetFunc) {
 	ctx := t.TestContext()
 
 	foo := obj.DeepCopyObject()
@@ -775,9 +938,40 @@ func (t *Tester) testUpdateRejectsMismatchedNamespace(obj runtime.Object, create
 
 	objectMeta := t.getObjectMetaOrFail(storedFoo)
 	objectMeta.SetName(t.namer(1))
-	objectMeta.SetNamespace("not-default")
+	objectMeta.SetTenant("not-default-7")
+	objectMeta.SetNamespace(t.TestNamespace())
 
 	obj, updated, err := t.storage.(rest.Updater).Update(t.TestContext(), "foo1", rest.DefaultUpdatedObjectInfo(storedFoo), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
+	if obj != nil || updated {
+		t.Errorf("expected nil object and not updated")
+	}
+	if err == nil {
+		t.Errorf("expected an error, but didn't get one")
+	} else if !strings.Contains(err.Error(), "does not match the tenant sent on the request") {
+		t.Errorf("expected 'the tenant of the provided object does not match the tenant sent on the request' error, got '%v'", err.Error())
+	}
+}
+
+func (t *Tester) testUpdateRejectsMismatchedNamespace(obj runtime.Object, createFn CreateFunc, getFn GetFunc) {
+	ctx := t.TestContext()
+
+	foo := obj.DeepCopyObject()
+	t.setObjectMeta(foo, t.namer(10))
+	if err := createFn(ctx, foo); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	storedFoo, err := getFn(ctx, foo)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	objectMeta := t.getObjectMetaOrFail(storedFoo)
+	objectMeta.SetName(t.namer(10))
+	objectMeta.SetTenant(t.TestTenant())
+	objectMeta.SetNamespace("not-default-8")
+
+	obj, updated, err := t.storage.(rest.Updater).Update(t.TestContext(), "foo10", rest.DefaultUpdatedObjectInfo(storedFoo), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
 	if obj != nil || updated {
 		t.Errorf("expected nil object and not updated")
 	}
@@ -1203,8 +1397,7 @@ func (t *Tester) testDeleteGracefulShorten(obj runtime.Object, createFn CreateFu
 // =============================================================================
 // Get tests.
 
-// testGetDifferentNamespace ensures same-name objects in different namespaces do not clash
-func (t *Tester) testGetDifferentNamespace(obj runtime.Object) {
+func (t *Tester) testGetDifferentTenant(obj runtime.Object) {
 	if t.clusterScope {
 		t.Fatalf("the test does not work in cluster-scope")
 	}
@@ -1212,15 +1405,23 @@ func (t *Tester) testGetDifferentNamespace(obj runtime.Object) {
 	objMeta := t.getObjectMetaOrFail(obj)
 	objMeta.SetName(t.namer(5))
 
-	ctx1 := genericapirequest.WithNamespace(genericapirequest.NewContext(), "bar3")
-	objMeta.SetNamespace(genericapirequest.NamespaceValue(ctx1))
+	ctx1 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo3")
+	ctx1 = genericapirequest.WithNamespace(ctx1, "bar3")
+	te1 := genericapirequest.TenantValue(ctx1)
+	ns1 := genericapirequest.NamespaceValue(ctx1)
+	objMeta.SetTenant(te1)
+	objMeta.SetNamespace(ns1)
 	_, err := t.storage.(rest.Creater).Create(ctx1, obj, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	ctx2 := genericapirequest.WithNamespace(genericapirequest.NewContext(), "bar4")
-	objMeta.SetNamespace(genericapirequest.NamespaceValue(ctx2))
+	ctx2 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo4")
+	ctx2 = genericapirequest.WithNamespace(ctx2, "bar3")
+	te2 := genericapirequest.TenantValue(ctx2)
+	ns2 := genericapirequest.NamespaceValue(ctx2)
+	objMeta.SetTenant(te2)
+	objMeta.SetNamespace(ns2)
 	_, err = t.storage.(rest.Creater).Create(ctx2, obj, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -1234,8 +1435,8 @@ func (t *Tester) testGetDifferentNamespace(obj runtime.Object) {
 	if got1Meta.GetName() != objMeta.GetName() {
 		t.Errorf("unexpected name of object: %#v, expected: %s", got1, objMeta.GetName())
 	}
-	if got1Meta.GetNamespace() != genericapirequest.NamespaceValue(ctx1) {
-		t.Errorf("unexpected namespace of object: %#v, expected: %s", got1, genericapirequest.NamespaceValue(ctx1))
+	if got1Meta.GetTenant() != te1 {
+		t.Errorf("unexpected tenant of object: %#v, expected: %s", got1, te1)
 	}
 
 	got2, err := t.storage.(rest.Getter).Get(ctx2, objMeta.GetName(), &metav1.GetOptions{})
@@ -1246,8 +1447,73 @@ func (t *Tester) testGetDifferentNamespace(obj runtime.Object) {
 	if got2Meta.GetName() != objMeta.GetName() {
 		t.Errorf("unexpected name of object: %#v, expected: %s", got2, objMeta.GetName())
 	}
-	if got2Meta.GetNamespace() != genericapirequest.NamespaceValue(ctx2) {
-		t.Errorf("unexpected namespace of object: %#v, expected: %s", got2, genericapirequest.NamespaceValue(ctx2))
+
+	if got2Meta.GetTenant() != te2 {
+		t.Errorf("unexpected tenant of object: %#v, expected: %s", got2, te2)
+	}
+}
+
+// testGetDifferentNamespace ensures same-name objects in different namespaces do not clash
+func (t *Tester) testGetDifferentNamespace(obj runtime.Object) {
+	if t.clusterScope {
+		t.Fatalf("the test does not work in cluster-scope")
+	}
+
+	objMeta := t.getObjectMetaOrFail(obj)
+	objMeta.SetName(t.namer(15))
+
+	ctx1 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo3")
+	ctx1 = genericapirequest.WithNamespace(ctx1, "bar3")
+
+	te1 := genericapirequest.TenantValue(ctx1)
+	ns1 := genericapirequest.NamespaceValue(ctx1)
+	objMeta.SetTenant(te1)
+	objMeta.SetNamespace(ns1)
+	_, err := t.storage.(rest.Creater).Create(ctx1, obj, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	ctx2 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo3")
+	ctx2 = genericapirequest.WithNamespace(ctx2, "bar4")
+
+	te2 := genericapirequest.TenantValue(ctx2)
+	ns2 := genericapirequest.NamespaceValue(ctx2)
+	objMeta.SetTenant(te2)
+	objMeta.SetNamespace(ns2)
+	_, err = t.storage.(rest.Creater).Create(ctx2, obj, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	got1, err := t.storage.(rest.Getter).Get(ctx1, objMeta.GetName(), &metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	got1Meta := t.getObjectMetaOrFail(got1)
+	if got1Meta.GetName() != objMeta.GetName() {
+		t.Errorf("unexpected name of object: %#v, expected: %s", got1, objMeta.GetName())
+	}
+	if got1Meta.GetNamespace() != ns1 {
+		t.Errorf("unexpected namespace of object: %#v, expected: %s", got1, ns1)
+	}
+	if got1Meta.GetTenant() != te1 {
+		t.Errorf("unexpected tenant of object: %#v, expected: %s", got1, te1)
+	}
+
+	got2, err := t.storage.(rest.Getter).Get(ctx2, objMeta.GetName(), &metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	got2Meta := t.getObjectMetaOrFail(got2)
+	if got2Meta.GetName() != objMeta.GetName() {
+		t.Errorf("unexpected name of object: %#v, expected: %s", got2, objMeta.GetName())
+	}
+	if got2Meta.GetNamespace() != ns2 {
+		t.Errorf("unexpected namespace of object: %#v, expected: %s", got2, ns2)
+	}
+	if got2Meta.GetTenant() != te2 {
+		t.Errorf("unexpected tenant of object: %#v, expected: %s", got2, te2)
 	}
 }
 
@@ -1273,16 +1539,52 @@ func (t *Tester) testGetFound(obj runtime.Object) {
 }
 
 func (t *Tester) testGetMimatchedNamespace(obj runtime.Object) {
-	ctx1 := genericapirequest.WithNamespace(genericapirequest.NewContext(), "bar1")
-	ctx2 := genericapirequest.WithNamespace(genericapirequest.NewContext(), "bar2")
+	ctx1 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo1")
+	ctx1 = genericapirequest.WithNamespace(ctx1, "bar1")
+	ctx2 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo1")
+	ctx2 = genericapirequest.WithNamespace(ctx2, "bar2")
+	objMeta := t.getObjectMetaOrFail(obj)
+	objMeta.SetName(t.namer(12))
+
+	ns1 := genericapirequest.NamespaceValue(ctx1)
+	te1 := genericapirequest.TenantValue(ctx1)
+	objMeta.SetTenant(te1)
+	objMeta.SetNamespace(ns1)
+	_, err := t.storage.(rest.Creater).Create(ctx1, obj, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	_, err = t.storage.(rest.Getter).Get(ctx2, t.namer(12), &metav1.GetOptions{})
+
+	if t.clusterScope || t.tenantScope{
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	} else {
+		if !errors.IsNotFound(err) {
+			t.Errorf("unexpected error returned: %#v", err)
+		}
+	}
+}
+
+func (t *Tester) testGetMimatchedTenant(obj runtime.Object) {
+	ctx1 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo1")
+	ctx1 = genericapirequest.WithNamespace(ctx1, "bar1")
+	ctx2 := genericapirequest.WithTenant(genericapirequest.NewContext(), "foo2")
+	ctx2 = genericapirequest.WithNamespace(ctx2, "bar1")
 	objMeta := t.getObjectMetaOrFail(obj)
 	objMeta.SetName(t.namer(4))
-	objMeta.SetNamespace(genericapirequest.NamespaceValue(ctx1))
+
+	ns1 := genericapirequest.NamespaceValue(ctx1)
+	te1 := genericapirequest.TenantValue(ctx1)
+	objMeta.SetTenant(te1)
+	objMeta.SetNamespace(ns1)
 	_, err := t.storage.(rest.Creater).Create(ctx1, obj, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	_, err = t.storage.(rest.Getter).Get(ctx2, t.namer(4), &metav1.GetOptions{})
+
 	if t.clusterScope {
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -1364,7 +1666,10 @@ func (t *Tester) testListMatchLabels(obj runtime.Object, assignFn AssignFunc) {
 	foo4 := obj.DeepCopyObject()
 	foo4Meta := t.getObjectMetaOrFail(foo4)
 	foo4Meta.SetName("foo4")
-	foo4Meta.SetNamespace(genericapirequest.NamespaceValue(ctx))
+	ns := genericapirequest.NamespaceValue(ctx)
+	te := genericapirequest.TenantValue(ctx)
+	foo4Meta.SetTenant(te)
+	foo4Meta.SetNamespace(ns)
 	foo4Meta.SetLabels(testLabels)
 
 	objs := ([]runtime.Object{foo3, foo4})
@@ -1418,7 +1723,10 @@ func (t *Tester) testListTableConversion(obj runtime.Object, assignFn AssignFunc
 	foo4 := obj.DeepCopyObject()
 	foo4Meta := t.getObjectMetaOrFail(foo4)
 	foo4Meta.SetName("foo4")
-	foo4Meta.SetNamespace(genericapirequest.NamespaceValue(ctx))
+	ns := genericapirequest.NamespaceValue(ctx)
+	te := genericapirequest.TenantValue(ctx)
+	foo4Meta.SetTenant(te)
+	foo4Meta.SetNamespace(ns)
 	foo4Meta.SetLabels(testLabels)
 
 	objs := ([]runtime.Object{foo3, foo4})
@@ -1498,7 +1806,7 @@ func (t *Tester) testListTableConversion(obj runtime.Object, assignFn AssignFunc
 		for j, cell := range row.Cells {
 			// do not add to this test without discussion - may break clients
 			switch cell.(type) {
-			case float64, int64, int32, int, string, bool:
+			case float64, int64, int32, int, string, bool, types.UID:
 			case []interface{}:
 			case nil:
 			default:

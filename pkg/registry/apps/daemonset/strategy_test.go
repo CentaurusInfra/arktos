@@ -189,3 +189,12 @@ func newDaemonSetWithSelectorLabels(selectorLabels map[string]string, templateGe
 		},
 	}
 }
+
+func TestStrategy_Scope(t *testing.T) {
+	if !Strategy.NamespaceScoped() {
+		t.Error("DaemonSet strategy must be namespace scoped")
+	}
+	if !Strategy.TenantScoped() {
+		t.Error("DaemonSet strategy must be tenant scoped")
+	}
+}

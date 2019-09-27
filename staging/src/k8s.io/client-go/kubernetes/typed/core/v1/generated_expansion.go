@@ -22,6 +22,8 @@ type ComponentStatusExpansion interface{}
 
 type ConfigMapExpansion interface{}
 
+type ControllerInstanceExpansion interface{}
+
 type EndpointsExpansion interface{}
 
 type LimitRangeExpansion interface{}

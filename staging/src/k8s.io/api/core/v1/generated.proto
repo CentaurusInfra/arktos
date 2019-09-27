@@ -404,19 +404,23 @@ message ClientIPConfig {
 
 // Colection of fields that are common to Container and VirtualMachine objects
 message CommonInfo {
-  // Name of the container specified as a DNS_LABEL.
+  // Required. Name of the container specified as a DNS_LABEL.
   optional string name = 1;
 
   // Image name.
+  // +optional
   optional string image = 2;
 
   // Compute Resources required by this container.
+  // +optional
   optional ResourceRequirements resources = 3;
 
   // Pod volumes to mount into the workload's filesystem.
+  // +optional
   repeated VolumeMount volumeMounts = 4;
 
   // Image pull policy.
+  // +optional
   optional string imagePullPolicy = 5;
 }
 
@@ -919,6 +923,36 @@ message ContainerStatus {
   // Container's ID in the format 'docker://<container_id>'.
   // +optional
   optional string containerID = 8;
+}
+
+// ControllerInstance contains controller instances with ids and last health check timestamp
+message ControllerInstance {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // A string that designate the type of the controller instance
+  optional string controllerType = 2;
+
+  // A UUID that representing an controller instance
+  optional string uid = 3;
+
+  //  An int64 integer that identifies the upperbound of workload instances managed by this controller instance
+  optional int64 hashKey = 4;
+
+  // WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck
+  // +optional
+  optional int32 workloadNum = 5;
+
+  // IsLocked is bool that identifies the lock status of the controller instance
+  optional bool isLocked = 6;
+}
+
+// ControllerInstanceList is a list of controller instances that have same controller type
+message ControllerInstanceList {
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  // List of controller instance
+  repeated ControllerInstance items = 2;
 }
 
 // DaemonEndpoint contains information about a single Daemon endpoint.
@@ -4784,6 +4818,9 @@ message VirtualMachine {
 
   // +optional, if not specified, the first volume in the volume slice will be used
   optional string bootVolume = 11;
+
+  // +optional, default running
+  optional string powerSpec = 12;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance
