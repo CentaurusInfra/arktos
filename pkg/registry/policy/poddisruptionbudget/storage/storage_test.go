@@ -32,6 +32,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, policy.GroupName)
 	restOptions := generic.RESTOptions{StorageConfig: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1, ResourcePrefix: "poddisruptionbudgets"}
@@ -45,6 +47,7 @@ func validNewPodDisruptionBudget() *policy.PodDisruptionBudget {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 			Labels:    map[string]string{"a": "b"},
 		},
 		Spec: policy.PodDisruptionBudgetSpec{
@@ -76,7 +79,8 @@ func TestStatusUpdate(t *testing.T) {
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := "/poddisruptionbudgets/" + metav1.NamespaceDefault + "/foo"
+	ctx = genericapirequest.WithTenant(ctx, tenant)
+	key := "/poddisruptionbudgets/" + tenant + "/" + metav1.NamespaceDefault + "/foo"
 	validPodDisruptionBudget := validNewPodDisruptionBudget()
 	if err := storage.Storage.Create(ctx, key, validPodDisruptionBudget, nil, 0, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)

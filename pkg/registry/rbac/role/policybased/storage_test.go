@@ -34,21 +34,28 @@ import (
 )
 
 func TestEscalation(t *testing.T) {
-	createContext := request.WithRequestInfo(request.WithNamespace(context.TODO(), "myns"), &request.RequestInfo{
+	ctx1 := request.WithNamespace(context.TODO(), "myns")
+	ctx1 = request.WithTenant(ctx1, "myte")
+	createContext := request.WithRequestInfo(ctx1, &request.RequestInfo{
 		IsResourceRequest: true,
 		Verb:              "create",
 		APIGroup:          "rbac.authorization.k8s.io",
 		APIVersion:        "v1",
 		Namespace:         "myns",
+		Tenant:            "myte",
 		Resource:          "roles",
 		Name:              "",
 	})
-	updateContext := request.WithRequestInfo(request.WithNamespace(context.TODO(), "myns"), &request.RequestInfo{
+
+	ctx2 := request.WithNamespace(context.TODO(), "myns")
+	ctx2 = request.WithTenant(ctx2, "myte")
+	updateContext := request.WithRequestInfo(ctx2, &request.RequestInfo{
 		IsResourceRequest: true,
 		Verb:              "update",
 		APIGroup:          "rbac.authorization.k8s.io",
 		APIVersion:        "v1",
 		Namespace:         "myns",
+		Tenant:            "myte",
 		Resource:          "roles",
 		Name:              "myrole",
 	})
@@ -75,7 +82,7 @@ func TestEscalation(t *testing.T) {
 	)
 
 	role := &rbac.Role{
-		ObjectMeta: metav1.ObjectMeta{Name: "myrole", Namespace: "myns"},
+		ObjectMeta: metav1.ObjectMeta{Name: "myrole", Namespace: "myns", Tenant: "myte"},
 		Rules:      []rbac.PolicyRule{{APIGroups: []string{""}, Verbs: []string{"get"}, Resources: []string{"pods"}}},
 	}
 

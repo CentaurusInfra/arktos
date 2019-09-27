@@ -45,6 +45,7 @@ func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) 
 }
 
 var (
+	tenant              = "test-te"
 	namespace           = metav1.NamespaceNone
 	name                = "foo-ingress"
 	defaultHostname     = "foo.bar.com"
@@ -94,6 +95,7 @@ func newIngress(pathMap map[string]string) *networking.Ingress {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		Spec: networking.IngressSpec{
 			Backend: &networking.IngressBackend{

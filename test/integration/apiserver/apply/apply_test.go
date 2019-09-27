@@ -319,6 +319,7 @@ func TestApplyManagedFields(t *testing.T) {
 	expected := []byte(`{
 		"metadata": {
 			"name": "test-cm",
+			"tenant": "default",
 			"namespace": "default",
 			"selfLink": "` + accessor.GetSelfLink() + `",
 			"uid": "` + string(accessor.GetUID()) + `",

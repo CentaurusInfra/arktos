@@ -357,6 +357,7 @@ func scaleFromCustomResource(cr *unstructured.Unstructured, specReplicasPath, st
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              cr.GetName(),
 			Namespace:         cr.GetNamespace(),
+			Tenant:            cr.GetTenant(),
 			UID:               cr.GetUID(),
 			HashKey:           cr.GetHashKey(),
 			ResourceVersion:   cr.GetResourceVersion(),
