@@ -748,7 +748,6 @@ items:
     verbs:
     - create
     - get
-    - update
   - apiGroups:
     - ""
     resources:
@@ -914,8 +913,6 @@ items:
     verbs:
     - get
     - list
-    - patch
-    - update
     - watch
   - apiGroups:
     - ""

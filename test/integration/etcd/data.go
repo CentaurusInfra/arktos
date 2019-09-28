@@ -109,7 +109,7 @@ func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionRes
 		},
 		gvr("", "v1", "actions"): {
 			Stub:             `{"metadata": {"name": "someaction"}, "spec": {"nodeName": "somenode"}}`,
-			ExpectedEtcdPath: "/registry/actions/" + namespace + "/action1",
+			ExpectedEtcdPath: "/registry/actions/" + namespace + "/someaction",
 		},
 		// --
 

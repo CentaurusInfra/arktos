@@ -57,6 +57,7 @@ var kindWhiteList = sets.NewString(
 	"APIGroup",
 	"APIVersions",
 	"Binding",
+	"CustomAction",
 	"DeleteOptions",
 	"ExportOptions",
 	"GetOptions",
@@ -124,6 +125,7 @@ var kindWhiteList = sets.NewString(
 
 // TODO (soltysh): this list has to go down to 0!
 var missingHanlders = sets.NewString(
+	"Action",
 	"ClusterRole",
 	"LimitRange",
 	"MutatingWebhookConfiguration",

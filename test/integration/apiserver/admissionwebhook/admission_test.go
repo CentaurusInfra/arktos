@@ -111,6 +111,9 @@ var (
 		gvr("", "v1", "bindings"):      {"create": testPodBindingEviction},
 		gvr("", "v1", "pods/binding"):  {"create": testPodBindingEviction},
 		gvr("", "v1", "pods/eviction"): {"create": testPodBindingEviction},
+		gvr("", "v1", "pods/action"):   {"*": testSubresourceAction},
+
+		gvr("", "v1", "actions"): {"*": testResourceAction},
 
 		gvr("", "v1", "nodes/proxy"):    {"*": testSubresourceProxy},
 		gvr("", "v1", "pods/proxy"):     {"*": testSubresourceProxy},
@@ -1079,6 +1082,16 @@ func testSubresourceProxy(c *testContext) {
 		// verify the result
 		c.admissionHolder.verify(c.t)
 	}
+}
+
+func testSubresourceAction(c *testContext) {
+	//TODO: Add test for pods/action subresource
+	c.t.Logf("SubresourceAction: Verb: %+v, GVR: %+v, Resource: %+v, ClientSet: %+v\n", c.verb, c.gvr, c.resource, c.clientset)
+}
+
+func testResourceAction(c *testContext) {
+	//TODO: Add test for action resource
+	c.t.Logf("ResourceAction: Verb: %+v, GVR: %+v, Resource: %+v, ClientSet: %+v\n", c.verb, c.gvr, c.resource, c.clientset)
 }
 
 func testPruningRandomNumbers(c *testContext) {

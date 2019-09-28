@@ -113,7 +113,7 @@ func NodeRules() []rbacv1.PolicyRule {
 		rbacv1helpers.NewRule("create", "update", "patch").Groups(legacyGroup).Resources("events").RuleOrDie(),
 
 		// Allow nodes to handle actions
-		rbacv1helpers.NewRule("get", "list", "watch", "update", "patch").Groups(legacyGroup).Resources("actions").RuleOrDie(),
+		rbacv1helpers.NewRule("get", "list", "watch").Groups(legacyGroup).Resources("actions").RuleOrDie(),
 
 		// TODO: restrict to pods scheduled on the bound node once field selectors are supported by list/watch authorization
 		rbacv1helpers.NewRule(Read...).Groups(legacyGroup).Resources("pods").RuleOrDie(),
@@ -434,7 +434,7 @@ func ClusterRoles() []rbacv1.ClusterRole {
 				rbacv1helpers.NewRule(Read...).Groups(legacyGroup).Resources("nodes").RuleOrDie(),
 				rbacv1helpers.NewRule("get", "list", "watch", "delete").Groups(legacyGroup).Resources("pods").RuleOrDie(),
 				rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("pods/binding", "bindings").RuleOrDie(),
-				rbacv1helpers.NewRule("create", "update", "get").Groups(legacyGroup).Resources("pods/action").RuleOrDie(),
+				rbacv1helpers.NewRule("create", "get").Groups(legacyGroup).Resources("pods/action").RuleOrDie(),
 				rbacv1helpers.NewRule("patch", "update").Groups(legacyGroup).Resources("pods/status").RuleOrDie(),
 				// things that select pods
 				rbacv1helpers.NewRule(Read...).Groups(legacyGroup).Resources("services", "replicationcontrollers").RuleOrDie(),
