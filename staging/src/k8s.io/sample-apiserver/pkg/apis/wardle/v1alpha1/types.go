@@ -58,6 +58,7 @@ type Flunder struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Fischer struct {
@@ -69,6 +70,7 @@ type Fischer struct {
 }
 
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // FischerList is a list of Fischer objects.

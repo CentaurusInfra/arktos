@@ -278,7 +278,7 @@ func (s *store) GuaranteedUpdate(
 			return err
 		}
 
-		ret, ttl, err := s.updateState(origState, tryUpdate)
+		ret, ttl, updatettl, err := s.updateState(origState, tryUpdate)
 		if err != nil {
 			// If our data is already up to date, return the error
 			if !mustCheckData {
@@ -300,7 +300,9 @@ func (s *store) GuaranteedUpdate(
 		if err != nil {
 			return err
 		}
-		if !origState.stale && bytes.Equal(data, origState.data) {
+
+		v1 := bytes.Equal(data, origState.data)
+		if !origState.stale && v1 {
 			// if we skipped the original Get in this loop, we must refresh from
 			// etcd in order to be sure the data in the store is equivalent to
 			// our desired serialization
@@ -316,7 +318,7 @@ func (s *store) GuaranteedUpdate(
 				}
 			}
 			// recheck that the data from etcd is not stale before short-circuiting a write
-			if !origState.stale {
+			if !origState.stale && updatettl == 0 {
 				return decode(s.codec, s.versioner, origState.data, out, origState.rev)
 			}
 		}
@@ -329,6 +331,13 @@ func (s *store) GuaranteedUpdate(
 		opts, err := s.ttlOpts(ctx, int64(ttl))
 		if err != nil {
 			return err
+		}
+
+		if updatettl > 0 {
+			opts, err = s.ttlOpts(ctx, int64(updatettl))
+			if err != nil {
+				return err
+			}
 		}
 		trace.Step("Transaction prepared")
 
@@ -747,20 +756,25 @@ func (s *store) getStateFromObject(obj runtime.Object) (*objState, error) {
 	return state, nil
 }
 
-func (s *store) updateState(st *objState, userUpdate storage.UpdateFunc) (runtime.Object, uint64, error) {
-	ret, ttlPtr, err := userUpdate(st.obj, *st.meta)
+func (s *store) updateState(st *objState, userUpdate storage.UpdateFunc) (runtime.Object, uint64, uint64, error) {
+	ret, ttlPtr, updateTtlPtr, err := userUpdate(st.obj, *st.meta)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 
 	if err := s.versioner.PrepareObjectForStorage(ret); err != nil {
-		return nil, 0, fmt.Errorf("PrepareObjectForStorage failed: %v", err)
+		return nil, 0, 0, fmt.Errorf("PrepareObjectForStorage failed: %v", err)
 	}
 	var ttl uint64
 	if ttlPtr != nil {
 		ttl = *ttlPtr
 	}
-	return ret, ttl, nil
+
+	var updateTtl uint64
+	if updateTtlPtr != nil {
+		updateTtl = *updateTtlPtr
+	}
+	return ret, ttl, updateTtl, nil
 }
 
 // ttlOpts returns client options based on given ttl.

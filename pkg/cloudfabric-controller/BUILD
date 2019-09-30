@@ -14,6 +14,7 @@ go_library(
     deps = [
         "//pkg/api/legacyscheme:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
+        "//pkg/apis/apps:go_default_library",
         "//pkg/apis/core:go_default_library",
         "//pkg/apis/core/validation:go_default_library",
         "//pkg/serviceaccount:go_default_library",
@@ -62,7 +63,6 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//pkg/cloudfabric-controller/api/types/v1alpha1:all-srcs",
-        "//pkg/cloudfabric-controller/clientset/v1alpha1:all-srcs",
         "//pkg/cloudfabric-controller/replicaset:all-srcs",
         "//pkg/cloudfabric-controller/testutil:all-srcs",
     ],

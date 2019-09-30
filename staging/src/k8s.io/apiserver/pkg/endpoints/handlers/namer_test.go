@@ -38,45 +38,52 @@ func TestGenerateLink(t *testing.T) {
 		expect        string
 		expectErr     bool
 		clusterScoped bool
+		TenantScoped  bool
 	}{
 		{
 			name: "obj has more priority than requestInfo",
 			requestInfo: &request.RequestInfo{
 				Name:      "should-not-use",
 				Namespace: "should-not-use",
+				Tenant:    "should-not-use",
 				Resource:  "pod",
 			},
-			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "should-use", Namespace: "should-use"}},
-			expect:        "/api/v1/should-use/pod/should-use",
+			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "should-use", Namespace: "should-use", Tenant: "should-use"}},
+			expect:        "/api/v1/tenants/should-use/namespaces/should-use/pod/should-use",
 			expectErr:     false,
 			clusterScoped: false,
+			TenantScoped:  false,
 		},
 		{
-			name: "hit errEmptyName",
+			name: "use name/namespace/tenant of requestInfo when obj name is missing",
 			requestInfo: &request.RequestInfo{
 				Name:      "should-use",
 				Namespace: "should-use",
+				Tenant:    "should-use",
 				Resource:  "pod",
 			},
 			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "should-not-use"}},
-			expect:        "/api/v1/should-use/pod/should-use",
+			expect:        "/api/v1/tenants/should-use/namespaces/should-use/pod/should-use",
 			expectErr:     false,
 			clusterScoped: false,
+			TenantScoped:  false,
 		},
 		{
-			name: "use namespace of requestInfo if obj namespace is empty",
+			name: "use namespace/tenant of requestInfo if obj namespace/tenant is empty",
 			requestInfo: &request.RequestInfo{
 				Name:      "should-not-use",
 				Namespace: "should-use",
+				Tenant:    "should-use",
 				Resource:  "pod",
 			},
 			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "should-use"}},
-			expect:        "/api/v1/should-use/pod/should-use",
+			expect:        "/api/v1/tenants/should-use/namespaces/should-use/pod/should-use",
 			expectErr:     false,
 			clusterScoped: false,
+			TenantScoped:  false,
 		},
 		{
-			name: "hit error",
+			name: "hit errEmptyName error",
 			requestInfo: &request.RequestInfo{
 				Name:      "",
 				Namespace: "",
@@ -86,18 +93,75 @@ func TestGenerateLink(t *testing.T) {
 			expect:        "name must be provided",
 			expectErr:     true,
 			clusterScoped: false,
+			TenantScoped:  false,
+		},
+		{
+			name: "ClusterScoped has a higher priority than TenantScoped",
+			requestInfo: &request.RequestInfo{
+				Name:     "name",
+				Tenant:   "should-use",
+				Resource: "pod",
+			},
+			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{}},
+			expect:        "/api/v1/name",
+			expectErr:     false,
+			clusterScoped: true,
+			TenantScoped:  true,
+		},
+		{
+			name: "tenant scoped",
+			requestInfo: &request.RequestInfo{
+				Name:     "name",
+				Tenant:   "should-use",
+				Resource: "pod",
+			},
+			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{}},
+			expect:        "/api/v1/tenants/should-use/pod/name",
+			expectErr:     false,
+			clusterScoped: false,
+			TenantScoped:  true,
+		},
+		{
+			name: "default tenant is ignored",
+			requestInfo: &request.RequestInfo{
+				Name:      "name",
+				Namespace: "should-use",
+				Tenant:    metav1.TenantDefault,
+				Resource:  "pod",
+			},
+			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{}},
+			expect:        "/api/v1/namespaces/should-use/pod/name",
+			expectErr:     false,
+			clusterScoped: false,
+			TenantScoped:  false,
+		},
+		{
+			name: "empty tenant is ignored",
+			requestInfo: &request.RequestInfo{
+				Name:      "name",
+				Namespace: "should-use",
+				Tenant:    "",
+				Resource:  "pod",
+			},
+			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{}},
+			expect:        "/api/v1/namespaces/should-use/pod/name",
+			expectErr:     false,
+			clusterScoped: false,
+			TenantScoped:  false,
 		},
 		{
 			name: "cluster scoped",
 			requestInfo: &request.RequestInfo{
 				Name:      "only-name",
 				Namespace: "should-not-use",
+				Tenant:    "should-not-use",
 				Resource:  "pod",
 			},
 			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{}},
 			expect:        "/api/v1/only-name",
 			expectErr:     false,
 			clusterScoped: true,
+			TenantScoped:  false,
 		},
 	}
 
@@ -106,13 +170,18 @@ func TestGenerateLink(t *testing.T) {
 			SelfLinker:         meta.NewAccessor(),
 			SelfLinkPathPrefix: "/api/v1/",
 			ClusterScoped:      test.clusterScoped,
+			TenantScoped:       test.TenantScoped,
 		}
 		uri, err := n.GenerateLink(test.requestInfo, test.obj)
 
-		if uri != test.expect && err.Error() != test.expect {
-			if test.expectErr {
-				t.Fatalf("%s: unexpected non-error: %v", test.name, err)
-			} else {
+		if test.expectErr {
+			if err == nil {
+				t.Fatalf("%s: unexpected non-error ", test.name)
+			} else if err.Error() != test.expect {
+				t.Fatalf("%s: expected error : %v, but got: %v", test.name, test.expect, err.Error())
+			}
+		} else {
+			if uri != test.expect {
 				t.Fatalf("%s: expected: %v, but got: %v", test.name, test.expect, uri)
 			}
 		}

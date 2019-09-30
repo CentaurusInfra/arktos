@@ -34,7 +34,9 @@ import (
 )
 
 func TestEscalation(t *testing.T) {
-	createContext := request.WithRequestInfo(request.WithNamespace(context.TODO(), ""), &request.RequestInfo{
+	ctx1 := request.WithNamespace(context.TODO(), "")
+	ctx1 = request.WithTenant(ctx1, "")
+	createContext := request.WithRequestInfo(ctx1, &request.RequestInfo{
 		IsResourceRequest: true,
 		Verb:              "create",
 		APIGroup:          "rbac.authorization.k8s.io",
@@ -42,7 +44,10 @@ func TestEscalation(t *testing.T) {
 		Resource:          "clusterroles",
 		Name:              "",
 	})
-	updateContext := request.WithRequestInfo(request.WithNamespace(context.TODO(), ""), &request.RequestInfo{
+
+	ctx2 := request.WithNamespace(context.TODO(), "")
+	ctx2 = request.WithTenant(ctx2, "")
+	updateContext := request.WithRequestInfo(ctx2, &request.RequestInfo{
 		IsResourceRequest: true,
 		Verb:              "update",
 		APIGroup:          "rbac.authorization.k8s.io",
@@ -73,7 +78,7 @@ func TestEscalation(t *testing.T) {
 	)
 
 	role := &rbac.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: "myrole", Namespace: ""},
+		ObjectMeta: metav1.ObjectMeta{Name: "myrole", Namespace: "", Tenant: ""},
 		Rules:      []rbac.PolicyRule{{APIGroups: []string{""}, Verbs: []string{"get"}, Resources: []string{"pods"}}},
 	}
 

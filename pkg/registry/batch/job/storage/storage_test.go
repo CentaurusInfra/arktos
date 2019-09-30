@@ -31,6 +31,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
+var tenant = "test-te"
+
 func newStorage(t *testing.T) (*JobStorage, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, batch.GroupName)
 	restOptions := generic.RESTOptions{
@@ -50,6 +52,7 @@ func validNewJob() *batch.Job {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
+			Tenant:    tenant,
 		},
 		Spec: batch.JobSpec{
 			Completions: &completions,

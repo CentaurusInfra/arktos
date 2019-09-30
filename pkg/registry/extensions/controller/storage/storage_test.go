@@ -70,7 +70,7 @@ var validControllerSpec = api.ReplicationControllerSpec{
 }
 
 var validController = api.ReplicationController{
-	ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+	ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test-ns", Tenant: "test-te"},
 	Spec:       validControllerSpec,
 }
 
@@ -78,8 +78,9 @@ func TestGet(t *testing.T) {
 	storage, _, si, destroyFunc := newStorage(t)
 	defer destroyFunc()
 
-	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), "test")
-	key := "/controllers/test/foo"
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), "test-ns")
+	ctx = genericapirequest.WithTenant(ctx, "test-te")
+	key := "/controllers/test-te/test-ns/foo"
 	if err := si.Create(ctx, key, &validController, nil, 0); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,14 +98,15 @@ func TestUpdate(t *testing.T) {
 	storage, _, si, destroyFunc := newStorage(t)
 	defer destroyFunc()
 
-	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), "test")
-	key := "/controllers/test/foo"
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), "test-ns")
+	ctx = genericapirequest.WithTenant(ctx, "test-te")
+	key := "/controllers/test-te/test-ns/foo"
 	if err := si.Create(ctx, key, &validController, nil, 0); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	replicas := int32(12)
 	update := autoscaling.Scale{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test-ns", Tenant: "test-te"},
 		Spec: autoscaling.ScaleSpec{
 			Replicas: replicas,
 		},

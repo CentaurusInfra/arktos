@@ -220,6 +220,7 @@ func scaleFromRC(rc *api.ReplicationController) *autoscaling.Scale {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              rc.Name,
 			Namespace:         rc.Namespace,
+			Tenant:            rc.Tenant,
 			UID:               rc.UID,
 			HashKey:           rc.HashKey,
 			ResourceVersion:   rc.ResourceVersion,

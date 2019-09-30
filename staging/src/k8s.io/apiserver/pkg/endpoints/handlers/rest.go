@@ -146,8 +146,15 @@ func ConnectResource(connecter rest.Connecter, scope *RequestScope, admit admiss
 			scope.err(err, w, req)
 			return
 		}
+		tenant, err := scope.Namer.Tenant(req)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
+
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		ctx = request.WithTenant(ctx, tenant)
 		ae := request.AuditEventFrom(ctx)
 		admit = admission.WithAudit(admit, ae)
 
@@ -294,8 +301,8 @@ func hasUID(obj runtime.Object) (bool, error) {
 }
 
 // checkName checks the provided name against the request
-func checkName(obj runtime.Object, name, namespace string, namer ScopeNamer) error {
-	objNamespace, objName, err := namer.ObjectName(obj)
+func checkName(obj runtime.Object, name, namespace, tenant string, namer ScopeNamer) error {
+	objTenant, objNamespace, objName, err := namer.ObjectName(obj)
 	if err != nil {
 		return errors.NewBadRequest(fmt.Sprintf(
 			"the name of the object (%s based on URL) was undeterminable: %v", name, err))
@@ -308,6 +315,12 @@ func checkName(obj runtime.Object, name, namespace string, namer ScopeNamer) err
 		if len(objNamespace) > 0 && objNamespace != namespace {
 			return errors.NewBadRequest(fmt.Sprintf(
 				"the namespace of the object (%s) does not match the namespace on the request (%s)", objNamespace, namespace))
+		}
+	}
+	if len(tenant) > 0 {
+		if len(objTenant) > 0 && objTenant != tenant {
+			return errors.NewBadRequest(fmt.Sprintf(
+				"the tenant of the object (%s) does not match the tenant on the request (%s)", objTenant, tenant))
 		}
 	}
 

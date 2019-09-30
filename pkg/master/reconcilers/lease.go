@@ -81,7 +81,7 @@ func (s *storageLeases) ListLeases() ([]string, error) {
 // UpdateLease resets the TTL on a master IP in storage
 func (s *storageLeases) UpdateLease(ip string) error {
 	key := path.Join(s.baseKey, ip)
-	return s.storage.GuaranteedUpdate(apirequest.NewDefaultContext(), key, &corev1.Endpoints{}, true, nil, func(input kruntime.Object, respMeta storage.ResponseMeta) (kruntime.Object, *uint64, error) {
+	return s.storage.GuaranteedUpdate(apirequest.NewDefaultContext(), key, &corev1.Endpoints{}, true, nil, func(input kruntime.Object, respMeta storage.ResponseMeta) (kruntime.Object, *uint64, *uint64, error) {
 		// just make sure we've got the right IP set, and then refresh the TTL
 		existing := input.(*corev1.Endpoints)
 		existing.Subsets = []corev1.EndpointSubset{
@@ -101,7 +101,7 @@ func (s *storageLeases) UpdateLease(ip string) error {
 
 		klog.V(6).Infof("Resetting TTL on master IP %q listed in storage to %v", ip, leaseTime)
 
-		return existing, &leaseTime, nil
+		return existing, &leaseTime, nil, nil
 	})
 }
 

@@ -91,9 +91,15 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			scope.err(err, w, req)
 			return
 		}
+		tenant, err := scope.Namer.Tenant(req)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
 
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		ctx = request.WithTenant(ctx, tenant)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {
@@ -289,6 +295,7 @@ type patcher struct {
 	updatedObjectInfo rest.UpdatedObjectInfo
 	mechanism         patchMechanism
 	forceAllowCreate  bool
+	tenant            string
 }
 
 type patchMechanism interface {
@@ -486,7 +493,7 @@ func (p *patcher) applyPatch(_ context.Context, _, currentObject runtime.Object)
 		return nil, errors.NewConflict(p.resource.GroupResource(), p.name, fmt.Errorf("uid mismatch: the provided object specified uid %s, and no existing object was found", accessor.GetUID()))
 	}
 
-	if err := checkName(objToUpdate, p.name, p.namespace, p.namer); err != nil {
+	if err := checkName(objToUpdate, p.name, p.namespace, p.tenant, p.namer); err != nil {
 		return nil, err
 	}
 	return objToUpdate, nil
@@ -524,6 +531,7 @@ func (p *patcher) applyAdmission(ctx context.Context, patchedObject runtime.Obje
 // patchResource divides PatchResource for easier unit testing
 func (p *patcher) patchResource(ctx context.Context, scope *RequestScope) (runtime.Object, bool, error) {
 	p.namespace = request.NamespaceValue(ctx)
+	p.tenant = request.TenantValue(ctx)
 	switch p.patchType {
 	case types.JSONPatchType, types.MergePatchType:
 		p.mechanism = &jsonPatcher{

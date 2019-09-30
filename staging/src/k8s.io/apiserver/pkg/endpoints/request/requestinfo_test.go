@@ -27,6 +27,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+// This test verifies that the legacy urls before the introduction of multi-tenancy still work.
+// Validations are added to check the tenant value is set as expected for the legacy urls.
+// This test should be removed when we no longer support the legacy urls..
 func TestGetAPIRequestInfo(t *testing.T) {
 	namespaceAll := metav1.NamespaceAll
 	successCases := []struct {
@@ -42,7 +45,6 @@ func TestGetAPIRequestInfo(t *testing.T) {
 		expectedName        string
 		expectedParts       []string
 	}{
-
 		// resource paths
 		{"GET", "/api/v1/namespaces", "list", "api", "", "v1", "", "namespaces", "", "", []string{"namespaces"}},
 		{"GET", "/api/v1/namespaces/other", "get", "api", "", "v1", "other", "namespaces", "", "other", []string{"namespaces", "other"}},
@@ -106,6 +108,152 @@ func TestGetAPIRequestInfo(t *testing.T) {
 		}
 		if successCase.expectedAPIVersion != apiRequestInfo.APIVersion {
 			t.Errorf("Unexpected apiVersion for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedAPIVersion, apiRequestInfo.APIVersion)
+		}
+		if successCase.expectedNamespace != apiRequestInfo.Namespace {
+			t.Errorf("Unexpected namespace for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedNamespace, apiRequestInfo.Namespace)
+		}
+		if successCase.expectedResource != apiRequestInfo.Resource {
+			t.Errorf("Unexpected resource for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedResource, apiRequestInfo.Resource)
+		}
+		if successCase.expectedSubresource != apiRequestInfo.Subresource {
+			t.Errorf("Unexpected resource for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedSubresource, apiRequestInfo.Subresource)
+		}
+		if successCase.expectedName != apiRequestInfo.Name {
+			t.Errorf("Unexpected name for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedName, apiRequestInfo.Name)
+		}
+		if !reflect.DeepEqual(successCase.expectedParts, apiRequestInfo.Parts) {
+			t.Errorf("Unexpected parts for url: %s, expected: %v, actual: %v", successCase.url, successCase.expectedParts, apiRequestInfo.Parts)
+		}
+		// Here we check the tenant field is set as expected for those legacy urls
+		if successCase.expectedNamespace != namespaceAll {
+			if metav1.TenantDefault != apiRequestInfo.Tenant {
+				t.Errorf("Unexpected tenant for url: %s, expected: %s, actual: %s", successCase.url, metav1.TenantDefault, apiRequestInfo.Tenant)
+			}
+		} else {
+			if metav1.TenantAll != apiRequestInfo.Tenant {
+				t.Errorf("Unexpected tenant for url: %s, expected: %s, actual: %s", successCase.url, metav1.TenantAll, apiRequestInfo.Tenant)
+			}
+		}
+	}
+
+	errorCases := map[string]string{
+		"no resource path":            "/",
+		"just apiversion":             "/api/version/",
+		"just prefix, group, version": "/apis/group/version/",
+		"apiversion with no resource": "/api/version/",
+		"bad prefix":                  "/badprefix/version/resource",
+		"missing api group":           "/apis/version/resource",
+	}
+	for k, v := range errorCases {
+		req, err := http.NewRequest("GET", v, nil)
+		if err != nil {
+			t.Errorf("Unexpected error %v", err)
+		}
+		apiRequestInfo, err := resolver.NewRequestInfo(req)
+		if err != nil {
+			t.Errorf("%s: Unexpected error %v", k, err)
+		}
+		if apiRequestInfo.IsResourceRequest {
+			t.Errorf("%s: expected non-resource request", k)
+		}
+	}
+}
+
+// Here we test the multi-tenancy aware api urls.
+func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
+	namespaceAll := metav1.NamespaceAll
+	tenantAll := metav1.TenantAll
+	successCases := []struct {
+		method              string
+		url                 string
+		expectedVerb        string
+		expectedAPIPrefix   string
+		expectedAPIGroup    string
+		expectedAPIVersion  string
+		expectedTenant      string
+		expectedNamespace   string
+		expectedResource    string
+		expectedSubresource string
+		expectedName        string
+		expectedParts       []string
+	}{
+
+		// resource paths
+		{"GET", "/api/v1/tenants", "list", "api", "", "v1", "", "", "tenants", "", "", []string{"tenants"}},
+		{"GET", "/api/v1/tenants/fake_te", "get", "api", "", "v1", "fake_te", "", "tenants", "", "fake_te", []string{"tenants", "fake_te"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces", "list", "api", "", "v1", "fake_te", "", "namespaces", "", "", []string{"namespaces"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns", "get", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "", "fake_ns", []string{"namespaces", "fake_ns"}},
+
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods", "list", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
+		{"HEAD", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
+		{"GET", "/api/v1/tenants/fake_te/pods", "list", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
+		{"HEAD", "/api/v1/tenants/fake_te/pods", "list", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/pods", "list", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"HEAD", "/api/v1/pods", "list", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods", "list", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+
+		// special verbs
+		{"GET", "/api/v1/proxy/tenants/fake_te/namespaces/fake_ns/pods/foo", "proxy", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
+		{"GET", "/api/v1/proxy/tenants/fake_te/namespaces/fake_ns/pods/foo/subpath/not/a/subresource", "proxy", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo", "subpath", "not", "a", "subresource"}},
+		{"GET", "/api/v1/watch/tenants/fake_te/pods", "watch", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/tenants/fake_te/pods?watch=true", "watch", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/tenants/fake_te/pods?watch=false", "list", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/watch/pods", "watch", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/pods?watch=true", "watch", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/pods?watch=false", "list", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/watch/tenants/fake_te/namespaces/fake_ns/pods", "watch", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods?watch=1", "watch", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods?watch=0", "list", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+
+		// subresource identification
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo/status", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "status", "foo", []string{"pods", "foo", "status"}},
+		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo/proxy/subpath", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "proxy", "foo", []string{"pods", "foo", "proxy", "subpath"}},
+		{"PUT", "/api/v1/tenants/fake_te/namespaces/fake_ns/finalize", "update", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "finalize", "fake_ns", []string{"namespaces", "fake_ns", "finalize"}},
+		{"PUT", "/api/v1/tenants/fake_te/namespaces/fake_ns/status", "update", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "status", "fake_ns", []string{"namespaces", "fake_ns", "status"}},
+		{"PUT", "/api/v1/tenants/fake_te/finalize", "update", "api", "", "v1", "fake_te", "", "tenants", "finalize", "fake_te", []string{"tenants", "fake_te", "finalize"}},
+		{"PUT", "/api/v1/tenants/fake_te/status", "update", "api", "", "v1", "fake_te", "", "tenants", "status", "fake_te", []string{"tenants", "fake_te", "status"}},
+
+		// verb identification
+		{"PATCH", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "patch", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
+		{"DELETE", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "delete", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
+		{"POST", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods", "create", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+
+		// deletecollection verb identification
+		{"DELETE", "/api/v1/nodes", "deletecollection", "api", "", "v1", "", "", "nodes", "", "", []string{"nodes"}},
+		{"DELETE", "/api/v1/tenants", "deletecollection", "api", "", "v1", "", "", "tenants", "", "", []string{"tenants"}},
+		{"DELETE", "/api/v1/tenants/fake_te/namespaces", "deletecollection", "api", "", "v1", "fake_te", "", "namespaces", "", "", []string{"namespaces"}},
+		{"DELETE", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods", "deletecollection", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+		{"DELETE", "/apis/extensions/v1/tenants/fake_te/namespaces/fake_ns/pods", "deletecollection", "api", "extensions", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+
+		// api group identification
+		{"POST", "/apis/extensions/v1/tenants/fake_te/namespaces/fake_ns/pods", "create", "api", "extensions", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+
+		// api version identification
+		{"POST", "/apis/extensions/v1beta3/tenants/fake_te/namespaces/fake_ns/pods", "create", "api", "extensions", "v1beta3", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
+	}
+
+	resolver := newTestRequestInfoResolver()
+
+	for _, successCase := range successCases {
+		req, _ := http.NewRequest(successCase.method, successCase.url, nil)
+
+		apiRequestInfo, err := resolver.NewRequestInfo(req)
+		if err != nil {
+			t.Errorf("Unexpected error for url: %s %v", successCase.url, err)
+		}
+		if !apiRequestInfo.IsResourceRequest {
+			t.Errorf("Expected resource request")
+		}
+		if successCase.expectedVerb != apiRequestInfo.Verb {
+			t.Errorf("Unexpected verb for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedVerb, apiRequestInfo.Verb)
+		}
+		if successCase.expectedAPIVersion != apiRequestInfo.APIVersion {
+			t.Errorf("Unexpected apiVersion for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedAPIVersion, apiRequestInfo.APIVersion)
+		}
+		if successCase.expectedTenant != apiRequestInfo.Tenant {
+			t.Errorf("Unexpected tenant for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedTenant, apiRequestInfo.Tenant)
 		}
 		if successCase.expectedNamespace != apiRequestInfo.Namespace {
 			t.Errorf("Unexpected namespace for url: %s, expected: %s, actual: %s", successCase.url, successCase.expectedNamespace, apiRequestInfo.Namespace)

@@ -490,6 +490,10 @@ func (p *testGetterStorage) NamespaceScoped() bool {
 	return true
 }
 
+func (p *testGetterStorage) TenantScoped() bool {
+	return true
+}
+
 func (p *testGetterStorage) New() runtime.Object {
 	return &metav1.APIGroup{
 		TypeMeta: metav1.TypeMeta{
@@ -508,6 +512,10 @@ type testNoVerbsStorage struct {
 }
 
 func (p *testNoVerbsStorage) NamespaceScoped() bool {
+	return true
+}
+
+func (p *testNoVerbsStorage) TenantScoped() bool {
 	return true
 }
 

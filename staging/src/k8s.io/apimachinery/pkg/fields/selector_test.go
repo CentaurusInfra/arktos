@@ -28,6 +28,8 @@ func TestSplitTerms(t *testing.T) {
 		`a=avalue`:                     {`a=avalue`},
 		`a=avalue,b=bvalue`:            {`a=avalue`, `b=bvalue`},
 		`a=avalue,b==bvalue,c!=cvalue`: {`a=avalue`, `b==bvalue`, `c!=cvalue`},
+		`a=gt:avalue,b==lt:bvalue`:     {`a=gt:avalue`, `b==lt:bvalue`},
+		`a=gte:avalue,b==lte:bvalue`:   {`a=gte:avalue`, `b==lte:bvalue`},
 
 		// Empty terms
 		``:     nil,
@@ -60,9 +62,13 @@ func TestSplitTerm(t *testing.T) {
 		ok  bool
 	}{
 		// Simple terms
-		`a=value`:  {lhs: `a`, op: `=`, rhs: `value`, ok: true},
-		`b==value`: {lhs: `b`, op: `==`, rhs: `value`, ok: true},
-		`c!=value`: {lhs: `c`, op: `!=`, rhs: `value`, ok: true},
+		`a=value`:     {lhs: `a`, op: `=`, rhs: `value`, ok: true},
+		`b==value`:    {lhs: `b`, op: `==`, rhs: `value`, ok: true},
+		`c!=value`:    {lhs: `c`, op: `!=`, rhs: `value`, ok: true},
+		`d=lt:value`:  {lhs: `d`, op: `=lt:`, rhs: `value`, ok: true},
+		`e=lte:value`: {lhs: `e`, op: `=lte:`, rhs: `value`, ok: true},
+		`f=gt:value`:  {lhs: `f`, op: `=gt:`, rhs: `value`, ok: true},
+		`g=gte:value`: {lhs: `g`, op: `=gte:`, rhs: `value`, ok: true},
 
 		// Empty or invalid terms
 		``:  {lhs: ``, op: ``, rhs: ``, ok: false},

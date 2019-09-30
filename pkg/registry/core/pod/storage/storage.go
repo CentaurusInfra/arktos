@@ -133,6 +133,11 @@ func (r *BindingREST) NamespaceScoped() bool {
 	return r.store.NamespaceScoped()
 }
 
+// TenantScoped fulfill rest.Scoper
+func (r *BindingREST) TenantScoped() bool {
+	return r.store.TenantScoped()
+}
+
 // New creates a new binding resource
 func (r *BindingREST) New() runtime.Object {
 	return &api.Binding{}

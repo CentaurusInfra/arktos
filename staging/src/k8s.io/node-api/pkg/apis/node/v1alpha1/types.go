@@ -22,6 +22,7 @@ import (
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // RuntimeClass defines a class of container runtime supported in the cluster.

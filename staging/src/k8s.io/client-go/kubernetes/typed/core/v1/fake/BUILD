@@ -11,6 +11,7 @@ go_library(
         "doc.go",
         "fake_componentstatus.go",
         "fake_configmap.go",
+        "fake_controllerinstance.go",
         "fake_core_client.go",
         "fake_endpoints.go",
         "fake_event.go",

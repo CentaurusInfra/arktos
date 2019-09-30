@@ -2110,15 +2110,19 @@ const (
 
 // Colection of fields that are common to Container and VirtualMachine objects
 type CommonInfo struct {
-	// Name of the container specified as a DNS_LABEL.
+	// Required. Name of the container specified as a DNS_LABEL.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Image name.
+	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 	// Compute Resources required by this container.
+	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
 	// Pod volumes to mount into the workload's filesystem.
+	// +optional
 	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" protobuf:"bytes,4,opt,name=volumeMounts"`
 	// Image pull policy.
+	// +optional
 	ImagePullPolicy PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,5,opt,name=imagePullPolicy,casttype=PullPolicy"`
 }
 
@@ -2297,6 +2301,16 @@ type Nic struct {
 	Ipv6Enabled bool `json:"ipv6Enabled,omitempty" protobuf:"varint,6,opt,name=ipv6Enabled"`
 }
 
+type VmPowerSpec string
+
+// VM power spec represents the desired power state of the VM
+const (
+	VmPowerSpecRunning   VmPowerSpec = "running"
+	VmPowerSpecPaused    VmPowerSpec = "paused"
+	VmPowerSpecShutdown  VmPowerSpec = "shutdown"
+	VmPowerSpecSuspended VmPowerSpec = "suspended"
+)
+
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -2341,6 +2355,8 @@ type VirtualMachine struct {
 	ShutdownBehavior string `json:"shutdownBehavior,omitempty" protobuf:"bytes,10,opt,name=shutdownBehavior"`
 	// +optional, if not specified, the first volume in the volume slice will be used
 	BootVolume string `json:"bootVolume,omitempty" protobuf:"bytes,11,opt,name=bootVolume"`
+	// +optional, default running
+	PowerSpec VmPowerSpec `json:"powerSpec,omitempty" protobuf:"bytes,12,opt,name=powerSpec"`
 }
 
 // Handler defines a specific action that should be taken
@@ -2502,7 +2518,7 @@ type VmPowerState string
 
 // VM power state represents the state retrieved from the underlying hypervisor
 const (
-	NoState   VmPowerState = "nosate"
+	NoState   VmPowerState = "nostate"
 	Running   VmPowerState = "running"
 	Paused    VmPowerState = "paused"
 	Shutdown  VmPowerState = "shutdown"
@@ -4445,6 +4461,7 @@ type ResourceList map[ResourceName]resource.Quantity
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Node is a worker node in Kubernetes.
@@ -4520,6 +4537,7 @@ const (
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +genclient:skipVerbs=deleteCollection
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -5452,6 +5470,7 @@ type ComponentCondition struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ComponentStatus (and ComponentStatusList) holds the cluster validation info.
@@ -5712,3 +5731,43 @@ const (
 	// and data streams for a single forwarded connection
 	PortForwardRequestIDHeader = "requestID"
 )
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstance contains controller instances with ids and last health check timestamp
+type ControllerInstance struct {
+	metav1.TypeMeta `json:",inline"`
+
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// A string that designate the type of the controller instance
+	ControllerType string `json:"controllerType" protobuf:"bytes,2,opt,name=controllerType"`
+
+	// A UUID that representing an controller instance
+	UID types.UID `json:"uid" protobuf:"bytes,3,opt,name=uid,casttype=k8s.io/apimachinery/pkg/types.UID"`
+
+	//  An int64 integer that identifies the upperbound of workload instances managed by this controller instance
+	HashKey int64 `json:"hashKey" protobuf:"varint,4,opt,name=hashKey"`
+
+	// WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck
+	// +optional
+	WorkloadNum int32 `json:"workloadNum,omitempty" protobuf:"varint,5,opt,name=workloadNum"`
+
+	// IsLocked is bool that identifies the lock status of the controller instance
+	IsLocked bool `json:"isLocked,omitempty" protobuf:"varint,6,opt,name=isLocked"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ControllerInstanceList is a list of controller instances that have same controller type
+type ControllerInstanceList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of controller instance
+	Items []ControllerInstance `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
+}
