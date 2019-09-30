@@ -747,7 +747,6 @@ items:
     - pods/action
     verbs:
     - create
-    - get
   - apiGroups:
     - ""
     resources:

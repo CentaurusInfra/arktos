@@ -271,7 +271,7 @@ func getActionSpec(pod *api.Pod, actionName string, actionRequest *api.CustomAct
 func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (out runtime.Object, err error) {
 	customAction := obj.(*api.CustomAction)
 
-	klog.Infof("VDBG CUSTOM_ACTION OBJ:\n-------------\n%+v\n------------\n", customAction)
+	klog.V(4).Infof("ActionREST Create customAction object:\n-------------\n%+v\n------------\n", customAction)
 
 	//TODO: Get rid of this hack, figure out how to get RequestInfo and Name as a struct from context
 	ctxtStr := fmt.Sprintf("%+v", ctx)
@@ -328,12 +328,6 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 		}
 	}
 	return out, err
-}
-
-// Get retrieves the object from the storage. It is required to support Patch.
-func (r *ActionREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
-	//TODO: FIX THIS
-	return r.store.Get(ctx, name, options)
 }
 
 // StatusREST implements the REST endpoint for changing the status of a pod.

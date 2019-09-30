@@ -317,7 +317,7 @@ func (s *podStorage) merge(source string, change interface{}) (adds, updates, de
 		restorePods = append(restorePods, update.Pods...)
 
 	case kubetypes.ACTION:
-		klog.Infof("VDBG: Received ACTION update: %+v", update)
+		klog.V(4).Infof("Received ACTION update: %+v", update)
 
 	default:
 		klog.Warningf("Received invalid update type: %v", update)

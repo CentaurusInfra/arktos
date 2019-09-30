@@ -30,7 +30,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	//"k8s.io/kubernetes/pkg/apis/core/validation"
+	"k8s.io/kubernetes/pkg/apis/core/validation"
 )
 
 type actionStrategy struct {
@@ -63,10 +63,8 @@ func (actionStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Obj
 }
 
 func (actionStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
-	// TODO: Validation
-	//action := obj.(*api.Action)
-	return nil
-	//return validation.ValidateAction(event)
+	action := obj.(*api.Action)
+	return validation.ValidateAction(action)
 }
 
 // Canonicalize normalizes the object after validation.
@@ -79,10 +77,8 @@ func (actionStrategy) AllowCreateOnUpdate() bool {
 }
 
 func (actionStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
-	// TODO: Do we allow update?
-	//action := obj.(*api.Action)
-	return nil
-	//return validation.ValidateEvent(event)
+	action := obj.(*api.Action)
+	return validation.ValidateAction(action)
 }
 
 func (actionStrategy) AllowUnconditionalUpdate() bool {
