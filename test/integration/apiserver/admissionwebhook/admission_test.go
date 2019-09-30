@@ -112,7 +112,7 @@ var (
 		gvr("", "v1", "bindings"):      {"create": testPodBindingEviction},
 		gvr("", "v1", "pods/binding"):  {"create": testPodBindingEviction},
 		gvr("", "v1", "pods/eviction"): {"create": testPodBindingEviction},
-		gvr("", "v1", "pods/action"):   {"create": testPodBindingEviction},
+		gvr("", "v1", "pods/action"):   {"create": testSubresourceAction},
 
 		gvr("", "v1", "nodes/proxy"):    {"*": testSubresourceProxy},
 		gvr("", "v1", "pods/proxy"):     {"*": testSubresourceProxy},
@@ -1025,11 +1025,6 @@ func testPodBindingEviction(c *testContext) {
 			DeleteOptions: forceDelete,
 		}).Do().Error()
 
-	case gvr("", "v1", "pods/action"):
-		err = c.clientset.CoreV1().RESTClient().Post().Namespace(pod.GetNamespace()).Resource("pods").Name(pod.GetName()).SubResource("action").Body(&corev1.CustomAction{
-			ObjectMeta: metav1.ObjectMeta{Name: pod.GetName()},
-			ActionName: "reboot",
-		}).Do().Error()
 	default:
 		c.t.Errorf("unhandled resource %#v", c.gvr)
 		return
@@ -1091,6 +1086,13 @@ func testSubresourceProxy(c *testContext) {
 func testResourceAction(c *testContext) {
 	//TODO: Add test for action resource
 	c.t.Logf("testResourceAction: Verb: %+v, GVR: %+v, Resource: %+v, ClientSet: %+v\n", c.verb, c.gvr, c.resource, c.clientset)
+	c.admissionHolder.reset(c.t)
+	c.admissionHolder.recorded = nil
+}
+
+func testSubresourceAction(c *testContext) {
+	//TODO: Add test for action resource
+	c.t.Logf("testSubresourceAction: Verb: %+v, GVR: %+v, Resource: %+v, ClientSet: %+v\n", c.verb, c.gvr, c.resource, c.clientset)
 	c.admissionHolder.reset(c.t)
 	c.admissionHolder.recorded = nil
 }
