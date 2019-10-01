@@ -4653,6 +4653,14 @@ type Binding struct {
 	Target ObjectReference `json:"target" protobuf:"bytes,2,opt,name=target"`
 }
 
+type Operation string
+
+const (
+	RebootOp   Operation = "reboot"
+	SnapshotOp Operation = "snapshot"
+	RestoreOp  Operation = "restore"
+)
+
 type RebootParams struct {
 	DelayInSeconds int32 `json:"delayInSeconds" protobuf:"varint,1,opt,name=delayInSeconds"`
 }

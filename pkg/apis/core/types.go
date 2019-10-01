@@ -4139,6 +4139,14 @@ type Binding struct {
 	Target ObjectReference
 }
 
+type Operation string
+
+const (
+	RebootOp   Operation = "reboot"
+	SnapshotOp Operation = "snapshot"
+	RestoreOp  Operation = "restore"
+)
+
 type RebootParams struct {
 	DelayInSeconds int32
 }
