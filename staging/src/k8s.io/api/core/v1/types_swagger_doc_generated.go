@@ -39,6 +39,25 @@ func (AWSElasticBlockStoreVolumeSource) SwaggerDoc() map[string]string {
 	return map_AWSElasticBlockStoreVolumeSource
 }
 
+var map_Action = map[string]string{
+	"":       "\n Action object - Created and persisted in etcd in response to invocation of pods/action subresource",
+	"spec":   "Spec defines the Action desired by the caller.",
+	"status": "Status represents the current information about an Action",
+}
+
+func (Action) SwaggerDoc() map[string]string {
+	return map_Action
+}
+
+var map_ActionList = map[string]string{
+	"":      "ActionList is a list of events.",
+	"items": "Items is a list of Action objects",
+}
+
+func (ActionList) SwaggerDoc() map[string]string {
+	return map_ActionList
+}
+
 var map_Affinity = map[string]string{
 	"":                "Affinity is a group of affinity scheduling rules.",
 	"nodeAffinity":    "Describes node affinity scheduling rules for the pod.",
@@ -469,6 +488,17 @@ var map_ControllerInstanceList = map[string]string{
 
 func (ControllerInstanceList) SwaggerDoc() map[string]string {
 	return map_ControllerInstanceList
+}
+
+var map_CustomAction = map[string]string{
+	"":             "CustomAction object - Specified when invoking action subresource for Pod",
+	"metadata":     "ObjectMeta describes the object to which this Action applies",
+	"operation":    "Name of the operation e.g. Reboot, Snapshot, ...",
+	"rebootParams": "Action specific parameters",
+}
+
+func (CustomAction) SwaggerDoc() map[string]string {
+	return map_CustomAction
 }
 
 var map_DaemonEndpoint = map[string]string{

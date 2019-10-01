@@ -41,6 +41,8 @@ type PodOperation int
 const (
 	// This is the current pod configuration
 	SET PodOperation = iota
+	// Handle Action
+	ACTION
 	// Pods with the given ids are new to this source
 	ADD
 	// Pods with the given ids are gracefully deleted from this source
@@ -78,9 +80,10 @@ const (
 // functionally similar, this helps our unit tests properly check that the correct PodUpdates
 // are generated.
 type PodUpdate struct {
-	Pods   []*v1.Pod
-	Op     PodOperation
-	Source string
+	Pods    []*v1.Pod
+	Op      PodOperation
+	Source  string
+	Actions []*v1.Action
 }
 
 // Gets all validated sources from the specified sources.

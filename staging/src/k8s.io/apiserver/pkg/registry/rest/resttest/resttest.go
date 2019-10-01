@@ -1556,7 +1556,7 @@ func (t *Tester) testGetMimatchedNamespace(obj runtime.Object) {
 	}
 	_, err = t.storage.(rest.Getter).Get(ctx2, t.namer(12), &metav1.GetOptions{})
 
-	if t.clusterScope || t.tenantScope{
+	if t.clusterScope || t.tenantScope {
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

@@ -185,7 +185,7 @@ func NewTestRESTWithPods(t *testing.T, endpoints *api.EndpointsList, pods *api.P
 		Decorator:               generic.UndecoratedStorage,
 		DeleteCollectionWorkers: 3,
 		ResourcePrefix:          "pods",
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 	if pods != nil && len(pods.Items) > 0 {
 		ctx := genericapirequest.NewDefaultContext()
 		for ix := range pods.Items {

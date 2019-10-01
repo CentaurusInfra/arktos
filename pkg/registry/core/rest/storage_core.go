@@ -43,6 +43,7 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 	"k8s.io/kubernetes/pkg/master/ports"
+	actionstore "k8s.io/kubernetes/pkg/registry/core/action/storage"
 	"k8s.io/kubernetes/pkg/registry/core/componentstatus"
 	configmapstore "k8s.io/kubernetes/pkg/registry/core/configmap/storage"
 	controllerstore "k8s.io/kubernetes/pkg/registry/core/controllerinstance/storage"
@@ -119,6 +120,8 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 
 	podTemplateStorage := podtemplatestore.NewREST(restOptionsGetter)
 
+	actionStorage := actionstore.NewREST(restOptionsGetter, uint64(c.EventTTL.Seconds()))
+
 	eventStorage := eventstore.NewREST(restOptionsGetter, uint64(c.EventTTL.Seconds()))
 	limitRangeStorage := limitrangestore.NewREST(restOptionsGetter)
 
@@ -145,6 +148,7 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		nodeStorage.KubeletConnectionInfo,
 		c.ProxyTransport,
 		podDisruptionClient,
+		actionStorage.Store,
 	)
 
 	var serviceAccountStorage *serviceaccountstore.REST
@@ -200,6 +204,7 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		"pods/proxy":       podStorage.Proxy,
 		"pods/binding":     podStorage.Binding,
 		"bindings":         podStorage.Binding,
+		"pods/action":      podStorage.Action,
 
 		"podTemplates": podTemplateStorage,
 
@@ -216,7 +221,8 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		"nodes/status": nodeStorage.Status,
 		"nodes/proxy":  nodeStorage.Proxy,
 
-		"events": eventStorage,
+		"actions": actionStorage,
+		"events":  eventStorage,
 
 		"limitRanges":           limitRangeStorage,
 		"resourceQuotas":        resourceQuotaStorage,

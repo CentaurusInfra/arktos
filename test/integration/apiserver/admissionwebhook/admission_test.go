@@ -108,9 +108,11 @@ var (
 		gvr("", "v1", "pods/exec"):        {"create": testPodConnectSubresource},
 		gvr("", "v1", "pods/portforward"): {"create": testPodConnectSubresource},
 
+		gvr("", "v1", "actions"):       {"*": testResourceAction},
 		gvr("", "v1", "bindings"):      {"create": testPodBindingEviction},
 		gvr("", "v1", "pods/binding"):  {"create": testPodBindingEviction},
 		gvr("", "v1", "pods/eviction"): {"create": testPodBindingEviction},
+		gvr("", "v1", "pods/action"):   {"create": testSubresourceAction},
 
 		gvr("", "v1", "nodes/proxy"):    {"*": testSubresourceProxy},
 		gvr("", "v1", "pods/proxy"):     {"*": testSubresourceProxy},
@@ -1079,6 +1081,20 @@ func testSubresourceProxy(c *testContext) {
 		// verify the result
 		c.admissionHolder.verify(c.t)
 	}
+}
+
+func testResourceAction(c *testContext) {
+	//TODO: Add test for action resource
+	c.t.Logf("testResourceAction: Verb: %+v, GVR: %+v, Resource: %+v, ClientSet: %+v\n", c.verb, c.gvr, c.resource, c.clientset)
+	c.admissionHolder.reset(c.t)
+	c.admissionHolder.recorded = nil
+}
+
+func testSubresourceAction(c *testContext) {
+	//TODO: Add test for action resource
+	c.t.Logf("testSubresourceAction: Verb: %+v, GVR: %+v, Resource: %+v, ClientSet: %+v\n", c.verb, c.gvr, c.resource, c.clientset)
+	c.admissionHolder.reset(c.t)
+	c.admissionHolder.recorded = nil
 }
 
 func testPruningRandomNumbers(c *testContext) {

@@ -107,6 +107,10 @@ func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionRes
 			Stub:             `{"metadata": {"name": "rc1"}, "spec": {"selector": {"new": "stuff"}, "template": {"metadata": {"labels": {"new": "stuff"}}, "spec": {"containers": [{"image": "fedora:latest", "name": "container8"}]}}}}`,
 			ExpectedEtcdPath: "/registry/controllers/" + namespace + "/rc1",
 		},
+		gvr("", "v1", "actions"): {
+			Stub:             `{"metadata": {"name": "someaction"}, "spec": {"nodeName": "somenode"}}`,
+			ExpectedEtcdPath: "/registry/actions/" + namespace + "/someaction",
+		},
 		// --
 
 		// k8s.io/kubernetes/pkg/apis/apps/v1beta1

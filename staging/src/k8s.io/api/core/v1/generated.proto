@@ -63,6 +63,44 @@ message AWSElasticBlockStoreVolumeSource {
   optional bool readOnly = 4;
 }
 
+//  Action object - Created and persisted in etcd in response to invocation of pods/action subresource
+message Action {
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // Spec defines the Action desired by the caller.
+  optional ActionSpec spec = 2;
+
+  // Status represents the current information about an Action
+  // +optional
+  optional ActionStatus status = 3;
+}
+
+// ActionList is a list of events.
+message ActionList {
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  // Items is a list of Action objects
+  repeated Action items = 2;
+}
+
+message ActionSpec {
+  optional string nodeName = 1;
+
+  optional PodAction podAction = 2;
+
+  optional NodeAction nodeAction = 3;
+}
+
+message ActionStatus {
+  optional bool complete = 1;
+
+  optional PodActionStatus podActionStatus = 2;
+
+  optional NodeActionStatus nodeActionStatus = 3;
+}
+
 // Affinity is a group of affinity scheduling rules.
 message Affinity {
   // Describes node affinity scheduling rules for the pod.
@@ -953,6 +991,21 @@ message ControllerInstanceList {
 
   // List of controller instance
   repeated ControllerInstance items = 2;
+}
+
+// CustomAction object - Specified when invoking action subresource for Pod
+message CustomAction {
+  // ObjectMeta describes the object to which this Action applies
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // Name of the operation e.g. Reboot, Snapshot, ...
+  optional string operation = 2;
+
+  // Action specific parameters
+  optional RebootParams rebootParams = 3;
+
+  optional SnapshotParams snapshotParams = 4;
 }
 
 // DaemonEndpoint contains information about a single Daemon endpoint.
@@ -1972,6 +2025,14 @@ message Node {
   optional NodeStatus status = 3;
 }
 
+message NodeAction {
+  optional RebootAction rebootAction = 2;
+}
+
+message NodeActionStatus {
+  optional RebootStatus rebootStatus = 2;
+}
+
 // NodeAddress contains information for the node's address.
 message NodeAddress {
   // Node address type, one of Hostname, ExternalIP or InternalIP.
@@ -2718,6 +2779,26 @@ message Pod {
   // More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
   // +optional
   optional PodStatus status = 3;
+}
+
+message PodAction {
+  optional string podName = 1;
+
+  optional string podID = 2;
+
+  optional RebootAction rebootAction = 3;
+
+  optional SnapshotAction snapshotAction = 4;
+}
+
+message PodActionStatus {
+  optional string podName = 1;
+
+  optional string podID = 2;
+
+  optional RebootStatus rebootStatus = 3;
+
+  optional SnapshotStatus snapshotStatus = 4;
 }
 
 // Pod affinity is a group of inter pod affinity scheduling rules.
@@ -3705,6 +3786,18 @@ message RangeAllocation {
   optional bytes data = 3;
 }
 
+message RebootAction {
+  optional int32 delayInSeconds = 1;
+}
+
+message RebootParams {
+  optional int32 delayInSeconds = 1;
+}
+
+message RebootStatus {
+  optional bool rebootSuccessful = 1;
+}
+
 // ReplicationController represents the configuration of a replication controller.
 message ReplicationController {
   // If the Labels of a ReplicationController are empty, they are defaulted to
@@ -4542,6 +4635,18 @@ message SessionAffinityConfig {
   // clientIP contains the configurations of Client IP based session affinity.
   // +optional
   optional ClientIPConfig clientIP = 1;
+}
+
+message SnapshotAction {
+  optional string snapshotLocation = 1;
+}
+
+message SnapshotParams {
+  optional string snapshotLocation = 1;
+}
+
+message SnapshotStatus {
+  optional int64 snapshotSizeInBytes = 1;
 }
 
 // Represents a StorageOS persistent volume resource.

@@ -7,6 +7,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "actions.go",
         "conditional_validation.go",
         "doc.go",
         "events.go",

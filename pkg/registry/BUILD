@@ -51,6 +51,7 @@ filegroup(
         "//pkg/registry/certificates/rest:all-srcs",
         "//pkg/registry/coordination/lease:all-srcs",
         "//pkg/registry/coordination/rest:all-srcs",
+        "//pkg/registry/core/action:all-srcs",
         "//pkg/registry/core/componentstatus:all-srcs",
         "//pkg/registry/core/configmap:all-srcs",
         "//pkg/registry/core/controllerinstance:all-srcs",

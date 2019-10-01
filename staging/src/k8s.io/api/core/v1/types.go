@@ -4653,6 +4653,118 @@ type Binding struct {
 	Target ObjectReference `json:"target" protobuf:"bytes,2,opt,name=target"`
 }
 
+type Operation string
+
+const (
+	RebootOp   Operation = "reboot"
+	SnapshotOp Operation = "snapshot"
+	RestoreOp  Operation = "restore"
+)
+
+type RebootParams struct {
+	DelayInSeconds int32 `json:"delayInSeconds" protobuf:"varint,1,opt,name=delayInSeconds"`
+}
+
+type SnapshotParams struct {
+	SnapshotLocation string `json:"snapshotLocation" protobuf:"bytes,1,opt,name=snapshotLocation"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CustomAction object - Specified when invoking action subresource for Pod
+type CustomAction struct {
+	metav1.TypeMeta `json:",inline"`
+	// ObjectMeta describes the object to which this Action applies
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Name of the operation e.g. Reboot, Snapshot, ...
+	Operation string `json:"operation" protobuf:"bytes,2,name=operation"`
+
+	// Action specific parameters
+	RebootParams   RebootParams   `json:"rebootParams,omitempty" protobuf:"bytes,3,opt,name=rebootParams"`
+	SnapshotParams SnapshotParams `json:"snapshotParams,omitempty" protobuf:"bytes,4,opt,name=snapshotParams"`
+}
+
+type RebootAction struct {
+	DelayInSeconds int32 `json:"delayInSeconds,omitempty" protobuf:"varint,1,opt,name=delayInSeconds"`
+}
+
+type RebootStatus struct {
+	RebootSuccessful bool `json:"rebootSuccessful,omitempty" protobuf:"varint,1,opt,name=rebootSuccessful"`
+}
+
+type SnapshotAction struct {
+	SnapshotLocation string `json:"snapshotLocation,omitempty" protobuf:"bytes,1,opt,name=snapshotLocation"`
+}
+
+type SnapshotStatus struct {
+	SnapshotSizeInBytes int64 `json:"snapshotSizeInBytes,omitempty" protobuf:"varint,1,opt,name=snapshotSizeInBytes"`
+}
+
+type PodAction struct {
+	PodName        string          `json:"podName,omitempty" protobuf:"bytes,1,opt,name=podName"`
+	PodID          string          `json:"podID,omitempty" protobuf:"bytes,2,opt,name=podID"`
+	RebootAction   *RebootAction   `json:"rebootAction,omitempty" protobuf:"bytes,3,opt,name=rebootAction"`
+	SnapshotAction *SnapshotAction `json:"snapshotAction,omitempty" protobuf:"bytes,4,opt,name=snapshotAction"`
+}
+
+type PodActionStatus struct {
+	PodName        string          `json:"podName,omitempty" protobuf:"bytes,1,opt,name=podName"`
+	PodID          string          `json:"podID,omitempty" protobuf:"bytes,2,opt,name=podID"`
+	RebootStatus   *RebootStatus   `json:"rebootStatus,omitempty" protobuf:"bytes,3,opt,name=rebootStatus"`
+	SnapshotStatus *SnapshotStatus `json:"snapshotStatus,omitempty" protobuf:"bytes,4,opt,name=snapshotStatus"`
+}
+
+type NodeAction struct {
+	RebootAction *RebootAction `json:"rebootAction,omitempty" protobuf:"bytes,2,opt,name=rebootAction"`
+}
+
+type NodeActionStatus struct {
+	RebootStatus *RebootStatus `json:"rebootStatus,omitempty" protobuf:"bytes,2,opt,name=rebootStatus"`
+}
+
+type ActionSpec struct {
+	NodeName   string      `json:"nodeName,omitempty" protobuf:"bytes,1,opt,name=nodeName"`
+	PodAction  *PodAction  `json:"podAction,omitempty" protobuf:"bytes,2,opt,name=podAction"`
+	NodeAction *NodeAction `json:"nodeAction,omitempty" protobuf:"bytes,3,opt,name=nodeAction"`
+}
+
+type ActionStatus struct {
+	Complete         bool              `json:"complete,omitempty" protobuf:"varint,1,opt,name=complete"`
+	PodActionStatus  *PodActionStatus  `json:"podActionStatus,omitempty" protobuf:"bytes,2,opt,name=podActionStatus"`
+	NodeActionStatus *NodeActionStatus `json:"nodeActionStatus,omitempty" protobuf:"bytes,3,opt,name=nodeActionStatus"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+//  Action object - Created and persisted in etcd in response to invocation of pods/action subresource
+type Action struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Spec defines the Action desired by the caller.
+	Spec ActionSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+
+	// Status represents the current information about an Action
+	// +optional
+	Status ActionStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ActionList is a list of events.
+type ActionList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Items is a list of Action objects
+	Items []Action `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
 // Preconditions must be fulfilled before an operation (update, delete, etc.) is carried out.
 // +k8s:openapi-gen=false
 type Preconditions struct {
