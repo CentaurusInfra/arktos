@@ -237,9 +237,9 @@ func (r *ActionREST) New() runtime.Object {
 
 var _ = rest.Creater(&ActionREST{})
 
-func getActionSpec(pod *api.Pod, actionName string, actionRequest *api.CustomAction) (actionObj *api.Action, err error) {
+func getActionSpec(pod *api.Pod, operation string, actionRequest *api.CustomAction) (actionObj *api.Action, err error) {
 	var actionSpec api.ActionSpec
-	switch actionName {
+	switch operation {
 	case "reboot":
 		actionSpec = api.ActionSpec{
 			NodeName: pod.Spec.NodeName,
@@ -251,7 +251,7 @@ func getActionSpec(pod *api.Pod, actionName string, actionRequest *api.CustomAct
 			},
 		}
 	default:
-		return nil, errors.NewBadRequest(fmt.Sprintf("Unsupported action '%s' for Pod '%s'", actionName, pod.Name))
+		return nil, errors.NewBadRequest(fmt.Sprintf("Unsupported operation '%s' for Pod '%s'", operation, pod.Name))
 
 	}
 
@@ -261,7 +261,7 @@ func getActionSpec(pod *api.Pod, actionName string, actionRequest *api.CustomAct
 			Kind:       "Action",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: actionName,
+			Name: operation,
 		},
 		Spec: actionSpec,
 	}
@@ -292,8 +292,8 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 	}
 	pod := podObj.(*api.Pod)
 
-	actionName := strings.ToLower(customAction.ActionName)
-	actionSpec, actionErr := getActionSpec(pod, actionName, customAction)
+	operation := strings.ToLower(customAction.Operation)
+	actionSpec, actionErr := getActionSpec(pod, operation, customAction)
 	if actionErr != nil {
 		return nil, actionErr
 	}
@@ -311,7 +311,7 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 				ResourceVersion: actionObj.ResourceVersion,
 			},
 			Status:  metav1.StatusSuccess,
-			Message: fmt.Sprintf("Created action '%s' for Pod '%s'", actionName, pod.Name),
+			Message: fmt.Sprintf("Created action '%s' for Pod '%s'", operation, pod.Name),
 			Details: &metav1.StatusDetails{
 				UID: actionObj.UID,
 			},
@@ -323,7 +323,7 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 				Kind:       "Action",
 			},
 			Status:  metav1.StatusFailure,
-			Message: fmt.Sprintf("Failed to create action '%s' for Pod '%s'", actionName, pod.Name),
+			Message: fmt.Sprintf("Failed to create action '%s' for Pod '%s'", operation, pod.Name),
 			Reason:  metav1.StatusReason(err.Error()),
 		}
 	}

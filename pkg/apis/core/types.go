@@ -4156,8 +4156,8 @@ type CustomAction struct {
 	// +optional
 	metav1.ObjectMeta
 
-	// Name of the action e.g. Reboot, Snapshot, ...
-	ActionName string
+	// Name of the operation e.g. Reboot, Snapshot, ...
+	Operation string
 
 	// Action specific parameters
 	RebootParams   RebootParams

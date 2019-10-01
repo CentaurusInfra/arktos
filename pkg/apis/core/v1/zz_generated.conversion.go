@@ -3477,7 +3477,7 @@ func Convert_core_ControllerInstanceList_To_v1_ControllerInstanceList(in *core.C
 
 func autoConvert_v1_CustomAction_To_core_CustomAction(in *v1.CustomAction, out *core.CustomAction, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	out.ActionName = in.ActionName
+	out.Operation = in.Operation
 	if err := Convert_v1_RebootParams_To_core_RebootParams(&in.RebootParams, &out.RebootParams, s); err != nil {
 		return err
 	}
@@ -3494,7 +3494,7 @@ func Convert_v1_CustomAction_To_core_CustomAction(in *v1.CustomAction, out *core
 
 func autoConvert_core_CustomAction_To_v1_CustomAction(in *core.CustomAction, out *v1.CustomAction, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	out.ActionName = in.ActionName
+	out.Operation = in.Operation
 	if err := Convert_core_RebootParams_To_v1_RebootParams(&in.RebootParams, &out.RebootParams, s); err != nil {
 		return err
 	}

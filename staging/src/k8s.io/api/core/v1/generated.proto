@@ -999,8 +999,8 @@ message CustomAction {
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
-  // Name of the action e.g. Reboot, Snapshot, ...
-  optional string actionName = 2;
+  // Name of the operation e.g. Reboot, Snapshot, ...
+  optional string operation = 2;
 
   // Action specific parameters
   optional RebootParams rebootParams = 3;

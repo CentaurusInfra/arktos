@@ -43,7 +43,7 @@
       }
     ]
   },
-  "actionName": "25",
+  "operation": "25",
   "rebootParams": {
     "delayInSeconds": -2052872833
   },

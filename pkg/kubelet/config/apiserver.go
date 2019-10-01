@@ -34,8 +34,8 @@ func NewSourceApiserver(c clientset.Interface, nodeName types.NodeName, updates 
 	lw := cache.NewListWatchFromClient(c.CoreV1().RESTClient(), "pods", metav1.NamespaceAll, fields.OneTermEqualSelector(api.PodHostField, string(nodeName)))
 	newSourceApiserverFromLW(lw, updates)
 
-	lw2 := cache.NewListWatchFromClient(c.CoreV1().RESTClient(), "actions", metav1.NamespaceAll, fields.Everything())
-	newSourceApiserverFromLW2(lw2, updates)
+	lwActions := cache.NewListWatchFromClient(c.CoreV1().RESTClient(), "actions", metav1.NamespaceAll, fields.Everything())
+	newSourceApiserverFromLWActions(lwActions, updates)
 }
 
 // newSourceApiserverFromLW holds creates a config source that watches and pulls from the apiserver.
@@ -51,7 +51,7 @@ func newSourceApiserverFromLW(lw cache.ListerWatcher, updates chan<- interface{}
 	go r.Run(wait.NeverStop)
 }
 
-func newSourceApiserverFromLW2(lw cache.ListerWatcher, updates chan<- interface{}) {
+func newSourceApiserverFromLWActions(lw cache.ListerWatcher, updates chan<- interface{}) {
 	send := func(objs []interface{}) {
 		var actions []*v1.Action
 		for _, o := range objs {

@@ -4670,8 +4670,8 @@ type CustomAction struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Name of the action e.g. Reboot, Snapshot, ...
-	ActionName string `json:"actionName" protobuf:"bytes,2,name=actionName"`
+	// Name of the operation e.g. Reboot, Snapshot, ...
+	Operation string `json:"operation" protobuf:"bytes,2,name=operation"`
 
 	// Action specific parameters
 	RebootParams   RebootParams   `json:"rebootParams,omitempty" protobuf:"bytes,3,opt,name=rebootParams"`

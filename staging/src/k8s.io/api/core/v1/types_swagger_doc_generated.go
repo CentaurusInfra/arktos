@@ -493,7 +493,7 @@ func (ControllerInstanceList) SwaggerDoc() map[string]string {
 var map_CustomAction = map[string]string{
 	"":             "CustomAction object - Specified when invoking action subresource for Pod",
 	"metadata":     "ObjectMeta describes the object to which this Action applies",
-	"actionName":   "Name of the action e.g. Reboot, Snapshot, ...",
+	"operation":    "Name of the operation e.g. Reboot, Snapshot, ...",
 	"rebootParams": "Action specific parameters",
 }
 
