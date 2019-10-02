@@ -24,8 +24,6 @@ import (
 	"time"
 
 	cadvisorapi "github.com/google/cadvisor/info/v1"
-	"k8s.io/klog"
-
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +35,7 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	internalapi "k8s.io/cri-api/pkg/apis"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/credentialprovider"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
@@ -412,6 +411,12 @@ type podActions struct {
 	// where the index is the index of the specific container in the pod spec (
 	// pod.Spec.Containers.
 	ContainersToStart []int
+
+	// ContainersToUpdate keeps a list of indexes for the containers to change,
+	// where the index is the index of the specific container in the pod spec (
+	// pod.Spec.Containers.
+	ContainersToUpdate []int
+
 	// ContainersToKill keeps a map of containers that need to be killed, note that
 	// the key is the container ID of the container, while
 	// the value contains necessary information to kill a container.
@@ -489,12 +494,13 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 
 	createPodSandbox, attempt, sandboxID := m.podSandboxChanged(pod, podStatus)
 	changes := podActions{
-		KillPod:           createPodSandbox,
-		CreateSandbox:     createPodSandbox,
-		SandboxID:         sandboxID,
-		Attempt:           attempt,
-		ContainersToStart: []int{},
-		ContainersToKill:  make(map[kubecontainer.ContainerID]containerToKillInfo),
+		KillPod:            createPodSandbox,
+		CreateSandbox:      createPodSandbox,
+		SandboxID:          sandboxID,
+		Attempt:            attempt,
+		ContainersToStart:  []int{},
+		ContainersToUpdate: []int{},
+		ContainersToKill:   make(map[kubecontainer.ContainerID]containerToKillInfo),
 	}
 
 	// If we need to (re-)create the pod sandbox, everything will need to be
@@ -623,7 +629,27 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 		changes.KillPod = true
 	}
 
+	// VM state changes are only performed during pod running state, i.e., no starting
+	// or killing operations.
+	if pod.Spec.VirtualMachine != nil && len(changes.ContainersToStart) == 0 && len(changes.ContainersToKill) == 0 {
+		if m.vmPowerStateChangesRequired(pod, podStatus) {
+			changes.ContainersToUpdate = append(changes.ContainersToUpdate, 0)
+		}
+	}
+
 	return changes
+}
+
+func (m *kubeGenericRuntimeManager) vmPowerStateChangesRequired(pod *v1.Pod, podStatus *kubecontainer.PodStatus) bool {
+
+	// In a vm pod there is only one vm, which is mapped to containers[0]
+	// Currently we only support two changes:  from running to shutdown, and from shutdown to running
+	requireStart := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning &&
+		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateExited
+	requireStop := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
+		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateRunning
+
+	return requireStart || requireStop
 }
 
 func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, podStatus *kubecontainer.PodStatus, pullSecrets []v1.Secret, backOff *flowcontrol.Backoff) (result kubecontainer.PodSyncResult) {
@@ -825,7 +851,64 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 		}
 	}
 
+	// Step 7: change the running VM if its target state changes
+	if len(podContainerChanges.ContainersToUpdate) > 0 {
+		result.AddSyncResult(m.reconfigureVm(pod, podSandboxID, podSandboxConfig, podStatus, backOff, pullSecrets, podIP))
+	}
+
 	return
+}
+
+func (m *kubeGenericRuntimeManager) reconfigureVm(pod *v1.Pod, podSandboxID string,
+	podSandboxConfig *runtimeapi.PodSandboxConfig, podStatus *kubecontainer.PodStatus,
+	backOff *flowcontrol.Backoff, pullSecrets []v1.Secret, podIP string) *kubecontainer.SyncResult {
+
+	// We have only one vm in the pod, and it's mapped to containers[0]
+	// And currently we only support two changes:  from running to shutdown, and from shutdown to running
+	container := &pod.Spec.Containers[0]
+	containerStatus := podStatus.FindContainerStatusByName(container.Name)
+
+	// From running to shutdown (stop vm)
+	if pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
+		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateRunning {
+
+		stopContainerResult := kubecontainer.NewSyncResult(kubecontainer.KillContainer, container.Name)
+
+		klog.V(4).Infof("Stopping the virtual machine in pod %v", format.Pod(pod))
+		if err := m.killContainer(pod, containerStatus.ID, container.Name, "stopping the virtual machine", nil); err != nil {
+			stopContainerResult.Fail(kubecontainer.ErrKillContainer, err.Error())
+			klog.Errorf("killContainer %q(id=%q) for pod %q failed: %v", container.Name, containerStatus.ID, format.Pod(pod), err)
+		}
+
+		return stopContainerResult
+	}
+
+	// From shutdown to running (start vm)
+	if pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning &&
+		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateExited {
+		startContainerResult := kubecontainer.NewSyncResult(kubecontainer.StartContainer, container.Name)
+
+		isInBackOff, msg, err := m.doBackOff(pod, container, podStatus, backOff)
+		if isInBackOff {
+			startContainerResult.Fail(err, msg)
+			klog.V(4).Infof("Backing off starting the virtual machine in pod %v", format.Pod(pod))
+		}
+
+		klog.V(4).Infof("Starting the virtual machine in pod %v", format.Pod(pod))
+		if msg, err := m.startContainer(podSandboxID, podSandboxConfig, container, pod, podStatus, pullSecrets, podIP); err != nil {
+			startContainerResult.Fail(err, msg)
+			switch {
+			case err == images.ErrImagePullBackOff:
+				klog.V(3).Infof("Virtual machine start failed: %v: %s", err, msg)
+			default:
+				utilruntime.HandleError(fmt.Errorf("Virtual machine start failed: %v: %s", err, msg))
+			}
+		}
+
+		return startContainerResult
+	}
+
+	return nil
 }
 
 // If a container is still in backoff, the function will return a brief backoff error and
