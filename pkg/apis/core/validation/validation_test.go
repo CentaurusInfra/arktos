@@ -6669,6 +6669,72 @@ func TestValidatePodSpec(t *testing.T) {
 	}
 }
 
+// TODO: test validate workflow info
+func TestValidateWorkloadInfo(t *testing.T) {
+	successCases :=
+		[][]core.CommonInfo{
+			[]core.CommonInfo{
+				{Name: "container-pod-1"},
+			},
+			[]core.CommonInfo{
+				{Name: "container-pod-2"},
+			},
+		}
+
+	for i := range successCases {
+		if errs := validateWorkloadInfo(
+			true,
+			successCases[i],
+			field.NewPath("field")); len(errs) != 0 {
+
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+}
+
+// TODO: test validate virtual machine
+func TestValidateVirtualMachine(t *testing.T) {
+	successCases := []core.VirtualMachine{
+		{
+			Name:            "vm-test-01",
+			KeyPairName:     "my-key-pair-01",
+			ImagePullPolicy: "IfNotPresent",
+		},
+	}
+
+	for i := range successCases {
+		if errs := validateVirtualMachine(
+			&successCases[i],
+			field.NewPath("field")); len(errs) != 0 {
+
+			t.Errorf("expected success: %v", errs)
+		}
+
+	}
+
+	errorCases := map[string]struct {
+		vm            core.VirtualMachine
+		expectedError string
+	}{
+		"key pair name and public key both missing": {
+			expectedError: "vm.keyPairName",
+			vm: core.VirtualMachine{
+				Name:            "vm-test-01",
+				ImagePullPolicy: "IfNotPresent",
+			},
+		},
+	}
+	for k, v := range errorCases {
+		if errs := validateVirtualMachine(&v.vm, field.NewPath("vm")); len(errs) == 0 {
+			t.Errorf("expected failure for %q", k)
+		} else if v.expectedError == "" {
+			t.Errorf("missing expectedError for %q, got %q", k, errs.ToAggregate().Error())
+		} else if actualError := errs.ToAggregate().Error(); !strings.Contains(actualError, v.expectedError) {
+			t.Errorf("expected error for %q to contain %q, got %q", k, v.expectedError, actualError)
+		}
+	}
+}
+
 func extendPodSpecwithTolerations(in core.PodSpec, tolerations []core.Toleration) core.PodSpec {
 	var out core.PodSpec
 	out.Containers = in.Containers

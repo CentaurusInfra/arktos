@@ -3004,6 +3004,74 @@ func validateContainersOnlyForPod(containers []core.Container, fldPath *field.Pa
 	return allErrs
 }
 
+// validateWorkloadInfo makes sure workloadInfo in the Pod is not empty
+// In addition, for VM pod, it make sure only one VM per Pod is allowed.
+// For container pod, it makes sure multiple container does not use duplicated names.
+func validateWorkloadInfo(
+	podWithVm bool,
+	workloadInfoList []core.CommonInfo,
+	fldPath *field.Path) field.ErrorList {
+
+	allErrs := field.ErrorList{}
+
+	if podWithVm == false {
+		if workloadInfoList == nil || len(workloadInfoList) == 0 {
+			allErrs = append(allErrs, field.Required(fldPath, "vm pod workflowInfo cannot be empty "))
+		}
+	}
+
+	if podWithVm == true && len(workloadInfoList) > 1 {
+		allErrs = append(allErrs, field.Invalid(fldPath, workloadInfoList,
+			"No more than one virtual machine per pod is allowed."))
+	}
+
+	allNames := sets.String{}
+	for i, wi := range workloadInfoList {
+		idxPath := fldPath.Index(i)
+		namePath := idxPath.Child("name")
+		if len(wi.Name) == 0 {
+			allErrs = append(allErrs, field.Required(namePath, "commonInfo name cannot be empty"))
+		} else {
+			allErrs = append(allErrs, ValidateDNS1123Label(wi.Name, namePath)...)
+		}
+		if allNames.Has(wi.Name) {
+			allErrs = append(allErrs, field.Duplicate(namePath, wi.Name))
+		} else {
+			allNames.Insert(wi.Name)
+		}
+	}
+
+	return allErrs
+}
+
+// validateVirtualMachine tests if required fields are set correctly
+func validateVirtualMachine(
+	virtualMachine *core.VirtualMachine,
+	fldPath *field.Path) field.ErrorList {
+
+	allErrs := field.ErrorList{}
+
+	vm := *virtualMachine
+	namePath := fldPath.Child("name")
+
+	if len(vm.Name) == 0 {
+		allErrs = append(allErrs, field.Required(namePath, "virtual machine name cannot be empty"))
+	} else {
+		allErrs = append(allErrs, ValidateDNS1123Label(vm.Name, namePath)...)
+	}
+
+	allErrs = append(allErrs, ValidateResourceRequirements(&vm.Resources, fldPath.Child("resources"))...)
+	allErrs = append(allErrs, validatePullPolicy(vm.ImagePullPolicy, fldPath.Child("imagePullPolicy"))...)
+	if len(vm.KeyPairName) == 0 && len(vm.PublicKey) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("keyPairName"), "KeyPairName and PublicKey can't be both empty"))
+	}
+	if len(vm.UserData) > 65535 {
+		allErrs = append(allErrs, field.TooLong(fldPath.Child("userData"), "", 65535))
+	}
+
+	return allErrs
+}
+
 // ValidatePod tests if required fields in the pod are set.
 func ValidatePod(pod *core.Pod) field.ErrorList {
 	fldPath := field.NewPath("metadata")
@@ -3074,6 +3142,8 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 	if spec.VirtualMachine != nil {
 		allErrs = append(allErrs, validateContainers(true, spec.Containers, false, vols, fldPath.Child("containers"))...)
 		allErrs = append(allErrs, validateInitContainers(true, spec.InitContainers, spec.Containers, vols, fldPath.Child("initContainers"))...)
+		allErrs = append(allErrs, validateWorkloadInfo(true, spec.WorkloadInfo, fldPath.Child("workloadInfo"))...)
+		allErrs = append(allErrs, validateVirtualMachine(spec.VirtualMachine, fldPath.Child("virtualMachine"))...)
 	} else {
 		allErrs = append(allErrs, validateContainers(false, spec.Containers, false, vols, fldPath.Child("containers"))...)
 		allErrs = append(allErrs, validateInitContainers(false, spec.InitContainers, spec.Containers, vols, fldPath.Child("initContainers"))...)

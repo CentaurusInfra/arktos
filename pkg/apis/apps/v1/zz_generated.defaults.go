@@ -180,6 +180,7 @@ func SetObjectDefaults_DaemonSet(in *v1.DaemonSet) {
 		}
 	}
 	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_VirtualMachine(in.Spec.Template.Spec.VirtualMachine)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 	}
@@ -336,6 +337,7 @@ func SetObjectDefaults_Deployment(in *v1.Deployment) {
 		}
 	}
 	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_VirtualMachine(in.Spec.Template.Spec.VirtualMachine)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 	}
@@ -492,6 +494,7 @@ func SetObjectDefaults_ReplicaSet(in *v1.ReplicaSet) {
 		}
 	}
 	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_VirtualMachine(in.Spec.Template.Spec.VirtualMachine)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 	}
@@ -648,6 +651,7 @@ func SetObjectDefaults_StatefulSet(in *v1.StatefulSet) {
 		}
 	}
 	if in.Spec.Template.Spec.VirtualMachine != nil {
+		corev1.SetDefaults_VirtualMachine(in.Spec.Template.Spec.VirtualMachine)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 	}

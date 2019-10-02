@@ -92,6 +92,20 @@ func SetDefaults_Container(obj *v1.Container) {
 	}
 }
 
+func SetDefaults_VirtualMachine(obj *v1.VirtualMachine) {
+	if obj.ImagePullPolicy == "" {
+		// Ignore error and assume it has been validated elsewhere
+		_, tag, _, _ := parsers.ParseImageName(obj.Image)
+
+		// Check image tag
+		if tag == "latest" {
+			obj.ImagePullPolicy = v1.PullAlways
+		} else {
+			obj.ImagePullPolicy = v1.PullIfNotPresent
+		}
+	}
+}
+
 func SetDefaults_Service(obj *v1.Service) {
 	if obj.Spec.SessionAffinity == "" {
 		obj.Spec.SessionAffinity = v1.ServiceAffinityNone
