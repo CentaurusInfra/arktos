@@ -23,7 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -31,6 +30,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/apis/apps"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"math"
 	"time"
@@ -42,6 +42,8 @@ const (
 	ControllerStateWait   string = "wait"
 	ControllerStateActive string = "active"
 	ControllerStateError  string = "error"
+
+	controllerInstanceNamePrefix string = "ci"
 )
 
 type controllerInstance struct {
@@ -55,12 +57,13 @@ type controllerInstance struct {
 type ControllerBase struct {
 	controller_type        string
 	controller_instance_id types.UID
+	controller_name        string
 	state                  string
 
 	// use int64 as k8s base deal with int64 better
 	controller_key int64
 
-	worker_number          int
+	Worker_number          int
 	sortedControllers      []controllerInstance
 	controllerInstanceList []v1.ControllerInstance
 
@@ -71,14 +74,15 @@ type ControllerBase struct {
 	SyncHandler func(key string) error
 	HandleErr   func(err error, key string)
 
-	client clientset.Interface
+	client                                   clientset.Interface
+	controllerInstanceUpdateByControllerType chan string
 }
 
 var (
 	KeyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
-func NewControllerBase(controller_type string, client clientset.Interface) (*ControllerBase, error) {
+func NewControllerBase(controller_type string, client clientset.Interface, updateChan chan string) (*ControllerBase, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
@@ -90,11 +94,13 @@ func NewControllerBase(controller_type string, client clientset.Interface) (*Con
 	}
 
 	// Get existed controller instances from registry
-	controllerInstances, err := readControllerInstances(client.CoreV1(), controller_type)
+	controllerInstances, err := listControllerInstancesByType(controller_type)
 
 	if err != nil {
-		//TODO
+		// TODO - add retry
+		klog.Errorf("Error getting controller instances for %s. Error %v", controller_type, err)
 	}
+
 	sortedControllerInstances := SortControllerInstancesByKey(controllerInstances)
 
 	controller := &ControllerBase{
@@ -102,15 +108,17 @@ func NewControllerBase(controller_type string, client clientset.Interface) (*Con
 		controller_type:        controller_type,
 		state:                  ControllerStateInit,
 		controller_instance_id: uuid.NewUUID(),
-		worker_number:          getDefaultNumberOfWorker(controller_type),
+		Worker_number:          getDefaultNumberOfWorker(controller_type),
 		controllerInstanceList: controllerInstances,
 		sortedControllers:      sortedControllerInstances,
 		curPos:                 -1,
 
-		queue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:                                    workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		controllerInstanceUpdateByControllerType: updateChan,
 	}
 
 	controller.controller_key = controller.generateKey()
+	controller.controller_name = controller.GetControllerName()
 
 	// First controller instance. No need to wait for others
 	if len(controller.sortedControllers) == 0 {
@@ -133,7 +141,7 @@ func (c *ControllerBase) GetControllerId() types.UID {
 
 func (c *ControllerBase) Worker() {
 	for c.ProcessNextWorkItem() {
-		klog.Infof("processing next work item ...")
+		//klog.Infof("processing next work item ...")
 	}
 }
 
@@ -176,21 +184,35 @@ func (c *ControllerBase) GetClient() clientset.Interface {
 	return c.client
 }
 
-func (c *ControllerBase) Run(stopCh <-chan struct{}) {
-	defer c.queue.ShutDown()
+func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
+	var stopSign chan<- interface{}
+	for {
+		select {
+		case stopSign <- stopCh:
+			break
+		case updatedType, ok := <-c.controllerInstanceUpdateByControllerType:
+			if !ok {
+				klog.Errorf("Unexpected controller instance update message")
+				return
+			}
 
-	klog.Infof("Starting %s controller", c.controller_type)
-	defer klog.Infof("Shutting down %s controller", c.controller_type)
+			klog.Infof("Got controller instance update massage. Updated Controller Type %s, current controller instance type %s", updatedType, c.controller_type)
+			if updatedType != c.controller_type {
+				continue
+			}
 
-	for i := 0; i < c.worker_number; i++ {
-		go wait.Until(c.Worker, time.Second, stopCh)
+			klog.Infof("Start updating controller instance %s", c.controller_type)
+			controllerInstances, err := listControllerInstancesByType(c.controller_type)
+			if err != nil {
+				// TODO - add retry
+				klog.Errorf("Error getting controller instances for %s. Error %v", c.controller_type, err)
+				continue
+			}
+			sortedControllerInstances := SortControllerInstancesByKey(controllerInstances)
+			c.updateControllers(sortedControllerInstances)
+			klog.Infof("Done updating controller instance %s", c.controller_type)
+		}
 	}
-
-	go wait.Until(c.reportHealth, time.Minute, stopCh)
-
-	klog.Infof("All work started for controller %s instance %s", c.controller_type, c.controller_instance_id)
-
-	<-stopCh
 }
 
 func (c *ControllerBase) GetControllerType() string {
@@ -255,6 +277,13 @@ func (c *ControllerBase) updateControllers(newControllerInstances []controllerIn
 		return
 	}
 
+	message := fmt.Sprintf("Controller %s instance %s", c.controller_type, c.controller_name)
+	if c.curPos >= 0 {
+		message += fmt.Sprintf(" old range (%d, %d]", c.sortedControllers[c.curPos].lowerboundKey, c.sortedControllers[c.curPos].controllerKey)
+	}
+	message += fmt.Sprintf(" assigned range (%d, %d]", newLowerBound, newUpperbound)
+	klog.Info(message)
+
 	if isUpdated {
 		c.sortedControllers = newControllerInstances
 	}
@@ -270,11 +299,12 @@ func (c *ControllerBase) updateControllers(newControllerInstances []controllerIn
 
 	if isSelfUpdated {
 		// TODO - reset filter
-		klog.Infof("New lowerbound = %v, new upperbound = %v", newLowerBound, newUpperbound)
 	}
 
 	if c.state == ControllerStateLocked {
 		// TODO - wait for unlock
+		klog.Infof("Controller %s instance %v is currently locked. Waiting for unlock", c.controller_type, c.controller_name)
+		return
 	}
 
 	c.state = ControllerStateActive
@@ -302,7 +332,7 @@ func (c *ControllerBase) tryConsolidateControllerInstances(newControllerInstance
 	// current instance not in new controller instance map, this controller instance lost connection with registry, pause processing
 	if newPos == -1 {
 		c.state = ControllerStateError
-		klog.Errorf("Current instance not in registry. Controller type %s, instance id %v, key %v", c.controller_type, c.controller_instance_id, c.controller_key)
+		klog.Errorf("Current instance not in registry. Controller type %s, instance id %v, key %v", c.controller_type, c.controller_name, c.controller_key)
 		return true, false, 0, 0, 0
 	} else if newPos == len(newControllerInstances)-1 && c.controller_key != math.MaxInt64 { // next to last become last
 		c.controller_key = math.MaxInt64
@@ -311,8 +341,8 @@ func (c *ControllerBase) tryConsolidateControllerInstances(newControllerInstance
 	}
 
 	if c.curPos == -1 {
-		c.curPos = newPos
-		return true, false, newControllerInstances[newPos].lowerboundKey, c.controller_key, newPos
+		//c.curPos = newPos
+		return true, true, newControllerInstances[newPos].lowerboundKey, c.controller_key, newPos
 	}
 
 	if c.sortedControllers[c.curPos].lowerboundKey != newControllerInstances[newPos].lowerboundKey {
@@ -342,14 +372,14 @@ func (c *ControllerBase) registController() error {
 		WorkloadNum:    0,
 		IsLocked:       c.state == ControllerStateLocked,
 		ObjectMeta: metav1.ObjectMeta{
-			Name: string(c.controller_instance_id),
+			Name: c.controller_name,
 		},
 	}
 
 	isExist := isControllerInstanceExisted(c.controllerInstanceList, c.controller_instance_id)
 	if isExist {
 		// Error
-		klog.Errorf("Trying to register new %s controller instance with id %v already existed in controller instance list", c.controller_type, c.controller_instance_id)
+		klog.Errorf("Trying to register new %s controller instance with id %v already existed in controller instance list", c.controller_type, c.controller_name)
 		return errors.NewAlreadyExists(apps.Resource("controllerinstances"), "UID")
 	} else {
 		/*
@@ -361,7 +391,7 @@ func (c *ControllerBase) registController() error {
 		// Write to registry
 		_, err := c.client.CoreV1().ControllerInstances().Create(&controllerInstanceInStoreage)
 		if err != nil {
-			klog.Errorf("Error register controller %s instance %s, error %v", c.controller_type, c.controller_instance_id, err)
+			klog.Errorf("Error register controller %s instance %s, error %v", c.controller_type, c.controller_name, err)
 			// TODO
 			return err
 		}
@@ -377,24 +407,28 @@ func (c *ControllerBase) registController() error {
 // Periodically update controller instance in registry for two things:
 //     1. Update workload # so that workload can be more evenly distributed
 //     2. Renew TTL for current controller instance
-func (c *ControllerBase) reportHealth() {
-	klog.Infof("Controller %s instance %s report health", c.controller_type, c.controller_instance_id)
+func (c *ControllerBase) ReportHealth() {
+	klog.Infof("Controller %s instance %s report health", c.controller_type, c.controller_name)
 	controllerInstanceInStoreage := v1.ControllerInstance{
 		ControllerType: c.controller_type,
 		UID:            c.controller_instance_id,
 		HashKey:        c.controller_key,
 		WorkloadNum:    c.sortedControllers[c.curPos].workloadNum,
 		ObjectMeta: metav1.ObjectMeta{
-			Name: string(c.controller_instance_id),
+			Name: c.controller_name,
 		},
 	}
 
 	// Write to registry
 	_, err := c.client.CoreV1().ControllerInstances().Update(&controllerInstanceInStoreage)
 	if err != nil {
-		klog.Errorf("Error update controller %s instance %s, error %v", c.controller_type, c.controller_instance_id, err)
+		klog.Errorf("Error update controller %s instance %s, error %v", c.controller_type, c.controller_name, err)
 		//TODO
 	}
+}
+
+func (c *ControllerBase) GetControllerName() string {
+	return fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, c.controller_instance_id)
 }
 
 // get default # of workers from storage - TODO
@@ -402,26 +436,23 @@ func getDefaultNumberOfWorker(controllerType string) int {
 	return 5
 }
 
-// Get controller instances by controller type from registry
+// Get controller instances by controller type
 //		Return sorted controller instance list & error if any
-func readControllerInstances(c v1core.ControllerInstancesGetter, controllerType string) ([]v1.ControllerInstance, error) {
-	var filterControllerInstances []v1.ControllerInstance
+func listControllerInstancesByType(controllerType string) ([]v1.ControllerInstance, error) {
+	var controllerInstances []v1.ControllerInstance
 
-	controllerInstanceList, err := c.ControllerInstances().List(metav1.ListOptions{})
-	if err == nil {
-		for _, controllerInstance := range controllerInstanceList.Items {
-			if controllerInstance.ControllerType == controllerType {
-				filterControllerInstances = append(filterControllerInstances, controllerInstance)
-			}
-		}
+	cim := controllerinstancemanager.GetInstance()
+	if cim == nil {
+		klog.Fatalf("Unexpected reference to uninitialized controller instance manager")
+	}
 
-		// the controller type already exists
-		return filterControllerInstances, nil
-	} else if !errors.IsNotFound(err) {
-		klog.Errorf("Error getting controller instance map [%v]", err)
-		// unexpected - error
+	controllerInstanceById, err := cim.ListControllerInstance(controllerType)
+	if err != nil {
 		return nil, err
 	}
 
-	return filterControllerInstances, err
+	for _, controllerInstance := range controllerInstanceById {
+		controllerInstances = append(controllerInstances, controllerInstance)
+	}
+	return controllerInstances, nil
 }

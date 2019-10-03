@@ -29,6 +29,7 @@ package replicaset
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"reflect"
 	"sort"
 	"sync"
@@ -56,7 +57,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"k8s.io/utils/integer"
 
-	"k8s.io/kubernetes/pkg/cloudfabric-controller"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 )
 
 const (
@@ -100,7 +101,7 @@ type ReplicaSetController struct {
 }
 
 // NewReplicaSetController configures a replica set controller with the specified event recorder
-func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int) *ReplicaSetController {
+func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int, updateControllerChan chan string) *ReplicaSetController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
@@ -112,18 +113,19 @@ func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInf
 			KubeClient: kubeClient,
 			Recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "replicaset-controller"}),
 		},
+		updateControllerChan,
 	)
 }
 
 // NewBaseController is the implementation of NewReplicaSetController with additional injected
 // parameters so that it can also serve as the implementation of NewReplicationController.
 func NewBaseController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int,
-	gvk schema.GroupVersionKind, metricOwnerName, queueName string, podControl controller.PodControlInterface) *ReplicaSetController {
+	gvk schema.GroupVersionKind, metricOwnerName, queueName string, podControl controller.PodControlInterface, updateControllerChan chan string) *ReplicaSetController {
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage(metricOwnerName, kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 
-	baseController, err := controller.NewControllerBase("ReplicaSet", kubeClient)
+	baseController, err := controller.NewControllerBase("ReplicaSet", kubeClient, updateControllerChan)
 	if err != nil {
 		return nil
 	}
@@ -170,6 +172,28 @@ func (rsc *ReplicaSetController) SetEventRecorder(recorder record.EventRecorder)
 	// TODO: Hack. We can't cleanly shutdown the event recorder, so benchmarks
 	// need to pass in a fake.
 	rsc.podControl = controller.RealPodControl{KubeClient: rsc.GetClient(), Recorder: recorder}
+}
+
+func (rsc *ReplicaSetController) Run(stopCh <-chan struct{}) {
+	defer rsc.ControllerBase.GetQueue().ShutDown()
+
+	klog.Infof("Starting %s controller", rsc.ControllerBase.GetControllerType())
+	defer klog.Infof("Shutting down %s controller", rsc.ControllerBase.GetControllerType())
+
+	if !controller.WaitForCacheSync(rsc.ControllerBase.GetControllerType(), stopCh, rsc.rsListerSynced, rsc.podListerSynced) {
+		return
+	}
+
+	for i := 0; i < rsc.ControllerBase.Worker_number; i++ {
+		go wait.Until(rsc.ControllerBase.Worker, time.Second, stopCh)
+	}
+
+	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
+	go wait.Until(rsc.ControllerBase.ReportHealth, time.Minute, stopCh)
+
+	klog.Infof("All work started for controller %s instance %s", rsc.ControllerBase.GetControllerType(), rsc.ControllerBase.GetControllerName())
+
+	<-stopCh
 }
 
 // getPodReplicaSets returns a list of ReplicaSets matching the given pod.
