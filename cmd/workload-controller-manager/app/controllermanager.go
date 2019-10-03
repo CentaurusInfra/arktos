@@ -117,7 +117,10 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	}
 
 	startControllerInstanceManager(controllerContext)
-	startReplicaSetController(controllerContext)
+	replicatSetWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("replicaset")
+	if isOK {
+		startReplicaSetController(controllerContext, replicatSetWorkerNumber)
+	}
 
 	controllerContext.InformerFactory.Start(controllerContext.Stop)
 	controllerContext.GenericInformerFactory.Start(controllerContext.Stop)
@@ -204,7 +207,7 @@ func GetAvailableResources(clientBuilder controller.ControllerClientBuilder) (ma
 	return allResources, nil
 }
 
-func startReplicaSetController(ctx ControllerContext) (http.Handler, bool, error) {
+func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handler, bool, error) {
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}] {
 		return nil, false, nil
 	}
@@ -214,7 +217,7 @@ func startReplicaSetController(ctx ControllerContext) (http.Handler, bool, error
 		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
 		replicaset.BurstReplicas,
 		ctx.ControllerInstanceUpdateByControllerType,
-	).Run(ctx.Stop)
+	).Run(workerNum, ctx.Stop)
 	return nil, true, nil
 }
 
