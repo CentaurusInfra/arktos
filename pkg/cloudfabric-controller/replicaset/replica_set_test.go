@@ -173,17 +173,17 @@ func newPodList(store cache.Store, count int, status v1.PodPhase, labelMap map[s
 // depends on both functions (such as re-queueing on sync error).
 func processSync(rsc *ReplicaSetController, key string) error {
 	// Save old syncHandler and replace with one that captures the error.
-	oldSyncHandler := rsc.SyncHandler
+	oldSyncHandler := rsc.syncHandler
 	defer func() {
-		rsc.SyncHandler = oldSyncHandler
+		rsc.syncHandler = oldSyncHandler
 	}()
 	var syncErr error
-	rsc.SyncHandler = func(key string) error {
+	rsc.syncHandler = func(key string) error {
 		syncErr = oldSyncHandler(key)
 		return syncErr
 	}
-	rsc.GetQueue().Add(key)
-	rsc.ProcessNextWorkItem()
+	rsc.queue.Add(key)
+	rsc.processNextWorkItem()
 	return syncErr
 }
 
@@ -226,7 +226,7 @@ func TestDeleteFinalStateUnknown(t *testing.T) {
 	manager.podControl = &fakePodControl
 
 	received := make(chan string)
-	manager.SyncHandler = func(key string) error {
+	manager.syncHandler = func(key string) error {
 		received <- key
 		return nil
 	}
@@ -239,7 +239,7 @@ func TestDeleteFinalStateUnknown(t *testing.T) {
 	pods := newPodList(nil, 1, v1.PodRunning, labelMap, rsSpec, "pod")
 	manager.deletePod(cache.DeletedFinalStateUnknown{Key: "foo", Obj: &pods.Items[0]})
 
-	go manager.Worker()
+	go manager.worker()
 
 	expected := testutil.GetKey(rsSpec, t)
 	select {
@@ -444,7 +444,7 @@ func TestWatchControllers(t *testing.T) {
 	// The update sent through the fakeWatcher should make its way into the workqueue,
 	// and eventually into the syncHandler. The handler validates the received controller
 	// and closes the received channel to indicate that the test can finish.
-	manager.SyncHandler = func(key string) error {
+	manager.syncHandler = func(key string) error {
 		obj, exists, err := informers.Apps().V1().ReplicaSets().Informer().GetIndexer().GetByKey(key)
 		if !exists || err != nil {
 			t.Errorf("Expected to find replica set under key %v", key)
@@ -458,7 +458,7 @@ func TestWatchControllers(t *testing.T) {
 	}
 	// Start only the ReplicaSet watcher and the workqueue, send a watch event,
 	// and make sure it hits the sync method.
-	go wait.Until(manager.Worker, 10*time.Millisecond, stopCh)
+	go wait.Until(manager.worker, 10*time.Millisecond, stopCh)
 
 	testRSSpec.Name = "foo"
 	fakeWatch.Add(&testRSSpec)
@@ -489,7 +489,7 @@ func TestWatchPods(t *testing.T) {
 	received := make(chan string)
 	// The pod update sent through the fakeWatcher should figure out the managing ReplicaSet and
 	// send it into the syncHandler.
-	manager.SyncHandler = func(key string) error {
+	manager.syncHandler = func(key string) error {
 		namespace, uid, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {
 			t.Errorf("Error splitting key: %v", err)
@@ -508,7 +508,7 @@ func TestWatchPods(t *testing.T) {
 	// Start only the pod watcher and the workqueue, send a watch event,
 	// and make sure it hits the sync method for the right ReplicaSet.
 	go informers.Core().V1().Pods().Informer().Run(stopCh)
-	go manager.Run(stopCh)
+	go manager.Run(1, stopCh)
 
 	pods := newPodList(nil, 1, v1.PodRunning, labelMap, testRSSpec, "pod")
 	testPod := pods.Items[0]
@@ -529,7 +529,7 @@ func TestUpdatePods(t *testing.T) {
 
 	received := make(chan string)
 
-	manager.SyncHandler = func(key string) error {
+	manager.syncHandler = func(key string) error {
 		namespace, name, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {
 			t.Errorf("Error splitting key: %v", err)
@@ -542,7 +542,7 @@ func TestUpdatePods(t *testing.T) {
 		return nil
 	}
 
-	go wait.Until(manager.Worker, 10*time.Millisecond, stopCh)
+	go wait.Until(manager.worker, 10*time.Millisecond, stopCh)
 
 	// Put 2 ReplicaSets and one pod into the informers
 	labelMap1 := map[string]string{"foo": "bar"}
@@ -671,11 +671,11 @@ func TestControllerUpdateRequeue(t *testing.T) {
 	manager.podControl = &fakePodControl
 
 	// Enqueue once. Then process it. Disable rate-limiting for this.
-	manager.SetQueue(workqueue.NewRateLimitingQueue(workqueue.NewMaxOfRateLimiter()))
+	manager.queue = workqueue.NewRateLimitingQueue(workqueue.NewMaxOfRateLimiter())
 	manager.enqueueReplicaSet(rs)
-	manager.ProcessNextWorkItem()
+	manager.processNextWorkItem()
 	// It should have been requeued.
-	if got, want := manager.GetQueue().Len(), 1; got != want {
+	if got, want := manager.queue.Len(), 1; got != want {
 		t.Errorf("queue.Len() = %v, want %v", got, want)
 	}
 }
@@ -1005,7 +1005,7 @@ func TestOverlappingRSs(t *testing.T) {
 	rsKey := testutil.GetKey(rs, t)
 
 	manager.addPod(pod)
-	queueRS, _ := manager.GetQueue().Get()
+	queueRS, _ := manager.queue.Get()
 	if queueRS != rsKey {
 		t.Fatalf("Expected to find key %v in queue, found %v", rsKey, queueRS)
 	}
@@ -1032,11 +1032,11 @@ func TestDeletionTimestamp(t *testing.T) {
 	// A pod added with a deletion timestamp should decrement deletions, not creations.
 	manager.addPod(&pod)
 
-	queueRS, _ := manager.GetQueue().Get()
+	queueRS, _ := manager.queue.Get()
 	if queueRS != rsKey {
 		t.Fatalf("Expected to find key %v in queue, found %v", rsKey, queueRS)
 	}
-	manager.GetQueue().Done(rsKey)
+	manager.queue.Done(rsKey)
 
 	podExp, exists, err := manager.expectations.GetExpectations(rsKey)
 	if !exists || err != nil || !podExp.Fulfilled() {
@@ -1050,11 +1050,11 @@ func TestDeletionTimestamp(t *testing.T) {
 	manager.expectations.ExpectDeletions(rsKey, []string{controller.PodKey(&pod)})
 	manager.updatePod(&oldPod, &pod)
 
-	queueRS, _ = manager.GetQueue().Get()
+	queueRS, _ = manager.queue.Get()
 	if queueRS != rsKey {
 		t.Fatalf("Expected to find key %v in queue, found %v", rsKey, queueRS)
 	}
-	manager.GetQueue().Done(rsKey)
+	manager.queue.Done(rsKey)
 
 	podExp, exists, err = manager.expectations.GetExpectations(rsKey)
 	if !exists || err != nil || !podExp.Fulfilled() {
@@ -1095,11 +1095,11 @@ func TestDeletionTimestamp(t *testing.T) {
 	// Deleting the second pod should clear expectations.
 	manager.deletePod(secondPod)
 
-	queueRS, _ = manager.GetQueue().Get()
+	queueRS, _ = manager.queue.Get()
 	if queueRS != rsKey {
 		t.Fatalf("Expected to find key %v in queue, found %v", rsKey, queueRS)
 	}
-	manager.GetQueue().Done(rsKey)
+	manager.queue.Done(rsKey)
 
 	podExp, exists, err = manager.expectations.GetExpectations(rsKey)
 	if !exists || err != nil || !podExp.Fulfilled() {
@@ -1161,7 +1161,7 @@ func TestPatchPodFails(t *testing.T) {
 	// 2 patches to take control of pod1 and pod2 (both fail).
 	validateSyncReplicaSet(t, fakePodControl, 0, 0, 2)
 	// RS should requeue itself.
-	queueRS, _ := manager.GetQueue().Get()
+	queueRS, _ := manager.queue.Get()
 	if queueRS != rsKey {
 		t.Fatalf("Expected to find key %v in queue, found %v", rsKey, queueRS)
 	}

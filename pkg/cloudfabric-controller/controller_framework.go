@@ -27,13 +27,11 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"math"
-	"time"
 )
 
 const (
@@ -63,16 +61,10 @@ type ControllerBase struct {
 	// use int64 as k8s base deal with int64 better
 	controller_key int64
 
-	Worker_number          int
 	sortedControllers      []controllerInstance
 	controllerInstanceList []v1.ControllerInstance
 
 	curPos int
-
-	queue workqueue.RateLimitingInterface
-
-	SyncHandler func(key string) error
-	HandleErr   func(err error, key string)
 
 	client                                   clientset.Interface
 	controllerInstanceUpdateByControllerType chan string
@@ -104,16 +96,13 @@ func NewControllerBase(controller_type string, client clientset.Interface, updat
 	sortedControllerInstances := SortControllerInstancesByKey(controllerInstances)
 
 	controller := &ControllerBase{
-		client:                 client,
-		controller_type:        controller_type,
-		state:                  ControllerStateInit,
-		controller_instance_id: uuid.NewUUID(),
-		Worker_number:          getDefaultNumberOfWorker(controller_type),
-		controllerInstanceList: controllerInstances,
-		sortedControllers:      sortedControllerInstances,
-		curPos:                 -1,
-
-		queue:                                    workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		client:                                   client,
+		controller_type:                          controller_type,
+		state:                                    ControllerStateInit,
+		controller_instance_id:                   uuid.NewUUID(),
+		controllerInstanceList:                   controllerInstances,
+		sortedControllers:                        sortedControllerInstances,
+		curPos:                                   -1,
 		controllerInstanceUpdateByControllerType: updateChan,
 	}
 
@@ -137,47 +126,6 @@ func NewControllerBase(controller_type string, client clientset.Interface, updat
 
 func (c *ControllerBase) GetControllerId() types.UID {
 	return c.controller_instance_id
-}
-
-func (c *ControllerBase) Worker() {
-	for c.ProcessNextWorkItem() {
-		//klog.Infof("processing next work item ...")
-	}
-}
-
-func (c *ControllerBase) ProcessNextWorkItem() bool {
-	if !c.IsControllerActive() {
-		fmt.Println("Controller is not active, worker idle ....")
-		// TODO : compare key version and controller locked status version
-		time.Sleep(1 * time.Second)
-		return true
-	}
-
-	key, quit := c.queue.Get()
-	if quit {
-		return false
-	}
-	defer c.queue.Done(key)
-
-	workloadKey := key.(string)
-
-	err := c.SyncHandler(workloadKey)
-	if err == nil {
-		c.queue.Forget(key)
-		return true
-	}
-	c.HandleErr(err, workloadKey)
-	c.queue.AddRateLimited(key)
-
-	return true
-}
-
-func (c *ControllerBase) GetQueue() workqueue.RateLimitingInterface {
-	return c.queue
-}
-
-func (c *ControllerBase) SetQueue(queue workqueue.RateLimitingInterface) {
-	c.queue = queue
 }
 
 func (c *ControllerBase) GetClient() clientset.Interface {
@@ -429,11 +377,6 @@ func (c *ControllerBase) ReportHealth() {
 
 func (c *ControllerBase) GetControllerName() string {
 	return fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, c.controller_instance_id)
-}
-
-// get default # of workers from storage - TODO
-func getDefaultNumberOfWorker(controllerType string) int {
-	return 5
 }
 
 // Get controller instances by controller type

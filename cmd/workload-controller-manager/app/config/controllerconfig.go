@@ -28,18 +28,12 @@ type controllerTypes struct {
 
 type controllerType struct {
 	Type    string `json:"type"`
-	Workers int32  `json:"workers"`
-}
-
-// LocalConfig is the config to load all the local configurations
-type LocalConfig interface {
-	Get() (map[string]interface{}, error)
-	GetByKey(key string) (interface{}, error)
+	Workers int    `json:"workers"`
 }
 
 // ControllerConfig is the config to load controller configurations
 type ControllerConfig struct {
-	typemap map[string]int32
+	typemap map[string]int
 }
 
 // NewControllerConfig to load configuration from a local file
@@ -59,10 +53,15 @@ func NewControllerConfig(filePath string) (ControllerConfig, error) {
 
 	json.Unmarshal([]byte(byteValue), &types)
 
-	var controllerMap map[string]int32
-	controllerMap = make(map[string]int32)
+	var controllerMap map[string]int
+	controllerMap = make(map[string]int)
 	for _, controllerType := range types.Types {
 		controllerMap[controllerType.Type] = controllerType.Workers
 	}
 	return ControllerConfig{typemap: controllerMap}, nil
+}
+
+func (c *ControllerConfig) GetWorkerNumber(controllerType string) (int, bool) {
+	workerNumber, isOK := c.typemap[controllerType]
+	return workerNumber, isOK
 }

@@ -52,6 +52,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/util/metrics"
@@ -83,6 +84,8 @@ type ReplicaSetController struct {
 	// A ReplicaSet is temporarily suspended after creating/deleting these many replicas.
 	// It resumes normal action after observing the watch events for them.
 	burstReplicas int
+	// To allow injection of syncReplicaSet for testing.
+	syncHandler func(rsKey string) error
 
 	// A TTLCache of pod creates/deletes each rc expects to see.
 	expectations *controller.UIDTrackingControllerExpectations
@@ -98,6 +101,9 @@ type ReplicaSetController struct {
 	// podListerSynced returns true if the pod store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
 	podListerSynced cache.InformerSynced
+
+	// Controllers that need to be synced
+	queue workqueue.RateLimitingInterface
 }
 
 // NewReplicaSetController configures a replica set controller with the specified event recorder
@@ -136,6 +142,7 @@ func NewBaseController(rsInformer appsinformers.ReplicaSetInformer, podInformer 
 		podControl:       podControl,
 		burstReplicas:    burstReplicas,
 		expectations:     controller.NewUIDTrackingControllerExpectations(controller.NewControllerExpectations()),
+		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), queueName),
 	}
 
 	rsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -160,8 +167,7 @@ func NewBaseController(rsInformer appsinformers.ReplicaSetInformer, podInformer 
 	rsc.podLister = podInformer.Lister()
 	rsc.podListerSynced = podInformer.Informer().HasSynced
 
-	rsc.SyncHandler = rsc.syncReplicaSet
-	rsc.HandleErr = rsc.handleReplicaSetErr
+	rsc.syncHandler = rsc.syncReplicaSet
 
 	return rsc
 }
@@ -174,24 +180,25 @@ func (rsc *ReplicaSetController) SetEventRecorder(recorder record.EventRecorder)
 	rsc.podControl = controller.RealPodControl{KubeClient: rsc.GetClient(), Recorder: recorder}
 }
 
-func (rsc *ReplicaSetController) Run(stopCh <-chan struct{}) {
-	defer rsc.ControllerBase.GetQueue().ShutDown()
+func (rsc *ReplicaSetController) Run(workers int, stopCh <-chan struct{}) {
+	defer utilruntime.HandleCrash()
+	defer rsc.queue.ShutDown()
 
-	klog.Infof("Starting %s controller", rsc.ControllerBase.GetControllerType())
-	defer klog.Infof("Shutting down %s controller", rsc.ControllerBase.GetControllerType())
+	klog.Infof("Starting %s controller", rsc.GetControllerType())
+	defer klog.Infof("Shutting down %s controller", rsc.GetControllerType())
 
 	if !controller.WaitForCacheSync(rsc.ControllerBase.GetControllerType(), stopCh, rsc.rsListerSynced, rsc.podListerSynced) {
 		return
 	}
 
-	for i := 0; i < rsc.ControllerBase.Worker_number; i++ {
-		go wait.Until(rsc.ControllerBase.Worker, time.Second, stopCh)
+	for i := 0; i < workers; i++ {
+		go wait.Until(rsc.worker, time.Second, stopCh)
 	}
 
 	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
 	go wait.Until(rsc.ControllerBase.ReportHealth, time.Minute, stopCh)
 
-	klog.Infof("All work started for controller %s instance %s", rsc.ControllerBase.GetControllerType(), rsc.ControllerBase.GetControllerName())
+	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), rsc.GetControllerName())
 
 	<-stopCh
 }
@@ -417,8 +424,7 @@ func (rsc *ReplicaSetController) enqueueReplicaSet(obj interface{}) {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
 	}
-
-	rsc.GetQueue().Add(key)
+	rsc.queue.Add(key)
 }
 
 // obj could be an *apps.ReplicaSet, or a DeletionFinalStateUnknown marker item.
@@ -428,7 +434,41 @@ func (rsc *ReplicaSetController) enqueueReplicaSetAfter(obj interface{}, after t
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
 	}
-	rsc.GetQueue().AddAfter(key, after)
+	rsc.queue.AddAfter(key, after)
+}
+
+// worker runs a worker thread that just dequeues items, processes them, and marks them done.
+// It enforces that the syncHandler is never invoked concurrently with the same key.
+func (rsc *ReplicaSetController) worker() {
+	for rsc.processNextWorkItem() {
+	}
+}
+
+func (rsc *ReplicaSetController) processNextWorkItem() bool {
+	if !rsc.IsControllerActive() {
+		fmt.Println("Controller is not active, worker idle ....")
+		// TODO : compare key version and controller locked status version
+		time.Sleep(1 * time.Second)
+		return true
+	}
+
+	key, quit := rsc.queue.Get()
+	if quit {
+		return false
+	}
+	defer rsc.queue.Done(key)
+
+	workloadKey := key.(string)
+
+	err := rsc.syncHandler(workloadKey)
+	if err == nil {
+		rsc.queue.Forget(key)
+		return true
+	}
+	utilruntime.HandleError(fmt.Errorf("Sync %q failed with %v", key, err))
+	rsc.queue.AddRateLimited(key)
+
+	return true
 }
 
 // manageReplicas checks and updates replicas for the given ReplicaSet.
@@ -451,7 +491,7 @@ func (rsc *ReplicaSetController) manageReplicas(filteredPods []*v1.Pod, rs *apps
 		// UID, which would require locking *across* the create, which will turn
 		// into a performance bottleneck. We should generate a UID for the pod
 		// beforehand and store it via ExpectCreations.
-		rsc.expectations.ExpectCreations((rsKey), diff)
+		rsc.expectations.ExpectCreations(rsKey, diff)
 		klog.V(2).Infof("Too few replicas for %v %s/%s, need %d, creating %d", rsc.Kind, rs.Namespace, rs.Name, *(rs.Spec.Replicas), diff)
 		// Batch the pod creates. Batch sizes start at SlowStartInitialBatchSize
 		// and double with each successful iteration in a kind of "slow start".
@@ -534,15 +574,11 @@ func (rsc *ReplicaSetController) manageReplicas(filteredPods []*v1.Pod, rs *apps
 	return nil
 }
 
-// TODO
-func (rsc *ReplicaSetController) handleReplicaSetErr(err error, key string) {
-	return
-}
-
 // syncReplicaSet will sync the ReplicaSet with the given key if it has had its expectations fulfilled,
 // meaning it did not expect to see any more of its pods created or deleted. This function is not meant to be
 // invoked concurrently with the same key.
 func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
+
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing %v %q (%v)", rsc.Kind, key, time.Since(startTime))
