@@ -26,6 +26,7 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/labels:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//staging/src/k8s.io/client-go/informers/apps/v1:go_default_library",
         "//staging/src/k8s.io/client-go/informers/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
@@ -50,6 +51,7 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//pkg/cloudfabric-controller:go_default_library",
+        "//pkg/cloudfabric-controller/controllerinstancemanager:go_default_library",
         "//pkg/cloudfabric-controller/testutil:go_default_library",
         "//pkg/securitycontext:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",

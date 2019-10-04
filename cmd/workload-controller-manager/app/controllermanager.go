@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
 	"net/http"
 	"time"
 
@@ -68,6 +69,10 @@ type ControllerContext struct {
 	// InformersStarted is closed after all of the controllers have been initialized and are running.  After this point it is safe,
 	// for an individual controller to start the shared informers. Before it is closed, they should not.
 	InformersStarted chan struct{}
+
+	// ControllerInstanceUpdateByControllerType is the controller type that has controller instance updates. This is to notify controller instance
+	// that it has a peer update and trigger hash ring updates if necessary.
+	ControllerInstanceUpdateByControllerType chan string
 }
 
 var resyncPeriod = time.Duration(60 * time.Second)
@@ -111,6 +116,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 		klog.Fatalf("error building controller context: %v", err)
 	}
 
+	startControllerInstanceManager(controllerContext)
 	startReplicaSetController(controllerContext)
 
 	controllerContext.InformerFactory.Start(controllerContext.Stop)
@@ -156,13 +162,14 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 	*/
 
 	ctx := ControllerContext{
-		ClientBuilder:          clientBuilder,
-		InformerFactory:        sharedInformers,
-		GenericInformerFactory: controller.NewInformerFactory(sharedInformers, dynamicInformers),
-		RESTMapper:             restMapper,
-		AvailableResources:     availableResources,
-		Stop:                   stop,
-		InformersStarted:       make(chan struct{}),
+		ClientBuilder:                            clientBuilder,
+		InformerFactory:                          sharedInformers,
+		GenericInformerFactory:                   controller.NewInformerFactory(sharedInformers, dynamicInformers),
+		RESTMapper:                               restMapper,
+		AvailableResources:                       availableResources,
+		Stop:                                     stop,
+		InformersStarted:                         make(chan struct{}),
+		ControllerInstanceUpdateByControllerType: make(chan string),
 	}
 	return ctx, nil
 }
@@ -188,6 +195,7 @@ func GetAvailableResources(clientBuilder controller.ControllerClientBuilder) (ma
 		if err != nil {
 			return nil, err
 		}
+
 		for _, apiResource := range apiResourceList.APIResources {
 			allResources[version.WithResource(apiResource.Name)] = true
 		}
@@ -205,6 +213,20 @@ func startReplicaSetController(ctx ControllerContext) (http.Handler, bool, error
 		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
 		replicaset.BurstReplicas,
+		ctx.ControllerInstanceUpdateByControllerType,
 	).Run(ctx.Stop)
 	return nil, true, nil
+}
+
+func startControllerInstanceManager(ctx ControllerContext) (bool, error) {
+	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "controllerinstances"}] {
+		return false, nil
+	}
+
+	go controllerinstancemanager.NewControllerInstanceManager(
+		ctx.InformerFactory.Core().V1().ControllerInstances(),
+		ctx.ClientBuilder.ClientOrDie("controller-instance-manager"),
+		ctx.ControllerInstanceUpdateByControllerType).Run(ctx.Stop)
+
+	return true, nil
 }

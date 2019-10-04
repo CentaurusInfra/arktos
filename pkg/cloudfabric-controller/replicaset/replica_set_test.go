@@ -17,8 +17,10 @@ limitations under the License.
 package replicaset
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
 	"math/rand"
 	"net/http/httptest"
 	"net/url"
@@ -55,12 +57,21 @@ import (
 
 func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh chan struct{}, burstReplicas int) (*ReplicaSetController, informers.SharedInformerFactory) {
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
+	updateChan := make(chan string)
+	ctx := context.TODO()
+
+	cim := controllerinstancemanager.NewControllerInstanceManager(
+		informers.Core().V1().ControllerInstances(),
+		client,
+		updateChan)
+	go cim.Run(ctx.Done())
 
 	ret := NewReplicaSetController(
 		informers.Apps().V1().ReplicaSets(),
 		informers.Core().V1().Pods(),
 		client,
 		burstReplicas,
+		updateChan,
 	)
 
 	ret.podListerSynced = alwaysReady
@@ -415,6 +426,7 @@ func TestWatchControllers(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	client.PrependWatchReactor("replicasets", core.DefaultWatchReactor(fakeWatch, nil))
 	stopCh := make(chan struct{})
+	updatechan := make(chan string)
 	defer close(stopCh)
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	manager := NewReplicaSetController(
@@ -422,6 +434,7 @@ func TestWatchControllers(t *testing.T) {
 		informers.Core().V1().Pods(),
 		client,
 		BurstReplicas,
+		updatechan,
 	)
 	informers.Start(stopCh)
 

@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/clock"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -766,4 +767,19 @@ func isControllerInstanceExisted(controllerInstancesInStorage []v1.ControllerIns
 	}
 
 	return false
+}
+
+// WaitForCacheSync is a wrapper around cache.WaitForCacheSync that generates log messages
+// indicating that the controller identified by controllerType is waiting for syncs, followed by
+// either a successful or failed sync.
+func WaitForCacheSync(controllerType string, stopCh <-chan struct{}, cacheSyncs ...cache.InformerSynced) bool {
+	klog.Infof("Waiting for caches to sync for %s controller", controllerType)
+
+	if !cache.WaitForCacheSync(stopCh, cacheSyncs...) {
+		utilruntime.HandleError(fmt.Errorf("unable to sync caches for %s controller", controllerType))
+		return false
+	}
+
+	klog.Infof("Caches are synced for %s controller", controllerType)
+	return true
 }
