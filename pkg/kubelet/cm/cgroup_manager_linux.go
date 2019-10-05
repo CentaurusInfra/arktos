@@ -155,7 +155,7 @@ func (l *libcontainerAdapter) newManager(cgroups *libcontainerconfigs.Cgroup, pa
 		if !cgroupsystemd.UseSystemd() {
 			panic("systemd cgroup manager not available")
 		}
-		return &cgroupsystemd.Manager{
+		return &cgroupsystemd.LegacyManager{
 			Cgroups: cgroups,
 			Paths:   paths,
 		}, nil
