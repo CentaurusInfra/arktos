@@ -309,7 +309,6 @@ func SetObjectDefaults_Pod(in *v1.Pod) {
 		}
 	}
 	if in.Spec.VirtualMachine != nil {
-		SetDefaults_VirtualMachine(in.Spec.VirtualMachine)
 		SetDefaults_ResourceList(&in.Spec.VirtualMachine.Resources.Limits)
 		SetDefaults_ResourceList(&in.Spec.VirtualMachine.Resources.Requests)
 	}
@@ -465,7 +464,6 @@ func SetObjectDefaults_PodTemplate(in *v1.PodTemplate) {
 		}
 	}
 	if in.Template.Spec.VirtualMachine != nil {
-		SetDefaults_VirtualMachine(in.Template.Spec.VirtualMachine)
 		SetDefaults_ResourceList(&in.Template.Spec.VirtualMachine.Resources.Limits)
 		SetDefaults_ResourceList(&in.Template.Spec.VirtualMachine.Resources.Requests)
 	}
@@ -623,7 +621,6 @@ func SetObjectDefaults_ReplicationController(in *v1.ReplicationController) {
 			}
 		}
 		if in.Spec.Template.Spec.VirtualMachine != nil {
-			SetDefaults_VirtualMachine(in.Spec.Template.Spec.VirtualMachine)
 			SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 			SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 		}

@@ -2103,10 +2103,12 @@ type Nic struct {
 	// +optional
 	Name string
 	// The subnetName where the Nic belongs to
-	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
+	// the subnetName  of the nic. default to subnet where the VM is created from
+	// +optional
 	SubnetName string
 	// PortId from the IaaS layer for the Nic
-	// +optional, the portID with user precreated port ( ENI ).
+	// the portID with user precreated port ( ENI ).
+	// +optional
 	PortId string
 	// IpAddress is the user specified IP, instead of dynamically allocated one
 	// +optional
@@ -2114,7 +2116,8 @@ type Nic struct {
 	// any user specified data for the Nic
 	// +optional
 	Tag string
-	// +optional, default to false
+	// default to false
+	// +optional
 	Ipv6Enabled bool
 }
 
@@ -2147,16 +2150,21 @@ type VirtualMachine struct {
 	// Either keyPair or the publicKeystring must be provided, used to logon to the VM
 	KeyPairName string
 	PublicKey   string
-	// +optional, default to empty string. Configuration information or scripts to use upon launch.
+	// default to empty string. Configuration information or scripts to use upon launch.
+	// +optional
 	// Must be Base64 encoded. Restricted to 65535 bytes.
 	UserData []byte
-	// +optional, default none, array cert ID that used to verify the image
+	// default none, array cert ID that used to verify the image
+	// +optional
 	TrustedImageCertificate []string
-	// +optional, stop | terminate VM. default to stop
+	// stop | terminate VM. default to stop
+	// +optional
 	ShutdownBehavior string
-	// +optional, user specified bootable volume for the VM
+	// user specified bootable volume for the VM
+	// +optional
 	BootVolume string
-	// +optional, default running
+	// default running
+	// +optional
 	PowerSpec VmPowerSpec
 }
 

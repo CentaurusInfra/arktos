@@ -1400,3 +1400,31 @@ func TestSetDefaultEnableServiceLinks(t *testing.T) {
 		t.Errorf("Expected enableServiceLinks value: %+v\ngot: %+v\n", v1.DefaultEnableServiceLinks, *output.Spec.EnableServiceLinks)
 	}
 }
+
+func TestSetDefaultVirtualMachine(t *testing.T) {
+	s := v1.PodSpec{}
+	s.VirtualMachine = &v1.VirtualMachine{}
+	pod := &v1.Pod{
+		Spec: s,
+	}
+	output := roundTrip(t, runtime.Object(pod))
+	pod2 := output.(*v1.Pod)
+
+	defaultImagePullPolicy := pod2.Spec.VirtualMachine.ImagePullPolicy
+	expectedImagePullPolicy := v1.PullIfNotPresent
+	if defaultImagePullPolicy != expectedImagePullPolicy {
+		t.Errorf("Expected ImagePullPolicy value: %v, got %v", expectedImagePullPolicy, defaultImagePullPolicy)
+	}
+
+	defaultShutdownBehavior := pod2.Spec.VirtualMachine.ShutdownBehavior
+	expectedShutdownBehavior := "stop"
+	if defaultShutdownBehavior != expectedShutdownBehavior {
+		t.Errorf("Expected ShutdownBehavior value: %v, got %v", expectedShutdownBehavior, defaultShutdownBehavior)
+	}
+
+	defaultPowerSpec := pod2.Spec.VirtualMachine.PowerSpec
+	expectedPowerSpec := v1.VmPowerSpecRunning
+	if defaultPowerSpec != expectedPowerSpec {
+		t.Errorf("Expected PowerSpec value: %v, got %v", expectedPowerSpec, defaultPowerSpec)
+	}
+}

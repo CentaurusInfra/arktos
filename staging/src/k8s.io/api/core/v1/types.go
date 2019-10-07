@@ -2286,10 +2286,12 @@ type Nic struct {
 	// +optional
 	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 	// The subnetName where the Nic belongs to
-	// +optional, the subnetName  of the nic. default to subnet where the VM is created from
+	// the subnetName  of the nic. default to subnet where the VM is created from
+	// +optional
 	SubnetName string `json:"subnetName,omitempty" protobuf:"bytes,2,opt,name=subnetName"`
 	// PortId from the IaaS layer for the Nic
-	// +optional, the portID with user precreated port ( ENI ).
+	// the portID with user precreated port ( ENI ).
+	// +optional
 	PortId string `json:"portId,omitempty" protobuf:"bytes,3,opt,name=portId"`
 	// IpAddress is the user specified IP, instead of dynamically allocated one
 	// +optional
@@ -2297,7 +2299,8 @@ type Nic struct {
 	// any user specified data for the Nic
 	// +optional
 	Tag string `json:"tag,omitempty" protobuf:"bytes,5,opt,name=tag"`
-	// +optional, default to false
+	// default to false
+	// +optional
 	Ipv6Enabled bool `json:"ipv6Enabled,omitempty" protobuf:"varint,6,opt,name=ipv6Enabled"`
 }
 
@@ -2305,10 +2308,10 @@ type VmPowerSpec string
 
 // VM power spec represents the desired power state of the VM
 const (
-	VmPowerSpecRunning   VmPowerSpec = "running"
-	VmPowerSpecPaused    VmPowerSpec = "paused"
-	VmPowerSpecShutdown  VmPowerSpec = "shutdown"
-	VmPowerSpecSuspended VmPowerSpec = "suspended"
+	VmPowerSpecRunning   VmPowerSpec = "Running"
+	VmPowerSpecPaused    VmPowerSpec = "Paused"
+	VmPowerSpecShutdown  VmPowerSpec = "Shutdown"
+	VmPowerSpecSuspended VmPowerSpec = "Suspended"
 )
 
 // Virtual machine struct defines the information of a VM in the system
@@ -2349,14 +2352,18 @@ type VirtualMachine struct {
 	// Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.
 	// +optional
 	UserData []byte `json:"userData,omitempty" protobuf:"bytes,8,opt,name=userData"`
-	// +optional, default none, array cert ID that used to verify the image
+	// default none, array cert ID that used to verify the image
+	// +optional
 	TrustedImageCertificate []string `json:"trustedImageCertificate,omitempty" protobuf:"bytes,9,opt,name=trustedImageCertificate"`
-	// +optional, stop | terminate VM. default to stop
+	// stop | terminate VM. default to stop
+	// +optional
 	ShutdownBehavior string `json:"shutdownBehavior,omitempty" protobuf:"bytes,10,opt,name=shutdownBehavior"`
-	// +optional, if not specified, the first volume in the volume slice will be used
+	// if not specified, the first volume in the volume slice will be used
+	// +optional
 	BootVolume string `json:"bootVolume,omitempty" protobuf:"bytes,11,opt,name=bootVolume"`
-	// +optional, default running
-	PowerSpec VmPowerSpec `json:"powerSpec,omitempty" protobuf:"bytes,12,opt,name=powerSpec"`
+	// default running
+	// +optional
+	PowerSpec VmPowerSpec `json:"powerSpec,omitempty" protobuf:"bytes,12,opt,name=powerSpec,casttype=VmPowerSpec"`
 }
 
 // Handler defines a specific action that should be taken

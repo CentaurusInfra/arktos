@@ -1985,11 +1985,13 @@ message Nic {
   optional string name = 1;
 
   // The subnetName where the Nic belongs to
-  // +optional, the subnetName  of the nic. default to subnet where the VM is created from
+  // the subnetName  of the nic. default to subnet where the VM is created from
+  // +optional
   optional string subnetName = 2;
 
   // PortId from the IaaS layer for the Nic
-  // +optional, the portID with user precreated port ( ENI ).
+  // the portID with user precreated port ( ENI ).
+  // +optional
   optional string portId = 3;
 
   // IpAddress is the user specified IP, instead of dynamically allocated one
@@ -2000,7 +2002,8 @@ message Nic {
   // +optional
   optional string tag = 5;
 
-  // +optional, default to false
+  // default to false
+  // +optional
   optional bool ipv6Enabled = 6;
 }
 
@@ -4891,9 +4894,9 @@ message VirtualMachine {
 
   // Pod volumes to mount into the workload's filesystem.
   // Cannot be updated.
-  // +optional
   // +patchMergeKey=mountPath
   // +patchStrategy=merge
+  // +optional
   repeated VolumeMount volumeMounts = 4;
 
   // Image pull policy.
@@ -4915,16 +4918,20 @@ message VirtualMachine {
   // +optional
   optional bytes userData = 8;
 
-  // +optional, default none, array cert ID that used to verify the image
+  // default none, array cert ID that used to verify the image
+  // +optional
   repeated string trustedImageCertificate = 9;
 
-  // +optional, stop | terminate VM. default to stop
+  // stop | terminate VM. default to stop
+  // +optional
   optional string shutdownBehavior = 10;
 
-  // +optional, if not specified, the first volume in the volume slice will be used
+  // if not specified, the first volume in the volume slice will be used
+  // +optional
   optional string bootVolume = 11;
 
-  // +optional, default running
+  // default running
+  // +optional
   optional string powerSpec = 12;
 }
 

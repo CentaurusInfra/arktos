@@ -174,7 +174,6 @@ func SetObjectDefaults_Job(in *v1.Job) {
 		}
 	}
 	if in.Spec.Template.Spec.VirtualMachine != nil {
-		corev1.SetDefaults_VirtualMachine(in.Spec.Template.Spec.VirtualMachine)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 	}

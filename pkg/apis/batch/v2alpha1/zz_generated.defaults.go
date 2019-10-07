@@ -175,7 +175,6 @@ func SetObjectDefaults_CronJob(in *v2alpha1.CronJob) {
 		}
 	}
 	if in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine != nil {
-		v1.SetDefaults_VirtualMachine(in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine)
 		v1.SetDefaults_ResourceList(&in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		v1.SetDefaults_ResourceList(&in.Spec.JobTemplate.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 	}
@@ -331,7 +330,6 @@ func SetObjectDefaults_JobTemplate(in *v2alpha1.JobTemplate) {
 		}
 	}
 	if in.Template.Spec.Template.Spec.VirtualMachine != nil {
-		v1.SetDefaults_VirtualMachine(in.Template.Spec.Template.Spec.VirtualMachine)
 		v1.SetDefaults_ResourceList(&in.Template.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		v1.SetDefaults_ResourceList(&in.Template.Spec.Template.Spec.VirtualMachine.Resources.Requests)
 	}
