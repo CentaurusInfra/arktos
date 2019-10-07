@@ -31,7 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cadvisorapi "github.com/google/cadvisor/info/v1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -49,6 +49,8 @@ import (
 	core "k8s.io/client-go/testing"
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	critest "k8s.io/cri-api/pkg/apis/testing"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
@@ -716,6 +718,16 @@ func TestUpdateNodeStatusWithRuntimeStateError(t *testing.T) {
 		assert.True(t, apiequality.Semantic.DeepEqual(expectedNode, updatedNode), "%s", diff.ObjectDiff(expectedNode, updatedNode))
 	}
 
+	// overwrite the fakeRuntimeService so the status can be manipulated in the test below
+	f := critest.NewFakeRuntimeService()
+	f.FakeStatus = &runtimeapi.RuntimeStatus{
+		Conditions: []*runtimeapi.RuntimeCondition{
+			{Type: "RuntimeReady", Status: true},
+			{Type: "NetworkReady", Status: true},
+		},
+	}
+	kubelet.runtimeManager = kubecontainer.NewFakeRuntimeManager(f, nil)
+
 	// TODO(random-liu): Refactor the unit test to be table driven test.
 	// Should report kubelet not ready if the runtime check is out of date
 	clock.SetTime(time.Now().Add(-maxWaitForContainerRuntime))
@@ -732,53 +744,51 @@ func TestUpdateNodeStatusWithRuntimeStateError(t *testing.T) {
 	kubelet.updateRuntimeUp()
 	checkNodeStatus(v1.ConditionFalse, "KubeletNotReady")
 
+	// Error cases for runtime readiness
 	// Should report kubelet not ready if the runtime check failed
-	fakeRuntime := testKubelet.fakeRuntime
-	// Inject error into fake runtime status check, node should be NotReady
-	fakeRuntime.StatusErr = fmt.Errorf("injected runtime status error")
+	//
+	// Should report node not ready if runtime status is empty.
+	f.FakeStatus = &runtimeapi.RuntimeStatus{}
 	clock.SetTime(time.Now())
 	kubelet.updateRuntimeUp()
 	checkNodeStatus(v1.ConditionFalse, "KubeletNotReady")
 
-	fakeRuntime.StatusErr = nil
-
-	// Should report node not ready if runtime status is nil.
-	fakeRuntime.RuntimeStatus = nil
-	kubelet.updateRuntimeUp()
-	checkNodeStatus(v1.ConditionFalse, "KubeletNotReady")
-
-	// Should report node not ready if runtime status is empty.
-	fakeRuntime.RuntimeStatus = &kubecontainer.RuntimeStatus{}
+	//Should report node not ready if runtime status is nil.
+	f.FakeStatus = nil
+	clock.SetTime(time.Now())
 	kubelet.updateRuntimeUp()
 	checkNodeStatus(v1.ConditionFalse, "KubeletNotReady")
 
 	// Should report node not ready if RuntimeReady is false.
-	fakeRuntime.RuntimeStatus = &kubecontainer.RuntimeStatus{
-		Conditions: []kubecontainer.RuntimeCondition{
-			{Type: kubecontainer.RuntimeReady, Status: false},
-			{Type: kubecontainer.NetworkReady, Status: true},
+	f.FakeStatus = &runtimeapi.RuntimeStatus{
+		Conditions: []*runtimeapi.RuntimeCondition{
+			{Type: "RuntimeReady", Status: false},
+			{Type: "NetworkReady", Status: true},
 		},
 	}
+	clock.SetTime(time.Now())
 	kubelet.updateRuntimeUp()
 	checkNodeStatus(v1.ConditionFalse, "KubeletNotReady")
 
 	// Should report node ready if RuntimeReady is true.
-	fakeRuntime.RuntimeStatus = &kubecontainer.RuntimeStatus{
-		Conditions: []kubecontainer.RuntimeCondition{
-			{Type: kubecontainer.RuntimeReady, Status: true},
-			{Type: kubecontainer.NetworkReady, Status: true},
+	f.FakeStatus = &runtimeapi.RuntimeStatus{
+		Conditions: []*runtimeapi.RuntimeCondition{
+			{Type: "RuntimeReady", Status: true},
+			{Type: "NetworkReady", Status: true},
 		},
 	}
+	clock.SetTime(time.Now())
 	kubelet.updateRuntimeUp()
 	checkNodeStatus(v1.ConditionTrue, "KubeletReady")
 
 	// Should report node not ready if NetworkReady is false.
-	fakeRuntime.RuntimeStatus = &kubecontainer.RuntimeStatus{
-		Conditions: []kubecontainer.RuntimeCondition{
-			{Type: kubecontainer.RuntimeReady, Status: true},
-			{Type: kubecontainer.NetworkReady, Status: false},
+	f.FakeStatus = &runtimeapi.RuntimeStatus{
+		Conditions: []*runtimeapi.RuntimeCondition{
+			{Type: "RuntimeReady", Status: true},
+			{Type: "NetworkReady", Status: false},
 		},
 	}
+	clock.SetTime(time.Now())
 	kubelet.updateRuntimeUp()
 	checkNodeStatus(v1.ConditionFalse, "KubeletNotReady")
 }

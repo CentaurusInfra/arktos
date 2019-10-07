@@ -76,7 +76,6 @@ go_library(
         "//pkg/kubelet/preemption:go_default_library",
         "//pkg/kubelet/prober:go_default_library",
         "//pkg/kubelet/prober/results:go_default_library",
-        "//pkg/kubelet/remote:go_default_library",
         "//pkg/kubelet/runtimeclass:go_default_library",
         "//pkg/kubelet/secret:go_default_library",
         "//pkg/kubelet/server:go_default_library",
@@ -246,16 +245,13 @@ go_test(
         "//staging/src/k8s.io/client-go/util/testing:go_default_library",
         "//staging/src/k8s.io/component-base/featuregate:go_default_library",
         "//staging/src/k8s.io/component-base/featuregate/testing:go_default_library",
+        "//staging/src/k8s.io/cri-api/pkg/apis/runtime/v1alpha2:go_default_library",
+        "//staging/src/k8s.io/cri-api/pkg/apis/testing:go_default_library",
         "//vendor/github.com/google/cadvisor/info/v1:go_default_library",
         "//vendor/github.com/google/cadvisor/info/v2:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
         "//vendor/github.com/stretchr/testify/require:go_default_library",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:linux": [
-            "//staging/src/k8s.io/cri-api/pkg/apis/runtime/v1alpha2:go_default_library",
-        ],
-        "//conditions:default": [],
-    }),
+    ],
 )
 
 filegroup(

@@ -23,12 +23,15 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	internalapi "k8s.io/cri-api/pkg/apis"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/features"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/remote"
 )
 
 type podsByID []*kubecontainer.Pod
@@ -121,8 +124,13 @@ func (m *kubeGenericRuntimeManager) sandboxToKubeContainer(s *runtimeapi.PodSand
 
 // getImageUser gets uid or user name that will run the command(s) from image. The function
 // guarantees that only one of them is set.
-func (m *kubeGenericRuntimeManager) getImageUser(image string) (*int64, string, error) {
-	imageStatus, err := m.imageService.ImageStatus(&runtimeapi.ImageSpec{Image: image})
+func (m *kubeGenericRuntimeManager) getImageUser(pod *v1.Pod, image string) (*int64, string, error) {
+	imageService, err := m.GetImageServiceByPod(pod)
+	if err != nil {
+		return nil, "", err
+	}
+
+	imageStatus, err := imageService.ImageStatus(&runtimeapi.ImageSpec{Image: image})
 	if err != nil {
 		return nil, "", err
 	}
@@ -266,4 +274,145 @@ func namespacesForPod(pod *v1.Pod) *runtimeapi.NamespaceOption {
 		Network: networkNamespaceForPod(pod),
 		Pid:     pidNamespaceForPod(pod),
 	}
+}
+
+func getRuntimeAndImageServices(remoteRuntimeEndpoint string, remoteImageEndpoint string, runtimeRequestTimeout metav1.Duration) (internalapi.RuntimeService, internalapi.ImageManagerService, error) {
+	rs, err := remote.NewRemoteRuntimeService(remoteRuntimeEndpoint, runtimeRequestTimeout.Duration)
+	if err != nil {
+		return nil, nil, err
+	}
+	is, err := remote.NewRemoteImageService(remoteImageEndpoint, runtimeRequestTimeout.Duration)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rs, is, err
+}
+
+// assumed the runtime and image service are configured with the same name at the spec
+func getImageServiceNameFromPodSpec(pod *v1.Pod) *string {
+	return getRuntimeServiceNameFromPodSpec(pod)
+}
+
+// TODO: for now, just return nil for now to simulate the legacy app without the runtimeServiceName specified
+//       where default runtime will be used
+//      replace with the runtimeServiceName after the POD spec type is updated
+func getRuntimeServiceNameFromPodSpec(pod *v1.Pod) *string {
+	return nil
+}
+
+// remoteRuntimeEndpoint format:  runtimeName:workloadType:endpoint;runtimeName:workloadType:endpoint;
+// first one is assumed as the default runtime service
+// for legacy cluster agent without meeting the current format requirement,
+// "default" will be the runtimeName and "container" will be the workloadType
+// returns error if any of the runtime endpoint is malformatted or cannot be retrieved from remote service endpoint
+// TODO: 1. runtime services set from configmap
+//       2. support image_service_endpoint if needed
+//
+func buildRuntimeServicesMapFromAgentCommandArgs(remoteRuntimeEndpoints string) (map[string]*runtimeService, map[string]*imageService, error) {
+	if remoteRuntimeEndpoints == "" {
+		return nil, nil, fmt.Errorf("runtimeEndpoints is empty")
+	}
+
+	runtimeServices := make(map[string]*runtimeService)
+	imageServices := make(map[string]*imageService)
+
+	defer func() {
+		klog.V(4).Infof("runtime services: %v\n", runtimeServices)
+		for _, service := range runtimeServices {
+			klog.V(4).Infof("runtime service name:%s, workloadType:%s, endPointUrl:%s, isDefault:%v, serviceApi:%v",
+				service.name, service.workloadType, service.endpointUrl, service.isDefault, service.serviceApi)
+		}
+		klog.V(4).Infof("image services: %v\n", imageServices)
+		for _, service := range imageServices {
+			klog.V(4).Infof("image service name:%s, workloadType:%s, endPointUrl:%s, isDefault:%v, serviceApi:%v",
+				service.name, service.workloadType, service.endpointUrl, service.isDefault, service.serviceApi)
+		}
+	}()
+
+	endpoints := strings.Split(remoteRuntimeEndpoints, ";")
+
+	// Mostly legacy cluster agent
+	if len(endpoints) == 1 {
+		name, workloadType, endpointUrl, err := parseEndpoint(endpoints[0])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rs, is, err := getRuntimeAndImageServices(endpointUrl, endpointUrl, metav1.Duration{runtimeRequestTimeout})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		runtimeServices[name] = &runtimeService{name,
+			workloadType, endpointUrl, rs, true}
+		imageServices[name] = &imageService{name,
+			workloadType, endpointUrl, is, true}
+
+		defaultRuntimeServiceName = name
+
+		return runtimeServices, imageServices, nil
+	}
+
+	firstContainerType := true
+	firstVmType := true
+
+	// Alkaid node agent format. multiple runtime services.
+	for _, endpoint := range endpoints {
+		name, workloadType, endpointUrl, err := parseEndpoint(endpoint)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rs, is, err := getRuntimeAndImageServices(endpointUrl, endpointUrl, metav1.Duration{runtimeRequestTimeout})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		setDefault := false
+		if workloadType == containerWorkloadType && firstContainerType == true ||
+			workloadType == vmworkloadType && firstVmType == true {
+			setDefault = true
+		}
+
+		runtimeServices[name] = &runtimeService{name,
+			workloadType, endpointUrl, rs, setDefault}
+		imageServices[name] = &imageService{name,
+			workloadType, endpointUrl, is, setDefault}
+
+		if workloadType == containerWorkloadType {
+			firstContainerType = false
+			defaultRuntimeServiceName = name
+		}
+		if workloadType == vmworkloadType {
+			firstVmType = false
+		}
+	}
+
+	return runtimeServices, imageServices, nil
+}
+
+func parseEndpoint(endpoint string) (string, string, string, error) {
+	if endpoint == "" {
+		return "", "", "", fmt.Errorf("endpoint is empty")
+	}
+
+	endpointEle := strings.Split(endpoint, ",")
+	var name, workloadType, endpointUrl string
+
+	switch len(endpointEle) {
+	case 1:
+		// case 1: old format from kubelet commandline, The commandline itself is the endpointUrl
+		name = reservedDefaultRuntimeServiceName
+		workloadType = containerWorkloadType // this should be for all workload types if there is only one endpoint
+		endpointUrl = endpointEle[0]
+	case 3:
+		// case 2: only one runtime service endpoint is specified and is formatted as name,worklaodtype,endpointUrl
+		name = endpointEle[0]
+		workloadType = endpointEle[1]
+		endpointUrl = endpointEle[2]
+	default:
+		return "", "", "", fmt.Errorf("runtimeEndpoint element [%s] with format error", endpointEle)
+	}
+
+	return name, workloadType, endpointUrl, nil
 }

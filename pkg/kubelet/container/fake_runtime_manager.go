@@ -18,33 +18,55 @@ package container
 
 import (
 	"k8s.io/api/core/v1"
+	kubetypes "k8s.io/apimachinery/pkg/types"
 	internalapi "k8s.io/cri-api/pkg/apis"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 // fakeRuntimeManager is a fake runtime manager for testing.
-type fakeRuntimeManager struct {
-	runtimeService internalapi.RuntimeService
-	imageService   internalapi.ImageManagerService
+type FakeRuntimeManager struct {
+	RuntimeService internalapi.RuntimeService
+	ImageService   internalapi.ImageManagerService
 }
 
 func NewFakeRuntimeManager(runtimeService internalapi.RuntimeService, imageService internalapi.ImageManagerService) RuntimeManager {
-	return &fakeRuntimeManager{
-		runtimeService: runtimeService,
-		imageService:   imageService,
+	return &FakeRuntimeManager{
+		RuntimeService: runtimeService,
+		ImageService:   imageService,
 	}
 }
 
 // GetRuntimeServiceByPod returns the runtime service for a given pod.
-func (m *fakeRuntimeManager) GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error) {
-	return m.runtimeService, nil
+func (m *FakeRuntimeManager) GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error) {
+	return m.RuntimeService, nil
 }
 
 // GetAllRuntimeServices returns all the runtime services.
-func (m *fakeRuntimeManager) GetAllRuntimeServices() ([]internalapi.RuntimeService, error) {
-	return []internalapi.RuntimeService{m.runtimeService}, nil
+func (m *FakeRuntimeManager) GetAllRuntimeServices() ([]internalapi.RuntimeService, error) {
+	return []internalapi.RuntimeService{m.RuntimeService}, nil
 }
 
 // GetAllImageServices returns all the image services.
-func (m *fakeRuntimeManager) GetAllImageServices() ([]internalapi.ImageManagerService, error) {
-	return []internalapi.ImageManagerService{m.imageService}, nil
+func (m *FakeRuntimeManager) GetAllImageServices() ([]internalapi.ImageManagerService, error) {
+	return []internalapi.ImageManagerService{m.ImageService}, nil
+}
+
+func (m *FakeRuntimeManager) GetImageServiceByPod(pod *v1.Pod) (internalapi.ImageManagerService, error) {
+	return m.ImageService, nil
+}
+
+func (m *FakeRuntimeManager) RuntimeVersion(service internalapi.RuntimeService) (Version, error) {
+	return nil, nil
+}
+
+func (m *FakeRuntimeManager) GetTypedVersion(service internalapi.RuntimeService) (*runtimeapi.VersionResponse, error) {
+	return nil, nil
+}
+
+func (m *FakeRuntimeManager) GetRuntimeServiceByPodID(podId kubetypes.UID) (internalapi.RuntimeService, error) {
+	return m.RuntimeService, nil
+}
+
+func (m *FakeRuntimeManager) RuntimeStatus(runtimeService internalapi.RuntimeService) (*RuntimeStatus, error) {
+	return nil, nil
 }

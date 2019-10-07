@@ -150,27 +150,33 @@ func (cgc *containerGC) removeOldestN(containers []containerGCInfo, toRemove int
 
 // removeOldestNSandboxes removes the oldest inactive toRemove sandboxes and
 // returns the resulting slice.
-func (cgc *containerGC) removeOldestNSandboxes(sandboxes []sandboxGCInfo, toRemove int) {
+func (cgc *containerGC) removeOldestNSandboxes(sandboxes []sandboxGCInfo, toRemove int, podUID types.UID) {
 	// Remove from oldest to newest (last to first).
 	numToKeep := len(sandboxes) - toRemove
 	for i := len(sandboxes) - 1; i >= numToKeep; i-- {
 		if !sandboxes[i].active {
-			cgc.removeSandbox(sandboxes[i].id)
+			cgc.removeSandbox(sandboxes[i].id, podUID)
 		}
 	}
 }
 
 // removeSandbox removes the sandbox by sandboxID.
-func (cgc *containerGC) removeSandbox(sandboxID string) {
+func (cgc *containerGC) removeSandbox(sandboxID string, podUID types.UID) {
 	klog.V(4).Infof("Removing sandbox %q", sandboxID)
+
+	runtime, err := cgc.manager.GetRuntimeServiceByPodID(podUID)
+	if err != nil {
+		klog.Errorf("Failed to get runtime service for PODID %v, Error: %v", podUID, err)
+		return
+	}
 	// In normal cases, kubelet should've already called StopPodSandbox before
 	// GC kicks in. To guard against the rare cases where this is not true, try
 	// stopping the sandbox before removing it.
-	if err := cgc.client.StopPodSandbox(sandboxID); err != nil {
+	if err := runtime.StopPodSandbox(sandboxID); err != nil {
 		klog.Errorf("Failed to stop sandbox %q before removing: %v", sandboxID, err)
 		return
 	}
-	if err := cgc.client.RemovePodSandbox(sandboxID); err != nil {
+	if err := runtime.RemovePodSandbox(sandboxID); err != nil {
 		klog.Errorf("Failed to remove sandbox %q: %v", sandboxID, err)
 	}
 }
@@ -319,10 +325,10 @@ func (cgc *containerGC) evictSandboxes(evictTerminatedPods bool) error {
 			// Remove all evictable sandboxes if the pod has been removed.
 			// Note that the latest dead sandbox is also removed if there is
 			// already an active one.
-			cgc.removeOldestNSandboxes(sandboxes, len(sandboxes))
+			cgc.removeOldestNSandboxes(sandboxes, len(sandboxes), podUID)
 		} else {
 			// Keep latest one if the pod still exists.
-			cgc.removeOldestNSandboxes(sandboxes, len(sandboxes)-1)
+			cgc.removeOldestNSandboxes(sandboxes, len(sandboxes)-1, podUID)
 		}
 	}
 	return nil

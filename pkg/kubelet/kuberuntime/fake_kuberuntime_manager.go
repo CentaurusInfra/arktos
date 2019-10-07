@@ -24,12 +24,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/flowcontrol"
 	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/kubernetes/pkg/credentialprovider"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	"k8s.io/kubernetes/pkg/kubelet/images"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	"k8s.io/kubernetes/pkg/kubelet/util/logreduction"
@@ -71,8 +69,9 @@ func (f *fakePodStateProvider) IsPodTerminated(uid types.UID) bool {
 	return !found
 }
 
-func newFakeKubeRuntimeManager(runtimeService internalapi.RuntimeService, imageService internalapi.ImageManagerService, machineInfo *cadvisorapi.MachineInfo, osInterface kubecontainer.OSInterface, runtimeHelper kubecontainer.RuntimeHelper, keyring credentialprovider.DockerKeyring) (*kubeGenericRuntimeManager, error) {
+func newFakeKubeRuntimeManager(rs internalapi.RuntimeService, is internalapi.ImageManagerService, machineInfo *cadvisorapi.MachineInfo, osInterface kubecontainer.OSInterface, runtimeHelper kubecontainer.RuntimeHelper, keyring credentialprovider.DockerKeyring) (*kubeGenericRuntimeManager, error) {
 	recorder := &record.FakeRecorder{}
+
 	kubeRuntimeManager := &kubeGenericRuntimeManager{
 		recorder:            recorder,
 		cpuCFSQuota:         false,
@@ -82,29 +81,41 @@ func newFakeKubeRuntimeManager(runtimeService internalapi.RuntimeService, imageS
 		machineInfo:         machineInfo,
 		osInterface:         osInterface,
 		runtimeHelper:       runtimeHelper,
-		runtimeService:      runtimeService,
-		imageService:        imageService,
 		keyring:             keyring,
 		seccompProfileRoot:  fakeSeccompProfileRoot,
 		internalLifecycle:   cm.NewFakeInternalContainerLifecycle(),
 		logReduction:        logreduction.NewLogReduction(identicalErrorDelay),
 	}
 
-	typedVersion, err := runtimeService.Version(kubeRuntimeAPIVersion)
+	// TODO: Add new UTs and dynamic set the filed for the runtimeService type
+	//
+	defaultRuntimeServiceName = reservedDefaultRuntimeServiceName
+	imageServices := make(map[string]*imageService)
+	imageServices[defaultRuntimeServiceName] = &imageService{}
+	imageServices[defaultRuntimeServiceName].serviceApi = is
+	imageServices[defaultRuntimeServiceName].name = reservedDefaultRuntimeServiceName
+	imageServices[defaultRuntimeServiceName].workloadType = containerWorkloadType
+	imageServices[defaultRuntimeServiceName].isDefault = true
+
+	runtimeServices := make(map[string]*runtimeService)
+	runtimeServices[defaultRuntimeServiceName] = &runtimeService{}
+	runtimeServices[defaultRuntimeServiceName].serviceApi = rs
+	runtimeServices[defaultRuntimeServiceName].name = reservedDefaultRuntimeServiceName
+	runtimeServices[defaultRuntimeServiceName].workloadType = containerWorkloadType
+	runtimeServices[defaultRuntimeServiceName].isDefault = true
+
+	kubeRuntimeManager.podRuntimeServiceMap = make(map[string]internalapi.RuntimeService)
+	kubeRuntimeManager.podImageServiceMap = make(map[string]internalapi.ImageManagerService)
+
+	kubeRuntimeManager.imageServices = imageServices
+	kubeRuntimeManager.runtimeServices = runtimeServices
+	typedVersion, err := rs.Version(kubeRuntimeAPIVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	kubeRuntimeManager.containerGC = newContainerGC(runtimeService, newFakePodStateProvider(), kubeRuntimeManager)
+	kubeRuntimeManager.containerGC = newContainerGC(rs, newFakePodStateProvider(), kubeRuntimeManager)
 	kubeRuntimeManager.runtimeName = typedVersion.RuntimeName
-	kubeRuntimeManager.imagePuller = images.NewImageManager(
-		kubecontainer.FilterEventRecorder(recorder),
-		kubeRuntimeManager,
-		flowcontrol.NewBackOff(time.Second, 300*time.Second),
-		false,
-		0, // Disable image pull throttling by setting QPS to 0,
-		0,
-	)
 	kubeRuntimeManager.runner = lifecycle.NewHandlerRunner(
 		&fakeHTTP{},
 		kubeRuntimeManager,

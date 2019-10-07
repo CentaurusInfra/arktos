@@ -59,7 +59,9 @@ const (
 	NICsKeyName = "NICs"
 )
 
-const stringEmpty = ""
+const (
+	stringEmpty = ""
+)
 
 // Convert a CloudFabric VM pod to virtlet recognizable container based pod with annotations of VM info
 // This is an approach for Cloud Fabric 830 release to support VM workload types and integration with
@@ -76,6 +78,7 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 	if cpod.Annotations == nil {
 		cpod.Annotations = make(map[string]string)
 	}
+
 	cpod.Annotations[rootVolumeSizeKeyName] = defaultVirtletRootVolumeSize
 	cpod.Annotations[VirtletRuntimeKeyName] = defaultVirtletRuntimeValue
 
@@ -117,8 +120,7 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 		},
 	}
 
-	// set the vm to nil in the new pod
-	cpod.Spec.VirtualMachine = nil
+	// to have consistent way for the workload type check among the kubelet code, keep the spec.VirtualMachine object
 	// the original pod and the pod used in runtime must keep the same status object
 	pod.Status = cpod.Status
 

@@ -28,6 +28,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	"k8s.io/apimachinery/pkg/types"
+	kubetypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/flowcontrol"
 	internalapi "k8s.io/cri-api/pkg/apis"
@@ -116,6 +117,36 @@ type Runtime interface {
 	UpdatePodCIDR(podCIDR string) error
 }
 
+// TODO: this interface will be needed for VM workload type as well with the return value to be generic
+//       which will be phase2 effort in Alkaid runtime
+// TODO: move this interface to a separated packet for general purpose for VM and container workload types
+// Interfaces for kubeGenericRuntimeManager
+type RuntimeManager interface {
+	// Ge all runtime services supported on the node
+	GetAllRuntimeServices() ([]internalapi.RuntimeService, error)
+
+	// Get all image services supported on the node
+	GetAllImageServices() ([]internalapi.ImageManagerService, error)
+
+	// Get the desired runtime service as needed. late binding the runtimeService to the pod
+	GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error)
+
+	// Get the desired runtimeServie with the POD ID
+	GetRuntimeServiceByPodID(podId kubetypes.UID) (internalapi.RuntimeService, error)
+
+	// Get the desired image manager servcie as needed. late binding with the pod
+	GetImageServiceByPod(pod *v1.Pod) (internalapi.ImageManagerService, error)
+
+	//Get the status of the given runtime
+	RuntimeStatus(runtimeService internalapi.RuntimeService) (*RuntimeStatus, error)
+
+	// Get the version of the given runtime
+	RuntimeVersion(service internalapi.RuntimeService) (Version, error)
+
+	// Get the typed version from the runtime service
+	GetTypedVersion(service internalapi.RuntimeService) (*runtimeapi.VersionResponse, error)
+}
+
 // StreamingRuntime is the interface implemented by runtimes that handle the serving of the
 // streaming calls (exec/attach/port-forward) themselves. In this case, Kubelet should redirect to
 // the runtime server.
@@ -138,19 +169,6 @@ type ImageService interface {
 	RemoveImage(image ImageSpec) error
 	// Returns Image statistics.
 	ImageStats() (*ImageStats, error)
-}
-
-// RuntimeManager interface manages the multiple CRI runtimes.
-type RuntimeManager interface {
-	// GetRuntimeServiceByPod returns the specific runtime service for
-	// a given pod.
-	GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error)
-
-	// GetAllRuntimeServices returns all runtime services.
-	GetAllRuntimeServices() ([]internalapi.RuntimeService, error)
-
-	// GetAllImageServices returns all image services.
-	GetAllImageServices() ([]internalapi.ImageManagerService, error)
 }
 
 type ContainerAttacher interface {

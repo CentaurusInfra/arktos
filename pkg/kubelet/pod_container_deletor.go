@@ -19,7 +19,7 @@ package kubelet
 import (
 	"sort"
 
-	"k8s.io/apimachinery/pkg/util/wait"
+	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/klog"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
@@ -33,8 +33,8 @@ const (
 type containerStatusbyCreatedList []*kubecontainer.ContainerStatus
 
 type podContainerDeletor struct {
-	worker           chan<- kubecontainer.ContainerID
 	containersToKeep int
+	runtime          internalapi.RuntimeService
 }
 
 func (a containerStatusbyCreatedList) Len() int           { return len(a) }
@@ -42,17 +42,9 @@ func (a containerStatusbyCreatedList) Swap(i, j int)      { a[i], a[j] = a[j], a
 func (a containerStatusbyCreatedList) Less(i, j int) bool { return a[i].CreatedAt.After(a[j].CreatedAt) }
 
 func newPodContainerDeletor(runtime kubecontainer.Runtime, containersToKeep int) *podContainerDeletor {
-	buffer := make(chan kubecontainer.ContainerID, containerDeletorBufferLimit)
-	go wait.Until(func() {
-		for {
-			id := <-buffer
-			runtime.DeleteContainer(id)
-		}
-	}, 0, wait.NeverStop)
-
 	return &podContainerDeletor{
-		worker:           buffer,
 		containersToKeep: containersToKeep,
+		runtime:          nil,
 	}
 }
 
@@ -103,10 +95,10 @@ func (p *podContainerDeletor) deleteContainersInPod(filterContainerID string, po
 	}
 
 	for _, candidate := range getContainersToDeleteInPod(filterContainerID, podStatus, containersToKeep) {
-		select {
-		case p.worker <- candidate.ID:
-		default:
-			klog.Warningf("Failed to issue the request to remove container %v", candidate.ID)
-		}
+		p.runtime.RemoveContainer(candidate.ID.String())
 	}
+}
+
+func (p *podContainerDeletor) setRuntime(runtimeService internalapi.RuntimeService) {
+	p.runtime = runtimeService
 }

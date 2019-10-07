@@ -17,6 +17,8 @@ limitations under the License.
 package kuberuntime
 
 import (
+	"errors"
+	"k8s.io/kubernetes/pkg/kubelet/remote"
 	"path/filepath"
 	"testing"
 
@@ -31,6 +33,7 @@ import (
 	runtimetesting "k8s.io/cri-api/pkg/apis/testing"
 	"k8s.io/kubernetes/pkg/features"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	fakeruntime "k8s.io/kubernetes/pkg/kubelet/remote/fake"
 )
 
 func TestStableKey(t *testing.T) {
@@ -92,6 +95,23 @@ func TestToKubeContainer(t *testing.T) {
 func TestGetImageUser(t *testing.T) {
 	_, i, m, err := createTestRuntimeManager()
 	assert.NoError(t, err)
+
+	// fake container and pod for the change of getImageUser() private method
+	container := &v1.Container{
+		Name:  "test_container",
+		Image: "foo/image:v1",
+	}
+
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test_pod",
+			Namespace: "test_pod_namespace",
+			UID:       "test_pod_uid",
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{*container},
+		},
+	}
 
 	type image struct {
 		name     string
@@ -160,7 +180,7 @@ func TestGetImageUser(t *testing.T) {
 		i.Images[test.originalImage.name].Username = test.originalImage.username
 		i.Images[test.originalImage.name].Uid = test.originalImage.uid
 
-		uid, username, err := m.getImageUser(test.originalImage.name)
+		uid, username, err := m.getImageUser(pod, test.originalImage.name)
 		assert.NoError(t, err, "TestCase[%d]", j)
 
 		if test.expectedImageUserValues.uid == (*int64)(nil) {
@@ -394,4 +414,126 @@ func TestNamespacesForPod(t *testing.T) {
 		actual := namespacesForPod(test.input)
 		assert.Equal(t, test.expected, actual)
 	}
+}
+
+func TestBuildRuntimeServiceMap(t *testing.T) {
+	fakeRuntimeEndpoint := "unix:///tmp/kubelet_remote.sock"
+	fakeRuntimeEndpoint2 := "unix:///tmp/kubelet_remote.sock"
+
+	fakeRuntime := fakeruntime.NewFakeRemoteRuntime()
+	fakeRuntime.Start(fakeRuntimeEndpoint)
+	defer fakeRuntime.Stop()
+
+	fakeRuntime2 := fakeruntime.NewFakeRemoteRuntime()
+	fakeRuntime2.Start(fakeRuntimeEndpoint2)
+	defer fakeRuntime2.Stop()
+
+	testCases := []struct {
+		description             string
+		remoteRuntimeEndpoints  string
+		expectedRuntimeServices map[string]*runtimeService
+		expectedImageServices   map[string]*imageService
+		expectedError           error
+	}{
+		{
+			"legacy cluster endpoint",
+			fakeRuntimeEndpoint,
+			makeExpectedRuntimeServiceForLegacyEndpoint(fakeRuntimeEndpoint),
+			makeExpectedImageServiceForLegacyEndpoint(fakeRuntimeEndpoint),
+			nil,
+		},
+		{
+			"alkaid formatted endpoints, vm and container with same endpoint",
+			"containerRuntime,container," + fakeRuntimeEndpoint + ";" + "vmRuntime,vm," + fakeRuntimeEndpoint,
+			map[string]*runtimeService{
+				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
+				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint, nil, true},
+			},
+			map[string]*imageService{
+				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
+				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint, nil, true},
+			},
+			nil,
+		},
+		{
+			"alkaid formatted endpoints, vm and container with different endpoints",
+			"containerRuntime,container," + fakeRuntimeEndpoint + ";" + "vmRuntime,vm," + fakeRuntimeEndpoint2,
+			map[string]*runtimeService{
+				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
+				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint2, nil, true},
+			},
+			map[string]*imageService{
+				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
+				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint2, nil, true},
+			},
+			nil,
+		},
+		{
+			"Invalid case: empty input",
+			"",
+			nil,
+			nil,
+			errors.New("runtimeEndpoints is empty"),
+		},
+	}
+	for _, tc := range testCases {
+		t.Logf("TestCase: %s", tc.description)
+		actualRuntimeServices, actualImageServices, err := buildRuntimeServicesMapFromAgentCommandArgs(tc.remoteRuntimeEndpoints)
+
+		if err != nil && tc.expectedError.Error() != err.Error() {
+			t.Errorf("Expected Error %v; actual error: %v", tc.expectedError, err)
+		}
+		if !compareRuntimeService(tc.expectedRuntimeServices, actualRuntimeServices) {
+			assert.Equal(t, tc.expectedRuntimeServices, actualRuntimeServices)
+		}
+		if !compareImageService(tc.expectedImageServices, actualImageServices) {
+			assert.Equal(t, tc.expectedImageServices, actualImageServices)
+		}
+	}
+}
+
+func makeExpectedRuntimeServiceForLegacyEndpoint(endpoint string) map[string]*runtimeService {
+	runtime, _ := remote.NewRemoteRuntimeService(endpoint, runtimeRequestTimeout)
+	return map[string]*runtimeService{
+		"default": {"default", "container", endpoint, runtime, true},
+	}
+}
+func makeExpectedImageServiceForLegacyEndpoint(endpoint string) map[string]*imageService {
+	runtime, _ := remote.NewRemoteImageService(endpoint, runtimeRequestTimeout)
+	return map[string]*imageService{
+		"default": {"default", "container", endpoint, runtime, true},
+	}
+}
+
+func compareRuntimeService(expected map[string]*runtimeService, actual map[string]*runtimeService) bool {
+	if len(expected) != len(actual) {
+		return false
+	}
+
+	//TODO: investigate to see if we can expose a public method or property in runtimeServiveAPI to verify it
+	//      for buildRuntimeServicesMapFromAgentCommandArgs() UTs, the following verification is enough
+	for k := range expected {
+		if expected[k].name != actual[k].name ||
+			expected[k].workloadType != actual[k].workloadType ||
+			expected[k].endpointUrl != actual[k].endpointUrl ||
+			expected[k].isDefault != actual[k].isDefault {
+			return false
+		}
+	}
+	return true
+}
+func compareImageService(expected map[string]*imageService, actual map[string]*imageService) bool {
+	if len(expected) != len(actual) {
+		return false
+	}
+
+	for k := range expected {
+		if expected[k].name != actual[k].name ||
+			expected[k].workloadType != actual[k].workloadType ||
+			expected[k].endpointUrl != actual[k].endpointUrl ||
+			expected[k].isDefault != actual[k].isDefault {
+			return false
+		}
+	}
+	return true
 }

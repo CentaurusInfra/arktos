@@ -27,7 +27,7 @@ import (
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,6 +41,8 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	critest "k8s.io/cri-api/pkg/apis/testing"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/config"
@@ -105,13 +107,14 @@ func (f *fakeImageGCManager) GetImageList() ([]kubecontainer.Image, error) {
 }
 
 type TestKubelet struct {
-	kubelet          *Kubelet
-	fakeRuntime      *containertest.FakeRuntime
-	fakeKubeClient   *fake.Clientset
-	fakeMirrorClient *podtest.FakeMirrorClient
-	fakeClock        *clock.FakeClock
-	mounter          mount.Interface
-	volumePlugin     *volumetest.FakeVolumePlugin
+	kubelet            *Kubelet
+	fakeRuntimeManager *kubecontainer.FakeRuntimeManager
+	fakeRuntime        *containertest.FakeRuntime
+	fakeKubeClient     *fake.Clientset
+	fakeMirrorClient   *podtest.FakeMirrorClient
+	fakeClock          *clock.FakeClock
+	mounter            mount.Interface
+	volumePlugin       *volumetest.FakeVolumePlugin
 }
 
 func (tk *TestKubelet) Cleanup() {
@@ -156,7 +159,21 @@ func newTestKubeletWithImageList(
 
 	fakeRecorder := &record.FakeRecorder{}
 	fakeKubeClient := &fake.Clientset{}
+
+	f := critest.NewFakeRuntimeService()
+	f.FakeStatus = &runtimeapi.RuntimeStatus{
+		Conditions: []*runtimeapi.RuntimeCondition{
+			{Type: "RuntimeReady", Status: true},
+			{Type: "NetworkReady", Status: true},
+		},
+	}
+	fakeImageService := critest.NewFakeImageService()
+	fakeRuntimeManager := &kubecontainer.FakeRuntimeManager{}
+	fakeRuntimeManager.RuntimeService = f
+	fakeRuntimeManager.ImageService = fakeImageService
+
 	kubelet := &Kubelet{}
+	kubelet.runtimeManager = fakeRuntimeManager
 	kubelet.recorder = fakeRecorder
 	kubelet.kubeClient = fakeKubeClient
 	kubelet.heartbeatClient = fakeKubeClient
@@ -340,7 +357,7 @@ func newTestKubeletWithImageList(
 
 	kubelet.AddPodSyncLoopHandler(activeDeadlineHandler)
 	kubelet.AddPodSyncHandler(activeDeadlineHandler)
-	return &TestKubelet{kubelet, fakeRuntime, fakeKubeClient, fakeMirrorClient, fakeClock, nil, plug}
+	return &TestKubelet{kubelet, fakeRuntimeManager, fakeRuntime, fakeKubeClient, fakeMirrorClient, fakeClock, nil, plug}
 }
 
 func newTestPods(count int) []*v1.Pod {

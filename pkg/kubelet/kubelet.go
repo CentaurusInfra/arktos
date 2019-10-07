@@ -32,7 +32,7 @@ import (
 	"time"
 
 	cadvisorapi "github.com/google/cadvisor/info/v1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -49,8 +49,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/certificate"
 	"k8s.io/client-go/util/flowcontrol"
-	cloudprovider "k8s.io/cloud-provider"
-	internalapi "k8s.io/cri-api/pkg/apis"
+	"k8s.io/cloud-provider"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/features"
@@ -86,7 +86,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/preemption"
 	"k8s.io/kubernetes/pkg/kubelet/prober"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
-	"k8s.io/kubernetes/pkg/kubelet/remote"
 	"k8s.io/kubernetes/pkg/kubelet/runtimeclass"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/server"
@@ -310,18 +309,6 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 		config.NewSourceApiserver(kubeDeps.KubeClient, nodeName, updatechannel)
 	}
 	return cfg, nil
-}
-
-func getRuntimeAndImageServices(remoteRuntimeEndpoint string, remoteImageEndpoint string, runtimeRequestTimeout metav1.Duration) (internalapi.RuntimeService, internalapi.ImageManagerService, error) {
-	rs, err := remote.NewRemoteRuntimeService(remoteRuntimeEndpoint, runtimeRequestTimeout.Duration)
-	if err != nil {
-		return nil, nil, err
-	}
-	is, err := remote.NewRemoteImageService(remoteImageEndpoint, runtimeRequestTimeout.Duration)
-	if err != nil {
-		return nil, nil, err
-	}
-	return rs, is, err
 }
 
 // NewMainKubelet instantiates a new Kubelet object along with all the required internal modules.
@@ -652,10 +639,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	default:
 		return nil, fmt.Errorf("unsupported CRI runtime: %q", containerRuntime)
 	}
-	runtimeService, imageService, err := getRuntimeAndImageServices(remoteRuntimeEndpoint, remoteImageEndpoint, kubeCfg.RuntimeRequestTimeout)
-	if err != nil {
-		return nil, err
-	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) && kubeDeps.KubeClient != nil {
 		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient)
@@ -677,15 +660,15 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		int(kubeCfg.RegistryBurst),
 		kubeCfg.CPUCFSQuota,
 		kubeCfg.CPUCFSQuotaPeriod,
-		runtimeService,
-		imageService,
 		kubeDeps.ContainerManager.InternalContainerLifecycle(),
 		legacyLogProvider,
 		klet.runtimeClassManager,
+		remoteRuntimeEndpoint,
 	)
 	if err != nil {
 		return nil, err
 	}
+
 	klet.containerRuntime = runtimeManager
 	klet.streamingRuntime = runtimeManager
 	klet.runner = runtimeManager
@@ -717,6 +700,12 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 
 	klet.pleg = pleg.NewGenericPLEG(klet.containerRuntime, plegChannelCapacity, plegRelistPeriod, klet.podCache, clock.RealClock{})
+
+	//TODO: revisit and enhance the way handle runtimeState at the node agent
+	//      currently the runtimeState is set in UpdateRuntimeUp routine where each runtimeStatus is checked
+	//      the klet.runtimeState is up IIF all runtimes are up, error if any runtime is not ready
+	//      this lack of support for partial runtimes up cases
+	//
 	klet.runtimeState = newRuntimeState(maxWaitForContainerRuntime)
 	klet.runtimeState.addHealthCheck("PLEG", klet.pleg.Healthy)
 	if _, err := klet.updatePodCIDR(kubeCfg.PodCIDR); err != nil {
@@ -2134,6 +2123,13 @@ func (kl *Kubelet) HandlePodReconcile(pods []*v1.Pod) {
 		// After an evicted pod is synced, all dead containers in the pod can be removed.
 		if eviction.PodIsEvicted(pod.Status) {
 			if podStatus, err := kl.podCache.Get(pod.UID); err == nil {
+				runtimeService, err := kl.runtimeManager.GetRuntimeServiceByPod(pod)
+				if err != nil {
+					klog.V(2).Infof("GetRuntimeServiceByPodID Failed: %v", err)
+					return
+				}
+
+				kl.containerDeletor.runtime = runtimeService
 				kl.containerDeletor.deleteContainersInPod("", podStatus, true)
 			}
 		}
@@ -2163,20 +2159,45 @@ func (kl *Kubelet) LatestLoopEntryTime() time.Time {
 // the runtime dependent modules when the container runtime first comes up,
 // and returns an error if the status check fails.  If the status check is OK,
 // update the container runtime uptime in the kubelet runtimeState.
+// the node RuntimeUp is IIF all runtimes on the node are ready, for both network and compute
 func (kl *Kubelet) updateRuntimeUp() {
+	// Periodically log the whole runtime status for debugging.
+	runtimeServices, err := kl.runtimeManager.GetAllRuntimeServices()
+	if err != nil {
+		klog.Errorf("GetAllruntimeServices Failed: %v", err)
+		return
+	}
+
+	for _, runtime := range runtimeServices {
+		s1, err := runtime.Status()
+		if err != nil {
+			klog.Errorf("Container runtime sanity check failed: %v", err)
+			return
+		}
+		if s1 == nil {
+			klog.Errorf("Container runtime status is nil")
+			return
+		}
+		if s1.Conditions == nil || len(s1.Conditions) == 0 {
+			klog.Errorf("Container runtime status conditions is nil or empty")
+			return
+		}
+
+		s := toKubeRuntimeStatus(s1)
+		if err := kl.updateOneRuntimeUp(s); err != nil {
+			return
+		}
+	}
+
+	kl.oneTimeInitializer.Do(kl.initializeRuntimeDependentModules)
+	kl.runtimeState.setRuntimeSync(kl.clock.Now())
+}
+
+func (kl *Kubelet) updateOneRuntimeUp(s *kubecontainer.RuntimeStatus) error {
+	msg := "either runtime or network is not ready. flag caller to return"
 	kl.updateRuntimeMux.Lock()
 	defer kl.updateRuntimeMux.Unlock()
 
-	s, err := kl.containerRuntime.Status()
-	if err != nil {
-		klog.Errorf("Container runtime sanity check failed: %v", err)
-		return
-	}
-	if s == nil {
-		klog.Errorf("Container runtime status is nil")
-		return
-	}
-	// Periodically log the whole runtime status for debugging.
 	// TODO(random-liu): Consider to send node event when optional
 	// condition is unmet.
 	klog.V(4).Infof("Container runtime status: %v", s)
@@ -2184,6 +2205,7 @@ func (kl *Kubelet) updateRuntimeUp() {
 	if networkReady == nil || !networkReady.Status {
 		klog.Errorf("Container runtime network not ready: %v", networkReady)
 		kl.runtimeState.setNetworkState(fmt.Errorf("runtime network not ready: %v", networkReady))
+		return fmt.Errorf(msg)
 	} else {
 		// Set nil if the container runtime network is ready.
 		kl.runtimeState.setNetworkState(nil)
@@ -2195,10 +2217,24 @@ func (kl *Kubelet) updateRuntimeUp() {
 	// If RuntimeReady is not set or is false, report an error.
 	if runtimeReady == nil || !runtimeReady.Status {
 		klog.Errorf("Container runtime not ready: %v", runtimeReady)
-		return
+		return fmt.Errorf(msg)
 	}
-	kl.oneTimeInitializer.Do(kl.initializeRuntimeDependentModules)
-	kl.runtimeState.setRuntimeSync(kl.clock.Now())
+
+	return nil
+}
+
+// toKubeRuntimeStatus converts the runtimeapi.RuntimeStatus to kubecontainer.RuntimeStatus.
+func toKubeRuntimeStatus(status *runtimeapi.RuntimeStatus) *kubecontainer.RuntimeStatus {
+	conditions := []kubecontainer.RuntimeCondition{}
+	for _, c := range status.GetConditions() {
+		conditions = append(conditions, kubecontainer.RuntimeCondition{
+			Type:    kubecontainer.RuntimeConditionType(c.Type),
+			Status:  c.Status,
+			Reason:  c.Reason,
+			Message: c.Message,
+		})
+	}
+	return &kubecontainer.RuntimeStatus{Conditions: conditions}
 }
 
 // GetConfiguration returns the KubeletConfiguration used to configure the kubelet.
@@ -2247,6 +2283,13 @@ func (kl *Kubelet) cleanUpContainersInPod(podID types.UID, exitedContainerID str
 			// When an evicted or deleted pod has already synced, all containers can be removed.
 			removeAll = eviction.PodIsEvicted(syncedPod.Status) || (syncedPod.DeletionTimestamp != nil && notRunning(apiPodStatus.ContainerStatuses))
 		}
+		runtimeService, err := kl.runtimeManager.GetRuntimeServiceByPodID(podID)
+		if err != nil {
+			klog.V(2).Infof("GetRuntimeServiceByPodID Failed: %v", err)
+			return
+		}
+
+		kl.containerDeletor.runtime = runtimeService
 		kl.containerDeletor.deleteContainersInPod(exitedContainerID, podStatus, removeAll)
 	}
 }

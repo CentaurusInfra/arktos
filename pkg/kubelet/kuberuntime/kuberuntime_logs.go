@@ -32,5 +32,10 @@ func (m *kubeGenericRuntimeManager) ReadLogs(ctx context.Context, path, containe
 	// Convert v1.PodLogOptions into internal log options.
 	opts := logs.NewLogOptions(apiOpts, time.Now())
 
-	return logs.ReadLogs(ctx, path, containerID, opts, m.runtimeService, stdout, stderr)
+	runtimeService, err := m.GetRuntimeServiceByContainerIDString(containerID)
+	if err != nil {
+		return err
+	}
+
+	return logs.ReadLogs(ctx, path, containerID, opts, runtimeService, stdout, stderr)
 }
