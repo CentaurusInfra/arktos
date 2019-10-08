@@ -17,7 +17,6 @@ limitations under the License.
 package replicaset
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
@@ -58,13 +57,12 @@ import (
 func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh chan struct{}, burstReplicas int) (*ReplicaSetController, informers.SharedInformerFactory) {
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	updateChan := make(chan string)
-	ctx := context.TODO()
 
 	cim := controllerinstancemanager.NewControllerInstanceManager(
 		informers.Core().V1().ControllerInstances(),
 		client,
 		updateChan)
-	go cim.Run(ctx.Done())
+	go cim.Run(stopCh)
 
 	ret := NewReplicaSetController(
 		informers.Apps().V1().ReplicaSets(),

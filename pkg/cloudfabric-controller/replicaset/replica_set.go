@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -198,7 +198,7 @@ func (rsc *ReplicaSetController) Run(workers int, stopCh <-chan struct{}) {
 	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
 	go wait.Until(rsc.ControllerBase.ReportHealth, time.Minute, stopCh)
 
-	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), rsc.GetControllerName())
+	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), controller.GetControllerName(rsc.GetControllerId()))
 
 	<-stopCh
 }

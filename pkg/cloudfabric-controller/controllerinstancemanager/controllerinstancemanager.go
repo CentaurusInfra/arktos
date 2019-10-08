@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package controllerinstancemanager
 
 import (
@@ -31,6 +30,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	"strconv"
+
 	//"k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"sync"
@@ -47,7 +48,8 @@ type ControllerInstanceManager struct {
 	kubeClient                   clientset.Interface
 	controllerInstanceChangeChan chan string
 
-	mux sync.Mutex
+	mux           sync.Mutex
+	notifyHandler func(controllerInstance *v1.ControllerInstance)
 }
 
 var instance *ControllerInstanceManager
@@ -92,6 +94,7 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 		klog.Fatalf("Unable to get controller instances from registry. Error %v", err)
 	}
 
+	manager.notifyHandler = manager.notifyControllerInstanceChanges
 	instance = manager
 
 	return instance
@@ -118,19 +121,15 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 	} else { // check existing controller instance
 		existingInstance, ok1 := existingInstancesForType[newControllerInstance.UID]
 		if ok1 {
-			if existingInstance.ResourceVersion == newControllerInstance.ResourceVersion {
-				klog.Infof("Got existing controller instance %v in AddFunc", newControllerInstance.UID)
-				return
-			} else if existingInstance.ResourceVersion > newControllerInstance.ResourceVersion {
-				klog.Infof("Got staled controller instance %v in AddFunc. Existing Version %d, new instance version %d", existingInstance.ResourceVersion, newControllerInstance.ResourceVersion)
-				return
-			}
+			cim.updateControllerInstance(existingInstance, newControllerInstance)
+			klog.Infof("Got existing controller instance %s in AddFunc", newControllerInstance.Name)
+			return
 		}
 	}
 	cim.currentControllers[newControllerInstance.ControllerType][newControllerInstance.UID] = *newControllerInstance
 
 	// notify appropriate controller
-	cim.notifyControllerInstanceChanges(newControllerInstance)
+	cim.notifyHandler(newControllerInstance)
 	klog.Infof("mux unlocked addControllerInstance")
 }
 
@@ -140,9 +139,19 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 
 	if curControllerInstance.ResourceVersion == oldControllerInstance.ResourceVersion {
 		return
-	} else if curControllerInstance.ResourceVersion < oldControllerInstance.ResourceVersion {
-		klog.Infof("Got staled controller instance %v in UpdateFunc. Existing Version %d, new instance version %d", oldControllerInstance.ResourceVersion, curControllerInstance.ResourceVersion)
-		return
+	} else {
+		oldRev, _ := strconv.Atoi(oldControllerInstance.ResourceVersion)
+		newRev, err := strconv.Atoi(curControllerInstance.ResourceVersion)
+		if err != nil {
+			klog.Errorf("Got invalid resource version %s for controller instance %v", curControllerInstance.ResourceVersion, curControllerInstance)
+			return
+		}
+
+		if newRev < oldRev {
+			klog.Infof("Got staled controller instance %s in UpdateFunc. Existing Version %s, new instance version %s",
+				oldControllerInstance.Name, oldControllerInstance.ResourceVersion, curControllerInstance.ResourceVersion)
+			return
+		}
 	}
 
 	klog.Infof("Received event for UPDATE controller instance %v", curControllerInstance.UID)
@@ -170,7 +179,7 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 	if curControllerInstance.WorkloadNum != oldControllerInstance.WorkloadNum || curControllerInstance.IsLocked != oldControllerInstance.IsLocked ||
 		curControllerInstance.HashKey != oldControllerInstance.HashKey {
 		klog.Infof("Notify controller instance %v was updated", curControllerInstance.UID)
-		cim.notifyControllerInstanceChanges(curControllerInstance)
+		cim.notifyHandler(curControllerInstance)
 	}
 
 	klog.Infof("mux unlocked updateControllerInstance")
@@ -201,7 +210,7 @@ func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) 
 			delete(l, controllerinstance.UID)
 
 			// notify appropriate controller
-			cim.notifyControllerInstanceChanges(controllerinstance)
+			cim.notifyHandler(controllerinstance)
 		}
 	}
 	klog.Infof("mux unlocked deleteControllerInstance")
@@ -219,7 +228,7 @@ func (cim *ControllerInstanceManager) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (cim *ControllerInstanceManager) ListControllerInstance(controllerType string) (map[types.UID]v1.ControllerInstance, error) {
+func (cim *ControllerInstanceManager) ListControllerInstances(controllerType string) (map[types.UID]v1.ControllerInstance, error) {
 	if !cim.isControllerListInitialized {
 		err := cim.syncControllerInstances()
 		if err != nil {

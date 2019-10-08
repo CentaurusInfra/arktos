@@ -107,7 +107,7 @@ func NewControllerBase(controller_type string, client clientset.Interface, updat
 	}
 
 	controller.controller_key = controller.generateKey()
-	controller.controller_name = controller.GetControllerName()
+	controller.controller_name = GetControllerName(controller.controller_instance_id)
 
 	// First controller instance. No need to wait for others
 	if len(controller.sortedControllers) == 0 {
@@ -375,8 +375,8 @@ func (c *ControllerBase) ReportHealth() {
 	}
 }
 
-func (c *ControllerBase) GetControllerName() string {
-	return fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, c.controller_instance_id)
+func GetControllerName(instanceId types.UID) string {
+	return fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, instanceId)
 }
 
 // Get controller instances by controller type
@@ -389,7 +389,7 @@ func listControllerInstancesByType(controllerType string) ([]v1.ControllerInstan
 		klog.Fatalf("Unexpected reference to uninitialized controller instance manager")
 	}
 
-	controllerInstanceById, err := cim.ListControllerInstance(controllerType)
+	controllerInstanceById, err := cim.ListControllerInstances(controllerType)
 	if err != nil {
 		return nil, err
 	}
