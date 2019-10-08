@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package controllerframework
 
 import (
 	"fmt"
@@ -29,7 +29,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"math"
 )
@@ -384,7 +383,7 @@ func GetControllerName(instanceId types.UID) string {
 func listControllerInstancesByType(controllerType string) ([]v1.ControllerInstance, error) {
 	var controllerInstances []v1.ControllerInstance
 
-	cim := controllerinstancemanager.GetInstance()
+	cim := GetInstance()
 	if cim == nil {
 		klog.Fatalf("Unexpected reference to uninitialized controller instance manager")
 	}

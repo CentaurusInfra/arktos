@@ -58,7 +58,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"k8s.io/utils/integer"
 
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 )
 
 const (

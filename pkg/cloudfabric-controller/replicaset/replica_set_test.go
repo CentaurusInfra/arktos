@@ -19,7 +19,7 @@ package replicaset
 import (
 	"errors"
 	"fmt"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"math/rand"
 	"net/http/httptest"
 	"net/url"
@@ -48,7 +48,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	utiltesting "k8s.io/client-go/util/testing"
 	"k8s.io/client-go/util/workqueue"
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/testutil"
 
 	"k8s.io/kubernetes/pkg/securitycontext"
@@ -58,7 +57,7 @@ func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh ch
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	updateChan := make(chan string)
 
-	cim := controllerinstancemanager.NewControllerInstanceManager(
+	cim := controller.NewControllerInstanceManager(
 		informers.Core().V1().ControllerInstances(),
 		client,
 		updateChan)
