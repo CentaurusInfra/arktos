@@ -27,6 +27,7 @@ type TokenReviewExpansion interface {
 func (c *tokenReviews) Create(tokenReview *authenticationapi.TokenReview) (result *authenticationapi.TokenReview, err error) {
 	result = &authenticationapi.TokenReview{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("tokenreviews").
 		Body(tokenReview).
 		Do().

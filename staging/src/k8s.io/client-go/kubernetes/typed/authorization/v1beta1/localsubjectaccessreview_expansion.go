@@ -27,6 +27,7 @@ type LocalSubjectAccessReviewExpansion interface {
 func (c *localSubjectAccessReviews) Create(sar *authorizationapi.LocalSubjectAccessReview) (result *authorizationapi.LocalSubjectAccessReview, err error) {
 	result = &authorizationapi.LocalSubjectAccessReview{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("localsubjectaccessreviews").
 		Body(sar).

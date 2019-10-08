@@ -25,6 +25,7 @@ import (
 func (c *FakeEvictions) Evict(eviction *policy.Eviction) error {
 	action := core.CreateActionImpl{}
 	action.Verb = "create"
+	action.Tenant = c.te
 	action.Namespace = c.ns
 	action.Resource = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 	action.Subresource = "eviction"

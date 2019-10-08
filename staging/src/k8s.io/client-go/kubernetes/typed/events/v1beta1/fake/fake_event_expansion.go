@@ -17,6 +17,8 @@ limitations under the License.
 package fake
 
 import (
+	"fmt"
+
 	v1beta1 "k8s.io/api/events/v1beta1"
 	types "k8s.io/apimachinery/pkg/types"
 	core "k8s.io/client-go/testing"
@@ -24,10 +26,18 @@ import (
 
 // CreateWithEventNamespace creats a new event. Returns the copy of the event the server returns, or an error.
 func (c *FakeEvents) CreateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Event, error) {
-	action := core.NewRootCreateAction(eventsResource, event)
-	if c.ns != "" {
-		action = core.NewCreateAction(eventsResource, c.ns, event)
+	action := core.CreateActionImpl{}
+	switch {
+	case c.te == "" && c.ns == "":
+		action = core.NewRootCreateAction(eventsResource, event)
+	case c.te != "" && c.ns == "":
+		action = core.NewTenantCreateAction(eventsResource, event, c.te)
+	case c.te != "" && c.ns != "":
+		action = core.NewCreateAction(eventsResource, c.ns, event, c.te)
+	default:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
+
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
 		return nil, err
@@ -38,9 +48,16 @@ func (c *FakeEvents) CreateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Ev
 
 // UpdateWithEventNamespace replaces an existing event. Returns the copy of the event the server returns, or an error.
 func (c *FakeEvents) UpdateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Event, error) {
-	action := core.NewRootUpdateAction(eventsResource, event)
-	if c.ns != "" {
-		action = core.NewUpdateAction(eventsResource, c.ns, event)
+	action := core.UpdateActionImpl{}
+	switch {
+	case c.te == "" && c.ns == "":
+		action = core.NewRootUpdateAction(eventsResource, event)
+	case c.te != "" && c.ns == "":
+		action = core.NewTenantUpdateAction(eventsResource, event, c.te)
+	case c.te != "" && c.ns != "":
+		action = core.NewUpdateAction(eventsResource, c.ns, event, c.te)
+	default:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
@@ -52,10 +69,17 @@ func (c *FakeEvents) UpdateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Ev
 
 // PatchWithEventNamespace patches an existing event. Returns the copy of the event the server returns, or an error.
 func (c *FakeEvents) PatchWithEventNamespace(event *v1beta1.Event, data []byte) (*v1beta1.Event, error) {
+	action := core.PatchActionImpl{}
 	pt := types.StrategicMergePatchType
-	action := core.NewRootPatchAction(eventsResource, event.Name, pt, data)
-	if c.ns != "" {
-		action = core.NewPatchAction(eventsResource, c.ns, event.Name, pt, data)
+	switch {
+	case c.te == "" && c.ns == "":
+		action = core.NewRootPatchAction(eventsResource, event.Name, pt, data)
+	case c.te != "" && c.ns == "":
+		action = core.NewTenantPatchAction(eventsResource, event.Name, pt, data, c.te)
+	case c.te != "" && c.ns != "":
+		action = core.NewPatchAction(eventsResource, c.ns, event.Name, pt, data, c.te)
+	default:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
