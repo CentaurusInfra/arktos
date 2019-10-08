@@ -32,7 +32,7 @@ import (
 // PodTemplatesGetter has a method to return a PodTemplateInterface.
 // A group's client should implement this interface.
 type PodTemplatesGetter interface {
-	PodTemplates(namespace string) PodTemplateInterface
+	PodTemplates(namespace string, optional_tenant ...string) PodTemplateInterface
 }
 
 // PodTemplateInterface has methods to work with PodTemplate resources.
@@ -52,13 +52,20 @@ type PodTemplateInterface interface {
 type podTemplates struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newPodTemplates returns a PodTemplates
-func newPodTemplates(c *CoreV1Client, namespace string) *podTemplates {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newPodTemplates(c *CoreV1Client, namespace string, optional_tenant ...string) *podTemplates {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &podTemplates{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newPodTemplates(c *CoreV1Client, namespace string) *podTemplates {
 func (c *podTemplates) Get(name string, options metav1.GetOptions) (result *v1.PodTemplate, err error) {
 	result = &v1.PodTemplate{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podtemplates").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *podTemplates) List(opts metav1.ListOptions) (result *v1.PodTemplateList
 	}
 	result = &v1.PodTemplateList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("podtemplates").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *podTemplates) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podtemplates").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *podTemplates) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *podTemplates) Create(podTemplate *v1.PodTemplate) (result *v1.PodTemplate, err error) {
 	result = &v1.PodTemplate{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podtemplates").
 		Body(podTemplate).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *podTemplates) Create(podTemplate *v1.PodTemplate) (result *v1.PodTempla
 func (c *podTemplates) Update(podTemplate *v1.PodTemplate) (result *v1.PodTemplate, err error) {
 	result = &v1.PodTemplate{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podtemplates").
 		Name(podTemplate.Name).
 		Body(podTemplate).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the podTemplate and deletes it. Returns an error if one occurs.
 func (c *podTemplates) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podtemplates").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *podTemplates) DeleteCollection(options *metav1.DeleteOptions, listOptio
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podtemplates").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *podTemplates) DeleteCollection(options *metav1.DeleteOptions, listOptio
 func (c *podTemplates) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PodTemplate, err error) {
 	result = &v1.PodTemplate{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podtemplates").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *podTemplates) Patch(name string, pt types.PatchType, data []byte, subre
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

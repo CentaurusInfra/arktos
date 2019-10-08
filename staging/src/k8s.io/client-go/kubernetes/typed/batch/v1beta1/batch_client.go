@@ -34,8 +34,8 @@ type BatchV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *BatchV1beta1Client) CronJobs(namespace string) CronJobInterface {
-	return newCronJobs(c, namespace)
+func (c *BatchV1beta1Client) CronJobs(namespace string, optional_tenant ...string) CronJobInterface {
+	return newCronJobs(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new BatchV1beta1Client for the given config.

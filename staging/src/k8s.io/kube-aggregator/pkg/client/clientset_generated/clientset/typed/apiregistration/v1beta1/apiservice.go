@@ -70,6 +70,7 @@ func (c *aPIServices) Get(name string, options v1.GetOptions) (result *v1beta1.A
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -86,6 +87,7 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *v1beta1.APIServiceList,
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -111,6 +113,7 @@ func (c *aPIServices) Create(aPIService *v1beta1.APIService) (result *v1beta1.AP
 		Body(aPIService).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,6 +126,7 @@ func (c *aPIServices) Update(aPIService *v1beta1.APIService) (result *v1beta1.AP
 		Body(aPIService).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -138,6 +142,7 @@ func (c *aPIServices) UpdateStatus(aPIService *v1beta1.APIService) (result *v1be
 		Body(aPIService).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -176,5 +181,6 @@ func (c *aPIServices) Patch(name string, pt types.PatchType, data []byte, subres
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

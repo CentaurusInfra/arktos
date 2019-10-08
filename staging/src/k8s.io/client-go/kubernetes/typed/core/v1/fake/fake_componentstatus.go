@@ -44,6 +44,7 @@ func (c *FakeComponentStatuses) Get(name string, options v1.GetOptions) (result 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ComponentStatus), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeComponentStatuses) Create(componentStatus *corev1.ComponentStatus) 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ComponentStatus), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeComponentStatuses) Update(componentStatus *corev1.ComponentStatus) 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ComponentStatus), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeComponentStatuses) Delete(name string, options *v1.DeleteOptions) e
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeComponentStatuses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(componentstatusesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(componentstatusesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &corev1.ComponentStatusList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeComponentStatuses) Patch(name string, pt types.PatchType, data []by
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ComponentStatus), err
 }

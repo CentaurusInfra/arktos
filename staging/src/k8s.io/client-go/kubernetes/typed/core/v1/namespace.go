@@ -32,7 +32,7 @@ import (
 // NamespacesGetter has a method to return a NamespaceInterface.
 // A group's client should implement this interface.
 type NamespacesGetter interface {
-	Namespaces() NamespaceInterface
+	Namespaces(optional_tenant ...string) NamespaceInterface
 }
 
 // NamespaceInterface has methods to work with Namespace resources.
@@ -51,12 +51,18 @@ type NamespaceInterface interface {
 // namespaces implements NamespaceInterface
 type namespaces struct {
 	client rest.Interface
+	te     string
 }
 
 // newNamespaces returns a Namespaces
-func newNamespaces(c *CoreV1Client) *namespaces {
+func newNamespaces(c *CoreV1Client, optional_tenant ...string) *namespaces {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &namespaces{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }
 
@@ -64,11 +70,13 @@ func newNamespaces(c *CoreV1Client) *namespaces {
 func (c *namespaces) Get(name string, options metav1.GetOptions) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("namespaces").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -80,11 +88,13 @@ func (c *namespaces) List(opts metav1.ListOptions) (result *v1.NamespaceList, er
 	}
 	result = &v1.NamespaceList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("namespaces").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -96,6 +106,7 @@ func (c *namespaces) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Resource("namespaces").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -106,10 +117,12 @@ func (c *namespaces) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *namespaces) Create(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("namespaces").
 		Body(namespace).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -117,11 +130,13 @@ func (c *namespaces) Create(namespace *v1.Namespace) (result *v1.Namespace, err 
 func (c *namespaces) Update(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("namespaces").
 		Name(namespace.Name).
 		Body(namespace).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -131,18 +146,21 @@ func (c *namespaces) Update(namespace *v1.Namespace) (result *v1.Namespace, err 
 func (c *namespaces) UpdateStatus(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("namespaces").
 		Name(namespace.Name).
 		SubResource("status").
 		Body(namespace).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the namespace and deletes it. Returns an error if one occurs.
 func (c *namespaces) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("namespaces").
 		Name(name).
 		Body(options).
@@ -154,11 +172,13 @@ func (c *namespaces) Delete(name string, options *metav1.DeleteOptions) error {
 func (c *namespaces) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("namespaces").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

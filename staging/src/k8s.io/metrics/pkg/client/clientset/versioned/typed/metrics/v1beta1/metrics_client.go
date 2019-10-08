@@ -39,8 +39,8 @@ func (c *MetricsV1beta1Client) NodeMetricses() NodeMetricsInterface {
 	return newNodeMetricses(c)
 }
 
-func (c *MetricsV1beta1Client) PodMetricses(namespace string) PodMetricsInterface {
-	return newPodMetricses(c, namespace)
+func (c *MetricsV1beta1Client) PodMetricses(namespace string, optional_tenant ...string) PodMetricsInterface {
+	return newPodMetricses(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new MetricsV1beta1Client for the given config.

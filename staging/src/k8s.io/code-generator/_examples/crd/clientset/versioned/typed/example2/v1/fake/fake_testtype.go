@@ -32,6 +32,7 @@ import (
 type FakeTestTypes struct {
 	Fake *FakeSecondExampleV1
 	ns   string
+	te   string
 }
 
 var testtypesResource = schema.GroupVersionResource{Group: "example.test.crd.code-generator.k8s.io", Version: "v1", Resource: "testtypes"}
@@ -41,18 +42,19 @@ var testtypesKind = schema.GroupVersionKind{Group: "example.test.crd.code-genera
 // Get takes name of the testType, and returns the corresponding testType object, and an error if there is any.
 func (c *FakeTestTypes) Get(name string, options v1.GetOptions) (result *example2v1.TestType, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(testtypesResource, c.ns, name), &example2v1.TestType{})
+		Invokes(testing.NewGetAction(testtypesResource, c.ns, name, c.te), &example2v1.TestType{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*example2v1.TestType), err
 }
 
 // List takes label and field selectors, and returns the list of TestTypes that match those selectors.
 func (c *FakeTestTypes) List(opts v1.ListOptions) (result *example2v1.TestTypeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(testtypesResource, testtypesKind, c.ns, opts), &example2v1.TestTypeList{})
+		Invokes(testing.NewListAction(testtypesResource, testtypesKind, c.ns, opts, c.te), &example2v1.TestTypeList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,29 +76,31 @@ func (c *FakeTestTypes) List(opts v1.ListOptions) (result *example2v1.TestTypeLi
 // Watch returns a watch.Interface that watches the requested testTypes.
 func (c *FakeTestTypes) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(testtypesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(testtypesResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a testType and creates it.  Returns the server's representation of the testType, and an error, if there is any.
 func (c *FakeTestTypes) Create(testType *example2v1.TestType) (result *example2v1.TestType, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(testtypesResource, c.ns, testType), &example2v1.TestType{})
+		Invokes(testing.NewCreateAction(testtypesResource, c.ns, testType, c.te), &example2v1.TestType{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*example2v1.TestType), err
 }
 
 // Update takes the representation of a testType and updates it. Returns the server's representation of the testType, and an error, if there is any.
 func (c *FakeTestTypes) Update(testType *example2v1.TestType) (result *example2v1.TestType, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(testtypesResource, c.ns, testType), &example2v1.TestType{})
+		Invokes(testing.NewUpdateAction(testtypesResource, c.ns, testType, c.te), &example2v1.TestType{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*example2v1.TestType), err
 }
 
@@ -104,7 +108,7 @@ func (c *FakeTestTypes) Update(testType *example2v1.TestType) (result *example2v
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeTestTypes) UpdateStatus(testType *example2v1.TestType) (*example2v1.TestType, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(testtypesResource, "status", c.ns, testType), &example2v1.TestType{})
+		Invokes(testing.NewUpdateSubresourceAction(testtypesResource, "status", c.ns, testType, c.te), &example2v1.TestType{})
 
 	if obj == nil {
 		return nil, err
@@ -115,14 +119,14 @@ func (c *FakeTestTypes) UpdateStatus(testType *example2v1.TestType) (*example2v1
 // Delete takes name of the testType and deletes it. Returns an error if one occurs.
 func (c *FakeTestTypes) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(testtypesResource, c.ns, name), &example2v1.TestType{})
+		Invokes(testing.NewDeleteAction(testtypesResource, c.ns, name, c.te), &example2v1.TestType{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeTestTypes) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(testtypesResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(testtypesResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &example2v1.TestTypeList{})
 	return err
@@ -131,10 +135,11 @@ func (c *FakeTestTypes) DeleteCollection(options *v1.DeleteOptions, listOptions 
 // Patch applies the patch and returns the patched testType.
 func (c *FakeTestTypes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *example2v1.TestType, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(testtypesResource, c.ns, name, pt, data, subresources...), &example2v1.TestType{})
+		Invokes(testing.NewPatchSubresourceAction(testtypesResource, c.te, c.ns, name, pt, data, subresources...), &example2v1.TestType{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*example2v1.TestType), err
 }

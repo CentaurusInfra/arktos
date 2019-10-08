@@ -28,8 +28,12 @@ type FakeSettingsV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSettingsV1alpha1) PodPresets(namespace string) v1alpha1.PodPresetInterface {
-	return &FakePodPresets{c, namespace}
+func (c *FakeSettingsV1alpha1) PodPresets(namespace string, optional_tenant ...string) v1alpha1.PodPresetInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePodPresets{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

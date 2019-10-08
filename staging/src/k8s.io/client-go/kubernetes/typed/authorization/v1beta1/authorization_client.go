@@ -37,20 +37,20 @@ type AuthorizationV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AuthorizationV1beta1Client) LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewInterface {
-	return newLocalSubjectAccessReviews(c, namespace)
+func (c *AuthorizationV1beta1Client) LocalSubjectAccessReviews(namespace string, optional_tenant ...string) LocalSubjectAccessReviewInterface {
+	return newLocalSubjectAccessReviews(c, namespace, optional_tenant...)
 }
 
-func (c *AuthorizationV1beta1Client) SelfSubjectAccessReviews() SelfSubjectAccessReviewInterface {
-	return newSelfSubjectAccessReviews(c)
+func (c *AuthorizationV1beta1Client) SelfSubjectAccessReviews(tenant ...string) SelfSubjectAccessReviewInterface {
+	return newSelfSubjectAccessReviews(c, tenant...)
 }
 
-func (c *AuthorizationV1beta1Client) SelfSubjectRulesReviews() SelfSubjectRulesReviewInterface {
-	return newSelfSubjectRulesReviews(c)
+func (c *AuthorizationV1beta1Client) SelfSubjectRulesReviews(tenant ...string) SelfSubjectRulesReviewInterface {
+	return newSelfSubjectRulesReviews(c, tenant...)
 }
 
-func (c *AuthorizationV1beta1Client) SubjectAccessReviews() SubjectAccessReviewInterface {
-	return newSubjectAccessReviews(c)
+func (c *AuthorizationV1beta1Client) SubjectAccessReviews(tenant ...string) SubjectAccessReviewInterface {
+	return newSubjectAccessReviews(c, tenant...)
 }
 
 // NewForConfig creates a new AuthorizationV1beta1Client for the given config.

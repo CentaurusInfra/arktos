@@ -32,7 +32,7 @@ import (
 // VolumeAttachmentsGetter has a method to return a VolumeAttachmentInterface.
 // A group's client should implement this interface.
 type VolumeAttachmentsGetter interface {
-	VolumeAttachments() VolumeAttachmentInterface
+	VolumeAttachments(optional_tenant ...string) VolumeAttachmentInterface
 }
 
 // VolumeAttachmentInterface has methods to work with VolumeAttachment resources.
@@ -52,12 +52,18 @@ type VolumeAttachmentInterface interface {
 // volumeAttachments implements VolumeAttachmentInterface
 type volumeAttachments struct {
 	client rest.Interface
+	te     string
 }
 
 // newVolumeAttachments returns a VolumeAttachments
-func newVolumeAttachments(c *StorageV1beta1Client) *volumeAttachments {
+func newVolumeAttachments(c *StorageV1beta1Client, optional_tenant ...string) *volumeAttachments {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &volumeAttachments{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }
 
@@ -65,11 +71,13 @@ func newVolumeAttachments(c *StorageV1beta1Client) *volumeAttachments {
 func (c *volumeAttachments) Get(name string, options v1.GetOptions) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -81,11 +89,13 @@ func (c *volumeAttachments) List(opts v1.ListOptions) (result *v1beta1.VolumeAtt
 	}
 	result = &v1beta1.VolumeAttachmentList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -97,6 +107,7 @@ func (c *volumeAttachments) Watch(opts v1.ListOptions) (watch.Interface, error) 
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,10 +118,12 @@ func (c *volumeAttachments) Watch(opts v1.ListOptions) (watch.Interface, error) 
 func (c *volumeAttachments) Create(volumeAttachment *v1beta1.VolumeAttachment) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		Body(volumeAttachment).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -118,11 +131,13 @@ func (c *volumeAttachments) Create(volumeAttachment *v1beta1.VolumeAttachment) (
 func (c *volumeAttachments) Update(volumeAttachment *v1beta1.VolumeAttachment) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		Name(volumeAttachment.Name).
 		Body(volumeAttachment).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -132,18 +147,21 @@ func (c *volumeAttachments) Update(volumeAttachment *v1beta1.VolumeAttachment) (
 func (c *volumeAttachments) UpdateStatus(volumeAttachment *v1beta1.VolumeAttachment) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		Name(volumeAttachment.Name).
 		SubResource("status").
 		Body(volumeAttachment).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the volumeAttachment and deletes it. Returns an error if one occurs.
 func (c *volumeAttachments) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		Name(name).
 		Body(options).
@@ -158,6 +176,7 @@ func (c *volumeAttachments) DeleteCollection(options *v1.DeleteOptions, listOpti
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("volumeattachments").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -170,11 +189,13 @@ func (c *volumeAttachments) DeleteCollection(options *v1.DeleteOptions, listOpti
 func (c *volumeAttachments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("volumeattachments").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

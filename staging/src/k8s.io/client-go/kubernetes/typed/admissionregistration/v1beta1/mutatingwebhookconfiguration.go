@@ -69,6 +69,7 @@ func (c *mutatingWebhookConfigurations) Get(name string, options v1.GetOptions) 
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *mutatingWebhookConfigurations) List(opts v1.ListOptions) (result *v1bet
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *mutatingWebhookConfigurations) Create(mutatingWebhookConfiguration *v1b
 		Body(mutatingWebhookConfiguration).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *mutatingWebhookConfigurations) Update(mutatingWebhookConfiguration *v1b
 		Body(mutatingWebhookConfiguration).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *mutatingWebhookConfigurations) Patch(name string, pt types.PatchType, d
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

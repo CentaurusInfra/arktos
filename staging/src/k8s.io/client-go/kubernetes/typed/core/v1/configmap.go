@@ -32,7 +32,7 @@ import (
 // ConfigMapsGetter has a method to return a ConfigMapInterface.
 // A group's client should implement this interface.
 type ConfigMapsGetter interface {
-	ConfigMaps(namespace string) ConfigMapInterface
+	ConfigMaps(namespace string, optional_tenant ...string) ConfigMapInterface
 }
 
 // ConfigMapInterface has methods to work with ConfigMap resources.
@@ -52,13 +52,20 @@ type ConfigMapInterface interface {
 type configMaps struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newConfigMaps returns a ConfigMaps
-func newConfigMaps(c *CoreV1Client, namespace string) *configMaps {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newConfigMaps(c *CoreV1Client, namespace string, optional_tenant ...string) *configMaps {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &configMaps{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newConfigMaps(c *CoreV1Client, namespace string) *configMaps {
 func (c *configMaps) Get(name string, options metav1.GetOptions) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *configMaps) List(opts metav1.ListOptions) (result *v1.ConfigMapList, er
 	}
 	result = &v1.ConfigMapList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("configmaps").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *configMaps) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("configmaps").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *configMaps) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *configMaps) Create(configMap *v1.ConfigMap) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Body(configMap).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *configMaps) Create(configMap *v1.ConfigMap) (result *v1.ConfigMap, err 
 func (c *configMaps) Update(configMap *v1.ConfigMap) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Name(configMap.Name).
 		Body(configMap).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the configMap and deletes it. Returns an error if one occurs.
 func (c *configMaps) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *configMaps) DeleteCollection(options *metav1.DeleteOptions, listOptions
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("configmaps").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *configMaps) DeleteCollection(options *metav1.DeleteOptions, listOptions
 func (c *configMaps) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("configmaps").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *configMaps) Patch(name string, pt types.PatchType, data []byte, subreso
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

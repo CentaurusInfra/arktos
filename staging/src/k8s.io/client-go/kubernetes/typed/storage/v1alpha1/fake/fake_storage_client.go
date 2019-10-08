@@ -28,8 +28,12 @@ type FakeStorageV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeStorageV1alpha1) VolumeAttachments() v1alpha1.VolumeAttachmentInterface {
-	return &FakeVolumeAttachments{c}
+func (c *FakeStorageV1alpha1) VolumeAttachments(optional_tenant ...string) v1alpha1.VolumeAttachmentInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeVolumeAttachments{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

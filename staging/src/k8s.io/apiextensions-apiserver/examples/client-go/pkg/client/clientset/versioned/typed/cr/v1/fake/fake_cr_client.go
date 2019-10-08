@@ -28,8 +28,12 @@ type FakeCrV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCrV1) Examples(namespace string) v1.ExampleInterface {
-	return &FakeExamples{c, namespace}
+func (c *FakeCrV1) Examples(namespace string, optional_tenant ...string) v1.ExampleInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeExamples{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

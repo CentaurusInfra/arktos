@@ -28,16 +28,28 @@ type FakePolicyV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakePolicyV1beta1) Evictions(namespace string) v1beta1.EvictionInterface {
-	return &FakeEvictions{c, namespace}
+func (c *FakePolicyV1beta1) Evictions(namespace string, optional_tenant ...string) v1beta1.EvictionInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeEvictions{c, namespace, tenant}
 }
 
-func (c *FakePolicyV1beta1) PodDisruptionBudgets(namespace string) v1beta1.PodDisruptionBudgetInterface {
-	return &FakePodDisruptionBudgets{c, namespace}
+func (c *FakePolicyV1beta1) PodDisruptionBudgets(namespace string, optional_tenant ...string) v1beta1.PodDisruptionBudgetInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePodDisruptionBudgets{c, namespace, tenant}
 }
 
-func (c *FakePolicyV1beta1) PodSecurityPolicies() v1beta1.PodSecurityPolicyInterface {
-	return &FakePodSecurityPolicies{c}
+func (c *FakePolicyV1beta1) PodSecurityPolicies(optional_tenant ...string) v1beta1.PodSecurityPolicyInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePodSecurityPolicies{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

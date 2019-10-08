@@ -33,7 +33,7 @@ import (
 // DeploymentsGetter has a method to return a DeploymentInterface.
 // A group's client should implement this interface.
 type DeploymentsGetter interface {
-	Deployments(namespace string) DeploymentInterface
+	Deployments(namespace string, optional_tenant ...string) DeploymentInterface
 }
 
 // DeploymentInterface has methods to work with Deployment resources.
@@ -57,13 +57,20 @@ type DeploymentInterface interface {
 type deployments struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newDeployments returns a Deployments
-func newDeployments(c *AppsV1Client, namespace string) *deployments {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newDeployments(c *AppsV1Client, namespace string, optional_tenant ...string) *deployments {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &deployments{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -71,12 +78,14 @@ func newDeployments(c *AppsV1Client, namespace string) *deployments {
 func (c *deployments) Get(name string, options metav1.GetOptions) (result *v1.Deployment, err error) {
 	result = &v1.Deployment{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -88,12 +97,13 @@ func (c *deployments) List(opts metav1.ListOptions) (result *v1.DeploymentList, 
 	}
 	result = &v1.DeploymentList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("deployments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -105,6 +115,7 @@ func (c *deployments) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -116,11 +127,13 @@ func (c *deployments) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *deployments) Create(deployment *v1.Deployment) (result *v1.Deployment, err error) {
 	result = &v1.Deployment{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		Body(deployment).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -128,12 +141,14 @@ func (c *deployments) Create(deployment *v1.Deployment) (result *v1.Deployment, 
 func (c *deployments) Update(deployment *v1.Deployment) (result *v1.Deployment, err error) {
 	result = &v1.Deployment{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(deployment.Name).
 		Body(deployment).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -143,6 +158,7 @@ func (c *deployments) Update(deployment *v1.Deployment) (result *v1.Deployment, 
 func (c *deployments) UpdateStatus(deployment *v1.Deployment) (result *v1.Deployment, err error) {
 	result = &v1.Deployment{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(deployment.Name).
@@ -150,12 +166,14 @@ func (c *deployments) UpdateStatus(deployment *v1.Deployment) (result *v1.Deploy
 		Body(deployment).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the deployment and deletes it. Returns an error if one occurs.
 func (c *deployments) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(name).
@@ -171,6 +189,7 @@ func (c *deployments) DeleteCollection(options *metav1.DeleteOptions, listOption
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -184,6 +203,7 @@ func (c *deployments) DeleteCollection(options *metav1.DeleteOptions, listOption
 func (c *deployments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Deployment, err error) {
 	result = &v1.Deployment{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		SubResource(subresources...).
@@ -191,6 +211,7 @@ func (c *deployments) Patch(name string, pt types.PatchType, data []byte, subres
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -198,6 +219,7 @@ func (c *deployments) Patch(name string, pt types.PatchType, data []byte, subres
 func (c *deployments) GetScale(deploymentName string, options metav1.GetOptions) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(deploymentName).
@@ -205,6 +227,7 @@ func (c *deployments) GetScale(deploymentName string, options metav1.GetOptions)
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -212,6 +235,7 @@ func (c *deployments) GetScale(deploymentName string, options metav1.GetOptions)
 func (c *deployments) UpdateScale(deploymentName string, scale *autoscalingv1.Scale) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(deploymentName).
@@ -219,5 +243,6 @@ func (c *deployments) UpdateScale(deploymentName string, scale *autoscalingv1.Sc
 		Body(scale).
 		Do().
 		Into(result)
+
 	return
 }

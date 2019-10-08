@@ -32,7 +32,7 @@ import (
 // AuditSinksGetter has a method to return a AuditSinkInterface.
 // A group's client should implement this interface.
 type AuditSinksGetter interface {
-	AuditSinks() AuditSinkInterface
+	AuditSinks(optional_tenant ...string) AuditSinkInterface
 }
 
 // AuditSinkInterface has methods to work with AuditSink resources.
@@ -51,12 +51,18 @@ type AuditSinkInterface interface {
 // auditSinks implements AuditSinkInterface
 type auditSinks struct {
 	client rest.Interface
+	te     string
 }
 
 // newAuditSinks returns a AuditSinks
-func newAuditSinks(c *AuditregistrationV1alpha1Client) *auditSinks {
+func newAuditSinks(c *AuditregistrationV1alpha1Client, optional_tenant ...string) *auditSinks {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &auditSinks{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }
 
@@ -64,11 +70,13 @@ func newAuditSinks(c *AuditregistrationV1alpha1Client) *auditSinks {
 func (c *auditSinks) Get(name string, options v1.GetOptions) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("auditsinks").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -80,11 +88,13 @@ func (c *auditSinks) List(opts v1.ListOptions) (result *v1alpha1.AuditSinkList, 
 	}
 	result = &v1alpha1.AuditSinkList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("auditsinks").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -96,6 +106,7 @@ func (c *auditSinks) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Resource("auditsinks").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -106,10 +117,12 @@ func (c *auditSinks) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *auditSinks) Create(auditSink *v1alpha1.AuditSink) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("auditsinks").
 		Body(auditSink).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -117,17 +130,20 @@ func (c *auditSinks) Create(auditSink *v1alpha1.AuditSink) (result *v1alpha1.Aud
 func (c *auditSinks) Update(auditSink *v1alpha1.AuditSink) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("auditsinks").
 		Name(auditSink.Name).
 		Body(auditSink).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the auditSink and deletes it. Returns an error if one occurs.
 func (c *auditSinks) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("auditsinks").
 		Name(name).
 		Body(options).
@@ -142,6 +158,7 @@ func (c *auditSinks) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("auditsinks").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -154,11 +171,13 @@ func (c *auditSinks) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 func (c *auditSinks) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("auditsinks").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

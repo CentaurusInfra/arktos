@@ -25,7 +25,7 @@ import (
 // LocalSubjectAccessReviewsGetter has a method to return a LocalSubjectAccessReviewInterface.
 // A group's client should implement this interface.
 type LocalSubjectAccessReviewsGetter interface {
-	LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewInterface
+	LocalSubjectAccessReviews(namespace string, optional_tenant ...string) LocalSubjectAccessReviewInterface
 }
 
 // LocalSubjectAccessReviewInterface has methods to work with LocalSubjectAccessReview resources.
@@ -37,12 +37,19 @@ type LocalSubjectAccessReviewInterface interface {
 type localSubjectAccessReviews struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newLocalSubjectAccessReviews returns a LocalSubjectAccessReviews
-func newLocalSubjectAccessReviews(c *AuthorizationV1Client, namespace string) *localSubjectAccessReviews {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newLocalSubjectAccessReviews(c *AuthorizationV1Client, namespace string, optional_tenant ...string) *localSubjectAccessReviews {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &localSubjectAccessReviews{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }

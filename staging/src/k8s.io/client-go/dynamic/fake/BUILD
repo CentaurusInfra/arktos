@@ -41,7 +41,10 @@ filegroup(
 
 go_test(
     name = "go_default_test",
-    srcs = ["simple_test.go"],
+    srcs = [
+        "multi_tenancy_simple_test.go",
+        "simple_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//staging/src/k8s.io/apimachinery/pkg/api/equality:go_default_library",

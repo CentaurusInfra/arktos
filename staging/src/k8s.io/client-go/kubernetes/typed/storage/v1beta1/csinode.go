@@ -69,6 +69,7 @@ func (c *cSINodes) Get(name string, options v1.GetOptions) (result *v1beta1.CSIN
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *cSINodes) List(opts v1.ListOptions) (result *v1beta1.CSINodeList, err e
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *cSINodes) Create(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, er
 		Body(cSINode).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *cSINodes) Update(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, er
 		Body(cSINode).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *cSINodes) Patch(name string, pt types.PatchType, data []byte, subresour
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

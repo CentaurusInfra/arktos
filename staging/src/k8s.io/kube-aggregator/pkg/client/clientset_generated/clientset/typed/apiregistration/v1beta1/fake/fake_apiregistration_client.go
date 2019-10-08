@@ -29,6 +29,7 @@ type FakeApiregistrationV1beta1 struct {
 }
 
 func (c *FakeApiregistrationV1beta1) APIServices() v1beta1.APIServiceInterface {
+
 	return &FakeAPIServices{c}
 }
 

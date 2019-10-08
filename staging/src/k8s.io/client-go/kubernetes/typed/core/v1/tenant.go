@@ -69,6 +69,7 @@ func (c *tenants) Get(name string, options metav1.GetOptions) (result *v1.Tenant
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *tenants) List(opts metav1.ListOptions) (result *v1.TenantList, err erro
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *tenants) Create(tenant *v1.Tenant) (result *v1.Tenant, err error) {
 		Body(tenant).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *tenants) Update(tenant *v1.Tenant) (result *v1.Tenant, err error) {
 		Body(tenant).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -137,6 +141,7 @@ func (c *tenants) UpdateStatus(tenant *v1.Tenant) (result *v1.Tenant, err error)
 		Body(tenant).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +165,6 @@ func (c *tenants) Patch(name string, pt types.PatchType, data []byte, subresourc
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

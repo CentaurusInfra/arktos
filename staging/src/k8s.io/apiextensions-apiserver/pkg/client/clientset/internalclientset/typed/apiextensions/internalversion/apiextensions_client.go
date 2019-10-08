@@ -33,8 +33,8 @@ type ApiextensionsClient struct {
 	restClient rest.Interface
 }
 
-func (c *ApiextensionsClient) CustomResourceDefinitions() CustomResourceDefinitionInterface {
-	return newCustomResourceDefinitions(c)
+func (c *ApiextensionsClient) CustomResourceDefinitions(tenant ...string) CustomResourceDefinitionInterface {
+	return newCustomResourceDefinitions(c, tenant...)
 }
 
 // NewForConfig creates a new ApiextensionsClient for the given config.

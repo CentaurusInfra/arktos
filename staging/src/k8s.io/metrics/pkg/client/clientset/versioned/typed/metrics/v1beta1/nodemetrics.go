@@ -63,6 +63,7 @@ func (c *nodeMetricses) Get(name string, options v1.GetOptions) (result *v1beta1
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -79,6 +80,7 @@ func (c *nodeMetricses) List(opts v1.ListOptions) (result *v1beta1.NodeMetricsLi
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 

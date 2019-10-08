@@ -34,8 +34,8 @@ type BatchV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *BatchV1Client) Jobs(namespace string) JobInterface {
-	return newJobs(c, namespace)
+func (c *BatchV1Client) Jobs(namespace string, optional_tenant ...string) JobInterface {
+	return newJobs(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new BatchV1Client for the given config.

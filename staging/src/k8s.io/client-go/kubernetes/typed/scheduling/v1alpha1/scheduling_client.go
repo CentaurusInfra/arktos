@@ -34,8 +34,8 @@ type SchedulingV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *SchedulingV1alpha1Client) PriorityClasses() PriorityClassInterface {
-	return newPriorityClasses(c)
+func (c *SchedulingV1alpha1Client) PriorityClasses(tenant ...string) PriorityClassInterface {
+	return newPriorityClasses(c, tenant...)
 }
 
 // NewForConfig creates a new SchedulingV1alpha1Client for the given config.

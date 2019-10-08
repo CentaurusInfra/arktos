@@ -34,8 +34,8 @@ type NetworkingV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *NetworkingV1Client) NetworkPolicies(namespace string) NetworkPolicyInterface {
-	return newNetworkPolicies(c, namespace)
+func (c *NetworkingV1Client) NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyInterface {
+	return newNetworkPolicies(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new NetworkingV1Client for the given config.

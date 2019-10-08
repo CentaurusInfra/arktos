@@ -69,6 +69,7 @@ func (c *componentStatuses) Get(name string, options metav1.GetOptions) (result 
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *componentStatuses) List(opts metav1.ListOptions) (result *v1.ComponentS
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *componentStatuses) Create(componentStatus *v1.ComponentStatus) (result 
 		Body(componentStatus).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *componentStatuses) Update(componentStatus *v1.ComponentStatus) (result 
 		Body(componentStatus).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *componentStatuses) Patch(name string, pt types.PatchType, data []byte, 
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

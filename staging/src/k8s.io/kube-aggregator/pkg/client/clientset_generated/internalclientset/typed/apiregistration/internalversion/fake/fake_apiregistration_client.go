@@ -29,6 +29,7 @@ type FakeApiregistration struct {
 }
 
 func (c *FakeApiregistration) APIServices() internalversion.APIServiceInterface {
+
 	return &FakeAPIServices{c}
 }
 

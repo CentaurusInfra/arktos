@@ -22,4 +22,5 @@ package fake
 type FakeEvictions struct {
 	Fake *FakePolicyV1beta1
 	ns   string
+	te   string
 }

@@ -34,8 +34,8 @@ type EventsV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *EventsV1beta1Client) Events(namespace string) EventInterface {
-	return newEvents(c, namespace)
+func (c *EventsV1beta1Client) Events(namespace string, optional_tenant ...string) EventInterface {
+	return newEvents(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new EventsV1beta1Client for the given config.

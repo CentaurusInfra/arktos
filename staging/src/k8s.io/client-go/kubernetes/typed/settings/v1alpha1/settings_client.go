@@ -34,8 +34,8 @@ type SettingsV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *SettingsV1alpha1Client) PodPresets(namespace string) PodPresetInterface {
-	return newPodPresets(c, namespace)
+func (c *SettingsV1alpha1Client) PodPresets(namespace string, optional_tenant ...string) PodPresetInterface {
+	return newPodPresets(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new SettingsV1alpha1Client for the given config.

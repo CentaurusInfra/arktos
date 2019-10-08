@@ -44,6 +44,7 @@ func (c *FakeCSIDrivers) Get(name string, options v1.GetOptions) (result *v1beta
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSIDriver), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeCSIDrivers) Create(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.C
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSIDriver), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeCSIDrivers) Update(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.C
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSIDriver), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeCSIDrivers) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeCSIDrivers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(csidriversResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(csidriversResource, listOptions)
 	_, err := c.Fake.Invokes(action, &v1beta1.CSIDriverList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeCSIDrivers) Patch(name string, pt types.PatchType, data []byte, sub
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSIDriver), err
 }

@@ -69,6 +69,7 @@ func (c *clusterRoles) Get(name string, options v1.GetOptions) (result *v1alpha1
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *clusterRoles) List(opts v1.ListOptions) (result *v1alpha1.ClusterRoleLi
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *clusterRoles) Create(clusterRole *v1alpha1.ClusterRole) (result *v1alph
 		Body(clusterRole).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *clusterRoles) Update(clusterRole *v1alpha1.ClusterRole) (result *v1alph
 		Body(clusterRole).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *clusterRoles) Patch(name string, pt types.PatchType, data []byte, subre
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

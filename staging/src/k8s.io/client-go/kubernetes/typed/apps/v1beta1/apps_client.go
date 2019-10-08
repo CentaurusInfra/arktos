@@ -36,16 +36,16 @@ type AppsV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AppsV1beta1Client) ControllerRevisions(namespace string) ControllerRevisionInterface {
-	return newControllerRevisions(c, namespace)
+func (c *AppsV1beta1Client) ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionInterface {
+	return newControllerRevisions(c, namespace, optional_tenant...)
 }
 
-func (c *AppsV1beta1Client) Deployments(namespace string) DeploymentInterface {
-	return newDeployments(c, namespace)
+func (c *AppsV1beta1Client) Deployments(namespace string, optional_tenant ...string) DeploymentInterface {
+	return newDeployments(c, namespace, optional_tenant...)
 }
 
-func (c *AppsV1beta1Client) StatefulSets(namespace string) StatefulSetInterface {
-	return newStatefulSets(c, namespace)
+func (c *AppsV1beta1Client) StatefulSets(namespace string, optional_tenant ...string) StatefulSetInterface {
+	return newStatefulSets(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new AppsV1beta1Client for the given config.

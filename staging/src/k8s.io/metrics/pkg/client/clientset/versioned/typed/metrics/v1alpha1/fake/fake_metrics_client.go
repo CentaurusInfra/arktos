@@ -29,11 +29,16 @@ type FakeMetricsV1alpha1 struct {
 }
 
 func (c *FakeMetricsV1alpha1) NodeMetricses() v1alpha1.NodeMetricsInterface {
+
 	return &FakeNodeMetricses{c}
 }
 
-func (c *FakeMetricsV1alpha1) PodMetricses(namespace string) v1alpha1.PodMetricsInterface {
-	return &FakePodMetricses{c, namespace}
+func (c *FakeMetricsV1alpha1) PodMetricses(namespace string, optional_tenant ...string) v1alpha1.PodMetricsInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePodMetricses{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

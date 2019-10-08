@@ -31,6 +31,7 @@ import (
 // FakePodSecurityPolicies implements PodSecurityPolicyInterface
 type FakePodSecurityPolicies struct {
 	Fake *FakePolicyV1beta1
+	te   string
 }
 
 var podsecuritypoliciesResource = schema.GroupVersionResource{Group: "policy", Version: "v1beta1", Resource: "podsecuritypolicies"}
@@ -40,17 +41,20 @@ var podsecuritypoliciesKind = schema.GroupVersionKind{Group: "policy", Version: 
 // Get takes name of the podSecurityPolicy, and returns the corresponding podSecurityPolicy object, and an error if there is any.
 func (c *FakePodSecurityPolicies) Get(name string, options v1.GetOptions) (result *v1beta1.PodSecurityPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(podsecuritypoliciesResource, name), &v1beta1.PodSecurityPolicy{})
+		Invokes(testing.NewTenantGetAction(podsecuritypoliciesResource, name, c.te), &v1beta1.PodSecurityPolicy{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.PodSecurityPolicy), err
 }
 
 // List takes label and field selectors, and returns the list of PodSecurityPolicies that match those selectors.
 func (c *FakePodSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.PodSecurityPolicyList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(podsecuritypoliciesResource, podsecuritypoliciesKind, opts), &v1beta1.PodSecurityPolicyList{})
+		Invokes(testing.NewTenantListAction(podsecuritypoliciesResource, podsecuritypoliciesKind, opts, c.te), &v1beta1.PodSecurityPolicyList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -71,39 +75,46 @@ func (c *FakePodSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.Pod
 // Watch returns a watch.Interface that watches the requested podSecurityPolicies.
 func (c *FakePodSecurityPolicies) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(podsecuritypoliciesResource, opts))
+		InvokesWatch(testing.NewTenantWatchAction(podsecuritypoliciesResource, opts, c.te))
+
 }
 
 // Create takes the representation of a podSecurityPolicy and creates it.  Returns the server's representation of the podSecurityPolicy, and an error, if there is any.
 func (c *FakePodSecurityPolicies) Create(podSecurityPolicy *v1beta1.PodSecurityPolicy) (result *v1beta1.PodSecurityPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(podsecuritypoliciesResource, podSecurityPolicy), &v1beta1.PodSecurityPolicy{})
+		Invokes(testing.NewTenantCreateAction(podsecuritypoliciesResource, podSecurityPolicy, c.te), &v1beta1.PodSecurityPolicy{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.PodSecurityPolicy), err
 }
 
 // Update takes the representation of a podSecurityPolicy and updates it. Returns the server's representation of the podSecurityPolicy, and an error, if there is any.
 func (c *FakePodSecurityPolicies) Update(podSecurityPolicy *v1beta1.PodSecurityPolicy) (result *v1beta1.PodSecurityPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(podsecuritypoliciesResource, podSecurityPolicy), &v1beta1.PodSecurityPolicy{})
+		Invokes(testing.NewTenantUpdateAction(podsecuritypoliciesResource, podSecurityPolicy, c.te), &v1beta1.PodSecurityPolicy{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.PodSecurityPolicy), err
 }
 
 // Delete takes name of the podSecurityPolicy and deletes it. Returns an error if one occurs.
 func (c *FakePodSecurityPolicies) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(podsecuritypoliciesResource, name), &v1beta1.PodSecurityPolicy{})
+		Invokes(testing.NewTenantDeleteAction(podsecuritypoliciesResource, name, c.te), &v1beta1.PodSecurityPolicy{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakePodSecurityPolicies) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(podsecuritypoliciesResource, listOptions)
+
+	action := testing.NewTenantDeleteCollectionAction(podsecuritypoliciesResource, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.PodSecurityPolicyList{})
 	return err
@@ -112,9 +123,11 @@ func (c *FakePodSecurityPolicies) DeleteCollection(options *v1.DeleteOptions, li
 // Patch applies the patch and returns the patched podSecurityPolicy.
 func (c *FakePodSecurityPolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodSecurityPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(podsecuritypoliciesResource, name, pt, data, subresources...), &v1beta1.PodSecurityPolicy{})
+		Invokes(testing.NewTenantPatchSubresourceAction(podsecuritypoliciesResource, c.te, name, pt, data, subresources...), &v1beta1.PodSecurityPolicy{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.PodSecurityPolicy), err
 }

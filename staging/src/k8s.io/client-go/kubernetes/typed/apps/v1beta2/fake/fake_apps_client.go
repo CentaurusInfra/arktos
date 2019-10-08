@@ -28,24 +28,44 @@ type FakeAppsV1beta2 struct {
 	*testing.Fake
 }
 
-func (c *FakeAppsV1beta2) ControllerRevisions(namespace string) v1beta2.ControllerRevisionInterface {
-	return &FakeControllerRevisions{c, namespace}
+func (c *FakeAppsV1beta2) ControllerRevisions(namespace string, optional_tenant ...string) v1beta2.ControllerRevisionInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeControllerRevisions{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1beta2) DaemonSets(namespace string) v1beta2.DaemonSetInterface {
-	return &FakeDaemonSets{c, namespace}
+func (c *FakeAppsV1beta2) DaemonSets(namespace string, optional_tenant ...string) v1beta2.DaemonSetInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeDaemonSets{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1beta2) Deployments(namespace string) v1beta2.DeploymentInterface {
-	return &FakeDeployments{c, namespace}
+func (c *FakeAppsV1beta2) Deployments(namespace string, optional_tenant ...string) v1beta2.DeploymentInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeDeployments{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1beta2) ReplicaSets(namespace string) v1beta2.ReplicaSetInterface {
-	return &FakeReplicaSets{c, namespace}
+func (c *FakeAppsV1beta2) ReplicaSets(namespace string, optional_tenant ...string) v1beta2.ReplicaSetInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeReplicaSets{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1beta2) StatefulSets(namespace string) v1beta2.StatefulSetInterface {
-	return &FakeStatefulSets{c, namespace}
+func (c *FakeAppsV1beta2) StatefulSets(namespace string, optional_tenant ...string) v1beta2.StatefulSetInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeStatefulSets{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

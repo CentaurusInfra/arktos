@@ -28,8 +28,12 @@ type FakeSecondExampleV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSecondExampleV1) TestTypes(namespace string) v1.TestTypeInterface {
-	return &FakeTestTypes{c, namespace}
+func (c *FakeSecondExampleV1) TestTypes(namespace string, optional_tenant ...string) v1.TestTypeInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeTestTypes{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

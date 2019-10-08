@@ -31,6 +31,7 @@ import (
 // FakeNamespaces implements NamespaceInterface
 type FakeNamespaces struct {
 	Fake *FakeCoreV1
+	te   string
 }
 
 var namespacesResource = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}
@@ -40,17 +41,20 @@ var namespacesKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Na
 // Get takes name of the namespace, and returns the corresponding namespace object, and an error if there is any.
 func (c *FakeNamespaces) Get(name string, options v1.GetOptions) (result *corev1.Namespace, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(namespacesResource, name), &corev1.Namespace{})
+		Invokes(testing.NewTenantGetAction(namespacesResource, name, c.te), &corev1.Namespace{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Namespace), err
 }
 
 // List takes label and field selectors, and returns the list of Namespaces that match those selectors.
 func (c *FakeNamespaces) List(opts v1.ListOptions) (result *corev1.NamespaceList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(namespacesResource, namespacesKind, opts), &corev1.NamespaceList{})
+		Invokes(testing.NewTenantListAction(namespacesResource, namespacesKind, opts, c.te), &corev1.NamespaceList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -71,26 +75,31 @@ func (c *FakeNamespaces) List(opts v1.ListOptions) (result *corev1.NamespaceList
 // Watch returns a watch.Interface that watches the requested namespaces.
 func (c *FakeNamespaces) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(namespacesResource, opts))
+		InvokesWatch(testing.NewTenantWatchAction(namespacesResource, opts, c.te))
+
 }
 
 // Create takes the representation of a namespace and creates it.  Returns the server's representation of the namespace, and an error, if there is any.
 func (c *FakeNamespaces) Create(namespace *corev1.Namespace) (result *corev1.Namespace, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(namespacesResource, namespace), &corev1.Namespace{})
+		Invokes(testing.NewTenantCreateAction(namespacesResource, namespace, c.te), &corev1.Namespace{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Namespace), err
 }
 
 // Update takes the representation of a namespace and updates it. Returns the server's representation of the namespace, and an error, if there is any.
 func (c *FakeNamespaces) Update(namespace *corev1.Namespace) (result *corev1.Namespace, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(namespacesResource, namespace), &corev1.Namespace{})
+		Invokes(testing.NewTenantUpdateAction(namespacesResource, namespace, c.te), &corev1.Namespace{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Namespace), err
 }
 
@@ -98,7 +107,8 @@ func (c *FakeNamespaces) Update(namespace *corev1.Namespace) (result *corev1.Nam
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeNamespaces) UpdateStatus(namespace *corev1.Namespace) (*corev1.Namespace, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(namespacesResource, "status", namespace), &corev1.Namespace{})
+		Invokes(testing.NewTenantUpdateSubresourceAction(namespacesResource, "status", namespace, c.te), &corev1.Namespace{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -108,16 +118,19 @@ func (c *FakeNamespaces) UpdateStatus(namespace *corev1.Namespace) (*corev1.Name
 // Delete takes name of the namespace and deletes it. Returns an error if one occurs.
 func (c *FakeNamespaces) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(namespacesResource, name), &corev1.Namespace{})
+		Invokes(testing.NewTenantDeleteAction(namespacesResource, name, c.te), &corev1.Namespace{})
+
 	return err
 }
 
 // Patch applies the patch and returns the patched namespace.
 func (c *FakeNamespaces) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Namespace, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(namespacesResource, name, pt, data, subresources...), &corev1.Namespace{})
+		Invokes(testing.NewTenantPatchSubresourceAction(namespacesResource, c.te, name, pt, data, subresources...), &corev1.Namespace{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Namespace), err
 }

@@ -32,7 +32,7 @@ import (
 // CertificateSigningRequestsGetter has a method to return a CertificateSigningRequestInterface.
 // A group's client should implement this interface.
 type CertificateSigningRequestsGetter interface {
-	CertificateSigningRequests() CertificateSigningRequestInterface
+	CertificateSigningRequests(optional_tenant ...string) CertificateSigningRequestInterface
 }
 
 // CertificateSigningRequestInterface has methods to work with CertificateSigningRequest resources.
@@ -52,12 +52,18 @@ type CertificateSigningRequestInterface interface {
 // certificateSigningRequests implements CertificateSigningRequestInterface
 type certificateSigningRequests struct {
 	client rest.Interface
+	te     string
 }
 
 // newCertificateSigningRequests returns a CertificateSigningRequests
-func newCertificateSigningRequests(c *CertificatesV1beta1Client) *certificateSigningRequests {
+func newCertificateSigningRequests(c *CertificatesV1beta1Client, optional_tenant ...string) *certificateSigningRequests {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &certificateSigningRequests{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }
 
@@ -65,11 +71,13 @@ func newCertificateSigningRequests(c *CertificatesV1beta1Client) *certificateSig
 func (c *certificateSigningRequests) Get(name string, options v1.GetOptions) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -81,11 +89,13 @@ func (c *certificateSigningRequests) List(opts v1.ListOptions) (result *v1beta1.
 	}
 	result = &v1beta1.CertificateSigningRequestList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -97,6 +107,7 @@ func (c *certificateSigningRequests) Watch(opts v1.ListOptions) (watch.Interface
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,10 +118,12 @@ func (c *certificateSigningRequests) Watch(opts v1.ListOptions) (watch.Interface
 func (c *certificateSigningRequests) Create(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		Body(certificateSigningRequest).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -118,11 +131,13 @@ func (c *certificateSigningRequests) Create(certificateSigningRequest *v1beta1.C
 func (c *certificateSigningRequests) Update(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		Name(certificateSigningRequest.Name).
 		Body(certificateSigningRequest).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -132,18 +147,21 @@ func (c *certificateSigningRequests) Update(certificateSigningRequest *v1beta1.C
 func (c *certificateSigningRequests) UpdateStatus(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		Name(certificateSigningRequest.Name).
 		SubResource("status").
 		Body(certificateSigningRequest).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the certificateSigningRequest and deletes it. Returns an error if one occurs.
 func (c *certificateSigningRequests) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		Name(name).
 		Body(options).
@@ -158,6 +176,7 @@ func (c *certificateSigningRequests) DeleteCollection(options *v1.DeleteOptions,
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -170,11 +189,13 @@ func (c *certificateSigningRequests) DeleteCollection(options *v1.DeleteOptions,
 func (c *certificateSigningRequests) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("certificatesigningrequests").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

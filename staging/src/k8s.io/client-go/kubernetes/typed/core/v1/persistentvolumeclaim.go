@@ -32,7 +32,7 @@ import (
 // PersistentVolumeClaimsGetter has a method to return a PersistentVolumeClaimInterface.
 // A group's client should implement this interface.
 type PersistentVolumeClaimsGetter interface {
-	PersistentVolumeClaims(namespace string) PersistentVolumeClaimInterface
+	PersistentVolumeClaims(namespace string, optional_tenant ...string) PersistentVolumeClaimInterface
 }
 
 // PersistentVolumeClaimInterface has methods to work with PersistentVolumeClaim resources.
@@ -53,13 +53,20 @@ type PersistentVolumeClaimInterface interface {
 type persistentVolumeClaims struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newPersistentVolumeClaims returns a PersistentVolumeClaims
-func newPersistentVolumeClaims(c *CoreV1Client, namespace string) *persistentVolumeClaims {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newPersistentVolumeClaims(c *CoreV1Client, namespace string, optional_tenant ...string) *persistentVolumeClaims {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &persistentVolumeClaims{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newPersistentVolumeClaims(c *CoreV1Client, namespace string) *persistentVol
 func (c *persistentVolumeClaims) Get(name string, options metav1.GetOptions) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *persistentVolumeClaims) List(opts metav1.ListOptions) (result *v1.Persi
 	}
 	result = &v1.PersistentVolumeClaimList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *persistentVolumeClaims) Watch(opts metav1.ListOptions) (watch.Interface
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *persistentVolumeClaims) Watch(opts metav1.ListOptions) (watch.Interface
 func (c *persistentVolumeClaims) Create(persistentVolumeClaim *v1.PersistentVolumeClaim) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Body(persistentVolumeClaim).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *persistentVolumeClaims) Create(persistentVolumeClaim *v1.PersistentVolu
 func (c *persistentVolumeClaims) Update(persistentVolumeClaim *v1.PersistentVolumeClaim) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(persistentVolumeClaim.Name).
 		Body(persistentVolumeClaim).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *persistentVolumeClaims) Update(persistentVolumeClaim *v1.PersistentVolu
 func (c *persistentVolumeClaims) UpdateStatus(persistentVolumeClaim *v1.PersistentVolumeClaim) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(persistentVolumeClaim.Name).
@@ -146,12 +162,14 @@ func (c *persistentVolumeClaims) UpdateStatus(persistentVolumeClaim *v1.Persiste
 		Body(persistentVolumeClaim).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the persistentVolumeClaim and deletes it. Returns an error if one occurs.
 func (c *persistentVolumeClaims) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *persistentVolumeClaims) DeleteCollection(options *metav1.DeleteOptions,
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *persistentVolumeClaims) DeleteCollection(options *metav1.DeleteOptions,
 func (c *persistentVolumeClaims) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *persistentVolumeClaims) Patch(name string, pt types.PatchType, data []b
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

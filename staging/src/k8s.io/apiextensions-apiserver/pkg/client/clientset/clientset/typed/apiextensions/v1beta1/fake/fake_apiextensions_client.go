@@ -28,8 +28,12 @@ type FakeApiextensionsV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeApiextensionsV1beta1) CustomResourceDefinitions() v1beta1.CustomResourceDefinitionInterface {
-	return &FakeCustomResourceDefinitions{c}
+func (c *FakeApiextensionsV1beta1) CustomResourceDefinitions(optional_tenant ...string) v1beta1.CustomResourceDefinitionInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeCustomResourceDefinitions{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

@@ -34,8 +34,8 @@ type ExampleV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ExampleV1Client) TestTypes(namespace string) TestTypeInterface {
-	return newTestTypes(c, namespace)
+func (c *ExampleV1Client) TestTypes(namespace string, optional_tenant ...string) TestTypeInterface {
+	return newTestTypes(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new ExampleV1Client for the given config.

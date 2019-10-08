@@ -32,7 +32,7 @@ import (
 // JobsGetter has a method to return a JobInterface.
 // A group's client should implement this interface.
 type JobsGetter interface {
-	Jobs(namespace string) JobInterface
+	Jobs(namespace string, optional_tenant ...string) JobInterface
 }
 
 // JobInterface has methods to work with Job resources.
@@ -53,13 +53,20 @@ type JobInterface interface {
 type jobs struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newJobs returns a Jobs
-func newJobs(c *BatchV1Client, namespace string) *jobs {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newJobs(c *BatchV1Client, namespace string, optional_tenant ...string) *jobs {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &jobs{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newJobs(c *BatchV1Client, namespace string) *jobs {
 func (c *jobs) Get(name string, options metav1.GetOptions) (result *v1.Job, err error) {
 	result = &v1.Job{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *jobs) List(opts metav1.ListOptions) (result *v1.JobList, err error) {
 	}
 	result = &v1.JobList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("jobs").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *jobs) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *jobs) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *jobs) Create(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		Body(job).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *jobs) Create(job *v1.Job) (result *v1.Job, err error) {
 func (c *jobs) Update(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(job.Name).
 		Body(job).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *jobs) Update(job *v1.Job) (result *v1.Job, err error) {
 func (c *jobs) UpdateStatus(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(job.Name).
@@ -146,12 +162,14 @@ func (c *jobs) UpdateStatus(job *v1.Job) (result *v1.Job, err error) {
 		Body(job).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the job and deletes it. Returns an error if one occurs.
 func (c *jobs) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *jobs) DeleteCollection(options *metav1.DeleteOptions, listOptions metav
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *jobs) DeleteCollection(options *metav1.DeleteOptions, listOptions metav
 func (c *jobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Job, err error) {
 	result = &v1.Job{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("jobs").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *jobs) Patch(name string, pt types.PatchType, data []byte, subresources 
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

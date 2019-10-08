@@ -44,6 +44,7 @@ func (c *FakeClusterRoles) Get(name string, options v1.GetOptions) (result *v1be
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ClusterRole), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeClusterRoles) Create(clusterRole *v1beta1.ClusterRole) (result *v1b
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ClusterRole), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeClusterRoles) Update(clusterRole *v1beta1.ClusterRole) (result *v1b
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ClusterRole), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeClusterRoles) Delete(name string, options *v1.DeleteOptions) error 
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeClusterRoles) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(clusterrolesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(clusterrolesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &v1beta1.ClusterRoleList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeClusterRoles) Patch(name string, pt types.PatchType, data []byte, s
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ClusterRole), err
 }

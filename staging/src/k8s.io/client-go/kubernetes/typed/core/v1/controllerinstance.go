@@ -69,6 +69,7 @@ func (c *controllerInstances) Get(name string, options metav1.GetOptions) (resul
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *controllerInstances) List(opts metav1.ListOptions) (result *v1.Controll
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *controllerInstances) Create(controllerInstance *v1.ControllerInstance) 
 		Body(controllerInstance).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *controllerInstances) Update(controllerInstance *v1.ControllerInstance) 
 		Body(controllerInstance).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *controllerInstances) Patch(name string, pt types.PatchType, data []byte
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

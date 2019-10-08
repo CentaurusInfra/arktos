@@ -32,7 +32,7 @@ import (
 // LeasesGetter has a method to return a LeaseInterface.
 // A group's client should implement this interface.
 type LeasesGetter interface {
-	Leases(namespace string) LeaseInterface
+	Leases(namespace string, optional_tenant ...string) LeaseInterface
 }
 
 // LeaseInterface has methods to work with Lease resources.
@@ -52,13 +52,20 @@ type LeaseInterface interface {
 type leases struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newLeases returns a Leases
-func newLeases(c *CoordinationV1Client, namespace string) *leases {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newLeases(c *CoordinationV1Client, namespace string, optional_tenant ...string) *leases {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &leases{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newLeases(c *CoordinationV1Client, namespace string) *leases {
 func (c *leases) Get(name string, options metav1.GetOptions) (result *v1.Lease, err error) {
 	result = &v1.Lease{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("leases").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *leases) List(opts metav1.ListOptions) (result *v1.LeaseList, err error)
 	}
 	result = &v1.LeaseList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("leases").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *leases) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("leases").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *leases) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *leases) Create(lease *v1.Lease) (result *v1.Lease, err error) {
 	result = &v1.Lease{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("leases").
 		Body(lease).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *leases) Create(lease *v1.Lease) (result *v1.Lease, err error) {
 func (c *leases) Update(lease *v1.Lease) (result *v1.Lease, err error) {
 	result = &v1.Lease{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("leases").
 		Name(lease.Name).
 		Body(lease).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the lease and deletes it. Returns an error if one occurs.
 func (c *leases) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("leases").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *leases) DeleteCollection(options *metav1.DeleteOptions, listOptions met
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("leases").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *leases) DeleteCollection(options *metav1.DeleteOptions, listOptions met
 func (c *leases) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Lease, err error) {
 	result = &v1.Lease{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("leases").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *leases) Patch(name string, pt types.PatchType, data []byte, subresource
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

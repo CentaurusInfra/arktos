@@ -25,7 +25,7 @@ import (
 // EvictionsGetter has a method to return a EvictionInterface.
 // A group's client should implement this interface.
 type EvictionsGetter interface {
-	Evictions(namespace string) EvictionInterface
+	Evictions(namespace string, optional_tenant ...string) EvictionInterface
 }
 
 // EvictionInterface has methods to work with Eviction resources.
@@ -37,12 +37,19 @@ type EvictionInterface interface {
 type evictions struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newEvictions returns a Evictions
-func newEvictions(c *PolicyV1beta1Client, namespace string) *evictions {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newEvictions(c *PolicyV1beta1Client, namespace string, optional_tenant ...string) *evictions {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &evictions{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }

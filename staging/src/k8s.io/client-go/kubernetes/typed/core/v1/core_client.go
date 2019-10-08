@@ -52,76 +52,76 @@ type CoreV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *CoreV1Client) Actions(namespace string) ActionInterface {
-	return newActions(c, namespace)
+func (c *CoreV1Client) Actions(namespace string, optional_tenant ...string) ActionInterface {
+	return newActions(c, namespace, optional_tenant...)
 }
 
 func (c *CoreV1Client) ComponentStatuses() ComponentStatusInterface {
 	return newComponentStatuses(c)
 }
 
-func (c *CoreV1Client) ConfigMaps(namespace string) ConfigMapInterface {
-	return newConfigMaps(c, namespace)
+func (c *CoreV1Client) ConfigMaps(namespace string, optional_tenant ...string) ConfigMapInterface {
+	return newConfigMaps(c, namespace, optional_tenant...)
 }
 
 func (c *CoreV1Client) ControllerInstances() ControllerInstanceInterface {
 	return newControllerInstances(c)
 }
 
-func (c *CoreV1Client) Endpoints(namespace string) EndpointsInterface {
-	return newEndpoints(c, namespace)
+func (c *CoreV1Client) Endpoints(namespace string, optional_tenant ...string) EndpointsInterface {
+	return newEndpoints(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) Events(namespace string) EventInterface {
-	return newEvents(c, namespace)
+func (c *CoreV1Client) Events(namespace string, optional_tenant ...string) EventInterface {
+	return newEvents(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) LimitRanges(namespace string) LimitRangeInterface {
-	return newLimitRanges(c, namespace)
+func (c *CoreV1Client) LimitRanges(namespace string, optional_tenant ...string) LimitRangeInterface {
+	return newLimitRanges(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) Namespaces() NamespaceInterface {
-	return newNamespaces(c)
+func (c *CoreV1Client) Namespaces(tenant ...string) NamespaceInterface {
+	return newNamespaces(c, tenant...)
 }
 
 func (c *CoreV1Client) Nodes() NodeInterface {
 	return newNodes(c)
 }
 
-func (c *CoreV1Client) PersistentVolumes() PersistentVolumeInterface {
-	return newPersistentVolumes(c)
+func (c *CoreV1Client) PersistentVolumes(tenant ...string) PersistentVolumeInterface {
+	return newPersistentVolumes(c, tenant...)
 }
 
-func (c *CoreV1Client) PersistentVolumeClaims(namespace string) PersistentVolumeClaimInterface {
-	return newPersistentVolumeClaims(c, namespace)
+func (c *CoreV1Client) PersistentVolumeClaims(namespace string, optional_tenant ...string) PersistentVolumeClaimInterface {
+	return newPersistentVolumeClaims(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) Pods(namespace string) PodInterface {
-	return newPods(c, namespace)
+func (c *CoreV1Client) Pods(namespace string, optional_tenant ...string) PodInterface {
+	return newPods(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) PodTemplates(namespace string) PodTemplateInterface {
-	return newPodTemplates(c, namespace)
+func (c *CoreV1Client) PodTemplates(namespace string, optional_tenant ...string) PodTemplateInterface {
+	return newPodTemplates(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) ReplicationControllers(namespace string) ReplicationControllerInterface {
-	return newReplicationControllers(c, namespace)
+func (c *CoreV1Client) ReplicationControllers(namespace string, optional_tenant ...string) ReplicationControllerInterface {
+	return newReplicationControllers(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) ResourceQuotas(namespace string) ResourceQuotaInterface {
-	return newResourceQuotas(c, namespace)
+func (c *CoreV1Client) ResourceQuotas(namespace string, optional_tenant ...string) ResourceQuotaInterface {
+	return newResourceQuotas(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) Secrets(namespace string) SecretInterface {
-	return newSecrets(c, namespace)
+func (c *CoreV1Client) Secrets(namespace string, optional_tenant ...string) SecretInterface {
+	return newSecrets(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) Services(namespace string) ServiceInterface {
-	return newServices(c, namespace)
+func (c *CoreV1Client) Services(namespace string, optional_tenant ...string) ServiceInterface {
+	return newServices(c, namespace, optional_tenant...)
 }
 
-func (c *CoreV1Client) ServiceAccounts(namespace string) ServiceAccountInterface {
-	return newServiceAccounts(c, namespace)
+func (c *CoreV1Client) ServiceAccounts(namespace string, optional_tenant ...string) ServiceAccountInterface {
+	return newServiceAccounts(c, namespace, optional_tenant...)
 }
 
 func (c *CoreV1Client) Tenants() TenantInterface {

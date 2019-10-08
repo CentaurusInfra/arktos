@@ -28,79 +28,143 @@ type FakeCoreV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCoreV1) Actions(namespace string) v1.ActionInterface {
-	return &FakeActions{c, namespace}
+func (c *FakeCoreV1) Actions(namespace string, optional_tenant ...string) v1.ActionInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeActions{c, namespace, tenant}
 }
 
 func (c *FakeCoreV1) ComponentStatuses() v1.ComponentStatusInterface {
+
 	return &FakeComponentStatuses{c}
 }
 
-func (c *FakeCoreV1) ConfigMaps(namespace string) v1.ConfigMapInterface {
-	return &FakeConfigMaps{c, namespace}
+func (c *FakeCoreV1) ConfigMaps(namespace string, optional_tenant ...string) v1.ConfigMapInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeConfigMaps{c, namespace, tenant}
 }
 
 func (c *FakeCoreV1) ControllerInstances() v1.ControllerInstanceInterface {
+
 	return &FakeControllerInstances{c}
 }
 
-func (c *FakeCoreV1) Endpoints(namespace string) v1.EndpointsInterface {
-	return &FakeEndpoints{c, namespace}
+func (c *FakeCoreV1) Endpoints(namespace string, optional_tenant ...string) v1.EndpointsInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeEndpoints{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) Events(namespace string) v1.EventInterface {
-	return &FakeEvents{c, namespace}
+func (c *FakeCoreV1) Events(namespace string, optional_tenant ...string) v1.EventInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeEvents{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) LimitRanges(namespace string) v1.LimitRangeInterface {
-	return &FakeLimitRanges{c, namespace}
+func (c *FakeCoreV1) LimitRanges(namespace string, optional_tenant ...string) v1.LimitRangeInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeLimitRanges{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) Namespaces() v1.NamespaceInterface {
-	return &FakeNamespaces{c}
+func (c *FakeCoreV1) Namespaces(optional_tenant ...string) v1.NamespaceInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeNamespaces{c, tenant}
 }
 
 func (c *FakeCoreV1) Nodes() v1.NodeInterface {
+
 	return &FakeNodes{c}
 }
 
-func (c *FakeCoreV1) PersistentVolumes() v1.PersistentVolumeInterface {
-	return &FakePersistentVolumes{c}
+func (c *FakeCoreV1) PersistentVolumes(optional_tenant ...string) v1.PersistentVolumeInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePersistentVolumes{c, tenant}
 }
 
-func (c *FakeCoreV1) PersistentVolumeClaims(namespace string) v1.PersistentVolumeClaimInterface {
-	return &FakePersistentVolumeClaims{c, namespace}
+func (c *FakeCoreV1) PersistentVolumeClaims(namespace string, optional_tenant ...string) v1.PersistentVolumeClaimInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePersistentVolumeClaims{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) Pods(namespace string) v1.PodInterface {
-	return &FakePods{c, namespace}
+func (c *FakeCoreV1) Pods(namespace string, optional_tenant ...string) v1.PodInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePods{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) PodTemplates(namespace string) v1.PodTemplateInterface {
-	return &FakePodTemplates{c, namespace}
+func (c *FakeCoreV1) PodTemplates(namespace string, optional_tenant ...string) v1.PodTemplateInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePodTemplates{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) ReplicationControllers(namespace string) v1.ReplicationControllerInterface {
-	return &FakeReplicationControllers{c, namespace}
+func (c *FakeCoreV1) ReplicationControllers(namespace string, optional_tenant ...string) v1.ReplicationControllerInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeReplicationControllers{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) ResourceQuotas(namespace string) v1.ResourceQuotaInterface {
-	return &FakeResourceQuotas{c, namespace}
+func (c *FakeCoreV1) ResourceQuotas(namespace string, optional_tenant ...string) v1.ResourceQuotaInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeResourceQuotas{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) Secrets(namespace string) v1.SecretInterface {
-	return &FakeSecrets{c, namespace}
+func (c *FakeCoreV1) Secrets(namespace string, optional_tenant ...string) v1.SecretInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeSecrets{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) Services(namespace string) v1.ServiceInterface {
-	return &FakeServices{c, namespace}
+func (c *FakeCoreV1) Services(namespace string, optional_tenant ...string) v1.ServiceInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeServices{c, namespace, tenant}
 }
 
-func (c *FakeCoreV1) ServiceAccounts(namespace string) v1.ServiceAccountInterface {
-	return &FakeServiceAccounts{c, namespace}
+func (c *FakeCoreV1) ServiceAccounts(namespace string, optional_tenant ...string) v1.ServiceAccountInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeServiceAccounts{c, namespace, tenant}
 }
 
 func (c *FakeCoreV1) Tenants() v1.TenantInterface {
+
 	return &FakeTenants{c}
 }
 

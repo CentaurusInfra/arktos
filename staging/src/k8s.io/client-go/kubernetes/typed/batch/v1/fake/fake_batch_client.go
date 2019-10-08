@@ -28,8 +28,12 @@ type FakeBatchV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeBatchV1) Jobs(namespace string) v1.JobInterface {
-	return &FakeJobs{c, namespace}
+func (c *FakeBatchV1) Jobs(namespace string, optional_tenant ...string) v1.JobInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeJobs{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

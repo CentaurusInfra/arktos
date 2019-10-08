@@ -32,7 +32,7 @@ import (
 // ServiceAccountsGetter has a method to return a ServiceAccountInterface.
 // A group's client should implement this interface.
 type ServiceAccountsGetter interface {
-	ServiceAccounts(namespace string) ServiceAccountInterface
+	ServiceAccounts(namespace string, optional_tenant ...string) ServiceAccountInterface
 }
 
 // ServiceAccountInterface has methods to work with ServiceAccount resources.
@@ -52,13 +52,20 @@ type ServiceAccountInterface interface {
 type serviceAccounts struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newServiceAccounts returns a ServiceAccounts
-func newServiceAccounts(c *CoreV1Client, namespace string) *serviceAccounts {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newServiceAccounts(c *CoreV1Client, namespace string, optional_tenant ...string) *serviceAccounts {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &serviceAccounts{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newServiceAccounts(c *CoreV1Client, namespace string) *serviceAccounts {
 func (c *serviceAccounts) Get(name string, options metav1.GetOptions) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *serviceAccounts) List(opts metav1.ListOptions) (result *v1.ServiceAccou
 	}
 	result = &v1.ServiceAccountList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("serviceaccounts").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *serviceAccounts) Watch(opts metav1.ListOptions) (watch.Interface, error
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *serviceAccounts) Watch(opts metav1.ListOptions) (watch.Interface, error
 func (c *serviceAccounts) Create(serviceAccount *v1.ServiceAccount) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Body(serviceAccount).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *serviceAccounts) Create(serviceAccount *v1.ServiceAccount) (result *v1.
 func (c *serviceAccounts) Update(serviceAccount *v1.ServiceAccount) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Name(serviceAccount.Name).
 		Body(serviceAccount).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the serviceAccount and deletes it. Returns an error if one occurs.
 func (c *serviceAccounts) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *serviceAccounts) DeleteCollection(options *metav1.DeleteOptions, listOp
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *serviceAccounts) DeleteCollection(options *metav1.DeleteOptions, listOp
 func (c *serviceAccounts) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *serviceAccounts) Patch(name string, pt types.PatchType, data []byte, su
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

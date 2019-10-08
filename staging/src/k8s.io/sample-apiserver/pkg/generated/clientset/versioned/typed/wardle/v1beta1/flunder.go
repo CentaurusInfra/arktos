@@ -32,7 +32,7 @@ import (
 // FlundersGetter has a method to return a FlunderInterface.
 // A group's client should implement this interface.
 type FlundersGetter interface {
-	Flunders(namespace string) FlunderInterface
+	Flunders(namespace string, optional_tenant ...string) FlunderInterface
 }
 
 // FlunderInterface has methods to work with Flunder resources.
@@ -53,13 +53,20 @@ type FlunderInterface interface {
 type flunders struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newFlunders returns a Flunders
-func newFlunders(c *WardleV1beta1Client, namespace string) *flunders {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newFlunders(c *WardleV1beta1Client, namespace string, optional_tenant ...string) *flunders {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &flunders{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newFlunders(c *WardleV1beta1Client, namespace string) *flunders {
 func (c *flunders) Get(name string, options v1.GetOptions) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *flunders) List(opts v1.ListOptions) (result *v1beta1.FlunderList, err e
 	}
 	result = &v1beta1.FlunderList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("flunders").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *flunders) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *flunders) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *flunders) Create(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		Body(flunder).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *flunders) Create(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, er
 func (c *flunders) Update(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(flunder.Name).
 		Body(flunder).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *flunders) Update(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, er
 func (c *flunders) UpdateStatus(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(flunder.Name).
@@ -146,12 +162,14 @@ func (c *flunders) UpdateStatus(flunder *v1beta1.Flunder) (result *v1beta1.Flund
 		Body(flunder).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the flunder and deletes it. Returns an error if one occurs.
 func (c *flunders) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *flunders) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *flunders) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 func (c *flunders) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("flunders").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *flunders) Patch(name string, pt types.PatchType, data []byte, subresour
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

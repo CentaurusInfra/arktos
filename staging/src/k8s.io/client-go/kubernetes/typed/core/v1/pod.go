@@ -32,7 +32,7 @@ import (
 // PodsGetter has a method to return a PodInterface.
 // A group's client should implement this interface.
 type PodsGetter interface {
-	Pods(namespace string) PodInterface
+	Pods(namespace string, optional_tenant ...string) PodInterface
 }
 
 // PodInterface has methods to work with Pod resources.
@@ -53,13 +53,20 @@ type PodInterface interface {
 type pods struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newPods returns a Pods
-func newPods(c *CoreV1Client, namespace string) *pods {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newPods(c *CoreV1Client, namespace string, optional_tenant ...string) *pods {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &pods{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newPods(c *CoreV1Client, namespace string) *pods {
 func (c *pods) Get(name string, options metav1.GetOptions) (result *v1.Pod, err error) {
 	result = &v1.Pod{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *pods) List(opts metav1.ListOptions) (result *v1.PodList, err error) {
 	}
 	result = &v1.PodList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("pods").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *pods) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *pods) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *pods) Create(pod *v1.Pod) (result *v1.Pod, err error) {
 	result = &v1.Pod{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		Body(pod).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *pods) Create(pod *v1.Pod) (result *v1.Pod, err error) {
 func (c *pods) Update(pod *v1.Pod) (result *v1.Pod, err error) {
 	result = &v1.Pod{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(pod.Name).
 		Body(pod).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *pods) Update(pod *v1.Pod) (result *v1.Pod, err error) {
 func (c *pods) UpdateStatus(pod *v1.Pod) (result *v1.Pod, err error) {
 	result = &v1.Pod{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(pod.Name).
@@ -146,12 +162,14 @@ func (c *pods) UpdateStatus(pod *v1.Pod) (result *v1.Pod, err error) {
 		Body(pod).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the pod and deletes it. Returns an error if one occurs.
 func (c *pods) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *pods) DeleteCollection(options *metav1.DeleteOptions, listOptions metav
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *pods) DeleteCollection(options *metav1.DeleteOptions, listOptions metav
 func (c *pods) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Pod, err error) {
 	result = &v1.Pod{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *pods) Patch(name string, pt types.PatchType, data []byte, subresources 
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

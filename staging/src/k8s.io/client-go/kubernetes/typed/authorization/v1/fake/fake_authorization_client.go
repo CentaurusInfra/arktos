@@ -28,20 +28,36 @@ type FakeAuthorizationV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAuthorizationV1) LocalSubjectAccessReviews(namespace string) v1.LocalSubjectAccessReviewInterface {
-	return &FakeLocalSubjectAccessReviews{c, namespace}
+func (c *FakeAuthorizationV1) LocalSubjectAccessReviews(namespace string, optional_tenant ...string) v1.LocalSubjectAccessReviewInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeLocalSubjectAccessReviews{c, namespace, tenant}
 }
 
-func (c *FakeAuthorizationV1) SelfSubjectAccessReviews() v1.SelfSubjectAccessReviewInterface {
-	return &FakeSelfSubjectAccessReviews{c}
+func (c *FakeAuthorizationV1) SelfSubjectAccessReviews(optional_tenant ...string) v1.SelfSubjectAccessReviewInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeSelfSubjectAccessReviews{c, tenant}
 }
 
-func (c *FakeAuthorizationV1) SelfSubjectRulesReviews() v1.SelfSubjectRulesReviewInterface {
-	return &FakeSelfSubjectRulesReviews{c}
+func (c *FakeAuthorizationV1) SelfSubjectRulesReviews(optional_tenant ...string) v1.SelfSubjectRulesReviewInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeSelfSubjectRulesReviews{c, tenant}
 }
 
-func (c *FakeAuthorizationV1) SubjectAccessReviews() v1.SubjectAccessReviewInterface {
-	return &FakeSubjectAccessReviews{c}
+func (c *FakeAuthorizationV1) SubjectAccessReviews(optional_tenant ...string) v1.SubjectAccessReviewInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeSubjectAccessReviews{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

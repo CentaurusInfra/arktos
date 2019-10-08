@@ -28,8 +28,12 @@ type FakeAuthenticationV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAuthenticationV1beta1) TokenReviews() v1beta1.TokenReviewInterface {
-	return &FakeTokenReviews{c}
+func (c *FakeAuthenticationV1beta1) TokenReviews(optional_tenant ...string) v1beta1.TokenReviewInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeTokenReviews{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

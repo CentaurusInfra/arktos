@@ -22,4 +22,5 @@ package fake
 type FakeLocalSubjectAccessReviews struct {
 	Fake *FakeAuthorizationV1beta1
 	ns   string
+	te   string
 }

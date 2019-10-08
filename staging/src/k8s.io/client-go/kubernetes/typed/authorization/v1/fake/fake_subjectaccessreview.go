@@ -21,4 +21,5 @@ package fake
 // FakeSubjectAccessReviews implements SubjectAccessReviewInterface
 type FakeSubjectAccessReviews struct {
 	Fake *FakeAuthorizationV1
+	te   string
 }

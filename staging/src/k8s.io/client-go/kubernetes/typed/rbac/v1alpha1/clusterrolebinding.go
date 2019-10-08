@@ -69,6 +69,7 @@ func (c *clusterRoleBindings) Get(name string, options v1.GetOptions) (result *v
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *clusterRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.Cluste
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *clusterRoleBindings) Create(clusterRoleBinding *v1alpha1.ClusterRoleBin
 		Body(clusterRoleBinding).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *clusterRoleBindings) Update(clusterRoleBinding *v1alpha1.ClusterRoleBin
 		Body(clusterRoleBinding).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *clusterRoleBindings) Patch(name string, pt types.PatchType, data []byte
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

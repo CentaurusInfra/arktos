@@ -21,4 +21,5 @@ package fake
 // FakeTokenReviews implements TokenReviewInterface
 type FakeTokenReviews struct {
 	Fake *FakeAuthenticationV1
+	te   string
 }

@@ -28,8 +28,12 @@ type FakeNetworkingV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeNetworkingV1beta1) Ingresses(namespace string) v1beta1.IngressInterface {
-	return &FakeIngresses{c, namespace}
+func (c *FakeNetworkingV1beta1) Ingresses(namespace string, optional_tenant ...string) v1beta1.IngressInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeIngresses{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

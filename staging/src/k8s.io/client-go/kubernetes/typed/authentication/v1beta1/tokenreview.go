@@ -25,7 +25,7 @@ import (
 // TokenReviewsGetter has a method to return a TokenReviewInterface.
 // A group's client should implement this interface.
 type TokenReviewsGetter interface {
-	TokenReviews() TokenReviewInterface
+	TokenReviews(optional_tenant ...string) TokenReviewInterface
 }
 
 // TokenReviewInterface has methods to work with TokenReview resources.
@@ -36,11 +36,17 @@ type TokenReviewInterface interface {
 // tokenReviews implements TokenReviewInterface
 type tokenReviews struct {
 	client rest.Interface
+	te     string
 }
 
 // newTokenReviews returns a TokenReviews
-func newTokenReviews(c *AuthenticationV1beta1Client) *tokenReviews {
+func newTokenReviews(c *AuthenticationV1beta1Client, optional_tenant ...string) *tokenReviews {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &tokenReviews{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }

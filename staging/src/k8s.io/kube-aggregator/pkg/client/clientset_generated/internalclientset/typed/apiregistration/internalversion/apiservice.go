@@ -70,6 +70,7 @@ func (c *aPIServices) Get(name string, options v1.GetOptions) (result *apiregist
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -86,6 +87,7 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -111,6 +113,7 @@ func (c *aPIServices) Create(aPIService *apiregistration.APIService) (result *ap
 		Body(aPIService).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,6 +126,7 @@ func (c *aPIServices) Update(aPIService *apiregistration.APIService) (result *ap
 		Body(aPIService).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -138,6 +142,7 @@ func (c *aPIServices) UpdateStatus(aPIService *apiregistration.APIService) (resu
 		Body(aPIService).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -176,5 +181,6 @@ func (c *aPIServices) Patch(name string, pt types.PatchType, data []byte, subres
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

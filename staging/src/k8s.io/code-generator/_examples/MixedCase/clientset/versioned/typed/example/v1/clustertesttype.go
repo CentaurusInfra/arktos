@@ -74,6 +74,7 @@ func (c *clusterTestTypes) Get(name string, options metav1.GetOptions) (result *
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -90,6 +91,7 @@ func (c *clusterTestTypes) List(opts metav1.ListOptions) (result *v1.ClusterTest
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -115,6 +117,7 @@ func (c *clusterTestTypes) Create(clusterTestType *v1.ClusterTestType) (result *
 		Body(clusterTestType).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -127,6 +130,7 @@ func (c *clusterTestTypes) Update(clusterTestType *v1.ClusterTestType) (result *
 		Body(clusterTestType).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -142,6 +146,7 @@ func (c *clusterTestTypes) UpdateStatus(clusterTestType *v1.ClusterTestType) (re
 		Body(clusterTestType).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -180,6 +185,7 @@ func (c *clusterTestTypes) Patch(name string, pt types.PatchType, data []byte, s
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -193,6 +199,7 @@ func (c *clusterTestTypes) GetScale(clusterTestTypeName string, options metav1.G
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -206,5 +213,6 @@ func (c *clusterTestTypes) UpdateScale(clusterTestTypeName string, scale *autosc
 		Body(scale).
 		Do().
 		Into(result)
+
 	return
 }

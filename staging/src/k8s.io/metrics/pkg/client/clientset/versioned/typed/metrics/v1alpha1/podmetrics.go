@@ -31,7 +31,7 @@ import (
 // PodMetricsesGetter has a method to return a PodMetricsInterface.
 // A group's client should implement this interface.
 type PodMetricsesGetter interface {
-	PodMetricses(namespace string) PodMetricsInterface
+	PodMetricses(namespace string, optional_tenant ...string) PodMetricsInterface
 }
 
 // PodMetricsInterface has methods to work with PodMetrics resources.
@@ -46,13 +46,20 @@ type PodMetricsInterface interface {
 type podMetricses struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newPodMetricses returns a PodMetricses
-func newPodMetricses(c *MetricsV1alpha1Client, namespace string) *podMetricses {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newPodMetricses(c *MetricsV1alpha1Client, namespace string, optional_tenant ...string) *podMetricses {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &podMetricses{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -60,12 +67,14 @@ func newPodMetricses(c *MetricsV1alpha1Client, namespace string) *podMetricses {
 func (c *podMetricses) Get(name string, options v1.GetOptions) (result *v1alpha1.PodMetrics, err error) {
 	result = &v1alpha1.PodMetrics{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -77,12 +86,13 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1alpha1.PodMetricsLis
 	}
 	result = &v1alpha1.PodMetricsList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("pods").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -94,6 +104,7 @@ func (c *podMetricses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("pods").
 		VersionedParams(&opts, scheme.ParameterCodec).

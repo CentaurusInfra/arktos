@@ -28,8 +28,12 @@ type FakeCertificatesV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCertificatesV1beta1) CertificateSigningRequests() v1beta1.CertificateSigningRequestInterface {
-	return &FakeCertificateSigningRequests{c}
+func (c *FakeCertificatesV1beta1) CertificateSigningRequests(optional_tenant ...string) v1beta1.CertificateSigningRequestInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeCertificateSigningRequests{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

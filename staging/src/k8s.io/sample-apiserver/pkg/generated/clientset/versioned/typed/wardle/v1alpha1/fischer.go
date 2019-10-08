@@ -69,6 +69,7 @@ func (c *fischers) Get(name string, options v1.GetOptions) (result *v1alpha1.Fis
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *fischers) List(opts v1.ListOptions) (result *v1alpha1.FischerList, err 
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *fischers) Create(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, 
 		Body(fischer).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *fischers) Update(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, 
 		Body(fischer).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *fischers) Patch(name string, pt types.PatchType, data []byte, subresour
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

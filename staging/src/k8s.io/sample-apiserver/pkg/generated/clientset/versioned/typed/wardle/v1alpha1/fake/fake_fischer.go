@@ -44,6 +44,7 @@ func (c *FakeFischers) Get(name string, options v1.GetOptions) (result *v1alpha1
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.Fischer), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeFischers) Create(fischer *v1alpha1.Fischer) (result *v1alpha1.Fisch
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.Fischer), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeFischers) Update(fischer *v1alpha1.Fischer) (result *v1alpha1.Fisch
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.Fischer), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeFischers) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeFischers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(fischersResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(fischersResource, listOptions)
 	_, err := c.Fake.Invokes(action, &v1alpha1.FischerList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeFischers) Patch(name string, pt types.PatchType, data []byte, subre
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.Fischer), err
 }

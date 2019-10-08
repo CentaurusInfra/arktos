@@ -28,8 +28,12 @@ type FakeSamplecontrollerV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSamplecontrollerV1alpha1) Foos(namespace string) v1alpha1.FooInterface {
-	return &FakeFoos{c, namespace}
+func (c *FakeSamplecontrollerV1alpha1) Foos(namespace string, optional_tenant ...string) v1alpha1.FooInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeFoos{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

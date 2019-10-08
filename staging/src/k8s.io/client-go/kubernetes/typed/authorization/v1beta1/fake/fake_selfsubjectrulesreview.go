@@ -21,4 +21,5 @@ package fake
 // FakeSelfSubjectRulesReviews implements SelfSubjectRulesReviewInterface
 type FakeSelfSubjectRulesReviews struct {
 	Fake *FakeAuthorizationV1beta1
+	te   string
 }

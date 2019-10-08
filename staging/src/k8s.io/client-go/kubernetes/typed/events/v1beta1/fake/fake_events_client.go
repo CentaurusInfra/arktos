@@ -28,8 +28,12 @@ type FakeEventsV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeEventsV1beta1) Events(namespace string) v1beta1.EventInterface {
-	return &FakeEvents{c, namespace}
+func (c *FakeEventsV1beta1) Events(namespace string, optional_tenant ...string) v1beta1.EventInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeEvents{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

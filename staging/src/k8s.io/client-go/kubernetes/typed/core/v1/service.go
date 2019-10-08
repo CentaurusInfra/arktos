@@ -32,7 +32,7 @@ import (
 // ServicesGetter has a method to return a ServiceInterface.
 // A group's client should implement this interface.
 type ServicesGetter interface {
-	Services(namespace string) ServiceInterface
+	Services(namespace string, optional_tenant ...string) ServiceInterface
 }
 
 // ServiceInterface has methods to work with Service resources.
@@ -52,13 +52,20 @@ type ServiceInterface interface {
 type services struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newServices returns a Services
-func newServices(c *CoreV1Client, namespace string) *services {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newServices(c *CoreV1Client, namespace string, optional_tenant ...string) *services {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &services{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newServices(c *CoreV1Client, namespace string) *services {
 func (c *services) Get(name string, options metav1.GetOptions) (result *v1.Service, err error) {
 	result = &v1.Service{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *services) List(opts metav1.ListOptions) (result *v1.ServiceList, err er
 	}
 	result = &v1.ServiceList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("services").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *services) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *services) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *services) Create(service *v1.Service) (result *v1.Service, err error) {
 	result = &v1.Service{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		Body(service).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,12 +136,14 @@ func (c *services) Create(service *v1.Service) (result *v1.Service, err error) {
 func (c *services) Update(service *v1.Service) (result *v1.Service, err error) {
 	result = &v1.Service{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		Name(service.Name).
 		Body(service).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -138,6 +153,7 @@ func (c *services) Update(service *v1.Service) (result *v1.Service, err error) {
 func (c *services) UpdateStatus(service *v1.Service) (result *v1.Service, err error) {
 	result = &v1.Service{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		Name(service.Name).
@@ -145,12 +161,14 @@ func (c *services) UpdateStatus(service *v1.Service) (result *v1.Service, err er
 		Body(service).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the service and deletes it. Returns an error if one occurs.
 func (c *services) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		Name(name).
@@ -163,6 +181,7 @@ func (c *services) Delete(name string, options *metav1.DeleteOptions) error {
 func (c *services) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Service, err error) {
 	result = &v1.Service{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		SubResource(subresources...).
@@ -170,5 +189,6 @@ func (c *services) Patch(name string, pt types.PatchType, data []byte, subresour
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }
