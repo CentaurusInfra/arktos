@@ -47,7 +47,8 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
 		gvr := action.GetResource()
 		ns := action.GetNamespace()
-		watch, err := o.Watch(gvr, ns)
+		te := action.GetTenant()
+		watch, err := o.Watch(gvr, ns, te)
 		if err != nil {
 			return false, nil, err
 		}
