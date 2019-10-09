@@ -17,6 +17,7 @@ limitations under the License.
 package fake
 
 import (
+	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -70,6 +71,7 @@ type FakeDynamicClient struct {
 
 type dynamicResourceClient struct {
 	client    *FakeDynamicClient
+	tenant    string
 	namespace string
 	resource  schema.GroupVersionResource
 }
@@ -80,9 +82,20 @@ func (c *FakeDynamicClient) Resource(resource schema.GroupVersionResource) dynam
 	return &dynamicResourceClient{client: c, resource: resource}
 }
 
-func (c *dynamicResourceClient) Namespace(ns string) dynamic.ResourceInterface {
+func (c *dynamicResourceClient) Namespace(ns string, optional_tenant ...string) dynamic.ResourceInterface {
+	te := "default"
+	if len(optional_tenant) > 0 {
+		te = optional_tenant[0]
+	}
 	ret := *c
+	ret.tenant = te
 	ret.namespace = ns
+	return &ret
+}
+
+func (c *dynamicResourceClient) Tenant(te string) dynamic.ResourceInterface {
+	ret := *c
+	ret.tenant = te
 	return &ret
 }
 
@@ -90,32 +103,46 @@ func (c *dynamicResourceClient) Create(obj *unstructured.Unstructured, opts meta
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootCreateAction(c.resource, obj), obj)
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		accessor, err := meta.Accessor(obj)
 		if err != nil {
 			return nil, err
 		}
 		name := accessor.GetName()
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewRootCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), obj), obj)
+			Invokes(testing.NewTenantCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), obj), obj)
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewCreateAction(c.resource, c.namespace, obj), obj)
+			Invokes(testing.NewTenantCreateAction(c.resource, obj, c.tenant), obj)
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		accessor, err := meta.Accessor(obj)
 		if err != nil {
 			return nil, err
 		}
 		name := accessor.GetName()
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), c.namespace, obj), obj)
+			Invokes(testing.NewTenantCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), obj, c.tenant), obj)
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewCreateAction(c.resource, c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		accessor, err := meta.Accessor(obj)
+		if err != nil {
+			return nil, err
+		}
+		name := accessor.GetName()
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), c.namespace, obj, c.tenant), obj)
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -136,22 +163,32 @@ func (c *dynamicResourceClient) Update(obj *unstructured.Unstructured, opts meta
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootUpdateAction(c.resource, obj), obj)
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootUpdateSubresourceAction(c.resource, strings.Join(subresources, "/"), obj), obj)
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewUpdateAction(c.resource, c.namespace, obj), obj)
+			Invokes(testing.NewTenantUpdateAction(c.resource, obj, c.tenant), obj)
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewUpdateSubresourceAction(c.resource, strings.Join(subresources, "/"), c.namespace, obj), obj)
+			Invokes(testing.NewTenantUpdateSubresourceAction(c.resource, strings.Join(subresources, "/"), obj, c.tenant), obj)
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewUpdateAction(c.resource, c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewUpdateSubresourceAction(c.resource, strings.Join(subresources, "/"), c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -172,14 +209,20 @@ func (c *dynamicResourceClient) UpdateStatus(obj *unstructured.Unstructured, opt
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootUpdateSubresourceAction(c.resource, "status", obj), obj)
 
-	case len(c.namespace) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewUpdateSubresourceAction(c.resource, "status", c.namespace, obj), obj)
+			Invokes(testing.NewTenantUpdateSubresourceAction(c.resource, "status", obj, c.tenant), obj)
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewUpdateSubresourceAction(c.resource, "status", c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -199,21 +242,32 @@ func (c *dynamicResourceClient) UpdateStatus(obj *unstructured.Unstructured, opt
 func (c *dynamicResourceClient) Delete(name string, opts *metav1.DeleteOptions, subresources ...string) error {
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		_, err = c.client.Fake.
 			Invokes(testing.NewRootDeleteAction(c.resource, name), &metav1.Status{Status: "dynamic delete fail"})
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		_, err = c.client.Fake.
 			Invokes(testing.NewRootDeleteSubresourceAction(c.resource, strings.Join(subresources, "/"), name), &metav1.Status{Status: "dynamic delete fail"})
 
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
+		_, err = c.client.Fake.
+			Invokes(testing.NewTenantDeleteAction(c.resource, name, c.tenant), &metav1.Status{Status: "dynamic delete fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
+		_, err = c.client.Fake.
+			Invokes(testing.NewTenantDeleteSubresourceAction(c.resource, strings.Join(subresources, "/"), name, c.tenant), &metav1.Status{Status: "dynamic delete fail"})
+
 	case len(c.namespace) > 0 && len(subresources) == 0:
 		_, err = c.client.Fake.
-			Invokes(testing.NewDeleteAction(c.resource, c.namespace, name), &metav1.Status{Status: "dynamic delete fail"})
+			Invokes(testing.NewDeleteAction(c.resource, c.namespace, name, c.tenant), &metav1.Status{Status: "dynamic delete fail"})
 
 	case len(c.namespace) > 0 && len(subresources) > 0:
 		_, err = c.client.Fake.
-			Invokes(testing.NewDeleteSubresourceAction(c.resource, strings.Join(subresources, "/"), c.namespace, name), &metav1.Status{Status: "dynamic delete fail"})
+			Invokes(testing.NewDeleteSubresourceAction(c.resource, strings.Join(subresources, "/"), c.namespace, name, c.tenant), &metav1.Status{Status: "dynamic delete fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	return err
@@ -222,14 +276,20 @@ func (c *dynamicResourceClient) Delete(name string, opts *metav1.DeleteOptions, 
 func (c *dynamicResourceClient) DeleteCollection(opts *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	var err error
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		action := testing.NewRootDeleteCollectionAction(c.resource, listOptions)
 		_, err = c.client.Fake.Invokes(action, &metav1.Status{Status: "dynamic deletecollection fail"})
 
-	case len(c.namespace) > 0:
-		action := testing.NewDeleteCollectionAction(c.resource, c.namespace, listOptions)
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
+		action := testing.NewTenantDeleteCollectionAction(c.resource, listOptions, c.tenant)
 		_, err = c.client.Fake.Invokes(action, &metav1.Status{Status: "dynamic deletecollection fail"})
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		action := testing.NewDeleteCollectionAction(c.resource, c.namespace, listOptions, c.tenant)
+		_, err = c.client.Fake.Invokes(action, &metav1.Status{Status: "dynamic deletecollection fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	return err
@@ -239,21 +299,32 @@ func (c *dynamicResourceClient) Get(name string, opts metav1.GetOptions, subreso
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootGetAction(c.resource, name), &metav1.Status{Status: "dynamic get fail"})
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootGetSubresourceAction(c.resource, strings.Join(subresources, "/"), name), &metav1.Status{Status: "dynamic get fail"})
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewGetAction(c.resource, c.namespace, name), &metav1.Status{Status: "dynamic get fail"})
+			Invokes(testing.NewTenantGetAction(c.resource, name, c.tenant), &metav1.Status{Status: "dynamic get fail"})
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewGetSubresourceAction(c.resource, c.namespace, strings.Join(subresources, "/"), name), &metav1.Status{Status: "dynamic get fail"})
+			Invokes(testing.NewTenantGetSubresourceAction(c.resource, strings.Join(subresources, "/"), name, c.tenant), &metav1.Status{Status: "dynamic get fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewGetAction(c.resource, c.namespace, name, c.tenant), &metav1.Status{Status: "dynamic get fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewGetSubresourceAction(c.resource, c.namespace, strings.Join(subresources, "/"), name, c.tenant), &metav1.Status{Status: "dynamic get fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -274,14 +345,20 @@ func (c *dynamicResourceClient) List(opts metav1.ListOptions) (*unstructured.Uns
 	var obj runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		obj, err = c.client.Fake.
 			Invokes(testing.NewRootListAction(c.resource, schema.GroupVersionKind{Group: "fake-dynamic-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, opts), &metav1.Status{Status: "dynamic list fail"})
 
-	case len(c.namespace) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
 		obj, err = c.client.Fake.
-			Invokes(testing.NewListAction(c.resource, schema.GroupVersionKind{Group: "fake-dynamic-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, c.namespace, opts), &metav1.Status{Status: "dynamic list fail"})
+			Invokes(testing.NewTenantListAction(c.resource, schema.GroupVersionKind{Group: "fake-dynamic-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, opts, c.tenant), &metav1.Status{Status: "dynamic list fail"})
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		obj, err = c.client.Fake.
+			Invokes(testing.NewListAction(c.resource, schema.GroupVersionKind{Group: "fake-dynamic-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, c.namespace, opts, c.tenant), &metav1.Status{Status: "dynamic list fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if obj == nil {
@@ -319,14 +396,20 @@ func (c *dynamicResourceClient) List(opts metav1.ListOptions) (*unstructured.Uns
 
 func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		return c.client.Fake.
 			InvokesWatch(testing.NewRootWatchAction(c.resource, opts))
 
-	case len(c.namespace) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
 		return c.client.Fake.
-			InvokesWatch(testing.NewWatchAction(c.resource, c.namespace, opts))
+			InvokesWatch(testing.NewTenantWatchAction(c.resource, opts, c.tenant))
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		return c.client.Fake.
+			InvokesWatch(testing.NewWatchAction(c.resource, c.namespace, opts, c.tenant))
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	panic("math broke")
@@ -337,22 +420,32 @@ func (c *dynamicResourceClient) Patch(name string, pt types.PatchType, data []by
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootPatchAction(c.resource, name, pt, data), &metav1.Status{Status: "dynamic patch fail"})
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootPatchSubresourceAction(c.resource, name, pt, data, subresources...), &metav1.Status{Status: "dynamic patch fail"})
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewPatchAction(c.resource, c.namespace, name, pt, data), &metav1.Status{Status: "dynamic patch fail"})
+			Invokes(testing.NewTenantPatchAction(c.resource, name, pt, data, c.tenant), &metav1.Status{Status: "dynamic patch fail"})
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewPatchSubresourceAction(c.resource, c.namespace, name, pt, data, subresources...), &metav1.Status{Status: "dynamic patch fail"})
+			Invokes(testing.NewTenantPatchSubresourceAction(c.resource, c.tenant, name, pt, data, subresources...), &metav1.Status{Status: "dynamic patch fail"})
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewPatchAction(c.resource, c.namespace, name, pt, data, c.tenant), &metav1.Status{Status: "dynamic patch fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewPatchSubresourceAction(c.resource, c.tenant, c.namespace, name, pt, data, subresources...), &metav1.Status{Status: "dynamic patch fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {

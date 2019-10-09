@@ -101,6 +101,7 @@ func (c *Fake) AddReactor(verb, resource string, reaction ReactionFunc) {
 
 // PrependReactor adds a reactor to the beginning of the chain.
 func (c *Fake) PrependReactor(verb, resource string, reaction ReactionFunc) {
+
 	c.ReactionChain = append([]Reactor{&SimpleReactor{verb, resource, reaction}}, c.ReactionChain...)
 }
 
@@ -137,12 +138,10 @@ func (c *Fake) Invokes(action Action, defaultReturnObj runtime.Object) (runtime.
 		if !reactor.Handles(actionCopy) {
 			continue
 		}
-
 		handled, ret, err := reactor.React(actionCopy)
 		if !handled {
 			continue
 		}
-
 		return ret, err
 	}
 

@@ -77,6 +77,7 @@ func NewForConfig(inConfig *rest.Config) (Interface, error) {
 
 type dynamicResourceClient struct {
 	client    *dynamicClient
+	tenant    string
 	namespace string
 	resource  schema.GroupVersionResource
 }
@@ -85,9 +86,15 @@ func (c *dynamicClient) Resource(resource schema.GroupVersionResource) Namespace
 	return &dynamicResourceClient{client: c, resource: resource}
 }
 
-func (c *dynamicResourceClient) Namespace(ns string) ResourceInterface {
+func (c *dynamicResourceClient) Namespace(ns string, optional_tenant ...string) ResourceInterface {
+	te := "default"
+	if len(optional_tenant) > 0 {
+		te = optional_tenant[0]
+	}
+
 	ret := *c
 	ret.namespace = ns
+	ret.tenant = te
 	return &ret
 }
 
@@ -96,6 +103,7 @@ func (c *dynamicResourceClient) Create(obj *unstructured.Unstructured, opts meta
 	if err != nil {
 		return nil, err
 	}
+
 	name := ""
 	if len(subresources) > 0 {
 		accessor, err := meta.Accessor(obj)
@@ -114,6 +122,7 @@ func (c *dynamicResourceClient) Create(obj *unstructured.Unstructured, opts meta
 		Body(outBytes).
 		SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).
 		Do()
+
 	if err := result.Error(); err != nil {
 		return nil, err
 	}
@@ -122,10 +131,12 @@ func (c *dynamicResourceClient) Create(obj *unstructured.Unstructured, opts meta
 	if err != nil {
 		return nil, err
 	}
+
 	uncastObj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, retBytes)
 	if err != nil {
 		return nil, err
 	}
+
 	return uncastObj.(*unstructured.Unstructured), nil
 }
 
@@ -341,6 +352,10 @@ func (c *dynamicResourceClient) makeURLSegments(name string) []string {
 		url = append(url, "apis", c.resource.Group)
 	}
 	url = append(url, c.resource.Version)
+
+	if len(c.tenant) > 0 && c.tenant != metav1.TenantDefault {
+		url = append(url, "tenants", c.tenant)
+	}
 
 	if len(c.namespace) > 0 {
 		url = append(url, "namespaces", c.namespace)
