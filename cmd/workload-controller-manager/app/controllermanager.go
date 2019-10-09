@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerinstancemanager"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"net/http"
 	"time"
 
@@ -33,7 +33,6 @@ import (
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/replicaset"
 
 	"k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
@@ -226,7 +225,7 @@ func startControllerInstanceManager(ctx ControllerContext) (bool, error) {
 		return false, nil
 	}
 
-	go controllerinstancemanager.NewControllerInstanceManager(
+	go controller.NewControllerInstanceManager(
 		ctx.InformerFactory.Core().V1().ControllerInstances(),
 		ctx.ClientBuilder.ClientOrDie("controller-instance-manager"),
 		ctx.ControllerInstanceUpdateByControllerType).Run(ctx.Stop)

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllerinstancemanager
+package controllerframework
 
 import (
 	"fmt"
@@ -43,7 +43,7 @@ func createControllerInstanceManager(stopCh chan struct{}, updateCh chan string)
 	return GetInstance(), informers
 }
 
-func newControllerInstance(controllerType string) *v1.ControllerInstance {
+func newControllerInstance(controllerType string, hashKey int64, workloadNum int32, isLocked bool) *v1.ControllerInstance {
 	uid := uuid.NewUUID()
 	controllerInstance := &v1.ControllerInstance{
 		ObjectMeta: metav1.ObjectMeta{
@@ -52,9 +52,9 @@ func newControllerInstance(controllerType string) *v1.ControllerInstance {
 		},
 		ControllerType: controllerType,
 		UID:            uid,
-		HashKey:        10000,
-		WorkloadNum:    999,
-		IsLocked:       false,
+		HashKey:        hashKey,
+		WorkloadNum:    workloadNum,
+		IsLocked:       isLocked,
 	}
 
 	return controllerInstance
@@ -73,7 +73,7 @@ func TestSyncControllerInstancesWriteLock(t *testing.T) {
 func testAddEvent(t *testing.T, cim *ControllerInstanceManager, notifyTimes int) (*v1.ControllerInstance, string, map[types.UID]v1.ControllerInstance) {
 	// add event
 	controllerType := "foo"
-	controllerInstance1 := newControllerInstance(controllerType)
+	controllerInstance1 := newControllerInstance(controllerType, 10000, 999, false)
 	cim.addControllerInstance(controllerInstance1)
 
 	controllerInstanceMap, err := cim.ListControllerInstances(controllerType)
@@ -200,7 +200,7 @@ func TestDeleteControllerInstanceDoesNotExist(t *testing.T) {
 	cim, _ := createControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
-	controllerInstance1 := newControllerInstance("bar")
+	controllerInstance1 := newControllerInstance("bar", 10000, 999, false)
 	cim.deleteControllerInstance(controllerInstance1)
 
 	controllerInstanceMap, err := cim.ListControllerInstances(controllerInstance1.ControllerType)
@@ -285,7 +285,7 @@ func TestErrorHandlingInListControllerInstances(t *testing.T) {
 	_, controllerType, _ := testAddEvent(t, cim, 1)
 	testAddEvent(t, cim, 2)
 
-	controllerInstance3 := newControllerInstance("foo2")
+	controllerInstance3 := newControllerInstance("foo2", 10000, 999, false)
 	cim.addControllerInstance(controllerInstance3)
 
 	cim.isControllerListInitialized = false

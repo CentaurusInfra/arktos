@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllerinstancemanager
+package controllerframework
 
 import (
 	"fmt"
@@ -121,7 +121,7 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 	} else { // check existing controller instance
 		existingInstance, ok1 := existingInstancesForType[newControllerInstance.UID]
 		if ok1 {
-			cim.updateControllerInstance(existingInstance, newControllerInstance)
+			cim.updateControllerInstance(&existingInstance, newControllerInstance)
 			klog.Infof("Got existing controller instance %s in AddFunc", newControllerInstance.Name)
 			return
 		}
@@ -266,19 +266,4 @@ func (cim *ControllerInstanceManager) syncControllerInstances() error {
 
 func (cim *ControllerInstanceManager) notifyControllerInstanceChanges(controllerInstance *v1.ControllerInstance) {
 	cim.controllerInstanceChangeChan <- controllerInstance.ControllerType
-}
-
-// WaitForCacheSync is a wrapper around cache.WaitForCacheSync that generates log messages
-// indicating that the controller identified by controllerName is waiting for syncs, followed by
-// either a successful or failed sync.
-func WaitForCacheSync(controllerName string, stopCh <-chan struct{}, cacheSyncs ...cache.InformerSynced) bool {
-	klog.Infof("Waiting for caches to sync for %s controller", controllerName)
-
-	if !cache.WaitForCacheSync(stopCh, cacheSyncs...) {
-		utilruntime.HandleError(fmt.Errorf("unable to sync caches for %s controller", controllerName))
-		return false
-	}
-
-	klog.Infof("Caches are synced for %s controller", controllerName)
-	return true
 }
