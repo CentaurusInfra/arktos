@@ -60,6 +60,7 @@ func TestFinalizeNamespaceFunc(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "test",
 			ResourceVersion: "1",
+			Tenant:          metav1.TenantDefault,
 		},
 		Spec: v1.NamespaceSpec{
 			Finalizers: []v1.FinalizerName{"kubernetes", "other"},
@@ -94,6 +95,7 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 			Name:              namespaceName,
 			ResourceVersion:   "1",
 			DeletionTimestamp: &now,
+			Tenant:            metav1.TenantDefault,
 		},
 		Spec: v1.NamespaceSpec{
 			Finalizers: []v1.FinalizerName{"kubernetes"},
@@ -107,6 +109,7 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 			Name:              namespaceName,
 			ResourceVersion:   "1",
 			DeletionTimestamp: &now,
+			Tenant:            metav1.TenantDefault,
 		},
 		Spec: v1.NamespaceSpec{},
 		Status: v1.NamespaceStatus{
@@ -244,6 +247,7 @@ func TestSyncNamespaceThatIsActive(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "test",
 			ResourceVersion: "1",
+			Tenant:          metav1.TenantDefault,
 		},
 		Spec: v1.NamespaceSpec{
 			Finalizers: []v1.FinalizerName{"kubernetes"},

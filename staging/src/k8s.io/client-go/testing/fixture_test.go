@@ -34,7 +34,11 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-func getArbitraryResource(s schema.GroupVersionResource, name, namespace string) *unstructured.Unstructured {
+func getArbitraryResource(s schema.GroupVersionResource, name, namespace string, optional_tenant ...string) *unstructured.Unstructured {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"kind":       s.Resource,
@@ -42,6 +46,7 @@ func getArbitraryResource(s schema.GroupVersionResource, name, namespace string)
 			"metadata": map[string]interface{}{
 				"name":            name,
 				"namespace":       namespace,
+				"tenant":          tenant,
 				"generateName":    "test_generateName",
 				"uid":             "test_uid",
 				"resourceVersion": "test_resourceVersion",

@@ -108,6 +108,7 @@ func TestEventf(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    metav1.TenantDefault,
 			UID:       "bar",
 		},
 	}
@@ -116,6 +117,7 @@ func TestEventf(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    metav1.TenantDefault,
 			UID:       "differentUid",
 		},
 	}
@@ -147,6 +149,7 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -175,6 +178,7 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -202,6 +206,7 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -230,6 +235,7 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -258,6 +264,7 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -286,6 +293,7 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -314,6 +322,7 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -532,6 +541,7 @@ func TestLotsOfEvents(t *testing.T) {
 func TestEventfNoNamespace(t *testing.T) {
 	testPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:   metav1.TenantDefault,
 			SelfLink: "/api/version/pods/foo",
 			Name:     "foo",
 			UID:      "bar",
@@ -561,6 +571,7 @@ func TestEventfNoNamespace(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -632,6 +643,7 @@ func TestMultiSinkCache(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    metav1.TenantDefault,
 			UID:       "bar",
 		},
 	}
@@ -640,6 +652,7 @@ func TestMultiSinkCache(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    metav1.TenantDefault,
 			UID:       "differentUid",
 		},
 	}
@@ -671,6 +684,7 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -699,6 +713,7 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -726,6 +741,7 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -754,6 +770,7 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -782,6 +799,7 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -810,6 +828,7 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
@@ -838,6 +857,7 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
+					Tenant:    metav1.TenantDefault,
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",

@@ -413,6 +413,8 @@ func (f *FakeRecorder) makeEvent(ref *v1.ObjectReference, eventtype, reason, mes
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
 			Namespace: namespace,
+			//change to ref.Tenant after multi-tenancy change is done in objectReference
+			Tenant: metav1.TenantDefault,
 		},
 		InvolvedObject: clientref,
 		Reason:         reason,
@@ -450,6 +452,7 @@ func NewNode(name string) *v1.Node {
 func NewPod(name, host string) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    "default",
 			Namespace: "default",
 			Name:      name,
 		},

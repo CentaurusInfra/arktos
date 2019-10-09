@@ -235,6 +235,7 @@ func TestFetchesUncachedServiceAccount(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    metav1.TenantDefault,
 		},
 	})
 

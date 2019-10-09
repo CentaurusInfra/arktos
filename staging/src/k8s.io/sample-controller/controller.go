@@ -396,6 +396,7 @@ func newDeployment(foo *samplev1alpha1.Foo) *appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      foo.Spec.DeploymentName,
 			Namespace: foo.Namespace,
+			Tenant:    foo.Tenant,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(foo, samplev1alpha1.SchemeGroupVersion.WithKind("Foo")),
 			},

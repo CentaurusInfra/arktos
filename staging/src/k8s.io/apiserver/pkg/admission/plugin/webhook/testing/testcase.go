@@ -57,7 +57,8 @@ func NewFakeValidatingDataSource(name string, webhooks []registrationv1beta1.Val
 	var objs = []runtime.Object{
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name,
+				Tenant: metav1.TenantDefault,
+				Name:   name,
 				Labels: map[string]string{
 					"runlevel": "0",
 				},
@@ -82,7 +83,8 @@ func NewFakeMutatingDataSource(name string, webhooks []registrationv1beta1.Mutat
 	var objs = []runtime.Object{
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name,
+				Tenant: metav1.TenantDefault,
+				Name:   name,
 				Labels: map[string]string{
 					"runlevel": "0",
 				},

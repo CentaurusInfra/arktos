@@ -86,6 +86,7 @@ func newReplicaSet(replicas int, selectorMap map[string]string) *apps.ReplicaSet
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 		},
 		Spec: apps.ReplicaSetSpec{

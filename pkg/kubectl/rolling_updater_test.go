@@ -49,6 +49,7 @@ func oldRc(replicas int, original int) *corev1.ReplicationController {
 	replicasCopy := int32(t)
 	return &corev1.ReplicationController{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    metav1.TenantDefault,
 			Namespace: metav1.NamespaceDefault,
 			Name:      "foo-v1",
 			UID:       "7764ae47-9092-11e4-8393-42010af018ff",
@@ -82,6 +83,7 @@ func newRc(replicas int, desired int) *corev1.ReplicationController {
 	}
 	rc.Spec.Selector = map[string]string{"version": "v2"}
 	rc.ObjectMeta = metav1.ObjectMeta{
+		Tenant:    metav1.TenantDefault,
 		Namespace: metav1.NamespaceDefault,
 		Name:      "foo-v2",
 		Annotations: map[string]string{
@@ -956,6 +958,7 @@ func TestRollingUpdater_multipleContainersInPod(t *testing.T) {
 			name: "test1",
 			oldRc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "foo",
 				},
@@ -986,6 +989,7 @@ func TestRollingUpdater_multipleContainersInPod(t *testing.T) {
 			},
 			newRc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "foo",
 				},
@@ -1022,6 +1026,7 @@ func TestRollingUpdater_multipleContainersInPod(t *testing.T) {
 			name: "test2",
 			oldRc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "bar",
 				},
@@ -1048,6 +1053,7 @@ func TestRollingUpdater_multipleContainersInPod(t *testing.T) {
 			},
 			newRc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "bar",
 				},
@@ -1241,6 +1247,7 @@ func TestRollingUpdater_cleanupWithClients_Rename(t *testing.T) {
 func TestFindSourceController(t *testing.T) {
 	ctrl1 := corev1.ReplicationController{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    metav1.TenantDefault,
 			Namespace: metav1.NamespaceDefault,
 			Name:      "foo",
 			Annotations: map[string]string{
@@ -1250,6 +1257,7 @@ func TestFindSourceController(t *testing.T) {
 	}
 	ctrl2 := corev1.ReplicationController{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    metav1.TenantDefault,
 			Namespace: metav1.NamespaceDefault,
 			Name:      "bar",
 			Annotations: map[string]string{
@@ -1259,6 +1267,7 @@ func TestFindSourceController(t *testing.T) {
 	}
 	ctrl3 := corev1.ReplicationController{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    metav1.TenantDefault,
 			Namespace: metav1.NamespaceDefault,
 			Name:      "baz",
 			Annotations: map[string]string{
@@ -1342,6 +1351,7 @@ func TestUpdateExistingReplicationController(t *testing.T) {
 		{
 			rc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "foo",
 				},
@@ -1355,6 +1365,7 @@ func TestUpdateExistingReplicationController(t *testing.T) {
 
 			expectedRc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "foo",
 					Annotations: map[string]string{
@@ -1378,6 +1389,7 @@ func TestUpdateExistingReplicationController(t *testing.T) {
 		{
 			rc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "foo",
 				},
@@ -1400,6 +1412,7 @@ func TestUpdateExistingReplicationController(t *testing.T) {
 
 			expectedRc: &corev1.ReplicationController{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    metav1.TenantDefault,
 					Namespace: metav1.NamespaceDefault,
 					Name:      "foo",
 					Annotations: map[string]string{
@@ -1672,6 +1685,7 @@ func TestRollingUpdater_readyPods(t *testing.T) {
 		}
 		return &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:    metav1.TenantDefault,
 				Namespace: metav1.NamespaceDefault,
 				Name:      fmt.Sprintf("pod-%d", count),
 				Labels:    labels,

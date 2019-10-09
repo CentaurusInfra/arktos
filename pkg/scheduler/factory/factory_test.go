@@ -249,7 +249,7 @@ func PriorityTwo(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeI
 
 func TestDefaultErrorFunc(t *testing.T) {
 	testPod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: metav1.TenantDefault},
 		Spec:       apitesting.V1DeepEqualSafePodSpec(),
 	}
 	client := fake.NewSimpleClientset(&v1.PodList{Items: []v1.Pod{*testPod}})
@@ -386,6 +386,7 @@ func TestBind(t *testing.T) {
 			binding: &v1.Binding{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    metav1.TenantDefault,
 					Name:      "foo",
 				},
 				Target: v1.ObjectReference{
@@ -404,7 +405,7 @@ func TestBind(t *testing.T) {
 
 func testBind(binding *v1.Binding, t *testing.T) {
 	testPod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: binding.GetName(), Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: binding.GetName(), Namespace: metav1.NamespaceDefault, Tenant: metav1.TenantDefault},
 		Spec:       apitesting.V1DeepEqualSafePodSpec(),
 	}
 	client := fake.NewSimpleClientset(&v1.PodList{Items: []v1.Pod{*testPod}})

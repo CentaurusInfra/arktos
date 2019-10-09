@@ -59,6 +59,7 @@ func TestDescribePod(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:                       "bar",
 			Namespace:                  "foo",
+			Tenant:                     metav1.TenantDefault,
 			DeletionTimestamp:          &deletionTimestamp,
 			DeletionGracePeriodSeconds: &gracePeriod,
 		},
@@ -100,6 +101,7 @@ func TestDescribePodNode(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: corev1.PodSpec{
 			NodeName: "all-in-one",
@@ -128,6 +130,7 @@ func TestDescribePodTolerations(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: corev1.PodSpec{
 			Tolerations: []corev1.Toleration{
@@ -160,6 +163,7 @@ func TestDescribeSecret(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Data: map[string][]byte{
 			"username": []byte("YWRtaW4="),
@@ -183,7 +187,8 @@ func TestDescribeSecret(t *testing.T) {
 func TestDescribeNamespace(t *testing.T) {
 	fake := fake.NewSimpleClientset(&corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "myns",
+			Name:   "myns",
+			Tenant: metav1.TenantDefault,
 		},
 	})
 	c := &describeClient{T: t, Namespace: "", Interface: fake}
@@ -201,7 +206,8 @@ func TestDescribePodPriority(t *testing.T) {
 	priority := int32(1000)
 	fake := fake.NewSimpleClientset(&corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "bar",
+			Name:   "bar",
+			Tenant: metav1.TenantDefault,
 		},
 		Spec: corev1.PodSpec{
 			PriorityClassName: "high-priority",
@@ -224,6 +230,7 @@ func TestDescribeConfigMap(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycm",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Data: map[string]string{
 			"key1": "value1",
@@ -246,6 +253,7 @@ func TestDescribeLimitRange(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mylr",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: corev1.LimitRangeSpec{
 			Limits: []corev1.LimitRangeItem{
@@ -317,6 +325,7 @@ func TestDescribeService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
@@ -355,6 +364,7 @@ func TestDescribeService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
@@ -440,7 +450,7 @@ func TestPodDescribeResultsSorted(t *testing.T) {
 				},
 			},
 		},
-		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"}},
 	)
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
@@ -949,7 +959,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test0",
 			plugin: "hostpath",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{Type: new(corev1.HostPathType)},
@@ -962,7 +972,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test1",
 			plugin: "gce",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						GCEPersistentDisk: &corev1.GCEPersistentDiskVolumeSource{},
@@ -976,7 +986,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test2",
 			plugin: "ebs",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{},
@@ -989,7 +999,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test3",
 			plugin: "nfs",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						NFS: &corev1.NFSVolumeSource{},
@@ -1002,7 +1012,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test4",
 			plugin: "iscsi",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						ISCSI: &corev1.ISCSIPersistentVolumeSource{},
@@ -1016,7 +1026,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test5",
 			plugin: "gluster",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Glusterfs: &corev1.GlusterfsPersistentVolumeSource{},
@@ -1029,7 +1039,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test6",
 			plugin: "rbd",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						RBD: &corev1.RBDPersistentVolumeSource{},
@@ -1042,7 +1052,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test7",
 			plugin: "quobyte",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Quobyte: &corev1.QuobyteVolumeSource{},
@@ -1055,7 +1065,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test8",
 			plugin: "cinder",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Cinder: &corev1.CinderPersistentVolumeSource{},
@@ -1068,7 +1078,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test9",
 			plugin: "fc",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						FC: &corev1.FCVolumeSource{},
@@ -1082,7 +1092,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test10",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1096,7 +1106,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test11",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1111,7 +1121,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test12",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1128,7 +1138,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test13",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1153,7 +1163,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test14",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1189,6 +1199,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "bar",
+					Tenant:            metav1.TenantDefault,
 					DeletionTimestamp: &deletionTimestamp,
 				},
 				Spec: corev1.PersistentVolumeSpec{
@@ -1205,6 +1216,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       "bar",
+					Tenant:                     metav1.TenantDefault,
 					GenerateName:               "test-GenerateName",
 					UID:                        "test-UID",
 					CreationTimestamp:          metav1.Time{Time: time.Now()},
@@ -1248,6 +1260,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       "bar",
+					Tenant:                     metav1.TenantDefault,
 					GenerateName:               "test-GenerateName",
 					UID:                        "test-UID",
 					CreationTimestamp:          metav1.Time{Time: time.Now()},
@@ -1315,7 +1328,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "default",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume1",
 					StorageClassName: &goldClassName,
@@ -1329,7 +1342,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "filesystem",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume2",
 					StorageClassName: &goldClassName,
@@ -1344,7 +1357,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "block",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume3",
 					StorageClassName: &goldClassName,
@@ -1360,7 +1373,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-type",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume4",
 					StorageClassName: &goldClassName,
@@ -1376,7 +1389,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-status",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume5",
 					StorageClassName: &goldClassName,
@@ -1392,7 +1405,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-last-probe-time",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume6",
 					StorageClassName: &goldClassName,
@@ -1408,7 +1421,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-last-transition-time",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume7",
 					StorageClassName: &goldClassName,
@@ -1424,7 +1437,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-reason",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume8",
 					StorageClassName: &goldClassName,
@@ -1440,7 +1453,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-message",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume9",
 					StorageClassName: &goldClassName,
@@ -1457,6 +1470,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 			name: "deletion-timestamp",
 			pvc: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:            metav1.TenantDefault,
 					Namespace:         "foo",
 					Name:              "bar",
 					DeletionTimestamp: &deletionTimestamp,
@@ -1501,6 +1515,7 @@ func TestDescribeDeployment(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: utilpointer.Int32Ptr(1),
@@ -1596,6 +1611,7 @@ func TestDescribePodDisruptionBudget(t *testing.T) {
 	minAvailable := intstr.FromInt(22)
 	f := fake.NewSimpleClientset(&policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:            metav1.TenantDefault,
 			Namespace:         "ns1",
 			Name:              "pdb1",
 			CreationTimestamp: metav1.Time{Time: time.Now().Add(1.9e9)},
@@ -2275,6 +2291,7 @@ func TestDescribeHorizontalPodAutoscaler(t *testing.T) {
 			test.hpa.ObjectMeta = metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
+				Tenant:    metav1.TenantDefault,
 			}
 			fake := fake.NewSimpleClientset(&test.hpa)
 			desc := HorizontalPodAutoscalerDescriber{fake}
@@ -2370,6 +2387,7 @@ func TestDescribeHorizontalPodAutoscaler(t *testing.T) {
 			test.hpa.ObjectMeta = metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
+				Tenant:    metav1.TenantDefault,
 			}
 			fake := fake.NewSimpleClientset(&test.hpa)
 			desc := HorizontalPodAutoscalerDescriber{fake}
@@ -2392,6 +2410,7 @@ func TestDescribeEvents(t *testing.T) {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 				Source:         corev1.EventSource{Component: "kubelet"},
 				Message:        "Item 1",
@@ -2409,6 +2428,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 			}, events),
 		},
@@ -2417,6 +2437,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2429,6 +2450,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 			}, events),
 		},
@@ -2447,6 +2469,7 @@ func TestDescribeEvents(t *testing.T) {
 			fake.NewSimpleClientset(&corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:     "bar",
+					Tenant:   metav1.TenantDefault,
 					SelfLink: "url/url/url/url",
 				},
 			}, events),
@@ -2456,6 +2479,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 					SelfLink:  "url/url/url/url",
 				},
 			}, events),
@@ -2465,6 +2489,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 				Spec: appsv1.ReplicaSetSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2476,6 +2501,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 				Spec: corev1.ReplicationControllerSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2487,6 +2513,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 			}, events),
 		},
@@ -2502,6 +2529,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 			}, events),
 		},
@@ -2510,6 +2538,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
+					Tenant:    metav1.TenantDefault,
 				},
 			}, events),
 		},
@@ -2706,7 +2735,8 @@ func TestDescribePodSecurityPolicy(t *testing.T) {
 
 	fake := fake.NewSimpleClientset(&policyv1beta1.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "mypsp",
+			Name:   "mypsp",
+			Tenant: metav1.TenantDefault,
 		},
 		Spec: policyv1beta1.PodSecurityPolicySpec{
 			AllowedUnsafeSysctls: []string{"kernel.*", "net.ipv4.ip_local_port_range"},
@@ -2745,6 +2775,7 @@ func TestDescribeResourceQuota(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
@@ -2840,6 +2871,7 @@ Spec:
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "network-policy-1",
 			Namespace:         "default",
+			Tenant:            metav1.TenantDefault,
 			CreationTimestamp: metav1.NewTime(expectedTime),
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -2987,6 +3019,7 @@ func TestDescribeServiceAccount(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Secrets: []corev1.ObjectReference{
 			{
@@ -3024,6 +3057,7 @@ func TestDescribeNode(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: corev1.NodeSpec{
 			Unschedulable: true,
@@ -3052,6 +3086,7 @@ func TestDescribeStatefulSet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
@@ -3094,6 +3129,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
+				Tenant:    metav1.TenantDefault,
 				UID:       "123456",
 			},
 			TypeMeta: metav1.TypeMeta{
@@ -3115,6 +3151,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "barpod",
 				Namespace:       "foo",
+				Tenant:          metav1.TenantDefault,
 				Labels:          map[string]string{"abc": "xyz"},
 				OwnerReferences: []metav1.OwnerReference{{Name: "bar", UID: "123456", Controller: utilpointer.BoolPtr(true)}},
 			},
@@ -3134,6 +3171,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "orphan",
 				Namespace: "foo",
+				Tenant:    metav1.TenantDefault,
 				Labels:    map[string]string{"abc": "xyz"},
 			},
 			TypeMeta: metav1.TypeMeta{
@@ -3152,6 +3190,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "buzpod",
 				Namespace:       "foo",
+				Tenant:          metav1.TenantDefault,
 				Labels:          map[string]string{"abc": "xyz"},
 				OwnerReferences: []metav1.OwnerReference{{Name: "buz", UID: "654321", Controller: utilpointer.BoolPtr(true)}},
 			},

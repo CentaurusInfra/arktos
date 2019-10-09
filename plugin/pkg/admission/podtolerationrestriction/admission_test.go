@@ -46,7 +46,7 @@ func TestPodAdmission(t *testing.T) {
 	CPU500m := resource.MustParse("500m")
 
 	burstablePod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
@@ -61,7 +61,7 @@ func TestPodAdmission(t *testing.T) {
 	}
 
 	guaranteedPod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
@@ -76,7 +76,7 @@ func TestPodAdmission(t *testing.T) {
 	}
 
 	bestEffortPod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
@@ -234,6 +234,7 @@ func TestPodAdmission(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "testNamespace",
 					Namespace:   "",
+					Tenant:      metav1.TenantDefault,
 					Annotations: map[string]string{},
 				},
 			}
@@ -310,7 +311,7 @@ func TestIgnoreUpdatingInitializedPod(t *testing.T) {
 	handler.SetReadyFunc(func() bool { return true })
 
 	pod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
 		Spec:       api.PodSpec{},
 	}
 	podToleration := api.Toleration{
@@ -334,6 +335,7 @@ func TestIgnoreUpdatingInitializedPod(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testNamespace",
 			Namespace: "",
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 	namespace.Annotations = map[string]string{NSDefaultTolerations: string(tolerationsStr)}

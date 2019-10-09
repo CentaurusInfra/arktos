@@ -34,7 +34,8 @@ func TestCertificateController(t *testing.T) {
 
 	csr := &certificates.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-csr",
+			Name:   "test-csr",
+			Tenant: metav1.TenantDefault,
 		},
 	}
 

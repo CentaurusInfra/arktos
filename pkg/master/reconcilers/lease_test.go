@@ -78,7 +78,7 @@ func (f *fakeLeases) GetUpdatedKeys() []string {
 func TestLeaseEndpointReconciler(t *testing.T) {
 	ns := corev1.NamespaceDefault
 	om := func(name string) metav1.ObjectMeta {
-		return metav1.ObjectMeta{Namespace: ns, Name: name}
+		return metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: ns, Name: name}
 	}
 	reconcileTests := []struct {
 		testName      string
@@ -550,7 +550,7 @@ func TestLeaseEndpointReconciler(t *testing.T) {
 func TestLeaseRemoveEndpoints(t *testing.T) {
 	ns := corev1.NamespaceDefault
 	om := func(name string) metav1.ObjectMeta {
-		return metav1.ObjectMeta{Namespace: ns, Name: name}
+		return metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: ns, Name: name}
 	}
 	stopTests := []struct {
 		testName      string

@@ -74,6 +74,7 @@ func (r *masterCountEndpointReconciler) ReconcileEndpoints(serviceName string, i
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceName,
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    metav1.TenantDefault,
 			},
 		}
 	}

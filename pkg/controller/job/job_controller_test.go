@@ -52,6 +52,7 @@ func newJob(parallelism, completions, backoffLimit int32) *batch.Job {
 			Name:      "foobar",
 			UID:       uuid.NewUUID(),
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: batch.JobSpec{
 			Selector: &metav1.LabelSelector{

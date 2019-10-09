@@ -153,7 +153,7 @@ func (r *EvictionREST) Create(ctx context.Context, obj runtime.Object, createVal
 
 			// If it was false already, or if it becomes false during the course of our retries,
 			// raise an error marked as a 429.
-			if err := r.checkAndDecrement(pod.Namespace, pod.Name, pdb, dryrun.IsDryRun(deletionOptions.DryRun)); err != nil {
+			if err := r.checkAndDecrement(pod.Tenant, pod.Namespace, pod.Name, pdb, dryrun.IsDryRun(deletionOptions.DryRun)); err != nil {
 				return err
 			}
 		}
@@ -183,7 +183,7 @@ func (r *EvictionREST) Create(ctx context.Context, obj runtime.Object, createVal
 }
 
 // checkAndDecrement checks if the provided PodDisruptionBudget allows any disruption.
-func (r *EvictionREST) checkAndDecrement(namespace string, podName string, pdb policyv1beta1.PodDisruptionBudget, dryRun bool) error {
+func (r *EvictionREST) checkAndDecrement(tenant, namespace string, podName string, pdb policyv1beta1.PodDisruptionBudget, dryRun bool) error {
 	if pdb.Status.ObservedGeneration < pdb.Generation {
 		// TODO(mml): Add a Retry-After header.  Once there are time-based
 		// budgets, we can sometimes compute a sensible suggested value.  But
@@ -220,7 +220,7 @@ func (r *EvictionREST) checkAndDecrement(namespace string, podName string, pdb p
 	// If the pod is not deleted within a reasonable time limit PDB controller will assume that it won't
 	// be deleted at all and remove it from DisruptedPod map.
 	pdb.Status.DisruptedPods[podName] = metav1.Time{Time: time.Now()}
-	if _, err := r.podDisruptionBudgetClient.PodDisruptionBudgets(namespace).UpdateStatus(&pdb); err != nil {
+	if _, err := r.podDisruptionBudgetClient.PodDisruptionBudgets(namespace, tenant).UpdateStatus(&pdb); err != nil {
 		return err
 	}
 
@@ -233,13 +233,16 @@ func (r *EvictionREST) getPodDisruptionBudgets(ctx context.Context, pod *api.Pod
 		return nil, nil
 	}
 
-	pdbList, err := r.podDisruptionBudgetClient.PodDisruptionBudgets(pod.Namespace).List(metav1.ListOptions{})
+	pdbList, err := r.podDisruptionBudgetClient.PodDisruptionBudgets(pod.Namespace, pod.Tenant).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	var pdbs []policyv1beta1.PodDisruptionBudget
 	for _, pdb := range pdbList.Items {
+		if pdb.Tenant != pod.Tenant {
+			continue
+		}
 		if pdb.Namespace != pod.Namespace {
 			continue
 		}

@@ -57,6 +57,7 @@ func getTestPod() *v1.Pod {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 }
@@ -152,6 +153,7 @@ func TestNewStatusPreservesPodStartTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
+			Tenant:    metav1.TenantDefault,
 		},
 		Status: v1.PodStatus{},
 	}
@@ -185,6 +187,7 @@ func TestNewStatusSetsReadyTransitionTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
+			Tenant:    metav1.TenantDefault,
 		},
 		Status: v1.PodStatus{},
 	}
@@ -232,6 +235,7 @@ func TestChangedStatusUpdatesLastTransitionTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
+			Tenant:    metav1.TenantDefault,
 		},
 		Status: v1.PodStatus{},
 	}
@@ -271,6 +275,7 @@ func TestUnchangedStatusPreservesLastTransitionTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
+			Tenant:    metav1.TenantDefault,
 		},
 		Status: v1.PodStatus{},
 	}

@@ -336,8 +336,10 @@ func (recorder *recorderImpl) makeEvent(ref *v1.ObjectReference, annotations map
 	}
 	return &v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
-			Namespace:   namespace,
+			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
+			Namespace: namespace,
+			// the tenant value should be pulled from ObjectReference, after multi-tenancy change goes to event object reference
+			Tenant:      metav1.TenantDefault,
 			Annotations: annotations,
 		},
 		InvolvedObject: *ref,

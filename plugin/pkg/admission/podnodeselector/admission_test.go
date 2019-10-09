@@ -37,6 +37,7 @@ func TestPodAdmission(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testNamespace",
 			Namespace: "",
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 
@@ -50,7 +51,7 @@ func TestPodAdmission(t *testing.T) {
 	informerFactory.Start(stopCh)
 
 	pod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
 	}
 
 	tests := []struct {

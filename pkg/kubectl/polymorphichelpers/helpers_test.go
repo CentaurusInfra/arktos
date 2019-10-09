@@ -53,6 +53,7 @@ func TestGetFirstPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-1",
 					Namespace:         metav1.NamespaceDefault,
+					Tenant:            metav1.TenantDefault,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -75,6 +76,7 @@ func TestGetFirstPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-2",
 					Namespace:         metav1.NamespaceDefault,
+					Tenant:            metav1.TenantDefault,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 1, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -98,6 +100,7 @@ func TestGetFirstPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-1",
 					Namespace:         metav1.NamespaceDefault,
+					Tenant:            metav1.TenantDefault,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -122,6 +125,7 @@ func TestGetFirstPod(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:              "pod-1",
 							Namespace:         metav1.NamespaceDefault,
+							Tenant:            metav1.TenantDefault,
 							CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 							Labels:            map[string]string{"test": "selector"},
 						},
@@ -141,6 +145,7 @@ func TestGetFirstPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-1",
 					Namespace:         metav1.NamespaceDefault,
+					Tenant:            metav1.TenantDefault,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -201,6 +206,7 @@ func newPodList(count, isUnready, isUnhealthy int, labels map[string]string) *co
 			ObjectMeta: metav1.ObjectMeta{
 				Name:              fmt.Sprintf("pod-%d", i+1),
 				Namespace:         metav1.NamespaceDefault,
+				Tenant:            metav1.TenantDefault,
 				CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, i, 0, time.UTC),
 				Labels:            labels,
 			},

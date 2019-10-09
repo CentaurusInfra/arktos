@@ -66,7 +66,8 @@ func TestIsCertificateRequestApproved(t *testing.T) {
 	for _, tc := range testCases {
 		csr := &v1beta1.CertificateSigningRequest{
 			ObjectMeta: v1.ObjectMeta{
-				Name: "fake-csr",
+				Name:   "fake-csr",
+				Tenant: v1.TenantDefault,
 			},
 			Status: v1beta1.CertificateSigningRequestStatus{
 				Conditions: tc.conditions,

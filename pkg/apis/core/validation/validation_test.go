@@ -6673,10 +6673,10 @@ func TestValidatePodSpec(t *testing.T) {
 func TestValidateWorkloadInfo(t *testing.T) {
 	successCases :=
 		[][]core.CommonInfo{
-			[]core.CommonInfo{
+			{
 				{Name: "container-pod-1"},
 			},
-			[]core.CommonInfo{
+			{
 				{Name: "container-pod-2"},
 			},
 		}

@@ -755,12 +755,13 @@ func setupTestSchedulerWithVolumeBinding(fakeVolumeBinder *volumebinder.VolumeBi
 	queuedPodStore := clientcache.NewFIFO(clientcache.MetaNamespaceKeyFunc)
 	pod := podWithID("foo", "")
 	pod.Namespace = "foo-ns"
+	pod.Tenant = metav1.TenantDefault
 	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{Name: "testVol",
 		VolumeSource: v1.VolumeSource{PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: "testPVC"}}})
 	queuedPodStore.Add(pod)
 	scache := internalcache.New(10*time.Minute, stop)
 	scache.AddNode(&testNode)
-	testPVC := v1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "testPVC", Namespace: pod.Namespace, UID: types.UID("testPVC")}}
+	testPVC := v1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "testPVC", Tenant: pod.Tenant, Namespace: pod.Namespace, UID: types.UID("testPVC")}}
 	client := clientsetfake.NewSimpleClientset(&testNode, &testPVC)
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
 
@@ -812,7 +813,7 @@ func TestSchedulerWithVolumeBinding(t *testing.T) {
 				FindBoundSatsified:   true,
 			},
 			expectAssumeCalled: true,
-			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
+			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: metav1.TenantDefault, Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
 			eventReason:        "Scheduled",
 		},
 		{
@@ -851,7 +852,7 @@ func TestSchedulerWithVolumeBinding(t *testing.T) {
 			},
 			expectAssumeCalled: true,
 			expectBindCalled:   true,
-			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
+			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: metav1.TenantDefault, Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
 			eventReason:        "Scheduled",
 		},
 		{

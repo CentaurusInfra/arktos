@@ -69,6 +69,7 @@ func makeScaleIOSecret(name, namespace string) *api.Secret {
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    "default",
 			UID:       "1234567890",
 		},
 		Type: api.SecretType("kubernetes.io/scaleio"),
@@ -166,7 +167,7 @@ func TestVolumeMounterUnmounter(t *testing.T) {
 
 	sioMounter, err := sioPlug.NewMounter(
 		volume.NewSpecFromVolume(vol),
-		&api.Pod{ObjectMeta: meta.ObjectMeta{UID: podUID, Namespace: testns}},
+		&api.Pod{ObjectMeta: meta.ObjectMeta{UID: podUID, Namespace: testns, Tenant: "default"}},
 		volume.VolumeOptions{},
 	)
 	if err != nil {
@@ -334,7 +335,7 @@ func TestVolumeProvisioner(t *testing.T) {
 	// mount dynamic vol
 	sioMounter, err := sioPlug.NewMounter(
 		volume.NewSpecFromPersistentVolume(spec, false),
-		&api.Pod{ObjectMeta: meta.ObjectMeta{UID: podUID, Namespace: testns}},
+		&api.Pod{ObjectMeta: meta.ObjectMeta{UID: podUID, Namespace: testns, Tenant: "default"}},
 		volume.VolumeOptions{},
 	)
 	if err != nil {
