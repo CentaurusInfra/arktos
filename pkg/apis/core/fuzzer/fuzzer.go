@@ -89,6 +89,18 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 				enableServiceLinks := corev1.DefaultEnableServiceLinks
 				s.EnableServiceLinks = &enableServiceLinks
 			}
+			if s.VirtualMachine != nil {
+				vm := s.VirtualMachine
+				if vm.ImagePullPolicy == "" {
+					vm.ImagePullPolicy = core.PullIfNotPresent
+				}
+				if vm.ShutdownBehavior == "" {
+					vm.ShutdownBehavior = "stop"
+				}
+				if vm.PowerSpec == "" {
+					vm.PowerSpec = core.VmPowerSpecRunning
+				}
+			}
 		},
 		func(j *core.PodPhase, c fuzz.Continue) {
 			statuses := []core.PodPhase{core.PodPending, core.PodRunning, core.PodFailed, core.PodUnknown}
