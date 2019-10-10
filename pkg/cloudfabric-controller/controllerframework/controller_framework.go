@@ -43,7 +43,7 @@ const (
 	controllerInstanceNamePrefix string = "ci"
 )
 
-type controllerInstance struct {
+type controllerInstanceLocal struct {
 	instanceId    types.UID
 	controllerKey int64
 	lowerboundKey int64
@@ -52,16 +52,16 @@ type controllerInstance struct {
 }
 
 type ControllerBase struct {
-	controller_type        string
-	controller_instance_id types.UID
-	controller_name        string
-	state                  string
+	controllerType       string
+	controllerInstanceId types.UID
+	controllerName       string
+	state                string
 
 	// use int64 as k8s base deal with int64 better
-	controller_key int64
+	controllerKey int64
 
-	sortedControllers      []controllerInstance
-	controllerInstanceList []v1.ControllerInstance
+	sortedControllerInstancesLocal []controllerInstanceLocal
+	controllerInstanceList         []v1.ControllerInstance
 
 	curPos int
 
@@ -73,58 +73,58 @@ var (
 	KeyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
-func NewControllerBase(controller_type string, client clientset.Interface, updateChan chan string) (*ControllerBase, error) {
+func NewControllerBase(controllerType string, client clientset.Interface, updateChan chan string) (*ControllerBase, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
 
 	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
-		if err := metrics.RegisterMetricAndTrackRateLimiterUsage(controller_type+"_controller", client.CoreV1().RESTClient().GetRateLimiter()); err != nil {
+		if err := metrics.RegisterMetricAndTrackRateLimiterUsage(controllerType+"_controller", client.CoreV1().RESTClient().GetRateLimiter()); err != nil {
 			return nil, err
 		}
 	}
 
 	// Get existed controller instances from registry
-	controllerInstances, err := listControllerInstancesByType(controller_type)
+	controllerInstances, err := listControllerInstancesByType(controllerType)
 
 	if err != nil {
 		// TODO - add retry
-		klog.Errorf("Error getting controller instances for %s. Error %v", controller_type, err)
+		klog.Errorf("Error getting controller instances for %s. Error %v", controllerType, err)
 	}
 
-	sortedControllerInstances := SortControllerInstancesByKey(controllerInstances)
+	sortedControllerInstances := SortControllerInstancesByKeyAndConvertToLocal(controllerInstances)
 
 	controller := &ControllerBase{
 		client:                                   client,
-		controller_type:                          controller_type,
+		controllerType:                           controllerType,
 		state:                                    ControllerStateInit,
-		controller_instance_id:                   uuid.NewUUID(),
+		controllerInstanceId:                     uuid.NewUUID(),
 		controllerInstanceList:                   controllerInstances,
-		sortedControllers:                        sortedControllerInstances,
+		sortedControllerInstancesLocal:           sortedControllerInstances,
 		curPos:                                   -1,
 		controllerInstanceUpdateByControllerType: updateChan,
 	}
 
-	controller.controller_key = controller.generateKey()
-	controller.controller_name = GetControllerName(controller.controller_instance_id)
+	controller.controllerKey = controller.generateKey()
+	controller.controllerName = GetControllerName(controller.controllerInstanceId)
 
 	// First controller instance. No need to wait for others
-	if len(controller.sortedControllers) == 0 {
+	if len(controller.sortedControllerInstancesLocal) == 0 {
 		controller.state = ControllerStateActive
 	} else {
 		controller.state = ControllerStateLocked
 	}
 
-	err = controller.registController()
+	err = controller.registControllerInstance()
 	if err != nil {
-		klog.Fatalf("Controller %s cannot be registered.", controller_type)
+		klog.Fatalf("Controller %s cannot be registered.", controllerType)
 	}
 
 	return controller, err
 }
 
 func (c *ControllerBase) GetControllerId() types.UID {
-	return c.controller_instance_id
+	return c.controllerInstanceId
 }
 
 func (c *ControllerBase) GetClient() clientset.Interface {
@@ -143,27 +143,26 @@ func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 				return
 			}
 
-			klog.Infof("Got controller instance update massage. Updated Controller Type %s, current controller instance type %s", updatedType, c.controller_type)
-			if updatedType != c.controller_type {
+			klog.Infof("Got controller instance update massage. Updated Controller Type %s, current controller instance type %s", updatedType, c.controllerType)
+			if updatedType != c.controllerType {
 				continue
 			}
 
-			klog.Infof("Start updating controller instance %s", c.controller_type)
-			controllerInstances, err := listControllerInstancesByType(c.controller_type)
+			klog.Infof("Start updating controller instance %s", c.controllerType)
+			controllerInstances, err := listControllerInstancesByType(c.controllerType)
 			if err != nil {
 				// TODO - add retry
-				klog.Errorf("Error getting controller instances for %s. Error %v", c.controller_type, err)
+				klog.Errorf("Error getting controller instances for %s. Error %v", c.controllerType, err)
 				continue
 			}
-			sortedControllerInstances := SortControllerInstancesByKey(controllerInstances)
-			c.updateControllers(sortedControllerInstances)
-			klog.Infof("Done updating controller instance %s", c.controller_type)
+			c.updateCachedControllerInstances(controllerInstances)
+			klog.Infof("Done updating controller instance %s", c.controllerType)
 		}
 	}
 }
 
 func (c *ControllerBase) GetControllerType() string {
-	return c.controller_type
+	return c.controllerType
 }
 
 func (c *ControllerBase) IsControllerActive() bool {
@@ -175,7 +174,7 @@ func (c *ControllerBase) IsInRange(key int64) bool {
 		return false
 	}
 
-	if key > c.controller_key || key <= c.sortedControllers[c.curPos].lowerboundKey {
+	if key > c.controllerKey || key <= c.sortedControllerInstancesLocal[c.curPos].lowerboundKey {
 		return false
 	}
 
@@ -183,7 +182,7 @@ func (c *ControllerBase) IsInRange(key int64) bool {
 }
 
 func (c *ControllerBase) generateKey() int64 {
-	if len(c.sortedControllers) == 0 {
+	if len(c.sortedControllerInstancesLocal) == 0 {
 		return math.MaxInt64
 	}
 
@@ -198,8 +197,8 @@ func (c *ControllerBase) getMaxInterval() (int64, int64) {
 	maxWorkloadNum := (int32)(-1)
 	intervalFound := false
 
-	for i := 0; i < len(c.sortedControllers); i++ {
-		item := c.sortedControllers[i]
+	for i := 0; i < len(c.sortedControllerInstancesLocal); i++ {
+		item := c.sortedControllerInstancesLocal[i]
 
 		if item.workloadNum > maxWorkloadNum {
 			maxWorkloadNum = item.workloadNum
@@ -209,30 +208,32 @@ func (c *ControllerBase) getMaxInterval() (int64, int64) {
 		}
 	}
 
-	if !intervalFound && len(c.sortedControllers) > 0 {
-		min = c.sortedControllers[0].lowerboundKey
-		max = c.sortedControllers[0].controllerKey
+	if !intervalFound && len(c.sortedControllerInstancesLocal) > 0 {
+		min = c.sortedControllerInstancesLocal[0].lowerboundKey
+		max = c.sortedControllerInstancesLocal[0].controllerKey
 	}
 
 	return min, max
 }
 
-func (c *ControllerBase) updateControllers(newControllerInstances []controllerInstance) {
+func (c *ControllerBase) updateCachedControllerInstances(controllerInstancesInStorage []v1.ControllerInstance) {
+	sortedNewControllerInstancesLocal := SortControllerInstancesByKeyAndConvertToLocal(controllerInstancesInStorage)
+
 	// Compare
-	isUpdated, isSelfUpdated, newLowerBound, newUpperbound, newPos := c.tryConsolidateControllerInstances(newControllerInstances)
+	isUpdated, isSelfUpdated, newLowerBound, newUpperbound, newPos := c.tryConsolidateControllerInstancesLocal(sortedNewControllerInstancesLocal)
 	if !isUpdated && !isSelfUpdated {
 		return
 	}
 
-	message := fmt.Sprintf("Controller %s instance %s", c.controller_type, c.controller_name)
+	message := fmt.Sprintf("Controller %s instance %s", c.controllerType, c.controllerName)
 	if c.curPos >= 0 {
-		message += fmt.Sprintf(" old range (%d, %d]", c.sortedControllers[c.curPos].lowerboundKey, c.sortedControllers[c.curPos].controllerKey)
+		message += fmt.Sprintf(" old range (%d, %d]", c.sortedControllerInstancesLocal[c.curPos].lowerboundKey, c.sortedControllerInstancesLocal[c.curPos].controllerKey)
 	}
 	message += fmt.Sprintf(" assigned range (%d, %d]", newLowerBound, newUpperbound)
 	klog.Info(message)
 
 	if isUpdated {
-		c.sortedControllers = newControllerInstances
+		c.sortedControllerInstancesLocal = sortedNewControllerInstancesLocal
 	}
 
 	if isSelfUpdated {
@@ -250,7 +251,7 @@ func (c *ControllerBase) updateControllers(newControllerInstances []controllerIn
 
 	if c.state == ControllerStateLocked {
 		// TODO - wait for unlock
-		klog.Infof("Controller %s instance %v is currently locked. Waiting for unlock", c.controller_type, c.controller_name)
+		klog.Infof("Controller %s instance %v is currently locked. Waiting for unlock", c.controllerType, c.controllerName)
 		return
 	}
 
@@ -259,18 +260,18 @@ func (c *ControllerBase) updateControllers(newControllerInstances []controllerIn
 }
 
 // Assume both old & new controller instances are sorted by controller key
-func (c *ControllerBase) tryConsolidateControllerInstances(newControllerInstances []controllerInstance) (isUpdated bool, isSelfUpdated bool, newLowerbound int64, newUpperbound int64, newPos int) {
-	oldControllerInstances := c.sortedControllers
+func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerInstancesLocal []controllerInstanceLocal) (isUpdated bool, isSelfUpdated bool, newLowerbound int64, newUpperbound int64, newPos int) {
+	oldControllerInstancesLocal := c.sortedControllerInstancesLocal
 
 	isUpdated = false
-	if len(oldControllerInstances) != len(newControllerInstances) {
+	if len(oldControllerInstancesLocal) != len(newControllerInstancesLocal) {
 		isUpdated = true
 	}
 
 	// find position in new controller instances - assume current controller is in new controller instance list (deal with edge cases later)
 	newPos = -1
-	for i := 0; i < len(newControllerInstances); i++ {
-		if newControllerInstances[i].instanceId == c.controller_instance_id {
+	for i := 0; i < len(newControllerInstancesLocal); i++ {
+		if newControllerInstancesLocal[i].instanceId == c.controllerInstanceId {
 			newPos = i
 			break
 		}
@@ -279,29 +280,29 @@ func (c *ControllerBase) tryConsolidateControllerInstances(newControllerInstance
 	// current instance not in new controller instance map, this controller instance lost connection with registry, pause processing
 	if newPos == -1 {
 		c.state = ControllerStateError
-		klog.Errorf("Current instance not in registry. Controller type %s, instance id %v, key %v", c.controller_type, c.controller_name, c.controller_key)
+		klog.Errorf("Current instance not in registry. Controller type %s, instance id %v, key %v", c.controllerType, c.controllerName, c.controllerKey)
 		return true, false, 0, 0, 0
-	} else if newPos == len(newControllerInstances)-1 && c.controller_key != math.MaxInt64 { // next to last become last
-		c.controller_key = math.MaxInt64
+	} else if newPos == len(newControllerInstancesLocal)-1 && c.controllerKey != math.MaxInt64 { // next to last become last
+		c.controllerKey = math.MaxInt64
 		isSelfUpdated = true
 		isUpdated = true
 	}
 
 	if c.curPos == -1 {
 		//c.curPos = newPos
-		return true, true, newControllerInstances[newPos].lowerboundKey, c.controller_key, newPos
+		return true, true, newControllerInstancesLocal[newPos].lowerboundKey, c.controllerKey, newPos
 	}
 
-	if c.sortedControllers[c.curPos].lowerboundKey != newControllerInstances[newPos].lowerboundKey {
-		return true, true, newControllerInstances[newPos].lowerboundKey, c.controller_key, newPos
+	if c.sortedControllerInstancesLocal[c.curPos].lowerboundKey != newControllerInstancesLocal[newPos].lowerboundKey {
+		return true, true, newControllerInstancesLocal[newPos].lowerboundKey, c.controllerKey, newPos
 	}
 
 	if !isUpdated {
-		for i := 0; i < len(newControllerInstances); i++ {
-			if c.sortedControllers[i].lowerboundKey != newControllerInstances[i].lowerboundKey ||
-				c.sortedControllers[i].workloadNum != newControllerInstances[i].workloadNum ||
-				c.sortedControllers[i].controllerKey != newControllerInstances[i].controllerKey ||
-				c.sortedControllers[i].instanceId != newControllerInstances[i].instanceId {
+		for i := 0; i < len(newControllerInstancesLocal); i++ {
+			if c.sortedControllerInstancesLocal[i].lowerboundKey != newControllerInstancesLocal[i].lowerboundKey ||
+				c.sortedControllerInstancesLocal[i].workloadNum != newControllerInstancesLocal[i].workloadNum ||
+				c.sortedControllerInstancesLocal[i].controllerKey != newControllerInstancesLocal[i].controllerKey ||
+				c.sortedControllerInstancesLocal[i].instanceId != newControllerInstancesLocal[i].instanceId {
 				isUpdated = true
 			}
 		}
@@ -311,41 +312,36 @@ func (c *ControllerBase) tryConsolidateControllerInstances(newControllerInstance
 }
 
 // register current controller instance in registry
-func (c *ControllerBase) registController() error {
-	controllerInstanceInStoreage := v1.ControllerInstance{
-		ControllerType: c.controller_type,
-		UID:            c.controller_instance_id,
-		HashKey:        c.controller_key,
+func (c *ControllerBase) registControllerInstance() error {
+	controllerInstance := v1.ControllerInstance{
+		ControllerType: c.controllerType,
+		UID:            c.controllerInstanceId,
+		HashKey:        c.controllerKey,
 		WorkloadNum:    0,
 		IsLocked:       c.state == ControllerStateLocked,
 		ObjectMeta: metav1.ObjectMeta{
-			Name: c.controller_name,
+			Name: c.controllerName,
 		},
 	}
 
-	isExist := isControllerInstanceExisted(c.controllerInstanceList, c.controller_instance_id)
+	isExist := isControllerInstanceExisted(c.controllerInstanceList, c.controllerInstanceId)
 	if isExist {
 		// Error
-		klog.Errorf("Trying to register new %s controller instance with id %v already existed in controller instance list", c.controller_type, c.controller_name)
+		klog.Errorf("Trying to register new %s controller instance with id %v already existed in controller instance list", c.controllerType, c.controllerName)
 		return errors.NewAlreadyExists(apps.Resource("controllerinstances"), "UID")
 	} else {
-		/*
-			if c.controllerInstanceList.Name == "" { // for unit test that mocked HTTP request
-				c.controllerInstanceList.Name = c.controller_type
-			}*/
-		c.controllerInstanceList = append(c.controllerInstanceList, controllerInstanceInStoreage)
+		c.controllerInstanceList = append(c.controllerInstanceList, controllerInstance)
 
 		// Write to registry
-		_, err := c.client.CoreV1().ControllerInstances().Create(&controllerInstanceInStoreage)
+		_, err := c.client.CoreV1().ControllerInstances().Create(&controllerInstance)
 		if err != nil {
-			klog.Errorf("Error register controller %s instance %s, error %v", c.controller_type, c.controller_name, err)
+			klog.Errorf("Error register controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
 			// TODO
 			return err
 		}
 
 		// Check controllers updates
-		newSortedControllerInstances := SortControllerInstancesByKey(c.controllerInstanceList)
-		c.updateControllers(newSortedControllerInstances)
+		c.updateCachedControllerInstances(c.controllerInstanceList)
 	}
 
 	return nil
@@ -355,21 +351,21 @@ func (c *ControllerBase) registController() error {
 //     1. Update workload # so that workload can be more evenly distributed
 //     2. Renew TTL for current controller instance
 func (c *ControllerBase) ReportHealth() {
-	klog.Infof("Controller %s instance %s report health", c.controller_type, c.controller_name)
-	controllerInstanceInStoreage := v1.ControllerInstance{
-		ControllerType: c.controller_type,
-		UID:            c.controller_instance_id,
-		HashKey:        c.controller_key,
-		WorkloadNum:    c.sortedControllers[c.curPos].workloadNum,
+	klog.Infof("Controller %s instance %s report health", c.controllerType, c.controllerName)
+	controllerInstance := v1.ControllerInstance{
+		ControllerType: c.controllerType,
+		UID:            c.controllerInstanceId,
+		HashKey:        c.controllerKey,
+		WorkloadNum:    c.sortedControllerInstancesLocal[c.curPos].workloadNum,
 		ObjectMeta: metav1.ObjectMeta{
-			Name: c.controller_name,
+			Name: c.controllerName,
 		},
 	}
 
 	// Write to registry
-	_, err := c.client.CoreV1().ControllerInstances().Update(&controllerInstanceInStoreage)
+	_, err := c.client.CoreV1().ControllerInstances().Update(&controllerInstance)
 	if err != nil {
-		klog.Errorf("Error update controller %s instance %s, error %v", c.controller_type, c.controller_name, err)
+		klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
 		//TODO
 	}
 }
@@ -383,17 +379,17 @@ func GetControllerName(instanceId types.UID) string {
 func listControllerInstancesByType(controllerType string) ([]v1.ControllerInstance, error) {
 	var controllerInstances []v1.ControllerInstance
 
-	cim := GetInstance()
+	cim := GetControllerInstanceManager()
 	if cim == nil {
 		klog.Fatalf("Unexpected reference to uninitialized controller instance manager")
 	}
 
-	controllerInstanceById, err := cim.ListControllerInstances(controllerType)
+	controllerInstancesByType, err := cim.ListControllerInstances(controllerType)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, controllerInstance := range controllerInstanceById {
+	for _, controllerInstance := range controllerInstancesByType {
 		controllerInstances = append(controllerInstances, controllerInstance)
 	}
 	return controllerInstances, nil

@@ -731,11 +731,11 @@ func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, nam
 }
 
 // Sort Controller Instances by controller key
-func SortControllerInstancesByKey(controllerInstancesInStorage []v1.ControllerInstance) []controllerInstance {
+func SortControllerInstancesByKeyAndConvertToLocal(controllerInstancesInStorage []v1.ControllerInstance) []controllerInstanceLocal {
 	// copy map
-	var sortedControllerInstances []controllerInstance
+	var sortedControllerInstances []controllerInstanceLocal
 	for _, instanceInStorage := range controllerInstancesInStorage {
-		instance := controllerInstance{
+		instance := controllerInstanceLocal{
 			instanceId:    instanceInStorage.UID,
 			controllerKey: instanceInStorage.HashKey,
 			workloadNum:   instanceInStorage.WorkloadNum,

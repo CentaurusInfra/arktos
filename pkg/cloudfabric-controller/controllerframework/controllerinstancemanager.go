@@ -54,7 +54,7 @@ type ControllerInstanceManager struct {
 
 var instance *ControllerInstanceManager
 
-func GetInstance() *ControllerInstanceManager {
+func GetControllerInstanceManager() *ControllerInstanceManager {
 	if instance == nil {
 		klog.Fatalf("Unexpected reference to controller instance manager - uninitialized")
 		return nil
@@ -265,5 +265,7 @@ func (cim *ControllerInstanceManager) syncControllerInstances() error {
 }
 
 func (cim *ControllerInstanceManager) notifyControllerInstanceChanges(controllerInstance *v1.ControllerInstance) {
-	cim.controllerInstanceChangeChan <- controllerInstance.ControllerType
+	go func() {
+		cim.controllerInstanceChangeChan <- controllerInstance.ControllerType
+	}()
 }

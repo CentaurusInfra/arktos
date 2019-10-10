@@ -40,7 +40,7 @@ func createControllerInstanceManager(stopCh chan struct{}, updateCh chan string)
 
 	cim.controllerListerSynced = alwaysReady
 	cim.notifyHandler = mockNotifyHander
-	return GetInstance(), informers
+	return GetControllerInstanceManager(), informers
 }
 
 func newControllerInstance(controllerType string, hashKey int64, workloadNum int32, isLocked bool) *v1.ControllerInstance {
@@ -104,8 +104,8 @@ func TestSyncControllerInstances_Nil(t *testing.T) {
 
 	// invalid controller type
 	controllerType := "foo"
-	controllerMap, err := cim.ListControllerInstances(controllerType)
-	assert.Nil(t, controllerMap, "Expecting nil controller map for controller type not in map")
+	controllerInstanceMap, err := cim.ListControllerInstances(controllerType)
+	assert.Nil(t, controllerInstanceMap, "Expecting nil controller map for controller type not in map")
 	assert.Nil(t, err, "Expecting no error for not existed controller")
 }
 
