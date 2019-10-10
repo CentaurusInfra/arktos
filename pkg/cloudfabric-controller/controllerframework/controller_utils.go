@@ -731,32 +731,32 @@ func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, nam
 }
 
 // Sort Controller Instances by controller key
-func SortControllerInstancesByKeyAndConvertToLocal(controllerInstancesInStorage []v1.ControllerInstance) []controllerInstanceLocal {
+func SortControllerInstancesByKeyAndConvertToLocal(controllerInstances []v1.ControllerInstance) []controllerInstanceLocal {
 	// copy map
-	var sortedControllerInstances []controllerInstanceLocal
-	for _, instanceInStorage := range controllerInstancesInStorage {
+	var sortedControllerInstancesLocal []controllerInstanceLocal
+	for _, controllerInstance := range controllerInstances {
 		instance := controllerInstanceLocal{
-			instanceId:    instanceInStorage.UID,
-			controllerKey: instanceInStorage.HashKey,
-			workloadNum:   instanceInStorage.WorkloadNum,
-			isLocked:      instanceInStorage.IsLocked,
+			instanceId:    controllerInstance.UID,
+			controllerKey: controllerInstance.HashKey,
+			workloadNum:   controllerInstance.WorkloadNum,
+			isLocked:      controllerInstance.IsLocked,
 		}
-		sortedControllerInstances = append(sortedControllerInstances, instance)
+		sortedControllerInstancesLocal = append(sortedControllerInstancesLocal, instance)
 	}
 
-	sort.Slice(sortedControllerInstances, func(i, j int) bool {
-		return sortedControllerInstances[i].controllerKey < sortedControllerInstances[j].controllerKey
+	sort.Slice(sortedControllerInstancesLocal, func(i, j int) bool {
+		return sortedControllerInstancesLocal[i].controllerKey < sortedControllerInstancesLocal[j].controllerKey
 	})
 
-	if len(sortedControllerInstances) > 0 {
-		sortedControllerInstances[0].lowerboundKey = 0
+	if len(sortedControllerInstancesLocal) > 0 {
+		sortedControllerInstancesLocal[0].lowerboundKey = 0
 	}
 
-	for i := 1; i < len(sortedControllerInstances); i++ {
-		sortedControllerInstances[i].lowerboundKey = sortedControllerInstances[i-1].controllerKey
+	for i := 1; i < len(sortedControllerInstancesLocal); i++ {
+		sortedControllerInstancesLocal[i].lowerboundKey = sortedControllerInstancesLocal[i-1].controllerKey
 	}
 
-	return sortedControllerInstances
+	return sortedControllerInstancesLocal
 }
 
 func isControllerInstanceExisted(controllerInstancesInStorage []v1.ControllerInstance, instanceId types.UID) bool {
