@@ -174,6 +174,10 @@ func (c *ControllerBase) IsInRange(key int64) bool {
 		return false
 	}
 
+	if key == 0 && c.sortedControllerInstancesLocal[c.curPos].lowerboundKey == 0 {
+		return true
+	}
+
 	if key > c.controllerKey || key <= c.sortedControllerInstancesLocal[c.curPos].lowerboundKey {
 		return false
 	}
@@ -216,8 +220,8 @@ func (c *ControllerBase) getMaxInterval() (int64, int64) {
 	return min, max
 }
 
-func (c *ControllerBase) updateCachedControllerInstances(controllerInstancesInStorage []v1.ControllerInstance) {
-	sortedNewControllerInstancesLocal := SortControllerInstancesByKeyAndConvertToLocal(controllerInstancesInStorage)
+func (c *ControllerBase) updateCachedControllerInstances(controllerInstances []v1.ControllerInstance) {
+	sortedNewControllerInstancesLocal := SortControllerInstancesByKeyAndConvertToLocal(controllerInstances)
 
 	// Compare
 	isUpdated, isSelfUpdated, newLowerBound, newUpperbound, newPos := c.tryConsolidateControllerInstancesLocal(sortedNewControllerInstancesLocal)
@@ -234,6 +238,7 @@ func (c *ControllerBase) updateCachedControllerInstances(controllerInstancesInSt
 
 	if isUpdated {
 		c.sortedControllerInstancesLocal = sortedNewControllerInstancesLocal
+		c.controllerInstanceList = controllerInstances
 	}
 
 	if isSelfUpdated {
@@ -308,7 +313,7 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 		}
 	}
 
-	return isUpdated, false, 0, 0, newPos
+	return isUpdated, false, c.sortedControllerInstancesLocal[c.curPos].lowerboundKey, c.controllerKey, newPos
 }
 
 // register current controller instance in registry
