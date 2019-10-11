@@ -32,7 +32,7 @@ import (
 // PodDisruptionBudgetsGetter has a method to return a PodDisruptionBudgetInterface.
 // A group's client should implement this interface.
 type PodDisruptionBudgetsGetter interface {
-	PodDisruptionBudgets(namespace string) PodDisruptionBudgetInterface
+	PodDisruptionBudgets(namespace string, optional_tenant ...string) PodDisruptionBudgetInterface
 }
 
 // PodDisruptionBudgetInterface has methods to work with PodDisruptionBudget resources.
@@ -53,13 +53,20 @@ type PodDisruptionBudgetInterface interface {
 type podDisruptionBudgets struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newPodDisruptionBudgets returns a PodDisruptionBudgets
-func newPodDisruptionBudgets(c *PolicyV1beta1Client, namespace string) *podDisruptionBudgets {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newPodDisruptionBudgets(c *PolicyV1beta1Client, namespace string, optional_tenant ...string) *podDisruptionBudgets {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &podDisruptionBudgets{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newPodDisruptionBudgets(c *PolicyV1beta1Client, namespace string) *podDisru
 func (c *podDisruptionBudgets) Get(name string, options v1.GetOptions) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *podDisruptionBudgets) List(opts v1.ListOptions) (result *v1beta1.PodDis
 	}
 	result = &v1beta1.PodDisruptionBudgetList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *podDisruptionBudgets) Watch(opts v1.ListOptions) (watch.Interface, erro
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *podDisruptionBudgets) Watch(opts v1.ListOptions) (watch.Interface, erro
 func (c *podDisruptionBudgets) Create(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Body(podDisruptionBudget).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *podDisruptionBudgets) Create(podDisruptionBudget *v1beta1.PodDisruption
 func (c *podDisruptionBudgets) Update(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(podDisruptionBudget.Name).
 		Body(podDisruptionBudget).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *podDisruptionBudgets) Update(podDisruptionBudget *v1beta1.PodDisruption
 func (c *podDisruptionBudgets) UpdateStatus(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(podDisruptionBudget.Name).
@@ -146,12 +162,14 @@ func (c *podDisruptionBudgets) UpdateStatus(podDisruptionBudget *v1beta1.PodDisr
 		Body(podDisruptionBudget).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the podDisruptionBudget and deletes it. Returns an error if one occurs.
 func (c *podDisruptionBudgets) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *podDisruptionBudgets) DeleteCollection(options *v1.DeleteOptions, listO
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *podDisruptionBudgets) DeleteCollection(options *v1.DeleteOptions, listO
 func (c *podDisruptionBudgets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *podDisruptionBudgets) Patch(name string, pt types.PatchType, data []byt
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

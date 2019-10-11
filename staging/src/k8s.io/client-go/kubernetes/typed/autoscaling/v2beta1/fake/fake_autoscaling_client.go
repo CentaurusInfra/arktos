@@ -28,8 +28,12 @@ type FakeAutoscalingV2beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAutoscalingV2beta1) HorizontalPodAutoscalers(namespace string) v2beta1.HorizontalPodAutoscalerInterface {
-	return &FakeHorizontalPodAutoscalers{c, namespace}
+func (c *FakeAutoscalingV2beta1) HorizontalPodAutoscalers(namespace string, optional_tenant ...string) v2beta1.HorizontalPodAutoscalerInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeHorizontalPodAutoscalers{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

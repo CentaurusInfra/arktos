@@ -39,28 +39,28 @@ type ExtensionsV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ExtensionsV1beta1Client) DaemonSets(namespace string) DaemonSetInterface {
-	return newDaemonSets(c, namespace)
+func (c *ExtensionsV1beta1Client) DaemonSets(namespace string, optional_tenant ...string) DaemonSetInterface {
+	return newDaemonSets(c, namespace, optional_tenant...)
 }
 
-func (c *ExtensionsV1beta1Client) Deployments(namespace string) DeploymentInterface {
-	return newDeployments(c, namespace)
+func (c *ExtensionsV1beta1Client) Deployments(namespace string, optional_tenant ...string) DeploymentInterface {
+	return newDeployments(c, namespace, optional_tenant...)
 }
 
-func (c *ExtensionsV1beta1Client) Ingresses(namespace string) IngressInterface {
-	return newIngresses(c, namespace)
+func (c *ExtensionsV1beta1Client) Ingresses(namespace string, optional_tenant ...string) IngressInterface {
+	return newIngresses(c, namespace, optional_tenant...)
 }
 
-func (c *ExtensionsV1beta1Client) NetworkPolicies(namespace string) NetworkPolicyInterface {
-	return newNetworkPolicies(c, namespace)
+func (c *ExtensionsV1beta1Client) NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyInterface {
+	return newNetworkPolicies(c, namespace, optional_tenant...)
 }
 
-func (c *ExtensionsV1beta1Client) PodSecurityPolicies() PodSecurityPolicyInterface {
-	return newPodSecurityPolicies(c)
+func (c *ExtensionsV1beta1Client) PodSecurityPolicies(tenant ...string) PodSecurityPolicyInterface {
+	return newPodSecurityPolicies(c, tenant...)
 }
 
-func (c *ExtensionsV1beta1Client) ReplicaSets(namespace string) ReplicaSetInterface {
-	return newReplicaSets(c, namespace)
+func (c *ExtensionsV1beta1Client) ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetInterface {
+	return newReplicaSets(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new ExtensionsV1beta1Client for the given config.

@@ -48,7 +48,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			expectedConfigMaps: map[string]*corev1.ConfigMap{
 				"extension-apiserver-authentication": {
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"client-ca-file":                     "foo",
 						"requestheader-username-headers":     `["alfa","bravo","charlie"]`,
@@ -68,7 +68,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			expectedConfigMaps: map[string]*corev1.ConfigMap{
 				"extension-apiserver-authentication": {
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"requestheader-username-headers":     `null`,
 						"requestheader-group-headers":        `null`,
@@ -86,7 +86,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			expectedConfigMaps: map[string]*corev1.ConfigMap{
 				"extension-apiserver-authentication": {
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"client-ca-file": "foo",
 					},
@@ -100,7 +100,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			expectedConfigMaps: map[string]*corev1.ConfigMap{
 				"extension-apiserver-authentication": {
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"requestheader-username-headers":     `null`,
 						"requestheader-group-headers":        `null`,
@@ -118,7 +118,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			preexistingObjs: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"client-ca-file": "other",
 					},
@@ -126,7 +126,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			expectedConfigMaps: map[string]*corev1.ConfigMap{
 				"extension-apiserver-authentication": {
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"client-ca-file": "foo",
 					},
@@ -145,7 +145,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			preexistingObjs: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"requestheader-username-headers":     `null`,
 						"requestheader-group-headers":        `null`,
@@ -157,7 +157,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			expectedConfigMaps: map[string]*corev1.ConfigMap{
 				"extension-apiserver-authentication": {
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"requestheader-username-headers":     `[]`,
 						"requestheader-group-headers":        `[]`,
@@ -175,11 +175,11 @@ func TestWriteClientCAs(t *testing.T) {
 				ClientCA: []byte("foo"),
 			},
 			preexistingObjs: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: metav1.NamespaceSystem}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: metav1.NamespaceSystem}},
 			},
 			expectedConfigMaps: map[string]*corev1.ConfigMap{
 				"extension-apiserver-authentication": {
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"client-ca-file": "foo",
 					},
@@ -197,7 +197,7 @@ func TestWriteClientCAs(t *testing.T) {
 			},
 			preexistingObjs: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: "extension-apiserver-authentication"},
 					Data: map[string]string{
 						"requestheader-username-headers":     `[]`,
 						"requestheader-group-headers":        `[]`,

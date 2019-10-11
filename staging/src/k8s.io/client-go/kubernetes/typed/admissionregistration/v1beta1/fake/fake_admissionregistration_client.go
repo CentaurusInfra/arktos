@@ -29,10 +29,12 @@ type FakeAdmissionregistrationV1beta1 struct {
 }
 
 func (c *FakeAdmissionregistrationV1beta1) MutatingWebhookConfigurations() v1beta1.MutatingWebhookConfigurationInterface {
+
 	return &FakeMutatingWebhookConfigurations{c}
 }
 
 func (c *FakeAdmissionregistrationV1beta1) ValidatingWebhookConfigurations() v1beta1.ValidatingWebhookConfigurationInterface {
+
 	return &FakeValidatingWebhookConfigurations{c}
 }
 

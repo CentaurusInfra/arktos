@@ -32,7 +32,7 @@ import (
 // StatefulSetsGetter has a method to return a StatefulSetInterface.
 // A group's client should implement this interface.
 type StatefulSetsGetter interface {
-	StatefulSets(namespace string) StatefulSetInterface
+	StatefulSets(namespace string, optional_tenant ...string) StatefulSetInterface
 }
 
 // StatefulSetInterface has methods to work with StatefulSet resources.
@@ -53,13 +53,20 @@ type StatefulSetInterface interface {
 type statefulSets struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newStatefulSets returns a StatefulSets
-func newStatefulSets(c *AppsV1beta1Client, namespace string) *statefulSets {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newStatefulSets(c *AppsV1beta1Client, namespace string, optional_tenant ...string) *statefulSets {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &statefulSets{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newStatefulSets(c *AppsV1beta1Client, namespace string) *statefulSets {
 func (c *statefulSets) Get(name string, options v1.GetOptions) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *statefulSets) List(opts v1.ListOptions) (result *v1beta1.StatefulSetLis
 	}
 	result = &v1beta1.StatefulSetList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("statefulsets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *statefulSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *statefulSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *statefulSets) Create(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Body(statefulSet).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *statefulSets) Create(statefulSet *v1beta1.StatefulSet) (result *v1beta1
 func (c *statefulSets) Update(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSet.Name).
 		Body(statefulSet).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *statefulSets) Update(statefulSet *v1beta1.StatefulSet) (result *v1beta1
 func (c *statefulSets) UpdateStatus(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSet.Name).
@@ -146,12 +162,14 @@ func (c *statefulSets) UpdateStatus(statefulSet *v1beta1.StatefulSet) (result *v
 		Body(statefulSet).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the statefulSet and deletes it. Returns an error if one occurs.
 func (c *statefulSets) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *statefulSets) DeleteCollection(options *v1.DeleteOptions, listOptions v
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *statefulSets) DeleteCollection(options *v1.DeleteOptions, listOptions v
 func (c *statefulSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *statefulSets) Patch(name string, pt types.PatchType, data []byte, subre
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

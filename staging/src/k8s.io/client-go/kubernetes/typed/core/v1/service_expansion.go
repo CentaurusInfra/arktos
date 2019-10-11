@@ -29,6 +29,7 @@ type ServiceExpansion interface {
 // ProxyGet returns a response of the service by calling it through the proxy.
 func (c *services) ProxyGet(scheme, name, port, path string, params map[string]string) restclient.ResponseWrapper {
 	request := c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("services").
 		SubResource("proxy").

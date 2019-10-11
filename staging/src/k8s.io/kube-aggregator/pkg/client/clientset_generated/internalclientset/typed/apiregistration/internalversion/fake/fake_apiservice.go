@@ -44,6 +44,7 @@ func (c *FakeAPIServices) Get(name string, options v1.GetOptions) (result *apire
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiregistration.APIService), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeAPIServices) Create(aPIService *apiregistration.APIService) (result
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiregistration.APIService), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeAPIServices) Update(aPIService *apiregistration.APIService) (result
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiregistration.APIService), err
 }
 
@@ -114,8 +117,8 @@ func (c *FakeAPIServices) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeAPIServices) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(apiservicesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(apiservicesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &apiregistration.APIServiceList{})
 	return err
 }
@@ -127,5 +130,6 @@ func (c *FakeAPIServices) Patch(name string, pt types.PatchType, data []byte, su
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiregistration.APIService), err
 }

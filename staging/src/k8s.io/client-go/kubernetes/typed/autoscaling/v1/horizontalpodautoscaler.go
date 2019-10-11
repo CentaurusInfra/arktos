@@ -32,7 +32,7 @@ import (
 // HorizontalPodAutoscalersGetter has a method to return a HorizontalPodAutoscalerInterface.
 // A group's client should implement this interface.
 type HorizontalPodAutoscalersGetter interface {
-	HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerInterface
+	HorizontalPodAutoscalers(namespace string, optional_tenant ...string) HorizontalPodAutoscalerInterface
 }
 
 // HorizontalPodAutoscalerInterface has methods to work with HorizontalPodAutoscaler resources.
@@ -53,13 +53,20 @@ type HorizontalPodAutoscalerInterface interface {
 type horizontalPodAutoscalers struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newHorizontalPodAutoscalers returns a HorizontalPodAutoscalers
-func newHorizontalPodAutoscalers(c *AutoscalingV1Client, namespace string) *horizontalPodAutoscalers {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newHorizontalPodAutoscalers(c *AutoscalingV1Client, namespace string, optional_tenant ...string) *horizontalPodAutoscalers {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &horizontalPodAutoscalers{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newHorizontalPodAutoscalers(c *AutoscalingV1Client, namespace string) *hori
 func (c *horizontalPodAutoscalers) Get(name string, options metav1.GetOptions) (result *v1.HorizontalPodAutoscaler, err error) {
 	result = &v1.HorizontalPodAutoscaler{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *horizontalPodAutoscalers) List(opts metav1.ListOptions) (result *v1.Hor
 	}
 	result = &v1.HorizontalPodAutoscalerList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *horizontalPodAutoscalers) Watch(opts metav1.ListOptions) (watch.Interfa
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *horizontalPodAutoscalers) Watch(opts metav1.ListOptions) (watch.Interfa
 func (c *horizontalPodAutoscalers) Create(horizontalPodAutoscaler *v1.HorizontalPodAutoscaler) (result *v1.HorizontalPodAutoscaler, err error) {
 	result = &v1.HorizontalPodAutoscaler{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Body(horizontalPodAutoscaler).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *horizontalPodAutoscalers) Create(horizontalPodAutoscaler *v1.Horizontal
 func (c *horizontalPodAutoscalers) Update(horizontalPodAutoscaler *v1.HorizontalPodAutoscaler) (result *v1.HorizontalPodAutoscaler, err error) {
 	result = &v1.HorizontalPodAutoscaler{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(horizontalPodAutoscaler.Name).
 		Body(horizontalPodAutoscaler).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *horizontalPodAutoscalers) Update(horizontalPodAutoscaler *v1.Horizontal
 func (c *horizontalPodAutoscalers) UpdateStatus(horizontalPodAutoscaler *v1.HorizontalPodAutoscaler) (result *v1.HorizontalPodAutoscaler, err error) {
 	result = &v1.HorizontalPodAutoscaler{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(horizontalPodAutoscaler.Name).
@@ -146,12 +162,14 @@ func (c *horizontalPodAutoscalers) UpdateStatus(horizontalPodAutoscaler *v1.Hori
 		Body(horizontalPodAutoscaler).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the horizontalPodAutoscaler and deletes it. Returns an error if one occurs.
 func (c *horizontalPodAutoscalers) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *horizontalPodAutoscalers) DeleteCollection(options *metav1.DeleteOption
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *horizontalPodAutoscalers) DeleteCollection(options *metav1.DeleteOption
 func (c *horizontalPodAutoscalers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.HorizontalPodAutoscaler, err error) {
 	result = &v1.HorizontalPodAutoscaler{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *horizontalPodAutoscalers) Patch(name string, pt types.PatchType, data [
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

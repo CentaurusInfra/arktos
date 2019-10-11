@@ -32,6 +32,7 @@ import (
 type FakeRoleBindings struct {
 	Fake *FakeRbacV1alpha1
 	ns   string
+	te   string
 }
 
 var rolebindingsResource = schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1alpha1", Resource: "rolebindings"}
@@ -41,18 +42,19 @@ var rolebindingsKind = schema.GroupVersionKind{Group: "rbac.authorization.k8s.io
 // Get takes name of the roleBinding, and returns the corresponding roleBinding object, and an error if there is any.
 func (c *FakeRoleBindings) Get(name string, options v1.GetOptions) (result *v1alpha1.RoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(rolebindingsResource, c.ns, name), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewGetAction(rolebindingsResource, c.ns, name, c.te), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.RoleBinding), err
 }
 
 // List takes label and field selectors, and returns the list of RoleBindings that match those selectors.
 func (c *FakeRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.RoleBindingList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(rolebindingsResource, rolebindingsKind, c.ns, opts), &v1alpha1.RoleBindingList{})
+		Invokes(testing.NewListAction(rolebindingsResource, rolebindingsKind, c.ns, opts, c.te), &v1alpha1.RoleBindingList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,43 +76,45 @@ func (c *FakeRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.RoleBindi
 // Watch returns a watch.Interface that watches the requested roleBindings.
 func (c *FakeRoleBindings) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(rolebindingsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(rolebindingsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a roleBinding and creates it.  Returns the server's representation of the roleBinding, and an error, if there is any.
 func (c *FakeRoleBindings) Create(roleBinding *v1alpha1.RoleBinding) (result *v1alpha1.RoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(rolebindingsResource, c.ns, roleBinding), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewCreateAction(rolebindingsResource, c.ns, roleBinding, c.te), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.RoleBinding), err
 }
 
 // Update takes the representation of a roleBinding and updates it. Returns the server's representation of the roleBinding, and an error, if there is any.
 func (c *FakeRoleBindings) Update(roleBinding *v1alpha1.RoleBinding) (result *v1alpha1.RoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(rolebindingsResource, c.ns, roleBinding), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewUpdateAction(rolebindingsResource, c.ns, roleBinding, c.te), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.RoleBinding), err
 }
 
 // Delete takes name of the roleBinding and deletes it. Returns an error if one occurs.
 func (c *FakeRoleBindings) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(rolebindingsResource, c.ns, name), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewDeleteAction(rolebindingsResource, c.ns, name, c.te), &v1alpha1.RoleBinding{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeRoleBindings) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(rolebindingsResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(rolebindingsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.RoleBindingList{})
 	return err
@@ -119,10 +123,11 @@ func (c *FakeRoleBindings) DeleteCollection(options *v1.DeleteOptions, listOptio
 // Patch applies the patch and returns the patched roleBinding.
 func (c *FakeRoleBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.RoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(rolebindingsResource, c.ns, name, pt, data, subresources...), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewPatchSubresourceAction(rolebindingsResource, c.te, c.ns, name, pt, data, subresources...), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1alpha1.RoleBinding), err
 }

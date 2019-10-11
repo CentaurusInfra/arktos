@@ -32,6 +32,8 @@ func addAnnotations(svc *v1.Service) {
 func TestPatch(t *testing.T) {
 	svcOrigin := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:      "default",
+			Namespace:   "default",
 			Name:        "test-patch",
 			Annotations: map[string]string{},
 		},

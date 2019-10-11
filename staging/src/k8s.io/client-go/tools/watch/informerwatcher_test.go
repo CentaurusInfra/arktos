@@ -145,7 +145,8 @@ func TestNewInformerWatcher(t *testing.T) {
 			objects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pod-1",
+						Tenant: metav1.TenantDefault,
+						Name:   "pod-1",
 					},
 					StringData: map[string]string{
 						"foo-1": "initial",
@@ -153,7 +154,8 @@ func TestNewInformerWatcher(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pod-2",
+						Tenant: metav1.TenantDefault,
+						Name:   "pod-2",
 					},
 					StringData: map[string]string{
 						"foo-2": "initial",
@@ -161,7 +163,8 @@ func TestNewInformerWatcher(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pod-3",
+						Tenant: metav1.TenantDefault,
+						Name:   "pod-3",
 					},
 					StringData: map[string]string{
 						"foo-3": "initial",
@@ -173,7 +176,8 @@ func TestNewInformerWatcher(t *testing.T) {
 					Type: watch.Added,
 					Object: &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "pod-4",
+							Tenant: metav1.TenantDefault,
+							Name:   "pod-4",
 						},
 						StringData: map[string]string{
 							"foo-4": "initial",
@@ -184,7 +188,8 @@ func TestNewInformerWatcher(t *testing.T) {
 					Type: watch.Modified,
 					Object: &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "pod-2",
+							Tenant: metav1.TenantDefault,
+							Name:   "pod-2",
 						},
 						StringData: map[string]string{
 							"foo-2": "new",
@@ -195,7 +200,8 @@ func TestNewInformerWatcher(t *testing.T) {
 					Type: watch.Deleted,
 					Object: &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "pod-3",
+							Tenant: metav1.TenantDefault,
+							Name:   "pod-3",
 						},
 					},
 				},

@@ -36,16 +36,16 @@ type PolicyV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *PolicyV1beta1Client) Evictions(namespace string) EvictionInterface {
-	return newEvictions(c, namespace)
+func (c *PolicyV1beta1Client) Evictions(namespace string, optional_tenant ...string) EvictionInterface {
+	return newEvictions(c, namespace, optional_tenant...)
 }
 
-func (c *PolicyV1beta1Client) PodDisruptionBudgets(namespace string) PodDisruptionBudgetInterface {
-	return newPodDisruptionBudgets(c, namespace)
+func (c *PolicyV1beta1Client) PodDisruptionBudgets(namespace string, optional_tenant ...string) PodDisruptionBudgetInterface {
+	return newPodDisruptionBudgets(c, namespace, optional_tenant...)
 }
 
-func (c *PolicyV1beta1Client) PodSecurityPolicies() PodSecurityPolicyInterface {
-	return newPodSecurityPolicies(c)
+func (c *PolicyV1beta1Client) PodSecurityPolicies(tenant ...string) PodSecurityPolicyInterface {
+	return newPodSecurityPolicies(c, tenant...)
 }
 
 // NewForConfig creates a new PolicyV1beta1Client for the given config.

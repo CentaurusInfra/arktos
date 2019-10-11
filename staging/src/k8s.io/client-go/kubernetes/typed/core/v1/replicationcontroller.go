@@ -33,7 +33,7 @@ import (
 // ReplicationControllersGetter has a method to return a ReplicationControllerInterface.
 // A group's client should implement this interface.
 type ReplicationControllersGetter interface {
-	ReplicationControllers(namespace string) ReplicationControllerInterface
+	ReplicationControllers(namespace string, optional_tenant ...string) ReplicationControllerInterface
 }
 
 // ReplicationControllerInterface has methods to work with ReplicationController resources.
@@ -57,13 +57,20 @@ type ReplicationControllerInterface interface {
 type replicationControllers struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newReplicationControllers returns a ReplicationControllers
-func newReplicationControllers(c *CoreV1Client, namespace string) *replicationControllers {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newReplicationControllers(c *CoreV1Client, namespace string, optional_tenant ...string) *replicationControllers {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &replicationControllers{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -71,12 +78,14 @@ func newReplicationControllers(c *CoreV1Client, namespace string) *replicationCo
 func (c *replicationControllers) Get(name string, options metav1.GetOptions) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -88,12 +97,13 @@ func (c *replicationControllers) List(opts metav1.ListOptions) (result *v1.Repli
 	}
 	result = &v1.ReplicationControllerList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("replicationcontrollers").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -105,6 +115,7 @@ func (c *replicationControllers) Watch(opts metav1.ListOptions) (watch.Interface
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -116,11 +127,13 @@ func (c *replicationControllers) Watch(opts metav1.ListOptions) (watch.Interface
 func (c *replicationControllers) Create(replicationController *v1.ReplicationController) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Body(replicationController).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -128,12 +141,14 @@ func (c *replicationControllers) Create(replicationController *v1.ReplicationCon
 func (c *replicationControllers) Update(replicationController *v1.ReplicationController) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationController.Name).
 		Body(replicationController).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -143,6 +158,7 @@ func (c *replicationControllers) Update(replicationController *v1.ReplicationCon
 func (c *replicationControllers) UpdateStatus(replicationController *v1.ReplicationController) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationController.Name).
@@ -150,12 +166,14 @@ func (c *replicationControllers) UpdateStatus(replicationController *v1.Replicat
 		Body(replicationController).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the replicationController and deletes it. Returns an error if one occurs.
 func (c *replicationControllers) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(name).
@@ -171,6 +189,7 @@ func (c *replicationControllers) DeleteCollection(options *metav1.DeleteOptions,
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -184,6 +203,7 @@ func (c *replicationControllers) DeleteCollection(options *metav1.DeleteOptions,
 func (c *replicationControllers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		SubResource(subresources...).
@@ -191,6 +211,7 @@ func (c *replicationControllers) Patch(name string, pt types.PatchType, data []b
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -198,6 +219,7 @@ func (c *replicationControllers) Patch(name string, pt types.PatchType, data []b
 func (c *replicationControllers) GetScale(replicationControllerName string, options metav1.GetOptions) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationControllerName).
@@ -205,6 +227,7 @@ func (c *replicationControllers) GetScale(replicationControllerName string, opti
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -212,6 +235,7 @@ func (c *replicationControllers) GetScale(replicationControllerName string, opti
 func (c *replicationControllers) UpdateScale(replicationControllerName string, scale *autoscalingv1.Scale) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationControllerName).
@@ -219,5 +243,6 @@ func (c *replicationControllers) UpdateScale(replicationControllerName string, s
 		Body(scale).
 		Do().
 		Into(result)
+
 	return
 }

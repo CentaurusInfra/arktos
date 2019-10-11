@@ -32,7 +32,7 @@ import (
 // PodSecurityPoliciesGetter has a method to return a PodSecurityPolicyInterface.
 // A group's client should implement this interface.
 type PodSecurityPoliciesGetter interface {
-	PodSecurityPolicies() PodSecurityPolicyInterface
+	PodSecurityPolicies(optional_tenant ...string) PodSecurityPolicyInterface
 }
 
 // PodSecurityPolicyInterface has methods to work with PodSecurityPolicy resources.
@@ -51,12 +51,18 @@ type PodSecurityPolicyInterface interface {
 // podSecurityPolicies implements PodSecurityPolicyInterface
 type podSecurityPolicies struct {
 	client rest.Interface
+	te     string
 }
 
 // newPodSecurityPolicies returns a PodSecurityPolicies
-func newPodSecurityPolicies(c *ExtensionsV1beta1Client) *podSecurityPolicies {
+func newPodSecurityPolicies(c *ExtensionsV1beta1Client, optional_tenant ...string) *podSecurityPolicies {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &podSecurityPolicies{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }
 
@@ -64,11 +70,13 @@ func newPodSecurityPolicies(c *ExtensionsV1beta1Client) *podSecurityPolicies {
 func (c *podSecurityPolicies) Get(name string, options v1.GetOptions) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -80,11 +88,13 @@ func (c *podSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.PodSecu
 	}
 	result = &v1beta1.PodSecurityPolicyList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -96,6 +106,7 @@ func (c *podSecurityPolicies) Watch(opts v1.ListOptions) (watch.Interface, error
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -106,10 +117,12 @@ func (c *podSecurityPolicies) Watch(opts v1.ListOptions) (watch.Interface, error
 func (c *podSecurityPolicies) Create(podSecurityPolicy *v1beta1.PodSecurityPolicy) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		Body(podSecurityPolicy).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -117,17 +130,20 @@ func (c *podSecurityPolicies) Create(podSecurityPolicy *v1beta1.PodSecurityPolic
 func (c *podSecurityPolicies) Update(podSecurityPolicy *v1beta1.PodSecurityPolicy) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		Name(podSecurityPolicy.Name).
 		Body(podSecurityPolicy).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the podSecurityPolicy and deletes it. Returns an error if one occurs.
 func (c *podSecurityPolicies) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		Name(name).
 		Body(options).
@@ -142,6 +158,7 @@ func (c *podSecurityPolicies) DeleteCollection(options *v1.DeleteOptions, listOp
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -154,11 +171,13 @@ func (c *podSecurityPolicies) DeleteCollection(options *v1.DeleteOptions, listOp
 func (c *podSecurityPolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("podsecuritypolicies").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

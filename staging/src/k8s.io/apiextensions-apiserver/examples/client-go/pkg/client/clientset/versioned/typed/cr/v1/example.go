@@ -32,7 +32,7 @@ import (
 // ExamplesGetter has a method to return a ExampleInterface.
 // A group's client should implement this interface.
 type ExamplesGetter interface {
-	Examples(namespace string) ExampleInterface
+	Examples(namespace string, optional_tenant ...string) ExampleInterface
 }
 
 // ExampleInterface has methods to work with Example resources.
@@ -52,13 +52,20 @@ type ExampleInterface interface {
 type examples struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newExamples returns a Examples
-func newExamples(c *CrV1Client, namespace string) *examples {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newExamples(c *CrV1Client, namespace string, optional_tenant ...string) *examples {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &examples{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newExamples(c *CrV1Client, namespace string) *examples {
 func (c *examples) Get(name string, options metav1.GetOptions) (result *v1.Example, err error) {
 	result = &v1.Example{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("examples").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *examples) List(opts metav1.ListOptions) (result *v1.ExampleList, err er
 	}
 	result = &v1.ExampleList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("examples").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *examples) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("examples").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *examples) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *examples) Create(example *v1.Example) (result *v1.Example, err error) {
 	result = &v1.Example{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("examples").
 		Body(example).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *examples) Create(example *v1.Example) (result *v1.Example, err error) {
 func (c *examples) Update(example *v1.Example) (result *v1.Example, err error) {
 	result = &v1.Example{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("examples").
 		Name(example.Name).
 		Body(example).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the example and deletes it. Returns an error if one occurs.
 func (c *examples) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("examples").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *examples) DeleteCollection(options *metav1.DeleteOptions, listOptions m
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("examples").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *examples) DeleteCollection(options *metav1.DeleteOptions, listOptions m
 func (c *examples) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Example, err error) {
 	result = &v1.Example{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("examples").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *examples) Patch(name string, pt types.PatchType, data []byte, subresour
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

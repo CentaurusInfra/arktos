@@ -116,18 +116,21 @@ func TestTokenGenerateAndValidate(t *testing.T) {
 			Name:      "my-service-account",
 			UID:       "12345",
 			Namespace: "test",
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 	rsaSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-rsa-secret",
 			Namespace: "test",
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 	ecdsaSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-ecdsa-secret",
 			Namespace: "test",
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 

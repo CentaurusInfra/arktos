@@ -194,8 +194,8 @@ type conversionAppsV1Client struct {
 	appsv1client.AppsV1Interface
 }
 
-func (c conversionAppsV1Client) ReplicaSets(namespace string) appsv1client.ReplicaSetInterface {
-	return conversionClient{c.clientset.CoreV1().ReplicationControllers(namespace)}
+func (c conversionAppsV1Client) ReplicaSets(namespace string, optional_tenant ...string) appsv1client.ReplicaSetInterface {
+	return conversionClient{c.clientset.CoreV1().ReplicationControllers(namespace, optional_tenant...)}
 }
 
 type conversionClient struct {

@@ -32,6 +32,7 @@ import (
 type FakeLimitRanges struct {
 	Fake *FakeCoreV1
 	ns   string
+	te   string
 }
 
 var limitrangesResource = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "limitranges"}
@@ -41,18 +42,19 @@ var limitrangesKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "L
 // Get takes name of the limitRange, and returns the corresponding limitRange object, and an error if there is any.
 func (c *FakeLimitRanges) Get(name string, options v1.GetOptions) (result *corev1.LimitRange, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(limitrangesResource, c.ns, name), &corev1.LimitRange{})
+		Invokes(testing.NewGetAction(limitrangesResource, c.ns, name, c.te), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.LimitRange), err
 }
 
 // List takes label and field selectors, and returns the list of LimitRanges that match those selectors.
 func (c *FakeLimitRanges) List(opts v1.ListOptions) (result *corev1.LimitRangeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(limitrangesResource, limitrangesKind, c.ns, opts), &corev1.LimitRangeList{})
+		Invokes(testing.NewListAction(limitrangesResource, limitrangesKind, c.ns, opts, c.te), &corev1.LimitRangeList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,43 +76,45 @@ func (c *FakeLimitRanges) List(opts v1.ListOptions) (result *corev1.LimitRangeLi
 // Watch returns a watch.Interface that watches the requested limitRanges.
 func (c *FakeLimitRanges) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(limitrangesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(limitrangesResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a limitRange and creates it.  Returns the server's representation of the limitRange, and an error, if there is any.
 func (c *FakeLimitRanges) Create(limitRange *corev1.LimitRange) (result *corev1.LimitRange, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(limitrangesResource, c.ns, limitRange), &corev1.LimitRange{})
+		Invokes(testing.NewCreateAction(limitrangesResource, c.ns, limitRange, c.te), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.LimitRange), err
 }
 
 // Update takes the representation of a limitRange and updates it. Returns the server's representation of the limitRange, and an error, if there is any.
 func (c *FakeLimitRanges) Update(limitRange *corev1.LimitRange) (result *corev1.LimitRange, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(limitrangesResource, c.ns, limitRange), &corev1.LimitRange{})
+		Invokes(testing.NewUpdateAction(limitrangesResource, c.ns, limitRange, c.te), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.LimitRange), err
 }
 
 // Delete takes name of the limitRange and deletes it. Returns an error if one occurs.
 func (c *FakeLimitRanges) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(limitrangesResource, c.ns, name), &corev1.LimitRange{})
+		Invokes(testing.NewDeleteAction(limitrangesResource, c.ns, name, c.te), &corev1.LimitRange{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeLimitRanges) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(limitrangesResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(limitrangesResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &corev1.LimitRangeList{})
 	return err
@@ -119,10 +123,11 @@ func (c *FakeLimitRanges) DeleteCollection(options *v1.DeleteOptions, listOption
 // Patch applies the patch and returns the patched limitRange.
 func (c *FakeLimitRanges) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.LimitRange, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(limitrangesResource, c.ns, name, pt, data, subresources...), &corev1.LimitRange{})
+		Invokes(testing.NewPatchSubresourceAction(limitrangesResource, c.te, c.ns, name, pt, data, subresources...), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.LimitRange), err
 }

@@ -41,7 +41,7 @@ type ResourceInterface interface {
 }
 
 type NamespaceableResourceInterface interface {
-	Namespace(string) ResourceInterface
+	Namespace(string, ...string) ResourceInterface
 	ResourceInterface
 }
 

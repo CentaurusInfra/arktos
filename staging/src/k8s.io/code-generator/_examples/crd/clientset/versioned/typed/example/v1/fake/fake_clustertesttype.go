@@ -45,6 +45,7 @@ func (c *FakeClusterTestTypes) Get(name string, options v1.GetOptions) (result *
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*examplev1.ClusterTestType), err
 }
 
@@ -82,6 +83,7 @@ func (c *FakeClusterTestTypes) Create(clusterTestType *examplev1.ClusterTestType
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*examplev1.ClusterTestType), err
 }
 
@@ -92,6 +94,7 @@ func (c *FakeClusterTestTypes) Update(clusterTestType *examplev1.ClusterTestType
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*examplev1.ClusterTestType), err
 }
 
@@ -115,8 +118,8 @@ func (c *FakeClusterTestTypes) Delete(name string, options *v1.DeleteOptions) er
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeClusterTestTypes) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(clustertesttypesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(clustertesttypesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &examplev1.ClusterTestTypeList{})
 	return err
 }
@@ -128,6 +131,7 @@ func (c *FakeClusterTestTypes) Patch(name string, pt types.PatchType, data []byt
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*examplev1.ClusterTestType), err
 }
 
@@ -138,6 +142,7 @@ func (c *FakeClusterTestTypes) GetScale(clusterTestTypeName string, options v1.G
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*autoscaling.Scale), err
 }
 
@@ -148,5 +153,6 @@ func (c *FakeClusterTestTypes) UpdateScale(clusterTestTypeName string, scale *au
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*autoscaling.Scale), err
 }

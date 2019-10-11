@@ -50,7 +50,7 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "pod logs",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 			},
 			pods: []runtime.Object{testPod()},
 			actions: []testclient.Action{
@@ -60,7 +60,7 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "pod logs: all containers",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{
 						{Name: "initc1"},
@@ -87,7 +87,7 @@ func TestLogsForObject(t *testing.T) {
 			obj: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{
 								{Name: "initc1"},
@@ -111,7 +111,7 @@ func TestLogsForObject(t *testing.T) {
 			obj: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{
 								{Name: "initc1"},
@@ -138,7 +138,7 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "replication controller logs",
 			obj: &corev1.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 				Spec: corev1.ReplicationControllerSpec{
 					Selector: map[string]string{"foo": "bar"},
 				},
@@ -152,7 +152,7 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "replica set logs",
 			obj: &extensionsv1beta1.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 				Spec: extensionsv1beta1.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
@@ -166,7 +166,7 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "deployment logs",
 			obj: &extensionsv1beta1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 				Spec: extensionsv1beta1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
@@ -180,7 +180,7 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "job logs",
 			obj: &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 				Spec: batchv1.JobSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
@@ -194,7 +194,7 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "stateful set logs",
 			obj: &appsv1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
 				Spec: appsv1.StatefulSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
@@ -235,6 +235,7 @@ func testPod() runtime.Object {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "test",
+			Tenant:    metav1.TenantDefault,
 			Labels:    map[string]string{"foo": "bar"},
 		},
 		Spec: corev1.PodSpec{
@@ -248,10 +249,11 @@ func testPod() runtime.Object {
 	}
 }
 
-func getLogsAction(namespace string, opts *corev1.PodLogOptions) testclient.Action {
+func getLogsAction(namespace string, opts *corev1.PodLogOptions, optional_tenant ...string) testclient.Action {
 	action := testclient.GenericActionImpl{}
 	action.Verb = "get"
 	action.Namespace = namespace
+	action.Tenant = testclient.ComputeTenant(optional_tenant...)
 	action.Resource = podsResource
 	action.Subresource = "log"
 	action.Value = opts

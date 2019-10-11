@@ -45,12 +45,12 @@ func (c *RbacV1alpha1Client) ClusterRoleBindings() ClusterRoleBindingInterface {
 	return newClusterRoleBindings(c)
 }
 
-func (c *RbacV1alpha1Client) Roles(namespace string) RoleInterface {
-	return newRoles(c, namespace)
+func (c *RbacV1alpha1Client) Roles(namespace string, optional_tenant ...string) RoleInterface {
+	return newRoles(c, namespace, optional_tenant...)
 }
 
-func (c *RbacV1alpha1Client) RoleBindings(namespace string) RoleBindingInterface {
-	return newRoleBindings(c, namespace)
+func (c *RbacV1alpha1Client) RoleBindings(namespace string, optional_tenant ...string) RoleBindingInterface {
+	return newRoleBindings(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new RbacV1alpha1Client for the given config.

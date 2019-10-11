@@ -69,6 +69,7 @@ func (c *runtimeClasses) Get(name string, options v1.GetOptions) (result *v1alph
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *runtimeClasses) List(opts v1.ListOptions) (result *v1alpha1.RuntimeClas
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *runtimeClasses) Create(runtimeClass *v1alpha1.RuntimeClass) (result *v1
 		Body(runtimeClass).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *runtimeClasses) Update(runtimeClass *v1alpha1.RuntimeClass) (result *v1
 		Body(runtimeClass).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *runtimeClasses) Patch(name string, pt types.PatchType, data []byte, sub
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

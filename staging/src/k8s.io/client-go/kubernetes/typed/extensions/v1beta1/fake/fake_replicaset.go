@@ -32,6 +32,7 @@ import (
 type FakeReplicaSets struct {
 	Fake *FakeExtensionsV1beta1
 	ns   string
+	te   string
 }
 
 var replicasetsResource = schema.GroupVersionResource{Group: "extensions", Version: "v1beta1", Resource: "replicasets"}
@@ -41,18 +42,19 @@ var replicasetsKind = schema.GroupVersionKind{Group: "extensions", Version: "v1b
 // Get takes name of the replicaSet, and returns the corresponding replicaSet object, and an error if there is any.
 func (c *FakeReplicaSets) Get(name string, options v1.GetOptions) (result *v1beta1.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(replicasetsResource, c.ns, name), &v1beta1.ReplicaSet{})
+		Invokes(testing.NewGetAction(replicasetsResource, c.ns, name, c.te), &v1beta1.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ReplicaSet), err
 }
 
 // List takes label and field selectors, and returns the list of ReplicaSets that match those selectors.
 func (c *FakeReplicaSets) List(opts v1.ListOptions) (result *v1beta1.ReplicaSetList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(replicasetsResource, replicasetsKind, c.ns, opts), &v1beta1.ReplicaSetList{})
+		Invokes(testing.NewListAction(replicasetsResource, replicasetsKind, c.ns, opts, c.te), &v1beta1.ReplicaSetList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,29 +76,31 @@ func (c *FakeReplicaSets) List(opts v1.ListOptions) (result *v1beta1.ReplicaSetL
 // Watch returns a watch.Interface that watches the requested replicaSets.
 func (c *FakeReplicaSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(replicasetsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(replicasetsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a replicaSet and creates it.  Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *FakeReplicaSets) Create(replicaSet *v1beta1.ReplicaSet) (result *v1beta1.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(replicasetsResource, c.ns, replicaSet), &v1beta1.ReplicaSet{})
+		Invokes(testing.NewCreateAction(replicasetsResource, c.ns, replicaSet, c.te), &v1beta1.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ReplicaSet), err
 }
 
 // Update takes the representation of a replicaSet and updates it. Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *FakeReplicaSets) Update(replicaSet *v1beta1.ReplicaSet) (result *v1beta1.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(replicasetsResource, c.ns, replicaSet), &v1beta1.ReplicaSet{})
+		Invokes(testing.NewUpdateAction(replicasetsResource, c.ns, replicaSet, c.te), &v1beta1.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ReplicaSet), err
 }
 
@@ -104,7 +108,7 @@ func (c *FakeReplicaSets) Update(replicaSet *v1beta1.ReplicaSet) (result *v1beta
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeReplicaSets) UpdateStatus(replicaSet *v1beta1.ReplicaSet) (*v1beta1.ReplicaSet, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(replicasetsResource, "status", c.ns, replicaSet), &v1beta1.ReplicaSet{})
+		Invokes(testing.NewUpdateSubresourceAction(replicasetsResource, "status", c.ns, replicaSet, c.te), &v1beta1.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -115,14 +119,14 @@ func (c *FakeReplicaSets) UpdateStatus(replicaSet *v1beta1.ReplicaSet) (*v1beta1
 // Delete takes name of the replicaSet and deletes it. Returns an error if one occurs.
 func (c *FakeReplicaSets) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(replicasetsResource, c.ns, name), &v1beta1.ReplicaSet{})
+		Invokes(testing.NewDeleteAction(replicasetsResource, c.ns, name, c.te), &v1beta1.ReplicaSet{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeReplicaSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(replicasetsResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(replicasetsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.ReplicaSetList{})
 	return err
@@ -131,32 +135,35 @@ func (c *FakeReplicaSets) DeleteCollection(options *v1.DeleteOptions, listOption
 // Patch applies the patch and returns the patched replicaSet.
 func (c *FakeReplicaSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(replicasetsResource, c.ns, name, pt, data, subresources...), &v1beta1.ReplicaSet{})
+		Invokes(testing.NewPatchSubresourceAction(replicasetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ReplicaSet), err
 }
 
 // GetScale takes name of the replicaSet, and returns the corresponding scale object, and an error if there is any.
 func (c *FakeReplicaSets) GetScale(replicaSetName string, options v1.GetOptions) (result *v1beta1.Scale, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetSubresourceAction(replicasetsResource, c.ns, "scale", replicaSetName), &v1beta1.Scale{})
+		Invokes(testing.NewGetSubresourceAction(replicasetsResource, c.ns, "scale", replicaSetName, c.te), &v1beta1.Scale{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Scale), err
 }
 
 // UpdateScale takes the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *FakeReplicaSets) UpdateScale(replicaSetName string, scale *v1beta1.Scale) (result *v1beta1.Scale, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(replicasetsResource, "scale", c.ns, scale), &v1beta1.Scale{})
+		Invokes(testing.NewUpdateSubresourceAction(replicasetsResource, "scale", c.ns, scale, c.te), &v1beta1.Scale{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Scale), err
 }

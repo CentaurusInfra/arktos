@@ -69,6 +69,7 @@ func (c *cSIDrivers) Get(name string, options v1.GetOptions) (result *v1beta1.CS
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *cSIDrivers) List(opts v1.ListOptions) (result *v1beta1.CSIDriverList, e
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *cSIDrivers) Create(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDr
 		Body(cSIDriver).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *cSIDrivers) Update(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDr
 		Body(cSIDriver).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *cSIDrivers) Patch(name string, pt types.PatchType, data []byte, subreso
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

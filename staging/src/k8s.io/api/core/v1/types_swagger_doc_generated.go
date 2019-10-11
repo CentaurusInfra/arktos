@@ -1042,12 +1042,13 @@ func (NamespaceStatus) SwaggerDoc() map[string]string {
 }
 
 var map_Nic = map[string]string{
-	"":           "Network interface type used in the VM workload Nic info will be provided at the pod level so they can be used by both Container and VM workload",
-	"name":       "The interface name to be used in the VM or container",
-	"subnetName": "The subnetName where the Nic belongs to",
-	"portId":     "PortId from the IaaS layer for the Nic",
-	"ipAddress":  "IpAddress is the user specified IP, instead of dynamically allocated one",
-	"tag":        "any user specified data for the Nic",
+	"":            "Network interface type used in the VM workload Nic info will be provided at the pod level so they can be used by both Container and VM workload",
+	"name":        "The interface name to be used in the VM or container",
+	"subnetName":  "The subnetName where the Nic belongs to the subnetName  of the nic. default to subnet where the VM is created from",
+	"portId":      "PortId from the IaaS layer for the Nic the portID with user precreated port ( ENI ).",
+	"ipAddress":   "IpAddress is the user specified IP, instead of dynamically allocated one",
+	"tag":         "any user specified data for the Nic",
+	"ipv6Enabled": "default to false",
 }
 
 func (Nic) SwaggerDoc() map[string]string {
@@ -2374,14 +2375,18 @@ func (TypedLocalObjectReference) SwaggerDoc() map[string]string {
 }
 
 var map_VirtualMachine = map[string]string{
-	"":                "Virtual machine struct defines the information of a VM in the system",
-	"name":            "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
-	"image":           "Image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
-	"resources":       "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
-	"volumeMounts":    "Pod volumes to mount into the workload's filesystem. Cannot be updated.",
-	"imagePullPolicy": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
-	"keyPairName":     "either keyPair or the publicKeystring must be provided, used to logon to the VM",
-	"userData":        "Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.",
+	"":                        "Virtual machine struct defines the information of a VM in the system",
+	"name":                    "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+	"image":                   "Image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+	"resources":               "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+	"volumeMounts":            "Pod volumes to mount into the workload's filesystem. Cannot be updated.",
+	"imagePullPolicy":         "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+	"keyPairName":             "either keyPair or the publicKeystring must be provided, used to logon to the VM",
+	"userData":                "Configuration information or scripts to use upon launch. Must be Base64 encoded. Restricted to 65535 bytes.",
+	"trustedImageCertificate": "default none, array cert ID that used to verify the image",
+	"shutdownBehavior":        "stop | terminate VM. default to stop",
+	"bootVolume":              "if not specified, the first volume in the volume slice will be used",
+	"powerSpec":               "default running",
 }
 
 func (VirtualMachine) SwaggerDoc() map[string]string {

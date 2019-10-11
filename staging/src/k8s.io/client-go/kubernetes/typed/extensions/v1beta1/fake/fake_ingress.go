@@ -32,6 +32,7 @@ import (
 type FakeIngresses struct {
 	Fake *FakeExtensionsV1beta1
 	ns   string
+	te   string
 }
 
 var ingressesResource = schema.GroupVersionResource{Group: "extensions", Version: "v1beta1", Resource: "ingresses"}
@@ -41,18 +42,19 @@ var ingressesKind = schema.GroupVersionKind{Group: "extensions", Version: "v1bet
 // Get takes name of the ingress, and returns the corresponding ingress object, and an error if there is any.
 func (c *FakeIngresses) Get(name string, options v1.GetOptions) (result *v1beta1.Ingress, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(ingressesResource, c.ns, name), &v1beta1.Ingress{})
+		Invokes(testing.NewGetAction(ingressesResource, c.ns, name, c.te), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Ingress), err
 }
 
 // List takes label and field selectors, and returns the list of Ingresses that match those selectors.
 func (c *FakeIngresses) List(opts v1.ListOptions) (result *v1beta1.IngressList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(ingressesResource, ingressesKind, c.ns, opts), &v1beta1.IngressList{})
+		Invokes(testing.NewListAction(ingressesResource, ingressesKind, c.ns, opts, c.te), &v1beta1.IngressList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,29 +76,31 @@ func (c *FakeIngresses) List(opts v1.ListOptions) (result *v1beta1.IngressList, 
 // Watch returns a watch.Interface that watches the requested ingresses.
 func (c *FakeIngresses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(ingressesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(ingressesResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a ingress and creates it.  Returns the server's representation of the ingress, and an error, if there is any.
 func (c *FakeIngresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(ingressesResource, c.ns, ingress), &v1beta1.Ingress{})
+		Invokes(testing.NewCreateAction(ingressesResource, c.ns, ingress, c.te), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Ingress), err
 }
 
 // Update takes the representation of a ingress and updates it. Returns the server's representation of the ingress, and an error, if there is any.
 func (c *FakeIngresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(ingressesResource, c.ns, ingress), &v1beta1.Ingress{})
+		Invokes(testing.NewUpdateAction(ingressesResource, c.ns, ingress, c.te), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Ingress), err
 }
 
@@ -104,7 +108,7 @@ func (c *FakeIngresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingres
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeIngresses) UpdateStatus(ingress *v1beta1.Ingress) (*v1beta1.Ingress, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(ingressesResource, "status", c.ns, ingress), &v1beta1.Ingress{})
+		Invokes(testing.NewUpdateSubresourceAction(ingressesResource, "status", c.ns, ingress, c.te), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
@@ -115,14 +119,14 @@ func (c *FakeIngresses) UpdateStatus(ingress *v1beta1.Ingress) (*v1beta1.Ingress
 // Delete takes name of the ingress and deletes it. Returns an error if one occurs.
 func (c *FakeIngresses) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(ingressesResource, c.ns, name), &v1beta1.Ingress{})
+		Invokes(testing.NewDeleteAction(ingressesResource, c.ns, name, c.te), &v1beta1.Ingress{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeIngresses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(ingressesResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(ingressesResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.IngressList{})
 	return err
@@ -131,10 +135,11 @@ func (c *FakeIngresses) DeleteCollection(options *v1.DeleteOptions, listOptions 
 // Patch applies the patch and returns the patched ingress.
 func (c *FakeIngresses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Ingress, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(ingressesResource, c.ns, name, pt, data, subresources...), &v1beta1.Ingress{})
+		Invokes(testing.NewPatchSubresourceAction(ingressesResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Ingress), err
 }

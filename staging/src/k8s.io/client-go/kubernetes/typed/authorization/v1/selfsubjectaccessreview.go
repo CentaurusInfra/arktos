@@ -25,7 +25,7 @@ import (
 // SelfSubjectAccessReviewsGetter has a method to return a SelfSubjectAccessReviewInterface.
 // A group's client should implement this interface.
 type SelfSubjectAccessReviewsGetter interface {
-	SelfSubjectAccessReviews() SelfSubjectAccessReviewInterface
+	SelfSubjectAccessReviews(optional_tenant ...string) SelfSubjectAccessReviewInterface
 }
 
 // SelfSubjectAccessReviewInterface has methods to work with SelfSubjectAccessReview resources.
@@ -36,11 +36,17 @@ type SelfSubjectAccessReviewInterface interface {
 // selfSubjectAccessReviews implements SelfSubjectAccessReviewInterface
 type selfSubjectAccessReviews struct {
 	client rest.Interface
+	te     string
 }
 
 // newSelfSubjectAccessReviews returns a SelfSubjectAccessReviews
-func newSelfSubjectAccessReviews(c *AuthorizationV1Client) *selfSubjectAccessReviews {
+func newSelfSubjectAccessReviews(c *AuthorizationV1Client, optional_tenant ...string) *selfSubjectAccessReviews {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &selfSubjectAccessReviews{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }

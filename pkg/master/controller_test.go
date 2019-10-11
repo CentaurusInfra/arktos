@@ -31,8 +31,9 @@ import (
 
 func TestReconcileEndpoints(t *testing.T) {
 	ns := metav1.NamespaceDefault
+	te := metav1.TenantDefault
 	om := func(name string) metav1.ObjectMeta {
-		return metav1.ObjectMeta{Namespace: ns, Name: name}
+		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}
 	}
 	reconcile_tests := []struct {
 		testName          string
@@ -557,9 +558,10 @@ func TestReconcileEndpoints(t *testing.T) {
 }
 
 func TestCreateOrUpdateMasterService(t *testing.T) {
+	te := metav1.TenantDefault
 	ns := metav1.NamespaceDefault
 	om := func(name string) metav1.ObjectMeta {
-		return metav1.ObjectMeta{Namespace: ns, Name: name}
+		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}
 	}
 
 	create_tests := []struct {

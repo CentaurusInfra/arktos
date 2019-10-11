@@ -32,6 +32,7 @@ import (
 type FakeControllerRevisions struct {
 	Fake *FakeAppsV1
 	ns   string
+	te   string
 }
 
 var controllerrevisionsResource = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "controllerrevisions"}
@@ -41,18 +42,19 @@ var controllerrevisionsKind = schema.GroupVersionKind{Group: "apps", Version: "v
 // Get takes name of the controllerRevision, and returns the corresponding controllerRevision object, and an error if there is any.
 func (c *FakeControllerRevisions) Get(name string, options v1.GetOptions) (result *appsv1.ControllerRevision, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(controllerrevisionsResource, c.ns, name), &appsv1.ControllerRevision{})
+		Invokes(testing.NewGetAction(controllerrevisionsResource, c.ns, name, c.te), &appsv1.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*appsv1.ControllerRevision), err
 }
 
 // List takes label and field selectors, and returns the list of ControllerRevisions that match those selectors.
 func (c *FakeControllerRevisions) List(opts v1.ListOptions) (result *appsv1.ControllerRevisionList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(controllerrevisionsResource, controllerrevisionsKind, c.ns, opts), &appsv1.ControllerRevisionList{})
+		Invokes(testing.NewListAction(controllerrevisionsResource, controllerrevisionsKind, c.ns, opts, c.te), &appsv1.ControllerRevisionList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,43 +76,45 @@ func (c *FakeControllerRevisions) List(opts v1.ListOptions) (result *appsv1.Cont
 // Watch returns a watch.Interface that watches the requested controllerRevisions.
 func (c *FakeControllerRevisions) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(controllerrevisionsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(controllerrevisionsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a controllerRevision and creates it.  Returns the server's representation of the controllerRevision, and an error, if there is any.
 func (c *FakeControllerRevisions) Create(controllerRevision *appsv1.ControllerRevision) (result *appsv1.ControllerRevision, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(controllerrevisionsResource, c.ns, controllerRevision), &appsv1.ControllerRevision{})
+		Invokes(testing.NewCreateAction(controllerrevisionsResource, c.ns, controllerRevision, c.te), &appsv1.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*appsv1.ControllerRevision), err
 }
 
 // Update takes the representation of a controllerRevision and updates it. Returns the server's representation of the controllerRevision, and an error, if there is any.
 func (c *FakeControllerRevisions) Update(controllerRevision *appsv1.ControllerRevision) (result *appsv1.ControllerRevision, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(controllerrevisionsResource, c.ns, controllerRevision), &appsv1.ControllerRevision{})
+		Invokes(testing.NewUpdateAction(controllerrevisionsResource, c.ns, controllerRevision, c.te), &appsv1.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*appsv1.ControllerRevision), err
 }
 
 // Delete takes name of the controllerRevision and deletes it. Returns an error if one occurs.
 func (c *FakeControllerRevisions) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(controllerrevisionsResource, c.ns, name), &appsv1.ControllerRevision{})
+		Invokes(testing.NewDeleteAction(controllerrevisionsResource, c.ns, name, c.te), &appsv1.ControllerRevision{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeControllerRevisions) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(controllerrevisionsResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(controllerrevisionsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &appsv1.ControllerRevisionList{})
 	return err
@@ -119,10 +123,11 @@ func (c *FakeControllerRevisions) DeleteCollection(options *v1.DeleteOptions, li
 // Patch applies the patch and returns the patched controllerRevision.
 func (c *FakeControllerRevisions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *appsv1.ControllerRevision, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(controllerrevisionsResource, c.ns, name, pt, data, subresources...), &appsv1.ControllerRevision{})
+		Invokes(testing.NewPatchSubresourceAction(controllerrevisionsResource, c.te, c.ns, name, pt, data, subresources...), &appsv1.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*appsv1.ControllerRevision), err
 }

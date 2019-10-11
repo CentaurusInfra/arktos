@@ -31,6 +31,7 @@ import (
 // FakeCustomResourceDefinitions implements CustomResourceDefinitionInterface
 type FakeCustomResourceDefinitions struct {
 	Fake *FakeApiextensions
+	te   string
 }
 
 var customresourcedefinitionsResource = schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "", Resource: "customresourcedefinitions"}
@@ -40,17 +41,20 @@ var customresourcedefinitionsKind = schema.GroupVersionKind{Group: "apiextension
 // Get takes name of the customResourceDefinition, and returns the corresponding customResourceDefinition object, and an error if there is any.
 func (c *FakeCustomResourceDefinitions) Get(name string, options v1.GetOptions) (result *apiextensions.CustomResourceDefinition, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(customresourcedefinitionsResource, name), &apiextensions.CustomResourceDefinition{})
+		Invokes(testing.NewTenantGetAction(customresourcedefinitionsResource, name, c.te), &apiextensions.CustomResourceDefinition{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiextensions.CustomResourceDefinition), err
 }
 
 // List takes label and field selectors, and returns the list of CustomResourceDefinitions that match those selectors.
 func (c *FakeCustomResourceDefinitions) List(opts v1.ListOptions) (result *apiextensions.CustomResourceDefinitionList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(customresourcedefinitionsResource, customresourcedefinitionsKind, opts), &apiextensions.CustomResourceDefinitionList{})
+		Invokes(testing.NewTenantListAction(customresourcedefinitionsResource, customresourcedefinitionsKind, opts, c.te), &apiextensions.CustomResourceDefinitionList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -71,26 +75,31 @@ func (c *FakeCustomResourceDefinitions) List(opts v1.ListOptions) (result *apiex
 // Watch returns a watch.Interface that watches the requested customResourceDefinitions.
 func (c *FakeCustomResourceDefinitions) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(customresourcedefinitionsResource, opts))
+		InvokesWatch(testing.NewTenantWatchAction(customresourcedefinitionsResource, opts, c.te))
+
 }
 
 // Create takes the representation of a customResourceDefinition and creates it.  Returns the server's representation of the customResourceDefinition, and an error, if there is any.
 func (c *FakeCustomResourceDefinitions) Create(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(customresourcedefinitionsResource, customResourceDefinition), &apiextensions.CustomResourceDefinition{})
+		Invokes(testing.NewTenantCreateAction(customresourcedefinitionsResource, customResourceDefinition, c.te), &apiextensions.CustomResourceDefinition{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiextensions.CustomResourceDefinition), err
 }
 
 // Update takes the representation of a customResourceDefinition and updates it. Returns the server's representation of the customResourceDefinition, and an error, if there is any.
 func (c *FakeCustomResourceDefinitions) Update(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(customresourcedefinitionsResource, customResourceDefinition), &apiextensions.CustomResourceDefinition{})
+		Invokes(testing.NewTenantUpdateAction(customresourcedefinitionsResource, customResourceDefinition, c.te), &apiextensions.CustomResourceDefinition{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiextensions.CustomResourceDefinition), err
 }
 
@@ -98,7 +107,8 @@ func (c *FakeCustomResourceDefinitions) Update(customResourceDefinition *apiexte
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeCustomResourceDefinitions) UpdateStatus(customResourceDefinition *apiextensions.CustomResourceDefinition) (*apiextensions.CustomResourceDefinition, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(customresourcedefinitionsResource, "status", customResourceDefinition), &apiextensions.CustomResourceDefinition{})
+		Invokes(testing.NewTenantUpdateSubresourceAction(customresourcedefinitionsResource, "status", customResourceDefinition, c.te), &apiextensions.CustomResourceDefinition{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -108,13 +118,15 @@ func (c *FakeCustomResourceDefinitions) UpdateStatus(customResourceDefinition *a
 // Delete takes name of the customResourceDefinition and deletes it. Returns an error if one occurs.
 func (c *FakeCustomResourceDefinitions) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(customresourcedefinitionsResource, name), &apiextensions.CustomResourceDefinition{})
+		Invokes(testing.NewTenantDeleteAction(customresourcedefinitionsResource, name, c.te), &apiextensions.CustomResourceDefinition{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeCustomResourceDefinitions) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(customresourcedefinitionsResource, listOptions)
+
+	action := testing.NewTenantDeleteCollectionAction(customresourcedefinitionsResource, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &apiextensions.CustomResourceDefinitionList{})
 	return err
@@ -123,9 +135,11 @@ func (c *FakeCustomResourceDefinitions) DeleteCollection(options *v1.DeleteOptio
 // Patch applies the patch and returns the patched customResourceDefinition.
 func (c *FakeCustomResourceDefinitions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *apiextensions.CustomResourceDefinition, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(customresourcedefinitionsResource, name, pt, data, subresources...), &apiextensions.CustomResourceDefinition{})
+		Invokes(testing.NewTenantPatchSubresourceAction(customresourcedefinitionsResource, c.te, name, pt, data, subresources...), &apiextensions.CustomResourceDefinition{})
+
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*apiextensions.CustomResourceDefinition), err
 }

@@ -17,7 +17,9 @@ limitations under the License.
 package fake
 
 import (
-	"k8s.io/api/core/v1"
+	"fmt"
+
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,10 +28,18 @@ import (
 )
 
 func (c *FakeEvents) CreateWithEventNamespace(event *v1.Event) (*v1.Event, error) {
-	action := core.NewRootCreateAction(eventsResource, event)
-	if c.ns != "" {
-		action = core.NewCreateAction(eventsResource, c.ns, event)
+	action := core.CreateActionImpl{}
+	switch {
+	case c.te == "" && c.ns == "":
+		action = core.NewRootCreateAction(eventsResource, event)
+	case c.te != "" && c.ns == "":
+		action = core.NewTenantCreateAction(eventsResource, event, c.te)
+	case c.te != "" && c.ns != "":
+		action = core.NewCreateAction(eventsResource, c.ns, event, c.te)
+	default:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
+
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
 		return nil, err
@@ -40,10 +50,18 @@ func (c *FakeEvents) CreateWithEventNamespace(event *v1.Event) (*v1.Event, error
 
 // Update replaces an existing event. Returns the copy of the event the server returns, or an error.
 func (c *FakeEvents) UpdateWithEventNamespace(event *v1.Event) (*v1.Event, error) {
-	action := core.NewRootUpdateAction(eventsResource, event)
-	if c.ns != "" {
-		action = core.NewUpdateAction(eventsResource, c.ns, event)
+	action := core.UpdateActionImpl{}
+	switch {
+	case c.te == "" && c.ns == "":
+		action = core.NewRootUpdateAction(eventsResource, event)
+	case c.te != "" && c.ns == "":
+		action = core.NewTenantUpdateAction(eventsResource, event, c.te)
+	case c.te != "" && c.ns != "":
+		action = core.NewUpdateAction(eventsResource, c.ns, event, c.te)
+	default:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
+
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
 		return nil, err
@@ -55,12 +73,20 @@ func (c *FakeEvents) UpdateWithEventNamespace(event *v1.Event) (*v1.Event, error
 // PatchWithEventNamespace patches an existing event. Returns the copy of the event the server returns, or an error.
 // TODO: Should take a PatchType as an argument probably.
 func (c *FakeEvents) PatchWithEventNamespace(event *v1.Event, data []byte) (*v1.Event, error) {
+	action := core.PatchActionImpl{}
 	// TODO: Should be configurable to support additional patch strategies.
 	pt := types.StrategicMergePatchType
-	action := core.NewRootPatchAction(eventsResource, event.Name, pt, data)
-	if c.ns != "" {
-		action = core.NewPatchAction(eventsResource, c.ns, event.Name, pt, data)
+	switch {
+	case c.te == "" && c.ns == "":
+		action = core.NewRootPatchAction(eventsResource, event.Name, pt, data)
+	case c.te != "" && c.ns == "":
+		action = core.NewTenantPatchAction(eventsResource, event.Name, pt, data, c.te)
+	case c.te != "" && c.ns != "":
+		action = core.NewPatchAction(eventsResource, c.ns, event.Name, pt, data, c.te)
+	default:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
+
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
 		return nil, err
@@ -71,9 +97,20 @@ func (c *FakeEvents) PatchWithEventNamespace(event *v1.Event, data []byte) (*v1.
 
 // Search returns a list of events matching the specified object.
 func (c *FakeEvents) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v1.EventList, error) {
-	action := core.NewRootListAction(eventsResource, eventsKind, metav1.ListOptions{})
+	action := core.ListActionImpl{}
+	switch {
+	case c.te == "" && c.ns == "":
+		action = core.NewRootListAction(eventsResource, eventsKind, metav1.ListOptions{})
+	case c.te != "" && c.ns == "":
+		action = core.NewTenantListAction(eventsResource, eventsKind, metav1.ListOptions{}, c.te)
+	case c.te != "" && c.ns != "":
+		action = core.NewListAction(eventsResource, eventsKind, c.ns, metav1.ListOptions{}, c.te)
+	default:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
+	}
+
 	if c.ns != "" {
-		action = core.NewListAction(eventsResource, eventsKind, c.ns, metav1.ListOptions{})
+
 	}
 	obj, err := c.Fake.Invokes(action, &v1.EventList{})
 	if obj == nil {
@@ -83,7 +120,7 @@ func (c *FakeEvents) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v
 	return obj.(*v1.EventList), err
 }
 
-func (c *FakeEvents) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector {
+func (c *FakeEvents) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant ...string) fields.Selector {
 	action := core.GenericActionImpl{}
 	action.Verb = "get-field-selector"
 	action.Resource = eventsResource

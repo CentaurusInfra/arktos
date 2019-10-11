@@ -28,8 +28,12 @@ type FakeWardleV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeWardleV1beta1) Flunders(namespace string) v1beta1.FlunderInterface {
-	return &FakeFlunders{c, namespace}
+func (c *FakeWardleV1beta1) Flunders(namespace string, optional_tenant ...string) v1beta1.FlunderInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeFlunders{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

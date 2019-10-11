@@ -170,7 +170,8 @@ func TestGetExtraSupplementalGroupsForPod(t *testing.T) {
 		fs := v1.PersistentVolumeFilesystem
 		pv := &v1.PersistentVolume{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pvA",
+				Tenant: metav1.TenantDefault,
+				Name:   "pvA",
 				Annotations: map[string]string{
 					util.VolumeGidAnnotationKey: tc.gidAnnotation,
 				},
@@ -257,6 +258,7 @@ func createObjects() (*v1.Node, *v1.Pod, *v1.PersistentVolume, *v1.PersistentVol
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "abc",
 			Namespace: "nsA",
+			Tenant:    metav1.TenantDefault,
 			UID:       "1234",
 		},
 		Spec: v1.PodSpec{
@@ -278,7 +280,8 @@ func createObjects() (*v1.Node, *v1.Pod, *v1.PersistentVolume, *v1.PersistentVol
 	fs := v1.PersistentVolumeFilesystem
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "pvA",
+			Tenant: metav1.TenantDefault,
+			Name:   "pvA",
 		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeSource: v1.PersistentVolumeSource{
@@ -296,6 +299,7 @@ func createObjects() (*v1.Node, *v1.Pod, *v1.PersistentVolume, *v1.PersistentVol
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "claimA",
 			Namespace: "nsA",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			VolumeName: "pvA",

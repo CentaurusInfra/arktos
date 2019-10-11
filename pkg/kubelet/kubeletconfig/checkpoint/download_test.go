@@ -123,6 +123,7 @@ func TestRemoteConfigMapDownload(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "name",
 			Namespace:       "namespace",
+			Tenant:          metav1.TenantDefault,
 			UID:             "uid",
 			ResourceVersion: "1",
 		}}

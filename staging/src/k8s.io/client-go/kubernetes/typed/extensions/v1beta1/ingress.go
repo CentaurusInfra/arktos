@@ -32,7 +32,7 @@ import (
 // IngressesGetter has a method to return a IngressInterface.
 // A group's client should implement this interface.
 type IngressesGetter interface {
-	Ingresses(namespace string) IngressInterface
+	Ingresses(namespace string, optional_tenant ...string) IngressInterface
 }
 
 // IngressInterface has methods to work with Ingress resources.
@@ -53,13 +53,20 @@ type IngressInterface interface {
 type ingresses struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newIngresses returns a Ingresses
-func newIngresses(c *ExtensionsV1beta1Client, namespace string) *ingresses {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newIngresses(c *ExtensionsV1beta1Client, namespace string, optional_tenant ...string) *ingresses {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &ingresses{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newIngresses(c *ExtensionsV1beta1Client, namespace string) *ingresses {
 func (c *ingresses) Get(name string, options v1.GetOptions) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *ingresses) List(opts v1.ListOptions) (result *v1beta1.IngressList, err 
 	}
 	result = &v1beta1.IngressList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("ingresses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *ingresses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *ingresses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *ingresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Body(ingress).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *ingresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, e
 func (c *ingresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(ingress.Name).
 		Body(ingress).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *ingresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, e
 func (c *ingresses) UpdateStatus(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(ingress.Name).
@@ -146,12 +162,14 @@ func (c *ingresses) UpdateStatus(ingress *v1beta1.Ingress) (result *v1beta1.Ingr
 		Body(ingress).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the ingress and deletes it. Returns an error if one occurs.
 func (c *ingresses) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *ingresses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *ingresses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 func (c *ingresses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("ingresses").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *ingresses) Patch(name string, pt types.PatchType, data []byte, subresou
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

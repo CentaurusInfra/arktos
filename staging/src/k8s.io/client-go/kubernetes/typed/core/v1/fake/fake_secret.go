@@ -32,6 +32,7 @@ import (
 type FakeSecrets struct {
 	Fake *FakeCoreV1
 	ns   string
+	te   string
 }
 
 var secretsResource = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
@@ -41,18 +42,19 @@ var secretsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secre
 // Get takes name of the secret, and returns the corresponding secret object, and an error if there is any.
 func (c *FakeSecrets) Get(name string, options v1.GetOptions) (result *corev1.Secret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(secretsResource, c.ns, name), &corev1.Secret{})
+		Invokes(testing.NewGetAction(secretsResource, c.ns, name, c.te), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Secret), err
 }
 
 // List takes label and field selectors, and returns the list of Secrets that match those selectors.
 func (c *FakeSecrets) List(opts v1.ListOptions) (result *corev1.SecretList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(secretsResource, secretsKind, c.ns, opts), &corev1.SecretList{})
+		Invokes(testing.NewListAction(secretsResource, secretsKind, c.ns, opts, c.te), &corev1.SecretList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,43 +76,45 @@ func (c *FakeSecrets) List(opts v1.ListOptions) (result *corev1.SecretList, err 
 // Watch returns a watch.Interface that watches the requested secrets.
 func (c *FakeSecrets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(secretsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(secretsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a secret and creates it.  Returns the server's representation of the secret, and an error, if there is any.
 func (c *FakeSecrets) Create(secret *corev1.Secret) (result *corev1.Secret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(secretsResource, c.ns, secret), &corev1.Secret{})
+		Invokes(testing.NewCreateAction(secretsResource, c.ns, secret, c.te), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Secret), err
 }
 
 // Update takes the representation of a secret and updates it. Returns the server's representation of the secret, and an error, if there is any.
 func (c *FakeSecrets) Update(secret *corev1.Secret) (result *corev1.Secret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(secretsResource, c.ns, secret), &corev1.Secret{})
+		Invokes(testing.NewUpdateAction(secretsResource, c.ns, secret, c.te), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Secret), err
 }
 
 // Delete takes name of the secret and deletes it. Returns an error if one occurs.
 func (c *FakeSecrets) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(secretsResource, c.ns, name), &corev1.Secret{})
+		Invokes(testing.NewDeleteAction(secretsResource, c.ns, name, c.te), &corev1.Secret{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeSecrets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(secretsResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(secretsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &corev1.SecretList{})
 	return err
@@ -119,10 +123,11 @@ func (c *FakeSecrets) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 // Patch applies the patch and returns the patched secret.
 func (c *FakeSecrets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Secret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(secretsResource, c.ns, name, pt, data, subresources...), &corev1.Secret{})
+		Invokes(testing.NewPatchSubresourceAction(secretsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Secret), err
 }

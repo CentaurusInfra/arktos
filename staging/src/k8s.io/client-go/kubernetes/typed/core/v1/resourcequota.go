@@ -32,7 +32,7 @@ import (
 // ResourceQuotasGetter has a method to return a ResourceQuotaInterface.
 // A group's client should implement this interface.
 type ResourceQuotasGetter interface {
-	ResourceQuotas(namespace string) ResourceQuotaInterface
+	ResourceQuotas(namespace string, optional_tenant ...string) ResourceQuotaInterface
 }
 
 // ResourceQuotaInterface has methods to work with ResourceQuota resources.
@@ -53,13 +53,20 @@ type ResourceQuotaInterface interface {
 type resourceQuotas struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newResourceQuotas returns a ResourceQuotas
-func newResourceQuotas(c *CoreV1Client, namespace string) *resourceQuotas {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newResourceQuotas(c *CoreV1Client, namespace string, optional_tenant ...string) *resourceQuotas {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &resourceQuotas{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newResourceQuotas(c *CoreV1Client, namespace string) *resourceQuotas {
 func (c *resourceQuotas) Get(name string, options metav1.GetOptions) (result *v1.ResourceQuota, err error) {
 	result = &v1.ResourceQuota{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *resourceQuotas) List(opts metav1.ListOptions) (result *v1.ResourceQuota
 	}
 	result = &v1.ResourceQuotaList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("resourcequotas").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *resourceQuotas) Watch(opts metav1.ListOptions) (watch.Interface, error)
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *resourceQuotas) Watch(opts metav1.ListOptions) (watch.Interface, error)
 func (c *resourceQuotas) Create(resourceQuota *v1.ResourceQuota) (result *v1.ResourceQuota, err error) {
 	result = &v1.ResourceQuota{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		Body(resourceQuota).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *resourceQuotas) Create(resourceQuota *v1.ResourceQuota) (result *v1.Res
 func (c *resourceQuotas) Update(resourceQuota *v1.ResourceQuota) (result *v1.ResourceQuota, err error) {
 	result = &v1.ResourceQuota{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		Name(resourceQuota.Name).
 		Body(resourceQuota).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *resourceQuotas) Update(resourceQuota *v1.ResourceQuota) (result *v1.Res
 func (c *resourceQuotas) UpdateStatus(resourceQuota *v1.ResourceQuota) (result *v1.ResourceQuota, err error) {
 	result = &v1.ResourceQuota{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		Name(resourceQuota.Name).
@@ -146,12 +162,14 @@ func (c *resourceQuotas) UpdateStatus(resourceQuota *v1.ResourceQuota) (result *
 		Body(resourceQuota).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the resourceQuota and deletes it. Returns an error if one occurs.
 func (c *resourceQuotas) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *resourceQuotas) DeleteCollection(options *metav1.DeleteOptions, listOpt
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *resourceQuotas) DeleteCollection(options *metav1.DeleteOptions, listOpt
 func (c *resourceQuotas) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ResourceQuota, err error) {
 	result = &v1.ResourceQuota{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *resourceQuotas) Patch(name string, pt types.PatchType, data []byte, sub
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

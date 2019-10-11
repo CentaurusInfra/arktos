@@ -32,7 +32,7 @@ import (
 // LimitRangesGetter has a method to return a LimitRangeInterface.
 // A group's client should implement this interface.
 type LimitRangesGetter interface {
-	LimitRanges(namespace string) LimitRangeInterface
+	LimitRanges(namespace string, optional_tenant ...string) LimitRangeInterface
 }
 
 // LimitRangeInterface has methods to work with LimitRange resources.
@@ -52,13 +52,20 @@ type LimitRangeInterface interface {
 type limitRanges struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newLimitRanges returns a LimitRanges
-func newLimitRanges(c *CoreV1Client, namespace string) *limitRanges {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newLimitRanges(c *CoreV1Client, namespace string, optional_tenant ...string) *limitRanges {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &limitRanges{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newLimitRanges(c *CoreV1Client, namespace string) *limitRanges {
 func (c *limitRanges) Get(name string, options metav1.GetOptions) (result *v1.LimitRange, err error) {
 	result = &v1.LimitRange{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("limitranges").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *limitRanges) List(opts metav1.ListOptions) (result *v1.LimitRangeList, 
 	}
 	result = &v1.LimitRangeList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("limitranges").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *limitRanges) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("limitranges").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *limitRanges) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *limitRanges) Create(limitRange *v1.LimitRange) (result *v1.LimitRange, err error) {
 	result = &v1.LimitRange{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("limitranges").
 		Body(limitRange).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *limitRanges) Create(limitRange *v1.LimitRange) (result *v1.LimitRange, 
 func (c *limitRanges) Update(limitRange *v1.LimitRange) (result *v1.LimitRange, err error) {
 	result = &v1.LimitRange{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("limitranges").
 		Name(limitRange.Name).
 		Body(limitRange).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the limitRange and deletes it. Returns an error if one occurs.
 func (c *limitRanges) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("limitranges").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *limitRanges) DeleteCollection(options *metav1.DeleteOptions, listOption
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("limitranges").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *limitRanges) DeleteCollection(options *metav1.DeleteOptions, listOption
 func (c *limitRanges) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.LimitRange, err error) {
 	result = &v1.LimitRange{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("limitranges").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *limitRanges) Patch(name string, pt types.PatchType, data []byte, subres
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

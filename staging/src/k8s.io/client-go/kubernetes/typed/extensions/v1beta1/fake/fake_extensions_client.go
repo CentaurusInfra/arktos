@@ -28,28 +28,52 @@ type FakeExtensionsV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeExtensionsV1beta1) DaemonSets(namespace string) v1beta1.DaemonSetInterface {
-	return &FakeDaemonSets{c, namespace}
+func (c *FakeExtensionsV1beta1) DaemonSets(namespace string, optional_tenant ...string) v1beta1.DaemonSetInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeDaemonSets{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) Deployments(namespace string) v1beta1.DeploymentInterface {
-	return &FakeDeployments{c, namespace}
+func (c *FakeExtensionsV1beta1) Deployments(namespace string, optional_tenant ...string) v1beta1.DeploymentInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeDeployments{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) Ingresses(namespace string) v1beta1.IngressInterface {
-	return &FakeIngresses{c, namespace}
+func (c *FakeExtensionsV1beta1) Ingresses(namespace string, optional_tenant ...string) v1beta1.IngressInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeIngresses{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) NetworkPolicies(namespace string) v1beta1.NetworkPolicyInterface {
-	return &FakeNetworkPolicies{c, namespace}
+func (c *FakeExtensionsV1beta1) NetworkPolicies(namespace string, optional_tenant ...string) v1beta1.NetworkPolicyInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeNetworkPolicies{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) PodSecurityPolicies() v1beta1.PodSecurityPolicyInterface {
-	return &FakePodSecurityPolicies{c}
+func (c *FakeExtensionsV1beta1) PodSecurityPolicies(optional_tenant ...string) v1beta1.PodSecurityPolicyInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePodSecurityPolicies{c, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) ReplicaSets(namespace string) v1beta1.ReplicaSetInterface {
-	return &FakeReplicaSets{c, namespace}
+func (c *FakeExtensionsV1beta1) ReplicaSets(namespace string, optional_tenant ...string) v1beta1.ReplicaSetInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeReplicaSets{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

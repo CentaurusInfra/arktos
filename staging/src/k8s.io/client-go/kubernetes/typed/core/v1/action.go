@@ -32,7 +32,7 @@ import (
 // ActionsGetter has a method to return a ActionInterface.
 // A group's client should implement this interface.
 type ActionsGetter interface {
-	Actions(namespace string) ActionInterface
+	Actions(namespace string, optional_tenant ...string) ActionInterface
 }
 
 // ActionInterface has methods to work with Action resources.
@@ -53,13 +53,20 @@ type ActionInterface interface {
 type actions struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newActions returns a Actions
-func newActions(c *CoreV1Client, namespace string) *actions {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newActions(c *CoreV1Client, namespace string, optional_tenant ...string) *actions {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &actions{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newActions(c *CoreV1Client, namespace string) *actions {
 func (c *actions) Get(name string, options metav1.GetOptions) (result *v1.Action, err error) {
 	result = &v1.Action{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *actions) List(opts metav1.ListOptions) (result *v1.ActionList, err erro
 	}
 	result = &v1.ActionList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("actions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *actions) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *actions) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *actions) Create(action *v1.Action) (result *v1.Action, err error) {
 	result = &v1.Action{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		Body(action).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *actions) Create(action *v1.Action) (result *v1.Action, err error) {
 func (c *actions) Update(action *v1.Action) (result *v1.Action, err error) {
 	result = &v1.Action{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(action.Name).
 		Body(action).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *actions) Update(action *v1.Action) (result *v1.Action, err error) {
 func (c *actions) UpdateStatus(action *v1.Action) (result *v1.Action, err error) {
 	result = &v1.Action{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(action.Name).
@@ -146,12 +162,14 @@ func (c *actions) UpdateStatus(action *v1.Action) (result *v1.Action, err error)
 		Body(action).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the action and deletes it. Returns an error if one occurs.
 func (c *actions) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *actions) DeleteCollection(options *metav1.DeleteOptions, listOptions me
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *actions) DeleteCollection(options *metav1.DeleteOptions, listOptions me
 func (c *actions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Action, err error) {
 	result = &v1.Action{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("actions").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *actions) Patch(name string, pt types.PatchType, data []byte, subresourc
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

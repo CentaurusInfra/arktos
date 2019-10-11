@@ -44,6 +44,7 @@ func (c *FakeRuntimeClasses) Get(name string, options v1.GetOptions) (result *v1
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.RuntimeClass), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeRuntimeClasses) Create(runtimeClass *v1beta1.RuntimeClass) (result 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.RuntimeClass), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeRuntimeClasses) Update(runtimeClass *v1beta1.RuntimeClass) (result 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.RuntimeClass), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeRuntimeClasses) Delete(name string, options *v1.DeleteOptions) erro
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeRuntimeClasses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(runtimeclassesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(runtimeclassesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &v1beta1.RuntimeClassList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeRuntimeClasses) Patch(name string, pt types.PatchType, data []byte,
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.RuntimeClass), err
 }

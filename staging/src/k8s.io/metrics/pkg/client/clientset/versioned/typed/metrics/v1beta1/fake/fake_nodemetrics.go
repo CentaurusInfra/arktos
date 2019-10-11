@@ -43,6 +43,7 @@ func (c *FakeNodeMetricses) Get(name string, options v1.GetOptions) (result *v1b
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.NodeMetrics), err
 }
 

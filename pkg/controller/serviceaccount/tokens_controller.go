@@ -386,6 +386,7 @@ func (e *TokensController) ensureReferencedToken(serviceAccount *v1.ServiceAccou
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secret.Strategy.GenerateName(fmt.Sprintf("%s-token-", serviceAccount.Name)),
 			Namespace: serviceAccount.Namespace,
+			Tenant:    serviceAccount.Tenant,
 			Annotations: map[string]string{
 				v1.ServiceAccountNameKey: serviceAccount.Name,
 				v1.ServiceAccountUIDKey:  string(serviceAccount.UID),

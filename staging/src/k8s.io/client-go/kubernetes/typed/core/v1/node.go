@@ -70,6 +70,7 @@ func (c *nodes) Get(name string, options metav1.GetOptions) (result *v1.Node, er
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -86,6 +87,7 @@ func (c *nodes) List(opts metav1.ListOptions) (result *v1.NodeList, err error) {
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -111,6 +113,7 @@ func (c *nodes) Create(node *v1.Node) (result *v1.Node, err error) {
 		Body(node).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,6 +126,7 @@ func (c *nodes) Update(node *v1.Node) (result *v1.Node, err error) {
 		Body(node).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -138,6 +142,7 @@ func (c *nodes) UpdateStatus(node *v1.Node) (result *v1.Node, err error) {
 		Body(node).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -176,5 +181,6 @@ func (c *nodes) Patch(name string, pt types.PatchType, data []byte, subresources
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

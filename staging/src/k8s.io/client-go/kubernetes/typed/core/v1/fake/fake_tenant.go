@@ -44,6 +44,7 @@ func (c *FakeTenants) Get(name string, options v1.GetOptions) (result *corev1.Te
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Tenant), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeTenants) Create(tenant *corev1.Tenant) (result *corev1.Tenant, err 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Tenant), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeTenants) Update(tenant *corev1.Tenant) (result *corev1.Tenant, err 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Tenant), err
 }
 
@@ -119,5 +122,6 @@ func (c *FakeTenants) Patch(name string, pt types.PatchType, data []byte, subres
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Tenant), err
 }

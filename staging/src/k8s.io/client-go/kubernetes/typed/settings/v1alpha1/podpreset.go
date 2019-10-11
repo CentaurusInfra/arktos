@@ -32,7 +32,7 @@ import (
 // PodPresetsGetter has a method to return a PodPresetInterface.
 // A group's client should implement this interface.
 type PodPresetsGetter interface {
-	PodPresets(namespace string) PodPresetInterface
+	PodPresets(namespace string, optional_tenant ...string) PodPresetInterface
 }
 
 // PodPresetInterface has methods to work with PodPreset resources.
@@ -52,13 +52,20 @@ type PodPresetInterface interface {
 type podPresets struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newPodPresets returns a PodPresets
-func newPodPresets(c *SettingsV1alpha1Client, namespace string) *podPresets {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newPodPresets(c *SettingsV1alpha1Client, namespace string, optional_tenant ...string) *podPresets {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &podPresets{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newPodPresets(c *SettingsV1alpha1Client, namespace string) *podPresets {
 func (c *podPresets) Get(name string, options v1.GetOptions) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 	}
 	result = &v1alpha1.PodPresetList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("podpresets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *podPresets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podpresets").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *podPresets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *podPresets) Create(podPreset *v1alpha1.PodPreset) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Body(podPreset).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *podPresets) Create(podPreset *v1alpha1.PodPreset) (result *v1alpha1.Pod
 func (c *podPresets) Update(podPreset *v1alpha1.PodPreset) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Name(podPreset.Name).
 		Body(podPreset).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the podPreset and deletes it. Returns an error if one occurs.
 func (c *podPresets) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *podPresets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podpresets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *podPresets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 func (c *podPresets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("podpresets").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *podPresets) Patch(name string, pt types.PatchType, data []byte, subreso
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

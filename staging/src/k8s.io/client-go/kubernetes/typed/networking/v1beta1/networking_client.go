@@ -34,8 +34,8 @@ type NetworkingV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *NetworkingV1beta1Client) Ingresses(namespace string) IngressInterface {
-	return newIngresses(c, namespace)
+func (c *NetworkingV1beta1Client) Ingresses(namespace string, optional_tenant ...string) IngressInterface {
+	return newIngresses(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new NetworkingV1beta1Client for the given config.

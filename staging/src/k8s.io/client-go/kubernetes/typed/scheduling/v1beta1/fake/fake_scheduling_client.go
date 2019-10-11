@@ -28,8 +28,12 @@ type FakeSchedulingV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSchedulingV1beta1) PriorityClasses() v1beta1.PriorityClassInterface {
-	return &FakePriorityClasses{c}
+func (c *FakeSchedulingV1beta1) PriorityClasses(optional_tenant ...string) v1beta1.PriorityClassInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakePriorityClasses{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

@@ -32,7 +32,7 @@ import (
 // TestTypesGetter has a method to return a TestTypeInterface.
 // A group's client should implement this interface.
 type TestTypesGetter interface {
-	TestTypes(namespace string) TestTypeInterface
+	TestTypes(namespace string, optional_tenant ...string) TestTypeInterface
 }
 
 // TestTypeInterface has methods to work with TestType resources.
@@ -53,13 +53,20 @@ type TestTypeInterface interface {
 type testTypes struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newTestTypes returns a TestTypes
-func newTestTypes(c *SecondExampleV1Client, namespace string) *testTypes {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newTestTypes(c *SecondExampleV1Client, namespace string, optional_tenant ...string) *testTypes {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &testTypes{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newTestTypes(c *SecondExampleV1Client, namespace string) *testTypes {
 func (c *testTypes) Get(name string, options metav1.GetOptions) (result *v1.TestType, err error) {
 	result = &v1.TestType{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *testTypes) List(opts metav1.ListOptions) (result *v1.TestTypeList, err 
 	}
 	result = &v1.TestTypeList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("testtypes").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *testTypes) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *testTypes) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *testTypes) Create(testType *v1.TestType) (result *v1.TestType, err error) {
 	result = &v1.TestType{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Body(testType).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *testTypes) Create(testType *v1.TestType) (result *v1.TestType, err erro
 func (c *testTypes) Update(testType *v1.TestType) (result *v1.TestType, err error) {
 	result = &v1.TestType{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(testType.Name).
 		Body(testType).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *testTypes) Update(testType *v1.TestType) (result *v1.TestType, err erro
 func (c *testTypes) UpdateStatus(testType *v1.TestType) (result *v1.TestType, err error) {
 	result = &v1.TestType{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(testType.Name).
@@ -146,12 +162,14 @@ func (c *testTypes) UpdateStatus(testType *v1.TestType) (result *v1.TestType, er
 		Body(testType).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the testType and deletes it. Returns an error if one occurs.
 func (c *testTypes) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *testTypes) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *testTypes) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 func (c *testTypes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.TestType, err error) {
 	result = &v1.TestType{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("testtypes").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *testTypes) Patch(name string, pt types.PatchType, data []byte, subresou
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

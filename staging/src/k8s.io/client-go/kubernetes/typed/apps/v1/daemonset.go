@@ -32,7 +32,7 @@ import (
 // DaemonSetsGetter has a method to return a DaemonSetInterface.
 // A group's client should implement this interface.
 type DaemonSetsGetter interface {
-	DaemonSets(namespace string) DaemonSetInterface
+	DaemonSets(namespace string, optional_tenant ...string) DaemonSetInterface
 }
 
 // DaemonSetInterface has methods to work with DaemonSet resources.
@@ -53,13 +53,20 @@ type DaemonSetInterface interface {
 type daemonSets struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newDaemonSets returns a DaemonSets
-func newDaemonSets(c *AppsV1Client, namespace string) *daemonSets {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newDaemonSets(c *AppsV1Client, namespace string, optional_tenant ...string) *daemonSets {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &daemonSets{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newDaemonSets(c *AppsV1Client, namespace string) *daemonSets {
 func (c *daemonSets) Get(name string, options metav1.GetOptions) (result *v1.DaemonSet, err error) {
 	result = &v1.DaemonSet{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *daemonSets) List(opts metav1.ListOptions) (result *v1.DaemonSetList, er
 	}
 	result = &v1.DaemonSetList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("daemonsets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *daemonSets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *daemonSets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *daemonSets) Create(daemonSet *v1.DaemonSet) (result *v1.DaemonSet, err error) {
 	result = &v1.DaemonSet{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Body(daemonSet).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *daemonSets) Create(daemonSet *v1.DaemonSet) (result *v1.DaemonSet, err 
 func (c *daemonSets) Update(daemonSet *v1.DaemonSet) (result *v1.DaemonSet, err error) {
 	result = &v1.DaemonSet{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(daemonSet.Name).
 		Body(daemonSet).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *daemonSets) Update(daemonSet *v1.DaemonSet) (result *v1.DaemonSet, err 
 func (c *daemonSets) UpdateStatus(daemonSet *v1.DaemonSet) (result *v1.DaemonSet, err error) {
 	result = &v1.DaemonSet{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(daemonSet.Name).
@@ -146,12 +162,14 @@ func (c *daemonSets) UpdateStatus(daemonSet *v1.DaemonSet) (result *v1.DaemonSet
 		Body(daemonSet).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the daemonSet and deletes it. Returns an error if one occurs.
 func (c *daemonSets) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *daemonSets) DeleteCollection(options *metav1.DeleteOptions, listOptions
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *daemonSets) DeleteCollection(options *metav1.DeleteOptions, listOptions
 func (c *daemonSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.DaemonSet, err error) {
 	result = &v1.DaemonSet{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *daemonSets) Patch(name string, pt types.PatchType, data []byte, subreso
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

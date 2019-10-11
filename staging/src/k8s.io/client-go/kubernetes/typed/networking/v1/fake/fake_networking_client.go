@@ -28,8 +28,12 @@ type FakeNetworkingV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeNetworkingV1) NetworkPolicies(namespace string) v1.NetworkPolicyInterface {
-	return &FakeNetworkPolicies{c, namespace}
+func (c *FakeNetworkingV1) NetworkPolicies(namespace string, optional_tenant ...string) v1.NetworkPolicyInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeNetworkPolicies{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

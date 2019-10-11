@@ -69,6 +69,7 @@ func (c *storageClasses) Get(name string, options metav1.GetOptions) (result *v1
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *storageClasses) List(opts metav1.ListOptions) (result *v1.StorageClassL
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *storageClasses) Create(storageClass *v1.StorageClass) (result *v1.Stora
 		Body(storageClass).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *storageClasses) Update(storageClass *v1.StorageClass) (result *v1.Stora
 		Body(storageClass).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *storageClasses) Patch(name string, pt types.PatchType, data []byte, sub
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

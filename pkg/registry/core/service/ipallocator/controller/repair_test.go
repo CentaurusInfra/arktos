@@ -89,7 +89,7 @@ func TestRepairLeak(t *testing.T) {
 	fakeClient := fake.NewSimpleClientset()
 	ipregistry := &mockRangeRegistry{
 		item: &api.RangeAllocation{
-			ObjectMeta: metav1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault,
 				ResourceVersion: "1",
 			},
 			Range: dst.Range,
@@ -136,27 +136,27 @@ func TestRepairWithExisting(t *testing.T) {
 
 	fakeClient := fake.NewSimpleClientset(
 		&corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "one", Name: "one"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "one", Name: "one"},
 			Spec:       corev1.ServiceSpec{ClusterIP: "192.168.1.1"},
 		},
 		&corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "two", Name: "two"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "two", Name: "two"},
 			Spec:       corev1.ServiceSpec{ClusterIP: "192.168.1.100"},
 		},
 		&corev1.Service{ // outside CIDR, will be dropped
-			ObjectMeta: metav1.ObjectMeta{Namespace: "three", Name: "three"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "three", Name: "three"},
 			Spec:       corev1.ServiceSpec{ClusterIP: "192.168.0.1"},
 		},
 		&corev1.Service{ // empty, ignored
-			ObjectMeta: metav1.ObjectMeta{Namespace: "four", Name: "four"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "four", Name: "four"},
 			Spec:       corev1.ServiceSpec{ClusterIP: ""},
 		},
 		&corev1.Service{ // duplicate, dropped
-			ObjectMeta: metav1.ObjectMeta{Namespace: "five", Name: "five"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "five", Name: "five"},
 			Spec:       corev1.ServiceSpec{ClusterIP: "192.168.1.1"},
 		},
 		&corev1.Service{ // headless
-			ObjectMeta: metav1.ObjectMeta{Namespace: "six", Name: "six"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "six", Name: "six"},
 			Spec:       corev1.ServiceSpec{ClusterIP: "None"},
 		},
 	)

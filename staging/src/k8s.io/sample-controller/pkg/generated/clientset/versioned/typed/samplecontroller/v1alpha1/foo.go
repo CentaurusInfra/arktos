@@ -32,7 +32,7 @@ import (
 // FoosGetter has a method to return a FooInterface.
 // A group's client should implement this interface.
 type FoosGetter interface {
-	Foos(namespace string) FooInterface
+	Foos(namespace string, optional_tenant ...string) FooInterface
 }
 
 // FooInterface has methods to work with Foo resources.
@@ -53,13 +53,20 @@ type FooInterface interface {
 type foos struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newFoos returns a Foos
-func newFoos(c *SamplecontrollerV1alpha1Client, namespace string) *foos {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newFoos(c *SamplecontrollerV1alpha1Client, namespace string, optional_tenant ...string) *foos {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &foos{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newFoos(c *SamplecontrollerV1alpha1Client, namespace string) *foos {
 func (c *foos) Get(name string, options v1.GetOptions) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *foos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
 	}
 	result = &v1alpha1.FooList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("foos").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *foos) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *foos) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *foos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		Body(foo).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *foos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 func (c *foos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(foo.Name).
 		Body(foo).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *foos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 func (c *foos) UpdateStatus(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(foo.Name).
@@ -146,12 +162,14 @@ func (c *foos) UpdateStatus(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error)
 		Body(foo).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the foo and deletes it. Returns an error if one occurs.
 func (c *foos) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *foos) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOp
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *foos) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOp
 func (c *foos) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("foos").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *foos) Patch(name string, pt types.PatchType, data []byte, subresources 
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

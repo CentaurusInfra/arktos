@@ -44,6 +44,7 @@ func (c *FakeStorageClasses) Get(name string, options v1.GetOptions) (result *v1
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.StorageClass), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeStorageClasses) Create(storageClass *v1beta1.StorageClass) (result 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.StorageClass), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeStorageClasses) Update(storageClass *v1beta1.StorageClass) (result 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.StorageClass), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeStorageClasses) Delete(name string, options *v1.DeleteOptions) erro
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeStorageClasses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(storageclassesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(storageclassesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &v1beta1.StorageClassList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeStorageClasses) Patch(name string, pt types.PatchType, data []byte,
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.StorageClass), err
 }

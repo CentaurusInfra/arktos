@@ -32,6 +32,7 @@ import (
 type FakeEndpoints struct {
 	Fake *FakeCoreV1
 	ns   string
+	te   string
 }
 
 var endpointsResource = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "endpoints"}
@@ -41,18 +42,19 @@ var endpointsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "End
 // Get takes name of the endpoints, and returns the corresponding endpoints object, and an error if there is any.
 func (c *FakeEndpoints) Get(name string, options v1.GetOptions) (result *corev1.Endpoints, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(endpointsResource, c.ns, name), &corev1.Endpoints{})
+		Invokes(testing.NewGetAction(endpointsResource, c.ns, name, c.te), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Endpoints), err
 }
 
 // List takes label and field selectors, and returns the list of Endpoints that match those selectors.
 func (c *FakeEndpoints) List(opts v1.ListOptions) (result *corev1.EndpointsList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(endpointsResource, endpointsKind, c.ns, opts), &corev1.EndpointsList{})
+		Invokes(testing.NewListAction(endpointsResource, endpointsKind, c.ns, opts, c.te), &corev1.EndpointsList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,43 +76,45 @@ func (c *FakeEndpoints) List(opts v1.ListOptions) (result *corev1.EndpointsList,
 // Watch returns a watch.Interface that watches the requested endpoints.
 func (c *FakeEndpoints) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(endpointsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(endpointsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a endpoints and creates it.  Returns the server's representation of the endpoints, and an error, if there is any.
 func (c *FakeEndpoints) Create(endpoints *corev1.Endpoints) (result *corev1.Endpoints, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(endpointsResource, c.ns, endpoints), &corev1.Endpoints{})
+		Invokes(testing.NewCreateAction(endpointsResource, c.ns, endpoints, c.te), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Endpoints), err
 }
 
 // Update takes the representation of a endpoints and updates it. Returns the server's representation of the endpoints, and an error, if there is any.
 func (c *FakeEndpoints) Update(endpoints *corev1.Endpoints) (result *corev1.Endpoints, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(endpointsResource, c.ns, endpoints), &corev1.Endpoints{})
+		Invokes(testing.NewUpdateAction(endpointsResource, c.ns, endpoints, c.te), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Endpoints), err
 }
 
 // Delete takes name of the endpoints and deletes it. Returns an error if one occurs.
 func (c *FakeEndpoints) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(endpointsResource, c.ns, name), &corev1.Endpoints{})
+		Invokes(testing.NewDeleteAction(endpointsResource, c.ns, name, c.te), &corev1.Endpoints{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeEndpoints) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(endpointsResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(endpointsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &corev1.EndpointsList{})
 	return err
@@ -119,10 +123,11 @@ func (c *FakeEndpoints) DeleteCollection(options *v1.DeleteOptions, listOptions 
 // Patch applies the patch and returns the patched endpoints.
 func (c *FakeEndpoints) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Endpoints, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(endpointsResource, c.ns, name, pt, data, subresources...), &corev1.Endpoints{})
+		Invokes(testing.NewPatchSubresourceAction(endpointsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.Endpoints), err
 }

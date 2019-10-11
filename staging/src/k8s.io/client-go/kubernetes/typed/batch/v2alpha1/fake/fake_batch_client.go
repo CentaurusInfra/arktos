@@ -28,8 +28,12 @@ type FakeBatchV2alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeBatchV2alpha1) CronJobs(namespace string) v2alpha1.CronJobInterface {
-	return &FakeCronJobs{c, namespace}
+func (c *FakeBatchV2alpha1) CronJobs(namespace string, optional_tenant ...string) v2alpha1.CronJobInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeCronJobs{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

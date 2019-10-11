@@ -32,6 +32,7 @@ import (
 type FakeLeases struct {
 	Fake *FakeCoordinationV1beta1
 	ns   string
+	te   string
 }
 
 var leasesResource = schema.GroupVersionResource{Group: "coordination.k8s.io", Version: "v1beta1", Resource: "leases"}
@@ -41,18 +42,19 @@ var leasesKind = schema.GroupVersionKind{Group: "coordination.k8s.io", Version: 
 // Get takes name of the lease, and returns the corresponding lease object, and an error if there is any.
 func (c *FakeLeases) Get(name string, options v1.GetOptions) (result *v1beta1.Lease, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(leasesResource, c.ns, name), &v1beta1.Lease{})
+		Invokes(testing.NewGetAction(leasesResource, c.ns, name, c.te), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Lease), err
 }
 
 // List takes label and field selectors, and returns the list of Leases that match those selectors.
 func (c *FakeLeases) List(opts v1.ListOptions) (result *v1beta1.LeaseList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(leasesResource, leasesKind, c.ns, opts), &v1beta1.LeaseList{})
+		Invokes(testing.NewListAction(leasesResource, leasesKind, c.ns, opts, c.te), &v1beta1.LeaseList{})
 
 	if obj == nil {
 		return nil, err
@@ -74,43 +76,45 @@ func (c *FakeLeases) List(opts v1.ListOptions) (result *v1beta1.LeaseList, err e
 // Watch returns a watch.Interface that watches the requested leases.
 func (c *FakeLeases) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(leasesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(leasesResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a lease and creates it.  Returns the server's representation of the lease, and an error, if there is any.
 func (c *FakeLeases) Create(lease *v1beta1.Lease) (result *v1beta1.Lease, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(leasesResource, c.ns, lease), &v1beta1.Lease{})
+		Invokes(testing.NewCreateAction(leasesResource, c.ns, lease, c.te), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Lease), err
 }
 
 // Update takes the representation of a lease and updates it. Returns the server's representation of the lease, and an error, if there is any.
 func (c *FakeLeases) Update(lease *v1beta1.Lease) (result *v1beta1.Lease, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(leasesResource, c.ns, lease), &v1beta1.Lease{})
+		Invokes(testing.NewUpdateAction(leasesResource, c.ns, lease, c.te), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Lease), err
 }
 
 // Delete takes name of the lease and deletes it. Returns an error if one occurs.
 func (c *FakeLeases) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(leasesResource, c.ns, name), &v1beta1.Lease{})
+		Invokes(testing.NewDeleteAction(leasesResource, c.ns, name, c.te), &v1beta1.Lease{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeLeases) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(leasesResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(leasesResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.LeaseList{})
 	return err
@@ -119,10 +123,11 @@ func (c *FakeLeases) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 // Patch applies the patch and returns the patched lease.
 func (c *FakeLeases) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Lease, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(leasesResource, c.ns, name, pt, data, subresources...), &v1beta1.Lease{})
+		Invokes(testing.NewPatchSubresourceAction(leasesResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.Lease), err
 }

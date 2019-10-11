@@ -274,6 +274,7 @@ func createKubeadmCertsSecret(t *testing.T, cfg *kubeadmapi.InitConfiguration, s
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubeadmconstants.KubeadmCertsSecret,
 			Namespace: metav1.NamespaceSystem,
+			Tenant:    metav1.TenantDefault,
 		},
 		Data: secretData,
 	}

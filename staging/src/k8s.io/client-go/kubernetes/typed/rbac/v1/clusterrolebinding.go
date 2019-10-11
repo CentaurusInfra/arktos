@@ -69,6 +69,7 @@ func (c *clusterRoleBindings) Get(name string, options metav1.GetOptions) (resul
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -85,6 +86,7 @@ func (c *clusterRoleBindings) List(opts metav1.ListOptions) (result *v1.ClusterR
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -110,6 +112,7 @@ func (c *clusterRoleBindings) Create(clusterRoleBinding *v1.ClusterRoleBinding) 
 		Body(clusterRoleBinding).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -122,6 +125,7 @@ func (c *clusterRoleBindings) Update(clusterRoleBinding *v1.ClusterRoleBinding) 
 		Body(clusterRoleBinding).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -160,5 +164,6 @@ func (c *clusterRoleBindings) Patch(name string, pt types.PatchType, data []byte
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

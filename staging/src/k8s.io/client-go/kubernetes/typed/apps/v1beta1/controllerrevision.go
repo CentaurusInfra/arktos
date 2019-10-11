@@ -32,7 +32,7 @@ import (
 // ControllerRevisionsGetter has a method to return a ControllerRevisionInterface.
 // A group's client should implement this interface.
 type ControllerRevisionsGetter interface {
-	ControllerRevisions(namespace string) ControllerRevisionInterface
+	ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionInterface
 }
 
 // ControllerRevisionInterface has methods to work with ControllerRevision resources.
@@ -52,13 +52,20 @@ type ControllerRevisionInterface interface {
 type controllerRevisions struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newControllerRevisions returns a ControllerRevisions
-func newControllerRevisions(c *AppsV1beta1Client, namespace string) *controllerRevisions {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newControllerRevisions(c *AppsV1beta1Client, namespace string, optional_tenant ...string) *controllerRevisions {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &controllerRevisions{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newControllerRevisions(c *AppsV1beta1Client, namespace string) *controllerR
 func (c *controllerRevisions) Get(name string, options v1.GetOptions) (result *v1beta1.ControllerRevision, err error) {
 	result = &v1beta1.ControllerRevision{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *controllerRevisions) List(opts v1.ListOptions) (result *v1beta1.Control
 	}
 	result = &v1beta1.ControllerRevisionList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("controllerrevisions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *controllerRevisions) Watch(opts v1.ListOptions) (watch.Interface, error
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *controllerRevisions) Watch(opts v1.ListOptions) (watch.Interface, error
 func (c *controllerRevisions) Create(controllerRevision *v1beta1.ControllerRevision) (result *v1beta1.ControllerRevision, err error) {
 	result = &v1beta1.ControllerRevision{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Body(controllerRevision).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *controllerRevisions) Create(controllerRevision *v1beta1.ControllerRevis
 func (c *controllerRevisions) Update(controllerRevision *v1beta1.ControllerRevision) (result *v1beta1.ControllerRevision, err error) {
 	result = &v1beta1.ControllerRevision{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Name(controllerRevision.Name).
 		Body(controllerRevision).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the controllerRevision and deletes it. Returns an error if one occurs.
 func (c *controllerRevisions) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *controllerRevisions) DeleteCollection(options *v1.DeleteOptions, listOp
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *controllerRevisions) DeleteCollection(options *v1.DeleteOptions, listOp
 func (c *controllerRevisions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.ControllerRevision, err error) {
 	result = &v1beta1.ControllerRevision{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *controllerRevisions) Patch(name string, pt types.PatchType, data []byte
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

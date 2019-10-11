@@ -44,6 +44,7 @@ func (c *FakeCSINodes) Get(name string, options v1.GetOptions) (result *v1beta1.
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSINode), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeCSINodes) Create(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSINode), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeCSINodes) Update(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSINode), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeCSINodes) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeCSINodes) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(csinodesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(csinodesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &v1beta1.CSINodeList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeCSINodes) Patch(name string, pt types.PatchType, data []byte, subre
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.CSINode), err
 }

@@ -339,6 +339,7 @@ func newPod() *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo-0",
 			Namespace: v1.NamespaceDefault,
+			Tenant:    v1.TenantDefault,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -354,7 +355,8 @@ func newPod() *v1.Pod {
 func newPVC(name string) v1.PersistentVolumeClaim {
 	return v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:   name,
+			Tenant: v1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			Resources: v1.ResourceRequirements{
@@ -408,6 +410,7 @@ func newStatefulSetWithVolumes(replicas int, name string, petMounts []v1.VolumeM
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: v1.NamespaceDefault,
+			Tenant:    v1.TenantDefault,
 			UID:       types.UID("test"),
 		},
 		Spec: apps.StatefulSetSpec{

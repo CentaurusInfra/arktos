@@ -34,8 +34,8 @@ type StorageV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *StorageV1alpha1Client) VolumeAttachments() VolumeAttachmentInterface {
-	return newVolumeAttachments(c)
+func (c *StorageV1alpha1Client) VolumeAttachments(tenant ...string) VolumeAttachmentInterface {
+	return newVolumeAttachments(c, tenant...)
 }
 
 // NewForConfig creates a new StorageV1alpha1Client for the given config.

@@ -27,6 +27,7 @@ type SelfSubjectRulesReviewExpansion interface {
 func (c *selfSubjectRulesReviews) Create(srr *authorizationapi.SelfSubjectRulesReview) (result *authorizationapi.SelfSubjectRulesReview, err error) {
 	result = &authorizationapi.SelfSubjectRulesReview{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("selfsubjectrulesreviews").
 		Body(srr).
 		Do().

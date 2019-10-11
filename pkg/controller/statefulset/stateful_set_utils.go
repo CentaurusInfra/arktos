@@ -149,6 +149,7 @@ func getPersistentVolumeClaims(set *apps.StatefulSet, pod *v1.Pod) map[string]v1
 		claim := templates[i]
 		claim.Name = getPersistentVolumeClaimName(set, &claim, ordinal)
 		claim.Namespace = set.Namespace
+		claim.Tenant = set.Tenant
 		if claim.Labels != nil {
 			for key, value := range set.Spec.Selector.MatchLabels {
 				claim.Labels[key] = value
@@ -199,6 +200,7 @@ func initIdentity(set *apps.StatefulSet, pod *v1.Pod) {
 func updateIdentity(set *apps.StatefulSet, pod *v1.Pod) {
 	pod.Name = getPodName(set, getOrdinal(pod))
 	pod.Namespace = set.Namespace
+	pod.Tenant = set.Tenant
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
 	}

@@ -38,24 +38,24 @@ type AppsV1beta2Client struct {
 	restClient rest.Interface
 }
 
-func (c *AppsV1beta2Client) ControllerRevisions(namespace string) ControllerRevisionInterface {
-	return newControllerRevisions(c, namespace)
+func (c *AppsV1beta2Client) ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionInterface {
+	return newControllerRevisions(c, namespace, optional_tenant...)
 }
 
-func (c *AppsV1beta2Client) DaemonSets(namespace string) DaemonSetInterface {
-	return newDaemonSets(c, namespace)
+func (c *AppsV1beta2Client) DaemonSets(namespace string, optional_tenant ...string) DaemonSetInterface {
+	return newDaemonSets(c, namespace, optional_tenant...)
 }
 
-func (c *AppsV1beta2Client) Deployments(namespace string) DeploymentInterface {
-	return newDeployments(c, namespace)
+func (c *AppsV1beta2Client) Deployments(namespace string, optional_tenant ...string) DeploymentInterface {
+	return newDeployments(c, namespace, optional_tenant...)
 }
 
-func (c *AppsV1beta2Client) ReplicaSets(namespace string) ReplicaSetInterface {
-	return newReplicaSets(c, namespace)
+func (c *AppsV1beta2Client) ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetInterface {
+	return newReplicaSets(c, namespace, optional_tenant...)
 }
 
-func (c *AppsV1beta2Client) StatefulSets(namespace string) StatefulSetInterface {
-	return newStatefulSets(c, namespace)
+func (c *AppsV1beta2Client) StatefulSets(namespace string, optional_tenant ...string) StatefulSetInterface {
+	return newStatefulSets(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new AppsV1beta2Client for the given config.

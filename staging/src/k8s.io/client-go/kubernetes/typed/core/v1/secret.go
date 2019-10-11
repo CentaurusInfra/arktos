@@ -32,7 +32,7 @@ import (
 // SecretsGetter has a method to return a SecretInterface.
 // A group's client should implement this interface.
 type SecretsGetter interface {
-	Secrets(namespace string) SecretInterface
+	Secrets(namespace string, optional_tenant ...string) SecretInterface
 }
 
 // SecretInterface has methods to work with Secret resources.
@@ -52,13 +52,20 @@ type SecretInterface interface {
 type secrets struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newSecrets returns a Secrets
-func newSecrets(c *CoreV1Client, namespace string) *secrets {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newSecrets(c *CoreV1Client, namespace string, optional_tenant ...string) *secrets {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &secrets{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newSecrets(c *CoreV1Client, namespace string) *secrets {
 func (c *secrets) Get(name string, options metav1.GetOptions) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("secrets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *secrets) List(opts metav1.ListOptions) (result *v1.SecretList, err erro
 	}
 	result = &v1.SecretList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("secrets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *secrets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("secrets").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *secrets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *secrets) Create(secret *v1.Secret) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("secrets").
 		Body(secret).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *secrets) Create(secret *v1.Secret) (result *v1.Secret, err error) {
 func (c *secrets) Update(secret *v1.Secret) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("secrets").
 		Name(secret.Name).
 		Body(secret).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the secret and deletes it. Returns an error if one occurs.
 func (c *secrets) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("secrets").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *secrets) DeleteCollection(options *metav1.DeleteOptions, listOptions me
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("secrets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *secrets) DeleteCollection(options *metav1.DeleteOptions, listOptions me
 func (c *secrets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("secrets").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *secrets) Patch(name string, pt types.PatchType, data []byte, subresourc
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

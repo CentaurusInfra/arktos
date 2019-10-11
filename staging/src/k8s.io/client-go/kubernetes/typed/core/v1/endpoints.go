@@ -32,7 +32,7 @@ import (
 // EndpointsGetter has a method to return a EndpointsInterface.
 // A group's client should implement this interface.
 type EndpointsGetter interface {
-	Endpoints(namespace string) EndpointsInterface
+	Endpoints(namespace string, optional_tenant ...string) EndpointsInterface
 }
 
 // EndpointsInterface has methods to work with Endpoints resources.
@@ -52,13 +52,20 @@ type EndpointsInterface interface {
 type endpoints struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newEndpoints returns a Endpoints
-func newEndpoints(c *CoreV1Client, namespace string) *endpoints {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newEndpoints(c *CoreV1Client, namespace string, optional_tenant ...string) *endpoints {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &endpoints{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newEndpoints(c *CoreV1Client, namespace string) *endpoints {
 func (c *endpoints) Get(name string, options metav1.GetOptions) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *endpoints) List(opts metav1.ListOptions) (result *v1.EndpointsList, err
 	}
 	result = &v1.EndpointsList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("endpoints").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *endpoints) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("endpoints").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *endpoints) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *endpoints) Create(endpoints *v1.Endpoints) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Body(endpoints).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *endpoints) Create(endpoints *v1.Endpoints) (result *v1.Endpoints, err e
 func (c *endpoints) Update(endpoints *v1.Endpoints) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Name(endpoints.Name).
 		Body(endpoints).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the endpoints and deletes it. Returns an error if one occurs.
 func (c *endpoints) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *endpoints) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("endpoints").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *endpoints) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 func (c *endpoints) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("endpoints").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *endpoints) Patch(name string, pt types.PatchType, data []byte, subresou
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

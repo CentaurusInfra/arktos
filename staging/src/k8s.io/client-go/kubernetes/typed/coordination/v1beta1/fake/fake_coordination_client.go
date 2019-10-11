@@ -28,8 +28,12 @@ type FakeCoordinationV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCoordinationV1beta1) Leases(namespace string) v1beta1.LeaseInterface {
-	return &FakeLeases{c, namespace}
+func (c *FakeCoordinationV1beta1) Leases(namespace string, optional_tenant ...string) v1beta1.LeaseInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeLeases{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

@@ -98,6 +98,7 @@ func newDaemonSet(name string) *apps.DaemonSet {
 			UID:       uuid.NewUUID(),
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: apps.DaemonSetSpec{
 			RevisionHistoryLimit: &two,
@@ -200,6 +201,7 @@ func newPod(podName string, nodeName string, label map[string]string, ds *apps.D
 			GenerateName: podName,
 			Labels:       newLabels,
 			Namespace:    metav1.NamespaceDefault,
+			Tenant:       metav1.TenantDefault,
 		},
 		Spec: podSpec,
 	}
@@ -253,6 +255,7 @@ func (f *fakePodControl) CreatePodsOnNode(nodeName, namespace string, template *
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:       template.Labels,
 			Namespace:    namespace,
+			Tenant:       metav1.TenantDefault,
 			GenerateName: fmt.Sprintf("%s-", nodeName),
 		},
 	}
@@ -286,6 +289,7 @@ func (f *fakePodControl) CreatePodsWithControllerRef(namespace string, template 
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    template.Labels,
 			Namespace: namespace,
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 
@@ -1142,6 +1146,7 @@ func TestPodIsNotDeletedByDaemonsetWithEmptyLabelSelector(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:    map[string]string{"bang": "boom"},
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    metav1.TenantDefault,
 				},
 				Spec: v1.PodSpec{
 					NodeName: "node1",

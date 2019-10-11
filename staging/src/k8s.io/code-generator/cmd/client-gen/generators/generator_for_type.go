@@ -17,6 +17,7 @@ limitations under the License.
 package generators
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,8 @@ import (
 	"k8s.io/gengo/types"
 
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
+
+	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // genClientForType produces a file for each top-level type.
@@ -129,7 +132,9 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"resultType":           t,
 		"package":              pkg,
 		"Package":              namer.IC(pkg),
-		"namespaced":           !tags.NonNamespaced,
+		"namespaced":           !tags.NonNamespaced && !tags.NonTenanted,
+		"tenanted":             tags.NonNamespaced && !tags.NonTenanted,
+		"clusterScoped":        tags.NonNamespaced && tags.NonTenanted,
 		"Group":                namer.IC(g.group),
 		"subresource":          false,
 		"subresourcePath":      "",
@@ -142,13 +147,19 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"watchInterface":       c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
 		"RESTClientInterface":  c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
 		"schemeParameterCodec": c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
+		"DefaultTenant":        core.TenantDefault,
 	}
 
 	sw.Do(getterComment, m)
-	if tags.NonNamespaced {
-		sw.Do(getterNonNamespaced, m)
-	} else {
-		sw.Do(getterNamespaced, m)
+	switch {
+	case m["clusterScoped"]:
+		sw.Do(getterClusterScoped, m)
+	case m["tenanted"]:
+		sw.Do(getterTenantScoped, m)
+	case m["namespaced"]:
+		sw.Do(getterNamespaceScoped, m)
+	default:
+		return fmt.Errorf("The scope of (%s) is not supported, namespaced but not tenanted.", t.Name)
 	}
 
 	sw.Do(interfaceTemplate1, m)
@@ -169,12 +180,16 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 	}
 	sw.Do(interfaceTemplate4, m)
 
-	if tags.NonNamespaced {
-		sw.Do(structNonNamespaced, m)
-		sw.Do(newStructNonNamespaced, m)
-	} else {
-		sw.Do(structNamespaced, m)
-		sw.Do(newStructNamespaced, m)
+	switch {
+	case m["clusterScoped"]:
+		sw.Do(structClusterScoped, m)
+		sw.Do(newStructClusterScoped, m)
+	case m["tenanted"]:
+		sw.Do(structTenantScoped, m)
+		sw.Do(newStructTenantScoped, m)
+	case m["namespaced"]:
+		sw.Do(structNamespaceScoped, m)
+		sw.Do(newStructNamespaceScoped, m)
 	}
 
 	if tags.NoVerbs {
@@ -327,13 +342,19 @@ var getterComment = `
 // $.type|publicPlural$Getter has a method to return a $.type|public$Interface.
 // A group's client should implement this interface.`
 
-var getterNamespaced = `
+var getterNamespaceScoped = `
 type $.type|publicPlural$Getter interface {
-	$.type|publicPlural$(namespace string) $.type|public$Interface
+	$.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$Interface
 }
 `
 
-var getterNonNamespaced = `
+var getterTenantScoped = `
+type $.type|publicPlural$Getter interface {
+	$.type|publicPlural$(optional_tenant ...string) $.type|public$Interface
+}
+`
+
+var getterClusterScoped = `
 type $.type|publicPlural$Getter interface {
 	$.type|publicPlural$() $.type|public$Interface
 }
@@ -350,33 +371,63 @@ var interfaceTemplate4 = `
 `
 
 // template for the struct that implements the type's interface
-var structNamespaced = `
+var structNamespaceScoped = `
 // $.type|privatePlural$ implements $.type|public$Interface
 type $.type|privatePlural$ struct {
 	client $.RESTClientInterface|raw$
 	ns     string
+	te     string
 }
 `
 
 // template for the struct that implements the type's interface
-var structNonNamespaced = `
+var structTenantScoped = `
+// $.type|privatePlural$ implements $.type|public$Interface
+type $.type|privatePlural$ struct {
+	client $.RESTClientInterface|raw$
+	te     string
+}
+`
+
+// template for the struct that implements the type's interface
+var structClusterScoped = `
 // $.type|privatePlural$ implements $.type|public$Interface
 type $.type|privatePlural$ struct {
 	client $.RESTClientInterface|raw$
 }
 `
 
-var newStructNamespaced = `
+var newStructNamespaceScoped = `
 // new$.type|publicPlural$ returns a $.type|publicPlural$
-func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, namespace string) *$.type|privatePlural$ {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, namespace string, optional_tenant ...string) *$.type|privatePlural$ {
+	tenant := "$.DefaultTenant$"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &$.type|privatePlural${
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 `
 
-var newStructNonNamespaced = `
+var newStructTenantScoped = `
+// new$.type|publicPlural$ returns a $.type|publicPlural$
+func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, optional_tenant ...string) *$.type|privatePlural$ {
+	tenant := "$.DefaultTenant$"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &$.type|privatePlural${
+		client: c.RESTClient(),
+		te:     tenant,
+	}
+}
+`
+
+var newStructClusterScoped = `
 // new$.type|publicPlural$ returns a $.type|publicPlural$
 func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client) *$.type|privatePlural$ {
 	return &$.type|privatePlural${
@@ -393,12 +444,14 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 	}
 	result = &$.resultType|raw$List{}
 	err = c.client.Get().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		VersionedParams(&opts, $.schemeParameterCodec|raw$).
 		Timeout(timeout).
 		Do().
 		Into(result)
+	
 	return
 }
 `
@@ -412,7 +465,9 @@ func (c *$.type|privatePlural$) List($.type|private$Name string, opts $.ListOpti
 	}
 	result = &$.resultType|raw$List{}
 	err = c.client.Get().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
@@ -420,6 +475,7 @@ func (c *$.type|privatePlural$) List($.type|private$Name string, opts $.ListOpti
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -429,12 +485,15 @@ var getTemplate = `
 func (c *$.type|privatePlural$) Get(name string, options $.GetOptions|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
 	err = c.client.Get().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name(name).
 		VersionedParams(&options, $.schemeParameterCodec|raw$).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -444,13 +503,16 @@ var getSubresourceTemplate = `
 func (c *$.type|privatePlural$) Get($.type|private$Name string, options $.GetOptions|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
 	err = c.client.Get().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
 		VersionedParams(&options, $.schemeParameterCodec|raw$).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -459,7 +521,9 @@ var deleteTemplate = `
 // Delete takes name of the $.type|private$ and deletes it. Returns an error if one occurs.
 func (c *$.type|privatePlural$) Delete(name string, options *$.DeleteOptions|raw$) error {
 	return c.client.Delete().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name(name).
 		Body(options).
@@ -476,7 +540,9 @@ func (c *$.type|privatePlural$) DeleteCollection(options *$.DeleteOptions|raw$, 
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		VersionedParams(&listOptions, $.schemeParameterCodec|raw$).
 		Timeout(timeout).
@@ -491,13 +557,16 @@ var createSubresourceTemplate = `
 func (c *$.type|privatePlural$) Create($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
 	err = c.client.Post().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
 		Body($.inputType|private$).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -507,11 +576,14 @@ var createTemplate = `
 func (c *$.type|privatePlural$) Create($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
 	err = c.client.Post().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Body($.inputType|private$).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -521,13 +593,16 @@ var updateSubresourceTemplate = `
 func (c *$.type|privatePlural$) Update($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
 	err = c.client.Put().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
 		Body($.inputType|private$).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -537,12 +612,15 @@ var updateTemplate = `
 func (c *$.type|privatePlural$) Update($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
 	err = c.client.Put().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name($.inputType|private$.Name).
 		Body($.inputType|private$).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -554,13 +632,16 @@ var updateStatusTemplate = `
 func (c *$.type|privatePlural$) UpdateStatus($.type|private$ *$.type|raw$) (result *$.type|raw$, err error) {
 	result = &$.type|raw${}
 	err = c.client.Put().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$.Name).
 		SubResource("status").
 		Body($.type|private$).
 		Do().
 		Into(result)
+
 	return
 }
 `
@@ -574,26 +655,32 @@ func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) ($.watchInterface
 	}
 	opts.Watch = true
 	return c.client.Get().
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		VersionedParams(&opts, $.schemeParameterCodec|raw$).
 		Timeout(timeout).
-		Watch()
+		Watch()	
 }
 `
 
+// tenant is no longer optional here, as the param of subResource is optional
 var patchTemplate = `
 // Patch applies the patch and returns the patched $.resultType|private$.
 func (c *$.type|privatePlural$) Patch(name string, pt $.PatchType|raw$, data []byte, subresources ...string) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
 	err = c.client.Patch(pt).
-		$if .namespaced$Namespace(c.ns).$end$
+		$if .namespaced$Tenant(c.te).
+		Namespace(c.ns).$end$
+		$if .tenanted$Tenant(c.te).$end$
 		Resource("$.type|resource$").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }
 `

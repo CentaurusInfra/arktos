@@ -51,7 +51,7 @@ func TestOriginalObjectCaptured(t *testing.T) {
 
 	// construct a test resource
 	testResource := schema.GroupVersionResource{Group: "", Version: "test_version", Resource: "test_kind"}
-	testObj := getArbitraryResource(testResource, "test_name", "test_namespace")
+	testObj := getArbitraryResource(testResource, "test_name", "test_namespace", "test-tenant")
 
 	// create a fake CreateAction
 	action := CreateActionImpl{
@@ -128,7 +128,7 @@ func TestReactorChangesPersisted(t *testing.T) {
 
 	// construct a test resource
 	testResource := schema.GroupVersionResource{Group: "", Version: "test_version", Resource: "test_kind"}
-	testObj := getArbitraryResource(testResource, "test_name", "test_namespace")
+	testObj := getArbitraryResource(testResource, "test_name", "test_namespace", "test-tenant")
 
 	// create a fake CreateAction
 	action := CreateActionImpl{

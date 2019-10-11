@@ -34,8 +34,8 @@ type AutoscalingV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AutoscalingV1Client) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerInterface {
-	return newHorizontalPodAutoscalers(c, namespace)
+func (c *AutoscalingV1Client) HorizontalPodAutoscalers(namespace string, optional_tenant ...string) HorizontalPodAutoscalerInterface {
+	return newHorizontalPodAutoscalers(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new AutoscalingV1Client for the given config.

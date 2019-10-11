@@ -432,6 +432,7 @@ func TestUpdateNode(t *testing.T) {
 			pods: []v1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
+						Tenant:    metav1.TenantDefault,
 						Namespace: "default",
 						Name:      "pod1",
 					},

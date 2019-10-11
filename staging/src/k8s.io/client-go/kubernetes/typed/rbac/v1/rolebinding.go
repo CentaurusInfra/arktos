@@ -32,7 +32,7 @@ import (
 // RoleBindingsGetter has a method to return a RoleBindingInterface.
 // A group's client should implement this interface.
 type RoleBindingsGetter interface {
-	RoleBindings(namespace string) RoleBindingInterface
+	RoleBindings(namespace string, optional_tenant ...string) RoleBindingInterface
 }
 
 // RoleBindingInterface has methods to work with RoleBinding resources.
@@ -52,13 +52,20 @@ type RoleBindingInterface interface {
 type roleBindings struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newRoleBindings returns a RoleBindings
-func newRoleBindings(c *RbacV1Client, namespace string) *roleBindings {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newRoleBindings(c *RbacV1Client, namespace string, optional_tenant ...string) *roleBindings {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &roleBindings{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -66,12 +73,14 @@ func newRoleBindings(c *RbacV1Client, namespace string) *roleBindings {
 func (c *roleBindings) Get(name string, options metav1.GetOptions) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -83,12 +92,13 @@ func (c *roleBindings) List(opts metav1.ListOptions) (result *v1.RoleBindingList
 	}
 	result = &v1.RoleBindingList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("rolebindings").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -100,6 +110,7 @@ func (c *roleBindings) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -111,11 +122,13 @@ func (c *roleBindings) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *roleBindings) Create(roleBinding *v1.RoleBinding) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Body(roleBinding).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -123,18 +136,21 @@ func (c *roleBindings) Create(roleBinding *v1.RoleBinding) (result *v1.RoleBindi
 func (c *roleBindings) Update(roleBinding *v1.RoleBinding) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Name(roleBinding.Name).
 		Body(roleBinding).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the roleBinding and deletes it. Returns an error if one occurs.
 func (c *roleBindings) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Name(name).
@@ -150,6 +166,7 @@ func (c *roleBindings) DeleteCollection(options *metav1.DeleteOptions, listOptio
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -163,6 +180,7 @@ func (c *roleBindings) DeleteCollection(options *metav1.DeleteOptions, listOptio
 func (c *roleBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		SubResource(subresources...).
@@ -170,5 +188,6 @@ func (c *roleBindings) Patch(name string, pt types.PatchType, data []byte, subre
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

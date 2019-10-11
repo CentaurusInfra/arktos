@@ -17,6 +17,7 @@ limitations under the License.
 package generators
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -116,10 +117,19 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 			"GroupGoName": g.groupGoName,
 			"Version":     namer.IC(g.version),
 		}
-		if tags.NonNamespaced {
-			sw.Do(getterImplNonNamespaced, wrapper)
-		} else {
-			sw.Do(getterImplNamespaced, wrapper)
+
+		switch {
+		case tags.NonNamespaced && tags.NonTenanted:
+			sw.Do(getterImplClusterScoped, wrapper)
+
+		case tags.NonNamespaced && !tags.NonTenanted:
+			sw.Do(getterImplTenantScoped, wrapper)
+
+		case !tags.NonNamespaced && !tags.NonTenanted:
+			sw.Do(getterImplNamespaceScoped, wrapper)
+
+		default:
+			return fmt.Errorf("The scope of (%s) is not supported, namespaced but not tenanted.", t.Name)
 		}
 	}
 	sw.Do(newClientForConfigTemplate, m)
@@ -150,13 +160,19 @@ type $.GroupGoName$$.Version$Client struct {
 }
 `
 
-var getterImplNamespaced = `
-func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$(namespace string) $.type|public$Interface {
-	return new$.type|publicPlural$(c, namespace)
+var getterImplNamespaceScoped = `
+func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$Interface {
+	return new$.type|publicPlural$(c, namespace, optional_tenant...)
 }
 `
 
-var getterImplNonNamespaced = `
+var getterImplTenantScoped = `
+func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$(tenant ...string) $.type|public$Interface {
+	return new$.type|publicPlural$(c, tenant...)
+}
+`
+
+var getterImplClusterScoped = `
 func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$() $.type|public$Interface {
 	return new$.type|publicPlural$(c)
 }

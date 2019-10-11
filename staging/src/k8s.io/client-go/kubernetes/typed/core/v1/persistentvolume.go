@@ -32,7 +32,7 @@ import (
 // PersistentVolumesGetter has a method to return a PersistentVolumeInterface.
 // A group's client should implement this interface.
 type PersistentVolumesGetter interface {
-	PersistentVolumes() PersistentVolumeInterface
+	PersistentVolumes(optional_tenant ...string) PersistentVolumeInterface
 }
 
 // PersistentVolumeInterface has methods to work with PersistentVolume resources.
@@ -52,12 +52,18 @@ type PersistentVolumeInterface interface {
 // persistentVolumes implements PersistentVolumeInterface
 type persistentVolumes struct {
 	client rest.Interface
+	te     string
 }
 
 // newPersistentVolumes returns a PersistentVolumes
-func newPersistentVolumes(c *CoreV1Client) *persistentVolumes {
+func newPersistentVolumes(c *CoreV1Client, optional_tenant ...string) *persistentVolumes {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &persistentVolumes{
 		client: c.RESTClient(),
+		te:     tenant,
 	}
 }
 
@@ -65,11 +71,13 @@ func newPersistentVolumes(c *CoreV1Client) *persistentVolumes {
 func (c *persistentVolumes) Get(name string, options metav1.GetOptions) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -81,11 +89,13 @@ func (c *persistentVolumes) List(opts metav1.ListOptions) (result *v1.Persistent
 	}
 	result = &v1.PersistentVolumeList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -97,6 +107,7 @@ func (c *persistentVolumes) Watch(opts metav1.ListOptions) (watch.Interface, err
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,10 +118,12 @@ func (c *persistentVolumes) Watch(opts metav1.ListOptions) (watch.Interface, err
 func (c *persistentVolumes) Create(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		Body(persistentVolume).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -118,11 +131,13 @@ func (c *persistentVolumes) Create(persistentVolume *v1.PersistentVolume) (resul
 func (c *persistentVolumes) Update(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		Name(persistentVolume.Name).
 		Body(persistentVolume).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -132,18 +147,21 @@ func (c *persistentVolumes) Update(persistentVolume *v1.PersistentVolume) (resul
 func (c *persistentVolumes) UpdateStatus(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		Name(persistentVolume.Name).
 		SubResource("status").
 		Body(persistentVolume).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the persistentVolume and deletes it. Returns an error if one occurs.
 func (c *persistentVolumes) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		Name(name).
 		Body(options).
@@ -158,6 +176,7 @@ func (c *persistentVolumes) DeleteCollection(options *metav1.DeleteOptions, list
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -170,11 +189,13 @@ func (c *persistentVolumes) DeleteCollection(options *metav1.DeleteOptions, list
 func (c *persistentVolumes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("persistentvolumes").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

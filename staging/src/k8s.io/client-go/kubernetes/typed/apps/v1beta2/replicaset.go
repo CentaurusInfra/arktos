@@ -32,7 +32,7 @@ import (
 // ReplicaSetsGetter has a method to return a ReplicaSetInterface.
 // A group's client should implement this interface.
 type ReplicaSetsGetter interface {
-	ReplicaSets(namespace string) ReplicaSetInterface
+	ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetInterface
 }
 
 // ReplicaSetInterface has methods to work with ReplicaSet resources.
@@ -53,13 +53,20 @@ type ReplicaSetInterface interface {
 type replicaSets struct {
 	client rest.Interface
 	ns     string
+	te     string
 }
 
 // newReplicaSets returns a ReplicaSets
-func newReplicaSets(c *AppsV1beta2Client, namespace string) *replicaSets {
+// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
+func newReplicaSets(c *AppsV1beta2Client, namespace string, optional_tenant ...string) *replicaSets {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &replicaSets{
 		client: c.RESTClient(),
 		ns:     namespace,
+		te:     tenant,
 	}
 }
 
@@ -67,12 +74,14 @@ func newReplicaSets(c *AppsV1beta2Client, namespace string) *replicaSets {
 func (c *replicaSets) Get(name string, options v1.GetOptions) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -84,12 +93,13 @@ func (c *replicaSets) List(opts v1.ListOptions) (result *v1beta2.ReplicaSetList,
 	}
 	result = &v1beta2.ReplicaSetList{}
 	err = c.client.Get().
-		Namespace(c.ns).
+		Tenant(c.te).Namespace(c.ns).
 		Resource("replicasets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -101,6 +111,7 @@ func (c *replicaSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -112,11 +123,13 @@ func (c *replicaSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *replicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Body(replicaSet).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -124,12 +137,14 @@ func (c *replicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.Re
 func (c *replicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSet.Name).
 		Body(replicaSet).
 		Do().
 		Into(result)
+
 	return
 }
 
@@ -139,6 +154,7 @@ func (c *replicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.Re
 func (c *replicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSet.Name).
@@ -146,12 +162,14 @@ func (c *replicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (result *v1be
 		Body(replicaSet).
 		Do().
 		Into(result)
+
 	return
 }
 
 // Delete takes name of the replicaSet and deletes it. Returns an error if one occurs.
 func (c *replicaSets) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(name).
@@ -167,6 +185,7 @@ func (c *replicaSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
@@ -180,6 +199,7 @@ func (c *replicaSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 func (c *replicaSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("replicasets").
 		SubResource(subresources...).
@@ -187,5 +207,6 @@ func (c *replicaSets) Patch(name string, pt types.PatchType, data []byte, subres
 		Body(data).
 		Do().
 		Into(result)
+
 	return
 }

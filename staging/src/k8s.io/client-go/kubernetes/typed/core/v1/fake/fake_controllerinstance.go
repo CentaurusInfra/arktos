@@ -44,6 +44,7 @@ func (c *FakeControllerInstances) Get(name string, options v1.GetOptions) (resul
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ControllerInstance), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeControllerInstances) Create(controllerInstance *corev1.ControllerIn
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ControllerInstance), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeControllerInstances) Update(controllerInstance *corev1.ControllerIn
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ControllerInstance), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeControllerInstances) Delete(name string, options *v1.DeleteOptions)
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeControllerInstances) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(controllerinstancesResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(controllerinstancesResource, listOptions)
 	_, err := c.Fake.Invokes(action, &corev1.ControllerInstanceList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeControllerInstances) Patch(name string, pt types.PatchType, data []
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*corev1.ControllerInstance), err
 }

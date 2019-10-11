@@ -44,6 +44,7 @@ func (c *FakeValidatingWebhookConfigurations) Get(name string, options v1.GetOpt
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ValidatingWebhookConfiguration), err
 }
 
@@ -81,6 +82,7 @@ func (c *FakeValidatingWebhookConfigurations) Create(validatingWebhookConfigurat
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ValidatingWebhookConfiguration), err
 }
 
@@ -91,6 +93,7 @@ func (c *FakeValidatingWebhookConfigurations) Update(validatingWebhookConfigurat
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ValidatingWebhookConfiguration), err
 }
 
@@ -103,8 +106,8 @@ func (c *FakeValidatingWebhookConfigurations) Delete(name string, options *v1.De
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeValidatingWebhookConfigurations) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(validatingwebhookconfigurationsResource, listOptions)
 
+	action := testing.NewRootDeleteCollectionAction(validatingwebhookconfigurationsResource, listOptions)
 	_, err := c.Fake.Invokes(action, &v1beta1.ValidatingWebhookConfigurationList{})
 	return err
 }
@@ -116,5 +119,6 @@ func (c *FakeValidatingWebhookConfigurations) Patch(name string, pt types.PatchT
 	if obj == nil {
 		return nil, err
 	}
+
 	return obj.(*v1beta1.ValidatingWebhookConfiguration), err
 }

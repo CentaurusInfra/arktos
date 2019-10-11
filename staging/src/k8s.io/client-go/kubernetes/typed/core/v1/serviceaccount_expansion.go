@@ -30,6 +30,7 @@ type ServiceAccountExpansion interface {
 func (c *serviceAccounts) CreateToken(name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 	result := &authenticationv1.TokenRequest{}
 	err := c.client.Post().
+		Tenant(c.te).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		SubResource("token").

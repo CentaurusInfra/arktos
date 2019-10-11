@@ -39,8 +39,8 @@ func (c *StorageV1Client) StorageClasses() StorageClassInterface {
 	return newStorageClasses(c)
 }
 
-func (c *StorageV1Client) VolumeAttachments() VolumeAttachmentInterface {
-	return newVolumeAttachments(c)
+func (c *StorageV1Client) VolumeAttachments(tenant ...string) VolumeAttachmentInterface {
+	return newVolumeAttachments(c, tenant...)
 }
 
 // NewForConfig creates a new StorageV1Client for the given config.

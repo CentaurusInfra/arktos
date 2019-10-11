@@ -85,6 +85,7 @@ func serviceAccount(secretRefs []v1.ObjectReference) *v1.ServiceAccount {
 			Name:            "default",
 			UID:             "12345",
 			Namespace:       "default",
+			Tenant:          "default",
 			ResourceVersion: "1",
 		},
 		Secrets: secretRefs,
@@ -104,6 +105,7 @@ func opaqueSecret() *v1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "regular-secret-1",
 			Namespace:       "default",
+			Tenant:          "default",
 			UID:             "23456",
 			ResourceVersion: "1",
 		},
@@ -126,6 +128,7 @@ func namedCreatedTokenSecret(name string) *v1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
+			Tenant:    "default",
 			Annotations: map[string]string{
 				v1.ServiceAccountNameKey: "default",
 				v1.ServiceAccountUIDKey:  "12345",
@@ -146,6 +149,7 @@ func serviceAccountTokenSecret() *v1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "token-secret-1",
 			Namespace:       "default",
+			Tenant:          "default",
 			UID:             "23456",
 			ResourceVersion: "1",
 			Annotations: map[string]string{

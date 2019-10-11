@@ -17,13 +17,14 @@ limitations under the License.
 package fake
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	core "k8s.io/client-go/testing"
 )
 
 func (c *FakeNamespaces) Finalize(namespace *v1.Namespace) (*v1.Namespace, error) {
 	action := core.CreateActionImpl{}
 	action.Verb = "create"
+	action.Tenant = namespace.Tenant
 	action.Resource = namespacesResource
 	action.Subresource = "finalize"
 	action.Object = namespace

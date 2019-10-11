@@ -4896,9 +4896,9 @@ message VirtualMachine {
 
   // Pod volumes to mount into the workload's filesystem.
   // Cannot be updated.
+  // +optional
   // +patchMergeKey=mountPath
   // +patchStrategy=merge
-  // +optional
   repeated VolumeMount volumeMounts = 4;
 
   // Image pull policy.

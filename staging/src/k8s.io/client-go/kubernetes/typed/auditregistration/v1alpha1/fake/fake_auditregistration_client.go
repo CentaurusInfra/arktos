@@ -28,8 +28,12 @@ type FakeAuditregistrationV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAuditregistrationV1alpha1) AuditSinks() v1alpha1.AuditSinkInterface {
-	return &FakeAuditSinks{c}
+func (c *FakeAuditregistrationV1alpha1) AuditSinks(optional_tenant ...string) v1alpha1.AuditSinkInterface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &FakeAuditSinks{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

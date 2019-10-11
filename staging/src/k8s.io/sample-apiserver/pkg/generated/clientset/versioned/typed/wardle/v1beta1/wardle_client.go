@@ -34,8 +34,8 @@ type WardleV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *WardleV1beta1Client) Flunders(namespace string) FlunderInterface {
-	return newFlunders(c, namespace)
+func (c *WardleV1beta1Client) Flunders(namespace string, optional_tenant ...string) FlunderInterface {
+	return newFlunders(c, namespace, optional_tenant...)
 }
 
 // NewForConfig creates a new WardleV1beta1Client for the given config.

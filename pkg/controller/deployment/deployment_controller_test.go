@@ -59,6 +59,7 @@ func rs(name string, replicas int, selector map[string]string, timestamp metav1.
 			Name:              name,
 			CreationTimestamp: timestamp,
 			Namespace:         metav1.NamespaceDefault,
+			Tenant:            metav1.TenantDefault,
 		},
 		Spec: apps.ReplicaSetSpec{
 			Replicas: func() *int32 { i := int32(replicas); return &i }(),
@@ -83,6 +84,7 @@ func newDeployment(name string, replicas int, revisionHistoryLimit *int32, maxSu
 			UID:         uuid.NewUUID(),
 			Name:        name,
 			Namespace:   metav1.NamespaceDefault,
+			Tenant:      metav1.TenantDefault,
 			Annotations: make(map[string]string),
 		},
 		Spec: apps.DeploymentSpec{
@@ -126,6 +128,7 @@ func newReplicaSet(d *apps.Deployment, name string, replicas int) *apps.ReplicaS
 			Name:            name,
 			UID:             uuid.NewUUID(),
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			Labels:          d.Spec.Selector.MatchLabels,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(d, controllerKind)},
 		},
@@ -970,6 +973,7 @@ func generatePodFromRS(rs *apps.ReplicaSet) *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rs.Name + "-pod",
 			Namespace: rs.Namespace,
+			Tenant:    rs.Tenant,
 			Labels:    rs.Spec.Selector.MatchLabels,
 			OwnerReferences: []metav1.OwnerReference{
 				{UID: rs.UID, APIVersion: "v1beta1", Kind: "ReplicaSet", Name: rs.Name, Controller: &trueVar},
