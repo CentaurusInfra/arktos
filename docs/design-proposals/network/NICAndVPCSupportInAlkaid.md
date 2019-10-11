@@ -112,8 +112,8 @@ kind: Pod
 metadata:
   name: nginx
 spec:
-  VMs:
-  - name: nginx
+  VirtualMachine:
+    name: nginx
     image: www.foo.com/vmimages/nginx
     flavor: m1.large
     ports:
