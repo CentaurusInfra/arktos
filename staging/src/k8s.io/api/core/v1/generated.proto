@@ -99,6 +99,8 @@ message ActionStatus {
   optional PodActionStatus podActionStatus = 2;
 
   optional NodeActionStatus nodeActionStatus = 3;
+
+  optional string error = 4;
 }
 
 // Affinity is a group of affinity scheduling rules.

@@ -4228,6 +4228,7 @@ type ActionStatus struct {
 	Complete         bool
 	PodActionStatus  *PodActionStatus
 	NodeActionStatus *NodeActionStatus
+	Error            string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

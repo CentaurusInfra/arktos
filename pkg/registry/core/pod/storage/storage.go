@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"time"
 
 	"k8s.io/klog"
 
@@ -229,7 +230,7 @@ func (r *ActionREST) NamespaceScoped() bool {
 	return r.store.NamespaceScoped()
 }
 
-// New creates a new last-reboot resource
+// New creates a new CustomAction resource
 func (r *ActionREST) New() runtime.Object {
 	return &api.CustomAction{}
 }
@@ -260,7 +261,7 @@ func getActionSpec(pod *api.Pod, actionRequest *api.CustomAction) (actionObj *ap
 			Kind:       "Action",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: actionRequest.Operation,
+			Name: fmt.Sprintf("%s-%d", actionRequest.Operation, time.Now().Unix()),
 		},
 		Spec: actionSpec,
 	}

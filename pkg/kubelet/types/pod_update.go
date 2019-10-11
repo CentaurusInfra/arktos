@@ -41,8 +41,6 @@ type PodOperation int
 const (
 	// This is the current pod configuration
 	SET PodOperation = iota
-	// Handle Action
-	ACTION
 	// Pods with the given ids are new to this source
 	ADD
 	// Pods with the given ids are gracefully deleted from this source
@@ -56,6 +54,8 @@ const (
 	RECONCILE
 	// Pods with the given ids have been restored from a checkpoint.
 	RESTORE
+	// Handle Action
+	ACTION
 
 	// These constants identify the sources of pods
 	// Updates from a file

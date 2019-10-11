@@ -173,7 +173,7 @@ func (s *podStorage) Merge(source string, change interface{}) error {
 	defer s.updateLock.Unlock()
 
 	seenBefore := s.sourcesSeen.Has(source)
-	adds, updates, deletes, removes, reconciles, restores := s.merge(source, change)
+	adds, updates, deletes, removes, reconciles, restores, actions := s.merge(source, change)
 	firstSet := !seenBefore && s.sourcesSeen.Has(source)
 
 	// deliver update notifications
@@ -204,6 +204,9 @@ func (s *podStorage) Merge(source string, change interface{}) error {
 		if len(reconciles.Pods) > 0 {
 			s.updates <- *reconciles
 		}
+		if len(actions.Actions) > 0 {
+			s.updates <- *actions
+		}
 
 	case PodConfigNotificationSnapshotAndUpdates:
 		if len(removes.Pods) > 0 || len(adds.Pods) > 0 || firstSet {
@@ -230,7 +233,7 @@ func (s *podStorage) Merge(source string, change interface{}) error {
 	return nil
 }
 
-func (s *podStorage) merge(source string, change interface{}) (adds, updates, deletes, removes, reconciles, restores *kubetypes.PodUpdate) {
+func (s *podStorage) merge(source string, change interface{}) (adds, updates, deletes, removes, reconciles, restores, actions *kubetypes.PodUpdate) {
 	s.podLock.Lock()
 	defer s.podLock.Unlock()
 
@@ -332,8 +335,9 @@ func (s *podStorage) merge(source string, change interface{}) (adds, updates, de
 	removes = &kubetypes.PodUpdate{Op: kubetypes.REMOVE, Pods: copyPods(removePods), Source: source}
 	reconciles = &kubetypes.PodUpdate{Op: kubetypes.RECONCILE, Pods: copyPods(reconcilePods), Source: source}
 	restores = &kubetypes.PodUpdate{Op: kubetypes.RESTORE, Pods: copyPods(restorePods), Source: source}
+	actions = &kubetypes.PodUpdate{Op: kubetypes.ACTION, Pods: copyPods(update.Pods), Source: source, Actions: update.Actions}
 
-	return adds, updates, deletes, removes, reconciles, restores
+	return adds, updates, deletes, removes, reconciles, restores, actions
 }
 
 func (s *podStorage) markSourceSet(source string) {

@@ -19,6 +19,7 @@ package action
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -85,34 +86,53 @@ func (actionStrategy) AllowUnconditionalUpdate() bool {
 	return true
 }
 
+type actionStatusStrategy struct {
+	actionStrategy
+}
+
+var StatusStrategy = actionStatusStrategy{Strategy}
+
+func (actionStatusStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
+	newAction := obj.(*api.Action)
+	oldAction := old.(*api.Action)
+	newAction.Spec = oldAction.Spec
+}
+
+func (actionStatusStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
+	return validation.ValidateActionStatusUpdate(obj.(*api.Action), old.(*api.Action))
+}
+
 // GetAttrs returns labels and fields of a given object for filtering purposes.
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
-	_, ok := obj.(*api.Action)
+	action, ok := obj.(*api.Action)
 	if !ok {
 		return nil, nil, fmt.Errorf("not an action")
 	}
-	//TODO: Implement
-	return nil, nil, nil
-	//return labels.Set(event.Labels), EventToSelectableFields(event), nil
+	return labels.Set(action.ObjectMeta.Labels), ActionToSelectableFields(action), nil
 }
 
 func MatchAction(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
-		Label:    label,
-		Field:    field,
-		GetAttrs: GetAttrs,
+		Label:       label,
+		Field:       field,
+		GetAttrs:    GetAttrs,
+		IndexFields: []string{"spec.nodeName"},
 	}
+}
+
+func NodeNameTriggerFunc(obj runtime.Object) []storage.MatchValue {
+	action := obj.(*api.Action)
+	result := storage.MatchValue{IndexName: "spec.nodeName", Value: action.Spec.NodeName}
+	return []storage.MatchValue{result}
 }
 
 // ActionToSelectableFields returns a field set that represents the object
 func ActionToSelectableFields(action *api.Action) fields.Set {
 	//TODO: What else do we allow filtering on? TBD
 	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&action.ObjectMeta, true)
-	specificFieldsSet := fields.Set{
-		"resourceVersion": action.ResourceVersion,
-		"name":            action.Name,
+	actionSpecificFieldsSet := fields.Set{
 		"spec.nodeName":   action.Spec.NodeName,
-		//"status.complete":                action.Status.Complete,
+		"status.complete": strconv.FormatBool(action.Status.Complete),
 	}
-	return generic.MergeFieldsSets(objectMetaFieldsSet, specificFieldsSet)
+	return generic.MergeFieldsSets(objectMetaFieldsSet, actionSpecificFieldsSet)
 }

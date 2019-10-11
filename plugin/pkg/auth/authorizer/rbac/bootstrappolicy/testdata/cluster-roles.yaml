@@ -248,6 +248,8 @@ items:
   - apiGroups:
     - ""
     resources:
+    - actions
+    - actions/status
     - bindings
     - events
     - limitranges
@@ -744,12 +746,6 @@ items:
   - apiGroups:
     - ""
     resources:
-    - pods/action
-    verbs:
-    - create
-  - apiGroups:
-    - ""
-    resources:
     - pods/status
     verbs:
     - patch
@@ -913,6 +909,13 @@ items:
     - get
     - list
     - watch
+  - apiGroups:
+    - ""
+    resources:
+    - actions/status
+    verbs:
+    - patch
+    - update
   - apiGroups:
     - ""
     resources:

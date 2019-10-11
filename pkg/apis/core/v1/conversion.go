@@ -417,9 +417,11 @@ func AddFieldLabelConversionsForAction(scheme *runtime.Scheme) error {
 	return scheme.AddFieldLabelConversionFunc(SchemeGroupVersion.WithKind("Action"),
 		func(label, value string) (string, string, error) {
 			switch label {
-			case "nodeName",
-				"name",
-				"resourceVersion":
+			case "spec.nodeName",
+				"status.complete",
+				"metadata.hashkey",
+				"metadata.namespace",
+				"metadata.name":
 				return label, value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)

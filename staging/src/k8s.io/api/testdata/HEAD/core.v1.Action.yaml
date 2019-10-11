@@ -47,6 +47,7 @@ spec:
     snapshotAction:
       snapshotLocation: "28"
 status:
+  error: "31"
   nodeActionStatus:
     rebootStatus: {}
   podActionStatus:
