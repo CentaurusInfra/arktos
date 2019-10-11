@@ -120,7 +120,7 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 
 	podTemplateStorage := podtemplatestore.NewREST(restOptionsGetter)
 
-	actionStorage := actionstore.NewREST(restOptionsGetter, uint64(c.EventTTL.Seconds()))
+	actionStorage, actionStatusStorage := actionstore.NewREST(restOptionsGetter, uint64(c.EventTTL.Seconds()))
 
 	eventStorage := eventstore.NewREST(restOptionsGetter, uint64(c.EventTTL.Seconds()))
 	limitRangeStorage := limitrangestore.NewREST(restOptionsGetter)
@@ -221,8 +221,10 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		"nodes/status": nodeStorage.Status,
 		"nodes/proxy":  nodeStorage.Proxy,
 
-		"actions": actionStorage,
-		"events":  eventStorage,
+		"actions":        actionStorage,
+		"actions/status": actionStatusStorage,
+
+		"events": eventStorage,
 
 		"limitRanges":           limitRangeStorage,
 		"resourceQuotas":        resourceQuotaStorage,

@@ -4741,6 +4741,7 @@ type ActionStatus struct {
 	Complete         bool              `json:"complete,omitempty" protobuf:"varint,1,opt,name=complete"`
 	PodActionStatus  *PodActionStatus  `json:"podActionStatus,omitempty" protobuf:"bytes,2,opt,name=podActionStatus"`
 	NodeActionStatus *NodeActionStatus `json:"nodeActionStatus,omitempty" protobuf:"bytes,3,opt,name=nodeActionStatus"`
+	Error            string            `json:"error,omitempty" protobuf:"bytes,4,opt,name=error"`
 }
 
 // +genclient

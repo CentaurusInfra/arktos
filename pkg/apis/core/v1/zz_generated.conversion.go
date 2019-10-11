@@ -2471,6 +2471,7 @@ func autoConvert_v1_ActionStatus_To_core_ActionStatus(in *v1.ActionStatus, out *
 	out.Complete = in.Complete
 	out.PodActionStatus = (*core.PodActionStatus)(unsafe.Pointer(in.PodActionStatus))
 	out.NodeActionStatus = (*core.NodeActionStatus)(unsafe.Pointer(in.NodeActionStatus))
+	out.Error = in.Error
 	return nil
 }
 
@@ -2483,6 +2484,7 @@ func autoConvert_core_ActionStatus_To_v1_ActionStatus(in *core.ActionStatus, out
 	out.Complete = in.Complete
 	out.PodActionStatus = (*v1.PodActionStatus)(unsafe.Pointer(in.PodActionStatus))
 	out.NodeActionStatus = (*v1.NodeActionStatus)(unsafe.Pointer(in.NodeActionStatus))
+	out.Error = in.Error
 	return nil
 }
 

@@ -21,8 +21,17 @@ import (
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
-// ValidateAction makes sure that the event makes sense.
-func ValidateAction(event *core.Action) field.ErrorList {
+// ValidateAction makes sure that the action makes sense.
+func ValidateAction(action *core.Action) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	//TODO: Add validation
+
+	return allErrs
+}
+
+// ValidateActionStatusUpdate makes sure that the action status update makes sense.
+func ValidateActionStatusUpdate(newAction, oldAction *core.Action) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	//TODO: Add validation
