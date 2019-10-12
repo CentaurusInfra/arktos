@@ -393,6 +393,14 @@ func (f *FakeStreamingRuntime) GetPortForward(podName, podNamespace string, podU
 	return &url.URL{Host: FakeHost}, f.Err
 }
 
+func (f *FakeRuntime) RebootVM(vmID string) error {
+	f.Lock()
+	defer f.Unlock()
+
+	f.CalledFunctions = append(f.CalledFunctions, "RebootVM")
+	return f.Err
+}
+
 type FakeContainerCommandRunner struct {
 	// what to return
 	Stdout string

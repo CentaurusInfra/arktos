@@ -141,7 +141,10 @@ func (r *Mock) DeleteContainer(containerID ContainerID) error {
 	args := r.Called(containerID)
 	return args.Error(0)
 }
-
+func (r *Mock) RebootVM(vmID string) error {
+	args := r.Called(vmID)
+	return args.Error(0)
+}
 func (r *Mock) ImageStats() (*ImageStats, error) {
 	args := r.Called()
 	return args.Get(0).(*ImageStats), args.Error(1)

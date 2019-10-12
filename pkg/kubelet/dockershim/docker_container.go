@@ -470,3 +470,7 @@ func (ds *dockerService) performPlatformSpecificContainerCleanupAndLogErrors(con
 		klog.Warningf("error when cleaning up after container %q: %v", containerNameOrID, err)
 	}
 }
+
+func (ds *dockerService) RebootVM(_ context.Context, _ *runtimeapi.RebootVMRequest) (*runtimeapi.RebootVMResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}

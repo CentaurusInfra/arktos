@@ -515,3 +515,17 @@ func (r *RemoteRuntimeService) ReopenContainerLog(containerID string) error {
 	}
 	return nil
 }
+
+func (r *RemoteRuntimeService) RebootVM(vmID string) error {
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	_, err := r.runtimeClient.RebootVM(ctx, &runtimeapi.RebootVMRequest{VmId: vmID})
+
+	if err != nil {
+		klog.Errorf("RebootVM %s from runtime service failed: %v", vmID, err)
+		return err
+	}
+
+	return nil
+}

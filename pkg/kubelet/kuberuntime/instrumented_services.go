@@ -152,6 +152,15 @@ func (in instrumentedRuntimeService) ReopenContainerLog(containerID string) erro
 	return err
 }
 
+func (in instrumentedRuntimeService) RebootVM(vmID string) error {
+	const operation = "RebootVM"
+	defer recordOperation(operation, time.Now())
+
+	err := in.service.RebootVM(vmID)
+	recordError(operation, err)
+	return err
+}
+
 func (in instrumentedRuntimeService) ExecSync(containerID string, cmd []string, timeout time.Duration) ([]byte, []byte, error) {
 	const operation = "exec_sync"
 	defer recordOperation(operation, time.Now())

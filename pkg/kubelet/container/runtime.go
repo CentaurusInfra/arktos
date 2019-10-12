@@ -115,6 +115,16 @@ type Runtime interface {
 	// This method just proxies a new runtimeConfig with the updated
 	// CIDR value down to the runtime shim.
 	UpdatePodCIDR(podCIDR string) error
+
+	// Added into the container runtime interface to avoid mass code change to pass new interface to kubelet components for now
+	// TODO: add new filed in kubelet object so the interface can be consumed directly in needed components
+	VmService
+}
+
+// VM related interface methods
+type VmService interface {
+	// Reboot VM, this will relay to virDomainReboot in libvirt
+	RebootVM(VmID string) error
 }
 
 // TODO: this interface will be needed for VM workload type as well with the return value to be generic

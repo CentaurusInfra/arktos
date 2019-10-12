@@ -107,6 +107,9 @@ service RuntimeService {
 
     // Status returns the status of the runtime.
     rpc Status(StatusRequest) returns (StatusResponse) {}
+
+    // RebootVM reboots the VM domain and returns error msg if there is any
+    rpc RebootVM(RebootVMRequest) returns (RebootVMResponse) {}
 }
 
 // ImageService defines the public APIs for managing images.
@@ -1272,3 +1275,19 @@ message ReopenContainerLogRequest {
 
 message ReopenContainerLogResponse{
 }
+
+message VmRebootSpec {
+    // time to wait before the reboot of the guest OS
+    int64 delayInSeconds = 1;
+    // virDomainRebootFlagValue for libvirt
+    int64 domainRebootFlag = 2;
+}
+
+message RebootVMRequest {
+    // ID of the VM to reboot
+    string vm_id = 1;
+    // Parameters for rebooting the domain
+    VmRebootSpec rebootSpec = 2;
+}
+
+message RebootVMResponse {}

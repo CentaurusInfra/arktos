@@ -294,3 +294,13 @@ func (f *RemoteRuntime) ReopenContainerLog(ctx context.Context, req *kubeapi.Reo
 
 	return &kubeapi.ReopenContainerLogResponse{}, nil
 }
+
+// RebootVM reboots the VM domain
+func (f *RemoteRuntime) RebootVM(ctx context.Context, req *kubeapi.RebootVMRequest) (*kubeapi.RebootVMResponse, error) {
+	err := f.RuntimeService.RebootVM(req.VmId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubeapi.RebootVMResponse{}, nil
+}

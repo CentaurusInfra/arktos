@@ -95,6 +95,7 @@ type RuntimeService interface {
 	ContainerManager
 	PodSandboxManager
 	ContainerStatsManager
+	VmManager
 
 	// UpdateRuntimeConfig updates runtime configuration if specified
 	UpdateRuntimeConfig(runtimeConfig *runtimeapi.RuntimeConfig) error
@@ -116,4 +117,10 @@ type ImageManagerService interface {
 	RemoveImage(image *runtimeapi.ImageSpec) error
 	// ImageFsInfo returns information of the filesystem that is used to store images.
 	ImageFsInfo() ([]*runtimeapi.FilesystemUsage, error)
+}
+
+// VM related interface methods
+type VmManager interface {
+	// Reboot VM, this will relay to virDomainReboot in libvirt
+	RebootVM(vmID string) error
 }

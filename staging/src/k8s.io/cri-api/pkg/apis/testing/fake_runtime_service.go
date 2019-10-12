@@ -575,3 +575,16 @@ func (r *FakeRuntimeService) ReopenContainerLog(containerID string) error {
 
 	return nil
 }
+
+func (r *FakeRuntimeService) RebootVM(vmID string) error {
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "RebootVM")
+
+	if err := r.popError("RebootVM"); err != nil {
+		return err
+	}
+
+	return nil
+}
