@@ -44,7 +44,7 @@ func (s *deploymentLister) GetDeploymentsForReplicaSet(rs *extensions.ReplicaSet
 	}
 
 	// TODO: MODIFY THIS METHOD so that it checks for the podTemplateSpecHash label
-	dList, err := s.Deployments(rs.Namespace).List(labels.Everything())
+	dList, err := s.Deployments(rs.Namespace, rs.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (s *deploymentLister) GetDeploymentsForReplicaSet(rs *extensions.ReplicaSet
 	}
 
 	if len(deployments) == 0 {
-		return nil, fmt.Errorf("could not find deployments set for ReplicaSet %s in namespace %s with labels: %v", rs.Name, rs.Namespace, rs.Labels)
+		return nil, fmt.Errorf("could not find deployments set for ReplicaSet %s in tenant %s namespace %s with labels: %v", rs.Name, rs.Tenant, rs.Namespace, rs.Labels)
 	}
 
 	return deployments, nil

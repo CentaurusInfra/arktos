@@ -41,7 +41,7 @@ func (s *replicationControllerLister) GetPodControllers(pod *v1.Pod) ([]*v1.Repl
 		return nil, fmt.Errorf("no controllers found for pod %v because it has no labels", pod.Name)
 	}
 
-	items, err := s.ReplicationControllers(pod.Namespace).List(labels.Everything())
+	items, err := s.ReplicationControllers(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (s *replicationControllerLister) GetPodControllers(pod *v1.Pod) ([]*v1.Repl
 	}
 
 	if len(controllers) == 0 {
-		return nil, fmt.Errorf("could not find controller for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+		return nil, fmt.Errorf("could not find controller for pod %s in tenant %s namespace %s with labels: %v", pod.Name, pod.Tenant, pod.Namespace, pod.Labels)
 	}
 
 	return controllers, nil

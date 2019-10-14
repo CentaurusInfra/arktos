@@ -46,7 +46,7 @@ func (l *jobLister) GetPodJobs(pod *v1.Pod) (jobs []batch.Job, err error) {
 	}
 
 	var list []*batch.Job
-	list, err = l.Jobs(pod.Namespace).List(labels.Everything())
+	list, err = l.Jobs(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return
 	}
@@ -58,7 +58,7 @@ func (l *jobLister) GetPodJobs(pod *v1.Pod) (jobs []batch.Job, err error) {
 		jobs = append(jobs, *job)
 	}
 	if len(jobs) == 0 {
-		err = fmt.Errorf("could not find jobs for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+		err = fmt.Errorf("could not find jobs for pod %s in tenant %s namespace %s with labels: %v", pod.Name, pod.Tenant, pod.Namespace, pod.Labels)
 	}
 	return
 }
