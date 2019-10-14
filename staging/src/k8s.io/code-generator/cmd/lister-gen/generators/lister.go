@@ -29,6 +29,7 @@ import (
 
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 	clientgentypes "k8s.io/code-generator/cmd/client-gen/types"
+	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/klog"
 )
@@ -225,9 +226,10 @@ func (g *listerGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 
 	klog.V(5).Infof("processing type %v", t)
 	m := map[string]interface{}{
-		"Resource":   c.Universe.Function(types.Name{Package: t.Name.Package, Name: "Resource"}),
-		"type":       t,
-		"objectMeta": g.objectMeta,
+		"Resource":      c.Universe.Function(types.Name{Package: t.Name.Package, Name: "Resource"}),
+		"type":          t,
+		"objectMeta":    g.objectMeta,
+		"DefaultTenant": core.TenantDefault,
 	}
 
 	tags, err := util.ParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
@@ -235,42 +237,72 @@ func (g *listerGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 		return err
 	}
 
-	if tags.NonNamespaced {
-		sw.Do(typeListerInterface_NonNamespaced, m)
-	} else {
-		sw.Do(typeListerInterface, m)
+	switch {
+	case tags.NonNamespaced && tags.NonTenanted:
+		//cluster scope
+		sw.Do(typeListerInterface_ClusterScope, m)
+		sw.Do(typeListerStruct, m)
+		sw.Do(typeListerConstructor, m)
+		sw.Do(typeLister_List, m)
+		sw.Do(typeLister_Get_ClusterScope, m)
+
+	case tags.NonNamespaced && !tags.NonTenanted:
+		// tenant scope
+		sw.Do(typeListerInterface_TenantScope, m)
+		sw.Do(typeListerStruct, m)
+		sw.Do(typeListerConstructor, m)
+		sw.Do(typeLister_List, m)
+		sw.Do(typeLister_Get_TenantScope, m)
+		sw.Do(typeLister_TenantLister, m)
+		sw.Do(tenantListerInterface, m)
+		sw.Do(tenantListerStruct, m)
+		sw.Do(tenantLister_List, m)
+		sw.Do(tenantLister_Get, m)
+
+	case !tags.NonNamespaced && !tags.NonTenanted:
+		// namespace scope
+		sw.Do(typeListerInterface_NamespaceScope, m)
+		sw.Do(typeListerStruct, m)
+		sw.Do(typeListerConstructor, m)
+		sw.Do(typeLister_List, m)
+		sw.Do(typeLister_NamespaceLister, m)
+		sw.Do(namespaceListerInterface, m)
+		sw.Do(namespaceListerStruct, m)
+		sw.Do(namespaceLister_List, m)
+		sw.Do(namespaceLister_Get, m)
+
+	default:
+		return fmt.Errorf("The scope of (%s) is not supported, namespaced but not tenanted.", t.Name)
 	}
-
-	sw.Do(typeListerStruct, m)
-	sw.Do(typeListerConstructor, m)
-	sw.Do(typeLister_List, m)
-
-	if tags.NonNamespaced {
-		sw.Do(typeLister_NonNamespacedGet, m)
-		return sw.Error()
-	}
-
-	sw.Do(typeLister_NamespaceLister, m)
-	sw.Do(namespaceListerInterface, m)
-	sw.Do(namespaceListerStruct, m)
-	sw.Do(namespaceLister_List, m)
-	sw.Do(namespaceLister_Get, m)
 
 	return sw.Error()
 }
 
-var typeListerInterface = `
+var typeListerInterface_NamespaceScope = `
 // $.type|public$Lister helps list $.type|publicPlural$.
 type $.type|public$Lister interface {
 	// List lists all $.type|publicPlural$ in the indexer.
 	List(selector labels.Selector) (ret []*$.type|raw$, err error)
 	// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
-	$.type|publicPlural$(namespace string) $.type|public$NamespaceLister
+	$.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$NamespaceLister
 	$.type|public$ListerExpansion
 }
 `
 
-var typeListerInterface_NonNamespaced = `
+var typeListerInterface_TenantScope = `
+// $.type|public$Lister helps list $.type|publicPlural$.
+type $.type|public$Lister interface {
+	// List lists all $.type|publicPlural$ in the indexer.
+	List(selector labels.Selector) (ret []*$.type|raw$, err error)
+	// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
+	$.type|publicPlural$(optional_tenant ...string) $.type|public$TenantLister
+	// Get retrieves the $.type|public$ from the index for a given name.
+	Get(name string) (*$.type|raw$, error)
+	$.type|public$ListerExpansion
+}
+`
+
+var typeListerInterface_ClusterScope = `
 // $.type|public$Lister helps list $.type|publicPlural$.
 type $.type|public$Lister interface {
 	// List lists all $.type|publicPlural$ in the indexer.
@@ -305,14 +337,20 @@ func (s *$.type|private$Lister) List(selector labels.Selector) (ret []*$.type|ra
 }
 `
 
-var typeLister_NamespaceLister = `
-// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
-func (s *$.type|private$Lister) $.type|publicPlural$(namespace string) $.type|public$NamespaceLister {
-	return $.type|private$NamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-`
+var typeLister_Get_TenantScope = `
+// Get retrieves the $.type|public$ from the index for a given name.
+func (s *$.type|private$Lister) Get(name string) (*$.type|raw$, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound($.Resource|raw$("$.type|lowercaseSingular$"), name)
+	}
+	return obj.(*$.type|raw$), nil
+}`
 
-var typeLister_NonNamespacedGet = `
+var typeLister_Get_ClusterScope = `
 // Get retrieves the $.type|public$ from the index for a given name.
 func (s *$.type|private$Lister) Get(name string) (*$.type|raw$, error) {
   obj, exists, err := s.indexer.GetByKey(name)
@@ -326,12 +364,82 @@ func (s *$.type|private$Lister) Get(name string) (*$.type|raw$, error) {
 }
 `
 
+var tenantListerInterface = `
+// $.type|public$TenantLister helps list and get $.type|publicPlural$.
+type $.type|public$TenantLister interface {
+	// List lists all $.type|publicPlural$ in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*$.type|raw$, err error)
+	// Get retrieves the $.type|public$ from the indexer for a given tenant/tenant and name.
+	Get(name string) (*$.type|raw$, error)
+	$.type|public$TenantListerExpansion
+}
+`
+
+var tenantListerStruct = `
+// $.type|private$TenantLister implements the $.type|public$TenantLister
+// interface.
+type $.type|private$TenantLister struct {
+	indexer cache.Indexer
+	tenant string
+}
+`
+
+var tenantLister_List = `
+// List lists all $.type|publicPlural$ in the indexer for a given tenant.
+func (s $.type|private$TenantLister) List(selector labels.Selector) (ret []*$.type|raw$, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*$.type|raw$))
+	})
+	return ret, err
+}
+`
+
+var tenantLister_Get = `
+// Get retrieves the $.type|public$ from the indexer for a given tenant and name.
+func (s $.type|private$TenantLister) Get(name string) (*$.type|raw$, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "$.DefaultTenant$" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound($.Resource|raw$("$.type|lowercaseSingular$"), name)
+	}
+	return obj.(*$.type|raw$), nil
+}
+`
+
+var typeLister_NamespaceLister = `
+// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
+func (s *$.type|private$Lister) $.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$NamespaceLister {
+	tenant := "$.DefaultTenant$"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return $.type|private$NamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
+}
+`
+
+var typeLister_TenantLister = `
+// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
+func (s *$.type|private$Lister) $.type|publicPlural$(optional_tenant ...string) $.type|public$TenantLister {
+	tenant := "$.DefaultTenant$"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return $.type|private$TenantLister{indexer: s.indexer, tenant: tenant}
+}
+`
+
 var namespaceListerInterface = `
 // $.type|public$NamespaceLister helps list and get $.type|publicPlural$.
 type $.type|public$NamespaceLister interface {
-	// List lists all $.type|publicPlural$ in the indexer for a given namespace.
+	// List lists all $.type|publicPlural$ in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*$.type|raw$, err error)
-	// Get retrieves the $.type|public$ from the indexer for a given namespace and name.
+	// Get retrieves the $.type|public$ from the indexer for a given tenant/namespace and name.
 	Get(name string) (*$.type|raw$, error)
 	$.type|public$NamespaceListerExpansion
 }
@@ -343,13 +451,14 @@ var namespaceListerStruct = `
 type $.type|private$NamespaceLister struct {
 	indexer cache.Indexer
 	namespace string
+	tenant    string
 }
 `
 
 var namespaceLister_List = `
 // List lists all $.type|publicPlural$ in the indexer for a given namespace.
 func (s $.type|private$NamespaceLister) List(selector labels.Selector) (ret []*$.type|raw$, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*$.type|raw$))
 	})
 	return ret, err
@@ -359,7 +468,11 @@ func (s $.type|private$NamespaceLister) List(selector labels.Selector) (ret []*$
 var namespaceLister_Get = `
 // Get retrieves the $.type|public$ from the indexer for a given namespace and name.
 func (s $.type|private$NamespaceLister) Get(name string) (*$.type|raw$, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" +s.namespace + "/" + name
+	if s.tenant == "$.DefaultTenant$" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

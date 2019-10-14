@@ -27,8 +27,18 @@ type Lister interface {
 	List(selector labels.Selector) (ret []*unstructured.Unstructured, err error)
 	// Get retrieves a resource from the indexer with the given name
 	Get(name string) (*unstructured.Unstructured, error)
+	// Tenant returns an object that can list and get resources in a given tenant.
+	Tenant(tenant string) TenantLister
 	// Namespace returns an object that can list and get resources in a given namespace.
-	Namespace(namespace string) NamespaceLister
+	Namespace(namespace string, optional_tenant ...string) NamespaceLister
+}
+
+// TenantLister helps list and get resources.
+type TenantLister interface {
+	// List lists all resources in the indexer for a given tenant.
+	List(selector labels.Selector) (ret []*unstructured.Unstructured, err error)
+	// Get retrieves a resource from the indexer for a given tenant and name.
+	Get(name string) (*unstructured.Unstructured, error)
 }
 
 // NamespaceLister helps list and get resources.

@@ -19,6 +19,7 @@ package cache
 import (
 	"fmt"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -66,6 +67,7 @@ func IndexFuncToKeyFuncAdapter(indexFunc IndexFunc) KeyFunc {
 
 const (
 	NamespaceIndex string = "namespace"
+	TenantIndex    string = "tenant"
 )
 
 // MetaNamespaceIndexFunc is a default index function that indexes based on an object's namespace
@@ -74,7 +76,20 @@ func MetaNamespaceIndexFunc(obj interface{}) ([]string, error) {
 	if err != nil {
 		return []string{""}, fmt.Errorf("object has no meta: %v", err)
 	}
-	return []string{meta.GetNamespace()}, nil
+	indexKey := meta.GetTenant() + "/" + meta.GetNamespace()
+	if meta.GetTenant() == v1.TenantDefault {
+		indexKey = meta.GetNamespace()
+	}
+	return []string{indexKey}, nil
+}
+
+// MetaTenantIndexFunc is a default index function that indexes based on an object's tenant
+func MetaTenantIndexFunc(obj interface{}) ([]string, error) {
+	meta, err := meta.Accessor(obj)
+	if err != nil {
+		return []string{""}, fmt.Errorf("object has no meta: %v", err)
+	}
+	return []string{meta.GetTenant()}, nil
 }
 
 // Index maps the indexed value to a set of keys in the store that match on that value

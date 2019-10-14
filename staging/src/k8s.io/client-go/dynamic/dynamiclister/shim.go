@@ -55,10 +55,45 @@ func (s *dynamicListerShim) Get(name string) (runtime.Object, error) {
 	return s.lister.Get(name)
 }
 
-func (s *dynamicListerShim) ByNamespace(namespace string) cache.GenericNamespaceLister {
-	return &dynamicNamespaceListerShim{
-		namespaceLister: s.lister.Namespace(namespace),
+func (s *dynamicListerShim) ByTenant(tenant string) cache.GenericTenantLister {
+	return &dynamicTenantListerShim{
+		tenantLister: s.lister.Tenant(tenant),
 	}
+}
+
+func (s *dynamicListerShim) ByNamespace(namespace string, optional_tenant ...string) cache.GenericNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &dynamicNamespaceListerShim{
+		namespaceLister: s.lister.Namespace(namespace, tenant),
+	}
+}
+
+// dynamicTenantListerShim implements the TenantLister interface.
+// It wraps TenantLister so that it implements cache.GenericTenantLister interface
+type dynamicTenantListerShim struct {
+	tenantLister TenantLister
+}
+
+// List will return all objects in this tenant
+func (ns *dynamicTenantListerShim) List(selector labels.Selector) (ret []runtime.Object, err error) {
+	objs, err := ns.tenantLister.List(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	ret = make([]runtime.Object, len(objs))
+	for index, obj := range objs {
+		ret[index] = obj
+	}
+	return ret, err
+}
+
+// Get will attempt to retrieve by tenant and name
+func (ns *dynamicTenantListerShim) Get(name string) (runtime.Object, error) {
+	return ns.tenantLister.Get(name)
 }
 
 // dynamicNamespaceListerShim implements the NamespaceLister interface.
