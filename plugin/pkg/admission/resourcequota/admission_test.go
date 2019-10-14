@@ -166,6 +166,7 @@ func TestAdmissionIgnoresSubresources(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{}
 	resourceQuota.Name = "quota"
 	resourceQuota.Namespace = "test"
+	resourceQuota.Tenant = "default"
 	resourceQuota.Status = corev1.ResourceQuotaStatus{
 		Hard: corev1.ResourceList{},
 		Used: corev1.ResourceList{},

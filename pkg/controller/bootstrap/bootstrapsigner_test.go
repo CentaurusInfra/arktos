@@ -55,6 +55,7 @@ func newSigner() (*Signer, *fake.Clientset, coreinformers.SecretInformer, corein
 func newConfigMap(tokenID, signature string) *v1.ConfigMap {
 	ret := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:          metav1.TenantDefault,
 			Namespace:       metav1.NamespacePublic,
 			Name:            bootstrapapi.ConfigMapClusterInfo,
 			ResourceVersion: "1",

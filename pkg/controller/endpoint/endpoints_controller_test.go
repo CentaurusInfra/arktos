@@ -53,6 +53,7 @@ func addPods(store cache.Store, namespace string, nPods int, nPorts int, nNotRea
 		p := &v1.Pod{
 			TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:    metav1.TenantDefault,
 				Namespace: namespace,
 				Name:      fmt.Sprintf("pod%d", i),
 				Labels:    map[string]string{"foo": "bar"},
@@ -86,6 +87,7 @@ func addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(store cache.Store, namesp
 		p := &v1.Pod{
 			TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:    metav1.TenantDefault,
 				Namespace: namespace,
 				Name:      fmt.Sprintf("pod%d", i),
 				Labels:    map[string]string{"foo": "bar"},
@@ -159,6 +161,7 @@ func TestSyncEndpointsItemsPreserveNoSelector(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -183,6 +186,7 @@ func TestSyncEndpointsExistingNilSubsets(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -207,6 +211,7 @@ func TestSyncEndpointsExistingEmptySubsets(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -247,6 +252,7 @@ func TestCheckLeftoverEndpoints(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -273,6 +279,7 @@ func TestSyncEndpointsProtocolTCP(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -295,6 +302,7 @@ func TestSyncEndpointsProtocolTCP(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -314,6 +322,7 @@ func TestSyncEndpointsProtocolUDP(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -336,6 +345,7 @@ func TestSyncEndpointsProtocolUDP(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -355,6 +365,7 @@ func TestSyncEndpointsProtocolSCTP(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -377,6 +388,7 @@ func TestSyncEndpointsProtocolSCTP(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -396,6 +408,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -414,6 +427,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -433,6 +447,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -451,6 +466,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -470,6 +486,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -488,6 +505,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -508,6 +526,7 @@ func TestSyncEndpointsItemsPreexisting(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -529,6 +548,7 @@ func TestSyncEndpointsItemsPreexisting(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -549,6 +569,7 @@ func TestSyncEndpointsItemsPreexistingIdentical(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			ResourceVersion: "1",
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 		},
 		Subsets: []v1.EndpointSubset{{
@@ -619,6 +640,7 @@ func TestSyncEndpointsItemsWithLabels(t *testing.T) {
 	endpoints.serviceStore.Add(&v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
+			Tenant:    metav1.TenantDefault,
 			Namespace: ns,
 			Labels:    serviceLabels,
 		},
@@ -663,6 +685,7 @@ func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -679,6 +702,7 @@ func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
 	endpoints.serviceStore.Add(&v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
+			Tenant:    metav1.TenantDefault,
 			Namespace: ns,
 			Labels:    serviceLabels,
 		},
@@ -692,6 +716,7 @@ func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels:          serviceLabels,
@@ -766,6 +791,7 @@ func TestSyncEndpointsHeadlessService(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -787,6 +813,7 @@ func TestSyncEndpointsHeadlessService(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -807,6 +834,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFail
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -827,6 +855,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFail
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -843,6 +872,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucc
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -863,6 +893,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucc
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -879,6 +910,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhase
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -899,6 +931,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhase
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -1187,6 +1220,7 @@ func TestLastTriggerChangeTimeAnnotation(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -1209,6 +1243,7 @@ func TestLastTriggerChangeTimeAnnotation(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1231,6 +1266,7 @@ func TestLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1256,6 +1292,7 @@ func TestLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1278,6 +1315,7 @@ func TestLastTriggerChangeTimeAnnotation_AnnotationCleared(t *testing.T) {
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1304,6 +1342,7 @@ func TestLastTriggerChangeTimeAnnotation_AnnotationCleared(t *testing.T) {
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantDefault,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations:     map[string]string{}, // Annotation not set anymore.

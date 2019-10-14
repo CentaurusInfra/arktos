@@ -176,6 +176,7 @@ func TestRejectsMirrorPodWithServiceAccountTokenVolumeProjections(t *testing.T) 
 
 func TestAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -188,6 +189,7 @@ func TestAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 	})
 
@@ -204,6 +206,7 @@ func TestAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t *testing.T) {
 
 func TestAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -216,6 +219,7 @@ func TestAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 	})
 
@@ -229,13 +233,14 @@ func TestAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t *testing.T) {
 
 func TestFetchesUncachedServiceAccount(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	// Build a test client that the admission plugin can use to look up the service account missing from its cache
 	client := fake.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    tenant,
 		},
 	})
 
@@ -286,6 +291,7 @@ func TestAutomountsAPIToken(t *testing.T) {
 		admit.RequireAPIToken = true
 
 		ns := "myns"
+		tenant := "default"
 		serviceAccountName := DefaultServiceAccountName
 		serviceAccountUID := "12345"
 
@@ -305,6 +311,7 @@ func TestAutomountsAPIToken(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceAccountName,
 				Namespace: ns,
+				Tenant:    tenant,
 				UID:       types.UID(serviceAccountUID),
 			},
 			Secrets: []corev1.ObjectReference{
@@ -316,6 +323,7 @@ func TestAutomountsAPIToken(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tokenName,
 				Namespace: ns,
+				Tenant:    tenant,
 				Annotations: map[string]string{
 					corev1.ServiceAccountNameKey: serviceAccountName,
 					corev1.ServiceAccountUIDKey:  serviceAccountUID,
@@ -388,6 +396,7 @@ func TestAutomountsAPIToken(t *testing.T) {
 func TestRespectsExistingMount(t *testing.T) {
 	testBoundServiceAccountTokenVolumePhases(t, func(t *testing.T, applyFeatures func(*Plugin) *Plugin) {
 		ns := "myns"
+		tenant := "default"
 		tokenName := "token-name"
 		serviceAccountName := DefaultServiceAccountName
 		serviceAccountUID := "12345"
@@ -409,6 +418,7 @@ func TestRespectsExistingMount(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceAccountName,
 				Namespace: ns,
+				Tenant:    tenant,
 				UID:       types.UID(serviceAccountUID),
 			},
 			Secrets: []corev1.ObjectReference{
@@ -420,6 +430,7 @@ func TestRespectsExistingMount(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tokenName,
 				Namespace: ns,
+				Tenant:    tenant,
 				Annotations: map[string]string{
 					corev1.ServiceAccountNameKey: serviceAccountName,
 					corev1.ServiceAccountUIDKey:  serviceAccountUID,
@@ -496,6 +507,7 @@ func TestRespectsExistingMount(t *testing.T) {
 
 func TestAllowsReferencedSecret(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -508,6 +520,7 @@ func TestAllowsReferencedSecret(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 		Secrets: []corev1.ObjectReference{
 			{Name: "foo"},
@@ -577,6 +590,7 @@ func TestAllowsReferencedSecret(t *testing.T) {
 
 func TestRejectsUnreferencedSecretVolumes(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -589,6 +603,7 @@ func TestRejectsUnreferencedSecretVolumes(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 	})
 
@@ -655,6 +670,7 @@ func TestRejectsUnreferencedSecretVolumes(t *testing.T) {
 
 func TestAllowUnreferencedSecretVolumesForPermissiveSAs(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -667,6 +683,7 @@ func TestAllowUnreferencedSecretVolumesForPermissiveSAs(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        DefaultServiceAccountName,
 			Namespace:   ns,
+			Tenant:      tenant,
 			Annotations: map[string]string{EnforceMountableSecretsAnnotation: "true"},
 		},
 	})
@@ -687,6 +704,7 @@ func TestAllowUnreferencedSecretVolumesForPermissiveSAs(t *testing.T) {
 
 func TestAllowsReferencedImagePullSecrets(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -699,6 +717,7 @@ func TestAllowsReferencedImagePullSecrets(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 		ImagePullSecrets: []corev1.LocalObjectReference{
 			{Name: "foo"},
@@ -719,6 +738,7 @@ func TestAllowsReferencedImagePullSecrets(t *testing.T) {
 
 func TestRejectsUnreferencedImagePullSecrets(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -731,6 +751,7 @@ func TestRejectsUnreferencedImagePullSecrets(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 	})
 
@@ -748,6 +769,7 @@ func TestRejectsUnreferencedImagePullSecrets(t *testing.T) {
 
 func TestDoNotAddImagePullSecrets(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -760,6 +782,7 @@ func TestDoNotAddImagePullSecrets(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 		ImagePullSecrets: []corev1.LocalObjectReference{
 			{Name: "foo"},
@@ -785,6 +808,7 @@ func TestDoNotAddImagePullSecrets(t *testing.T) {
 
 func TestAddImagePullSecrets(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 
 	admit := NewServiceAccount()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
@@ -796,6 +820,7 @@ func TestAddImagePullSecrets(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DefaultServiceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 		ImagePullSecrets: []corev1.LocalObjectReference{
 			{Name: "foo"},
@@ -822,6 +847,7 @@ func TestAddImagePullSecrets(t *testing.T) {
 
 func TestMultipleReferencedSecrets(t *testing.T) {
 	var (
+		tenant             = "default"
 		ns                 = "myns"
 		serviceAccountName = "mysa"
 		serviceAccountUID  = "mysauid"
@@ -840,6 +866,7 @@ func TestMultipleReferencedSecrets(t *testing.T) {
 			Name:      serviceAccountName,
 			UID:       types.UID(serviceAccountUID),
 			Namespace: ns,
+			Tenant:    tenant,
 		},
 		Secrets: []corev1.ObjectReference{
 			{Name: token1},
@@ -853,6 +880,7 @@ func TestMultipleReferencedSecrets(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      token2,
 			Namespace: ns,
+			Tenant:    tenant,
 			Annotations: map[string]string{
 				api.ServiceAccountNameKey: serviceAccountName,
 				api.ServiceAccountUIDKey:  serviceAccountUID,
@@ -867,6 +895,7 @@ func TestMultipleReferencedSecrets(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      token1,
 			Namespace: ns,
+			Tenant:    tenant,
 			Annotations: map[string]string{
 				api.ServiceAccountNameKey: serviceAccountName,
 				api.ServiceAccountUIDKey:  serviceAccountUID,
@@ -903,6 +932,7 @@ func TestMultipleReferencedSecrets(t *testing.T) {
 func newSecret(secretType corev1.SecretType, namespace, name, serviceAccountName, serviceAccountUID string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    "default",
 			Namespace: namespace,
 			Name:      name,
 			Annotations: map[string]string{
@@ -921,12 +951,14 @@ func TestGetServiceAccountTokens(t *testing.T) {
 		admit.secretLister = corev1listers.NewSecretLister(indexer)
 
 		ns := "namespace"
+		tenant := "default"
 		serviceAccountUID := "12345"
 
 		sa := &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      DefaultServiceAccountName,
 				Namespace: ns,
+				Tenant:    tenant,
 				UID:       types.UID(serviceAccountUID),
 			},
 		}
@@ -960,6 +992,7 @@ func TestGetServiceAccountTokens(t *testing.T) {
 
 func TestAutomountIsBackwardsCompatible(t *testing.T) {
 	ns := "myns"
+	tenant := "default"
 	tokenName := "token-name"
 	serviceAccountName := DefaultServiceAccountName
 	serviceAccountUID := "12345"
@@ -993,6 +1026,7 @@ func TestAutomountIsBackwardsCompatible(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
 			Namespace: ns,
+			Tenant:    tenant,
 			UID:       types.UID(serviceAccountUID),
 		},
 		Secrets: []corev1.ObjectReference{
@@ -1004,6 +1038,7 @@ func TestAutomountIsBackwardsCompatible(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tokenName,
 			Namespace: ns,
+			Tenant:    tenant,
 			Annotations: map[string]string{
 				corev1.ServiceAccountNameKey: serviceAccountName,
 				corev1.ServiceAccountUIDKey:  serviceAccountUID,

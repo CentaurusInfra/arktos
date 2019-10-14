@@ -369,6 +369,7 @@ func (fh *fakeHistory) CreateControllerRevision(parent metav1.Object, revision *
 	// Clone the input
 	clone := revision.DeepCopy()
 	clone.Namespace = parent.GetNamespace()
+	clone.Tenant = parent.GetTenant()
 
 	// Continue to attempt to create the revision updating the name with a new hash on each iteration
 	for {

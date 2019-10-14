@@ -87,21 +87,25 @@ func TestRealHistory_ListControllerRevisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss1Rev1.Tenant = ss1.Tenant
 	ss1Rev1.Namespace = ss1.Namespace
 	ss1Rev2, err := NewControllerRevision(ss1, parentKind, ss1.Spec.Template.Labels, rawTemplate(&ss1.Spec.Template), 2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss1Rev2.Tenant = ss1.Tenant
 	ss1Rev2.Namespace = ss1.Namespace
 	ss2Rev1, err := NewControllerRevision(ss2, parentKind, ss2.Spec.Template.Labels, rawTemplate(&ss2.Spec.Template), 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss2Rev1.Tenant = ss2.Tenant
 	ss2Rev1.Namespace = ss2.Namespace
 	ss1Orphan, err := NewControllerRevision(ss1, parentKind, ss1.Spec.Template.Labels, rawTemplate(&ss1.Spec.Template), 3, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss1Orphan.Tenant = ss1.Tenant
 	ss1Orphan.Namespace = ss1.Namespace
 	ss1Orphan.OwnerReferences = nil
 
@@ -184,21 +188,25 @@ func TestFakeHistory_ListControllerRevisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss1Rev1.Tenant = ss1.Tenant
 	ss1Rev1.Namespace = ss1.Namespace
 	ss1Rev2, err := NewControllerRevision(ss1, parentKind, ss1.Spec.Template.Labels, rawTemplate(&ss1.Spec.Template), 2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss1Rev2.Tenant = ss1.Tenant
 	ss1Rev2.Namespace = ss1.Namespace
 	ss2Rev1, err := NewControllerRevision(ss2, parentKind, ss2.Spec.Template.Labels, rawTemplate(&ss2.Spec.Template), 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss2Rev1.Tenant = ss2.Tenant
 	ss2Rev1.Namespace = ss2.Namespace
 	ss1Orphan, err := NewControllerRevision(ss1, parentKind, ss1.Spec.Template.Labels, rawTemplate(&ss1.Spec.Template), 3, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ss1Orphan.Tenant = ss1.Tenant
 	ss1Orphan.Namespace = ss1.Namespace
 	ss1Orphan.OwnerReferences = nil
 
@@ -1640,6 +1648,7 @@ func newStatefulSet(replicas int, name string, uid types.UID, labels map[string]
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: v1.NamespaceDefault,
+			Tenant:    v1.TenantDefault,
 			UID:       uid,
 		},
 		Spec: apps.StatefulSetSpec{

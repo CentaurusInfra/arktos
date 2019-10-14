@@ -97,7 +97,11 @@ func (errorLister) List(selector labels.Selector) (ret []runtime.Object, err err
 func (errorLister) Get(name string) (runtime.Object, error) {
 	return nil, fmt.Errorf("error getting")
 }
-func (errorLister) ByNamespace(namespace string) cache.GenericNamespaceLister {
+func (errorLister) ByNamespace(namespace string, tenant ...string) cache.GenericNamespaceLister {
+	return errorLister{}
+}
+
+func (errorLister) ByTenant(tenant string) cache.GenericTenantLister {
 	return errorLister{}
 }
 

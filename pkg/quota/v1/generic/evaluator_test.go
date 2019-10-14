@@ -126,6 +126,9 @@ func (f *fakeLister) Get(name string) (runtime.Object, error) {
 	f.called++
 	return nil, errFakeLister
 }
-func (f *fakeLister) ByNamespace(namespace string) cache.GenericNamespaceLister {
+func (f *fakeLister) ByNamespace(namespace string, optional_tenant ...string) cache.GenericNamespaceLister {
+	panic("not implemented")
+}
+func (f *fakeLister) ByTenant(tenant string) cache.GenericTenantLister {
 	panic("not implemented")
 }

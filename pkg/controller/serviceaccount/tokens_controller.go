@@ -225,7 +225,9 @@ func (e *TokensController) queueSecretUpdateSync(oldObj interface{}, newObj inte
 }
 
 func (e *TokensController) syncServiceAccount() {
+	fmt.Printf("\n 1 syncServiceAccount ~~~~~~~~~~~~~~~~~~ ")
 	key, quit := e.syncServiceAccountQueue.Get()
+	fmt.Printf("\n 2 syncServiceAccount ~~~~~~~~~~~~~~~~~~ key %#v err %v", key, quit)
 	if quit {
 		return
 	}
@@ -237,12 +239,14 @@ func (e *TokensController) syncServiceAccount() {
 	}()
 
 	saInfo, err := parseServiceAccountKey(key)
+	fmt.Printf("\n 3 syncServiceAccount ~~~~~~~~~~~~~~~~~~ saINfo %#v err %v", saInfo, err)
 	if err != nil {
 		klog.Error(err)
 		return
 	}
 
 	sa, err := e.getServiceAccount(saInfo.namespace, saInfo.name, saInfo.uid, false)
+	fmt.Printf("\n 4 syncServiceAccount ~~~~~~~~~~~~~~~~~~ sa %#v err %v", sa, err)
 	switch {
 	case err != nil:
 		klog.Error(err)
@@ -250,7 +254,7 @@ func (e *TokensController) syncServiceAccount() {
 	case sa == nil:
 		// service account no longer exists, so delete related tokens
 		klog.V(4).Infof("syncServiceAccount(%s/%s), service account deleted, removing tokens", saInfo.namespace, saInfo.name)
-		sa = &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: saInfo.namespace, Name: saInfo.name, UID: saInfo.uid, HashKey: fuzzer.GetHashOfUUID(saInfo.uid)}}
+		sa = &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: saInfo.namespace, Name: saInfo.name, UID: saInfo.uid, HashKey: fuzzer.GetHashOfUUID(saInfo.uid)}}
 		retry, err = e.deleteTokens(sa)
 		if err != nil {
 			klog.Errorf("error deleting serviceaccount tokens for %s/%s: %v", saInfo.namespace, saInfo.name, err)
@@ -266,6 +270,7 @@ func (e *TokensController) syncServiceAccount() {
 
 func (e *TokensController) syncSecret() {
 	key, quit := e.syncSecretQueue.Get()
+	fmt.Printf("\n 1 syncSecret ++++++++++++++++++++++ key %s err %v ", key, quit)
 	if quit {
 		return
 	}
@@ -278,12 +283,14 @@ func (e *TokensController) syncSecret() {
 	}()
 
 	secretInfo, err := parseSecretQueueKey(key)
+	fmt.Printf("\n 2 syncSecret ++++++++++++++++++++++ secretInfo %#v err %v ", secretInfo, err)
 	if err != nil {
 		klog.Error(err)
 		return
 	}
 
 	secret, err := e.getSecret(secretInfo.namespace, secretInfo.name, secretInfo.uid, false)
+	fmt.Printf("\n 3 syncSecret ++++++++++++++++++++++ secret %#v err %v ", secret, err)
 	switch {
 	case err != nil:
 		klog.Error(err)
@@ -620,6 +627,7 @@ func (e *TokensController) removeSecretReference(saNamespace string, saName stri
 func (e *TokensController) getServiceAccount(ns string, name string, uid types.UID, fetchOnCacheMiss bool) (*v1.ServiceAccount, error) {
 	// Look up in cache
 	sa, err := e.serviceAccounts.ServiceAccounts(ns).Get(name)
+	fmt.Printf("\n 1 getServiceAccount ================= lister %#v \n  sa %#v ns %s name %s err %v \n", e.serviceAccounts, sa, ns, name, err)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}

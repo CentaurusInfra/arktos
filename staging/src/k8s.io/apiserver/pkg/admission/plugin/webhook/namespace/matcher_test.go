@@ -28,10 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/admission/plugin/webhook"
+	listerv1 "k8s.io/client-go/listers/core/v1"
 )
 
 type fakeNamespaceLister struct {
 	namespaces map[string]*corev1.Namespace
+	tenant     string
 }
 
 func (f fakeNamespaceLister) List(selector labels.Selector) (ret []*corev1.Namespace, err error) {
@@ -45,12 +47,35 @@ func (f fakeNamespaceLister) Get(name string) (*corev1.Namespace, error) {
 	return nil, errors.NewNotFound(corev1.Resource("namespaces"), name)
 }
 
+func (f fakeNamespaceLister) Namespaces(optional_tenant ...string) listerv1.NamespaceTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return fakeNamespaceTenantLister{tenant: tenant}
+}
+
+type fakeNamespaceTenantLister struct {
+	tenant string
+}
+
+// List lists all Namespaces in the indexer for a given tenant.
+func (f fakeNamespaceTenantLister) List(selector labels.Selector) (ret []*corev1.Namespace, err error) {
+	return nil, nil
+}
+
+// Get retrieves the Namespace from the indexer for a given tenant and name.
+func (f fakeNamespaceTenantLister) Get(name string) (*corev1.Namespace, error) {
+	return nil, nil
+}
+
 func TestGetNamespaceLabels(t *testing.T) {
 	namespace1Labels := map[string]string{
 		"runlevel": "1",
 	}
 	namespace1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
 			Name:   "1",
 			Labels: namespace1Labels,
 		},
@@ -60,6 +85,7 @@ func TestGetNamespaceLabels(t *testing.T) {
 	}
 	namespace2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
 			Name:   "2",
 			Labels: namespace2Labels,
 		},
@@ -67,6 +93,7 @@ func TestGetNamespaceLabels(t *testing.T) {
 	namespaceLister := fakeNamespaceLister{map[string]*corev1.Namespace{
 		"1": &namespace1,
 	},
+		"default",
 	}
 
 	tests := []struct {
