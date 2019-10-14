@@ -29,6 +29,8 @@ import (
 type VolumeAttachmentLister interface {
 	// List lists all VolumeAttachments in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.VolumeAttachment, err error)
+	// VolumeAttachments returns an object that can list and get VolumeAttachments.
+	VolumeAttachments(optional_tenant ...string) VolumeAttachmentTenantLister
 	// Get retrieves the VolumeAttachment from the index for a given name.
 	Get(name string) (*v1beta1.VolumeAttachment, error)
 	VolumeAttachmentListerExpansion
@@ -55,6 +57,55 @@ func (s *volumeAttachmentLister) List(selector labels.Selector) (ret []*v1beta1.
 // Get retrieves the VolumeAttachment from the index for a given name.
 func (s *volumeAttachmentLister) Get(name string) (*v1beta1.VolumeAttachment, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1beta1.Resource("volumeattachment"), name)
+	}
+	return obj.(*v1beta1.VolumeAttachment), nil
+}
+
+// VolumeAttachments returns an object that can list and get VolumeAttachments.
+func (s *volumeAttachmentLister) VolumeAttachments(optional_tenant ...string) VolumeAttachmentTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return volumeAttachmentTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// VolumeAttachmentTenantLister helps list and get VolumeAttachments.
+type VolumeAttachmentTenantLister interface {
+	// List lists all VolumeAttachments in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1beta1.VolumeAttachment, err error)
+	// Get retrieves the VolumeAttachment from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1beta1.VolumeAttachment, error)
+	VolumeAttachmentTenantListerExpansion
+}
+
+// volumeAttachmentTenantLister implements the VolumeAttachmentTenantLister
+// interface.
+type volumeAttachmentTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all VolumeAttachments in the indexer for a given tenant.
+func (s volumeAttachmentTenantLister) List(selector labels.Selector) (ret []*v1beta1.VolumeAttachment, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1beta1.VolumeAttachment))
+	})
+	return ret, err
+}
+
+// Get retrieves the VolumeAttachment from the indexer for a given tenant and name.
+func (s volumeAttachmentTenantLister) Get(name string) (*v1beta1.VolumeAttachment, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

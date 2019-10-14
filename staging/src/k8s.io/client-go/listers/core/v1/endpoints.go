@@ -30,7 +30,7 @@ type EndpointsLister interface {
 	// List lists all Endpoints in the indexer.
 	List(selector labels.Selector) (ret []*v1.Endpoints, err error)
 	// Endpoints returns an object that can list and get Endpoints.
-	Endpoints(namespace string) EndpointsNamespaceLister
+	Endpoints(namespace string, optional_tenant ...string) EndpointsNamespaceLister
 	EndpointsListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *endpointsLister) List(selector labels.Selector) (ret []*v1.Endpoints, e
 }
 
 // Endpoints returns an object that can list and get Endpoints.
-func (s *endpointsLister) Endpoints(namespace string) EndpointsNamespaceLister {
-	return endpointsNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *endpointsLister) Endpoints(namespace string, optional_tenant ...string) EndpointsNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return endpointsNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // EndpointsNamespaceLister helps list and get Endpoints.
 type EndpointsNamespaceLister interface {
-	// List lists all Endpoints in the indexer for a given namespace.
+	// List lists all Endpoints in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.Endpoints, err error)
-	// Get retrieves the Endpoints from the indexer for a given namespace and name.
+	// Get retrieves the Endpoints from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.Endpoints, error)
 	EndpointsNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type EndpointsNamespaceLister interface {
 type endpointsNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Endpoints in the indexer for a given namespace.
 func (s endpointsNamespaceLister) List(selector labels.Selector) (ret []*v1.Endpoints, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.Endpoints))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s endpointsNamespaceLister) List(selector labels.Selector) (ret []*v1.Endp
 
 // Get retrieves the Endpoints from the indexer for a given namespace and name.
 func (s endpointsNamespaceLister) Get(name string) (*v1.Endpoints, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -29,6 +29,8 @@ import (
 type AuditSinkLister interface {
 	// List lists all AuditSinks in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.AuditSink, err error)
+	// AuditSinks returns an object that can list and get AuditSinks.
+	AuditSinks(optional_tenant ...string) AuditSinkTenantLister
 	// Get retrieves the AuditSink from the index for a given name.
 	Get(name string) (*v1alpha1.AuditSink, error)
 	AuditSinkListerExpansion
@@ -55,6 +57,55 @@ func (s *auditSinkLister) List(selector labels.Selector) (ret []*v1alpha1.AuditS
 // Get retrieves the AuditSink from the index for a given name.
 func (s *auditSinkLister) Get(name string) (*v1alpha1.AuditSink, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1alpha1.Resource("auditsink"), name)
+	}
+	return obj.(*v1alpha1.AuditSink), nil
+}
+
+// AuditSinks returns an object that can list and get AuditSinks.
+func (s *auditSinkLister) AuditSinks(optional_tenant ...string) AuditSinkTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return auditSinkTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// AuditSinkTenantLister helps list and get AuditSinks.
+type AuditSinkTenantLister interface {
+	// List lists all AuditSinks in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1alpha1.AuditSink, err error)
+	// Get retrieves the AuditSink from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1alpha1.AuditSink, error)
+	AuditSinkTenantListerExpansion
+}
+
+// auditSinkTenantLister implements the AuditSinkTenantLister
+// interface.
+type auditSinkTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all AuditSinks in the indexer for a given tenant.
+func (s auditSinkTenantLister) List(selector labels.Selector) (ret []*v1alpha1.AuditSink, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1alpha1.AuditSink))
+	})
+	return ret, err
+}
+
+// Get retrieves the AuditSink from the indexer for a given tenant and name.
+func (s auditSinkTenantLister) Get(name string) (*v1alpha1.AuditSink, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

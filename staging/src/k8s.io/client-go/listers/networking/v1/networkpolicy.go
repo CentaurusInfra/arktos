@@ -30,7 +30,7 @@ type NetworkPolicyLister interface {
 	// List lists all NetworkPolicies in the indexer.
 	List(selector labels.Selector) (ret []*v1.NetworkPolicy, err error)
 	// NetworkPolicies returns an object that can list and get NetworkPolicies.
-	NetworkPolicies(namespace string) NetworkPolicyNamespaceLister
+	NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyNamespaceLister
 	NetworkPolicyListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *networkPolicyLister) List(selector labels.Selector) (ret []*v1.NetworkP
 }
 
 // NetworkPolicies returns an object that can list and get NetworkPolicies.
-func (s *networkPolicyLister) NetworkPolicies(namespace string) NetworkPolicyNamespaceLister {
-	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *networkPolicyLister) NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // NetworkPolicyNamespaceLister helps list and get NetworkPolicies.
 type NetworkPolicyNamespaceLister interface {
-	// List lists all NetworkPolicies in the indexer for a given namespace.
+	// List lists all NetworkPolicies in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.NetworkPolicy, err error)
-	// Get retrieves the NetworkPolicy from the indexer for a given namespace and name.
+	// Get retrieves the NetworkPolicy from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.NetworkPolicy, error)
 	NetworkPolicyNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type NetworkPolicyNamespaceLister interface {
 type networkPolicyNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all NetworkPolicies in the indexer for a given namespace.
 func (s networkPolicyNamespaceLister) List(selector labels.Selector) (ret []*v1.NetworkPolicy, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.NetworkPolicy))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s networkPolicyNamespaceLister) List(selector labels.Selector) (ret []*v1.
 
 // Get retrieves the NetworkPolicy from the indexer for a given namespace and name.
 func (s networkPolicyNamespaceLister) Get(name string) (*v1.NetworkPolicy, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

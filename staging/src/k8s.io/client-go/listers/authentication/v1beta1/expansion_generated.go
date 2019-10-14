@@ -21,3 +21,7 @@ package v1beta1
 // TokenReviewListerExpansion allows custom methods to be added to
 // TokenReviewLister.
 type TokenReviewListerExpansion interface{}
+
+// TokenReviewTenantListerExpansion allows custom methods to be added to
+// TokenReviewTenantLister.
+type TokenReviewTenantListerExpansion interface{}

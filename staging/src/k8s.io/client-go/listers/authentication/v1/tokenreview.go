@@ -29,6 +29,8 @@ import (
 type TokenReviewLister interface {
 	// List lists all TokenReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1.TokenReview, err error)
+	// TokenReviews returns an object that can list and get TokenReviews.
+	TokenReviews(optional_tenant ...string) TokenReviewTenantLister
 	// Get retrieves the TokenReview from the index for a given name.
 	Get(name string) (*v1.TokenReview, error)
 	TokenReviewListerExpansion
@@ -55,6 +57,55 @@ func (s *tokenReviewLister) List(selector labels.Selector) (ret []*v1.TokenRevie
 // Get retrieves the TokenReview from the index for a given name.
 func (s *tokenReviewLister) Get(name string) (*v1.TokenReview, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1.Resource("tokenreview"), name)
+	}
+	return obj.(*v1.TokenReview), nil
+}
+
+// TokenReviews returns an object that can list and get TokenReviews.
+func (s *tokenReviewLister) TokenReviews(optional_tenant ...string) TokenReviewTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return tokenReviewTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// TokenReviewTenantLister helps list and get TokenReviews.
+type TokenReviewTenantLister interface {
+	// List lists all TokenReviews in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1.TokenReview, err error)
+	// Get retrieves the TokenReview from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1.TokenReview, error)
+	TokenReviewTenantListerExpansion
+}
+
+// tokenReviewTenantLister implements the TokenReviewTenantLister
+// interface.
+type tokenReviewTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all TokenReviews in the indexer for a given tenant.
+func (s tokenReviewTenantLister) List(selector labels.Selector) (ret []*v1.TokenReview, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.TokenReview))
+	})
+	return ret, err
+}
+
+// Get retrieves the TokenReview from the indexer for a given tenant and name.
+func (s tokenReviewTenantLister) Get(name string) (*v1.TokenReview, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

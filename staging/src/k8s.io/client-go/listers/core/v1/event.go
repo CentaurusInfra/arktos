@@ -30,7 +30,7 @@ type EventLister interface {
 	// List lists all Events in the indexer.
 	List(selector labels.Selector) (ret []*v1.Event, err error)
 	// Events returns an object that can list and get Events.
-	Events(namespace string) EventNamespaceLister
+	Events(namespace string, optional_tenant ...string) EventNamespaceLister
 	EventListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *eventLister) List(selector labels.Selector) (ret []*v1.Event, err error
 }
 
 // Events returns an object that can list and get Events.
-func (s *eventLister) Events(namespace string) EventNamespaceLister {
-	return eventNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *eventLister) Events(namespace string, optional_tenant ...string) EventNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return eventNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // EventNamespaceLister helps list and get Events.
 type EventNamespaceLister interface {
-	// List lists all Events in the indexer for a given namespace.
+	// List lists all Events in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.Event, err error)
-	// Get retrieves the Event from the indexer for a given namespace and name.
+	// Get retrieves the Event from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.Event, error)
 	EventNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type EventNamespaceLister interface {
 type eventNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Events in the indexer for a given namespace.
 func (s eventNamespaceLister) List(selector labels.Selector) (ret []*v1.Event, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.Event))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s eventNamespaceLister) List(selector labels.Selector) (ret []*v1.Event, e
 
 // Get retrieves the Event from the indexer for a given namespace and name.
 func (s eventNamespaceLister) Get(name string) (*v1.Event, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

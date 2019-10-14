@@ -29,6 +29,8 @@ import (
 type PriorityClassLister interface {
 	// List lists all PriorityClasses in the indexer.
 	List(selector labels.Selector) (ret []*v1.PriorityClass, err error)
+	// PriorityClasses returns an object that can list and get PriorityClasses.
+	PriorityClasses(optional_tenant ...string) PriorityClassTenantLister
 	// Get retrieves the PriorityClass from the index for a given name.
 	Get(name string) (*v1.PriorityClass, error)
 	PriorityClassListerExpansion
@@ -55,6 +57,55 @@ func (s *priorityClassLister) List(selector labels.Selector) (ret []*v1.Priority
 // Get retrieves the PriorityClass from the index for a given name.
 func (s *priorityClassLister) Get(name string) (*v1.PriorityClass, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1.Resource("priorityclass"), name)
+	}
+	return obj.(*v1.PriorityClass), nil
+}
+
+// PriorityClasses returns an object that can list and get PriorityClasses.
+func (s *priorityClassLister) PriorityClasses(optional_tenant ...string) PriorityClassTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return priorityClassTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// PriorityClassTenantLister helps list and get PriorityClasses.
+type PriorityClassTenantLister interface {
+	// List lists all PriorityClasses in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1.PriorityClass, err error)
+	// Get retrieves the PriorityClass from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1.PriorityClass, error)
+	PriorityClassTenantListerExpansion
+}
+
+// priorityClassTenantLister implements the PriorityClassTenantLister
+// interface.
+type priorityClassTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all PriorityClasses in the indexer for a given tenant.
+func (s priorityClassTenantLister) List(selector labels.Selector) (ret []*v1.PriorityClass, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.PriorityClass))
+	})
+	return ret, err
+}
+
+// Get retrieves the PriorityClass from the indexer for a given tenant and name.
+func (s priorityClassTenantLister) Get(name string) (*v1.PriorityClass, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

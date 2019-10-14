@@ -21,3 +21,7 @@ package v1beta1
 // CertificateSigningRequestListerExpansion allows custom methods to be added to
 // CertificateSigningRequestLister.
 type CertificateSigningRequestListerExpansion interface{}
+
+// CertificateSigningRequestTenantListerExpansion allows custom methods to be added to
+// CertificateSigningRequestTenantLister.
+type CertificateSigningRequestTenantListerExpansion interface{}

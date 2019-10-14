@@ -30,7 +30,7 @@ type FooLister interface {
 	// List lists all Foos in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.Foo, err error)
 	// Foos returns an object that can list and get Foos.
-	Foos(namespace string) FooNamespaceLister
+	Foos(namespace string, optional_tenant ...string) FooNamespaceLister
 	FooListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *fooLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err err
 }
 
 // Foos returns an object that can list and get Foos.
-func (s *fooLister) Foos(namespace string) FooNamespaceLister {
-	return fooNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *fooLister) Foos(namespace string, optional_tenant ...string) FooNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return fooNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // FooNamespaceLister helps list and get Foos.
 type FooNamespaceLister interface {
-	// List lists all Foos in the indexer for a given namespace.
+	// List lists all Foos in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1alpha1.Foo, err error)
-	// Get retrieves the Foo from the indexer for a given namespace and name.
+	// Get retrieves the Foo from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1alpha1.Foo, error)
 	FooNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type FooNamespaceLister interface {
 type fooNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Foos in the indexer for a given namespace.
 func (s fooNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1alpha1.Foo))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s fooNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Foo,
 
 // Get retrieves the Foo from the indexer for a given namespace and name.
 func (s fooNamespaceLister) Get(name string) (*v1alpha1.Foo, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

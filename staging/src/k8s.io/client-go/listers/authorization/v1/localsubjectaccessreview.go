@@ -30,7 +30,7 @@ type LocalSubjectAccessReviewLister interface {
 	// List lists all LocalSubjectAccessReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1.LocalSubjectAccessReview, err error)
 	// LocalSubjectAccessReviews returns an object that can list and get LocalSubjectAccessReviews.
-	LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewNamespaceLister
+	LocalSubjectAccessReviews(namespace string, optional_tenant ...string) LocalSubjectAccessReviewNamespaceLister
 	LocalSubjectAccessReviewListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *localSubjectAccessReviewLister) List(selector labels.Selector) (ret []*
 }
 
 // LocalSubjectAccessReviews returns an object that can list and get LocalSubjectAccessReviews.
-func (s *localSubjectAccessReviewLister) LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewNamespaceLister {
-	return localSubjectAccessReviewNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *localSubjectAccessReviewLister) LocalSubjectAccessReviews(namespace string, optional_tenant ...string) LocalSubjectAccessReviewNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return localSubjectAccessReviewNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // LocalSubjectAccessReviewNamespaceLister helps list and get LocalSubjectAccessReviews.
 type LocalSubjectAccessReviewNamespaceLister interface {
-	// List lists all LocalSubjectAccessReviews in the indexer for a given namespace.
+	// List lists all LocalSubjectAccessReviews in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.LocalSubjectAccessReview, err error)
-	// Get retrieves the LocalSubjectAccessReview from the indexer for a given namespace and name.
+	// Get retrieves the LocalSubjectAccessReview from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.LocalSubjectAccessReview, error)
 	LocalSubjectAccessReviewNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type LocalSubjectAccessReviewNamespaceLister interface {
 type localSubjectAccessReviewNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all LocalSubjectAccessReviews in the indexer for a given namespace.
 func (s localSubjectAccessReviewNamespaceLister) List(selector labels.Selector) (ret []*v1.LocalSubjectAccessReview, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.LocalSubjectAccessReview))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s localSubjectAccessReviewNamespaceLister) List(selector labels.Selector) 
 
 // Get retrieves the LocalSubjectAccessReview from the indexer for a given namespace and name.
 func (s localSubjectAccessReviewNamespaceLister) Get(name string) (*v1.LocalSubjectAccessReview, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

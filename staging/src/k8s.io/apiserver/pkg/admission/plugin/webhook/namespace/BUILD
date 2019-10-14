@@ -35,6 +35,7 @@ go_test(
         "//staging/src/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/admission:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/admission/plugin/webhook:go_default_library",
+        "//staging/src/k8s.io/client-go/listers/core/v1:go_default_library",
     ],
 )
 

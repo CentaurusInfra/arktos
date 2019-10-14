@@ -30,7 +30,7 @@ type EvictionLister interface {
 	// List lists all Evictions in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.Eviction, err error)
 	// Evictions returns an object that can list and get Evictions.
-	Evictions(namespace string) EvictionNamespaceLister
+	Evictions(namespace string, optional_tenant ...string) EvictionNamespaceLister
 	EvictionListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *evictionLister) List(selector labels.Selector) (ret []*v1beta1.Eviction
 }
 
 // Evictions returns an object that can list and get Evictions.
-func (s *evictionLister) Evictions(namespace string) EvictionNamespaceLister {
-	return evictionNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *evictionLister) Evictions(namespace string, optional_tenant ...string) EvictionNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return evictionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // EvictionNamespaceLister helps list and get Evictions.
 type EvictionNamespaceLister interface {
-	// List lists all Evictions in the indexer for a given namespace.
+	// List lists all Evictions in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1beta1.Eviction, err error)
-	// Get retrieves the Eviction from the indexer for a given namespace and name.
+	// Get retrieves the Eviction from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1beta1.Eviction, error)
 	EvictionNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type EvictionNamespaceLister interface {
 type evictionNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Evictions in the indexer for a given namespace.
 func (s evictionNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.Eviction, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1beta1.Eviction))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s evictionNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.
 
 // Get retrieves the Eviction from the indexer for a given namespace and name.
 func (s evictionNamespaceLister) Get(name string) (*v1beta1.Eviction, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

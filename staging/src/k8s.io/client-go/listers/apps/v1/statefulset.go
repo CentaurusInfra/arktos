@@ -30,7 +30,7 @@ type StatefulSetLister interface {
 	// List lists all StatefulSets in the indexer.
 	List(selector labels.Selector) (ret []*v1.StatefulSet, err error)
 	// StatefulSets returns an object that can list and get StatefulSets.
-	StatefulSets(namespace string) StatefulSetNamespaceLister
+	StatefulSets(namespace string, optional_tenant ...string) StatefulSetNamespaceLister
 	StatefulSetListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *statefulSetLister) List(selector labels.Selector) (ret []*v1.StatefulSe
 }
 
 // StatefulSets returns an object that can list and get StatefulSets.
-func (s *statefulSetLister) StatefulSets(namespace string) StatefulSetNamespaceLister {
-	return statefulSetNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *statefulSetLister) StatefulSets(namespace string, optional_tenant ...string) StatefulSetNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return statefulSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // StatefulSetNamespaceLister helps list and get StatefulSets.
 type StatefulSetNamespaceLister interface {
-	// List lists all StatefulSets in the indexer for a given namespace.
+	// List lists all StatefulSets in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.StatefulSet, err error)
-	// Get retrieves the StatefulSet from the indexer for a given namespace and name.
+	// Get retrieves the StatefulSet from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.StatefulSet, error)
 	StatefulSetNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type StatefulSetNamespaceLister interface {
 type statefulSetNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all StatefulSets in the indexer for a given namespace.
 func (s statefulSetNamespaceLister) List(selector labels.Selector) (ret []*v1.StatefulSet, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.StatefulSet))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s statefulSetNamespaceLister) List(selector labels.Selector) (ret []*v1.St
 
 // Get retrieves the StatefulSet from the indexer for a given namespace and name.
 func (s statefulSetNamespaceLister) Get(name string) (*v1.StatefulSet, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

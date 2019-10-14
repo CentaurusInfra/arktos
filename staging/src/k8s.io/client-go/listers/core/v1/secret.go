@@ -30,7 +30,7 @@ type SecretLister interface {
 	// List lists all Secrets in the indexer.
 	List(selector labels.Selector) (ret []*v1.Secret, err error)
 	// Secrets returns an object that can list and get Secrets.
-	Secrets(namespace string) SecretNamespaceLister
+	Secrets(namespace string, optional_tenant ...string) SecretNamespaceLister
 	SecretListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *secretLister) List(selector labels.Selector) (ret []*v1.Secret, err err
 }
 
 // Secrets returns an object that can list and get Secrets.
-func (s *secretLister) Secrets(namespace string) SecretNamespaceLister {
-	return secretNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *secretLister) Secrets(namespace string, optional_tenant ...string) SecretNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return secretNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // SecretNamespaceLister helps list and get Secrets.
 type SecretNamespaceLister interface {
-	// List lists all Secrets in the indexer for a given namespace.
+	// List lists all Secrets in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.Secret, err error)
-	// Get retrieves the Secret from the indexer for a given namespace and name.
+	// Get retrieves the Secret from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.Secret, error)
 	SecretNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type SecretNamespaceLister interface {
 type secretNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Secrets in the indexer for a given namespace.
 func (s secretNamespaceLister) List(selector labels.Selector) (ret []*v1.Secret, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.Secret))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s secretNamespaceLister) List(selector labels.Selector) (ret []*v1.Secret,
 
 // Get retrieves the Secret from the indexer for a given namespace and name.
 func (s secretNamespaceLister) Get(name string) (*v1.Secret, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -30,7 +30,7 @@ type FlunderLister interface {
 	// List lists all Flunders in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.Flunder, err error)
 	// Flunders returns an object that can list and get Flunders.
-	Flunders(namespace string) FlunderNamespaceLister
+	Flunders(namespace string, optional_tenant ...string) FlunderNamespaceLister
 	FlunderListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *flunderLister) List(selector labels.Selector) (ret []*v1alpha1.Flunder,
 }
 
 // Flunders returns an object that can list and get Flunders.
-func (s *flunderLister) Flunders(namespace string) FlunderNamespaceLister {
-	return flunderNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *flunderLister) Flunders(namespace string, optional_tenant ...string) FlunderNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return flunderNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // FlunderNamespaceLister helps list and get Flunders.
 type FlunderNamespaceLister interface {
-	// List lists all Flunders in the indexer for a given namespace.
+	// List lists all Flunders in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1alpha1.Flunder, err error)
-	// Get retrieves the Flunder from the indexer for a given namespace and name.
+	// Get retrieves the Flunder from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1alpha1.Flunder, error)
 	FlunderNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type FlunderNamespaceLister interface {
 type flunderNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Flunders in the indexer for a given namespace.
 func (s flunderNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Flunder, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1alpha1.Flunder))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s flunderNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.
 
 // Get retrieves the Flunder from the indexer for a given namespace and name.
 func (s flunderNamespaceLister) Get(name string) (*v1alpha1.Flunder, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

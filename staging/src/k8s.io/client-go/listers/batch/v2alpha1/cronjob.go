@@ -30,7 +30,7 @@ type CronJobLister interface {
 	// List lists all CronJobs in the indexer.
 	List(selector labels.Selector) (ret []*v2alpha1.CronJob, err error)
 	// CronJobs returns an object that can list and get CronJobs.
-	CronJobs(namespace string) CronJobNamespaceLister
+	CronJobs(namespace string, optional_tenant ...string) CronJobNamespaceLister
 	CronJobListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *cronJobLister) List(selector labels.Selector) (ret []*v2alpha1.CronJob,
 }
 
 // CronJobs returns an object that can list and get CronJobs.
-func (s *cronJobLister) CronJobs(namespace string) CronJobNamespaceLister {
-	return cronJobNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *cronJobLister) CronJobs(namespace string, optional_tenant ...string) CronJobNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return cronJobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // CronJobNamespaceLister helps list and get CronJobs.
 type CronJobNamespaceLister interface {
-	// List lists all CronJobs in the indexer for a given namespace.
+	// List lists all CronJobs in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v2alpha1.CronJob, err error)
-	// Get retrieves the CronJob from the indexer for a given namespace and name.
+	// Get retrieves the CronJob from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v2alpha1.CronJob, error)
 	CronJobNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type CronJobNamespaceLister interface {
 type cronJobNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all CronJobs in the indexer for a given namespace.
 func (s cronJobNamespaceLister) List(selector labels.Selector) (ret []*v2alpha1.CronJob, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v2alpha1.CronJob))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s cronJobNamespaceLister) List(selector labels.Selector) (ret []*v2alpha1.
 
 // Get retrieves the CronJob from the indexer for a given namespace and name.
 func (s cronJobNamespaceLister) Get(name string) (*v2alpha1.CronJob, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -62,7 +62,7 @@ func TestDaemonSetLister(t *testing.T) {
 		{
 			inDSs: []*extensions.DaemonSet{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "basic", Namespace: "ns"},
+					ObjectMeta: metav1.ObjectMeta{Name: "basic", Namespace: "ns", Tenant: "te"},
 					Spec: extensions.DaemonSetSpec{
 						Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "baz"}},
 					},
@@ -70,7 +70,7 @@ func TestDaemonSetLister(t *testing.T) {
 			},
 			list: func() ([]*extensions.DaemonSet, error) {
 				pod := &v1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Name: "pod1", Namespace: "ns"},
+					ObjectMeta: metav1.ObjectMeta{Name: "pod1", Namespace: "ns", Tenant: "te"},
 				}
 				return lister.GetPodDaemonSets(pod)
 			},
@@ -81,7 +81,7 @@ func TestDaemonSetLister(t *testing.T) {
 		{
 			inDSs: []*extensions.DaemonSet{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "basic", Namespace: "ns"},
+					ObjectMeta: metav1.ObjectMeta{Name: "basic", Namespace: "ns", Tenant: "te"},
 				},
 			},
 			list: func() ([]*extensions.DaemonSet, error) {
@@ -89,6 +89,7 @@ func TestDaemonSetLister(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod1",
 						Namespace: "ns",
+						Tenant:    "te",
 						Labels:    map[string]string{"foo": "bar"},
 					},
 				}
@@ -107,7 +108,7 @@ func TestDaemonSetLister(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "bar", Namespace: "ns"},
+					ObjectMeta: metav1.ObjectMeta{Name: "bar", Namespace: "ns", Tenant: "te"},
 					Spec: extensions.DaemonSetSpec{
 						Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 					},
@@ -119,6 +120,7 @@ func TestDaemonSetLister(t *testing.T) {
 						Name:      "pod1",
 						Labels:    map[string]string{"foo": "bar"},
 						Namespace: "ns",
+						Tenant:    "te",
 					},
 				}
 				return lister.GetPodDaemonSets(pod)
