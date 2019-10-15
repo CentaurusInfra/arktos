@@ -20,7 +20,6 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -38,7 +37,7 @@ import (
 )
 
 type ControllerInstanceManager struct {
-	currentControllers          map[string](map[types.UID]v1.ControllerInstance)
+	currentControllers          map[string](map[string]v1.ControllerInstance)
 	controllerLister            corelisters.ControllerInstanceLister
 	controllerListerSynced      cache.InformerSynced
 	isControllerListInitialized bool
@@ -76,7 +75,7 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 		kubeClient: kubeClient,
 		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "controller-instance-manager"}),
 
-		currentControllers:           make(map[string](map[types.UID]v1.ControllerInstance)),
+		currentControllers:           make(map[string](map[string]v1.ControllerInstance)),
 		isControllerListInitialized:  false,
 		controllerInstanceChangeChan: instanceChangeNotifyChan,
 	}
@@ -106,27 +105,27 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 		cim.deleteControllerInstance(newControllerInstance)
 		return
 	}
-	klog.Infof("Received event for NEW controller instance %v", newControllerInstance.UID)
+	klog.Infof("Received event for NEW controller instance %v", newControllerInstance.Name)
 
 	cim.mux.Lock()
 	klog.Info("mux locked addControllerInstance")
 	defer cim.mux.Unlock()
 
 	if cim.currentControllers == nil {
-		cim.currentControllers = make(map[string](map[types.UID]v1.ControllerInstance))
+		cim.currentControllers = make(map[string](map[string]v1.ControllerInstance))
 	}
 	existingInstancesForType, ok := cim.currentControllers[newControllerInstance.ControllerType]
 	if !ok { // real new controller instance
-		cim.currentControllers[newControllerInstance.ControllerType] = make(map[types.UID]v1.ControllerInstance)
+		cim.currentControllers[newControllerInstance.ControllerType] = make(map[string]v1.ControllerInstance)
 	} else { // check existing controller instance
-		existingInstance, ok1 := existingInstancesForType[newControllerInstance.UID]
+		existingInstance, ok1 := existingInstancesForType[newControllerInstance.Name]
 		if ok1 {
 			cim.updateControllerInstance(&existingInstance, newControllerInstance)
 			klog.Infof("Got existing controller instance %s in AddFunc", newControllerInstance.Name)
 			return
 		}
 	}
-	cim.currentControllers[newControllerInstance.ControllerType][newControllerInstance.UID] = *newControllerInstance
+	cim.currentControllers[newControllerInstance.ControllerType][newControllerInstance.Name] = *newControllerInstance
 
 	// notify appropriate controller
 	cim.notifyHandler(newControllerInstance)
@@ -154,11 +153,8 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 		}
 	}
 
-	klog.Infof("Received event for UPDATE controller instance %v", curControllerInstance.UID)
+	klog.Infof("Received event for UPDATE controller instance %v", curControllerInstance.Name)
 
-	if curControllerInstance.UID != oldControllerInstance.UID {
-		klog.Fatalf("Unexpected controller instance UID changed from %v to %v.", oldControllerInstance.UID, curControllerInstance.UID)
-	}
 	if curControllerInstance.Name != oldControllerInstance.Name {
 		klog.Fatalf("Unexpected controller instance Name changed from %v to %v.", oldControllerInstance.Name, curControllerInstance.Name)
 	}
@@ -174,11 +170,11 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 	klog.Infof("mux locked updateControllerInstance")
 	defer cim.mux.Unlock()
 
-	cim.currentControllers[oldControllerInstance.ControllerType][oldControllerInstance.UID] = *curControllerInstance
+	cim.currentControllers[oldControllerInstance.ControllerType][oldControllerInstance.Name] = *curControllerInstance
 
 	if curControllerInstance.WorkloadNum != oldControllerInstance.WorkloadNum || curControllerInstance.IsLocked != oldControllerInstance.IsLocked ||
-		curControllerInstance.HashKey != oldControllerInstance.HashKey {
-		klog.Infof("Notify controller instance %v was updated", curControllerInstance.UID)
+		curControllerInstance.ControllerKey != oldControllerInstance.ControllerKey {
+		klog.Infof("Notify controller instance %v was updated", curControllerInstance.Name)
 		cim.notifyHandler(curControllerInstance)
 	}
 
@@ -200,14 +196,14 @@ func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) 
 		}
 	}
 
-	klog.Infof("Received event for delete controller instance %v", controllerinstance.UID)
+	klog.Infof("Received event for delete controller instance %v", controllerinstance.Name)
 	cim.mux.Lock()
 	klog.Infof("mux locked deleteControllerInstance")
 	defer cim.mux.Unlock()
 
 	if l, ok := cim.currentControllers[controllerinstance.ControllerType]; ok {
-		if _, ok1 := l[controllerinstance.UID]; ok1 {
-			delete(l, controllerinstance.UID)
+		if _, ok1 := l[controllerinstance.Name]; ok1 {
+			delete(l, controllerinstance.Name)
 
 			// notify appropriate controller
 			cim.notifyHandler(controllerinstance)
@@ -228,7 +224,7 @@ func (cim *ControllerInstanceManager) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (cim *ControllerInstanceManager) ListControllerInstances(controllerType string) (map[types.UID]v1.ControllerInstance, error) {
+func (cim *ControllerInstanceManager) ListControllerInstances(controllerType string) (map[string]v1.ControllerInstance, error) {
 	if !cim.isControllerListInitialized {
 		err := cim.syncControllerInstances()
 		if err != nil {
@@ -252,10 +248,10 @@ func (cim *ControllerInstanceManager) syncControllerInstances() error {
 	for _, controllerInstance := range controllerInstanceList.Items {
 		controllersByType, ok := cim.currentControllers[controllerInstance.ControllerType]
 		if !ok {
-			controllersByType = make(map[types.UID]v1.ControllerInstance)
+			controllersByType = make(map[string]v1.ControllerInstance)
 			cim.currentControllers[controllerInstance.ControllerType] = controllersByType
 		}
-		controllersByType[controllerInstance.UID] = controllerInstance
+		controllersByType[controllerInstance.Name] = controllerInstance
 	}
 
 	cim.isControllerListInitialized = true

@@ -198,7 +198,7 @@ func (rsc *ReplicaSetController) Run(workers int, stopCh <-chan struct{}) {
 	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
 	go wait.Until(rsc.ControllerBase.ReportHealth, time.Minute, stopCh)
 
-	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), controller.GetControllerName(rsc.GetControllerId()))
+	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), rsc.GetControllerName())
 
 	<-stopCh
 }

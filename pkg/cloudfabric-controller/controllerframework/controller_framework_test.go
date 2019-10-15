@@ -36,7 +36,7 @@ func createControllerInstanceBase(t *testing.T, client clientset.Interface, cim 
 	newControllerInstance1, err := NewControllerBase(controllerType, client, updateCh)
 	assert.Nil(t, err)
 	assert.NotNil(t, newControllerInstance1)
-	assert.NotNil(t, newControllerInstance1.GetControllerId())
+	assert.NotNil(t, newControllerInstance1.GetControllerName())
 	assert.Equal(t, controllerType, newControllerInstance1.GetControllerType())
 	assert.True(t, newControllerInstance1.IsControllerActive())
 
@@ -145,7 +145,7 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
 	assert.Equal(t, controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey, controllerInstanceBase.controllerKey)
 	assert.Equal(t, 1, len(controllerInstanceBase.sortedControllerInstancesLocal))
-	controllerInstanceIdA := controllerInstanceBase.controllerInstanceId
+	controllerInstanceNameA := controllerInstanceBase.controllerName
 
 	// Add 2nd controller instance B with hashkey 100000,
 	// return isUpdate=true, isSelfUpdate=true, newLowerbound=controller key of 2nd controller instance, newUpperbound=maxInt64, newPos=1
@@ -154,7 +154,7 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	hashKey1 := int64(10000)
 
 	controllerInstanceB := newControllerInstance(controllerType, hashKey1, 100, true)
-	controllerInstanceIdB := controllerInstanceB.UID
+	controllerInstanceNameB := controllerInstanceB.Name
 	controllerInstanceBase.controllerInstanceList = append(controllerInstanceBase.controllerInstanceList, *controllerInstanceB)
 	sortedControllerInstanceLocal := SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceBase.controllerInstanceList)
 	isUpdated, isSelfUpdated, newLowerbound, newUpperBound, newPos := controllerInstanceBase.tryConsolidateControllerInstancesLocal(sortedControllerInstanceLocal)
@@ -167,14 +167,13 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	controllerInstanceBase.curPos = newPos
 	controllerInstanceBase.sortedControllerInstancesLocal = sortedControllerInstanceLocal
 
-	assert.Equal(t, controllerInstanceIdB, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceId)
+	assert.Equal(t, controllerInstanceNameB, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceName)
 	assert.Equal(t, int64(0), controllerInstanceBase.sortedControllerInstancesLocal[0].lowerboundKey)
 	assert.Equal(t, hashKey1, controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
 
-	assert.Equal(t, controllerInstanceIdA, controllerInstanceBase.sortedControllerInstancesLocal[1].instanceId)
+	assert.Equal(t, controllerInstanceNameA, controllerInstanceBase.sortedControllerInstancesLocal[1].instanceName)
 	assert.Equal(t, hashKey1, controllerInstanceBase.sortedControllerInstancesLocal[1].lowerboundKey)
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[1].controllerKey)
-
 
 	// Add 3nd controlller instance C with hashkey 100,
 	// return isUpdate=true, isSelfUpdate=false, newLowerbound=hashKey1, newUpperbound=maxInt64, newPos=2
@@ -183,7 +182,7 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	// controller instance A: (10000, maxInt64]
 	hashKey2 := int64(100)
 	controllerInstanceC := newControllerInstance(controllerType, hashKey2, 100, true)
-	controllerInstanceIdC := controllerInstanceC.UID
+	controllerInstanceNameC := controllerInstanceC.Name
 	controllerInstanceBase.controllerInstanceList = append(controllerInstanceBase.controllerInstanceList, *controllerInstanceC)
 	sortedControllerInstanceLocal = SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceBase.controllerInstanceList)
 	isUpdated, isSelfUpdated, newLowerbound, newUpperBound, newPos = controllerInstanceBase.tryConsolidateControllerInstancesLocal(sortedControllerInstanceLocal)
@@ -195,15 +194,15 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	controllerInstanceBase.curPos = newPos
 	controllerInstanceBase.sortedControllerInstancesLocal = sortedControllerInstanceLocal
 
-	assert.Equal(t, controllerInstanceIdC, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceId)
+	assert.Equal(t, controllerInstanceNameC, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceName)
 	assert.Equal(t, int64(0), controllerInstanceBase.sortedControllerInstancesLocal[0].lowerboundKey)
 	assert.Equal(t, hashKey2, controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
 
-	assert.Equal(t, controllerInstanceIdB, controllerInstanceBase.sortedControllerInstancesLocal[1].instanceId)
+	assert.Equal(t, controllerInstanceNameB, controllerInstanceBase.sortedControllerInstancesLocal[1].instanceName)
 	assert.Equal(t, hashKey2, controllerInstanceBase.sortedControllerInstancesLocal[1].lowerboundKey)
 	assert.Equal(t, hashKey1, controllerInstanceBase.sortedControllerInstancesLocal[1].controllerKey)
 
-	assert.Equal(t, controllerInstanceIdA, controllerInstanceBase.sortedControllerInstancesLocal[2].instanceId)
+	assert.Equal(t, controllerInstanceNameA, controllerInstanceBase.sortedControllerInstancesLocal[2].instanceName)
 	assert.Equal(t, hashKey1, controllerInstanceBase.sortedControllerInstancesLocal[2].lowerboundKey)
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[2].controllerKey)
 
@@ -223,11 +222,11 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	controllerInstanceBase.sortedControllerInstancesLocal = sortedControllerInstanceLocal
 	controllerInstanceBase.controllerInstanceList = controllerInstanceListNew
 
-	assert.Equal(t, controllerInstanceIdC, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceId)
+	assert.Equal(t, controllerInstanceNameC, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceName)
 	assert.Equal(t, int64(0), controllerInstanceBase.sortedControllerInstancesLocal[0].lowerboundKey)
 	assert.Equal(t, hashKey2, controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
 
-	assert.Equal(t, controllerInstanceIdA, controllerInstanceBase.sortedControllerInstancesLocal[1].instanceId)
+	assert.Equal(t, controllerInstanceNameA, controllerInstanceBase.sortedControllerInstancesLocal[1].instanceName)
 	assert.Equal(t, hashKey2, controllerInstanceBase.sortedControllerInstancesLocal[1].lowerboundKey)
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[1].controllerKey)
 
@@ -246,7 +245,7 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	controllerInstanceBase.sortedControllerInstancesLocal = sortedControllerInstanceLocal
 	controllerInstanceBase.controllerInstanceList = controllerInstanceListNew
 
-	assert.Equal(t, controllerInstanceIdA, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceId)
+	assert.Equal(t, controllerInstanceNameA, controllerInstanceBase.sortedControllerInstancesLocal[0].instanceName)
 	assert.Equal(t, int64(0), controllerInstanceBase.sortedControllerInstancesLocal[0].lowerboundKey)
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
 }
@@ -303,7 +302,7 @@ func TestGetMaxInterval(t *testing.T) {
 	assert.True(t, controllerInstanceBase.IsInRange(int64(math.MaxInt64)))
 
 	// 2 controller instances with workloadNum1 < workloadNum2 => (min, max) = controller instance 2 range
-	controllerInstanceBase.sortedControllerInstancesLocal[1].workloadNum = workloadNum1 +1
+	controllerInstanceBase.sortedControllerInstancesLocal[1].workloadNum = workloadNum1 + 1
 	min, max = controllerInstanceBase.getMaxInterval()
 	assert.Equal(t, hashKey1, min)
 	assert.Equal(t, int64(math.MaxInt64), max)

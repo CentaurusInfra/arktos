@@ -40,12 +40,12 @@ func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 func validNewControllerInstance() *api.ControllerInstance {
 	return &api.ControllerInstance{
 		ControllerType: "hel",
-		UID:            "112",
-		HashKey:        1,
+		ControllerKey:  1,
 		IsLocked:       false,
 		WorkloadNum:    100,
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
+			UID:  "112",
 		},
 	}
 }

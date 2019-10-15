@@ -5182,11 +5182,8 @@ type ControllerInstance struct {
 	// A string that designate the type of the controller instance
 	ControllerType string
 
-	// A UUID that representing an controller instance
-	UID types.UID
-
 	//  An int64 integer that identifies the upperbound of workload instances managed by this controller instance
-	HashKey int64
+	ControllerKey int64
 
 	// WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck
 	// +optional

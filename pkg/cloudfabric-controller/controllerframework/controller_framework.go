@@ -21,7 +21,6 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -44,7 +43,7 @@ const (
 )
 
 type controllerInstanceLocal struct {
-	instanceId    types.UID
+	instanceName  string
 	controllerKey int64
 	lowerboundKey int64
 	workloadNum   int32
@@ -53,7 +52,6 @@ type controllerInstanceLocal struct {
 
 type ControllerBase struct {
 	controllerType       string
-	controllerInstanceId types.UID
 	controllerName       string
 	state                string
 
@@ -98,7 +96,6 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 		client:                                   client,
 		controllerType:                           controllerType,
 		state:                                    ControllerStateInit,
-		controllerInstanceId:                     uuid.NewUUID(),
 		controllerInstanceList:                   controllerInstances,
 		sortedControllerInstancesLocal:           sortedControllerInstances,
 		curPos:                                   -1,
@@ -106,7 +103,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 	}
 
 	controller.controllerKey = controller.generateKey()
-	controller.controllerName = GetControllerName(controller.controllerInstanceId)
+	controller.controllerName = generateControllerName()
 
 	// First controller instance. No need to wait for others
 	if len(controller.sortedControllerInstancesLocal) == 0 {
@@ -123,8 +120,8 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 	return controller, err
 }
 
-func (c *ControllerBase) GetControllerId() types.UID {
-	return c.controllerInstanceId
+func (c *ControllerBase) GetControllerName() string {
+	return c.controllerName
 }
 
 func (c *ControllerBase) GetClient() clientset.Interface {
@@ -276,7 +273,7 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 	// find position in new controller instances - assume current controller is in new controller instance list (deal with edge cases later)
 	newPos = -1
 	for i := 0; i < len(newControllerInstancesLocal); i++ {
-		if newControllerInstancesLocal[i].instanceId == c.controllerInstanceId {
+		if newControllerInstancesLocal[i].instanceName == c.controllerName {
 			newPos = i
 			break
 		}
@@ -307,7 +304,7 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 			if c.sortedControllerInstancesLocal[i].lowerboundKey != newControllerInstancesLocal[i].lowerboundKey ||
 				c.sortedControllerInstancesLocal[i].workloadNum != newControllerInstancesLocal[i].workloadNum ||
 				c.sortedControllerInstancesLocal[i].controllerKey != newControllerInstancesLocal[i].controllerKey ||
-				c.sortedControllerInstancesLocal[i].instanceId != newControllerInstancesLocal[i].instanceId {
+				c.sortedControllerInstancesLocal[i].instanceName != newControllerInstancesLocal[i].instanceName {
 				isUpdated = true
 			}
 		}
@@ -320,8 +317,7 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 func (c *ControllerBase) registControllerInstance() error {
 	controllerInstance := v1.ControllerInstance{
 		ControllerType: c.controllerType,
-		UID:            c.controllerInstanceId,
-		HashKey:        c.controllerKey,
+		ControllerKey:  c.controllerKey,
 		WorkloadNum:    0,
 		IsLocked:       c.state == ControllerStateLocked,
 		ObjectMeta: metav1.ObjectMeta{
@@ -329,7 +325,7 @@ func (c *ControllerBase) registControllerInstance() error {
 		},
 	}
 
-	isExist := isControllerInstanceExisted(c.controllerInstanceList, c.controllerInstanceId)
+	isExist := isControllerInstanceExisted(c.controllerInstanceList, c.controllerName)
 	if isExist {
 		// Error
 		klog.Errorf("Trying to register new %s controller instance with id %v already existed in controller instance list", c.controllerType, c.controllerName)
@@ -359,8 +355,7 @@ func (c *ControllerBase) ReportHealth() {
 	klog.Infof("Controller %s instance %s report health", c.controllerType, c.controllerName)
 	controllerInstance := v1.ControllerInstance{
 		ControllerType: c.controllerType,
-		UID:            c.controllerInstanceId,
-		HashKey:        c.controllerKey,
+		ControllerKey:  c.controllerKey,
 		WorkloadNum:    c.sortedControllerInstancesLocal[c.curPos].workloadNum,
 		ObjectMeta: metav1.ObjectMeta{
 			Name: c.controllerName,
@@ -375,8 +370,9 @@ func (c *ControllerBase) ReportHealth() {
 	}
 }
 
-func GetControllerName(instanceId types.UID) string {
-	return fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, instanceId)
+func generateControllerName() string {
+	uid := uuid.NewUUID()
+	return fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, uid)
 }
 
 // Get controller instances by controller type
