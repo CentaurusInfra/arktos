@@ -736,8 +736,8 @@ func SortControllerInstancesByKeyAndConvertToLocal(controllerInstances []v1.Cont
 	var sortedControllerInstancesLocal []controllerInstanceLocal
 	for _, controllerInstance := range controllerInstances {
 		instance := controllerInstanceLocal{
-			instanceId:    controllerInstance.UID,
-			controllerKey: controllerInstance.HashKey,
+			instanceName:  controllerInstance.Name,
+			controllerKey: controllerInstance.ControllerKey,
 			workloadNum:   controllerInstance.WorkloadNum,
 			isLocked:      controllerInstance.IsLocked,
 		}
@@ -759,9 +759,9 @@ func SortControllerInstancesByKeyAndConvertToLocal(controllerInstances []v1.Cont
 	return sortedControllerInstancesLocal
 }
 
-func isControllerInstanceExisted(controllerInstancesInStorage []v1.ControllerInstance, instanceId types.UID) bool {
-	for _, instance := range controllerInstancesInStorage {
-		if instance.UID == instanceId {
+func isControllerInstanceExisted(controllerInstances []v1.ControllerInstance, controllerName string) bool {
+	for _, instance := range controllerInstances {
+		if instance.Name == controllerName {
 			return true
 		}
 	}

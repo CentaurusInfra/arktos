@@ -121,10 +121,13 @@ func newMatchingPod(podName, namespace string) *v1.Pod {
 	return pod
 }
 
-func rmSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *controller.ControllerInstanceManager, *replicaset.ReplicaSetController, informers.SharedInformerFactory, clientset.Interface) {
+func rmSetupMaster(t *testing.T) (*httptest.Server, framework.CloseFunc) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
+	return s, closeFn
+}
 
+func rmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.ControllerInstanceManager, *replicaset.ReplicaSetController, informers.SharedInformerFactory, clientset.Interface) {
 	config := restclient.Config{Host: s.URL}
 	clientSet, err := clientset.NewForConfig(&config)
 	if err != nil {
@@ -152,6 +155,14 @@ func rmSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *controller.C
 	if err != nil {
 		t.Fatalf("Failed to create replicaset controller")
 	}
+
+	return cim, rm, informers, clientSet
+}
+
+func rmSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *controller.ControllerInstanceManager, *replicaset.ReplicaSetController, informers.SharedInformerFactory, clientset.Interface) {
+	s, closeFn := rmSetupMaster(t)
+	cim, rm, informers, clientSet := rmSetupControllerMaster(t, s)
+
 	return s, closeFn, cim, rm, informers, clientSet
 }
 

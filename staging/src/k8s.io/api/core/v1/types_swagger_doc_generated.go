@@ -471,8 +471,7 @@ func (ContainerStatus) SwaggerDoc() map[string]string {
 var map_ControllerInstance = map[string]string{
 	"":               "ControllerInstance contains controller instances with ids and last health check timestamp",
 	"controllerType": "A string that designate the type of the controller instance",
-	"uid":            "A UUID that representing an controller instance",
-	"hashKey":        "\n An int64 integer that identifies the upperbound of workload instances managed by this controller instance",
+	"controllerKey":  "\n An int64 integer that identifies the upperbound of workload instances managed by this controller instance",
 	"workloadNum":    "WorkloadNum is int32 that identifies the workload number assigned to the controller instance at last healthcheck",
 	"isLocked":       "IsLocked is bool that identifies the lock status of the controller instance",
 }

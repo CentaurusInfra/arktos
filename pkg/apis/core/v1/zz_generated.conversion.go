@@ -3428,8 +3428,7 @@ func Convert_core_ContainerStatus_To_v1_ContainerStatus(in *core.ContainerStatus
 func autoConvert_v1_ControllerInstance_To_core_ControllerInstance(in *v1.ControllerInstance, out *core.ControllerInstance, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.ControllerType = in.ControllerType
-	out.UID = types.UID(in.UID)
-	out.HashKey = in.HashKey
+	out.ControllerKey = in.ControllerKey
 	out.WorkloadNum = in.WorkloadNum
 	out.IsLocked = in.IsLocked
 	return nil
@@ -3443,8 +3442,7 @@ func Convert_v1_ControllerInstance_To_core_ControllerInstance(in *v1.ControllerI
 func autoConvert_core_ControllerInstance_To_v1_ControllerInstance(in *core.ControllerInstance, out *v1.ControllerInstance, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.ControllerType = in.ControllerType
-	out.UID = types.UID(in.UID)
-	out.HashKey = in.HashKey
+	out.ControllerKey = in.ControllerKey
 	out.WorkloadNum = in.WorkloadNum
 	out.IsLocked = in.IsLocked
 	return nil
