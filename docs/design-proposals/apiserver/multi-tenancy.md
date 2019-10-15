@@ -173,7 +173,9 @@ We also consider the following approaches and decided to use the native multi-te
 
         a.	The cross reference of objects of different types under the same tenant will be inefficient. When a PVC needs to find the matching PV, or a pod needs to get the podSecurityPolicy, it needs to identify the scope of the resource, and extract the tenant info from the namespace field or name field. It could be an even bigger problem when dealing with dynamic objects, where the object type is not known. 
 
-        b.	The watching or list of resources under a tenant will be difficult. Kubernetes now support watch/list base on field boundary of the etcd keys. As tenant name is just part of another field, we need to change the behavior of K8s to access etcd for this. 
+        b.	The watching or list of resources under a tenant will be difficult. Kubernetes now support watch/list base on field boundary of the etcd keys. As tenant name is just part of another field, we need to change the behavior of K8s. 
+
+        c. The internal namespace/object names, with tenant info embedded, are different from what the clients of api server needs. Therefore, extra translation is needed for incoming api urls and object bodies, as well as the outgoing object bodies and self links, etc.  
 
 We choose the native multi-tenancy design, as it provides the following advantages comparing the above methods:
 1. All the tenants can share one control plane. It is lightweight comparing to the virtual cluster based multi-tenancy design where each tenant needs one control plane. It is also more efficient in resource utilization as the data-plane and control-plane resources can be shared across tenants. 
