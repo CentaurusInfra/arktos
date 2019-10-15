@@ -3,7 +3,7 @@
 ## Feature brief
 vnic hotplug is the ability to allow admin of VM workload able to insert (plug in) or remove (plug out) vnics, while VM is alive. It does not cover adding ip alias to existing vnics, which is vnic update feature, and out of scope of vnic hotplug.
 
-In Alkaid, hotplug is limited to nics other than the primary one (usually eth0), and only applicable to VM workloads.
+In Alkaid, hotplug is only applicable to VM workloads.
 
 Admin expresses the intention of hotplug by adding/removing pod.spec.vnics elements.
 
@@ -21,14 +21,16 @@ spec:
   vpc: vpc-1a2b3c4d
   nics:
       - portID: a2815656-76f7-46d4-9d11-057063db1a14
+        name: eth0
       - portID: 33da18a3-1ad1-428a-90f5-9d906dc498fe
+        name: eth1
 ```
 
 Deleting portID: 33da18a3-1ad1-428a-90f5-9d906dc498fe would cause eth1 disappear from cni netns, the network resource be released; the corresponding nic inside vm disapper. 
 
-On the contrast, appending one more portID element would lead to network resource provision and a new nic appear in the vm. If DHCP is configured properly, the new nic in vm should get its ip address automatically.
+On the contrast, appending one more element would lead to network resource provision and a new nic appear in the vm. If DHCP is configured properly, the new nic in vm should get its ip address automatically.
 
-Updating portID would be treated as deletion plus a new addition, and the new nic name *won't* be the one to be deleted. In our case in the cni netns, eth1 would be gone, while eth2 appear. Inside the vm, the old nic will be removed, and a new nic shows up, accordingly.
+Updating of an existing element is limited: if portID already has been assigned, portID cannot be updated directly (deletion by plug out is fine).
 
 ## Impact Analysis
 Hotplug not only requires new functionalities from existent componenets, it also significantly changes some aspects of existent core behaviors.

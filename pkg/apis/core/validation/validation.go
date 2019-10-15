@@ -29,7 +29,7 @@ import (
 
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -3675,6 +3675,7 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 	// 1.  spec.containers[*].image
 	// 2.  spec.initContainers[*].image
 	// 3.  spec.activeDeadlineSeconds
+	// 4.  spec.nics (excluding the primary one)
 
 	containerErrs, stop := ValidateContainerUpdates(newPod.Spec.Containers, oldPod.Spec.Containers, specPath.Child("containers"))
 	allErrs = append(allErrs, containerErrs...)
@@ -3707,6 +3708,23 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(specPath.Child("activeDeadlineSeconds"), newPod.Spec.ActiveDeadlineSeconds, "must not update from a positive integer to nil value"))
 	}
 
+	// validate updated spec.NICs; portID not allowed to update after assignment
+	// todo: add more stringent validations to disallow updates for other fields of vnic (assignment are fine)
+	for _, patchedNIC := range newPod.Spec.Nics {
+		newPortID := patchedNIC.PortId
+		if newPortID != "" {
+			nic := patchedNIC.Name
+
+			for _, old := range oldPod.Spec.Nics {
+				if old.Name == nic {
+					if old.PortId != "" && old.PortId != newPortID {
+						allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not modify %s portId\n", nic)))
+					}
+				}
+			}
+		}
+	}
+
 	// handle updateable fields by munging those fields prior to deep equal comparison.
 	mungedPod := *newPod
 	// munge spec.containers[*].image
@@ -3729,6 +3747,8 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		activeDeadlineSeconds := *oldPod.Spec.ActiveDeadlineSeconds
 		mungedPod.Spec.ActiveDeadlineSeconds = &activeDeadlineSeconds
 	}
+	// munge spec.nics
+	mungedPod.Spec.Nics = oldPod.Spec.Nics
 
 	// Allow only additions to tolerations updates.
 	mungedPod.Spec.Tolerations = oldPod.Spec.Tolerations
@@ -3738,7 +3758,7 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		// This diff isn't perfect, but it's a helluva lot better an "I'm not going to tell you what the difference is".
 		//TODO: Pinpoint the specific field that causes the invalid error after we have strategic merge diff
 		specDiff := diff.ObjectDiff(mungedPod.Spec, oldPod.Spec)
-		allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not change fields other than `spec.containers[*].image`, `spec.initContainers[*].image`, `spec.activeDeadlineSeconds` or `spec.tolerations` (only additions to existing tolerations)\n%v", specDiff)))
+		allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not change fields other than `spec.containers[*].image`, `spec.initContainers[*].image`, `spec.activeDeadlineSeconds`, `spec.nics` or `spec.tolerations` (only additions to existing tolerations)\n%v", specDiff)))
 	}
 
 	return allErrs

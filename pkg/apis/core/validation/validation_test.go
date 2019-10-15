@@ -8802,6 +8802,74 @@ func TestValidatePodUpdate(t *testing.T) {
 			"spec: Forbidden: pod updates",
 			"removed priority class name",
 		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vnic-update-default"},
+				Spec: core.PodSpec{
+					Nics: []core.Nic {
+						core.Nic{ PortId: "123456",	Name: "eth0", },
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vnic-update-default"},
+			},
+			"",
+			"vnic-update-default",
+		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vnic-add"},
+				Spec: core.PodSpec{
+					Nics: []core.Nic {
+						core.Nic{ PortId: "123456", Name: "eth0",	},
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vnic-add"},
+				Spec: core.PodSpec{
+					Nics: []core.Nic {
+						core.Nic{ PortId: "987654", Name: "eth1", },
+					},
+				},
+			},
+			"",
+			"vnic-add",
+		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vnic-update-primary"},
+				Spec: core.PodSpec{
+					Nics: []core.Nic {
+						core.Nic{ PortId: "123456",	Name: "eth0", },
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vnic-update-primary"},
+				Spec: core.PodSpec{
+					Nics: []core.Nic {
+						core.Nic{ PortId: "987654",	Name: "eth0", },
+					},
+				},
+			},
+			"spec: Forbidden: pod updates may not modify eth0 portId",
+			"vnic-update-primary",
+		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vpc-update"},
+				Spec: core.PodSpec{
+					VPC: "vpc-test",
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vpc-update"},
+			},
+			"spec: Forbidden: pod updates may not change fields",
+			"vpc-updates",
+		},
 	}
 
 	for _, test := range tests {
