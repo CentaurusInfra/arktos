@@ -9,14 +9,14 @@ Qian Chen, Xiaoning Ding
 
 Kubernetes provides a solution for automating deployment, scaling, and operations of application containers across clusters of hosts. However, it does not have support multi-tenancy. There is no explicit “tenant” concept in the system, and there is no resource isolation, usage isolation or performance isolation for different tenants.
 
-Alkaid is evolved from Kubernetes but designed for public cloud only. For a cluster management system supporting public cloud workloads, multi-tenancy is a fundamental requirement. This design document proposes works need to be done to support multi-tenancy for Alkaid.
+Alkaid is evolved from Kubernetes but designed for public cloud. For a cluster management system supporting public cloud workloads, multi-tenancy is a fundamental requirement. This design document proposes works need to be done to support multi-tenancy for Alkaid.
 
 
 ## Hard Multi-Tenancy Model
 
 There are several different multi-tenancy models. Kubernetes community has [some documents](https://docs.google.com/document/d/15w1_fesSUZHv-vwjiYa9vN_uyc--PySRoLKTuDhimjc/edit#heading=h.3dawx97e3hz6) to compare these models. In general, they can be categorized as “soft” models or “hard” models. In some scenarios like private cloud or within an organization, there is a certain level of trust between different tenants. In that case soft model may be enough.
 
-In the scenario of public cloud there isn’t any trust among tenants. And cloud vendors cannot trust tenants as well. For these reasons, we adopt the hard multi-tenancy model in this design.
+In the scenario of a public cloud there isn’t any trust among tenants. And cloud vendors cannot trust tenants as well. For these reasons, we adopt the hard multi-tenancy model in this design.
 
 Our hard multi-tenancy model is one where:
 
@@ -30,7 +30,7 @@ Our hard multi-tenancy model is one where:
 
 ### Tenant Object
 
-A tenant is defined as a group of users/identities who have the exclusive access to its own resources in parallel to other tenants within an Alkaid system. A tenant can have one or multiple namespaces. Two namespaces can have the same name as long as they are under different tenants
+A tenant is defined as a group of users/identities who have the exclusive access to its own resources in parallel to other tenants within an Alkaid system. A tenant can have one or multiple namespaces. Two namespaces can have the same name as long as they are under different tenants.
 
 A tenant is an API resource type. A sample yaml file is as follows.
 
@@ -96,17 +96,17 @@ The key paths of the resources in backend ETCD will also vary according to their
 
       ```/registry/{resource-type-plural}/{resource}```
 
-      Sample: ```/registry/apiregistration.k8s.io/apiservices/v1beta1.node.k8s.io```
+      Example: ```/registry/apiregistration.k8s.io/apiservices/v1beta1.node.k8s.io```
   2.	The path of tenant-scoped resources will be
   
         ```/registry/{resource-type-plural}/{tenant}/{resource}```
         
-        Sample: ```/registry/namespaces/system/kube-public```
+        Example: ```/registry/namespaces/system/kube-public```
   3.	The path of namespace-scoped resources will be:
   
         ```/registry/{resource-type-plural}/{tenant}/{namespace}/{resource}```
         
-        Sample: ```/registry/serviceaccounts/system/kube-system/job-controller```.
+        Example: ```/registry/serviceaccounts/system/kube-system/job-controller```.
 
 ### Special Tenants and Namespaces
 
@@ -163,33 +163,72 @@ To prevent a tenant over-use the system resources, we also need to constrain/tra
 
 Note that the k8s API server does not have rate limiting in place as it is designed to work in a trustable environment. 
 
+## Comparison With Other Approaches ##
+
+We also consider the following approaches and decided to use the native multi-tenancy design presented in this doc. 
+1.	[Virtual Cluster Based Multi-Tenancy](https://www.cncf.io/blog/2019/06/20/virtual-cluster-extending-namespace-based-multi-tenancy-with-a-cluster-view/), which is proposed by Alibaba. In this method, each tenant owns a dedicated kubernetes control plane, including API servers/controllers/etcd.
+2.	We also consider the design which makes no changes to the api server url formats and add no new field in resources, but embeds the tenant info in the existing fields. For namespace-scope objects, the value of namespace field will be {tenant}--{namespace}. For tenant-scoped objects, the object name will be {tenant}--{resource-name}. 
+        
+        The benefit of this method is that the code change to apiserver/etcd/client-go is minimized. Yet it will encounter the following issues:
+
+        a.	The cross reference of objects of different types under the same tenant will be inefficient. When a PVC needs to find the matching PV, or a pod needs to get the podSecurityPolicy, it needs to identify the scope of the resource, and extract the tenant info from the namespace field or name field. It could be an even bigger problem when dealing with dynamic objects, where the object type is not known. 
+
+        b.	The watching or list of resources under a tenant will be difficult. Kubernetes now support watch/list base on field boundary of the etcd keys. As tenant name is just part of another field, we need to change the behavior of K8s. 
+
+        c. The internal namespace/object names, with tenant info embedded, are different from what the clients of api server needs. Therefore, extra translation is needed for incoming api urls and object bodies, as well as the outgoing object bodies and self links, etc.  
+
+We choose the native multi-tenancy design, as it provides the following advantages comparing the above methods:
+1. All the tenants can share one control plane. It is lightweight comparing to the virtual cluster based multi-tenancy design where each tenant needs one control plane. It is also more efficient in resource utilization as the data-plane and control-plane resources can be shared across tenants. 
+2. A simple and straightforward mechanism to provide strong multi-tenancy over K8s. The second option desribed above is less straightforward. 
+
+In short, this design pave the way to build a very scalable public cloud management platform. 
+
 
 ## Code Changes
 
-A complete multi-tenancy support requires a lot of work. Starting from the basic, we plan to divide the work into several phases.  
-**Phase I: Resource Model**
+A complete multi-tenancy support requires a lot of work. Starting from the basic, we plan to divide the work into several milestones.  
+### Milestone I: Resource Model ###
 
-    1.	Define the new data types of Tenant.
-    2.	Add the Tenant info to the ObjectMeta of tenant-scoped and namespace-scoped resource types.
-    3.	Define the new tenant scope. Update the scope properties of all the existing resources. 
-    4.	Update the key of the K-V pairs of the resources in etcd to include the tenant info. Note that there are no change to the values of the K-V pairs in etcd. 
-    5.	Install new multi-tenancy aware APIs and remove the old namespace-based APIs.
-    6.	Update client-go code generators (including client-gen, informer-gen and lister-gen) to be multi-tenancy aware.  The new generators will generate code for resources of three scope types, comparing to only two types in existing K8S. Besides, the code generators will also take care of the tenant info in the resource objects. 
-    7.	Update the control plane code for make the control plane work with multiple tenants. 
-    8.	Multi-tenancy aware kubectl. The kubectl will be
-      *	Able to perform operations on tenant resources.
+This milestone can be further split several phases. 
+
+**Phase I: API Server Changes**
+  
+    1.	Define the new resource type of Tenant and expose this resource in APIServer.
+    2.	Add the Tenant info to the ObjectMeta of resources.
+    3.  Define the scope of each resource as given in [Appendix](#Resource-Types-in-Different-Scopes). A new boolean property, TenantScoped, is added to the definition of each resource, in addition to the exisintg property of NamespaceScoped.  The value of TenantScoped is true for namespace-scoped and tenant-scoped resources, and false for cluster-scoped resources. So the scope of a resource can be deduced from the values of its TenantScoped and NamespaceScoped property.
+    4.	Update the key path of the resources in etcd to include the tenant info, as given in [ETCD Key Paths](#ETCD-Key-Paths). Note that there are no change to the values of the K-V pairs in etcd. 
+    5.	Install new multi-tenancy aware APIs.
+    6.  Generate self-links with tenant info included.
+
+**Phase II: Client-Go Changes**
+
+    Client-go is the clientset to access Kubernetes API. This phase will Update client-go code generators to support multi-tenancy.  The new generators should add the field of tenant in the resource objects, send out multi-tenancy-aware API requests to API server, and make use of the tenant info in the response correctly. The changes will be done to the following generator:
+      * client-gen
+      * lister-gen
+      * informer-gen 
+
+**Phase III: Changes in Other Related Components**  
+
+    1.	Multi-tenancy aware kubectl. The kubectl will be
+      *	Able to create/delete/update tenants.
       *	Support operation targeted at a specific tenant or across multiple tenants
+    2.	Update other control plane components the control plane code for make the control plane work with multiple tenants. These componentes include but not limited to:
+      * controller
+      * scheduler
+      * kubelet
+    3. Add a new controller to monitor the lifecycle of tenants. 
 
-**Phase 2:  Access Control**
+
+### MileStone 2:  Access Control###
 
     1.	IAM integration.
     2.	Add the new types of TenantRole/TenantRoleBinding. 
     3.	Update the ClusterRole/ClusterRoleBinding.
     4.	Update the PolicyRule to make it work with the new scope model. 
 
-**Phase 3: Performance and Usage Isolation**
+### Phase 3: Performance and Usage Isolation ###
 
-    1.	Tenant-level quota support.
+    1.	Tenant-level Resource quota support.
     2.  Tenant-level rate limiting
     3.  Tenant-level usage metrics/statistics
 
@@ -209,6 +248,10 @@ Following are the list of resources belonging to each scope. Those highlighted w
   6.	APIService
   7.	ClusterRole. 
   8.	ClusterRoleBinding
+  9.  StorageClass
+  10. CSIDriver
+  11. CSINode
+  12. RuntimeClass
 
 #### Tenant-scope resources:
   1.	Namespace
@@ -218,11 +261,11 @@ Following are the list of resources belonging to each scope. Those highlighted w
   5.	CertificateSigningRequest
   6.	PodSecurityPolicy
   7.	PriorityClass
-  8.	StorageClass
-  9.	VolumeAttachment
-  10.	SelfSubjectAccessReview
-  11.	SelfSubjectRulesReview
-  12.	SubjectAccessReview
+  8.	VolumeAttachment
+  9.	SelfSubjectAccessReview
+  10.	SelfSubjectRulesReview
+  11.	SubjectAccessReview
+  12. AuditSink
   13.	*TenantRoleBinding. It is similar to the existing ClusterRoleBinding/RoleBining in K8S, but working on a tenant level.
   14.	*TenantRole. It is similar to the existing ClusterRole/Role in K8S, but working on a tenant level.
   15.	*TenantResourceQuota. It is similar to the existing namespace-scoped ResourceQuota in K8s, yet it is tenant-scoped.
@@ -253,5 +296,9 @@ The following namespace-scoped resources in k8s will continue to exist in Alkaid
   21.	PodDisruptionBudget
   22.	RoleBinding
   23.	Role
-
+  24. ConfigMap
+  25. Endpoint
+  26. LimitRange
+  27. PodPreset
+  28. ReplicationController
 
