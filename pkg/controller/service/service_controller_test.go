@@ -685,7 +685,7 @@ func TestSyncService(t *testing.T) {
 	}{
 		{
 			testName: "if an invalid service name is synced",
-			key:      "invalid/key/string",
+			key:      "invalid/key/string/format",
 			updateFn: func() {
 				controller, _, _ = newController()
 			},
@@ -693,9 +693,9 @@ func TestSyncService(t *testing.T) {
 				//TODO: should find a way to test for dependent package errors in such a way that it won't break
 				//TODO:	our tests, currently we only test if there is an error.
 				//Error should be unexpected key format: "invalid/key/string"
-				expectedError := fmt.Sprintf("unexpected key format: %q", "invalid/key/string")
+				expectedError := fmt.Sprintf("unexpected key format: %q", "invalid/key/string/format")
 				if e == nil || e.Error() != expectedError {
-					return fmt.Errorf("Expected=unexpected key format: %q, Obtained=%v", "invalid/key/string", e)
+					return fmt.Errorf("Expected=unexpected key format: %q, Obtained=%v", "invalid/key/string/format", e)
 				}
 				return nil
 			},

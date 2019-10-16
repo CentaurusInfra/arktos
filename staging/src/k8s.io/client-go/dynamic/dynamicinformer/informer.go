@@ -116,7 +116,12 @@ func (f *dynamicSharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{}) 
 }
 
 // NewFilteredDynamicInformer constructs a new informer for a dynamic type.
-func NewFilteredDynamicInformer(client dynamic.Interface, gvr schema.GroupVersionResource, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions TweakListOptionsFunc) informers.GenericInformer {
+func NewFilteredDynamicInformer(client dynamic.Interface, gvr schema.GroupVersionResource, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions TweakListOptionsFunc, optional_tenant ...string) informers.GenericInformer {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+
 	return &dynamicInformer{
 		gvr: gvr,
 		informer: cache.NewSharedIndexInformer(
@@ -125,13 +130,13 @@ func NewFilteredDynamicInformer(client dynamic.Interface, gvr schema.GroupVersio
 					if tweakListOptions != nil {
 						tweakListOptions(&options)
 					}
-					return client.Resource(gvr).Namespace(namespace).List(options)
+					return client.Resource(gvr).Namespace(namespace, tenant).List(options)
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					if tweakListOptions != nil {
 						tweakListOptions(&options)
 					}
-					return client.Resource(gvr).Namespace(namespace).Watch(options)
+					return client.Resource(gvr).Namespace(namespace, tenant).Watch(options)
 				},
 			},
 			&unstructured.Unstructured{},
