@@ -867,72 +867,78 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 
 	// Number of running containers to keep.
 	keepCount := 0
-	// check the status of containers.
-	for idx, container := range pod.Spec.Containers {
-		containerStatus := podStatus.FindContainerStatusByName(container.Name)
+	if pod.Spec.VirtualMachine == nil {
 
-		// Call internal container post-stop lifecycle hook for any non-running container so that any
-		// allocated cpus are released immediately. If the container is restarted, cpus will be re-allocated
-		// to it.
-		if containerStatus != nil && containerStatus.State != kubecontainer.ContainerStateRunning {
-			if err := m.internalLifecycle.PostStopContainer(containerStatus.ID.ID); err != nil {
-				klog.Errorf("internal container post-stop lifecycle hook failed for container %v in pod %v with error %v",
-					container.Name, pod.Name, err)
-			}
-		}
+		// check the status of containers.
+		for idx, container := range pod.Spec.Containers {
+			containerStatus := podStatus.FindContainerStatusByName(container.Name)
 
-		// If container does not exist, or is not running, check whether we
-		// need to restart it.
-		if containerStatus == nil || containerStatus.State != kubecontainer.ContainerStateRunning {
-			if kubecontainer.ShouldContainerBeRestarted(&container, pod, podStatus) {
+			 // Call internal container post-stop lifecycle hook for any non-running container so that any
+			 // allocated cpus are released immediately. If the container is restarted, cpus will be re-allocated
+			 // to it.
+			 if containerStatus != nil && containerStatus.State != kubecontainer.ContainerStateRunning {
+				 if err := m.internalLifecycle.PostStopContainer(containerStatus.ID.ID); err != nil {
+					 klog.Errorf("internal container post-stop lifecycle hook failed for container %v in pod %v with error %v",
+							 container.Name, pod.Name, err)
+				 }
+			 }
+
+		 // If container does not exist, or is not running, check whether we
+		 // need to restart it.
+		 if containerStatus == nil || containerStatus.State != kubecontainer.ContainerStateRunning {
+			 if kubecontainer.ShouldContainerBeRestarted(&container, pod, podStatus) {
 				message := fmt.Sprintf("Container %+v is dead, but RestartPolicy says that we should restart it.", container)
-				klog.V(3).Infof(message)
-				changes.ContainersToStart = append(changes.ContainersToStart, idx)
-				if containerStatus != nil && containerStatus.State == kubecontainer.ContainerStateUnknown {
-					// If container is in unknown state, we don't know whether it
-					// is actually running or not, always try killing it before
-					// restart to avoid having 2 running instances of the same container.
-					changes.ContainersToKill[containerStatus.ID] = containerToKillInfo{
+				 klog.V(3).Infof(message)
+				 changes.ContainersToStart = append(changes.ContainersToStart, idx)
+				 if containerStatus != nil && containerStatus.State == kubecontainer.ContainerStateUnknown {
+					 // If container is in unknown state, we don't know whether it
+					 // is actually running or not, always try killing it before
+					 // restart to avoid having 2 running instances of the same container.
+					 changes.ContainersToKill[containerStatus.ID] = containerToKillInfo{
 						name:      containerStatus.Name,
 						container: &pod.Spec.Containers[idx],
-						message: fmt.Sprintf("Container is in %q state, try killing it before restart",
-							containerStatus.State),
-					}
-				}
-			}
-			continue
-		}
-		// The container is running, but kill the container if any of the following condition is met.
-		var message string
-		restart := shouldRestartOnFailure(pod)
-		if _, _, changed := containerChanged(&container, containerStatus); changed {
-			message = fmt.Sprintf("Container %s definition changed", container.Name)
-			// Restart regardless of the restart policy because the container
-			// spec changed.
-			restart = true
-		} else if liveness, found := m.livenessManager.Get(containerStatus.ID); found && liveness == proberesults.Failure {
-			// If the container failed the liveness probe, we should kill it.
-			message = fmt.Sprintf("Container %s failed liveness probe", container.Name)
-		} else {
-			// Keep the container.
-			keepCount++
-			continue
-		}
+						message: fmt.Sprintf("Container is in %q state, try killing it before restart", containerStatus.State),
+					 }
+				 }
+			 }
+			 continue
+		 }
+		 // The container is running, but kill the container if any of the following condition is met.
+		 var message string
+			 restart := shouldRestartOnFailure(pod)
+			 if _, _, changed := containerChanged(&container, containerStatus); changed {
+				 message = fmt.Sprintf("Container %s definition changed", container.Name)
+					 // Restart regardless of the restart policy because the container
+					 // spec changed.
+					 restart = true
+			 } else if liveness, found := m.livenessManager.Get(containerStatus.ID); found && liveness == proberesults.Failure {
+				 // If the container failed the liveness probe, we should kill it.
+				 message = fmt.Sprintf("Container %s failed liveness probe", container.Name)
+			 } else {
+				 // Keep the container.
+				 keepCount++
+					 continue
+			 }
 
-		// We need to kill the container, but if we also want to restart the
-		// container afterwards, make the intent clear in the message. Also do
-		// not kill the entire pod since we expect container to be running eventually.
-		if restart {
-			message = fmt.Sprintf("%s, will be restarted", message)
-			changes.ContainersToStart = append(changes.ContainersToStart, idx)
-		}
+		 // We need to kill the container, but if we also want to restart the
+		 // container afterwards, make the intent clear in the message. Also do
+		 // not kill the entire pod since we expect container to be running eventually.
+		 if restart {
+			 message = fmt.Sprintf("%s, will be restarted", message)
+				 changes.ContainersToStart = append(changes.ContainersToStart, idx)
+		 }
 
-		changes.ContainersToKill[containerStatus.ID] = containerToKillInfo{
+		 changes.ContainersToKill[containerStatus.ID] = containerToKillInfo{
 			name:      containerStatus.Name,
-			container: &pod.Spec.Containers[idx],
-			message:   message,
+		   	container: &pod.Spec.Containers[idx],
+		   	message:   message,
+		 }
+		 klog.V(2).Infof("Container %q (%q) of pod %s: %s", container.Name, containerStatus.ID, format.Pod(pod), message)
 		}
-		klog.V(2).Infof("Container %q (%q) of pod %s: %s", container.Name, containerStatus.ID, format.Pod(pod), message)
+	} else {
+		// Keep the container if it's in shutdown mode
+		klog.V(4).Infof("keeping pod %v with shutdown vm alive", pod.Name)
+			keepCount++
 	}
 
 	if keepCount == 0 && len(changes.ContainersToStart) == 0 {
@@ -954,11 +960,13 @@ func (m *kubeGenericRuntimeManager) vmPowerStateChangesRequired(pod *v1.Pod, pod
 
 	// In a vm pod there is only one vm, which is mapped to containers[0]
 	// Currently we only support two changes:  from running to shutdown, and from shutdown to running
+	//requireStart := len(podStatus.ContainerStatuses)==0 &&
 	requireStart := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning &&
-		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateExited
+			pod.Status.VirtualMachineStatus.PowerState == v1.Shutdown
 	requireStop := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
-		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateRunning
+		       pod.Status.VirtualMachineStatus.PowerState == v1.Running
 
+	klog.V(4).Infof("power state change: requireStart = %v, requireStop = %v", requireStart, requireStop)
 	return requireStart || requireStop
 }
 
@@ -1187,22 +1195,22 @@ func (m *kubeGenericRuntimeManager) reconfigureVm(pod *v1.Pod, podSandboxID stri
 
 	// From running to shutdown (stop vm)
 	if pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
-		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateRunning {
-
+		pod.Status.VirtualMachineStatus.PowerState == v1.Running &&
+		len(podStatus.ContainerStatuses)!=0 {
 		stopContainerResult := kubecontainer.NewSyncResult(kubecontainer.KillContainer, container.Name)
 
-		klog.V(4).Infof("Stopping the virtual machine in pod %v", format.Pod(pod))
+		klog.V(4).Infof("Stopping the virtual machine in pod %+v status:%+v", format.Pod(pod), podStatus)
 		if err := m.killContainer(pod, containerStatus.ID, container.Name, "stopping the virtual machine", nil); err != nil {
 			stopContainerResult.Fail(kubecontainer.ErrKillContainer, err.Error())
 			klog.Errorf("killContainer %q(id=%q) for pod %q failed: %v", container.Name, containerStatus.ID, format.Pod(pod), err)
 		}
-
 		return stopContainerResult
 	}
 
 	// From shutdown to running (start vm)
 	if pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning &&
-		podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateExited {
+		pod.Status.VirtualMachineStatus.PowerState == v1.Shutdown{
+
 		startContainerResult := kubecontainer.NewSyncResult(kubecontainer.StartContainer, container.Name)
 
 		isInBackOff, msg, err := m.doBackOff(pod, container, podStatus, backOff)

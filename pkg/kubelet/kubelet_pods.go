@@ -1425,32 +1425,35 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 	// TODO: redefine VM state and powerState to match current containerRuntime state
 	//       OR switch to using libvirt VM runtime state which matches with current VM power state
 	if vmPod {
-		if len(podStatus.ContainerStatuses) == 0 {
-			klog.Errorf("VM container does not exist")
-			return &apiPodStatus
-		}
-		klog.V(4).Infof("Set virtual machine status for pod: %v", pod.Name)
 		apiPodStatus.VirtualMachineStatus = &v1.VirtualMachineStatus{Name: pod.Name}
-
-		switch podStatus.ContainerStatuses[0].State {
-		case kubecontainer.ContainerStateRunning:
-			apiPodStatus.VirtualMachineStatus.State = v1.VmActive
-			apiPodStatus.VirtualMachineStatus.PowerState = v1.Running
-			apiPodStatus.VirtualMachineStatus.RestartCount++
-			apiPodStatus.VirtualMachineStatus.Ready = true
-		case kubecontainer.ContainerStateExited:
+		if len(podStatus.ContainerStatuses) != 0 { // VM is active if len(podStatus.ContainerStatuses)!=0
+			apiPodStatus.VirtualMachineStatus.VirtualMachineId = podStatus.ContainerStatuses[0].ID.ID
+			switch podStatus.ContainerStatuses[0].State {
+			case kubecontainer.ContainerStateRunning:
+				apiPodStatus.VirtualMachineStatus.State = v1.VmActive
+				apiPodStatus.VirtualMachineStatus.PowerState = v1.Running
+				apiPodStatus.VirtualMachineStatus.Ready = true
+			case kubecontainer.ContainerStateExited:
+				apiPodStatus.VirtualMachineStatus.State = v1.VmStopped
+				apiPodStatus.VirtualMachineStatus.PowerState = v1.Shutdown
+				apiPodStatus.VirtualMachineStatus.Ready = false
+			default:
+				// default VM state ( container state unknown )
+				apiPodStatus.VirtualMachineStatus.State = v1.VmSuspended
+				apiPodStatus.VirtualMachineStatus.PowerState = v1.NoState
+				apiPodStatus.VirtualMachineStatus.Ready = false
+			}
+			klog.V(4).Infof("ContainerStatuses[0] = %+v, Set virtual machine status for pod: %v to %+v",
+					podStatus.ContainerStatuses[0], pod.Name, apiPodStatus.VirtualMachineStatus)
+		} else {
 			apiPodStatus.VirtualMachineStatus.State = v1.VmDeleted
 			apiPodStatus.VirtualMachineStatus.PowerState = v1.NoState
 			apiPodStatus.VirtualMachineStatus.Ready = false
-		default:
-			// default VM state ( container state unknown )
-			apiPodStatus.VirtualMachineStatus.State = v1.VmSuspended
-			apiPodStatus.VirtualMachineStatus.PowerState = v1.NoState
-			apiPodStatus.VirtualMachineStatus.Ready = false
+			klog.V(4).Infof("ContainerStatuses empty, Set virtual machine status for pod: %v to %+v",
+					podStatus.ContainerStatuses, pod.Name,
+					apiPodStatus.VirtualMachineStatus)
 		}
-
-		// TODO: once the vm status is the only one for podStatus for container type
-		// return &apiPodStatus
+		return &apiPodStatus
 	}
 
 	apiPodStatus.ContainerStatuses = kl.convertToAPIContainerStatuses(
