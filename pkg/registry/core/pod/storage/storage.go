@@ -238,16 +238,27 @@ func (r *ActionREST) New() runtime.Object {
 var _ = rest.Creater(&ActionREST{})
 
 func getActionSpec(pod *api.Pod, actionRequest *api.CustomAction) (actionObj *api.Action, err error) {
-	var actionSpec api.ActionSpec
+	var podAction *api.PodAction
 	switch actionRequest.Operation {
 	case string(api.RebootOp):
-		actionSpec = api.ActionSpec{
-			NodeName: pod.Spec.NodeName,
-			PodAction: &api.PodAction{
-				PodName: pod.Name,
-				RebootAction: &api.RebootAction{
-					DelayInSeconds: actionRequest.RebootParams.DelayInSeconds,
-				},
+		podAction = &api.PodAction{
+			PodName: pod.Name,
+			RebootAction: &api.RebootAction{
+				DelayInSeconds: actionRequest.RebootParams.DelayInSeconds,
+			},
+		}
+	case string(api.SnapshotOp):
+		podAction = &api.PodAction{
+			PodName: pod.Name,
+			SnapshotAction: &api.SnapshotAction{
+				SnapshotName: actionRequest.SnapshotParams.SnapshotName,
+			},
+		}
+	case string(api.RestoreOp):
+		podAction = &api.PodAction{
+			PodName: pod.Name,
+			RestoreAction: &api.RestoreAction{
+				SnapshotID: actionRequest.RestoreParams.SnapshotID,
 			},
 		}
 	default:
@@ -263,7 +274,10 @@ func getActionSpec(pod *api.Pod, actionRequest *api.CustomAction) (actionObj *ap
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%d", actionRequest.Operation, time.Now().Unix()),
 		},
-		Spec: actionSpec,
+		Spec: api.ActionSpec{
+			NodeName:  pod.Spec.NodeName,
+			PodAction: podAction,
+		},
 	}
 	return actionObject, nil
 }

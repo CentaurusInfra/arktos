@@ -37,5 +37,7 @@ metadata:
 operation: "25"
 rebootParams:
   delayInSeconds: -2052872833
+restoreParams:
+  snapshotID: "27"
 snapshotParams:
-  snapshotLocation: "26"
+  snapshotName: "26"

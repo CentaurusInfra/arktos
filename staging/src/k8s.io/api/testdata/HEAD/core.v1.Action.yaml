@@ -37,23 +37,29 @@ metadata:
 spec:
   nodeAction:
     rebootAction:
-      delayInSeconds: 471098387
+      delayInSeconds: -213805612
   nodeName: "25"
   podAction:
     podID: "27"
     podName: "26"
     rebootAction:
       delayInSeconds: -125651156
+    restoreAction:
+      snapshotID: "29"
     snapshotAction:
-      snapshotLocation: "28"
+      snapshotName: "28"
 status:
-  error: "31"
+  complete: true
+  error: "33"
   nodeActionStatus:
-    rebootStatus: {}
-  podActionStatus:
-    podID: "30"
-    podName: "29"
     rebootStatus:
       rebootSuccessful: true
+  podActionStatus:
+    podID: "31"
+    podName: "30"
+    rebootStatus:
+      rebootSuccessful: true
+    restoreStatus:
+      restoreSuccessful: true
     snapshotStatus:
-      snapshotSizeInBytes: -3432875292330115395
+      snapshotID: "32"

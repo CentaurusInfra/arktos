@@ -252,10 +252,10 @@ func NewKubeGenericRuntimeManager(
 
 // Retrieve the runtime service with PODID
 func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPodID(podId kubetypes.UID) (internalapi.RuntimeService, error) {
-	klog.Infof("Retrieve runtime service for podID %v", podId)
+	klog.V(4).Infof("Retrieve runtime service for podID %v", podId)
 	// firstly check the pod-runtimeService cache
 	if runtimeService, found := m.podRuntimeServiceMap[string(podId)]; found {
-		klog.Infof("Got runtime service [%v] for podID %v", runtimeService, podId)
+		klog.V(4).Infof("Got runtime service [%v] for podID %v", runtimeService, podId)
 		return runtimeService, nil
 	}
 
@@ -277,7 +277,7 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPodID(podId kubetypes.UID
 
 		for _, item := range resp {
 			if item.Metadata.Uid == string(podId) {
-				klog.Infof("Got runtime service [%v] for podID %v", runtimeService, podId)
+				klog.V(4).Infof("Got runtime service [%v] for podID %v", runtimeService, podId)
 				m.addPodRuntimeService(string(podId), runtimeService)
 				return runtimeService, nil
 			}
@@ -291,11 +291,11 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPodID(podId kubetypes.UID
 // the GetRuntimeServiceByPod is called when POD is being created, i.e. the pod-runtime map and runtime service
 // will not have it
 func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error) {
-	klog.Infof("Retrieve runtime service for POD %s", pod.Name)
+	klog.V(4).Infof("Retrieve runtime service for POD %s", pod.Name)
 	runtimeName := getRuntimeServiceNameFromPodSpec(pod)
 
 	if runtimeName == nil || *runtimeName == "" {
-		klog.Infof("Get default runtime service for POD %s", pod.Name)
+		klog.V(4).Infof("Get default runtime service for POD %s", pod.Name)
 		if pod.Spec.VirtualMachine != nil {
 			return m.GetDefaultRuntimeServiceForWorkload(vmworkloadType)
 		} else {
@@ -304,7 +304,7 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPod(pod *v1.Pod) (interna
 	}
 
 	if runtimeService, found := m.runtimeServices[*runtimeName]; found {
-		klog.Infof("Got runtime service [%v] for POD %s", runtimeService, pod.Name)
+		klog.V(4).Infof("Got runtime service [%v] for POD %s", runtimeService, pod.Name)
 		return runtimeService.serviceApi, nil
 	}
 
@@ -320,7 +320,7 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByContainerID(id kubecontai
 
 // TODO: build pod-container relationship map and get the runtime service from the pod-runtimeService map first
 func (m *kubeGenericRuntimeManager) GetRuntimeServiceByContainerIDString(id string) (internalapi.RuntimeService, error) {
-	klog.Infof("Retrieve runtime service for containerID %s", id)
+	klog.V(4).Infof("Retrieve runtime service for containerID %s", id)
 	runtimeServices, err := m.GetAllRuntimeServices()
 	if err != nil {
 		klog.Errorf("GetAllRuntimeServices failed: %v", err)
@@ -338,7 +338,7 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByContainerIDString(id stri
 
 		for _, item := range resp {
 			if item.Id == id {
-				klog.Infof("Got runtime service [%v] for containerID %s", runtimeService, id)
+				klog.V(4).Infof("Got runtime service [%v] for containerID %s", runtimeService, id)
 				return runtimeService, nil
 			}
 		}
@@ -358,7 +358,7 @@ func (m *kubeGenericRuntimeManager) GetAllRuntimeServices() ([]internalapi.Runti
 		runtimes = append(runtimes, service.serviceApi)
 	}
 
-	klog.Infof("GetAllRuntimeServices returns : %v", runtimes)
+	klog.V(4).Infof("GetAllRuntimeServices returns : %v", runtimes)
 	return runtimes, nil
 }
 
@@ -371,14 +371,14 @@ func (m *kubeGenericRuntimeManager) GetAllRuntimeServicesForWorkload(workloadTyp
 		}
 	}
 
-	klog.Infof("GetAllRuntimeServicesForWorkload returns : %v", runtimes)
+	klog.V(4).Infof("GetAllRuntimeServicesForWorkload returns : %v", runtimes)
 	return runtimes, nil
 }
 
 func (m *kubeGenericRuntimeManager) GetDefaultRuntimeServiceForWorkload(workloadType string) (internalapi.RuntimeService, error) {
 	for _, service := range m.runtimeServices {
 		if service.workloadType == workloadType && service.isDefault {
-			klog.Infof("Got default runtime service [%v] for workload type %s", service.serviceApi, workloadType)
+			klog.V(4).Infof("Got default runtime service [%v] for workload type %s", service.serviceApi, workloadType)
 			return service.serviceApi, nil
 		}
 	}
@@ -388,11 +388,11 @@ func (m *kubeGenericRuntimeManager) GetDefaultRuntimeServiceForWorkload(workload
 
 // Retrieve the image service for a POD with the POD SPEC
 func (m *kubeGenericRuntimeManager) GetImageServiceByPod(pod *v1.Pod) (internalapi.ImageManagerService, error) {
-	klog.Infof("Retrieve image service for POD %s", pod.Name)
+	klog.V(4).Infof("Retrieve image service for POD %s", pod.Name)
 	runtimeName := getImageServiceNameFromPodSpec(pod)
 
 	if runtimeName == nil || *runtimeName == "" {
-		klog.Infof("Get default image service for POD %s", pod.Name)
+		klog.V(4).Infof("Get default image service for POD %s", pod.Name)
 		if pod.Spec.VirtualMachine != nil {
 			return m.GetDefaultImageServiceForWorkload(vmworkloadType)
 		} else {
@@ -401,7 +401,7 @@ func (m *kubeGenericRuntimeManager) GetImageServiceByPod(pod *v1.Pod) (internala
 	}
 
 	if imageService, found := m.imageServices[*runtimeName]; found {
-		klog.Infof("Got image service [%v] for POD %s", imageService, pod.Name)
+		klog.V(4).Infof("Got image service [%v] for POD %s", imageService, pod.Name)
 		return imageService.serviceApi, nil
 	}
 
@@ -417,14 +417,14 @@ func (m *kubeGenericRuntimeManager) GetAllImageServices() ([]internalapi.ImageMa
 		imageServices = append(imageServices, service.serviceApi)
 	}
 
-	klog.Infof("GetAllImageServices returns : %v", imageServices)
+	klog.V(4).Infof("GetAllImageServices returns : %v", imageServices)
 	return imageServices, nil
 }
 
 func (m *kubeGenericRuntimeManager) GetDefaultImageServiceForWorkload(workloadType string) (internalapi.ImageManagerService, error) {
 	for _, service := range m.imageServices {
 		if service.workloadType == workloadType && service.isDefault {
-			klog.Infof("Got default image service [%v] for workload type %s", service.serviceApi, workloadType)
+			klog.V(4).Infof("Got default image service [%v] for workload type %s", service.serviceApi, workloadType)
 			return service.serviceApi, nil
 		}
 	}
@@ -443,12 +443,12 @@ func (m *kubeGenericRuntimeManager) GetDesiredImagePuller(pod *v1.Pod) (images.I
 		return nil, err
 	}
 
-	klog.Infof("Set desired image service for POD %s", pod.Name)
+	klog.V(4).Infof("Set desired image service for POD %s", pod.Name)
 	for _, winfo := range pod.Spec.Workloads() {
 		if m.getPodImageService(winfo.Image) != nil {
-			klog.Infof("Skip setting desired image service for image %s. service: %v", winfo.Image, imageService)
+			klog.V(4).Infof("Skip setting desired image service for image %s. service: %v", winfo.Image, imageService)
 		} else {
-			klog.Infof("Set desired image service for image %s. service: %v", winfo.Image, imageService)
+			klog.V(4).Infof("Set desired image service for image %s. service: %v", winfo.Image, imageService)
 			m.addPodImageService(winfo.Image, imageService)
 		}
 	}

@@ -1005,6 +1005,8 @@ message CustomAction {
   optional RebootParams rebootParams = 3;
 
   optional SnapshotParams snapshotParams = 4;
+
+  optional RestoreParams restoreParams = 5;
 }
 
 // DaemonEndpoint contains information about a single Daemon endpoint.
@@ -2791,6 +2793,8 @@ message PodAction {
   optional RebootAction rebootAction = 3;
 
   optional SnapshotAction snapshotAction = 4;
+
+  optional RestoreAction restoreAction = 5;
 }
 
 message PodActionStatus {
@@ -2801,6 +2805,8 @@ message PodActionStatus {
   optional RebootStatus rebootStatus = 3;
 
   optional SnapshotStatus snapshotStatus = 4;
+
+  optional RestoreStatus restoreStatus = 5;
 }
 
 // Pod affinity is a group of inter pod affinity scheduling rules.
@@ -4005,6 +4011,19 @@ message ResourceRequirements {
   map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> requests = 2;
 }
 
+message RestoreAction {
+  optional string snapshotID = 1;
+}
+
+message RestoreParams {
+  // ID of the snapshot to which the VM has to be restored
+  optional string snapshotID = 1;
+}
+
+message RestoreStatus {
+  optional bool restoreSuccessful = 1;
+}
+
 // SELinuxOptions are the labels to be applied to the container
 message SELinuxOptions {
   // User is a SELinux user label that applies to the container.
@@ -4640,15 +4659,16 @@ message SessionAffinityConfig {
 }
 
 message SnapshotAction {
-  optional string snapshotLocation = 1;
+  optional string snapshotName = 1;
 }
 
 message SnapshotParams {
-  optional string snapshotLocation = 1;
+  // Name of the snapshot
+  optional string snapshotName = 1;
 }
 
 message SnapshotStatus {
-  optional int64 snapshotSizeInBytes = 1;
+  optional string snapshotID = 1;
 }
 
 // Represents a StorageOS persistent volume resource.

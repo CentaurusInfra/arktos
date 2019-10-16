@@ -4673,7 +4673,13 @@ type RebootParams struct {
 }
 
 type SnapshotParams struct {
-	SnapshotLocation string `json:"snapshotLocation" protobuf:"bytes,1,opt,name=snapshotLocation"`
+	// Name of the snapshot
+	SnapshotName string `json:"snapshotName" protobuf:"bytes,1,opt,name=snapshotName"`
+}
+
+type RestoreParams struct {
+	// ID of the snapshot to which the VM has to be restored
+	SnapshotID string `json:"snapshotID" protobuf:"bytes,1,opt,name=snapshotID"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -4691,6 +4697,7 @@ type CustomAction struct {
 	// Action specific parameters
 	RebootParams   RebootParams   `json:"rebootParams,omitempty" protobuf:"bytes,3,opt,name=rebootParams"`
 	SnapshotParams SnapshotParams `json:"snapshotParams,omitempty" protobuf:"bytes,4,opt,name=snapshotParams"`
+	RestoreParams  RestoreParams  `json:"restoreParams,omitempty" protobuf:"bytes,5,opt,name=restoreParams"`
 }
 
 type RebootAction struct {
@@ -4702,11 +4709,19 @@ type RebootStatus struct {
 }
 
 type SnapshotAction struct {
-	SnapshotLocation string `json:"snapshotLocation,omitempty" protobuf:"bytes,1,opt,name=snapshotLocation"`
+	SnapshotName string `json:"snapshotName,omitempty" protobuf:"bytes,1,opt,name=snapshotName"`
 }
 
 type SnapshotStatus struct {
-	SnapshotSizeInBytes int64 `json:"snapshotSizeInBytes,omitempty" protobuf:"varint,1,opt,name=snapshotSizeInBytes"`
+	SnapshotID string `json:"snapshotID,omitempty" protobuf:"bytes,1,opt,name=snapshotID"`
+}
+
+type RestoreAction struct {
+	SnapshotID string `json:"snapshotID,omitempty" protobuf:"bytes,1,opt,name=snapshotID"`
+}
+
+type RestoreStatus struct {
+	RestoreSuccessful bool `json:"restoreSuccessful,omitempty" protobuf:"varint,1,opt,name=restoreSuccessful"`
 }
 
 type PodAction struct {
@@ -4714,6 +4729,7 @@ type PodAction struct {
 	PodID          string          `json:"podID,omitempty" protobuf:"bytes,2,opt,name=podID"`
 	RebootAction   *RebootAction   `json:"rebootAction,omitempty" protobuf:"bytes,3,opt,name=rebootAction"`
 	SnapshotAction *SnapshotAction `json:"snapshotAction,omitempty" protobuf:"bytes,4,opt,name=snapshotAction"`
+	RestoreAction  *RestoreAction  `json:"restoreAction,omitempty" protobuf:"bytes,5,opt,name=restoreAction"`
 }
 
 type PodActionStatus struct {
@@ -4721,6 +4737,7 @@ type PodActionStatus struct {
 	PodID          string          `json:"podID,omitempty" protobuf:"bytes,2,opt,name=podID"`
 	RebootStatus   *RebootStatus   `json:"rebootStatus,omitempty" protobuf:"bytes,3,opt,name=rebootStatus"`
 	SnapshotStatus *SnapshotStatus `json:"snapshotStatus,omitempty" protobuf:"bytes,4,opt,name=snapshotStatus"`
+	RestoreStatus  *RestoreStatus  `json:"restoreStatus,omitempty" protobuf:"bytes,5,opt,name=restoreStatus"`
 }
 
 type NodeAction struct {

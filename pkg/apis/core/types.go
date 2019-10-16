@@ -4160,7 +4160,11 @@ type RebootParams struct {
 }
 
 type SnapshotParams struct {
-	SnapshotLocation string
+	SnapshotName string
+}
+
+type RestoreParams struct {
+	SnapshotID string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -4178,6 +4182,7 @@ type CustomAction struct {
 	// Action specific parameters
 	RebootParams   RebootParams
 	SnapshotParams SnapshotParams
+	RestoreParams  RestoreParams
 }
 
 type RebootAction struct {
@@ -4189,11 +4194,19 @@ type RebootStatus struct {
 }
 
 type SnapshotAction struct {
-	SnapshotLocation string
+	SnapshotName string
 }
 
 type SnapshotStatus struct {
-	SnapshotSizeInBytes int64
+	SnapshotID string
+}
+
+type RestoreAction struct {
+	SnapshotID string
+}
+
+type RestoreStatus struct {
+	RestoreSuccessful bool
 }
 
 type PodAction struct {
@@ -4201,6 +4214,7 @@ type PodAction struct {
 	PodID          string
 	RebootAction   *RebootAction
 	SnapshotAction *SnapshotAction
+	RestoreAction  *RestoreAction
 }
 
 type PodActionStatus struct {
@@ -4208,6 +4222,7 @@ type PodActionStatus struct {
 	PodID          string
 	RebootStatus   *RebootStatus
 	SnapshotStatus *SnapshotStatus
+	RestoreStatus  *RestoreStatus
 }
 
 type NodeAction struct {

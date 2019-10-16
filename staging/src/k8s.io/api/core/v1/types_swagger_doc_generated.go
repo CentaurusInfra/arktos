@@ -1950,6 +1950,14 @@ func (ResourceRequirements) SwaggerDoc() map[string]string {
 	return map_ResourceRequirements
 }
 
+var map_RestoreParams = map[string]string{
+	"snapshotID": "ID of the snapshot to which the VM has to be restored",
+}
+
+func (RestoreParams) SwaggerDoc() map[string]string {
+	return map_RestoreParams
+}
+
 var map_SELinuxOptions = map[string]string{
 	"":      "SELinuxOptions are the labels to be applied to the container",
 	"user":  "User is a SELinux user label that applies to the container.",
@@ -2231,6 +2239,14 @@ var map_SessionAffinityConfig = map[string]string{
 
 func (SessionAffinityConfig) SwaggerDoc() map[string]string {
 	return map_SessionAffinityConfig
+}
+
+var map_SnapshotParams = map[string]string{
+	"snapshotName": "Name of the snapshot",
+}
+
+func (SnapshotParams) SwaggerDoc() map[string]string {
+	return map_SnapshotParams
 }
 
 var map_StorageOSPersistentVolumeSource = map[string]string{

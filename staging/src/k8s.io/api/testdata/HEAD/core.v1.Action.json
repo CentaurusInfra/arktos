@@ -52,31 +52,38 @@
         "delayInSeconds": -125651156
       },
       "snapshotAction": {
-        "snapshotLocation": "28"
+        "snapshotName": "28"
+      },
+      "restoreAction": {
+        "snapshotID": "29"
       }
     },
     "nodeAction": {
       "rebootAction": {
-        "delayInSeconds": 471098387
+        "delayInSeconds": -213805612
       }
     }
   },
   "status": {
+    "complete": true,
     "podActionStatus": {
-      "podName": "29",
-      "podID": "30",
+      "podName": "30",
+      "podID": "31",
       "rebootStatus": {
         "rebootSuccessful": true
       },
       "snapshotStatus": {
-        "snapshotSizeInBytes": -3432875292330115395
+        "snapshotID": "32"
+      },
+      "restoreStatus": {
+        "restoreSuccessful": true
       }
     },
     "nodeActionStatus": {
       "rebootStatus": {
-        
+        "rebootSuccessful": true
       }
     },
-    "error": "31"
+    "error": "33"
   }
 }

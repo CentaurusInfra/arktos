@@ -48,6 +48,9 @@
     "delayInSeconds": -2052872833
   },
   "snapshotParams": {
-    "snapshotLocation": "26"
+    "snapshotName": "26"
+  },
+  "restoreParams": {
+    "snapshotID": "27"
   }
 }
