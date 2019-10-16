@@ -103,6 +103,7 @@ func newPod(name string, job *batch.Job) *v1.Pod {
 			Name:            name,
 			Labels:          job.Spec.Selector.MatchLabels,
 			Namespace:       job.Namespace,
+			Tenant:          job.Tenant,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(job, controllerKind)},
 		},
 	}
@@ -1200,6 +1201,7 @@ func TestWatchJobs(t *testing.T) {
 	go manager.Run(1, stopCh)
 
 	// We're sending new job to see if it reaches syncHandler.
+	testJob.Tenant = "default"
 	testJob.Namespace = "bar"
 	testJob.Name = "foo"
 	fakeWatch.Add(&testJob)

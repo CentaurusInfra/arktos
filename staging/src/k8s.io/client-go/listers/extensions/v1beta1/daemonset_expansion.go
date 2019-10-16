@@ -48,7 +48,7 @@ func (s *daemonSetLister) GetPodDaemonSets(pod *v1.Pod) ([]*v1beta1.DaemonSet, e
 		return nil, fmt.Errorf("no daemon sets found for pod %v because it has no labels", pod.Name)
 	}
 
-	list, err := s.DaemonSets(pod.Namespace).List(labels.Everything())
+	list, err := s.DaemonSets(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (s *daemonSetLister) GetPodDaemonSets(pod *v1.Pod) ([]*v1beta1.DaemonSet, e
 	var daemonSets []*v1beta1.DaemonSet
 	for i := range list {
 		daemonSet = list[i]
-		if daemonSet.Namespace != pod.Namespace {
+		if daemonSet.Namespace != pod.Namespace || daemonSet.Tenant != pod.Tenant {
 			continue
 		}
 		selector, err = metav1.LabelSelectorAsSelector(daemonSet.Spec.Selector)
@@ -73,7 +73,7 @@ func (s *daemonSetLister) GetPodDaemonSets(pod *v1.Pod) ([]*v1beta1.DaemonSet, e
 	}
 
 	if len(daemonSets) == 0 {
-		return nil, fmt.Errorf("could not find daemon set for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+		return nil, fmt.Errorf("could not find daemon set for pod %s in tenant %s namespace %s with labels: %v", pod.Name, pod.Tenant, pod.Namespace, pod.Labels)
 	}
 
 	return daemonSets, nil
@@ -88,7 +88,7 @@ func (s *daemonSetLister) GetHistoryDaemonSets(history *apps.ControllerRevision)
 		return nil, fmt.Errorf("no DaemonSet found for ControllerRevision %s because it has no labels", history.Name)
 	}
 
-	list, err := s.DaemonSets(history.Namespace).List(labels.Everything())
+	list, err := s.DaemonSets(history.Namespace, history.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (s *daemonSetLister) GetHistoryDaemonSets(history *apps.ControllerRevision)
 	}
 
 	if len(daemonSets) == 0 {
-		return nil, fmt.Errorf("could not find DaemonSets for ControllerRevision %s in namespace %s with labels: %v", history.Name, history.Namespace, history.Labels)
+		return nil, fmt.Errorf("could not find DaemonSets for ControllerRevision %s in tenant %s namespace %s with labels: %v", history.Name, history.Tenant, history.Namespace, history.Labels)
 	}
 
 	return daemonSets, nil

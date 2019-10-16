@@ -121,6 +121,7 @@ func (tc *legacyTestCase) computeCPUCurrent() {
 }
 
 func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *scalefake.FakeScaleClient) {
+	tenant := metav1.TenantDefault
 	namespace := "test-namespace"
 	hpaName := "test-hpa"
 	podNamePrefix := "test-pod"
@@ -157,6 +158,7 @@ func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *sca
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      hpaName,
 						Namespace: namespace,
+						Tenant:    tenant,
 						SelfLink:  "experimental/v1/namespaces/" + namespace + "/horizontalpodautoscalers/" + hpaName,
 					},
 					Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
@@ -237,6 +239,7 @@ func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *sca
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      podName,
 					Namespace: namespace,
+					Tenant:    tenant,
 					Labels: map[string]string{
 						"name": podNamePrefix,
 					},
@@ -271,6 +274,7 @@ func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *sca
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      fmt.Sprintf("%s-%d", podNamePrefix, i),
 						Namespace: namespace,
+						Tenant:    tenant,
 					},
 					Timestamp: metav1.Time{Time: time.Now()},
 					Containers: []metricsapi.ContainerMetrics{
@@ -362,6 +366,7 @@ func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *sca
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tc.resource.name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: tc.initialReplicas,
@@ -382,6 +387,7 @@ func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *sca
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tc.resource.name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: tc.initialReplicas,
@@ -402,6 +408,7 @@ func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *sca
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tc.resource.name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: tc.initialReplicas,

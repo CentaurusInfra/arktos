@@ -43,14 +43,14 @@ func (s *replicaSetLister) GetPodReplicaSets(pod *v1.Pod) ([]*extensions.Replica
 		return nil, fmt.Errorf("no ReplicaSets found for pod %v because it has no labels", pod.Name)
 	}
 
-	list, err := s.ReplicaSets(pod.Namespace).List(labels.Everything())
+	list, err := s.ReplicaSets(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
 
 	var rss []*extensions.ReplicaSet
 	for _, rs := range list {
-		if rs.Namespace != pod.Namespace {
+		if rs.Namespace != pod.Namespace || rs.Tenant != pod.Tenant {
 			continue
 		}
 		selector, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)
@@ -66,7 +66,7 @@ func (s *replicaSetLister) GetPodReplicaSets(pod *v1.Pod) ([]*extensions.Replica
 	}
 
 	if len(rss) == 0 {
-		return nil, fmt.Errorf("could not find ReplicaSet for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+		return nil, fmt.Errorf("could not find ReplicaSet for pod %s in tenant %s namespace %s with labels: %v", pod.Name, pod.Tenant, pod.Namespace, pod.Labels)
 	}
 
 	return rss, nil

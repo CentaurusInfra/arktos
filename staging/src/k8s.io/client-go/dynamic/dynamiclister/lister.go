@@ -58,21 +58,62 @@ func (l *dynamicLister) Get(name string) (*unstructured.Unstructured, error) {
 	return obj.(*unstructured.Unstructured), nil
 }
 
+// Tenant returns an object that can list and get resources from a given tenant.
+func (l *dynamicLister) Tenant(tenant string) TenantLister {
+	return &dynamicTenantLister{indexer: l.indexer, tenant: tenant, gvr: l.gvr}
+}
+
+// dynamicTenantLister implements the TenantLister interface.
+type dynamicTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+	gvr     schema.GroupVersionResource
+}
+
+// List lists all resources in the indexer for a given tenant.
+func (l *dynamicTenantLister) List(selector labels.Selector) (ret []*unstructured.Unstructured, err error) {
+	err = cache.ListAllByTenant(l.indexer, l.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*unstructured.Unstructured))
+	})
+	return ret, err
+}
+
+// Get retrieves a resource from the indexer for a given tenant and name.
+func (l *dynamicTenantLister) Get(name string) (*unstructured.Unstructured, error) {
+	key := l.tenant + "/" + name
+	if l.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := l.indexer.GetByKey(key)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(l.gvr.GroupResource(), name)
+	}
+	return obj.(*unstructured.Unstructured), nil
+}
+
 // Namespace returns an object that can list and get resources from a given namespace.
-func (l *dynamicLister) Namespace(namespace string) NamespaceLister {
-	return &dynamicNamespaceLister{indexer: l.indexer, namespace: namespace, gvr: l.gvr}
+func (l *dynamicLister) Namespace(namespace string, optional_tenant ...string) NamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &dynamicNamespaceLister{indexer: l.indexer, tenant: tenant, namespace: namespace, gvr: l.gvr}
 }
 
 // dynamicNamespaceLister implements the NamespaceLister interface.
 type dynamicNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 	gvr       schema.GroupVersionResource
 }
 
 // List lists all resources in the indexer for a given namespace.
 func (l *dynamicNamespaceLister) List(selector labels.Selector) (ret []*unstructured.Unstructured, err error) {
-	err = cache.ListAllByNamespace(l.indexer, l.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(l.indexer, l.tenant, l.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*unstructured.Unstructured))
 	})
 	return ret, err
@@ -80,7 +121,11 @@ func (l *dynamicNamespaceLister) List(selector labels.Selector) (ret []*unstruct
 
 // Get retrieves a resource from the indexer for a given namespace and name.
 func (l *dynamicNamespaceLister) Get(name string) (*unstructured.Unstructured, error) {
-	obj, exists, err := l.indexer.GetByKey(l.namespace + "/" + name)
+	key := l.tenant + "/" + l.namespace + "/" + name
+	if l.tenant == "default" {
+		key = l.namespace + "/" + name
+	}
+	obj, exists, err := l.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -29,6 +29,8 @@ import (
 type PodSecurityPolicyLister interface {
 	// List lists all PodSecurityPolicies in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.PodSecurityPolicy, err error)
+	// PodSecurityPolicies returns an object that can list and get PodSecurityPolicies.
+	PodSecurityPolicies(optional_tenant ...string) PodSecurityPolicyTenantLister
 	// Get retrieves the PodSecurityPolicy from the index for a given name.
 	Get(name string) (*v1beta1.PodSecurityPolicy, error)
 	PodSecurityPolicyListerExpansion
@@ -55,6 +57,55 @@ func (s *podSecurityPolicyLister) List(selector labels.Selector) (ret []*v1beta1
 // Get retrieves the PodSecurityPolicy from the index for a given name.
 func (s *podSecurityPolicyLister) Get(name string) (*v1beta1.PodSecurityPolicy, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1beta1.Resource("podsecuritypolicy"), name)
+	}
+	return obj.(*v1beta1.PodSecurityPolicy), nil
+}
+
+// PodSecurityPolicies returns an object that can list and get PodSecurityPolicies.
+func (s *podSecurityPolicyLister) PodSecurityPolicies(optional_tenant ...string) PodSecurityPolicyTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return podSecurityPolicyTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// PodSecurityPolicyTenantLister helps list and get PodSecurityPolicies.
+type PodSecurityPolicyTenantLister interface {
+	// List lists all PodSecurityPolicies in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1beta1.PodSecurityPolicy, err error)
+	// Get retrieves the PodSecurityPolicy from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1beta1.PodSecurityPolicy, error)
+	PodSecurityPolicyTenantListerExpansion
+}
+
+// podSecurityPolicyTenantLister implements the PodSecurityPolicyTenantLister
+// interface.
+type podSecurityPolicyTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all PodSecurityPolicies in the indexer for a given tenant.
+func (s podSecurityPolicyTenantLister) List(selector labels.Selector) (ret []*v1beta1.PodSecurityPolicy, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1beta1.PodSecurityPolicy))
+	})
+	return ret, err
+}
+
+// Get retrieves the PodSecurityPolicy from the indexer for a given tenant and name.
+func (s podSecurityPolicyTenantLister) Get(name string) (*v1beta1.PodSecurityPolicy, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

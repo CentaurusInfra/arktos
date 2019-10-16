@@ -46,11 +46,17 @@ func (g *expansionGenerator) GenerateType(c *generator.Context, t *types.Type, w
 		tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
 		if _, err := os.Stat(filepath.Join(g.packagePath, strings.ToLower(t.Name.Name+"_expansion.go"))); os.IsNotExist(err) {
 			sw.Do(expansionInterfaceTemplate, t)
-			if !tags.NonNamespaced {
+
+			if !tags.NonNamespaced && !tags.NonTenanted {
 				sw.Do(namespacedExpansionInterfaceTemplate, t)
+			}
+
+			if tags.NonNamespaced && !tags.NonTenanted {
+				sw.Do(tenantedExpansionInterfaceTemplate, t)
 			}
 		}
 	}
+
 	return sw.Error()
 }
 
@@ -64,4 +70,10 @@ var namespacedExpansionInterfaceTemplate = `
 // $.|public$NamespaceListerExpansion allows custom methods to be added to
 // $.|public$NamespaceLister.
 type $.|public$NamespaceListerExpansion interface {}
+`
+
+var tenantedExpansionInterfaceTemplate = `
+// $.|public$TenantListerExpansion allows custom methods to be added to
+// $.|public$TenantLister.
+type $.|public$TenantListerExpansion interface {}
 `

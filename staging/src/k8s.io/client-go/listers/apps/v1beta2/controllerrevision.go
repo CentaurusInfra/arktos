@@ -30,7 +30,7 @@ type ControllerRevisionLister interface {
 	// List lists all ControllerRevisions in the indexer.
 	List(selector labels.Selector) (ret []*v1beta2.ControllerRevision, err error)
 	// ControllerRevisions returns an object that can list and get ControllerRevisions.
-	ControllerRevisions(namespace string) ControllerRevisionNamespaceLister
+	ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionNamespaceLister
 	ControllerRevisionListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *controllerRevisionLister) List(selector labels.Selector) (ret []*v1beta
 }
 
 // ControllerRevisions returns an object that can list and get ControllerRevisions.
-func (s *controllerRevisionLister) ControllerRevisions(namespace string) ControllerRevisionNamespaceLister {
-	return controllerRevisionNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *controllerRevisionLister) ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return controllerRevisionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // ControllerRevisionNamespaceLister helps list and get ControllerRevisions.
 type ControllerRevisionNamespaceLister interface {
-	// List lists all ControllerRevisions in the indexer for a given namespace.
+	// List lists all ControllerRevisions in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1beta2.ControllerRevision, err error)
-	// Get retrieves the ControllerRevision from the indexer for a given namespace and name.
+	// Get retrieves the ControllerRevision from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1beta2.ControllerRevision, error)
 	ControllerRevisionNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type ControllerRevisionNamespaceLister interface {
 type controllerRevisionNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all ControllerRevisions in the indexer for a given namespace.
 func (s controllerRevisionNamespaceLister) List(selector labels.Selector) (ret []*v1beta2.ControllerRevision, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1beta2.ControllerRevision))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s controllerRevisionNamespaceLister) List(selector labels.Selector) (ret [
 
 // Get retrieves the ControllerRevision from the indexer for a given namespace and name.
 func (s controllerRevisionNamespaceLister) Get(name string) (*v1beta2.ControllerRevision, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

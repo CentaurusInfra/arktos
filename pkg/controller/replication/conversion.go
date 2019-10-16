@@ -86,8 +86,8 @@ func (l conversionLister) List(selector labels.Selector) ([]*apps.ReplicaSet, er
 	return convertSlice(rcList)
 }
 
-func (l conversionLister) ReplicaSets(namespace string) appslisters.ReplicaSetNamespaceLister {
-	return conversionNamespaceLister{l.rcLister.ReplicationControllers(namespace)}
+func (l conversionLister) ReplicaSets(namespace string, optional_tenant ...string) appslisters.ReplicaSetNamespaceLister {
+	return conversionNamespaceLister{l.rcLister.ReplicationControllers(namespace, optional_tenant...)}
 }
 
 func (l conversionLister) GetPodReplicaSets(pod *v1.Pod) ([]*apps.ReplicaSet, error) {

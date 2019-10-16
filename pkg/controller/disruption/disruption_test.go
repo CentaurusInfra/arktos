@@ -167,6 +167,7 @@ func newMinAvailablePodDisruptionBudget(t *testing.T, minAvailable intstr.IntOrS
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 		},
 		Spec: policy.PodDisruptionBudgetSpec{
@@ -190,6 +191,7 @@ func newMaxUnavailablePodDisruptionBudget(t *testing.T, maxUnavailable intstr.In
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 		},
 		Spec: policy.PodDisruptionBudgetSpec{
@@ -236,6 +238,7 @@ func newPod(t *testing.T, name string) (*v1.Pod, string) {
 			Annotations:     make(map[string]string),
 			Name:            name,
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 			Labels:          fooBar(),
 		},
@@ -262,6 +265,7 @@ func newReplicationController(t *testing.T, size int32) (*v1.ReplicationControll
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 			Labels:          fooBar(),
 		},
@@ -286,6 +290,7 @@ func newDeployment(t *testing.T, size int32) (*apps.Deployment, string) {
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 			Labels:          fooBar(),
 		},
@@ -310,6 +315,7 @@ func newReplicaSet(t *testing.T, size int32) (*apps.ReplicaSet, string) {
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 			Labels:          fooBar(),
 		},
@@ -334,6 +340,7 @@ func newStatefulSet(t *testing.T, size int32) (*apps.StatefulSet, string) {
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          metav1.TenantDefault,
 			ResourceVersion: "18",
 			Labels:          fooBar(),
 		},
@@ -524,6 +531,7 @@ func TestScaleResource(t *testing.T) {
 		obj := &autoscalingapi.Scale{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    metav1.TenantDefault,
 				UID:       customResourceUID,
 			},
 			Spec: autoscalingapi.ScaleSpec{

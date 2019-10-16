@@ -155,6 +155,7 @@ func init() {
 }
 
 func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfake.Clientset, *cmfake.FakeCustomMetricsClient, *emfake.FakeExternalMetricsClient, *scalefake.FakeScaleClient) {
+	tenant := metav1.TenantDefault
 	namespace := "test-namespace"
 	hpaName := "test-hpa"
 	podNamePrefix := "test-pod"
@@ -191,6 +192,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      hpaName,
 						Namespace: namespace,
+						Tenant:    metav1.TenantDefault,
 						SelfLink:  "experimental/v1/namespaces/" + namespace + "/horizontalpodautoscalers/" + hpaName,
 					},
 					Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
@@ -304,6 +306,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      podName,
 					Namespace: namespace,
+					Tenant:    tenant,
 					Labels: map[string]string{
 						"name": podNamePrefix,
 					},
@@ -379,6 +382,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tc.resource.name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: tc.initialReplicas,
@@ -399,6 +403,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tc.resource.name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: tc.initialReplicas,
@@ -419,6 +424,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      tc.resource.name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: tc.initialReplicas,
@@ -480,6 +486,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-%d", podNamePrefix, i),
 					Namespace: namespace,
+					Tenant:    tenant,
 					Labels:    labelSet,
 				},
 				Timestamp: metav1.Time{Time: time.Now()},
@@ -2447,6 +2454,7 @@ func TestAvoidUncessaryUpdates(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-hpa",
 						Namespace: "test-namespace",
+						Tenant:    metav1.TenantDefault,
 						SelfLink:  "experimental/v1/namespaces/test-namespace/horizontalpodautoscalers/test-hpa",
 					},
 					Spec: autoscalingv2.HorizontalPodAutoscalerSpec{

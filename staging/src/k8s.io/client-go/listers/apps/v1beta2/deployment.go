@@ -30,7 +30,7 @@ type DeploymentLister interface {
 	// List lists all Deployments in the indexer.
 	List(selector labels.Selector) (ret []*v1beta2.Deployment, err error)
 	// Deployments returns an object that can list and get Deployments.
-	Deployments(namespace string) DeploymentNamespaceLister
+	Deployments(namespace string, optional_tenant ...string) DeploymentNamespaceLister
 	DeploymentListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *deploymentLister) List(selector labels.Selector) (ret []*v1beta2.Deploy
 }
 
 // Deployments returns an object that can list and get Deployments.
-func (s *deploymentLister) Deployments(namespace string) DeploymentNamespaceLister {
-	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *deploymentLister) Deployments(namespace string, optional_tenant ...string) DeploymentNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // DeploymentNamespaceLister helps list and get Deployments.
 type DeploymentNamespaceLister interface {
-	// List lists all Deployments in the indexer for a given namespace.
+	// List lists all Deployments in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1beta2.Deployment, err error)
-	// Get retrieves the Deployment from the indexer for a given namespace and name.
+	// Get retrieves the Deployment from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1beta2.Deployment, error)
 	DeploymentNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type DeploymentNamespaceLister interface {
 type deploymentNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Deployments in the indexer for a given namespace.
 func (s deploymentNamespaceLister) List(selector labels.Selector) (ret []*v1beta2.Deployment, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1beta2.Deployment))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s deploymentNamespaceLister) List(selector labels.Selector) (ret []*v1beta
 
 // Get retrieves the Deployment from the indexer for a given namespace and name.
 func (s deploymentNamespaceLister) Get(name string) (*v1beta2.Deployment, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

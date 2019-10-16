@@ -8806,8 +8806,8 @@ func TestValidatePodUpdate(t *testing.T) {
 			core.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: "vnic-update-default"},
 				Spec: core.PodSpec{
-					Nics: []core.Nic {
-						core.Nic{ PortId: "123456",	Name: "eth0", },
+					Nics: []core.Nic{
+						{PortId: "123456", Name: "eth0"},
 					},
 				},
 			},
@@ -8821,16 +8821,16 @@ func TestValidatePodUpdate(t *testing.T) {
 			core.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: "vnic-add"},
 				Spec: core.PodSpec{
-					Nics: []core.Nic {
-						core.Nic{ PortId: "123456", Name: "eth0",	},
+					Nics: []core.Nic{
+						{PortId: "123456", Name: "eth0"},
 					},
 				},
 			},
 			core.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: "vnic-add"},
 				Spec: core.PodSpec{
-					Nics: []core.Nic {
-						core.Nic{ PortId: "987654", Name: "eth1", },
+					Nics: []core.Nic{
+						{PortId: "987654", Name: "eth1"},
 					},
 				},
 			},
@@ -8841,16 +8841,16 @@ func TestValidatePodUpdate(t *testing.T) {
 			core.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: "vnic-update-primary"},
 				Spec: core.PodSpec{
-					Nics: []core.Nic {
-						core.Nic{ PortId: "123456",	Name: "eth0", },
+					Nics: []core.Nic{
+						{PortId: "123456", Name: "eth0"},
 					},
 				},
 			},
 			core.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: "vnic-update-primary"},
 				Spec: core.PodSpec{
-					Nics: []core.Nic {
-						core.Nic{ PortId: "987654",	Name: "eth0", },
+					Nics: []core.Nic{
+						{PortId: "987654", Name: "eth0"},
 					},
 				},
 			},

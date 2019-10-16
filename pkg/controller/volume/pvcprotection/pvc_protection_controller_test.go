@@ -45,6 +45,7 @@ type reaction struct {
 }
 
 const (
+	defaultTenant   = "default"
 	defaultNS       = "default"
 	defaultPVCName  = "pvc1"
 	defaultPodName  = "pod1"
@@ -56,6 +57,7 @@ func pod() *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultPodName,
 			Namespace: defaultNS,
+			Tenant:    defaultTenant,
 		},
 		Spec: v1.PodSpec{
 			NodeName: defaultNodeName,
@@ -105,6 +107,7 @@ func pvc() *v1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultPVCName,
 			Namespace: defaultNS,
+			Tenant:    defaultTenant,
 		},
 	}
 }

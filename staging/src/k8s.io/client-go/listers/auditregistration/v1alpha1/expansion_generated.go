@@ -21,3 +21,7 @@ package v1alpha1
 // AuditSinkListerExpansion allows custom methods to be added to
 // AuditSinkLister.
 type AuditSinkListerExpansion interface{}
+
+// AuditSinkTenantListerExpansion allows custom methods to be added to
+// AuditSinkTenantLister.
+type AuditSinkTenantListerExpansion interface{}

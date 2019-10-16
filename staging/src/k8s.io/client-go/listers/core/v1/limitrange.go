@@ -30,7 +30,7 @@ type LimitRangeLister interface {
 	// List lists all LimitRanges in the indexer.
 	List(selector labels.Selector) (ret []*v1.LimitRange, err error)
 	// LimitRanges returns an object that can list and get LimitRanges.
-	LimitRanges(namespace string) LimitRangeNamespaceLister
+	LimitRanges(namespace string, optional_tenant ...string) LimitRangeNamespaceLister
 	LimitRangeListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *limitRangeLister) List(selector labels.Selector) (ret []*v1.LimitRange,
 }
 
 // LimitRanges returns an object that can list and get LimitRanges.
-func (s *limitRangeLister) LimitRanges(namespace string) LimitRangeNamespaceLister {
-	return limitRangeNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *limitRangeLister) LimitRanges(namespace string, optional_tenant ...string) LimitRangeNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return limitRangeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // LimitRangeNamespaceLister helps list and get LimitRanges.
 type LimitRangeNamespaceLister interface {
-	// List lists all LimitRanges in the indexer for a given namespace.
+	// List lists all LimitRanges in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.LimitRange, err error)
-	// Get retrieves the LimitRange from the indexer for a given namespace and name.
+	// Get retrieves the LimitRange from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.LimitRange, error)
 	LimitRangeNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type LimitRangeNamespaceLister interface {
 type limitRangeNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all LimitRanges in the indexer for a given namespace.
 func (s limitRangeNamespaceLister) List(selector labels.Selector) (ret []*v1.LimitRange, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.LimitRange))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s limitRangeNamespaceLister) List(selector labels.Selector) (ret []*v1.Lim
 
 // Get retrieves the LimitRange from the indexer for a given namespace and name.
 func (s limitRangeNamespaceLister) Get(name string) (*v1.LimitRange, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

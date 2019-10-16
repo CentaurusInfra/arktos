@@ -30,7 +30,7 @@ type ActionLister interface {
 	// List lists all Actions in the indexer.
 	List(selector labels.Selector) (ret []*v1.Action, err error)
 	// Actions returns an object that can list and get Actions.
-	Actions(namespace string) ActionNamespaceLister
+	Actions(namespace string, optional_tenant ...string) ActionNamespaceLister
 	ActionListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *actionLister) List(selector labels.Selector) (ret []*v1.Action, err err
 }
 
 // Actions returns an object that can list and get Actions.
-func (s *actionLister) Actions(namespace string) ActionNamespaceLister {
-	return actionNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *actionLister) Actions(namespace string, optional_tenant ...string) ActionNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return actionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // ActionNamespaceLister helps list and get Actions.
 type ActionNamespaceLister interface {
-	// List lists all Actions in the indexer for a given namespace.
+	// List lists all Actions in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.Action, err error)
-	// Get retrieves the Action from the indexer for a given namespace and name.
+	// Get retrieves the Action from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.Action, error)
 	ActionNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type ActionNamespaceLister interface {
 type actionNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Actions in the indexer for a given namespace.
 func (s actionNamespaceLister) List(selector labels.Selector) (ret []*v1.Action, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.Action))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s actionNamespaceLister) List(selector labels.Selector) (ret []*v1.Action,
 
 // Get retrieves the Action from the indexer for a given namespace and name.
 func (s actionNamespaceLister) Get(name string) (*v1.Action, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

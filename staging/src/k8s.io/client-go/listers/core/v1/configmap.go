@@ -30,7 +30,7 @@ type ConfigMapLister interface {
 	// List lists all ConfigMaps in the indexer.
 	List(selector labels.Selector) (ret []*v1.ConfigMap, err error)
 	// ConfigMaps returns an object that can list and get ConfigMaps.
-	ConfigMaps(namespace string) ConfigMapNamespaceLister
+	ConfigMaps(namespace string, optional_tenant ...string) ConfigMapNamespaceLister
 	ConfigMapListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *configMapLister) List(selector labels.Selector) (ret []*v1.ConfigMap, e
 }
 
 // ConfigMaps returns an object that can list and get ConfigMaps.
-func (s *configMapLister) ConfigMaps(namespace string) ConfigMapNamespaceLister {
-	return configMapNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *configMapLister) ConfigMaps(namespace string, optional_tenant ...string) ConfigMapNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return configMapNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // ConfigMapNamespaceLister helps list and get ConfigMaps.
 type ConfigMapNamespaceLister interface {
-	// List lists all ConfigMaps in the indexer for a given namespace.
+	// List lists all ConfigMaps in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.ConfigMap, err error)
-	// Get retrieves the ConfigMap from the indexer for a given namespace and name.
+	// Get retrieves the ConfigMap from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.ConfigMap, error)
 	ConfigMapNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type ConfigMapNamespaceLister interface {
 type configMapNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all ConfigMaps in the indexer for a given namespace.
 func (s configMapNamespaceLister) List(selector labels.Selector) (ret []*v1.ConfigMap, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.ConfigMap))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s configMapNamespaceLister) List(selector labels.Selector) (ret []*v1.Conf
 
 // Get retrieves the ConfigMap from the indexer for a given namespace and name.
 func (s configMapNamespaceLister) Get(name string) (*v1.ConfigMap, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -30,7 +30,7 @@ type ServiceAccountLister interface {
 	// List lists all ServiceAccounts in the indexer.
 	List(selector labels.Selector) (ret []*v1.ServiceAccount, err error)
 	// ServiceAccounts returns an object that can list and get ServiceAccounts.
-	ServiceAccounts(namespace string) ServiceAccountNamespaceLister
+	ServiceAccounts(namespace string, optional_tenant ...string) ServiceAccountNamespaceLister
 	ServiceAccountListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *serviceAccountLister) List(selector labels.Selector) (ret []*v1.Service
 }
 
 // ServiceAccounts returns an object that can list and get ServiceAccounts.
-func (s *serviceAccountLister) ServiceAccounts(namespace string) ServiceAccountNamespaceLister {
-	return serviceAccountNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *serviceAccountLister) ServiceAccounts(namespace string, optional_tenant ...string) ServiceAccountNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return serviceAccountNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // ServiceAccountNamespaceLister helps list and get ServiceAccounts.
 type ServiceAccountNamespaceLister interface {
-	// List lists all ServiceAccounts in the indexer for a given namespace.
+	// List lists all ServiceAccounts in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.ServiceAccount, err error)
-	// Get retrieves the ServiceAccount from the indexer for a given namespace and name.
+	// Get retrieves the ServiceAccount from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.ServiceAccount, error)
 	ServiceAccountNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type ServiceAccountNamespaceLister interface {
 type serviceAccountNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all ServiceAccounts in the indexer for a given namespace.
 func (s serviceAccountNamespaceLister) List(selector labels.Selector) (ret []*v1.ServiceAccount, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.ServiceAccount))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s serviceAccountNamespaceLister) List(selector labels.Selector) (ret []*v1
 
 // Get retrieves the ServiceAccount from the indexer for a given namespace and name.
 func (s serviceAccountNamespaceLister) Get(name string) (*v1.ServiceAccount, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

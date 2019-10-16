@@ -29,6 +29,8 @@ import (
 type NamespaceLister interface {
 	// List lists all Namespaces in the indexer.
 	List(selector labels.Selector) (ret []*v1.Namespace, err error)
+	// Namespaces returns an object that can list and get Namespaces.
+	Namespaces(optional_tenant ...string) NamespaceTenantLister
 	// Get retrieves the Namespace from the index for a given name.
 	Get(name string) (*v1.Namespace, error)
 	NamespaceListerExpansion
@@ -55,6 +57,55 @@ func (s *namespaceLister) List(selector labels.Selector) (ret []*v1.Namespace, e
 // Get retrieves the Namespace from the index for a given name.
 func (s *namespaceLister) Get(name string) (*v1.Namespace, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1.Resource("namespace"), name)
+	}
+	return obj.(*v1.Namespace), nil
+}
+
+// Namespaces returns an object that can list and get Namespaces.
+func (s *namespaceLister) Namespaces(optional_tenant ...string) NamespaceTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return namespaceTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// NamespaceTenantLister helps list and get Namespaces.
+type NamespaceTenantLister interface {
+	// List lists all Namespaces in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1.Namespace, err error)
+	// Get retrieves the Namespace from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1.Namespace, error)
+	NamespaceTenantListerExpansion
+}
+
+// namespaceTenantLister implements the NamespaceTenantLister
+// interface.
+type namespaceTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all Namespaces in the indexer for a given tenant.
+func (s namespaceTenantLister) List(selector labels.Selector) (ret []*v1.Namespace, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.Namespace))
+	})
+	return ret, err
+}
+
+// Get retrieves the Namespace from the indexer for a given tenant and name.
+func (s namespaceTenantLister) Get(name string) (*v1.Namespace, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

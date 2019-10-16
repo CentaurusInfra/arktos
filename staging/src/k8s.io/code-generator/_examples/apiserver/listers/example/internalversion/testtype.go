@@ -30,7 +30,7 @@ type TestTypeLister interface {
 	// List lists all TestTypes in the indexer.
 	List(selector labels.Selector) (ret []*example.TestType, err error)
 	// TestTypes returns an object that can list and get TestTypes.
-	TestTypes(namespace string) TestTypeNamespaceLister
+	TestTypes(namespace string, optional_tenant ...string) TestTypeNamespaceLister
 	TestTypeListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *testTypeLister) List(selector labels.Selector) (ret []*example.TestType
 }
 
 // TestTypes returns an object that can list and get TestTypes.
-func (s *testTypeLister) TestTypes(namespace string) TestTypeNamespaceLister {
-	return testTypeNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *testTypeLister) TestTypes(namespace string, optional_tenant ...string) TestTypeNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return testTypeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // TestTypeNamespaceLister helps list and get TestTypes.
 type TestTypeNamespaceLister interface {
-	// List lists all TestTypes in the indexer for a given namespace.
+	// List lists all TestTypes in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*example.TestType, err error)
-	// Get retrieves the TestType from the indexer for a given namespace and name.
+	// Get retrieves the TestType from the indexer for a given tenant/namespace and name.
 	Get(name string) (*example.TestType, error)
 	TestTypeNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type TestTypeNamespaceLister interface {
 type testTypeNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all TestTypes in the indexer for a given namespace.
 func (s testTypeNamespaceLister) List(selector labels.Selector) (ret []*example.TestType, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*example.TestType))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s testTypeNamespaceLister) List(selector labels.Selector) (ret []*example.
 
 // Get retrieves the TestType from the indexer for a given namespace and name.
 func (s testTypeNamespaceLister) Get(name string) (*example.TestType, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

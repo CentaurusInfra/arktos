@@ -30,7 +30,7 @@ type ExampleLister interface {
 	// List lists all Examples in the indexer.
 	List(selector labels.Selector) (ret []*v1.Example, err error)
 	// Examples returns an object that can list and get Examples.
-	Examples(namespace string) ExampleNamespaceLister
+	Examples(namespace string, optional_tenant ...string) ExampleNamespaceLister
 	ExampleListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *exampleLister) List(selector labels.Selector) (ret []*v1.Example, err e
 }
 
 // Examples returns an object that can list and get Examples.
-func (s *exampleLister) Examples(namespace string) ExampleNamespaceLister {
-	return exampleNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *exampleLister) Examples(namespace string, optional_tenant ...string) ExampleNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return exampleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // ExampleNamespaceLister helps list and get Examples.
 type ExampleNamespaceLister interface {
-	// List lists all Examples in the indexer for a given namespace.
+	// List lists all Examples in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.Example, err error)
-	// Get retrieves the Example from the indexer for a given namespace and name.
+	// Get retrieves the Example from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.Example, error)
 	ExampleNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type ExampleNamespaceLister interface {
 type exampleNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Examples in the indexer for a given namespace.
 func (s exampleNamespaceLister) List(selector labels.Selector) (ret []*v1.Example, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.Example))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s exampleNamespaceLister) List(selector labels.Selector) (ret []*v1.Exampl
 
 // Get retrieves the Example from the indexer for a given namespace and name.
 func (s exampleNamespaceLister) Get(name string) (*v1.Example, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

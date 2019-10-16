@@ -30,7 +30,7 @@ type JobLister interface {
 	// List lists all Jobs in the indexer.
 	List(selector labels.Selector) (ret []*v1.Job, err error)
 	// Jobs returns an object that can list and get Jobs.
-	Jobs(namespace string) JobNamespaceLister
+	Jobs(namespace string, optional_tenant ...string) JobNamespaceLister
 	JobListerExpansion
 }
 
@@ -53,15 +53,19 @@ func (s *jobLister) List(selector labels.Selector) (ret []*v1.Job, err error) {
 }
 
 // Jobs returns an object that can list and get Jobs.
-func (s *jobLister) Jobs(namespace string) JobNamespaceLister {
-	return jobNamespaceLister{indexer: s.indexer, namespace: namespace}
+func (s *jobLister) Jobs(namespace string, optional_tenant ...string) JobNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return jobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
 // JobNamespaceLister helps list and get Jobs.
 type JobNamespaceLister interface {
-	// List lists all Jobs in the indexer for a given namespace.
+	// List lists all Jobs in the indexer for a given tenant/namespace.
 	List(selector labels.Selector) (ret []*v1.Job, err error)
-	// Get retrieves the Job from the indexer for a given namespace and name.
+	// Get retrieves the Job from the indexer for a given tenant/namespace and name.
 	Get(name string) (*v1.Job, error)
 	JobNamespaceListerExpansion
 }
@@ -71,11 +75,12 @@ type JobNamespaceLister interface {
 type jobNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 }
 
 // List lists all Jobs in the indexer for a given namespace.
 func (s jobNamespaceLister) List(selector labels.Selector) (ret []*v1.Job, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(s.indexer, s.tenant, s.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*v1.Job))
 	})
 	return ret, err
@@ -83,7 +88,11 @@ func (s jobNamespaceLister) List(selector labels.Selector) (ret []*v1.Job, err e
 
 // Get retrieves the Job from the indexer for a given namespace and name.
 func (s jobNamespaceLister) Get(name string) (*v1.Job, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+	key := s.tenant + "/" + s.namespace + "/" + name
+	if s.tenant == "default" {
+		key = s.namespace + "/" + name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

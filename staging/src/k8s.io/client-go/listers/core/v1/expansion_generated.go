@@ -70,9 +70,17 @@ type LimitRangeNamespaceListerExpansion interface{}
 // NamespaceLister.
 type NamespaceListerExpansion interface{}
 
+// NamespaceTenantListerExpansion allows custom methods to be added to
+// NamespaceTenantLister.
+type NamespaceTenantListerExpansion interface{}
+
 // PersistentVolumeListerExpansion allows custom methods to be added to
 // PersistentVolumeLister.
 type PersistentVolumeListerExpansion interface{}
+
+// PersistentVolumeTenantListerExpansion allows custom methods to be added to
+// PersistentVolumeTenantLister.
+type PersistentVolumeTenantListerExpansion interface{}
 
 // PersistentVolumeClaimListerExpansion allows custom methods to be added to
 // PersistentVolumeClaimLister.

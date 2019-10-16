@@ -29,6 +29,8 @@ import (
 type CertificateSigningRequestLister interface {
 	// List lists all CertificateSigningRequests in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.CertificateSigningRequest, err error)
+	// CertificateSigningRequests returns an object that can list and get CertificateSigningRequests.
+	CertificateSigningRequests(optional_tenant ...string) CertificateSigningRequestTenantLister
 	// Get retrieves the CertificateSigningRequest from the index for a given name.
 	Get(name string) (*v1beta1.CertificateSigningRequest, error)
 	CertificateSigningRequestListerExpansion
@@ -55,6 +57,55 @@ func (s *certificateSigningRequestLister) List(selector labels.Selector) (ret []
 // Get retrieves the CertificateSigningRequest from the index for a given name.
 func (s *certificateSigningRequestLister) Get(name string) (*v1beta1.CertificateSigningRequest, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1beta1.Resource("certificatesigningrequest"), name)
+	}
+	return obj.(*v1beta1.CertificateSigningRequest), nil
+}
+
+// CertificateSigningRequests returns an object that can list and get CertificateSigningRequests.
+func (s *certificateSigningRequestLister) CertificateSigningRequests(optional_tenant ...string) CertificateSigningRequestTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return certificateSigningRequestTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// CertificateSigningRequestTenantLister helps list and get CertificateSigningRequests.
+type CertificateSigningRequestTenantLister interface {
+	// List lists all CertificateSigningRequests in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1beta1.CertificateSigningRequest, err error)
+	// Get retrieves the CertificateSigningRequest from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1beta1.CertificateSigningRequest, error)
+	CertificateSigningRequestTenantListerExpansion
+}
+
+// certificateSigningRequestTenantLister implements the CertificateSigningRequestTenantLister
+// interface.
+type certificateSigningRequestTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all CertificateSigningRequests in the indexer for a given tenant.
+func (s certificateSigningRequestTenantLister) List(selector labels.Selector) (ret []*v1beta1.CertificateSigningRequest, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1beta1.CertificateSigningRequest))
+	})
+	return ret, err
+}
+
+// Get retrieves the CertificateSigningRequest from the indexer for a given tenant and name.
+func (s certificateSigningRequestTenantLister) Get(name string) (*v1beta1.CertificateSigningRequest, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

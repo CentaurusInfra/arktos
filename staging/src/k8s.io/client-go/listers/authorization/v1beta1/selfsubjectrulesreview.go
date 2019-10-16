@@ -29,6 +29,8 @@ import (
 type SelfSubjectRulesReviewLister interface {
 	// List lists all SelfSubjectRulesReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.SelfSubjectRulesReview, err error)
+	// SelfSubjectRulesReviews returns an object that can list and get SelfSubjectRulesReviews.
+	SelfSubjectRulesReviews(optional_tenant ...string) SelfSubjectRulesReviewTenantLister
 	// Get retrieves the SelfSubjectRulesReview from the index for a given name.
 	Get(name string) (*v1beta1.SelfSubjectRulesReview, error)
 	SelfSubjectRulesReviewListerExpansion
@@ -55,6 +57,55 @@ func (s *selfSubjectRulesReviewLister) List(selector labels.Selector) (ret []*v1
 // Get retrieves the SelfSubjectRulesReview from the index for a given name.
 func (s *selfSubjectRulesReviewLister) Get(name string) (*v1beta1.SelfSubjectRulesReview, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1beta1.Resource("selfsubjectrulesreview"), name)
+	}
+	return obj.(*v1beta1.SelfSubjectRulesReview), nil
+}
+
+// SelfSubjectRulesReviews returns an object that can list and get SelfSubjectRulesReviews.
+func (s *selfSubjectRulesReviewLister) SelfSubjectRulesReviews(optional_tenant ...string) SelfSubjectRulesReviewTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return selfSubjectRulesReviewTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// SelfSubjectRulesReviewTenantLister helps list and get SelfSubjectRulesReviews.
+type SelfSubjectRulesReviewTenantLister interface {
+	// List lists all SelfSubjectRulesReviews in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1beta1.SelfSubjectRulesReview, err error)
+	// Get retrieves the SelfSubjectRulesReview from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1beta1.SelfSubjectRulesReview, error)
+	SelfSubjectRulesReviewTenantListerExpansion
+}
+
+// selfSubjectRulesReviewTenantLister implements the SelfSubjectRulesReviewTenantLister
+// interface.
+type selfSubjectRulesReviewTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all SelfSubjectRulesReviews in the indexer for a given tenant.
+func (s selfSubjectRulesReviewTenantLister) List(selector labels.Selector) (ret []*v1beta1.SelfSubjectRulesReview, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1beta1.SelfSubjectRulesReview))
+	})
+	return ret, err
+}
+
+// Get retrieves the SelfSubjectRulesReview from the indexer for a given tenant and name.
+func (s selfSubjectRulesReviewTenantLister) Get(name string) (*v1beta1.SelfSubjectRulesReview, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

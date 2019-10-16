@@ -229,6 +229,7 @@ func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Uns
 			"apiVersion": apiVersion,
 			"kind":       kind,
 			"metadata": map[string]interface{}{
+				"tenant":    "default",
 				"namespace": namespace,
 				"name":      name,
 			},

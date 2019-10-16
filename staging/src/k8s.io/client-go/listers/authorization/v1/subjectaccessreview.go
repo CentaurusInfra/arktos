@@ -29,6 +29,8 @@ import (
 type SubjectAccessReviewLister interface {
 	// List lists all SubjectAccessReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1.SubjectAccessReview, err error)
+	// SubjectAccessReviews returns an object that can list and get SubjectAccessReviews.
+	SubjectAccessReviews(optional_tenant ...string) SubjectAccessReviewTenantLister
 	// Get retrieves the SubjectAccessReview from the index for a given name.
 	Get(name string) (*v1.SubjectAccessReview, error)
 	SubjectAccessReviewListerExpansion
@@ -55,6 +57,55 @@ func (s *subjectAccessReviewLister) List(selector labels.Selector) (ret []*v1.Su
 // Get retrieves the SubjectAccessReview from the index for a given name.
 func (s *subjectAccessReviewLister) Get(name string) (*v1.SubjectAccessReview, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1.Resource("subjectaccessreview"), name)
+	}
+	return obj.(*v1.SubjectAccessReview), nil
+}
+
+// SubjectAccessReviews returns an object that can list and get SubjectAccessReviews.
+func (s *subjectAccessReviewLister) SubjectAccessReviews(optional_tenant ...string) SubjectAccessReviewTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return subjectAccessReviewTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// SubjectAccessReviewTenantLister helps list and get SubjectAccessReviews.
+type SubjectAccessReviewTenantLister interface {
+	// List lists all SubjectAccessReviews in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1.SubjectAccessReview, err error)
+	// Get retrieves the SubjectAccessReview from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1.SubjectAccessReview, error)
+	SubjectAccessReviewTenantListerExpansion
+}
+
+// subjectAccessReviewTenantLister implements the SubjectAccessReviewTenantLister
+// interface.
+type subjectAccessReviewTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all SubjectAccessReviews in the indexer for a given tenant.
+func (s subjectAccessReviewTenantLister) List(selector labels.Selector) (ret []*v1.SubjectAccessReview, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.SubjectAccessReview))
+	})
+	return ret, err
+}
+
+// Get retrieves the SubjectAccessReview from the indexer for a given tenant and name.
+func (s subjectAccessReviewTenantLister) Get(name string) (*v1.SubjectAccessReview, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -79,8 +79,8 @@ func (f FakeServiceLister) GetPodServices(pod *v1.Pod) (services []*v1.Service, 
 
 	for i := range f {
 		service := f[i]
-		// consider only services that are in the same namespace as the pod
-		if service.Namespace != pod.Namespace {
+		// consider only services that are in the same tenant/namespace as the pod
+		if service.Namespace != pod.Namespace || service.Tenant != pod.Tenant {
 			continue
 		}
 		selector = labels.Set(service.Spec.Selector).AsSelectorPreValidated()
@@ -107,7 +107,7 @@ func (f FakeControllerLister) GetPodControllers(pod *v1.Pod) (controllers []*v1.
 
 	for i := range f {
 		controller := f[i]
-		if controller.Namespace != pod.Namespace {
+		if controller.Namespace != pod.Namespace || controller.Tenant != pod.Tenant {
 			continue
 		}
 		selector = labels.Set(controller.Spec.Selector).AsSelectorPreValidated()
@@ -116,7 +116,7 @@ func (f FakeControllerLister) GetPodControllers(pod *v1.Pod) (controllers []*v1.
 		}
 	}
 	if len(controllers) == 0 {
-		err = fmt.Errorf("Could not find Replication Controller for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+		err = fmt.Errorf("Could not find Replication Controller for pod %s in tenant %s namespace %s with labels: %v", pod.Name, pod.Tenant, pod.Namespace, pod.Labels)
 	}
 
 	return
@@ -132,7 +132,7 @@ func (f FakeReplicaSetLister) GetPodReplicaSets(pod *v1.Pod) (rss []*apps.Replic
 	var selector labels.Selector
 
 	for _, rs := range f {
-		if rs.Namespace != pod.Namespace {
+		if rs.Namespace != pod.Namespace || rs.Tenant != pod.Tenant {
 			continue
 		}
 		selector, err = metav1.LabelSelectorAsSelector(rs.Spec.Selector)
@@ -145,7 +145,7 @@ func (f FakeReplicaSetLister) GetPodReplicaSets(pod *v1.Pod) (rss []*apps.Replic
 		}
 	}
 	if len(rss) == 0 {
-		err = fmt.Errorf("Could not find ReplicaSet for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+		err = fmt.Errorf("Could not find ReplicaSet for pod %s in tenant %s namespace %s with labels: %v", pod.Name, pod.Tenant, pod.Namespace, pod.Labels)
 	}
 
 	return
@@ -161,7 +161,7 @@ func (f FakeStatefulSetLister) GetPodStatefulSets(pod *v1.Pod) (sss []*apps.Stat
 	var selector labels.Selector
 
 	for _, ss := range f {
-		if ss.Namespace != pod.Namespace {
+		if ss.Namespace != pod.Namespace || ss.Tenant != pod.Tenant {
 			continue
 		}
 		selector, err = metav1.LabelSelectorAsSelector(ss.Spec.Selector)
@@ -173,7 +173,7 @@ func (f FakeStatefulSetLister) GetPodStatefulSets(pod *v1.Pod) (sss []*apps.Stat
 		}
 	}
 	if len(sss) == 0 {
-		err = fmt.Errorf("Could not find StatefulSet for pod %s in namespace %s with labels: %v", pod.Name, pod.Namespace, pod.Labels)
+		err = fmt.Errorf("Could not find StatefulSet for pod %s in tenant %s namespace %s with labels: %v", pod.Name, pod.Tenant, pod.Namespace, pod.Labels)
 	}
 	return
 }
@@ -189,10 +189,15 @@ func (f FakePersistentVolumeClaimLister) List(selector labels.Selector) (ret []*
 }
 
 // PersistentVolumeClaims returns a FakePersistentVolumeClaimLister object.
-func (f FakePersistentVolumeClaimLister) PersistentVolumeClaims(namespace string) corelisters.PersistentVolumeClaimNamespaceLister {
+func (f FakePersistentVolumeClaimLister) PersistentVolumeClaims(namespace string, optional_tenant ...string) corelisters.PersistentVolumeClaimNamespaceLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
 	return &fakePersistentVolumeClaimNamespaceLister{
 		pvcs:      f,
 		namespace: namespace,
+		tenant:    tenant,
 	}
 }
 
@@ -200,11 +205,12 @@ func (f FakePersistentVolumeClaimLister) PersistentVolumeClaims(namespace string
 type fakePersistentVolumeClaimNamespaceLister struct {
 	pvcs      []*v1.PersistentVolumeClaim
 	namespace string
+	tenant    string
 }
 
 func (f *fakePersistentVolumeClaimNamespaceLister) Get(name string) (*v1.PersistentVolumeClaim, error) {
 	for _, pvc := range f.pvcs {
-		if pvc.Name == name && pvc.Namespace == f.namespace {
+		if pvc.Name == name && pvc.Namespace == f.namespace && pvc.Tenant == f.tenant {
 			return pvc, nil
 		}
 	}

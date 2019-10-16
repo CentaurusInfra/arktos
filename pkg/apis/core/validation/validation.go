@@ -3733,9 +3733,9 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		container.Image = oldPod.Spec.Containers[ix].Image
 		newContainers = append(newContainers, container)
 	}
-	
-	// allow patch changes to Spec.VirtualMachine 
-	mungedPod.Spec.VirtualMachine = oldPod.Spec.VirtualMachine.DeepCopy();
+
+	// allow patch changes to Spec.VirtualMachine
+	mungedPod.Spec.VirtualMachine = oldPod.Spec.VirtualMachine.DeepCopy()
 
 	mungedPod.Spec.Containers = newContainers
 	// munge spec.initContainers[*].image

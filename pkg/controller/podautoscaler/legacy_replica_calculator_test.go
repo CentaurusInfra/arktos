@@ -81,6 +81,7 @@ func (tc *legacyReplicaCalcTestCase) prepareTestClient(t *testing.T) *fake.Clien
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      podName,
 					Namespace: testNamespace,
+					Tenant:    testTenant,
 					Labels: map[string]string{
 						"name": podNamePrefix,
 					},
@@ -121,6 +122,7 @@ func (tc *legacyReplicaCalcTestCase) prepareTestClient(t *testing.T) *fake.Clien
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      podName,
 						Namespace: testNamespace,
+						Tenant:    testTenant,
 					},
 					Timestamp:  metav1.Time{Time: tc.timestamp},
 					Containers: make([]metricsapi.ContainerMetrics, numContainersPerPod),

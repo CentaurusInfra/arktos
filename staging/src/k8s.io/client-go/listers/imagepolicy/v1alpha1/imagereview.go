@@ -29,6 +29,8 @@ import (
 type ImageReviewLister interface {
 	// List lists all ImageReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.ImageReview, err error)
+	// ImageReviews returns an object that can list and get ImageReviews.
+	ImageReviews(optional_tenant ...string) ImageReviewTenantLister
 	// Get retrieves the ImageReview from the index for a given name.
 	Get(name string) (*v1alpha1.ImageReview, error)
 	ImageReviewListerExpansion
@@ -55,6 +57,55 @@ func (s *imageReviewLister) List(selector labels.Selector) (ret []*v1alpha1.Imag
 // Get retrieves the ImageReview from the index for a given name.
 func (s *imageReviewLister) Get(name string) (*v1alpha1.ImageReview, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1alpha1.Resource("imagereview"), name)
+	}
+	return obj.(*v1alpha1.ImageReview), nil
+}
+
+// ImageReviews returns an object that can list and get ImageReviews.
+func (s *imageReviewLister) ImageReviews(optional_tenant ...string) ImageReviewTenantLister {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return imageReviewTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// ImageReviewTenantLister helps list and get ImageReviews.
+type ImageReviewTenantLister interface {
+	// List lists all ImageReviews in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1alpha1.ImageReview, err error)
+	// Get retrieves the ImageReview from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1alpha1.ImageReview, error)
+	ImageReviewTenantListerExpansion
+}
+
+// imageReviewTenantLister implements the ImageReviewTenantLister
+// interface.
+type imageReviewTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all ImageReviews in the indexer for a given tenant.
+func (s imageReviewTenantLister) List(selector labels.Selector) (ret []*v1alpha1.ImageReview, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1alpha1.ImageReview))
+	})
+	return ret, err
+}
+
+// Get retrieves the ImageReview from the indexer for a given tenant and name.
+func (s imageReviewTenantLister) Get(name string) (*v1alpha1.ImageReview, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -51,9 +51,9 @@ type controllerInstanceLocal struct {
 }
 
 type ControllerBase struct {
-	controllerType       string
-	controllerName       string
-	state                string
+	controllerType string
+	controllerName string
+	state          string
 
 	// use int64 as k8s base deal with int64 better
 	controllerKey int64

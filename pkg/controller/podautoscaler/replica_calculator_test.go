@@ -100,6 +100,7 @@ type replicaCalcTestCase struct {
 }
 
 const (
+	testTenant          = metav1.TenantDefault
 	testNamespace       = "test-namespace"
 	podNamePrefix       = "test-pod"
 	numContainersPerPod = 2
@@ -146,6 +147,7 @@ func (tc *replicaCalcTestCase) prepareTestClientSet() *fake.Clientset {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      podName,
 					Namespace: testNamespace,
+					Tenant:    testTenant,
 					Labels: map[string]string{
 						"name": podNamePrefix,
 					},
@@ -194,6 +196,7 @@ func (tc *replicaCalcTestCase) prepareTestMetricsClient() *metricsfake.Clientset
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      podName,
 						Namespace: testNamespace,
+						Tenant:    testTenant,
 						Labels:    map[string]string{"name": podNamePrefix},
 					},
 					Timestamp:  metav1.Time{Time: tc.timestamp},
