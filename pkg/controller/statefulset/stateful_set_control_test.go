@@ -544,16 +544,16 @@ func TestStatefulSetControl_getSetRevisions(t *testing.T) {
 		}
 	}
 
-	/*updateRevision := func(cr *apps.ControllerRevision, revision int64) *apps.ControllerRevision {
+	updateRevision := func(cr *apps.ControllerRevision, revision int64) *apps.ControllerRevision {
 		clone := cr.DeepCopy()
 		clone.Revision = revision
 		return clone
-	}*/
+	}
 
 	set := newStatefulSet(3)
 	set.Status.CollisionCount = new(int32)
 	rev0 := newRevisionOrDie(set, 1)
-	/*set1 := set.DeepCopy()
+	set1 := set.DeepCopy()
 	set1.Spec.Template.Spec.Containers[0].Image = "foo"
 	set1.Status.CurrentRevision = rev0.Name
 	set1.Status.CollisionCount = new(int32)
@@ -562,7 +562,7 @@ func TestStatefulSetControl_getSetRevisions(t *testing.T) {
 	set2.Spec.Template.Labels["new"] = "label"
 	set2.Status.CurrentRevision = rev0.Name
 	set2.Status.CollisionCount = new(int32)
-	rev2 := newRevisionOrDie(set2, 3)*/
+	rev2 := newRevisionOrDie(set2, 3)
 	tests := []testcase{
 		{
 			name:            "creates initial revision",
@@ -573,7 +573,7 @@ func TestStatefulSetControl_getSetRevisions(t *testing.T) {
 			expectedUpdate:  rev0,
 			err:             false,
 		},
-		/*{
+		{
 			name:            "creates revision on update",
 			existing:        []*apps.ControllerRevision{rev0},
 			set:             set1,
@@ -599,7 +599,7 @@ func TestStatefulSetControl_getSetRevisions(t *testing.T) {
 			expectedCurrent: rev0,
 			expectedUpdate:  updateRevision(rev1, 4),
 			err:             false,
-		},*/
+		},
 	}
 	for i := range tests {
 		testFn(&tests[i], t)

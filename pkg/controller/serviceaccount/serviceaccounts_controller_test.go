@@ -41,12 +41,12 @@ func TestServiceAccountCreation(t *testing.T) {
 			Phase: v1.NamespaceActive,
 		},
 	}
-	/*terminatingNS := &v1.Namespace{
+	terminatingNS := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: ns},
 		Status: v1.NamespaceStatus{
 			Phase: v1.NamespaceTerminating,
 		},
-	}*/
+	}
 	defaultServiceAccount := &v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault,
 			Name:            defaultName,
@@ -61,13 +61,13 @@ func TestServiceAccountCreation(t *testing.T) {
 			ResourceVersion: "1",
 		},
 	}
-	/*unmanagedServiceAccount := &v1.ServiceAccount{
+	unmanagedServiceAccount := &v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault,
 			Name:            "other-unmanaged",
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
-	}*/
+	}
 
 	testcases := map[string]struct {
 		ExistingNamespace       *v1.Namespace
@@ -84,7 +84,7 @@ func TestServiceAccountCreation(t *testing.T) {
 			AddedNamespace:               activeNS,
 			ExpectCreatedServiceAccounts: sets.NewString(defaultName, managedName).List(),
 		},
-		/*"new active namespace missing serviceaccount": {
+		"new active namespace missing serviceaccount": {
 			ExistingServiceAccounts:      []*v1.ServiceAccount{managedServiceAccount},
 			AddedNamespace:               activeNS,
 			ExpectCreatedServiceAccounts: []string{defaultName},
@@ -147,7 +147,7 @@ func TestServiceAccountCreation(t *testing.T) {
 			ExistingNamespace:            terminatingNS,
 			DeletedServiceAccount:        unmanagedServiceAccount,
 			ExpectCreatedServiceAccounts: []string{},
-		},*/
+		},
 	}
 
 	for k, tc := range testcases {

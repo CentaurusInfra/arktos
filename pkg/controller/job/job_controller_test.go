@@ -136,8 +136,8 @@ func setPodsStatuses(podIndexer cache.Indexer, job *batch.Job, pendingPods, acti
 }
 
 func TestControllerSyncJob(t *testing.T) {
-	//jobConditionComplete := batch.JobComplete
-	//jobConditionFailed := batch.JobFailed
+	jobConditionComplete := batch.JobComplete
+	jobConditionFailed := batch.JobFailed
 
 	testCases := map[string]struct {
 		// job setup
@@ -169,7 +169,7 @@ func TestControllerSyncJob(t *testing.T) {
 			nil, true, 0, 0, 0, 0,
 			2, 0, 2, 0, 0, nil, "",
 		},
-		/*"WQ job start": {
+		"WQ job start": {
 			2, -1, 6, false, 0,
 			nil, true, 0, 0, 0, 0,
 			2, 0, 2, 0, 0, nil, "",
@@ -268,7 +268,7 @@ func TestControllerSyncJob(t *testing.T) {
 			2, 5, 0, true, 0,
 			nil, true, 0, 0, 0, 1,
 			0, 0, 0, 0, 1, &jobConditionFailed, "BackoffLimitExceeded",
-		},*/
+		},
 	}
 
 	for name, tc := range testCases {
