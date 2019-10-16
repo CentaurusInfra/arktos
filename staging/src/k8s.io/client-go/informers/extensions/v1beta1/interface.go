@@ -40,41 +40,46 @@ type Interface interface {
 
 type version struct {
 	factory          internalinterfaces.SharedInformerFactory
+	tenant           string
 	namespace        string
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
 // New returns a new Interface.
-func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
-	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) Interface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &version{factory: f, tenant: tenant, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
 // DaemonSets returns a DaemonSetInformer.
 func (v *version) DaemonSets() DaemonSetInformer {
-	return &daemonSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &daemonSetInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // Deployments returns a DeploymentInformer.
 func (v *version) Deployments() DeploymentInformer {
-	return &deploymentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &deploymentInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // Ingresses returns a IngressInformer.
 func (v *version) Ingresses() IngressInformer {
-	return &ingressInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &ingressInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // NetworkPolicies returns a NetworkPolicyInformer.
 func (v *version) NetworkPolicies() NetworkPolicyInformer {
-	return &networkPolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &networkPolicyInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // PodSecurityPolicies returns a PodSecurityPolicyInformer.
 func (v *version) PodSecurityPolicies() PodSecurityPolicyInformer {
-	return &podSecurityPolicyInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &podSecurityPolicyInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // ReplicaSets returns a ReplicaSetInformer.
 func (v *version) ReplicaSets() ReplicaSetInformer {
-	return &replicaSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &replicaSetInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }

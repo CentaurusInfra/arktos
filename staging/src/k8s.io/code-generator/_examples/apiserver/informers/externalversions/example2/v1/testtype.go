@@ -42,32 +42,38 @@ type testTypeInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
+	tenant           string
 }
 
 // NewTestTypeInformer constructs a new informer for TestType type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewTestTypeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTestTypeInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewTestTypeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
+	return NewFilteredTestTypeInformer(client, namespace, resyncPeriod, indexers, nil, optional_tenant...)
 }
 
 // NewFilteredTestTypeInformer constructs a new informer for TestType type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredTestTypeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredTestTypeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SecondExampleV1().TestTypes(namespace).List(options)
+				return client.SecondExampleV1().TestTypes(namespace, tenant).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SecondExampleV1().TestTypes(namespace).Watch(options)
+				return client.SecondExampleV1().TestTypes(namespace, tenant).Watch(options)
 			},
 		},
 		&example2v1.TestType{},
@@ -77,7 +83,7 @@ func NewFilteredTestTypeInformer(client versioned.Interface, namespace string, r
 }
 
 func (f *testTypeInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTestTypeInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredTestTypeInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *testTypeInformer) Informer() cache.SharedIndexInformer {

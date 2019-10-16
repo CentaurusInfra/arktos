@@ -76,7 +76,7 @@ func NewFilteredValidatingWebhookConfigurationInformer(client kubernetes.Interfa
 }
 
 func (f *validatingWebhookConfigurationInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredValidatingWebhookConfigurationInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredValidatingWebhookConfigurationInformer(client, resyncPeriod, cache.Indexers{}, f.tweakListOptions)
 }
 
 func (f *validatingWebhookConfigurationInformer) Informer() cache.SharedIndexInformer {

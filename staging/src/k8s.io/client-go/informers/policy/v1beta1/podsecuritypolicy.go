@@ -41,32 +41,38 @@ type PodSecurityPolicyInformer interface {
 type podSecurityPolicyInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	tenant           string
 }
 
 // NewPodSecurityPolicyInformer constructs a new informer for PodSecurityPolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewPodSecurityPolicyInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredPodSecurityPolicyInformer(client, resyncPeriod, indexers, nil)
+func NewPodSecurityPolicyInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
+	return NewFilteredPodSecurityPolicyInformer(client, resyncPeriod, indexers, nil, optional_tenant...)
 }
 
 // NewFilteredPodSecurityPolicyInformer constructs a new informer for PodSecurityPolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredPodSecurityPolicyInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredPodSecurityPolicyInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PolicyV1beta1().PodSecurityPolicies().List(options)
+				return client.PolicyV1beta1().PodSecurityPolicies(tenant).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PolicyV1beta1().PodSecurityPolicies().Watch(options)
+				return client.PolicyV1beta1().PodSecurityPolicies(tenant).Watch(options)
 			},
 		},
 		&policyv1beta1.PodSecurityPolicy{},
@@ -76,7 +82,7 @@ func NewFilteredPodSecurityPolicyInformer(client kubernetes.Interface, resyncPer
 }
 
 func (f *podSecurityPolicyInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredPodSecurityPolicyInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredPodSecurityPolicyInformer(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *podSecurityPolicyInformer) Informer() cache.SharedIndexInformer {

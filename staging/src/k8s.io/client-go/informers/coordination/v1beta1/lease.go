@@ -42,32 +42,38 @@ type leaseInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
+	tenant           string
 }
 
 // NewLeaseInformer constructs a new informer for Lease type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewLeaseInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredLeaseInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewLeaseInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
+	return NewFilteredLeaseInformer(client, namespace, resyncPeriod, indexers, nil, optional_tenant...)
 }
 
 // NewFilteredLeaseInformer constructs a new informer for Lease type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredLeaseInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredLeaseInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoordinationV1beta1().Leases(namespace).List(options)
+				return client.CoordinationV1beta1().Leases(namespace, tenant).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoordinationV1beta1().Leases(namespace).Watch(options)
+				return client.CoordinationV1beta1().Leases(namespace, tenant).Watch(options)
 			},
 		},
 		&coordinationv1beta1.Lease{},
@@ -77,7 +83,7 @@ func NewFilteredLeaseInformer(client kubernetes.Interface, namespace string, res
 }
 
 func (f *leaseInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredLeaseInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredLeaseInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *leaseInformer) Informer() cache.SharedIndexInformer {

@@ -32,21 +32,26 @@ type Interface interface {
 
 type version struct {
 	factory          internalinterfaces.SharedInformerFactory
+	tenant           string
 	namespace        string
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
 // New returns a new Interface.
-func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
-	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) Interface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &version{factory: f, tenant: tenant, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
 // PodDisruptionBudgets returns a PodDisruptionBudgetInformer.
 func (v *version) PodDisruptionBudgets() PodDisruptionBudgetInformer {
-	return &podDisruptionBudgetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &podDisruptionBudgetInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // PodSecurityPolicies returns a PodSecurityPolicyInformer.
 func (v *version) PodSecurityPolicies() PodSecurityPolicyInformer {
-	return &podSecurityPolicyInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &podSecurityPolicyInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }

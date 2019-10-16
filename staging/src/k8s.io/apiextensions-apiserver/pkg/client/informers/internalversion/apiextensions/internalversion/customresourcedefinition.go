@@ -41,32 +41,38 @@ type CustomResourceDefinitionInformer interface {
 type customResourceDefinitionInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	tenant           string
 }
 
 // NewCustomResourceDefinitionInformer constructs a new informer for CustomResourceDefinition type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewCustomResourceDefinitionInformer(client internalclientset.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredCustomResourceDefinitionInformer(client, resyncPeriod, indexers, nil)
+func NewCustomResourceDefinitionInformer(client internalclientset.Interface, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
+	return NewFilteredCustomResourceDefinitionInformer(client, resyncPeriod, indexers, nil, optional_tenant...)
 }
 
 // NewFilteredCustomResourceDefinitionInformer constructs a new informer for CustomResourceDefinition type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredCustomResourceDefinitionInformer(client internalclientset.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredCustomResourceDefinitionInformer(client internalclientset.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.Apiextensions().CustomResourceDefinitions().List(options)
+				return client.Apiextensions().CustomResourceDefinitions(tenant).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.Apiextensions().CustomResourceDefinitions().Watch(options)
+				return client.Apiextensions().CustomResourceDefinitions(tenant).Watch(options)
 			},
 		},
 		&apiextensions.CustomResourceDefinition{},
@@ -76,7 +82,7 @@ func NewFilteredCustomResourceDefinitionInformer(client internalclientset.Interf
 }
 
 func (f *customResourceDefinitionInformer) defaultInformer(client internalclientset.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredCustomResourceDefinitionInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredCustomResourceDefinitionInformer(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *customResourceDefinitionInformer) Informer() cache.SharedIndexInformer {
