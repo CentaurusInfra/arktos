@@ -215,9 +215,9 @@ func (s *genericTenantLister) List(selector labels.Selector) (ret []runtime.Obje
 }
 
 func (s *genericTenantLister) Get(name string) (runtime.Object, error) {
-	key := s.tenant + "/"  + name
-	if s.tenant == metav1.TenantDefault  {
-		key =  name
+	key := s.tenant + "/" + name
+	if s.tenant == metav1.TenantDefault {
+		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {

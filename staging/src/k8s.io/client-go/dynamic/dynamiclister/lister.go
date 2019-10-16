@@ -80,9 +80,9 @@ func (l *dynamicTenantLister) List(selector labels.Selector) (ret []*unstructure
 
 // Get retrieves a resource from the indexer for a given tenant and name.
 func (l *dynamicTenantLister) Get(name string) (*unstructured.Unstructured, error) {
-	key := l.tenant + "/"  + name
-	if l.tenant == "default"  {
-		key =  name
+	key := l.tenant + "/" + name
+	if l.tenant == "default" {
+		key = name
 	}
 	obj, exists, err := l.indexer.GetByKey(key)
 	if err != nil {

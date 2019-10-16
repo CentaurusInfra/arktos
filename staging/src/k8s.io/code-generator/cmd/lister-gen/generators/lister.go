@@ -278,6 +278,9 @@ func (g *listerGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 	return sw.Error()
 }
 
+// TODO: change "optional_tenant ...string" to "tenant string" in the following functions,
+// after the multi-tenancy changes are done in all the components,
+// ncluding but not limited to kubelet, controller, scheduler.
 var typeListerInterface_NamespaceScope = `
 // $.type|public$Lister helps list $.type|publicPlural$.
 type $.type|public$Lister interface {
