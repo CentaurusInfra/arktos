@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Store is a generic object storage interface. Reflector knows how to watch a server
@@ -81,25 +82,66 @@ func MetaNamespaceKeyFunc(obj interface{}) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("object has no meta: %v", err)
 	}
+
+	metaKey := meta.GetName()
 	if len(meta.GetNamespace()) > 0 {
-		return meta.GetNamespace() + "/" + meta.GetName(), nil
+		metaKey = meta.GetNamespace() + "/" + metaKey
 	}
-	return meta.GetName(), nil
+	if len(meta.GetTenant()) > 0 && meta.GetTenant() != v1.TenantDefault {
+		metaKey = meta.GetTenant() + "/" + metaKey
+	}
+
+	return metaKey, nil
 }
 
 // SplitMetaNamespaceKey returns the namespace and name that
 // MetaNamespaceKeyFunc encoded into key.
+// It provides backward-compatibility for namespace-scoped objects before multi-tenancy changes
 //
 // TODO: replace key-as-string with a key-as-struct so that this
 // packing/unpacking won't be necessary.
 func SplitMetaNamespaceKey(key string) (namespace, name string, err error) {
+	_, namespace, name, err = SplitMetaTenantNamespaceKey(key)
+	return namespace, name, err
+}
+
+// SplitMetaTenantNamespaceKey returns the tenant, namespace and name that
+// MetaNamespaceKeyFunc encoded into key.
+// It works for namespace-scoped objects after multi-tenancy changes
+//
+// TODO: replace key-as-string with a key-as-struct so that this
+// packing/unpacking won't be necessary.
+func SplitMetaTenantNamespaceKey(key string) (tenant, namespace, name string, err error) {
 	parts := strings.Split(key, "/")
 	switch len(parts) {
 	case 1:
 		// name only, no namespace
-		return "", parts[0], nil
+		return "", "", parts[0], nil
 	case 2:
-		// namespace and name
+		// tenant == "default", namespace and name
+		return v1.TenantDefault, parts[0], parts[1], nil
+	case 3:
+		// tenant, namespace and name
+		return parts[0], parts[1], parts[2], nil
+	}
+
+	return "", "", "", fmt.Errorf("unexpected key format: %q", key)
+}
+
+// SplitMetaTenantKey returns the tenant, namespace and name that
+// MetaTenantKeyFunc encoded into key.
+// It is for the tenant-scope objects.
+//
+// TODO: replace key-as-string with a key-as-struct so that this
+// packing/unpacking won't be necessary.
+func SplitMetaTenantKey(key string) (tenant, name string, err error) {
+	parts := strings.Split(key, "/")
+	switch len(parts) {
+	case 1:
+		// tenant == "default" and name
+		return v1.TenantDefault, parts[0], nil
+	case 2:
+		// tenant and name
 		return parts[0], parts[1], nil
 	}
 

@@ -32,13 +32,18 @@ type Interface interface {
 
 type version struct {
 	factory          internalinterfaces.SharedInformerFactory
+	tenant           string
 	namespace        string
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
 // New returns a new Interface.
-func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
-	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) Interface {
+	tenant := "default"
+	if len(optional_tenant) > 0 {
+		tenant = optional_tenant[0]
+	}
+	return &version{factory: f, tenant: tenant, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
 // StorageClasses returns a StorageClassInformer.
@@ -48,5 +53,5 @@ func (v *version) StorageClasses() StorageClassInformer {
 
 // VolumeAttachments returns a VolumeAttachmentInformer.
 func (v *version) VolumeAttachments() VolumeAttachmentInformer {
-	return &volumeAttachmentInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &volumeAttachmentInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }

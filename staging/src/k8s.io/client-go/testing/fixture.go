@@ -358,16 +358,21 @@ func (t *tracker) Update(gvr schema.GroupVersionResource, obj runtime.Object, ns
 	return t.add(gvr, obj, ns, true, ComputeTenant(te...))
 }
 
-func (t *tracker) getWatches(gvr schema.GroupVersionResource, ns string, te ...string) []*watch.RaceFreeFakeWatcher {
-	tenant := ComputeTenant(te...)
+func (t *tracker) getWatches(gvr schema.GroupVersionResource, ns string, tenant string) []*watch.RaceFreeFakeWatcher {
 	watches := []*watch.RaceFreeFakeWatcher{}
 	if t.watchers[gvr] != nil {
 		if w := t.watchers[gvr][tenant][ns]; w != nil {
 			watches = append(watches, w...)
 		}
-		if ns != metav1.NamespaceAll {
-			if w := t.watchers[gvr][tenant][metav1.NamespaceAll]; w != nil {
-				watches = append(watches, w...)
+		if ns != metav1.NamespaceAll && tenant != metav1.TenantAll {
+			if w1 := t.watchers[gvr][tenant][metav1.NamespaceAll]; w1 != nil {
+				watches = append(watches, w1...)
+			}
+			if w2 := t.watchers[gvr][metav1.TenantAll][ns]; w2 != nil {
+				watches = append(watches, w2...)
+			}
+			if w3 := t.watchers[gvr][metav1.TenantAll][metav1.NamespaceAll]; w3 != nil {
+				watches = append(watches, w3...)
 			}
 		}
 	}

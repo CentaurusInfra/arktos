@@ -76,7 +76,7 @@ func NewFilteredAPIServiceInformer(client clientset.Interface, resyncPeriod time
 }
 
 func (f *aPIServiceInformer) defaultInformer(client clientset.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredAPIServiceInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredAPIServiceInformer(client, resyncPeriod, cache.Indexers{}, f.tweakListOptions)
 }
 
 func (f *aPIServiceInformer) Informer() cache.SharedIndexInformer {
