@@ -96,7 +96,7 @@ func MetaNamespaceKeyFunc(obj interface{}) (string, error) {
 
 // SplitMetaNamespaceKey returns the namespace and name that
 // MetaNamespaceKeyFunc encoded into key.
-// It is provides backward-compatibility for namespace-scoped objects before multi-tenancy changes
+// It provides backward-compatibility for namespace-scoped objects before multi-tenancy changes
 //
 // TODO: replace key-as-string with a key-as-struct so that this
 // packing/unpacking won't be necessary.
@@ -105,7 +105,7 @@ func SplitMetaNamespaceKey(key string) (namespace, name string, err error) {
 	return namespace, name, err
 }
 
-// SplitMetaNamespaceKey returns the tenant, namespace and name that
+// SplitMetaTenantNamespaceKey returns the tenant, namespace and name that
 // MetaNamespaceKeyFunc encoded into key.
 // It works for namespace-scoped objects after multi-tenancy changes
 //
@@ -121,16 +121,16 @@ func SplitMetaTenantNamespaceKey(key string) (tenant, namespace, name string, er
 		// tenant == "default", namespace and name
 		return v1.TenantDefault, parts[0], parts[1], nil
 	case 3:
-		// tenant and name
+		// tenant, namespace and name
 		return parts[0], parts[1], parts[2], nil
 	}
 
 	return "", "", "", fmt.Errorf("unexpected key format: %q", key)
 }
 
-// SplitMetaNamespaceKey returns the tenant, namespace and name that
-// MetaNamespaceKeyFunc encoded into key.
-// It is the the tenant-scope objects
+// SplitMetaTenantKey returns the tenant, namespace and name that
+// MetaTenantKeyFunc encoded into key.
+// It is for the tenant-scope objects.
 //
 // TODO: replace key-as-string with a key-as-struct so that this
 // packing/unpacking won't be necessary.
