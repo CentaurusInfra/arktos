@@ -18,34 +18,15 @@ package cloudfabriccontrollers
 
 import (
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math"
 	"testing"
+	"time"
 )
 
-func isEqual(instance1, instance2 v1.ControllerInstance) bool {
-	if instance1.Name != instance2.Name || instance1.ControllerKey != instance2.ControllerKey ||
-		instance1.ControllerType != instance2.ControllerType {
-		return false
-	}
-
-	return true
-}
-
-func isInList(instances []v1.ControllerInstance, instance v1.ControllerInstance) bool {
-	for _, item := range instances {
-		if item.Name == instance.Name {
-			return isEqual(instance, item)
-		}
-	}
-
-	return false
-}
-
 func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
-	// start controller manager 1
-	_, closeFn1, cim1, rm1, informers1, client1 := rmSetup(t)
+	// case 1. start controller manager 1
+	s, closeFn1, cim1, rm1, informers1, client1 := rmSetup(t)
 	defer closeFn1()
 	stopCh1 := runControllerAndInformers(t, cim1, rm1, informers1, 0)
 	defer close(stopCh1)
@@ -62,39 +43,108 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	assert.False(t, rsControllerInstance1.IsLocked, "Unexpected 1st controller instance status")
 	assert.Equal(t, rm1.GetControllerType(), rsControllerInstance1.ControllerType, "Unexpected controller type")
 
+	// case 2. start controller manager 2
+	cim2, rm2, informers2, client2 := rmSetupControllerMaster(t, s)
+	stopCh2 := runControllerAndInformers(t, cim2, rm2, informers2, 0)
+	defer close(stopCh2)
+	time.Sleep(10 * time.Second)
+
+	// check replicaset controller status in controller manager 2
+	t.Logf("rm 1 instance id: %v", rm1.GetControllerName())
+	t.Logf("rm 2 instance id: %v", rm2.GetControllerName())
+
+	assert.NotEqual(t, rm1.GetControllerName(), rm2.GetControllerName())
+	controllerInstanceList2, err := client2.CoreV1().ControllerInstances().List(metav1.ListOptions{})
+	assert.Nil(t, err)
+	assert.NotNil(t, controllerInstanceList2)
+	assert.Equal(t, 2, len(controllerInstanceList2.Items), "number of controller instance")
+	t.Logf("new rms [%#v]", controllerInstanceList2)
+
+	rsControllerInstanceRead1, err := client2.CoreV1().ControllerInstances().Get(rm1.GetControllerName(), metav1.GetOptions{})
+	assert.Nil(t, err)
+	rsControllerInstanceRead2, err := client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
+	assert.Nil(t, err)
+
+	// check controller instance updates
+	assert.Equal(t, rsControllerInstance1.Name, rsControllerInstanceRead1.Name)
+	assert.Equal(t, rsControllerInstance1.ControllerType, rsControllerInstanceRead1.ControllerType)
+	assert.Equal(t, int64(math.MaxInt64), rsControllerInstanceRead1.ControllerKey) // consistent hash
+	assert.Equal(t, rsControllerInstance1.ControllerKey, rsControllerInstanceRead1.ControllerKey)
+
+	assert.True(t, 0 < rsControllerInstanceRead1.ControllerKey)
+	assert.True(t, rsControllerInstanceRead2.ControllerKey < rsControllerInstanceRead1.ControllerKey)
+
+	assert.False(t, rsControllerInstanceRead1.IsLocked, "Unexpected 1st controller instance status")
+	assert.False(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2nd controller instance status")
+	assert.Equal(t, rm2.GetControllerType(), rsControllerInstanceRead2.ControllerType, "Unexpected controller type")
+
+	// case 3. start controller manager 3
+	cim3, rm3, informers3, _ := rmSetupControllerMaster(t, s)
+	stopCh3 := runControllerAndInformers(t, cim3, rm3, informers3, 0)
+	defer close(stopCh3)
+	time.Sleep(10 * time.Second)
+	t.Logf("rm 3 instance id: %v", rm3.GetControllerName())
+
+	// check replicaset controller status in controller manager 2
+	assert.NotEqual(t, rm1.GetControllerName(), rm3.GetControllerName())
+	assert.NotEqual(t, rm2.GetControllerName(), rm3.GetControllerName())
+	controllerInstanceList3, err := client2.CoreV1().ControllerInstances().List(metav1.ListOptions{})
+	assert.Nil(t, err)
+	assert.NotNil(t, controllerInstanceList3)
+	assert.Equal(t, 3, len(controllerInstanceList3.Items), "number of controller instance")
+	t.Logf("new rms [%#v]", controllerInstanceList3)
+
+	rsControllerInstanceRead1, err = client2.CoreV1().ControllerInstances().Get(rm1.GetControllerName(), metav1.GetOptions{})
+	assert.Nil(t, err)
+	rsControllerInstanceRead2, err = client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
+	assert.Nil(t, err)
+	rsControllerInstanceRead3, err := client2.CoreV1().ControllerInstances().Get(rm3.GetControllerName(), metav1.GetOptions{})
+	assert.Nil(t, err)
+
+	// check controller instance updates
+	assert.Equal(t, rsControllerInstance1.Name, rsControllerInstanceRead1.Name)
+	assert.Equal(t, rsControllerInstance1.ControllerType, rsControllerInstanceRead1.ControllerType)
+	assert.Equal(t, int64(math.MaxInt64), rsControllerInstanceRead1.ControllerKey) // consistent hash
+	assert.Equal(t, rsControllerInstance1.ControllerKey, rsControllerInstanceRead1.ControllerKey)
+
+	assert.True(t, 0 < rsControllerInstanceRead1.ControllerKey)
+	assert.True(t, rsControllerInstanceRead2.ControllerKey < rsControllerInstanceRead1.ControllerKey)
+	assert.True(t, rsControllerInstanceRead3.ControllerKey < rsControllerInstanceRead1.ControllerKey)
+	assert.NotEqual(t, rsControllerInstanceRead2.ControllerKey, rsControllerInstanceRead3.ControllerKey)
+
+	assert.False(t, rsControllerInstanceRead1.IsLocked, "Unexpected 1st controller instance status")
+	assert.False(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2nd controller instance status")
+	assert.False(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
+	assert.Equal(t, rm2.GetControllerType(), rsControllerInstanceRead2.ControllerType, "Unexpected controller type")
+	assert.Equal(t, rm2.GetControllerType(), rsControllerInstanceRead3.ControllerType, "Unexpected controller type")
+
+	// case 4. 1st controller instance died - This needs to be done in unit test as integration test would be flaky
 	/*
-		// start controller manager 2
-		cim2, rm2, informers2, client2 := rmSetupControllerMaster(t, s)
-		stopCh2 := runControllerAndInformers(t, cim2, rm2, informers2, 0)
-		defer close(stopCh2)
+		close(stopCh1)
+		// need to manually delete the controller instance from registry as default 5 minute timeout will cause test timeout during batch test.
+		err = client3.CoreV1().ControllerInstances().Delete(rm1.GetControllerName(), &metav1.DeleteOptions{})
+		assert.Nil(t, err)
+
+		controllerInstanceList4, err := client2.CoreV1().ControllerInstances().List(metav1.ListOptions{})
+		assert.Nil(t, err)
+		assert.NotNil(t, controllerInstanceList4)
+		assert.Equal(t, 2, len(controllerInstanceList4.Items))
+
+		rsControllerInstanceRead2, err = client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
+		assert.Nil(t, err)
+		assert.NotNil(t, rsControllerInstanceRead2)
+		rsControllerInstanceRead3, err = client2.CoreV1().ControllerInstances().Get(rm3.GetControllerName(), metav1.GetOptions{})
+		assert.Nil(t, err)
+		assert.NotNil(t, rsControllerInstanceRead3)
 
 		// check replicaset controller status in controller manager 2
-		t.Logf("rm 1 instance id: %v", rm1.GetControllerName())
-		t.Logf("rm 2 instance id: %v", rm2.GetControllerName())
-
-		assert.NotEqual(t, rm1.GetControllerName(), rm2.GetControllerName())
-		controllerInstanceList2, err := client2.CoreV1().ControllerInstances().List(metav1.ListOptions{})
-		assert.Nil(t, err)
-		assert.NotNil(t, controllerInstanceList2)
-		assert.Equal(t, 2, len(controllerInstanceList2.Items), "number of controller instance")
-		t.Logf("new rms [%#v]", controllerInstanceList2)
-
-		rsControllerInstanceRead1, err := client2.CoreV1().ControllerInstances().Get(rm1.GetControllerName(), metav1.GetOptions{})
-		assert.Nil(t, err)
-		rsControllerInstanceRead2, err := client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
-		assert.Nil(t, err)
-
-		// check controller instance updates
-		assert.Equal(t, rsControllerInstance1.Name, rsControllerInstanceRead1.Name)
-		assert.Equal(t, rsControllerInstance1.ControllerType, rsControllerInstanceRead1.ControllerType)
-		assert.Equal(t, int64(math.MaxInt64), rsControllerInstanceRead1.ControllerKey)
-		assert.Equal(t, rsControllerInstance1.ControllerKey, rsControllerInstanceRead1.ControllerKey)
-
-		assert.True(t, 0 < rsControllerInstanceRead1.ControllerKey)
-		assert.True(t, rsControllerInstanceRead2.ControllerKey < rsControllerInstanceRead1.ControllerKey)
-
-		assert.False(t, rsControllerInstanceRead1.IsLocked, "Unexpected 1st controller instance status")
-		assert.False(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2nd controller instance status")
-		assert.Equal(t, rm2.GetControllerType(), rsControllerInstanceRead2.ControllerType, "Unexpected controller type")
+		assert.NotEqual(t, rsControllerInstanceRead2.ControllerKey, rsControllerInstanceRead3.ControllerKey)
+		if rsControllerInstanceRead2.ControllerKey < rsControllerInstanceRead3.ControllerKey {
+			assert.Equal(t, int64(math.MaxInt64), rsControllerInstanceRead3.ControllerKey)
+		} else {
+			assert.Equal(t, int64(math.MaxInt64), rsControllerInstanceRead2.ControllerKey)
+		}
+		assert.False(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2st controller instance status")
+		assert.False(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
 	*/
 }
