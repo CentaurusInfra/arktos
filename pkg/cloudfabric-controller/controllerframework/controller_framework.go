@@ -69,6 +69,7 @@ type ControllerBase struct {
 	client                                   clientset.Interface
 	controllerInstanceUpdateByControllerType chan string
 	mux                                      sync.Mutex
+	unlockControllerInstanceHander           func(local controllerInstanceLocal) error
 }
 
 var (
@@ -109,6 +110,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 
 	controller.controllerKey = controller.generateKey()
 	controller.controllerName = generateControllerName()
+	controller.unlockControllerInstanceHander = controller.unlockControllerInstance
 
 	// First controller instance. No need to wait for others
 	if len(controller.sortedControllerInstancesLocal) == 0 {
@@ -211,6 +213,8 @@ func (c *ControllerBase) IsInRange(key int64) bool {
 func (c *ControllerBase) DoneProcessingCurrentWorkloads() {
 	if c.state == ControllerStateWait {
 		c.state = ControllerStateActive
+
+		c.tryUnlockControllerInstance(c.sortedControllerInstancesLocal, c.curPos)
 	}
 }
 
@@ -352,15 +356,19 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstances 
 	}
 
 	// active controller instance can unlock instance 1 position ahead of it
-	if newPos >= 1 && sortedNewControllerInstancesLocal[newPos-1].isLocked {
-		err := c.unlockControllerInstance(sortedNewControllerInstancesLocal[newPos-1])
-		if err != nil {
-			// TODO - add retry logic
-			klog.Fatalf("Unable to unlock controller %s instance %s. panic for now.", c.controllerType, sortedNewControllerInstancesLocal[newPos-1].instanceName)
-		}
-	}
+	c.tryUnlockControllerInstance(sortedNewControllerInstancesLocal, newPos)
 
 	return
+}
+
+func (c *ControllerBase) tryUnlockControllerInstance(sortedControllerInstances []controllerInstanceLocal, pos int) {
+	if pos >= 1 && sortedControllerInstances[pos-1].isLocked {
+		err := c.unlockControllerInstanceHander(sortedControllerInstances[pos-1])
+		if err != nil {
+			// TODO - add retry logic
+			klog.Fatalf("Unable to unlock controller %s instance %s. panic for now.", c.controllerType, sortedControllerInstances[pos-1].instanceName)
+		}
+	}
 }
 
 // Assume both old & new controller instances are sorted by controller key

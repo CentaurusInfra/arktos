@@ -19,28 +19,51 @@ package controllerframework
 import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"math"
 	"testing"
 )
 
-func createControllerInstanceBase(t *testing.T, client clientset.Interface, cim *ControllerInstanceManager, controllerType string, stopCh chan struct{},
+func createControllerInstanceBaseAndCIM(t *testing.T, client clientset.Interface, cim *ControllerInstanceManager, controllerType string, stopCh chan struct{},
 	updateCh chan string) (*ControllerBase, *ControllerInstanceManager, error) {
 
 	if cim == nil {
 		cim, _ = createControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
 	}
-	go cim.Run(stopCh)
 
 	newControllerInstance1, err := NewControllerBase(controllerType, client, updateCh)
+	newControllerInstance1.unlockControllerInstanceHander = mockUnlockcontrollerInstanceHandler
+	cim.addControllerInstance(convertControllerBaseToControllerInstance(newControllerInstance1))
 	assert.Nil(t, err)
 	assert.NotNil(t, newControllerInstance1)
 	assert.NotNil(t, newControllerInstance1.GetControllerName())
 	assert.Equal(t, controllerType, newControllerInstance1.GetControllerType())
-	assert.True(t, newControllerInstance1.IsControllerActive())
 
 	return newControllerInstance1, cim, err
+}
+
+func convertControllerBaseToControllerInstance(controllerBase *ControllerBase) *v1.ControllerInstance {
+	controllerInstance := &v1.ControllerInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: controllerBase.GetControllerName(),
+		},
+		ControllerType: controllerBase.controllerType,
+		ControllerKey:  controllerBase.controllerKey,
+		WorkloadNum:    0,
+		IsLocked:       controllerBase.state == ControllerStateLocked,
+	}
+
+	return controllerInstance
+}
+
+var unlockedControllerInstanceName string
+
+func mockUnlockcontrollerInstanceHandler(local controllerInstanceLocal) error {
+	unlockedControllerInstanceName = local.instanceName
+	return nil
 }
 
 func TestGenerateKey(t *testing.T) {
@@ -50,7 +73,7 @@ func TestGenerateKey(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	controllerInstanceBase, cim, err := createControllerInstanceBase(t, client, nil, "foo", stopCh, updateCh)
+	controllerInstanceBase, cim, err := createControllerInstanceBaseAndCIM(t, client, nil, "foo", stopCh, updateCh)
 
 	// 1st controller instance for a type needs to cover all workload
 	assert.Equal(t, 0, controllerInstanceBase.curPos)
@@ -60,7 +83,7 @@ func TestGenerateKey(t *testing.T) {
 	assert.False(t, controllerInstanceBase.sortedControllerInstancesLocal[0].isLocked)
 
 	// 1st controller instance for a different type needs to cover all workload
-	controllerInstanceBase2, _, err := createControllerInstanceBase(t, client, cim, "bar", stopCh, updateCh)
+	controllerInstanceBase2, _, err := createControllerInstanceBaseAndCIM(t, client, cim, "bar", stopCh, updateCh)
 	assert.Nil(t, err)
 	assert.NotNil(t, controllerInstanceBase2)
 	assert.Equal(t, 0, controllerInstanceBase2.curPos)
@@ -79,11 +102,11 @@ func TestConsolidateControllerInstances_Sort(t *testing.T) {
 
 	// 2nd controller instance will share same workload space with 1st one
 	controllerType := "foo"
-	controllerInstanceBase, cim, err := createControllerInstanceBase(t, client, nil, controllerType, stopCh, updateCh)
+	controllerInstanceBase, cim, err := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh)
+	assert.True(t, controllerInstanceBase.IsControllerActive())
 
 	hashKey1 := int64(10000)
 	controllerInstance1_2 := newControllerInstance(controllerType, hashKey1, int32(100), true)
-	cim.addControllerInstance(&controllerInstanceBase.controllerInstanceList[0])
 	cim.addControllerInstance(controllerInstance1_2)
 
 	controllerInstances, err := listControllerInstancesByType(controllerType)
@@ -137,7 +160,8 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	defer close(updateCh)
 
 	controllerType := "foo"
-	controllerInstanceBase, _, _ := createControllerInstanceBase(t, client, nil, controllerType, stopCh, updateCh)
+	controllerInstanceBase, _, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh)
+	assert.True(t, controllerInstanceBase.IsControllerActive())
 
 	// current controller instance A has range [0, maxInt64]
 	assert.Equal(t, 0, controllerInstanceBase.curPos)
@@ -258,7 +282,8 @@ func TestGetMaxInterval(t *testing.T) {
 	defer close(updateCh)
 
 	controllerType := "foo"
-	controllerInstanceBase, _, _ := createControllerInstanceBase(t, client, nil, controllerType, stopCh, updateCh)
+	controllerInstanceBase, _, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh)
+	assert.True(t, controllerInstanceBase.IsControllerActive())
 
 	// Single controller instance, max interval always (0, maxInt64)
 	min, max := controllerInstanceBase.getMaxInterval()
@@ -312,4 +337,66 @@ func TestGetMaxInterval(t *testing.T) {
 	min, max = controllerInstanceBase.getMaxInterval()
 	assert.Equal(t, int64(0), min)
 	assert.Equal(t, hashKey1, max)
+}
+
+func TestControllerInstanceLifeCycle(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	stopCh := make(chan struct{})
+	updateCh := make(chan string)
+	defer close(stopCh)
+	defer close(updateCh)
+
+	// 1st controller instance
+	controllerType1 := "foo"
+	controllerInstanceBaseFoo1, cim, err := createControllerInstanceBaseAndCIM(t, client, nil, controllerType1, stopCh, updateCh)
+
+	// 2nd controller instance
+	stopCh2 := make(chan struct{})
+	updateCh2 := make(chan string)
+	defer close(stopCh2)
+	defer close(updateCh2)
+	controllerInstanceBaseFoo2, _, err := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2)
+	assert.Nil(t, err)
+	assert.NotNil(t, controllerInstanceBaseFoo2)
+	assert.Equal(t, controllerType1, controllerInstanceBaseFoo2.GetControllerType())
+	assert.True(t, controllerInstanceBaseFoo1.controllerKey > controllerInstanceBaseFoo2.controllerKey)
+	assert.False(t, controllerInstanceBaseFoo2.IsControllerActive())
+	assert.True(t, controllerInstanceBaseFoo2.state == ControllerStateLocked)
+
+	// 1st controller instance got update event
+	// lowerbound increased, set state to wait
+	updatedControllerInstancelist, err := listControllerInstancesByType(controllerType1)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(updatedControllerInstancelist))
+	controllerInstanceBaseFoo1.updateCachedControllerInstances(updatedControllerInstancelist)
+	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait)
+	assert.Equal(t, 1, controllerInstanceBaseFoo1.curPos)
+	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBaseFoo1.controllerKey)
+	assert.Equal(t, controllerInstanceBaseFoo2.controllerKey, controllerInstanceBaseFoo1.sortedControllerInstancesLocal[controllerInstanceBaseFoo1.curPos].lowerboundKey)
+	assert.Equal(t, int64(0), controllerInstanceBaseFoo1.sortedControllerInstancesLocal[0].lowerboundKey)
+	assert.True(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal[0].isLocked)
+
+	// 1st controller instance done processing current workload
+	unlockedControllerInstanceName = ""
+	controllerInstanceBaseFoo1.DoneProcessingCurrentWorkloads()
+	assert.True(t, controllerInstanceBaseFoo1.IsControllerActive())
+	updatedControllerInstancelist, err = listControllerInstancesByType(controllerType1)
+	controllerInstanceBaseFoo1.updateCachedControllerInstances(updatedControllerInstancelist)
+	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateActive)
+	assert.False(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal[1].isLocked)
+	assert.Equal(t, controllerInstanceBaseFoo2.controllerName, unlockedControllerInstanceName)
+
+	//assert.False(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal[0].isLocked)
+	// mock controller instance 2 received unlock message
+	controllerInstanceFoo2 := convertControllerBaseToControllerInstance(controllerInstanceBaseFoo2)
+	controllerInstanceFoo2Copy := convertControllerBaseToControllerInstance(controllerInstanceBaseFoo2)
+	controllerInstanceFoo2.ResourceVersion = "100"
+	controllerInstanceFoo2Copy.ResourceVersion = "101"
+	controllerInstanceFoo2Copy.IsLocked = false
+	cim.updateControllerInstance(controllerInstanceFoo2, controllerInstanceFoo2Copy)
+	updatedControllerInstancelist, err = listControllerInstancesByType(controllerType1)
+	controllerInstanceBaseFoo2.updateCachedControllerInstances(updatedControllerInstancelist)
+	assert.True(t, controllerInstanceBaseFoo2.state == ControllerStateActive)
+	assert.False(t, controllerInstanceBaseFoo2.sortedControllerInstancesLocal[0].isLocked)
+	assert.False(t, controllerInstanceBaseFoo2.sortedControllerInstancesLocal[1].isLocked)
 }
