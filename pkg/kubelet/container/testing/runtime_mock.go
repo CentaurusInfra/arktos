@@ -18,6 +18,7 @@ package testing
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -141,8 +142,8 @@ func (r *Mock) DeleteContainer(containerID ContainerID) error {
 	args := r.Called(containerID)
 	return args.Error(0)
 }
-func (r *Mock) RebootVM(vmID string) error {
-	args := r.Called(vmID)
+func (r *Mock) RebootVM(pod *v1.Pod, vmName string) error {
+	args := r.Called(fmt.Sprintf("%s-%s", pod.Name, vmName))
 	return args.Error(0)
 }
 func (r *Mock) ImageStats() (*ImageStats, error) {

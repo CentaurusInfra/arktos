@@ -17,16 +17,26 @@ limitations under the License.
 package kuberuntime
 
 import (
+	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
 // RebootVM reboot the VM OS in the pod
-func (m *kubeGenericRuntimeManager) RebootVM(vmID string) error {
-	klog.V(4).Infof("Rebooting VM container %s", vmID)
+func (m *kubeGenericRuntimeManager) RebootVM(pod *v1.Pod, vmName string) error {
+	klog.V(4).Infof("Rebooting VM container %s", vmName)
 
 	// TODO: consider to have a container life cycle stage for this, i.e. the OS process
 	//       is rebooted.
 	// Reboot the VM the container.
-	runtimeService, _ := m.GetRuntimeServiceByContainerIDString(vmID)
-	return runtimeService.RebootVM(vmID)
+	runtimeService, _ := m.GetRuntimeServiceByPod(pod)
+
+	// get the containerId for the vm from pod and vm name
+	containerID, err := m.containerRefManager.GetContainerIDByRef(pod)
+	if err != nil {
+		klog.V(4).Infof("failed getting containerID. error %v", err)
+		return err
+	}
+	klog.V(4).Infof("Retrieved containerID %v for VM %s", containerID, vmName)
+
+	return runtimeService.RebootVM(containerID.ID)
 }

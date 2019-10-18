@@ -517,6 +517,7 @@ func (r *RemoteRuntimeService) ReopenContainerLog(containerID string) error {
 }
 
 func (r *RemoteRuntimeService) RebootVM(vmID string) error {
+	klog.V(4).Infof("Calling runtime service to reboot VM %s", vmID)
 	ctx, cancel := getContextWithTimeout(r.timeout)
 	defer cancel()
 

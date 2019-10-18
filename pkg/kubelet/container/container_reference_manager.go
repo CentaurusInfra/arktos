@@ -17,9 +17,9 @@ limitations under the License.
 package container
 
 import (
-	"sync"
-
+	"fmt"
 	"k8s.io/api/core/v1"
+	"sync"
 )
 
 // RefManager manages the references for the containers.
@@ -57,4 +57,15 @@ func (c *RefManager) GetRef(id ContainerID) (ref *v1.ObjectReference, ok bool) {
 	defer c.RUnlock()
 	ref, ok = c.containerIDToRef[id]
 	return ref, ok
+}
+
+// Get the runtime containerID for the given POD
+func (c *RefManager) GetContainerIDByRef(pod *v1.Pod) (ContainerID, error) {
+	for containerId, ref := range c.containerIDToRef {
+		if pod.UID == ref.UID {
+			return containerId, nil
+		}
+	}
+
+	return ContainerID{"", ""}, fmt.Errorf("cannot find the runtime container ID for POD: %s", pod.Name)
 }

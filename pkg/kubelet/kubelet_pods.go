@@ -1449,9 +1449,8 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 			apiPodStatus.VirtualMachineStatus.State = v1.VmDeleted
 			apiPodStatus.VirtualMachineStatus.PowerState = v1.NoState
 			apiPodStatus.VirtualMachineStatus.Ready = false
-			klog.V(4).Infof("ContainerStatuses empty, Set virtual machine status for pod: %v to %+v",
-				podStatus.ContainerStatuses, pod.Name,
-				apiPodStatus.VirtualMachineStatus)
+			klog.V(4).Infof("ContainerStatuses empty, Set virtual machine status for pod: %s to %+v",
+				pod.Name, apiPodStatus.VirtualMachineStatus)
 		}
 		return &apiPodStatus
 	}

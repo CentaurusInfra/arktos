@@ -124,7 +124,7 @@ type Runtime interface {
 // VM related interface methods
 type VmService interface {
 	// Reboot VM, this will relay to virDomainReboot in libvirt
-	RebootVM(VmID string) error
+	RebootVM(*v1.Pod, string) error
 }
 
 // TODO: this interface will be needed for VM workload type as well with the return value to be generic
