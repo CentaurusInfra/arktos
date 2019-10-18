@@ -403,6 +403,30 @@ message PodSandboxStatusRequest {
 message PodSandboxNetworkStatus {
     // IP address of the PodSandbox.
     string ip = 1;
+
+    // details of nics 
+    repeated NICStatus nics = 2;
+}
+
+enum NICState {
+    NIC_UNKNOWN    = 0;
+    NIC_INPROGRESS = 1;
+    NIC_READY      = 2;
+    NIC_FAILED     = 3;
+}
+
+message NICStatus {
+    // Name of nic
+    string name = 1;
+
+    // ID of nic
+    string port_id = 2;
+
+    // Lifecycle state of nic
+    NICState state = 3;
+
+    // Brief CamelCase string explaining why nic is in its current state.
+    string reason = 4;
 }
 
 // Namespace contains paths to the namespaces.

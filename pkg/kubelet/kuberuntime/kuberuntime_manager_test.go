@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -1096,6 +1096,76 @@ func makeBasePodAndStatusWithInitContainers() (*v1.Pod, *kubecontainer.PodStatus
 			ID:   kubecontainer.ContainerID{ID: "initid3"},
 			Name: "init3", State: kubecontainer.ContainerStateExited,
 			Hash: kubecontainer.HashContainer(&pod.Spec.InitContainers[0]),
+		},
+	}
+	return pod, status
+}
+
+func TestComputePodActionsWithNICHotplug(t *testing.T) {
+	_, _, m, err := createTestRuntimeManager()
+	require.NoError(t, err)
+
+	// Createing a pair reference pod and status for the test cases to refer
+	// the specific fields.
+	_, baseStatus := makeBasePodAndStatusWithNICs()
+	noAction := podActions{
+		SandboxID:          baseStatus.SandboxStatuses[0].Id,
+		ContainersToStart:  []int{},
+		ContainersToUpdate: []int{},
+		ContainersToKill:   map[kubecontainer.ContainerID]containerToKillInfo{},
+	}
+
+	for desc, test := range map[string]struct {
+		mutatePodFn    func(*v1.Pod)
+		mutateStatusFn func(*kubecontainer.PodStatus)
+		actions        podActions
+	}{
+		"everying is good; do nothing": {
+			actions: noAction,
+		},
+		"hotplug vnic if nic plugin requested": {
+			mutatePodFn: func(pod *v1.Pod) {
+				nicNew := v1.Nic{Name: "eth1", PortId: "abcde"}
+				pod.Spec.Nics = append(pod.Spec.Nics, nicNew)
+			},
+			actions: podActions{
+				SandboxID:          baseStatus.SandboxStatuses[0].Id,
+				ContainersToStart:  []int{},
+				ContainersToUpdate: []int{},
+				ContainersToKill:   map[kubecontainer.ContainerID]containerToKillInfo{},
+				Hotplugs:           ConfigChanges{NICsToAttach: []string{"eth1"}},
+			},
+		},
+	} {
+		pod, status := makeBasePodAndStatusWithNICs()
+		if test.mutatePodFn != nil {
+			test.mutatePodFn(pod)
+		}
+		if test.mutateStatusFn != nil {
+			test.mutateStatusFn(status)
+		}
+		actions := m.computePodActions(pod, status)
+		verifyActions(t, &test.actions, &actions, desc)
+	}
+}
+
+func makeBasePodAndStatusWithNICs() (*v1.Pod, *kubecontainer.PodStatus) {
+	pod, status := makeBasePodAndStatus()
+	pod.Spec.Nics = []v1.Nic{
+		{
+			Name:   "eth0",
+			PortId: "12345",
+		},
+	}
+	status.SandboxStatuses = []*runtimeapi.PodSandboxStatus{
+		{
+			Metadata: &runtimeapi.PodSandboxMetadata{},
+			Network: &runtimeapi.PodSandboxNetworkStatus{
+				Ip: "10.0.0.100",
+				Nics: []*runtimeapi.NICStatus{
+					&runtimeapi.NICStatus{Name: "eth0"},
+				},
+			},
 		},
 	}
 	return pod, status

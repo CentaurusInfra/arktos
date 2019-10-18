@@ -19,7 +19,6 @@ package kuberuntime
 import (
 	"errors"
 	"fmt"
-	"k8s.io/kubernetes/pkg/kubelet/util/podConverter"
 	"os"
 	"sync"
 	"time"
@@ -49,6 +48,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
 	"k8s.io/kubernetes/pkg/kubelet/util/logreduction"
+	"k8s.io/kubernetes/pkg/kubelet/util/podConverter"
 )
 
 const (
@@ -703,6 +703,14 @@ type containerToKillInfo struct {
 	message string
 }
 
+// ConfigChanges contains dynamic changes detected while pod is alive
+type ConfigChanges struct {
+	// Device hotplug requests to cope with
+	NICsToAttach []string
+
+	// todo[nic-hotplug]: add nics to detach
+}
+
 // podActions keeps information what to do for a pod.
 type podActions struct {
 	// Stop all running (regular and init) containers and the sandbox for the pod.
@@ -731,6 +739,9 @@ type podActions struct {
 	// the key is the container ID of the container, while
 	// the value contains necessary information to kill a container.
 	ContainersToKill map[kubecontainer.ContainerID]containerToKillInfo
+
+	// Hotplugs keeps various device hotplug data
+	Hotplugs ConfigChanges
 }
 
 // podSandboxChanged checks whether the spec of the pod is changed and returns
@@ -953,7 +964,54 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 		}
 	}
 
+	// always attemp to identify hotplug nic based on pod spec & pod status (got from runtime)
+	if m.canHotplugNIC(pod, podStatus) {
+		if len(podStatus.SandboxStatuses) > 0 && podStatus.SandboxStatuses[0].GetNetwork() != nil {
+			if nicsToAttach := computeNICHotplugs(pod.Spec.Nics, podStatus.SandboxStatuses[0].GetNetwork().GetNics()); len(nicsToAttach) > 0 {
+				changes.Hotplugs.NICsToAttach = nicsToAttach
+			}
+		}
+	}
+
 	return changes
+}
+
+func (m *kubeGenericRuntimeManager) canHotplugNIC(pod *v1.Pod, podStatus *kubecontainer.PodStatus) bool {
+	// todo[nic-hotplug]: use alternative explicit way to determine the capability of runtime (which may require CRI extension)
+	// assuming runtime able to support nic hotplug iff podsandboxstatus contains nic status details
+	return len(podStatus.SandboxStatuses) > 0 && len(podStatus.SandboxStatuses[0].GetNetwork().GetNics()) > 0
+}
+
+// todo[nic-hotplug]: improve method to support plug out
+func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) []string {
+	if len(nicStatuses) == 0 {
+		// none nic status details; unable to derive nic hotplugs
+		return nil
+	}
+
+	plugins := []string{}
+	for _, vnic := range vnics {
+		name := vnic.Name
+		if name == "" {
+			// vnic w/o name, not suitable for hotplug
+			// todo[nic-hotplug]: update user/design doc about vnic name requirement
+			continue
+		}
+
+		foundInStatus := false
+		for _, status := range nicStatuses {
+			// the current state of nic doies not matter, since what counts for is whether nic being new to runtime or not
+			if name == status.Name {
+				foundInStatus = true
+				break
+			}
+		}
+		if !foundInStatus {
+			plugins = append(plugins, name)
+		}
+	}
+
+	return plugins
 }
 
 func (m *kubeGenericRuntimeManager) vmPowerStateChangesRequired(pod *v1.Pod, podStatus *kubecontainer.PodStatus) bool {
@@ -1180,6 +1238,8 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 	if len(podContainerChanges.ContainersToUpdate) > 0 {
 		result.AddSyncResult(m.reconfigureVm(pod, podSandboxID, podSandboxConfig, podStatus, backOff, pullSecrets, podIP))
 	}
+
+	// todo[nic-hotplug]: step 8: request to attach/detach hotplug nics
 
 	return
 }
