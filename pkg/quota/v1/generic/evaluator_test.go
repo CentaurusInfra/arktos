@@ -122,13 +122,20 @@ func (f *fakeLister) List(selector labels.Selector) (ret []runtime.Object, err e
 	f.called++
 	return nil, errFakeLister
 }
+
 func (f *fakeLister) Get(name string) (runtime.Object, error) {
 	f.called++
 	return nil, errFakeLister
 }
-func (f *fakeLister) ByNamespace(namespace string, optional_tenant ...string) cache.GenericNamespaceLister {
+
+func (f *fakeLister) ByNamespace(namespace string) cache.GenericNamespaceLister {
 	panic("not implemented")
 }
+
+func (f *fakeLister) ByNamespaceWithMultiTenancy(namespace string, tenant string) cache.GenericNamespaceLister {
+	panic("not implemented")
+}
+
 func (f *fakeLister) ByTenant(tenant string) cache.GenericTenantLister {
 	panic("not implemented")
 }

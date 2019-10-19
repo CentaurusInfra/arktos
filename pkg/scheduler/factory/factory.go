@@ -595,8 +595,12 @@ func (l assignedPodLister) List(selector labels.Selector) ([]*v1.Pod, error) {
 }
 
 // List lists all Pods in the indexer for a given namespace.
-func (l assignedPodLister) Pods(namespace string, optional_tenant ...string) corelisters.PodNamespaceLister {
-	return assignedPodNamespaceLister{l.PodLister.Pods(namespace, optional_tenant...)}
+func (l assignedPodLister) Pods(namespace string) corelisters.PodNamespaceLister {
+	return assignedPodNamespaceLister{l.PodLister.Pods(namespace)}
+}
+
+func (l assignedPodLister) PodsWithMultiTenancy(namespace string, tenant string) corelisters.PodNamespaceLister {
+	return assignedPodNamespaceLister{l.PodLister.PodsWithMultiTenancy(namespace, tenant)}
 }
 
 // assignedPodNamespaceLister filters the pods returned from a PodNamespaceLister to

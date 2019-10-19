@@ -220,7 +220,7 @@ func (r *EvictionREST) checkAndDecrement(tenant, namespace string, podName strin
 	// If the pod is not deleted within a reasonable time limit PDB controller will assume that it won't
 	// be deleted at all and remove it from DisruptedPod map.
 	pdb.Status.DisruptedPods[podName] = metav1.Time{Time: time.Now()}
-	if _, err := r.podDisruptionBudgetClient.PodDisruptionBudgets(namespace, tenant).UpdateStatus(&pdb); err != nil {
+	if _, err := r.podDisruptionBudgetClient.PodDisruptionBudgetsWithMultiTenancy(namespace, tenant).UpdateStatus(&pdb); err != nil {
 		return err
 	}
 
@@ -233,7 +233,7 @@ func (r *EvictionREST) getPodDisruptionBudgets(ctx context.Context, pod *api.Pod
 		return nil, nil
 	}
 
-	pdbList, err := r.podDisruptionBudgetClient.PodDisruptionBudgets(pod.Namespace, pod.Tenant).List(metav1.ListOptions{})
+	pdbList, err := r.podDisruptionBudgetClient.PodDisruptionBudgetsWithMultiTenancy(pod.Namespace, pod.Tenant).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

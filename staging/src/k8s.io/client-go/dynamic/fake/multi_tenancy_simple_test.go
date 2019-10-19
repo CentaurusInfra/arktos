@@ -1,7 +1,7 @@
 /*
 Copyright 2018 The Kubernetes Authors.
 
-Licensed under the Apache License, Version 2.0 (the "License");
+Licensed under the Fpache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
@@ -40,11 +40,11 @@ const (
 	testAPIVersion = "testgroup/testversion"
 )
 
-func newUnstructured(apiVersion, kind, namespace, name string, optional_tenant ...string) *unstructured.Unstructured {
-	tenant := metav1.TenantDefault
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Unstructured {
+	return newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name, metav1.TenantDefault)
+}
+
+func newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name string, tenant string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": apiVersion,
@@ -59,7 +59,7 @@ func newUnstructured(apiVersion, kind, namespace, name string, optional_tenant .
 }
 
 func newUnstructuredWithSpecWithTenant(spec map[string]interface{}) *unstructured.Unstructured {
-	u := newUnstructured(testAPIVersion, testKind, testNamespace, testName, testTenant)
+	u := newUnstructuredWithMultiTenancy(testAPIVersion, testKind, testNamespace, testName, testTenant)
 	u.Object["spec"] = spec
 	return u
 }
@@ -68,11 +68,11 @@ func TestListWithMultiTenancy(t *testing.T) {
 	scheme := runtime.NewScheme()
 
 	client := NewSimpleDynamicClient(scheme,
-		newUnstructured("group/version", "TheKind", "ns-foo", "name-foo", "te-foo"),
-		newUnstructured("group2/version", "TheKind", "ns-foo", "name2-foo", "te-foo"),
-		newUnstructured("group/version", "TheKind", "ns-foo", "name-bar", "te-foo"),
-		newUnstructured("group/version", "TheKind", "ns-foo", "name-baz", "te-foo"),
-		newUnstructured("group2/version", "TheKind", "ns-foo", "name2-baz", "te-foo"),
+		newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "te-foo"),
+		newUnstructuredWithMultiTenancy("group2/version", "TheKind", "ns-foo", "name2-foo", "te-foo"),
+		newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-bar", "te-foo"),
+		newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-baz", "te-foo"),
+		newUnstructuredWithMultiTenancy("group2/version", "TheKind", "ns-foo", "name2-baz", "te-foo"),
 	)
 	listFirst, err := client.Resource(schema.GroupVersionResource{Group: "group", Version: "version", Resource: "thekinds"}).List(metav1.ListOptions{})
 	if err != nil {
@@ -80,9 +80,9 @@ func TestListWithMultiTenancy(t *testing.T) {
 	}
 
 	expected := []unstructured.Unstructured{
-		*newUnstructured("group/version", "TheKind", "ns-foo", "name-foo", "te-foo"),
-		*newUnstructured("group/version", "TheKind", "ns-foo", "name-bar", "te-foo"),
-		*newUnstructured("group/version", "TheKind", "ns-foo", "name-baz", "te-foo"),
+		*newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "te-foo"),
+		*newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-bar", "te-foo"),
+		*newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-baz", "te-foo"),
 	}
 	if !equality.Semantic.DeepEqual(listFirst.Items, expected) {
 		t.Fatal(diff.ObjectGoPrintDiff(expected, listFirst.Items))
@@ -100,7 +100,7 @@ type patchTestCaseWithMultiTenancy struct {
 
 func (tc *patchTestCaseWithMultiTenancy) runner(t *testing.T) {
 	client := NewSimpleDynamicClient(runtime.NewScheme(), tc.object)
-	resourceInterface := client.Resource(schema.GroupVersionResource{Group: testGroup, Version: testVersion, Resource: testResource}).Namespace(testNamespace, testTenant)
+	resourceInterface := client.Resource(schema.GroupVersionResource{Group: testGroup, Version: testVersion, Resource: testResource}).NamespaceWithMultiTenancy(testNamespace, testTenant)
 
 	got, recErr := resourceInterface.Patch(testName, tc.patchType, tc.patchBytes, metav1.PatchOptions{})
 
