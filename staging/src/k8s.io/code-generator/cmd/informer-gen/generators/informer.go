@@ -190,8 +190,12 @@ var typeInformerPublicConstructor_TenantScope = `
 // New$.type|public$Informer constructs a new informer for $.type|public$ type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func New$.type|public$Informer(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, optional_tenant ...string) $.cacheSharedIndexInformer|raw$ {
-	return NewFiltered$.type|public$Informer(client, resyncPeriod, indexers, nil, optional_tenant...)
+func New$.type|public$Informer(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$) $.cacheSharedIndexInformer|raw$ {
+	return NewFiltered$.type|public$Informer(client, resyncPeriod, indexers, nil)
+}
+
+func New$.type|public$InformerWithMultiTenancy(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tenant string) $.cacheSharedIndexInformer|raw$ {
+	return NewFiltered$.type|public$InformerWithMultiTenancy(client, resyncPeriod, indexers, nil, tenant)
 }
 `
 
@@ -199,8 +203,12 @@ var typeInformerPublicConstructor_NamespaceScope = `
 // New$.type|public$Informer constructs a new informer for $.type|public$ type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func New$.type|public$Informer(client $.clientSetInterface|raw$, namespace string, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, optional_tenant ...string) $.cacheSharedIndexInformer|raw$ {
-	return NewFiltered$.type|public$Informer(client, namespace, resyncPeriod, indexers, nil, optional_tenant...)
+func New$.type|public$Informer(client $.clientSetInterface|raw$, namespace string, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$) $.cacheSharedIndexInformer|raw$ {
+	return NewFiltered$.type|public$Informer(client, namespace, resyncPeriod, indexers, nil)
+}
+
+func New$.type|public$InformerWithMultiTenancy(client $.clientSetInterface|raw$, namespace string, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tenant string) $.cacheSharedIndexInformer|raw$ {
+	return NewFiltered$.type|public$InformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, nil, tenant)
 }
 `
 
@@ -235,25 +243,24 @@ var typeFilteredInformerPublicConstructor_TenantScope = `
 // NewFiltered$.type|public$Informer constructs a new informer for $.type|public$ type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFiltered$.type|public$Informer(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, optional_tenant ...string) $.cacheSharedIndexInformer|raw$ {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func NewFiltered$.type|public$Informer(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tweakListOptions $.interfacesTweakListOptionsFunc|raw$) $.cacheSharedIndexInformer|raw$ {
+	return NewFiltered$.type|public$InformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "$.DefaultTenant$")
+}
 
+func NewFiltered$.type|public$InformerWithMultiTenancy(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, tenant string) $.cacheSharedIndexInformer|raw$ {
 	return $.cacheNewSharedIndexInformer|raw$(
 		&$.cacheListWatch|raw${
 			ListFunc: func(options $.v1ListOptions|raw$) ($.runtimeObject|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.$.group$$.version$().$.type|publicPlural$(tenant).List(options)
+				return client.$.group$$.version$().$.type|publicPlural$WithMultiTenancy(tenant).List(options)
 			},
 			WatchFunc: func(options $.v1ListOptions|raw$) ($.watchInterface|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.$.group$$.version$().$.type|publicPlural$(tenant).Watch(options)
+				return client.$.group$$.version$().$.type|publicPlural$WithMultiTenancy(tenant).Watch(options)
 			},
 		},
 		&$.type|raw${},
@@ -267,25 +274,24 @@ var typeFilteredInformerPublicConstructor_NamespaceScope = `
 // NewFiltered$.type|public$Informer constructs a new informer for $.type|public$ type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFiltered$.type|public$Informer(client $.clientSetInterface|raw$, namespace string, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, optional_tenant ...string) $.cacheSharedIndexInformer|raw$ {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func NewFiltered$.type|public$Informer(client $.clientSetInterface|raw$, namespace string, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tweakListOptions $.interfacesTweakListOptionsFunc|raw$) $.cacheSharedIndexInformer|raw$ {
+	return NewFiltered$.type|public$InformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, tweakListOptions, "$.DefaultTenant$") 	
+}
 
+func NewFiltered$.type|public$InformerWithMultiTenancy(client $.clientSetInterface|raw$, namespace string, resyncPeriod $.timeDuration|raw$, indexers $.cacheIndexers|raw$, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, tenant string) $.cacheSharedIndexInformer|raw$ {
 	return $.cacheNewSharedIndexInformer|raw$(
 		&$.cacheListWatch|raw${
 			ListFunc: func(options $.v1ListOptions|raw$) ($.runtimeObject|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.$.group$$.version$().$.type|publicPlural$(namespace, tenant).List(options)
+				return client.$.group$$.version$().$.type|publicPlural$WithMultiTenancy(namespace, tenant).List(options)
 			},
 			WatchFunc: func(options $.v1ListOptions|raw$) ($.watchInterface|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.$.group$$.version$().$.type|publicPlural$(namespace, tenant).Watch(options)
+				return client.$.group$$.version$().$.type|publicPlural$WithMultiTenancy(namespace, tenant).Watch(options)
 			},
 		},
 		&$.type|raw${},
@@ -303,13 +309,13 @@ func (f *$.type|private$Informer) defaultInformer(client $.clientSetInterface|ra
 
 var typeInformerConstructor_TenantScope = `
 func (f *$.type|private$Informer) defaultInformer(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$) $.cacheSharedIndexInformer|raw$ {
-	return NewFiltered$.type|public$Informer(client, resyncPeriod, $.cacheIndexers|raw${$.cacheTenantIndex|raw$: $.cacheMetaTenantIndexFunc|raw$}, f.tweakListOptions, f.tenant)
+	return NewFiltered$.type|public$InformerWithMultiTenancy(client, resyncPeriod, $.cacheIndexers|raw${$.cacheTenantIndex|raw$: $.cacheMetaTenantIndexFunc|raw$}, f.tweakListOptions, f.tenant)
 }
 `
 
 var typeInformerConstructor_NamespaceScope = `
 func (f *$.type|private$Informer) defaultInformer(client $.clientSetInterface|raw$, resyncPeriod $.timeDuration|raw$) $.cacheSharedIndexInformer|raw$ {
-	return NewFiltered$.type|public$Informer(client, f.namespace, resyncPeriod, $.cacheIndexers|raw${$.cacheNamespaceIndex|raw$: $.cacheMetaNamespaceIndexFunc|raw$}, f.tweakListOptions, f.tenant)
+	return NewFiltered$.type|public$InformerWithMultiTenancy(client, f.namespace, resyncPeriod, $.cacheIndexers|raw${$.cacheNamespaceIndex|raw$: $.cacheMetaNamespaceIndexFunc|raw$}, f.tweakListOptions, f.tenant)
 }
 `
 

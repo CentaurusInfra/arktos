@@ -95,11 +95,11 @@ func (l *dynamicTenantLister) Get(name string) (*unstructured.Unstructured, erro
 }
 
 // Namespace returns an object that can list and get resources from a given namespace.
-func (l *dynamicLister) Namespace(namespace string, optional_tenant ...string) NamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (l *dynamicLister) Namespace(namespace string) NamespaceLister {
+	return &dynamicNamespaceLister{indexer: l.indexer, tenant: "default", namespace: namespace, gvr: l.gvr}
+}
+
+func (l *dynamicLister) NamespaceWithMultiTenancy(namespace string, tenant string) NamespaceLister {
 	return &dynamicNamespaceLister{indexer: l.indexer, tenant: tenant, namespace: namespace, gvr: l.gvr}
 }
 

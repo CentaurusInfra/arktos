@@ -44,26 +44,32 @@ type ObjectTracker interface {
 	Add(obj runtime.Object) error
 
 	// Get retrieves the object by its kind, namespace and name.
-	Get(gvr schema.GroupVersionResource, ns, name string, te ...string) (runtime.Object, error)
+	Get(gvr schema.GroupVersionResource, ns, name string) (runtime.Object, error)
+	GetWithMultiTenancy(gvr schema.GroupVersionResource, ns, name string, tenant string) (runtime.Object, error)
 
 	// Create adds an object to the tracker in the specified namespace.
-	Create(gvr schema.GroupVersionResource, obj runtime.Object, ns string, te ...string) error
+	Create(gvr schema.GroupVersionResource, obj runtime.Object, ns string) error
+	CreateWithMultiTenancy(gvr schema.GroupVersionResource, obj runtime.Object, ns string, tenant string) error
 
 	// Update updates an existing object in the tracker in the specified namespace.
-	Update(gvr schema.GroupVersionResource, obj runtime.Object, ns string, te ...string) error
+	Update(gvr schema.GroupVersionResource, obj runtime.Object, ns string) error
+	UpdateWithMultiTenancy(gvr schema.GroupVersionResource, obj runtime.Object, ns string, tenant string) error
 
 	// List retrieves all objects of a given kind in the given
 	// namespace. Only non-List kinds are accepted.
-	List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string, te ...string) (runtime.Object, error)
+	List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string) (runtime.Object, error)
+	ListWithMultiTenancy(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string, tenant string) (runtime.Object, error)
 
 	// Delete deletes an existing object from the tracker. If object
 	// didn't exist in the tracker prior to deletion, Delete returns
 	// no error.
-	Delete(gvr schema.GroupVersionResource, ns, name string, te ...string) error
+	Delete(gvr schema.GroupVersionResource, ns, name string) error
+	DeleteWithMultiTenancy(gvr schema.GroupVersionResource, ns, name string, tenant string) error
 
 	// Watch watches objects from the tracker. Watch returns a channel
 	// which will push added / modified / deleted object.
-	Watch(gvr schema.GroupVersionResource, ns string, te ...string) (watch.Interface, error)
+	Watch(gvr schema.GroupVersionResource, ns string) (watch.Interface, error)
+	WatchWithMultiTenancy(gvr schema.GroupVersionResource, ns string, tenant string) (watch.Interface, error)
 }
 
 // ObjectScheme abstracts the implementation of common operations on objects.
@@ -86,11 +92,11 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 		switch action := action.(type) {
 
 		case ListActionImpl:
-			obj, err := tracker.List(gvr, action.GetKind(), ns, te)
+			obj, err := tracker.ListWithMultiTenancy(gvr, action.GetKind(), ns, te)
 			return true, obj, err
 
 		case GetActionImpl:
-			obj, err := tracker.Get(gvr, ns, action.GetName(), te)
+			obj, err := tracker.GetWithMultiTenancy(gvr, ns, action.GetName(), te)
 			return true, obj, err
 
 		case CreateActionImpl:
@@ -99,17 +105,17 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 				return true, nil, err
 			}
 			if action.GetSubresource() == "" {
-				err = tracker.Create(gvr, action.GetObject(), ns, te)
+				err = tracker.CreateWithMultiTenancy(gvr, action.GetObject(), ns, te)
 			} else {
 				// TODO: Currently we're handling subresource creation as an update
 				// on the enclosing resource. This works for some subresources but
 				// might not be generic enough.
-				err = tracker.Update(gvr, action.GetObject(), ns, te)
+				err = tracker.UpdateWithMultiTenancy(gvr, action.GetObject(), ns, te)
 			}
 			if err != nil {
 				return true, nil, err
 			}
-			obj, err := tracker.Get(gvr, ns, objMeta.GetName(), te)
+			obj, err := tracker.GetWithMultiTenancy(gvr, ns, objMeta.GetName(), te)
 			return true, obj, err
 
 		case UpdateActionImpl:
@@ -117,23 +123,23 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 			if err != nil {
 				return true, nil, err
 			}
-			err = tracker.Update(gvr, action.GetObject(), ns, te)
+			err = tracker.UpdateWithMultiTenancy(gvr, action.GetObject(), ns, te)
 			if err != nil {
 				return true, nil, err
 			}
 
-			obj, err := tracker.Get(gvr, ns, objMeta.GetName(), te)
+			obj, err := tracker.GetWithMultiTenancy(gvr, ns, objMeta.GetName(), te)
 			return true, obj, err
 
 		case DeleteActionImpl:
-			err := tracker.Delete(gvr, ns, action.GetName(), te)
+			err := tracker.DeleteWithMultiTenancy(gvr, ns, action.GetName(), te)
 			if err != nil {
 				return true, nil, err
 			}
 			return true, nil, nil
 
 		case PatchActionImpl:
-			obj, err := tracker.Get(gvr, ns, action.GetName(), te)
+			obj, err := tracker.GetWithMultiTenancy(gvr, ns, action.GetName(), te)
 			if err != nil {
 				return true, nil, err
 			}
@@ -183,7 +189,7 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 				return true, nil, fmt.Errorf("PatchType is not supported")
 			}
 
-			if err = tracker.Update(gvr, obj, ns, te); err != nil {
+			if err = tracker.UpdateWithMultiTenancy(gvr, obj, ns, te); err != nil {
 				return true, nil, err
 			}
 
@@ -221,7 +227,11 @@ func NewObjectTracker(scheme ObjectScheme, decoder runtime.Decoder) ObjectTracke
 	}
 }
 
-func (t *tracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string, te ...string) (runtime.Object, error) {
+func (t *tracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string) (runtime.Object, error) {
+	return t.ListWithMultiTenancy(gvr, gvk, ns, metav1.TenantDefault)
+}
+
+func (t *tracker) ListWithMultiTenancy(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string, tenant string) (runtime.Object, error) {
 	// Heuristic for list kind: original kind + List suffix. Might
 	// not always be true but this tracker has a pretty limited
 	// understanding of the actual API model.
@@ -250,7 +260,7 @@ func (t *tracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionK
 		return list, nil
 	}
 
-	matchingObjs, err := filterByNamespaceAndName(objs, ns, "", ComputeTenant(te...))
+	matchingObjs, err := filterByNamespaceAndName(objs, ns, "", tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -260,11 +270,14 @@ func (t *tracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionK
 	return list.DeepCopyObject(), nil
 }
 
-func (t *tracker) Watch(gvr schema.GroupVersionResource, ns string, te ...string) (watch.Interface, error) {
+func (t *tracker) Watch(gvr schema.GroupVersionResource, ns string) (watch.Interface, error) {
+	return t.WatchWithMultiTenancy(gvr, ns, metav1.TenantDefault)
+}
+
+func (t *tracker) WatchWithMultiTenancy(gvr schema.GroupVersionResource, ns string, tenant string) (watch.Interface, error) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	tenant := ComputeTenant(te...)
 	fakewatcher := watch.NewRaceFreeFake()
 
 	if _, exists := t.watchers[gvr]; !exists {
@@ -279,7 +292,11 @@ func (t *tracker) Watch(gvr schema.GroupVersionResource, ns string, te ...string
 	return fakewatcher, nil
 }
 
-func (t *tracker) Get(gvr schema.GroupVersionResource, ns, name string, te ...string) (runtime.Object, error) {
+func (t *tracker) Get(gvr schema.GroupVersionResource, ns, name string) (runtime.Object, error) {
+	return t.GetWithMultiTenancy(gvr, ns, name, metav1.TenantDefault)
+}
+
+func (t *tracker) GetWithMultiTenancy(gvr schema.GroupVersionResource, ns, name string, tenant string) (runtime.Object, error) {
 	errNotFound := errors.NewNotFound(gvr.GroupResource(), name)
 
 	t.lock.RLock()
@@ -290,7 +307,7 @@ func (t *tracker) Get(gvr schema.GroupVersionResource, ns, name string, te ...st
 		return nil, errNotFound
 	}
 
-	matchingObjs, err := filterByNamespaceAndName(objs, ns, name, ComputeTenant(te...))
+	matchingObjs, err := filterByNamespaceAndName(objs, ns, name, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +315,7 @@ func (t *tracker) Get(gvr schema.GroupVersionResource, ns, name string, te ...st
 		return nil, errNotFound
 	}
 	if len(matchingObjs) > 1 {
-		return nil, fmt.Errorf("more than one object matched gvr %s, te: %q s: %q name: %q", gvr, ComputeTenant(te...), ns, name)
+		return nil, fmt.Errorf("more than one object matched gvr %s, te: %q s: %q name: %q", gvr, tenant, ns, name)
 	}
 
 	// Only one object should match in the tracker if it works
@@ -350,12 +367,20 @@ func (t *tracker) Add(obj runtime.Object) error {
 	return nil
 }
 
-func (t *tracker) Create(gvr schema.GroupVersionResource, obj runtime.Object, ns string, te ...string) error {
-	return t.add(gvr, obj, ns, false, ComputeTenant(te...))
+func (t *tracker) Create(gvr schema.GroupVersionResource, obj runtime.Object, ns string) error {
+	return t.add(gvr, obj, ns, false, metav1.TenantDefault)
 }
 
-func (t *tracker) Update(gvr schema.GroupVersionResource, obj runtime.Object, ns string, te ...string) error {
-	return t.add(gvr, obj, ns, true, ComputeTenant(te...))
+func (t *tracker) CreateWithMultiTenancy(gvr schema.GroupVersionResource, obj runtime.Object, ns string, tenant string) error {
+	return t.add(gvr, obj, ns, false, tenant)
+}
+
+func (t *tracker) Update(gvr schema.GroupVersionResource, obj runtime.Object, ns string) error {
+	return t.add(gvr, obj, ns, true, metav1.TenantDefault)
+}
+
+func (t *tracker) UpdateWithMultiTenancy(gvr schema.GroupVersionResource, obj runtime.Object, ns string, tenant string) error {
+	return t.add(gvr, obj, ns, true, tenant)
 }
 
 func (t *tracker) getWatches(gvr schema.GroupVersionResource, ns string, tenant string) []*watch.RaceFreeFakeWatcher {
@@ -463,11 +488,14 @@ func (t *tracker) addList(obj runtime.Object, replaceExisting bool) error {
 	return nil
 }
 
-func (t *tracker) Delete(gvr schema.GroupVersionResource, ns, name string, te ...string) error {
+func (t *tracker) Delete(gvr schema.GroupVersionResource, ns, name string) error {
+	return t.DeleteWithMultiTenancy(gvr, ns, name, metav1.TenantDefault)
+}
+
+func (t *tracker) DeleteWithMultiTenancy(gvr schema.GroupVersionResource, ns, name string, tenant string) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	tenant := ComputeTenant(te...)
 	found := false
 
 	for i, existingObj := range t.objects[gvr] {

@@ -344,13 +344,15 @@ var getterComment = `
 
 var getterNamespaceScoped = `
 type $.type|publicPlural$Getter interface {
-	$.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$Interface
+	$.type|publicPlural$(namespace string) $.type|public$Interface
+	$.type|publicPlural$WithMultiTenancy(namespace string, tenant string) $.type|public$Interface
 }
 `
 
 var getterTenantScoped = `
 type $.type|publicPlural$Getter interface {
-	$.type|publicPlural$(optional_tenant ...string) $.type|public$Interface
+	$.type|publicPlural$() $.type|public$Interface
+	$.type|publicPlural$WithMultiTenancy(tenant string) $.type|public$Interface
 }
 `
 
@@ -399,12 +401,11 @@ type $.type|privatePlural$ struct {
 
 var newStructNamespaceScoped = `
 // new$.type|publicPlural$ returns a $.type|publicPlural$
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, namespace string, optional_tenant ...string) *$.type|privatePlural$ {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, namespace string) *$.type|privatePlural$ {
+	return new$.type|publicPlural$WithMultiTenancy(c, namespace, "$.DefaultTenant$")
+}
+
+func new$.type|publicPlural$WithMultiTenancy(c *$.GroupGoName$$.Version$Client, namespace string, tenant string) *$.type|privatePlural$ {
 	return &$.type|privatePlural${
 		client: c.RESTClient(),
 		ns:     namespace,
@@ -415,11 +416,11 @@ func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, namespace string
 
 var newStructTenantScoped = `
 // new$.type|publicPlural$ returns a $.type|publicPlural$
-func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, optional_tenant ...string) *$.type|privatePlural$ {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client) *$.type|privatePlural$ {
+	return new$.type|publicPlural$WithMultiTenancy(c, "$.DefaultTenant$")
+}
+
+func new$.type|publicPlural$WithMultiTenancy(c *$.GroupGoName$$.Version$Client, tenant string) *$.type|privatePlural$ {
 	return &$.type|privatePlural${
 		client: c.RESTClient(),
 		te:     tenant,

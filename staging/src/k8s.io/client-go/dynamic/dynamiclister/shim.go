@@ -61,13 +61,13 @@ func (s *dynamicListerShim) ByTenant(tenant string) cache.GenericTenantLister {
 	}
 }
 
-func (s *dynamicListerShim) ByNamespace(namespace string, optional_tenant ...string) cache.GenericNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *dynamicListerShim) ByNamespace(namespace string) cache.GenericNamespaceLister {
+	return s.ByNamespaceWithMultiTenancy(namespace, "default")
+}
+
+func (s *dynamicListerShim) ByNamespaceWithMultiTenancy(namespace string, tenant string) cache.GenericNamespaceLister {
 	return &dynamicNamespaceListerShim{
-		namespaceLister: s.lister.Namespace(namespace, tenant),
+		namespaceLister: s.lister.NamespaceWithMultiTenancy(namespace, tenant),
 	}
 }
 

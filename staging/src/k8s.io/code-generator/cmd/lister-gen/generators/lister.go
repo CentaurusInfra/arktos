@@ -278,16 +278,14 @@ func (g *listerGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 	return sw.Error()
 }
 
-// TODO: change "optional_tenant ...string" to "tenant string" in the following functions,
-// after the multi-tenancy changes are done in all the components,
-// ncluding but not limited to kubelet, controller, scheduler.
 var typeListerInterface_NamespaceScope = `
 // $.type|public$Lister helps list $.type|publicPlural$.
 type $.type|public$Lister interface {
 	// List lists all $.type|publicPlural$ in the indexer.
 	List(selector labels.Selector) (ret []*$.type|raw$, err error)
 	// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
-	$.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$NamespaceLister
+	$.type|publicPlural$(namespace string) $.type|public$NamespaceLister
+	$.type|publicPlural$WithMultiTenancy(namespace string, tenant string) $.type|public$NamespaceLister
 	$.type|public$ListerExpansion
 }
 `
@@ -298,7 +296,8 @@ type $.type|public$Lister interface {
 	// List lists all $.type|publicPlural$ in the indexer.
 	List(selector labels.Selector) (ret []*$.type|raw$, err error)
 	// $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
-	$.type|publicPlural$(optional_tenant ...string) $.type|public$TenantLister
+	$.type|publicPlural$() $.type|public$TenantLister
+	$.type|publicPlural$WithMultiTenancy(tenant string) $.type|public$TenantLister
 	// Get retrieves the $.type|public$ from the index for a given name.
 	Get(name string) (*$.type|raw$, error)
 	$.type|public$ListerExpansion
@@ -417,22 +416,22 @@ func (s $.type|private$TenantLister) Get(name string) (*$.type|raw$, error) {
 
 var typeLister_NamespaceLister = `
 // $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
-func (s *$.type|private$Lister) $.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$NamespaceLister {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *$.type|private$Lister) $.type|publicPlural$(namespace string) $.type|public$NamespaceLister {
+	return $.type|private$NamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "$.DefaultTenant$"}
+}
+
+func (s *$.type|private$Lister) $.type|publicPlural$WithMultiTenancy(namespace string, tenant string) $.type|public$NamespaceLister {
 	return $.type|private$NamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 `
 
 var typeLister_TenantLister = `
 // $.type|publicPlural$ returns an object that can list and get $.type|publicPlural$.
-func (s *$.type|private$Lister) $.type|publicPlural$(optional_tenant ...string) $.type|public$TenantLister {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *$.type|private$Lister) $.type|publicPlural$() $.type|public$TenantLister {
+	return $.type|private$TenantLister{indexer: s.indexer, tenant: "$.DefaultTenant$"}
+}
+
+func (s *$.type|private$Lister) $.type|publicPlural$WithMultiTenancy(tenant string) $.type|public$TenantLister {
 	return $.type|private$TenantLister{indexer: s.indexer, tenant: tenant}
 }
 `

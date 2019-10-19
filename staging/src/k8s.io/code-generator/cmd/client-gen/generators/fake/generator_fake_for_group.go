@@ -120,21 +120,21 @@ type Fake$.GroupGoName$$.Version$ struct {
 `
 
 var getterImplNamespaceScoped = `
-func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$(namespace string, optional_tenant ...string) $.realClientPackage$.$.type|public$Interface {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$(namespace string) $.realClientPackage$.$.type|public$Interface {
+	return &Fake$.type|publicPlural${c, namespace, "$.DefaultTenant$"}
+}
+
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$WithMultiTenancy(namespace string, tenant string) $.realClientPackage$.$.type|public$Interface {
 	return &Fake$.type|publicPlural${c, namespace, tenant}
 }
 `
 
 var getterImplTenantScoped = `
-func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$(optional_tenant ...string) $.realClientPackage$.$.type|public$Interface {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$() $.realClientPackage$.$.type|public$Interface {
+	return &Fake$.type|publicPlural${c, "$.DefaultTenant$"}
+}
+
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$WithMultiTenancy(tenant string) $.realClientPackage$.$.type|public$Interface {
 	return &Fake$.type|publicPlural${c, tenant}
 }
 `
