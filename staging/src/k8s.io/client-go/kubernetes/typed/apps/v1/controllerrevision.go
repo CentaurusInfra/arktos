@@ -32,7 +32,8 @@ import (
 // ControllerRevisionsGetter has a method to return a ControllerRevisionInterface.
 // A group's client should implement this interface.
 type ControllerRevisionsGetter interface {
-	ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionInterface
+	ControllerRevisions(namespace string) ControllerRevisionInterface
+	ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionInterface
 }
 
 // ControllerRevisionInterface has methods to work with ControllerRevision resources.
@@ -56,12 +57,11 @@ type controllerRevisions struct {
 }
 
 // newControllerRevisions returns a ControllerRevisions
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newControllerRevisions(c *AppsV1Client, namespace string, optional_tenant ...string) *controllerRevisions {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newControllerRevisions(c *AppsV1Client, namespace string) *controllerRevisions {
+	return newControllerRevisionsWithMultiTenancy(c, namespace, "default")
+}
+
+func newControllerRevisionsWithMultiTenancy(c *AppsV1Client, namespace string, tenant string) *controllerRevisions {
 	return &controllerRevisions{
 		client: c.RESTClient(),
 		ns:     namespace,

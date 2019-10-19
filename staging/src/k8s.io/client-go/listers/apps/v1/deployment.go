@@ -30,7 +30,8 @@ type DeploymentLister interface {
 	// List lists all Deployments in the indexer.
 	List(selector labels.Selector) (ret []*v1.Deployment, err error)
 	// Deployments returns an object that can list and get Deployments.
-	Deployments(namespace string, optional_tenant ...string) DeploymentNamespaceLister
+	Deployments(namespace string) DeploymentNamespaceLister
+	DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentNamespaceLister
 	DeploymentListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *deploymentLister) List(selector labels.Selector) (ret []*v1.Deployment,
 }
 
 // Deployments returns an object that can list and get Deployments.
-func (s *deploymentLister) Deployments(namespace string, optional_tenant ...string) DeploymentNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *deploymentLister) Deployments(namespace string) DeploymentNamespaceLister {
+	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *deploymentLister) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentNamespaceLister {
 	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

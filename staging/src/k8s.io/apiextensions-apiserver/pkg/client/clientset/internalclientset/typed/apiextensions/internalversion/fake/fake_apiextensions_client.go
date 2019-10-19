@@ -28,11 +28,11 @@ type FakeApiextensions struct {
 	*testing.Fake
 }
 
-func (c *FakeApiextensions) CustomResourceDefinitions(optional_tenant ...string) internalversion.CustomResourceDefinitionInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeApiextensions) CustomResourceDefinitions() internalversion.CustomResourceDefinitionInterface {
+	return &FakeCustomResourceDefinitions{c, "default"}
+}
+
+func (c *FakeApiextensions) CustomResourceDefinitionsWithMultiTenancy(tenant string) internalversion.CustomResourceDefinitionInterface {
 	return &FakeCustomResourceDefinitions{c, tenant}
 }
 

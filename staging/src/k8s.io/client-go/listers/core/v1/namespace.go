@@ -30,7 +30,8 @@ type NamespaceLister interface {
 	// List lists all Namespaces in the indexer.
 	List(selector labels.Selector) (ret []*v1.Namespace, err error)
 	// Namespaces returns an object that can list and get Namespaces.
-	Namespaces(optional_tenant ...string) NamespaceTenantLister
+	Namespaces() NamespaceTenantLister
+	NamespacesWithMultiTenancy(tenant string) NamespaceTenantLister
 	// Get retrieves the Namespace from the index for a given name.
 	Get(name string) (*v1.Namespace, error)
 	NamespaceListerExpansion
@@ -67,11 +68,11 @@ func (s *namespaceLister) Get(name string) (*v1.Namespace, error) {
 }
 
 // Namespaces returns an object that can list and get Namespaces.
-func (s *namespaceLister) Namespaces(optional_tenant ...string) NamespaceTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *namespaceLister) Namespaces() NamespaceTenantLister {
+	return namespaceTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *namespaceLister) NamespacesWithMultiTenancy(tenant string) NamespaceTenantLister {
 	return namespaceTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

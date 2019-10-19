@@ -30,7 +30,8 @@ type RoleLister interface {
 	// List lists all Roles in the indexer.
 	List(selector labels.Selector) (ret []*v1.Role, err error)
 	// Roles returns an object that can list and get Roles.
-	Roles(namespace string, optional_tenant ...string) RoleNamespaceLister
+	Roles(namespace string) RoleNamespaceLister
+	RolesWithMultiTenancy(namespace string, tenant string) RoleNamespaceLister
 	RoleListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *roleLister) List(selector labels.Selector) (ret []*v1.Role, err error) 
 }
 
 // Roles returns an object that can list and get Roles.
-func (s *roleLister) Roles(namespace string, optional_tenant ...string) RoleNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *roleLister) Roles(namespace string) RoleNamespaceLister {
+	return roleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *roleLister) RolesWithMultiTenancy(namespace string, tenant string) RoleNamespaceLister {
 	return roleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

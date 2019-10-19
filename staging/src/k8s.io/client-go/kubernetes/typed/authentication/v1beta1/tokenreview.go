@@ -25,7 +25,8 @@ import (
 // TokenReviewsGetter has a method to return a TokenReviewInterface.
 // A group's client should implement this interface.
 type TokenReviewsGetter interface {
-	TokenReviews(optional_tenant ...string) TokenReviewInterface
+	TokenReviews() TokenReviewInterface
+	TokenReviewsWithMultiTenancy(tenant string) TokenReviewInterface
 }
 
 // TokenReviewInterface has methods to work with TokenReview resources.
@@ -40,11 +41,11 @@ type tokenReviews struct {
 }
 
 // newTokenReviews returns a TokenReviews
-func newTokenReviews(c *AuthenticationV1beta1Client, optional_tenant ...string) *tokenReviews {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newTokenReviews(c *AuthenticationV1beta1Client) *tokenReviews {
+	return newTokenReviewsWithMultiTenancy(c, "default")
+}
+
+func newTokenReviewsWithMultiTenancy(c *AuthenticationV1beta1Client, tenant string) *tokenReviews {
 	return &tokenReviews{
 		client: c.RESTClient(),
 		te:     tenant,

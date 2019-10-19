@@ -69,11 +69,11 @@ func WithTweakListOptions(tweakListOptions internalinterfaces.TweakListOptionsFu
 }
 
 // WithNamespace limits the SharedInformerFactory to the specified namespace.
-func WithNamespace(namespace string, optional_tenant ...string) SharedInformerOption {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func WithNamespace(namespace string) SharedInformerOption {
+	return WithNamespaceWithMultiTenancy(namespace, "$.DefaultTenant$")
+}
+
+func WithNamespaceWithMultiTenancy(namespace string, tenant string) SharedInformerOption {
 	return func(factory *sharedInformerFactory) *sharedInformerFactory {
 		factory.namespace = namespace
 		factory.tenant = tenant
@@ -90,8 +90,12 @@ func NewSharedInformerFactory(client versioned.Interface, defaultResync time.Dur
 // Listers obtained via this SharedInformerFactory will be subject to the same filters
 // as specified here.
 // Deprecated: Please use NewSharedInformerFactoryWithOptions instead
-func NewFilteredSharedInformerFactory(client versioned.Interface, defaultResync time.Duration, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) SharedInformerFactory {
-	return NewSharedInformerFactoryWithOptions(client, defaultResync, WithNamespace(namespace, optional_tenant...), WithTweakListOptions(tweakListOptions))
+func NewFilteredSharedInformerFactory(client versioned.Interface, defaultResync time.Duration, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) SharedInformerFactory {
+	return NewFilteredSharedInformerFactoryWithMultiTenancy(client, defaultResync, namespace, tweakListOptions, "$.DefaultTenant$")
+}
+
+func NewFilteredSharedInformerFactoryWithMultiTenancy(client versioned.Interface, defaultResync time.Duration, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) SharedInformerFactory {
+	return NewSharedInformerFactoryWithOptions(client, defaultResync, WithNamespaceWithMultiTenancy(namespace, tenant), WithTweakListOptions(tweakListOptions))
 }
 
 // NewSharedInformerFactoryWithOptions constructs a new instance of a SharedInformerFactory with additional options.
@@ -183,5 +187,5 @@ type SharedInformerFactory interface {
 }
 
 func (f *sharedInformerFactory) Node() node.Interface {
-	return node.New(f, f.namespace, f.tweakListOptions, f.tenant)
+	return node.NewWithMultiTenancy(f, f.namespace, f.tweakListOptions, f.tenant)
 }

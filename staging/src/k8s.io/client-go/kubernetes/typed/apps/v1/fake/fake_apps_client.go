@@ -28,43 +28,43 @@ type FakeAppsV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAppsV1) ControllerRevisions(namespace string, optional_tenant ...string) v1.ControllerRevisionInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAppsV1) ControllerRevisions(namespace string) v1.ControllerRevisionInterface {
+	return &FakeControllerRevisions{c, namespace, "default"}
+}
+
+func (c *FakeAppsV1) ControllerRevisionsWithMultiTenancy(namespace string, tenant string) v1.ControllerRevisionInterface {
 	return &FakeControllerRevisions{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1) DaemonSets(namespace string, optional_tenant ...string) v1.DaemonSetInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAppsV1) DaemonSets(namespace string) v1.DaemonSetInterface {
+	return &FakeDaemonSets{c, namespace, "default"}
+}
+
+func (c *FakeAppsV1) DaemonSetsWithMultiTenancy(namespace string, tenant string) v1.DaemonSetInterface {
 	return &FakeDaemonSets{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1) Deployments(namespace string, optional_tenant ...string) v1.DeploymentInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAppsV1) Deployments(namespace string) v1.DeploymentInterface {
+	return &FakeDeployments{c, namespace, "default"}
+}
+
+func (c *FakeAppsV1) DeploymentsWithMultiTenancy(namespace string, tenant string) v1.DeploymentInterface {
 	return &FakeDeployments{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1) ReplicaSets(namespace string, optional_tenant ...string) v1.ReplicaSetInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAppsV1) ReplicaSets(namespace string) v1.ReplicaSetInterface {
+	return &FakeReplicaSets{c, namespace, "default"}
+}
+
+func (c *FakeAppsV1) ReplicaSetsWithMultiTenancy(namespace string, tenant string) v1.ReplicaSetInterface {
 	return &FakeReplicaSets{c, namespace, tenant}
 }
 
-func (c *FakeAppsV1) StatefulSets(namespace string, optional_tenant ...string) v1.StatefulSetInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAppsV1) StatefulSets(namespace string) v1.StatefulSetInterface {
+	return &FakeStatefulSets{c, namespace, "default"}
+}
+
+func (c *FakeAppsV1) StatefulSetsWithMultiTenancy(namespace string, tenant string) v1.StatefulSetInterface {
 	return &FakeStatefulSets{c, namespace, tenant}
 }
 

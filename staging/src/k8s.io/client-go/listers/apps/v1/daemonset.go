@@ -30,7 +30,8 @@ type DaemonSetLister interface {
 	// List lists all DaemonSets in the indexer.
 	List(selector labels.Selector) (ret []*v1.DaemonSet, err error)
 	// DaemonSets returns an object that can list and get DaemonSets.
-	DaemonSets(namespace string, optional_tenant ...string) DaemonSetNamespaceLister
+	DaemonSets(namespace string) DaemonSetNamespaceLister
+	DaemonSetsWithMultiTenancy(namespace string, tenant string) DaemonSetNamespaceLister
 	DaemonSetListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *daemonSetLister) List(selector labels.Selector) (ret []*v1.DaemonSet, e
 }
 
 // DaemonSets returns an object that can list and get DaemonSets.
-func (s *daemonSetLister) DaemonSets(namespace string, optional_tenant ...string) DaemonSetNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *daemonSetLister) DaemonSets(namespace string) DaemonSetNamespaceLister {
+	return daemonSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *daemonSetLister) DaemonSetsWithMultiTenancy(namespace string, tenant string) DaemonSetNamespaceLister {
 	return daemonSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

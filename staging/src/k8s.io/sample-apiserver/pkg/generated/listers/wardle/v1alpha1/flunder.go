@@ -30,7 +30,8 @@ type FlunderLister interface {
 	// List lists all Flunders in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.Flunder, err error)
 	// Flunders returns an object that can list and get Flunders.
-	Flunders(namespace string, optional_tenant ...string) FlunderNamespaceLister
+	Flunders(namespace string) FlunderNamespaceLister
+	FlundersWithMultiTenancy(namespace string, tenant string) FlunderNamespaceLister
 	FlunderListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *flunderLister) List(selector labels.Selector) (ret []*v1alpha1.Flunder,
 }
 
 // Flunders returns an object that can list and get Flunders.
-func (s *flunderLister) Flunders(namespace string, optional_tenant ...string) FlunderNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *flunderLister) Flunders(namespace string) FlunderNamespaceLister {
+	return flunderNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *flunderLister) FlundersWithMultiTenancy(namespace string, tenant string) FlunderNamespaceLister {
 	return flunderNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

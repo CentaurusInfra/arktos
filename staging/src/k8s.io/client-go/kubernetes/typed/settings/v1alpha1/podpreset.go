@@ -32,7 +32,8 @@ import (
 // PodPresetsGetter has a method to return a PodPresetInterface.
 // A group's client should implement this interface.
 type PodPresetsGetter interface {
-	PodPresets(namespace string, optional_tenant ...string) PodPresetInterface
+	PodPresets(namespace string) PodPresetInterface
+	PodPresetsWithMultiTenancy(namespace string, tenant string) PodPresetInterface
 }
 
 // PodPresetInterface has methods to work with PodPreset resources.
@@ -56,12 +57,11 @@ type podPresets struct {
 }
 
 // newPodPresets returns a PodPresets
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newPodPresets(c *SettingsV1alpha1Client, namespace string, optional_tenant ...string) *podPresets {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPodPresets(c *SettingsV1alpha1Client, namespace string) *podPresets {
+	return newPodPresetsWithMultiTenancy(c, namespace, "default")
+}
+
+func newPodPresetsWithMultiTenancy(c *SettingsV1alpha1Client, namespace string, tenant string) *podPresets {
 	return &podPresets{
 		client: c.RESTClient(),
 		ns:     namespace,

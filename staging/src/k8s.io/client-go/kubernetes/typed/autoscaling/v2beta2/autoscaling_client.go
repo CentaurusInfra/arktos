@@ -34,8 +34,12 @@ type AutoscalingV2beta2Client struct {
 	restClient rest.Interface
 }
 
-func (c *AutoscalingV2beta2Client) HorizontalPodAutoscalers(namespace string, optional_tenant ...string) HorizontalPodAutoscalerInterface {
-	return newHorizontalPodAutoscalers(c, namespace, optional_tenant...)
+func (c *AutoscalingV2beta2Client) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerInterface {
+	return newHorizontalPodAutoscalersWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *AutoscalingV2beta2Client) HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) HorizontalPodAutoscalerInterface {
+	return newHorizontalPodAutoscalersWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new AutoscalingV2beta2Client for the given config.

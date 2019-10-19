@@ -30,7 +30,8 @@ type StatefulSetLister interface {
 	// List lists all StatefulSets in the indexer.
 	List(selector labels.Selector) (ret []*v1.StatefulSet, err error)
 	// StatefulSets returns an object that can list and get StatefulSets.
-	StatefulSets(namespace string, optional_tenant ...string) StatefulSetNamespaceLister
+	StatefulSets(namespace string) StatefulSetNamespaceLister
+	StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetNamespaceLister
 	StatefulSetListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *statefulSetLister) List(selector labels.Selector) (ret []*v1.StatefulSe
 }
 
 // StatefulSets returns an object that can list and get StatefulSets.
-func (s *statefulSetLister) StatefulSets(namespace string, optional_tenant ...string) StatefulSetNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *statefulSetLister) StatefulSets(namespace string) StatefulSetNamespaceLister {
+	return statefulSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *statefulSetLister) StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetNamespaceLister {
 	return statefulSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

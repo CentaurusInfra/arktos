@@ -30,7 +30,8 @@ type PodDisruptionBudgetLister interface {
 	// List lists all PodDisruptionBudgets in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.PodDisruptionBudget, err error)
 	// PodDisruptionBudgets returns an object that can list and get PodDisruptionBudgets.
-	PodDisruptionBudgets(namespace string, optional_tenant ...string) PodDisruptionBudgetNamespaceLister
+	PodDisruptionBudgets(namespace string) PodDisruptionBudgetNamespaceLister
+	PodDisruptionBudgetsWithMultiTenancy(namespace string, tenant string) PodDisruptionBudgetNamespaceLister
 	PodDisruptionBudgetListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *podDisruptionBudgetLister) List(selector labels.Selector) (ret []*v1bet
 }
 
 // PodDisruptionBudgets returns an object that can list and get PodDisruptionBudgets.
-func (s *podDisruptionBudgetLister) PodDisruptionBudgets(namespace string, optional_tenant ...string) PodDisruptionBudgetNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *podDisruptionBudgetLister) PodDisruptionBudgets(namespace string) PodDisruptionBudgetNamespaceLister {
+	return podDisruptionBudgetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *podDisruptionBudgetLister) PodDisruptionBudgetsWithMultiTenancy(namespace string, tenant string) PodDisruptionBudgetNamespaceLister {
 	return podDisruptionBudgetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

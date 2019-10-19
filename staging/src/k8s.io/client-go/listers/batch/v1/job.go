@@ -30,7 +30,8 @@ type JobLister interface {
 	// List lists all Jobs in the indexer.
 	List(selector labels.Selector) (ret []*v1.Job, err error)
 	// Jobs returns an object that can list and get Jobs.
-	Jobs(namespace string, optional_tenant ...string) JobNamespaceLister
+	Jobs(namespace string) JobNamespaceLister
+	JobsWithMultiTenancy(namespace string, tenant string) JobNamespaceLister
 	JobListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *jobLister) List(selector labels.Selector) (ret []*v1.Job, err error) {
 }
 
 // Jobs returns an object that can list and get Jobs.
-func (s *jobLister) Jobs(namespace string, optional_tenant ...string) JobNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *jobLister) Jobs(namespace string) JobNamespaceLister {
+	return jobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *jobLister) JobsWithMultiTenancy(namespace string, tenant string) JobNamespaceLister {
 	return jobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

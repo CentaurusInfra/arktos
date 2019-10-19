@@ -33,8 +33,12 @@ type ExampleClient struct {
 	restClient rest.Interface
 }
 
-func (c *ExampleClient) TestTypes(namespace string, optional_tenant ...string) TestTypeInterface {
-	return newTestTypes(c, namespace, optional_tenant...)
+func (c *ExampleClient) TestTypes(namespace string) TestTypeInterface {
+	return newTestTypesWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *ExampleClient) TestTypesWithMultiTenancy(namespace string, tenant string) TestTypeInterface {
+	return newTestTypesWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new ExampleClient for the given config.

@@ -30,7 +30,8 @@ type RoleBindingLister interface {
 	// List lists all RoleBindings in the indexer.
 	List(selector labels.Selector) (ret []*v1.RoleBinding, err error)
 	// RoleBindings returns an object that can list and get RoleBindings.
-	RoleBindings(namespace string, optional_tenant ...string) RoleBindingNamespaceLister
+	RoleBindings(namespace string) RoleBindingNamespaceLister
+	RoleBindingsWithMultiTenancy(namespace string, tenant string) RoleBindingNamespaceLister
 	RoleBindingListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *roleBindingLister) List(selector labels.Selector) (ret []*v1.RoleBindin
 }
 
 // RoleBindings returns an object that can list and get RoleBindings.
-func (s *roleBindingLister) RoleBindings(namespace string, optional_tenant ...string) RoleBindingNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *roleBindingLister) RoleBindings(namespace string) RoleBindingNamespaceLister {
+	return roleBindingNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *roleBindingLister) RoleBindingsWithMultiTenancy(namespace string, tenant string) RoleBindingNamespaceLister {
 	return roleBindingNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

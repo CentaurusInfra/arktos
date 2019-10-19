@@ -32,7 +32,8 @@ import (
 // NetworkPoliciesGetter has a method to return a NetworkPolicyInterface.
 // A group's client should implement this interface.
 type NetworkPoliciesGetter interface {
-	NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyInterface
+	NetworkPolicies(namespace string) NetworkPolicyInterface
+	NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyInterface
 }
 
 // NetworkPolicyInterface has methods to work with NetworkPolicy resources.
@@ -56,12 +57,11 @@ type networkPolicies struct {
 }
 
 // newNetworkPolicies returns a NetworkPolicies
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newNetworkPolicies(c *ExtensionsV1beta1Client, namespace string, optional_tenant ...string) *networkPolicies {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newNetworkPolicies(c *ExtensionsV1beta1Client, namespace string) *networkPolicies {
+	return newNetworkPoliciesWithMultiTenancy(c, namespace, "default")
+}
+
+func newNetworkPoliciesWithMultiTenancy(c *ExtensionsV1beta1Client, namespace string, tenant string) *networkPolicies {
 	return &networkPolicies{
 		client: c.RESTClient(),
 		ns:     namespace,

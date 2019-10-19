@@ -39,8 +39,12 @@ func (c *WardleV1alpha1Client) Fischers() FischerInterface {
 	return newFischers(c)
 }
 
-func (c *WardleV1alpha1Client) Flunders(namespace string, optional_tenant ...string) FlunderInterface {
-	return newFlunders(c, namespace, optional_tenant...)
+func (c *WardleV1alpha1Client) Flunders(namespace string) FlunderInterface {
+	return newFlundersWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *WardleV1alpha1Client) FlundersWithMultiTenancy(namespace string, tenant string) FlunderInterface {
+	return newFlundersWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new WardleV1alpha1Client for the given config.

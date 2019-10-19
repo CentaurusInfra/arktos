@@ -32,7 +32,8 @@ import (
 // ServiceAccountsGetter has a method to return a ServiceAccountInterface.
 // A group's client should implement this interface.
 type ServiceAccountsGetter interface {
-	ServiceAccounts(namespace string, optional_tenant ...string) ServiceAccountInterface
+	ServiceAccounts(namespace string) ServiceAccountInterface
+	ServiceAccountsWithMultiTenancy(namespace string, tenant string) ServiceAccountInterface
 }
 
 // ServiceAccountInterface has methods to work with ServiceAccount resources.
@@ -56,12 +57,11 @@ type serviceAccounts struct {
 }
 
 // newServiceAccounts returns a ServiceAccounts
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newServiceAccounts(c *CoreV1Client, namespace string, optional_tenant ...string) *serviceAccounts {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newServiceAccounts(c *CoreV1Client, namespace string) *serviceAccounts {
+	return newServiceAccountsWithMultiTenancy(c, namespace, "default")
+}
+
+func newServiceAccountsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *serviceAccounts {
 	return &serviceAccounts{
 		client: c.RESTClient(),
 		ns:     namespace,

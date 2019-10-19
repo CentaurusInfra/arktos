@@ -32,7 +32,8 @@ import (
 // ServicesGetter has a method to return a ServiceInterface.
 // A group's client should implement this interface.
 type ServicesGetter interface {
-	Services(namespace string, optional_tenant ...string) ServiceInterface
+	Services(namespace string) ServiceInterface
+	ServicesWithMultiTenancy(namespace string, tenant string) ServiceInterface
 }
 
 // ServiceInterface has methods to work with Service resources.
@@ -56,12 +57,11 @@ type services struct {
 }
 
 // newServices returns a Services
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newServices(c *CoreV1Client, namespace string, optional_tenant ...string) *services {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newServices(c *CoreV1Client, namespace string) *services {
+	return newServicesWithMultiTenancy(c, namespace, "default")
+}
+
+func newServicesWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *services {
 	return &services{
 		client: c.RESTClient(),
 		ns:     namespace,

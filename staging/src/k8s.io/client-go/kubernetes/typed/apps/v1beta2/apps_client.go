@@ -38,24 +38,44 @@ type AppsV1beta2Client struct {
 	restClient rest.Interface
 }
 
-func (c *AppsV1beta2Client) ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionInterface {
-	return newControllerRevisions(c, namespace, optional_tenant...)
+func (c *AppsV1beta2Client) ControllerRevisions(namespace string) ControllerRevisionInterface {
+	return newControllerRevisionsWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *AppsV1beta2Client) DaemonSets(namespace string, optional_tenant ...string) DaemonSetInterface {
-	return newDaemonSets(c, namespace, optional_tenant...)
+func (c *AppsV1beta2Client) ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionInterface {
+	return newControllerRevisionsWithMultiTenancy(c, namespace, tenant)
 }
 
-func (c *AppsV1beta2Client) Deployments(namespace string, optional_tenant ...string) DeploymentInterface {
-	return newDeployments(c, namespace, optional_tenant...)
+func (c *AppsV1beta2Client) DaemonSets(namespace string) DaemonSetInterface {
+	return newDaemonSetsWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *AppsV1beta2Client) ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetInterface {
-	return newReplicaSets(c, namespace, optional_tenant...)
+func (c *AppsV1beta2Client) DaemonSetsWithMultiTenancy(namespace string, tenant string) DaemonSetInterface {
+	return newDaemonSetsWithMultiTenancy(c, namespace, tenant)
 }
 
-func (c *AppsV1beta2Client) StatefulSets(namespace string, optional_tenant ...string) StatefulSetInterface {
-	return newStatefulSets(c, namespace, optional_tenant...)
+func (c *AppsV1beta2Client) Deployments(namespace string) DeploymentInterface {
+	return newDeploymentsWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *AppsV1beta2Client) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentInterface {
+	return newDeploymentsWithMultiTenancy(c, namespace, tenant)
+}
+
+func (c *AppsV1beta2Client) ReplicaSets(namespace string) ReplicaSetInterface {
+	return newReplicaSetsWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *AppsV1beta2Client) ReplicaSetsWithMultiTenancy(namespace string, tenant string) ReplicaSetInterface {
+	return newReplicaSetsWithMultiTenancy(c, namespace, tenant)
+}
+
+func (c *AppsV1beta2Client) StatefulSets(namespace string) StatefulSetInterface {
+	return newStatefulSetsWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *AppsV1beta2Client) StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetInterface {
+	return newStatefulSetsWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new AppsV1beta2Client for the given config.

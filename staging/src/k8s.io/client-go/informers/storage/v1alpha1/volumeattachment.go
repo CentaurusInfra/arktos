@@ -47,32 +47,35 @@ type volumeAttachmentInformer struct {
 // NewVolumeAttachmentInformer constructs a new informer for VolumeAttachment type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewVolumeAttachmentInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
-	return NewFilteredVolumeAttachmentInformer(client, resyncPeriod, indexers, nil, optional_tenant...)
+func NewVolumeAttachmentInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredVolumeAttachmentInformer(client, resyncPeriod, indexers, nil)
+}
+
+func NewVolumeAttachmentInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
+	return NewFilteredVolumeAttachmentInformerWithMultiTenancy(client, resyncPeriod, indexers, nil, tenant)
 }
 
 // NewFilteredVolumeAttachmentInformer constructs a new informer for VolumeAttachment type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredVolumeAttachmentInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func NewFilteredVolumeAttachmentInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+	return NewFilteredVolumeAttachmentInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "default")
+}
 
+func NewFilteredVolumeAttachmentInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1alpha1().VolumeAttachments(tenant).List(options)
+				return client.StorageV1alpha1().VolumeAttachmentsWithMultiTenancy(tenant).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1alpha1().VolumeAttachments(tenant).Watch(options)
+				return client.StorageV1alpha1().VolumeAttachmentsWithMultiTenancy(tenant).Watch(options)
 			},
 		},
 		&storagev1alpha1.VolumeAttachment{},
@@ -82,7 +85,7 @@ func NewFilteredVolumeAttachmentInformer(client kubernetes.Interface, resyncPeri
 }
 
 func (f *volumeAttachmentInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredVolumeAttachmentInformer(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
+	return NewFilteredVolumeAttachmentInformerWithMultiTenancy(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *volumeAttachmentInformer) Informer() cache.SharedIndexInformer {

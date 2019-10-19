@@ -32,7 +32,8 @@ import (
 // EventsGetter has a method to return a EventInterface.
 // A group's client should implement this interface.
 type EventsGetter interface {
-	Events(namespace string, optional_tenant ...string) EventInterface
+	Events(namespace string) EventInterface
+	EventsWithMultiTenancy(namespace string, tenant string) EventInterface
 }
 
 // EventInterface has methods to work with Event resources.
@@ -56,12 +57,11 @@ type events struct {
 }
 
 // newEvents returns a Events
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newEvents(c *EventsV1beta1Client, namespace string, optional_tenant ...string) *events {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newEvents(c *EventsV1beta1Client, namespace string) *events {
+	return newEventsWithMultiTenancy(c, namespace, "default")
+}
+
+func newEventsWithMultiTenancy(c *EventsV1beta1Client, namespace string, tenant string) *events {
 	return &events{
 		client: c.RESTClient(),
 		ns:     namespace,

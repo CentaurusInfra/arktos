@@ -30,7 +30,8 @@ type EndpointsLister interface {
 	// List lists all Endpoints in the indexer.
 	List(selector labels.Selector) (ret []*v1.Endpoints, err error)
 	// Endpoints returns an object that can list and get Endpoints.
-	Endpoints(namespace string, optional_tenant ...string) EndpointsNamespaceLister
+	Endpoints(namespace string) EndpointsNamespaceLister
+	EndpointsWithMultiTenancy(namespace string, tenant string) EndpointsNamespaceLister
 	EndpointsListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *endpointsLister) List(selector labels.Selector) (ret []*v1.Endpoints, e
 }
 
 // Endpoints returns an object that can list and get Endpoints.
-func (s *endpointsLister) Endpoints(namespace string, optional_tenant ...string) EndpointsNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *endpointsLister) Endpoints(namespace string) EndpointsNamespaceLister {
+	return endpointsNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *endpointsLister) EndpointsWithMultiTenancy(namespace string, tenant string) EndpointsNamespaceLister {
 	return endpointsNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

@@ -42,7 +42,7 @@ var replicasetsKind = schema.GroupVersionKind{Group: "apps", Version: "v1beta2",
 // Get takes name of the replicaSet, and returns the corresponding replicaSet object, and an error if there is any.
 func (c *FakeReplicaSets) Get(name string, options v1.GetOptions) (result *v1beta2.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(replicasetsResource, c.ns, name, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewGetActionWithMultiTenancy(replicasetsResource, c.ns, name, c.te), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *FakeReplicaSets) Get(name string, options v1.GetOptions) (result *v1bet
 // List takes label and field selectors, and returns the list of ReplicaSets that match those selectors.
 func (c *FakeReplicaSets) List(opts v1.ListOptions) (result *v1beta2.ReplicaSetList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(replicasetsResource, replicasetsKind, c.ns, opts, c.te), &v1beta2.ReplicaSetList{})
+		Invokes(testing.NewListActionWithMultiTenancy(replicasetsResource, replicasetsKind, c.ns, opts, c.te), &v1beta2.ReplicaSetList{})
 
 	if obj == nil {
 		return nil, err
@@ -76,14 +76,14 @@ func (c *FakeReplicaSets) List(opts v1.ListOptions) (result *v1beta2.ReplicaSetL
 // Watch returns a watch.Interface that watches the requested replicaSets.
 func (c *FakeReplicaSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(replicasetsResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(replicasetsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a replicaSet and creates it.  Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *FakeReplicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(replicasetsResource, c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(replicasetsResource, c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *FakeReplicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta
 // Update takes the representation of a replicaSet and updates it. Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *FakeReplicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(replicasetsResource, c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(replicasetsResource, c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *FakeReplicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeReplicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (*v1beta2.ReplicaSet, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(replicasetsResource, "status", c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(replicasetsResource, "status", c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -119,14 +119,14 @@ func (c *FakeReplicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (*v1beta2
 // Delete takes name of the replicaSet and deletes it. Returns an error if one occurs.
 func (c *FakeReplicaSets) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(replicasetsResource, c.ns, name, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(replicasetsResource, c.ns, name, c.te), &v1beta2.ReplicaSet{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeReplicaSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(replicasetsResource, c.ns, listOptions, c.te)
+	action := testing.NewDeleteCollectionActionWithMultiTenancy(replicasetsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta2.ReplicaSetList{})
 	return err
@@ -135,7 +135,7 @@ func (c *FakeReplicaSets) DeleteCollection(options *v1.DeleteOptions, listOption
 // Patch applies the patch and returns the patched replicaSet.
 func (c *FakeReplicaSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.ReplicaSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(replicasetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(replicasetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err

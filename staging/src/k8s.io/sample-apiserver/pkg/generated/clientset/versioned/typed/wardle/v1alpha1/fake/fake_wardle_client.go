@@ -33,11 +33,11 @@ func (c *FakeWardleV1alpha1) Fischers() v1alpha1.FischerInterface {
 	return &FakeFischers{c}
 }
 
-func (c *FakeWardleV1alpha1) Flunders(namespace string, optional_tenant ...string) v1alpha1.FlunderInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeWardleV1alpha1) Flunders(namespace string) v1alpha1.FlunderInterface {
+	return &FakeFlunders{c, namespace, "default"}
+}
+
+func (c *FakeWardleV1alpha1) FlundersWithMultiTenancy(namespace string, tenant string) v1alpha1.FlunderInterface {
 	return &FakeFlunders{c, namespace, tenant}
 }
 

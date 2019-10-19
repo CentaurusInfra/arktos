@@ -28,11 +28,11 @@ type FakeAutoscalingV2beta2 struct {
 	*testing.Fake
 }
 
-func (c *FakeAutoscalingV2beta2) HorizontalPodAutoscalers(namespace string, optional_tenant ...string) v2beta2.HorizontalPodAutoscalerInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAutoscalingV2beta2) HorizontalPodAutoscalers(namespace string) v2beta2.HorizontalPodAutoscalerInterface {
+	return &FakeHorizontalPodAutoscalers{c, namespace, "default"}
+}
+
+func (c *FakeAutoscalingV2beta2) HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) v2beta2.HorizontalPodAutoscalerInterface {
 	return &FakeHorizontalPodAutoscalers{c, namespace, tenant}
 }
 

@@ -30,7 +30,8 @@ type SecretLister interface {
 	// List lists all Secrets in the indexer.
 	List(selector labels.Selector) (ret []*v1.Secret, err error)
 	// Secrets returns an object that can list and get Secrets.
-	Secrets(namespace string, optional_tenant ...string) SecretNamespaceLister
+	Secrets(namespace string) SecretNamespaceLister
+	SecretsWithMultiTenancy(namespace string, tenant string) SecretNamespaceLister
 	SecretListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *secretLister) List(selector labels.Selector) (ret []*v1.Secret, err err
 }
 
 // Secrets returns an object that can list and get Secrets.
-func (s *secretLister) Secrets(namespace string, optional_tenant ...string) SecretNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *secretLister) Secrets(namespace string) SecretNamespaceLister {
+	return secretNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *secretLister) SecretsWithMultiTenancy(namespace string, tenant string) SecretNamespaceLister {
 	return secretNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

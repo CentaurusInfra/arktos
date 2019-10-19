@@ -28,27 +28,27 @@ type FakePolicyV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakePolicyV1beta1) Evictions(namespace string, optional_tenant ...string) v1beta1.EvictionInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakePolicyV1beta1) Evictions(namespace string) v1beta1.EvictionInterface {
+	return &FakeEvictions{c, namespace, "default"}
+}
+
+func (c *FakePolicyV1beta1) EvictionsWithMultiTenancy(namespace string, tenant string) v1beta1.EvictionInterface {
 	return &FakeEvictions{c, namespace, tenant}
 }
 
-func (c *FakePolicyV1beta1) PodDisruptionBudgets(namespace string, optional_tenant ...string) v1beta1.PodDisruptionBudgetInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakePolicyV1beta1) PodDisruptionBudgets(namespace string) v1beta1.PodDisruptionBudgetInterface {
+	return &FakePodDisruptionBudgets{c, namespace, "default"}
+}
+
+func (c *FakePolicyV1beta1) PodDisruptionBudgetsWithMultiTenancy(namespace string, tenant string) v1beta1.PodDisruptionBudgetInterface {
 	return &FakePodDisruptionBudgets{c, namespace, tenant}
 }
 
-func (c *FakePolicyV1beta1) PodSecurityPolicies(optional_tenant ...string) v1beta1.PodSecurityPolicyInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakePolicyV1beta1) PodSecurityPolicies() v1beta1.PodSecurityPolicyInterface {
+	return &FakePodSecurityPolicies{c, "default"}
+}
+
+func (c *FakePolicyV1beta1) PodSecurityPoliciesWithMultiTenancy(tenant string) v1beta1.PodSecurityPolicyInterface {
 	return &FakePodSecurityPolicies{c, tenant}
 }
 

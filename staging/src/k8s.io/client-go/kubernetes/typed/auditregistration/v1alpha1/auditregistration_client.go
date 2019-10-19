@@ -34,8 +34,12 @@ type AuditregistrationV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AuditregistrationV1alpha1Client) AuditSinks(tenant ...string) AuditSinkInterface {
-	return newAuditSinks(c, tenant...)
+func (c *AuditregistrationV1alpha1Client) AuditSinks() AuditSinkInterface {
+	return newAuditSinksWithMultiTenancy(c, "default")
+}
+
+func (c *AuditregistrationV1alpha1Client) AuditSinksWithMultiTenancy(tenant string) AuditSinkInterface {
+	return newAuditSinksWithMultiTenancy(c, tenant)
 }
 
 // NewForConfig creates a new AuditregistrationV1alpha1Client for the given config.

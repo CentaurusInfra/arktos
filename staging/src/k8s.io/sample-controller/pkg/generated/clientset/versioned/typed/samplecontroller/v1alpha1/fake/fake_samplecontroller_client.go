@@ -28,11 +28,11 @@ type FakeSamplecontrollerV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSamplecontrollerV1alpha1) Foos(namespace string, optional_tenant ...string) v1alpha1.FooInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeSamplecontrollerV1alpha1) Foos(namespace string) v1alpha1.FooInterface {
+	return &FakeFoos{c, namespace, "default"}
+}
+
+func (c *FakeSamplecontrollerV1alpha1) FoosWithMultiTenancy(namespace string, tenant string) v1alpha1.FooInterface {
 	return &FakeFoos{c, namespace, tenant}
 }
 

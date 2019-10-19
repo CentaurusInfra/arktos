@@ -30,7 +30,8 @@ type LocalSubjectAccessReviewLister interface {
 	// List lists all LocalSubjectAccessReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1.LocalSubjectAccessReview, err error)
 	// LocalSubjectAccessReviews returns an object that can list and get LocalSubjectAccessReviews.
-	LocalSubjectAccessReviews(namespace string, optional_tenant ...string) LocalSubjectAccessReviewNamespaceLister
+	LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewNamespaceLister
+	LocalSubjectAccessReviewsWithMultiTenancy(namespace string, tenant string) LocalSubjectAccessReviewNamespaceLister
 	LocalSubjectAccessReviewListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *localSubjectAccessReviewLister) List(selector labels.Selector) (ret []*
 }
 
 // LocalSubjectAccessReviews returns an object that can list and get LocalSubjectAccessReviews.
-func (s *localSubjectAccessReviewLister) LocalSubjectAccessReviews(namespace string, optional_tenant ...string) LocalSubjectAccessReviewNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *localSubjectAccessReviewLister) LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewNamespaceLister {
+	return localSubjectAccessReviewNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *localSubjectAccessReviewLister) LocalSubjectAccessReviewsWithMultiTenancy(namespace string, tenant string) LocalSubjectAccessReviewNamespaceLister {
 	return localSubjectAccessReviewNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

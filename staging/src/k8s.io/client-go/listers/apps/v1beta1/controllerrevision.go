@@ -30,7 +30,8 @@ type ControllerRevisionLister interface {
 	// List lists all ControllerRevisions in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.ControllerRevision, err error)
 	// ControllerRevisions returns an object that can list and get ControllerRevisions.
-	ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionNamespaceLister
+	ControllerRevisions(namespace string) ControllerRevisionNamespaceLister
+	ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionNamespaceLister
 	ControllerRevisionListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *controllerRevisionLister) List(selector labels.Selector) (ret []*v1beta
 }
 
 // ControllerRevisions returns an object that can list and get ControllerRevisions.
-func (s *controllerRevisionLister) ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *controllerRevisionLister) ControllerRevisions(namespace string) ControllerRevisionNamespaceLister {
+	return controllerRevisionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *controllerRevisionLister) ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionNamespaceLister {
 	return controllerRevisionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

@@ -37,16 +37,15 @@ type group struct {
 }
 
 // New returns a new Interface.
-func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) Interface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
+	return &group{factory: f, namespace: namespace, tenant: "default", tweakListOptions: tweakListOptions}
+}
 
+func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) Interface {
 	return &group{factory: f, namespace: namespace, tenant: tenant, tweakListOptions: tweakListOptions}
 }
 
 // V1alpha1 returns a new v1alpha1.Interface.
 func (g *group) V1alpha1() v1alpha1.Interface {
-	return v1alpha1.New(g.factory, g.namespace, g.tweakListOptions, g.tenant)
+	return v1alpha1.NewWithMultiTenancy(g.factory, g.namespace, g.tweakListOptions, g.tenant)
 }

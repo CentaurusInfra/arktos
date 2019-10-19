@@ -32,7 +32,8 @@ import (
 // RoleBindingsGetter has a method to return a RoleBindingInterface.
 // A group's client should implement this interface.
 type RoleBindingsGetter interface {
-	RoleBindings(namespace string, optional_tenant ...string) RoleBindingInterface
+	RoleBindings(namespace string) RoleBindingInterface
+	RoleBindingsWithMultiTenancy(namespace string, tenant string) RoleBindingInterface
 }
 
 // RoleBindingInterface has methods to work with RoleBinding resources.
@@ -56,12 +57,11 @@ type roleBindings struct {
 }
 
 // newRoleBindings returns a RoleBindings
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newRoleBindings(c *RbacV1beta1Client, namespace string, optional_tenant ...string) *roleBindings {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newRoleBindings(c *RbacV1beta1Client, namespace string) *roleBindings {
+	return newRoleBindingsWithMultiTenancy(c, namespace, "default")
+}
+
+func newRoleBindingsWithMultiTenancy(c *RbacV1beta1Client, namespace string, tenant string) *roleBindings {
 	return &roleBindings{
 		client: c.RESTClient(),
 		ns:     namespace,

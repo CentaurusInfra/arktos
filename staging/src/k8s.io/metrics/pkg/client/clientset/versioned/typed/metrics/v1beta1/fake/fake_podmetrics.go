@@ -41,7 +41,7 @@ var podmetricsesKind = schema.GroupVersionKind{Group: "metrics.k8s.io", Version:
 // Get takes name of the podMetrics, and returns the corresponding podMetrics object, and an error if there is any.
 func (c *FakePodMetricses) Get(name string, options v1.GetOptions) (result *v1beta1.PodMetrics, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(podmetricsesResource, c.ns, name, c.te), &v1beta1.PodMetrics{})
+		Invokes(testing.NewGetActionWithMultiTenancy(podmetricsesResource, c.ns, name, c.te), &v1beta1.PodMetrics{})
 
 	if obj == nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (c *FakePodMetricses) Get(name string, options v1.GetOptions) (result *v1be
 // List takes label and field selectors, and returns the list of PodMetricses that match those selectors.
 func (c *FakePodMetricses) List(opts v1.ListOptions) (result *v1beta1.PodMetricsList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(podmetricsesResource, podmetricsesKind, c.ns, opts, c.te), &v1beta1.PodMetricsList{})
+		Invokes(testing.NewListActionWithMultiTenancy(podmetricsesResource, podmetricsesKind, c.ns, opts, c.te), &v1beta1.PodMetricsList{})
 
 	if obj == nil {
 		return nil, err
@@ -75,6 +75,6 @@ func (c *FakePodMetricses) List(opts v1.ListOptions) (result *v1beta1.PodMetrics
 // Watch returns a watch.Interface that watches the requested podMetricses.
 func (c *FakePodMetricses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(podmetricsesResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(podmetricsesResource, c.ns, opts, c.te))
 
 }

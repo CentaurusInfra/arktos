@@ -30,7 +30,8 @@ type IngressLister interface {
 	// List lists all Ingresses in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.Ingress, err error)
 	// Ingresses returns an object that can list and get Ingresses.
-	Ingresses(namespace string, optional_tenant ...string) IngressNamespaceLister
+	Ingresses(namespace string) IngressNamespaceLister
+	IngressesWithMultiTenancy(namespace string, tenant string) IngressNamespaceLister
 	IngressListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *ingressLister) List(selector labels.Selector) (ret []*v1beta1.Ingress, 
 }
 
 // Ingresses returns an object that can list and get Ingresses.
-func (s *ingressLister) Ingresses(namespace string, optional_tenant ...string) IngressNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *ingressLister) Ingresses(namespace string) IngressNamespaceLister {
+	return ingressNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *ingressLister) IngressesWithMultiTenancy(namespace string, tenant string) IngressNamespaceLister {
 	return ingressNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

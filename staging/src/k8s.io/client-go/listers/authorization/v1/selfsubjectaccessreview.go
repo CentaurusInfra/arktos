@@ -30,7 +30,8 @@ type SelfSubjectAccessReviewLister interface {
 	// List lists all SelfSubjectAccessReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1.SelfSubjectAccessReview, err error)
 	// SelfSubjectAccessReviews returns an object that can list and get SelfSubjectAccessReviews.
-	SelfSubjectAccessReviews(optional_tenant ...string) SelfSubjectAccessReviewTenantLister
+	SelfSubjectAccessReviews() SelfSubjectAccessReviewTenantLister
+	SelfSubjectAccessReviewsWithMultiTenancy(tenant string) SelfSubjectAccessReviewTenantLister
 	// Get retrieves the SelfSubjectAccessReview from the index for a given name.
 	Get(name string) (*v1.SelfSubjectAccessReview, error)
 	SelfSubjectAccessReviewListerExpansion
@@ -67,11 +68,11 @@ func (s *selfSubjectAccessReviewLister) Get(name string) (*v1.SelfSubjectAccessR
 }
 
 // SelfSubjectAccessReviews returns an object that can list and get SelfSubjectAccessReviews.
-func (s *selfSubjectAccessReviewLister) SelfSubjectAccessReviews(optional_tenant ...string) SelfSubjectAccessReviewTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *selfSubjectAccessReviewLister) SelfSubjectAccessReviews() SelfSubjectAccessReviewTenantLister {
+	return selfSubjectAccessReviewTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *selfSubjectAccessReviewLister) SelfSubjectAccessReviewsWithMultiTenancy(tenant string) SelfSubjectAccessReviewTenantLister {
 	return selfSubjectAccessReviewTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

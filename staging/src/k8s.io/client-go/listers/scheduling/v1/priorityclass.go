@@ -30,7 +30,8 @@ type PriorityClassLister interface {
 	// List lists all PriorityClasses in the indexer.
 	List(selector labels.Selector) (ret []*v1.PriorityClass, err error)
 	// PriorityClasses returns an object that can list and get PriorityClasses.
-	PriorityClasses(optional_tenant ...string) PriorityClassTenantLister
+	PriorityClasses() PriorityClassTenantLister
+	PriorityClassesWithMultiTenancy(tenant string) PriorityClassTenantLister
 	// Get retrieves the PriorityClass from the index for a given name.
 	Get(name string) (*v1.PriorityClass, error)
 	PriorityClassListerExpansion
@@ -67,11 +68,11 @@ func (s *priorityClassLister) Get(name string) (*v1.PriorityClass, error) {
 }
 
 // PriorityClasses returns an object that can list and get PriorityClasses.
-func (s *priorityClassLister) PriorityClasses(optional_tenant ...string) PriorityClassTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *priorityClassLister) PriorityClasses() PriorityClassTenantLister {
+	return priorityClassTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *priorityClassLister) PriorityClassesWithMultiTenancy(tenant string) PriorityClassTenantLister {
 	return priorityClassTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

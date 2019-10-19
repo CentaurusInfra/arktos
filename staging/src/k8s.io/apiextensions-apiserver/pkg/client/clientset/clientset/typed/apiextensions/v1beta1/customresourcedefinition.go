@@ -32,7 +32,8 @@ import (
 // CustomResourceDefinitionsGetter has a method to return a CustomResourceDefinitionInterface.
 // A group's client should implement this interface.
 type CustomResourceDefinitionsGetter interface {
-	CustomResourceDefinitions(optional_tenant ...string) CustomResourceDefinitionInterface
+	CustomResourceDefinitions() CustomResourceDefinitionInterface
+	CustomResourceDefinitionsWithMultiTenancy(tenant string) CustomResourceDefinitionInterface
 }
 
 // CustomResourceDefinitionInterface has methods to work with CustomResourceDefinition resources.
@@ -56,11 +57,11 @@ type customResourceDefinitions struct {
 }
 
 // newCustomResourceDefinitions returns a CustomResourceDefinitions
-func newCustomResourceDefinitions(c *ApiextensionsV1beta1Client, optional_tenant ...string) *customResourceDefinitions {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newCustomResourceDefinitions(c *ApiextensionsV1beta1Client) *customResourceDefinitions {
+	return newCustomResourceDefinitionsWithMultiTenancy(c, "default")
+}
+
+func newCustomResourceDefinitionsWithMultiTenancy(c *ApiextensionsV1beta1Client, tenant string) *customResourceDefinitions {
 	return &customResourceDefinitions{
 		client: c.RESTClient(),
 		te:     tenant,

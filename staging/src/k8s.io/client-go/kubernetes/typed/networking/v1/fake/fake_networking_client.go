@@ -28,11 +28,11 @@ type FakeNetworkingV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeNetworkingV1) NetworkPolicies(namespace string, optional_tenant ...string) v1.NetworkPolicyInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeNetworkingV1) NetworkPolicies(namespace string) v1.NetworkPolicyInterface {
+	return &FakeNetworkPolicies{c, namespace, "default"}
+}
+
+func (c *FakeNetworkingV1) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) v1.NetworkPolicyInterface {
 	return &FakeNetworkPolicies{c, namespace, tenant}
 }
 

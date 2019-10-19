@@ -36,16 +36,28 @@ type PolicyV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *PolicyV1beta1Client) Evictions(namespace string, optional_tenant ...string) EvictionInterface {
-	return newEvictions(c, namespace, optional_tenant...)
+func (c *PolicyV1beta1Client) Evictions(namespace string) EvictionInterface {
+	return newEvictionsWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *PolicyV1beta1Client) PodDisruptionBudgets(namespace string, optional_tenant ...string) PodDisruptionBudgetInterface {
-	return newPodDisruptionBudgets(c, namespace, optional_tenant...)
+func (c *PolicyV1beta1Client) EvictionsWithMultiTenancy(namespace string, tenant string) EvictionInterface {
+	return newEvictionsWithMultiTenancy(c, namespace, tenant)
 }
 
-func (c *PolicyV1beta1Client) PodSecurityPolicies(tenant ...string) PodSecurityPolicyInterface {
-	return newPodSecurityPolicies(c, tenant...)
+func (c *PolicyV1beta1Client) PodDisruptionBudgets(namespace string) PodDisruptionBudgetInterface {
+	return newPodDisruptionBudgetsWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *PolicyV1beta1Client) PodDisruptionBudgetsWithMultiTenancy(namespace string, tenant string) PodDisruptionBudgetInterface {
+	return newPodDisruptionBudgetsWithMultiTenancy(c, namespace, tenant)
+}
+
+func (c *PolicyV1beta1Client) PodSecurityPolicies() PodSecurityPolicyInterface {
+	return newPodSecurityPoliciesWithMultiTenancy(c, "default")
+}
+
+func (c *PolicyV1beta1Client) PodSecurityPoliciesWithMultiTenancy(tenant string) PodSecurityPolicyInterface {
+	return newPodSecurityPoliciesWithMultiTenancy(c, tenant)
 }
 
 // NewForConfig creates a new PolicyV1beta1Client for the given config.

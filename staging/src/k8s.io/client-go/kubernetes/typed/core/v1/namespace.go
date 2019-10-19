@@ -32,7 +32,8 @@ import (
 // NamespacesGetter has a method to return a NamespaceInterface.
 // A group's client should implement this interface.
 type NamespacesGetter interface {
-	Namespaces(optional_tenant ...string) NamespaceInterface
+	Namespaces() NamespaceInterface
+	NamespacesWithMultiTenancy(tenant string) NamespaceInterface
 }
 
 // NamespaceInterface has methods to work with Namespace resources.
@@ -55,11 +56,11 @@ type namespaces struct {
 }
 
 // newNamespaces returns a Namespaces
-func newNamespaces(c *CoreV1Client, optional_tenant ...string) *namespaces {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newNamespaces(c *CoreV1Client) *namespaces {
+	return newNamespacesWithMultiTenancy(c, "default")
+}
+
+func newNamespacesWithMultiTenancy(c *CoreV1Client, tenant string) *namespaces {
 	return &namespaces{
 		client: c.RESTClient(),
 		te:     tenant,

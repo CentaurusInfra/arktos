@@ -28,11 +28,11 @@ type FakeSettingsV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSettingsV1alpha1) PodPresets(namespace string, optional_tenant ...string) v1alpha1.PodPresetInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeSettingsV1alpha1) PodPresets(namespace string) v1alpha1.PodPresetInterface {
+	return &FakePodPresets{c, namespace, "default"}
+}
+
+func (c *FakeSettingsV1alpha1) PodPresetsWithMultiTenancy(namespace string, tenant string) v1alpha1.PodPresetInterface {
 	return &FakePodPresets{c, namespace, tenant}
 }
 

@@ -32,7 +32,8 @@ import (
 // PodTemplatesGetter has a method to return a PodTemplateInterface.
 // A group's client should implement this interface.
 type PodTemplatesGetter interface {
-	PodTemplates(namespace string, optional_tenant ...string) PodTemplateInterface
+	PodTemplates(namespace string) PodTemplateInterface
+	PodTemplatesWithMultiTenancy(namespace string, tenant string) PodTemplateInterface
 }
 
 // PodTemplateInterface has methods to work with PodTemplate resources.
@@ -56,12 +57,11 @@ type podTemplates struct {
 }
 
 // newPodTemplates returns a PodTemplates
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newPodTemplates(c *CoreV1Client, namespace string, optional_tenant ...string) *podTemplates {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPodTemplates(c *CoreV1Client, namespace string) *podTemplates {
+	return newPodTemplatesWithMultiTenancy(c, namespace, "default")
+}
+
+func newPodTemplatesWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *podTemplates {
 	return &podTemplates{
 		client: c.RESTClient(),
 		ns:     namespace,

@@ -42,7 +42,7 @@ var examplesKind = schema.GroupVersionKind{Group: "cr.example.apiextensions.k8s.
 // Get takes name of the example, and returns the corresponding example object, and an error if there is any.
 func (c *FakeExamples) Get(name string, options v1.GetOptions) (result *crv1.Example, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(examplesResource, c.ns, name, c.te), &crv1.Example{})
+		Invokes(testing.NewGetActionWithMultiTenancy(examplesResource, c.ns, name, c.te), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *FakeExamples) Get(name string, options v1.GetOptions) (result *crv1.Exa
 // List takes label and field selectors, and returns the list of Examples that match those selectors.
 func (c *FakeExamples) List(opts v1.ListOptions) (result *crv1.ExampleList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(examplesResource, examplesKind, c.ns, opts, c.te), &crv1.ExampleList{})
+		Invokes(testing.NewListActionWithMultiTenancy(examplesResource, examplesKind, c.ns, opts, c.te), &crv1.ExampleList{})
 
 	if obj == nil {
 		return nil, err
@@ -76,14 +76,14 @@ func (c *FakeExamples) List(opts v1.ListOptions) (result *crv1.ExampleList, err 
 // Watch returns a watch.Interface that watches the requested examples.
 func (c *FakeExamples) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(examplesResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(examplesResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a example and creates it.  Returns the server's representation of the example, and an error, if there is any.
 func (c *FakeExamples) Create(example *crv1.Example) (result *crv1.Example, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(examplesResource, c.ns, example, c.te), &crv1.Example{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(examplesResource, c.ns, example, c.te), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *FakeExamples) Create(example *crv1.Example) (result *crv1.Example, err 
 // Update takes the representation of a example and updates it. Returns the server's representation of the example, and an error, if there is any.
 func (c *FakeExamples) Update(example *crv1.Example) (result *crv1.Example, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(examplesResource, c.ns, example, c.te), &crv1.Example{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(examplesResource, c.ns, example, c.te), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err
@@ -107,14 +107,14 @@ func (c *FakeExamples) Update(example *crv1.Example) (result *crv1.Example, err 
 // Delete takes name of the example and deletes it. Returns an error if one occurs.
 func (c *FakeExamples) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(examplesResource, c.ns, name, c.te), &crv1.Example{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(examplesResource, c.ns, name, c.te), &crv1.Example{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeExamples) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(examplesResource, c.ns, listOptions, c.te)
+	action := testing.NewDeleteCollectionActionWithMultiTenancy(examplesResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &crv1.ExampleList{})
 	return err
@@ -123,7 +123,7 @@ func (c *FakeExamples) DeleteCollection(options *v1.DeleteOptions, listOptions v
 // Patch applies the patch and returns the patched example.
 func (c *FakeExamples) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *crv1.Example, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(examplesResource, c.te, c.ns, name, pt, data, subresources...), &crv1.Example{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(examplesResource, c.te, c.ns, name, pt, data, subresources...), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err

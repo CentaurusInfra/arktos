@@ -30,7 +30,8 @@ type ImageReviewLister interface {
 	// List lists all ImageReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.ImageReview, err error)
 	// ImageReviews returns an object that can list and get ImageReviews.
-	ImageReviews(optional_tenant ...string) ImageReviewTenantLister
+	ImageReviews() ImageReviewTenantLister
+	ImageReviewsWithMultiTenancy(tenant string) ImageReviewTenantLister
 	// Get retrieves the ImageReview from the index for a given name.
 	Get(name string) (*v1alpha1.ImageReview, error)
 	ImageReviewListerExpansion
@@ -67,11 +68,11 @@ func (s *imageReviewLister) Get(name string) (*v1alpha1.ImageReview, error) {
 }
 
 // ImageReviews returns an object that can list and get ImageReviews.
-func (s *imageReviewLister) ImageReviews(optional_tenant ...string) ImageReviewTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *imageReviewLister) ImageReviews() ImageReviewTenantLister {
+	return imageReviewTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *imageReviewLister) ImageReviewsWithMultiTenancy(tenant string) ImageReviewTenantLister {
 	return imageReviewTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

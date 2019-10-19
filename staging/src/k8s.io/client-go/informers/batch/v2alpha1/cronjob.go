@@ -48,32 +48,35 @@ type cronJobInformer struct {
 // NewCronJobInformer constructs a new informer for CronJob type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewCronJobInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
-	return NewFilteredCronJobInformer(client, namespace, resyncPeriod, indexers, nil, optional_tenant...)
+func NewCronJobInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredCronJobInformer(client, namespace, resyncPeriod, indexers, nil)
+}
+
+func NewCronJobInformerWithMultiTenancy(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
+	return NewFilteredCronJobInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, nil, tenant)
 }
 
 // NewFilteredCronJobInformer constructs a new informer for CronJob type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredCronJobInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func NewFilteredCronJobInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+	return NewFilteredCronJobInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, tweakListOptions, "default")
+}
 
+func NewFilteredCronJobInformerWithMultiTenancy(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.BatchV2alpha1().CronJobs(namespace, tenant).List(options)
+				return client.BatchV2alpha1().CronJobsWithMultiTenancy(namespace, tenant).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.BatchV2alpha1().CronJobs(namespace, tenant).Watch(options)
+				return client.BatchV2alpha1().CronJobsWithMultiTenancy(namespace, tenant).Watch(options)
 			},
 		},
 		&batchv2alpha1.CronJob{},
@@ -83,7 +86,7 @@ func NewFilteredCronJobInformer(client kubernetes.Interface, namespace string, r
 }
 
 func (f *cronJobInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredCronJobInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions, f.tenant)
+	return NewFilteredCronJobInformerWithMultiTenancy(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *cronJobInformer) Informer() cache.SharedIndexInformer {

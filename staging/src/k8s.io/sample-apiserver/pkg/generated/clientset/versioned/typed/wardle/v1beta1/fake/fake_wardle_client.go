@@ -28,11 +28,11 @@ type FakeWardleV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeWardleV1beta1) Flunders(namespace string, optional_tenant ...string) v1beta1.FlunderInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeWardleV1beta1) Flunders(namespace string) v1beta1.FlunderInterface {
+	return &FakeFlunders{c, namespace, "default"}
+}
+
+func (c *FakeWardleV1beta1) FlundersWithMultiTenancy(namespace string, tenant string) v1beta1.FlunderInterface {
 	return &FakeFlunders{c, namespace, tenant}
 }
 

@@ -28,11 +28,11 @@ type FakeSchedulingV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSchedulingV1) PriorityClasses(optional_tenant ...string) v1.PriorityClassInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeSchedulingV1) PriorityClasses() v1.PriorityClassInterface {
+	return &FakePriorityClasses{c, "default"}
+}
+
+func (c *FakeSchedulingV1) PriorityClassesWithMultiTenancy(tenant string) v1.PriorityClassInterface {
 	return &FakePriorityClasses{c, tenant}
 }
 

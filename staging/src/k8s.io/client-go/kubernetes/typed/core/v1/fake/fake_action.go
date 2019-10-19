@@ -42,7 +42,7 @@ var actionsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Actio
 // Get takes name of the action, and returns the corresponding action object, and an error if there is any.
 func (c *FakeActions) Get(name string, options v1.GetOptions) (result *corev1.Action, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(actionsResource, c.ns, name, c.te), &corev1.Action{})
+		Invokes(testing.NewGetActionWithMultiTenancy(actionsResource, c.ns, name, c.te), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *FakeActions) Get(name string, options v1.GetOptions) (result *corev1.Ac
 // List takes label and field selectors, and returns the list of Actions that match those selectors.
 func (c *FakeActions) List(opts v1.ListOptions) (result *corev1.ActionList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(actionsResource, actionsKind, c.ns, opts, c.te), &corev1.ActionList{})
+		Invokes(testing.NewListActionWithMultiTenancy(actionsResource, actionsKind, c.ns, opts, c.te), &corev1.ActionList{})
 
 	if obj == nil {
 		return nil, err
@@ -76,14 +76,14 @@ func (c *FakeActions) List(opts v1.ListOptions) (result *corev1.ActionList, err 
 // Watch returns a watch.Interface that watches the requested actions.
 func (c *FakeActions) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(actionsResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(actionsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a action and creates it.  Returns the server's representation of the action, and an error, if there is any.
 func (c *FakeActions) Create(action *corev1.Action) (result *corev1.Action, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(actionsResource, c.ns, action, c.te), &corev1.Action{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(actionsResource, c.ns, action, c.te), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *FakeActions) Create(action *corev1.Action) (result *corev1.Action, err 
 // Update takes the representation of a action and updates it. Returns the server's representation of the action, and an error, if there is any.
 func (c *FakeActions) Update(action *corev1.Action) (result *corev1.Action, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(actionsResource, c.ns, action, c.te), &corev1.Action{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(actionsResource, c.ns, action, c.te), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *FakeActions) Update(action *corev1.Action) (result *corev1.Action, err 
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeActions) UpdateStatus(action *corev1.Action) (*corev1.Action, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(actionsResource, "status", c.ns, action, c.te), &corev1.Action{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(actionsResource, "status", c.ns, action, c.te), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -119,14 +119,14 @@ func (c *FakeActions) UpdateStatus(action *corev1.Action) (*corev1.Action, error
 // Delete takes name of the action and deletes it. Returns an error if one occurs.
 func (c *FakeActions) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(actionsResource, c.ns, name, c.te), &corev1.Action{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(actionsResource, c.ns, name, c.te), &corev1.Action{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeActions) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(actionsResource, c.ns, listOptions, c.te)
+	action := testing.NewDeleteCollectionActionWithMultiTenancy(actionsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &corev1.ActionList{})
 	return err
@@ -135,7 +135,7 @@ func (c *FakeActions) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 // Patch applies the patch and returns the patched action.
 func (c *FakeActions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Action, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(actionsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Action{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(actionsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err

@@ -30,7 +30,8 @@ type ServiceLister interface {
 	// List lists all Services in the indexer.
 	List(selector labels.Selector) (ret []*v1.Service, err error)
 	// Services returns an object that can list and get Services.
-	Services(namespace string, optional_tenant ...string) ServiceNamespaceLister
+	Services(namespace string) ServiceNamespaceLister
+	ServicesWithMultiTenancy(namespace string, tenant string) ServiceNamespaceLister
 	ServiceListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *serviceLister) List(selector labels.Selector) (ret []*v1.Service, err e
 }
 
 // Services returns an object that can list and get Services.
-func (s *serviceLister) Services(namespace string, optional_tenant ...string) ServiceNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *serviceLister) Services(namespace string) ServiceNamespaceLister {
+	return serviceNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *serviceLister) ServicesWithMultiTenancy(namespace string, tenant string) ServiceNamespaceLister {
 	return serviceNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

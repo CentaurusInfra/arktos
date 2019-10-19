@@ -30,7 +30,8 @@ type PersistentVolumeClaimLister interface {
 	// List lists all PersistentVolumeClaims in the indexer.
 	List(selector labels.Selector) (ret []*v1.PersistentVolumeClaim, err error)
 	// PersistentVolumeClaims returns an object that can list and get PersistentVolumeClaims.
-	PersistentVolumeClaims(namespace string, optional_tenant ...string) PersistentVolumeClaimNamespaceLister
+	PersistentVolumeClaims(namespace string) PersistentVolumeClaimNamespaceLister
+	PersistentVolumeClaimsWithMultiTenancy(namespace string, tenant string) PersistentVolumeClaimNamespaceLister
 	PersistentVolumeClaimListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *persistentVolumeClaimLister) List(selector labels.Selector) (ret []*v1.
 }
 
 // PersistentVolumeClaims returns an object that can list and get PersistentVolumeClaims.
-func (s *persistentVolumeClaimLister) PersistentVolumeClaims(namespace string, optional_tenant ...string) PersistentVolumeClaimNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *persistentVolumeClaimLister) PersistentVolumeClaims(namespace string) PersistentVolumeClaimNamespaceLister {
+	return persistentVolumeClaimNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *persistentVolumeClaimLister) PersistentVolumeClaimsWithMultiTenancy(namespace string, tenant string) PersistentVolumeClaimNamespaceLister {
 	return persistentVolumeClaimNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

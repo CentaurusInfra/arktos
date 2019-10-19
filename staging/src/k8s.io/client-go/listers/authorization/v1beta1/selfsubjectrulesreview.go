@@ -30,7 +30,8 @@ type SelfSubjectRulesReviewLister interface {
 	// List lists all SelfSubjectRulesReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.SelfSubjectRulesReview, err error)
 	// SelfSubjectRulesReviews returns an object that can list and get SelfSubjectRulesReviews.
-	SelfSubjectRulesReviews(optional_tenant ...string) SelfSubjectRulesReviewTenantLister
+	SelfSubjectRulesReviews() SelfSubjectRulesReviewTenantLister
+	SelfSubjectRulesReviewsWithMultiTenancy(tenant string) SelfSubjectRulesReviewTenantLister
 	// Get retrieves the SelfSubjectRulesReview from the index for a given name.
 	Get(name string) (*v1beta1.SelfSubjectRulesReview, error)
 	SelfSubjectRulesReviewListerExpansion
@@ -67,11 +68,11 @@ func (s *selfSubjectRulesReviewLister) Get(name string) (*v1beta1.SelfSubjectRul
 }
 
 // SelfSubjectRulesReviews returns an object that can list and get SelfSubjectRulesReviews.
-func (s *selfSubjectRulesReviewLister) SelfSubjectRulesReviews(optional_tenant ...string) SelfSubjectRulesReviewTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *selfSubjectRulesReviewLister) SelfSubjectRulesReviews() SelfSubjectRulesReviewTenantLister {
+	return selfSubjectRulesReviewTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *selfSubjectRulesReviewLister) SelfSubjectRulesReviewsWithMultiTenancy(tenant string) SelfSubjectRulesReviewTenantLister {
 	return selfSubjectRulesReviewTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

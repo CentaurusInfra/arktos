@@ -28,11 +28,11 @@ type FakeExample struct {
 	*testing.Fake
 }
 
-func (c *FakeExample) TestTypes(namespace string, optional_tenant ...string) internalversion.TestTypeInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeExample) TestTypes(namespace string) internalversion.TestTypeInterface {
+	return &FakeTestTypes{c, namespace, "default"}
+}
+
+func (c *FakeExample) TestTypesWithMultiTenancy(namespace string, tenant string) internalversion.TestTypeInterface {
 	return &FakeTestTypes{c, namespace, tenant}
 }
 

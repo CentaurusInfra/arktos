@@ -32,7 +32,8 @@ import (
 // CertificateSigningRequestsGetter has a method to return a CertificateSigningRequestInterface.
 // A group's client should implement this interface.
 type CertificateSigningRequestsGetter interface {
-	CertificateSigningRequests(optional_tenant ...string) CertificateSigningRequestInterface
+	CertificateSigningRequests() CertificateSigningRequestInterface
+	CertificateSigningRequestsWithMultiTenancy(tenant string) CertificateSigningRequestInterface
 }
 
 // CertificateSigningRequestInterface has methods to work with CertificateSigningRequest resources.
@@ -56,11 +57,11 @@ type certificateSigningRequests struct {
 }
 
 // newCertificateSigningRequests returns a CertificateSigningRequests
-func newCertificateSigningRequests(c *CertificatesV1beta1Client, optional_tenant ...string) *certificateSigningRequests {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newCertificateSigningRequests(c *CertificatesV1beta1Client) *certificateSigningRequests {
+	return newCertificateSigningRequestsWithMultiTenancy(c, "default")
+}
+
+func newCertificateSigningRequestsWithMultiTenancy(c *CertificatesV1beta1Client, tenant string) *certificateSigningRequests {
 	return &certificateSigningRequests{
 		client: c.RESTClient(),
 		te:     tenant,

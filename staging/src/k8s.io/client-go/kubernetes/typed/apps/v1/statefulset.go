@@ -33,7 +33,8 @@ import (
 // StatefulSetsGetter has a method to return a StatefulSetInterface.
 // A group's client should implement this interface.
 type StatefulSetsGetter interface {
-	StatefulSets(namespace string, optional_tenant ...string) StatefulSetInterface
+	StatefulSets(namespace string) StatefulSetInterface
+	StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetInterface
 }
 
 // StatefulSetInterface has methods to work with StatefulSet resources.
@@ -61,12 +62,11 @@ type statefulSets struct {
 }
 
 // newStatefulSets returns a StatefulSets
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newStatefulSets(c *AppsV1Client, namespace string, optional_tenant ...string) *statefulSets {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newStatefulSets(c *AppsV1Client, namespace string) *statefulSets {
+	return newStatefulSetsWithMultiTenancy(c, namespace, "default")
+}
+
+func newStatefulSetsWithMultiTenancy(c *AppsV1Client, namespace string, tenant string) *statefulSets {
 	return &statefulSets{
 		client: c.RESTClient(),
 		ns:     namespace,

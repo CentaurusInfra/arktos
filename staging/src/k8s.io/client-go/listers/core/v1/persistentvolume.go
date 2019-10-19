@@ -30,7 +30,8 @@ type PersistentVolumeLister interface {
 	// List lists all PersistentVolumes in the indexer.
 	List(selector labels.Selector) (ret []*v1.PersistentVolume, err error)
 	// PersistentVolumes returns an object that can list and get PersistentVolumes.
-	PersistentVolumes(optional_tenant ...string) PersistentVolumeTenantLister
+	PersistentVolumes() PersistentVolumeTenantLister
+	PersistentVolumesWithMultiTenancy(tenant string) PersistentVolumeTenantLister
 	// Get retrieves the PersistentVolume from the index for a given name.
 	Get(name string) (*v1.PersistentVolume, error)
 	PersistentVolumeListerExpansion
@@ -67,11 +68,11 @@ func (s *persistentVolumeLister) Get(name string) (*v1.PersistentVolume, error) 
 }
 
 // PersistentVolumes returns an object that can list and get PersistentVolumes.
-func (s *persistentVolumeLister) PersistentVolumes(optional_tenant ...string) PersistentVolumeTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *persistentVolumeLister) PersistentVolumes() PersistentVolumeTenantLister {
+	return persistentVolumeTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *persistentVolumeLister) PersistentVolumesWithMultiTenancy(tenant string) PersistentVolumeTenantLister {
 	return persistentVolumeTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

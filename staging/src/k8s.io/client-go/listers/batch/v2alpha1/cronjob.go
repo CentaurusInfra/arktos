@@ -30,7 +30,8 @@ type CronJobLister interface {
 	// List lists all CronJobs in the indexer.
 	List(selector labels.Selector) (ret []*v2alpha1.CronJob, err error)
 	// CronJobs returns an object that can list and get CronJobs.
-	CronJobs(namespace string, optional_tenant ...string) CronJobNamespaceLister
+	CronJobs(namespace string) CronJobNamespaceLister
+	CronJobsWithMultiTenancy(namespace string, tenant string) CronJobNamespaceLister
 	CronJobListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *cronJobLister) List(selector labels.Selector) (ret []*v2alpha1.CronJob,
 }
 
 // CronJobs returns an object that can list and get CronJobs.
-func (s *cronJobLister) CronJobs(namespace string, optional_tenant ...string) CronJobNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *cronJobLister) CronJobs(namespace string) CronJobNamespaceLister {
+	return cronJobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *cronJobLister) CronJobsWithMultiTenancy(namespace string, tenant string) CronJobNamespaceLister {
 	return cronJobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

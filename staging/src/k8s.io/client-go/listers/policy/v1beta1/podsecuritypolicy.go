@@ -30,7 +30,8 @@ type PodSecurityPolicyLister interface {
 	// List lists all PodSecurityPolicies in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.PodSecurityPolicy, err error)
 	// PodSecurityPolicies returns an object that can list and get PodSecurityPolicies.
-	PodSecurityPolicies(optional_tenant ...string) PodSecurityPolicyTenantLister
+	PodSecurityPolicies() PodSecurityPolicyTenantLister
+	PodSecurityPoliciesWithMultiTenancy(tenant string) PodSecurityPolicyTenantLister
 	// Get retrieves the PodSecurityPolicy from the index for a given name.
 	Get(name string) (*v1beta1.PodSecurityPolicy, error)
 	PodSecurityPolicyListerExpansion
@@ -67,11 +68,11 @@ func (s *podSecurityPolicyLister) Get(name string) (*v1beta1.PodSecurityPolicy, 
 }
 
 // PodSecurityPolicies returns an object that can list and get PodSecurityPolicies.
-func (s *podSecurityPolicyLister) PodSecurityPolicies(optional_tenant ...string) PodSecurityPolicyTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *podSecurityPolicyLister) PodSecurityPolicies() PodSecurityPolicyTenantLister {
+	return podSecurityPolicyTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *podSecurityPolicyLister) PodSecurityPoliciesWithMultiTenancy(tenant string) PodSecurityPolicyTenantLister {
 	return podSecurityPolicyTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

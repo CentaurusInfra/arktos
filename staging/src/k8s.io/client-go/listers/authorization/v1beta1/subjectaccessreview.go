@@ -30,7 +30,8 @@ type SubjectAccessReviewLister interface {
 	// List lists all SubjectAccessReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.SubjectAccessReview, err error)
 	// SubjectAccessReviews returns an object that can list and get SubjectAccessReviews.
-	SubjectAccessReviews(optional_tenant ...string) SubjectAccessReviewTenantLister
+	SubjectAccessReviews() SubjectAccessReviewTenantLister
+	SubjectAccessReviewsWithMultiTenancy(tenant string) SubjectAccessReviewTenantLister
 	// Get retrieves the SubjectAccessReview from the index for a given name.
 	Get(name string) (*v1beta1.SubjectAccessReview, error)
 	SubjectAccessReviewListerExpansion
@@ -67,11 +68,11 @@ func (s *subjectAccessReviewLister) Get(name string) (*v1beta1.SubjectAccessRevi
 }
 
 // SubjectAccessReviews returns an object that can list and get SubjectAccessReviews.
-func (s *subjectAccessReviewLister) SubjectAccessReviews(optional_tenant ...string) SubjectAccessReviewTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *subjectAccessReviewLister) SubjectAccessReviews() SubjectAccessReviewTenantLister {
+	return subjectAccessReviewTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *subjectAccessReviewLister) SubjectAccessReviewsWithMultiTenancy(tenant string) SubjectAccessReviewTenantLister {
 	return subjectAccessReviewTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

@@ -32,7 +32,8 @@ import (
 // PersistentVolumeClaimsGetter has a method to return a PersistentVolumeClaimInterface.
 // A group's client should implement this interface.
 type PersistentVolumeClaimsGetter interface {
-	PersistentVolumeClaims(namespace string, optional_tenant ...string) PersistentVolumeClaimInterface
+	PersistentVolumeClaims(namespace string) PersistentVolumeClaimInterface
+	PersistentVolumeClaimsWithMultiTenancy(namespace string, tenant string) PersistentVolumeClaimInterface
 }
 
 // PersistentVolumeClaimInterface has methods to work with PersistentVolumeClaim resources.
@@ -57,12 +58,11 @@ type persistentVolumeClaims struct {
 }
 
 // newPersistentVolumeClaims returns a PersistentVolumeClaims
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newPersistentVolumeClaims(c *CoreV1Client, namespace string, optional_tenant ...string) *persistentVolumeClaims {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPersistentVolumeClaims(c *CoreV1Client, namespace string) *persistentVolumeClaims {
+	return newPersistentVolumeClaimsWithMultiTenancy(c, namespace, "default")
+}
+
+func newPersistentVolumeClaimsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *persistentVolumeClaims {
 	return &persistentVolumeClaims{
 		client: c.RESTClient(),
 		ns:     namespace,

@@ -32,7 +32,8 @@ import (
 // CronJobsGetter has a method to return a CronJobInterface.
 // A group's client should implement this interface.
 type CronJobsGetter interface {
-	CronJobs(namespace string, optional_tenant ...string) CronJobInterface
+	CronJobs(namespace string) CronJobInterface
+	CronJobsWithMultiTenancy(namespace string, tenant string) CronJobInterface
 }
 
 // CronJobInterface has methods to work with CronJob resources.
@@ -57,12 +58,11 @@ type cronJobs struct {
 }
 
 // newCronJobs returns a CronJobs
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newCronJobs(c *BatchV2alpha1Client, namespace string, optional_tenant ...string) *cronJobs {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newCronJobs(c *BatchV2alpha1Client, namespace string) *cronJobs {
+	return newCronJobsWithMultiTenancy(c, namespace, "default")
+}
+
+func newCronJobsWithMultiTenancy(c *BatchV2alpha1Client, namespace string, tenant string) *cronJobs {
 	return &cronJobs{
 		client: c.RESTClient(),
 		ns:     namespace,

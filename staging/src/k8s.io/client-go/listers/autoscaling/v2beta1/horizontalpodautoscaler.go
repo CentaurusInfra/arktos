@@ -30,7 +30,8 @@ type HorizontalPodAutoscalerLister interface {
 	// List lists all HorizontalPodAutoscalers in the indexer.
 	List(selector labels.Selector) (ret []*v2beta1.HorizontalPodAutoscaler, err error)
 	// HorizontalPodAutoscalers returns an object that can list and get HorizontalPodAutoscalers.
-	HorizontalPodAutoscalers(namespace string, optional_tenant ...string) HorizontalPodAutoscalerNamespaceLister
+	HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerNamespaceLister
+	HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) HorizontalPodAutoscalerNamespaceLister
 	HorizontalPodAutoscalerListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *horizontalPodAutoscalerLister) List(selector labels.Selector) (ret []*v
 }
 
 // HorizontalPodAutoscalers returns an object that can list and get HorizontalPodAutoscalers.
-func (s *horizontalPodAutoscalerLister) HorizontalPodAutoscalers(namespace string, optional_tenant ...string) HorizontalPodAutoscalerNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *horizontalPodAutoscalerLister) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerNamespaceLister {
+	return horizontalPodAutoscalerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *horizontalPodAutoscalerLister) HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) HorizontalPodAutoscalerNamespaceLister {
 	return horizontalPodAutoscalerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

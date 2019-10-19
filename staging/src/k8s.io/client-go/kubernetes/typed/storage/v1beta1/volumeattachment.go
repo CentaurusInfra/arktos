@@ -32,7 +32,8 @@ import (
 // VolumeAttachmentsGetter has a method to return a VolumeAttachmentInterface.
 // A group's client should implement this interface.
 type VolumeAttachmentsGetter interface {
-	VolumeAttachments(optional_tenant ...string) VolumeAttachmentInterface
+	VolumeAttachments() VolumeAttachmentInterface
+	VolumeAttachmentsWithMultiTenancy(tenant string) VolumeAttachmentInterface
 }
 
 // VolumeAttachmentInterface has methods to work with VolumeAttachment resources.
@@ -56,11 +57,11 @@ type volumeAttachments struct {
 }
 
 // newVolumeAttachments returns a VolumeAttachments
-func newVolumeAttachments(c *StorageV1beta1Client, optional_tenant ...string) *volumeAttachments {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newVolumeAttachments(c *StorageV1beta1Client) *volumeAttachments {
+	return newVolumeAttachmentsWithMultiTenancy(c, "default")
+}
+
+func newVolumeAttachmentsWithMultiTenancy(c *StorageV1beta1Client, tenant string) *volumeAttachments {
 	return &volumeAttachments{
 		client: c.RESTClient(),
 		te:     tenant,

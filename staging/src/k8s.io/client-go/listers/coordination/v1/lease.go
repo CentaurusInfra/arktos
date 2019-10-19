@@ -30,7 +30,8 @@ type LeaseLister interface {
 	// List lists all Leases in the indexer.
 	List(selector labels.Selector) (ret []*v1.Lease, err error)
 	// Leases returns an object that can list and get Leases.
-	Leases(namespace string, optional_tenant ...string) LeaseNamespaceLister
+	Leases(namespace string) LeaseNamespaceLister
+	LeasesWithMultiTenancy(namespace string, tenant string) LeaseNamespaceLister
 	LeaseListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *leaseLister) List(selector labels.Selector) (ret []*v1.Lease, err error
 }
 
 // Leases returns an object that can list and get Leases.
-func (s *leaseLister) Leases(namespace string, optional_tenant ...string) LeaseNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *leaseLister) Leases(namespace string) LeaseNamespaceLister {
+	return leaseNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *leaseLister) LeasesWithMultiTenancy(namespace string, tenant string) LeaseNamespaceLister {
 	return leaseNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

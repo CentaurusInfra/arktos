@@ -28,51 +28,51 @@ type FakeExtensionsV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeExtensionsV1beta1) DaemonSets(namespace string, optional_tenant ...string) v1beta1.DaemonSetInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeExtensionsV1beta1) DaemonSets(namespace string) v1beta1.DaemonSetInterface {
+	return &FakeDaemonSets{c, namespace, "default"}
+}
+
+func (c *FakeExtensionsV1beta1) DaemonSetsWithMultiTenancy(namespace string, tenant string) v1beta1.DaemonSetInterface {
 	return &FakeDaemonSets{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) Deployments(namespace string, optional_tenant ...string) v1beta1.DeploymentInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeExtensionsV1beta1) Deployments(namespace string) v1beta1.DeploymentInterface {
+	return &FakeDeployments{c, namespace, "default"}
+}
+
+func (c *FakeExtensionsV1beta1) DeploymentsWithMultiTenancy(namespace string, tenant string) v1beta1.DeploymentInterface {
 	return &FakeDeployments{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) Ingresses(namespace string, optional_tenant ...string) v1beta1.IngressInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeExtensionsV1beta1) Ingresses(namespace string) v1beta1.IngressInterface {
+	return &FakeIngresses{c, namespace, "default"}
+}
+
+func (c *FakeExtensionsV1beta1) IngressesWithMultiTenancy(namespace string, tenant string) v1beta1.IngressInterface {
 	return &FakeIngresses{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) NetworkPolicies(namespace string, optional_tenant ...string) v1beta1.NetworkPolicyInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeExtensionsV1beta1) NetworkPolicies(namespace string) v1beta1.NetworkPolicyInterface {
+	return &FakeNetworkPolicies{c, namespace, "default"}
+}
+
+func (c *FakeExtensionsV1beta1) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) v1beta1.NetworkPolicyInterface {
 	return &FakeNetworkPolicies{c, namespace, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) PodSecurityPolicies(optional_tenant ...string) v1beta1.PodSecurityPolicyInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeExtensionsV1beta1) PodSecurityPolicies() v1beta1.PodSecurityPolicyInterface {
+	return &FakePodSecurityPolicies{c, "default"}
+}
+
+func (c *FakeExtensionsV1beta1) PodSecurityPoliciesWithMultiTenancy(tenant string) v1beta1.PodSecurityPolicyInterface {
 	return &FakePodSecurityPolicies{c, tenant}
 }
 
-func (c *FakeExtensionsV1beta1) ReplicaSets(namespace string, optional_tenant ...string) v1beta1.ReplicaSetInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeExtensionsV1beta1) ReplicaSets(namespace string) v1beta1.ReplicaSetInterface {
+	return &FakeReplicaSets{c, namespace, "default"}
+}
+
+func (c *FakeExtensionsV1beta1) ReplicaSetsWithMultiTenancy(namespace string, tenant string) v1beta1.ReplicaSetInterface {
 	return &FakeReplicaSets{c, namespace, tenant}
 }
 

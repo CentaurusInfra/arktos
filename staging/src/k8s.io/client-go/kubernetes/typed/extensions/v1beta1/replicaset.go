@@ -32,7 +32,8 @@ import (
 // ReplicaSetsGetter has a method to return a ReplicaSetInterface.
 // A group's client should implement this interface.
 type ReplicaSetsGetter interface {
-	ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetInterface
+	ReplicaSets(namespace string) ReplicaSetInterface
+	ReplicaSetsWithMultiTenancy(namespace string, tenant string) ReplicaSetInterface
 }
 
 // ReplicaSetInterface has methods to work with ReplicaSet resources.
@@ -60,12 +61,11 @@ type replicaSets struct {
 }
 
 // newReplicaSets returns a ReplicaSets
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newReplicaSets(c *ExtensionsV1beta1Client, namespace string, optional_tenant ...string) *replicaSets {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newReplicaSets(c *ExtensionsV1beta1Client, namespace string) *replicaSets {
+	return newReplicaSetsWithMultiTenancy(c, namespace, "default")
+}
+
+func newReplicaSetsWithMultiTenancy(c *ExtensionsV1beta1Client, namespace string, tenant string) *replicaSets {
 	return &replicaSets{
 		client: c.RESTClient(),
 		ns:     namespace,

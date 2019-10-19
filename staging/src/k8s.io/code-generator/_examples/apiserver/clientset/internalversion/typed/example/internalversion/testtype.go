@@ -32,7 +32,8 @@ import (
 // TestTypesGetter has a method to return a TestTypeInterface.
 // A group's client should implement this interface.
 type TestTypesGetter interface {
-	TestTypes(namespace string, optional_tenant ...string) TestTypeInterface
+	TestTypes(namespace string) TestTypeInterface
+	TestTypesWithMultiTenancy(namespace string, tenant string) TestTypeInterface
 }
 
 // TestTypeInterface has methods to work with TestType resources.
@@ -57,12 +58,11 @@ type testTypes struct {
 }
 
 // newTestTypes returns a TestTypes
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newTestTypes(c *ExampleClient, namespace string, optional_tenant ...string) *testTypes {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newTestTypes(c *ExampleClient, namespace string) *testTypes {
+	return newTestTypesWithMultiTenancy(c, namespace, "default")
+}
+
+func newTestTypesWithMultiTenancy(c *ExampleClient, namespace string, tenant string) *testTypes {
 	return &testTypes{
 		client: c.RESTClient(),
 		ns:     namespace,

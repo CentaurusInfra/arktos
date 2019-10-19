@@ -28,11 +28,11 @@ type FakeNetworkingV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeNetworkingV1beta1) Ingresses(namespace string, optional_tenant ...string) v1beta1.IngressInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeNetworkingV1beta1) Ingresses(namespace string) v1beta1.IngressInterface {
+	return &FakeIngresses{c, namespace, "default"}
+}
+
+func (c *FakeNetworkingV1beta1) IngressesWithMultiTenancy(namespace string, tenant string) v1beta1.IngressInterface {
 	return &FakeIngresses{c, namespace, tenant}
 }
 

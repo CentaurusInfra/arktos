@@ -30,7 +30,8 @@ type PodPresetLister interface {
 	// List lists all PodPresets in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.PodPreset, err error)
 	// PodPresets returns an object that can list and get PodPresets.
-	PodPresets(namespace string, optional_tenant ...string) PodPresetNamespaceLister
+	PodPresets(namespace string) PodPresetNamespaceLister
+	PodPresetsWithMultiTenancy(namespace string, tenant string) PodPresetNamespaceLister
 	PodPresetListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *podPresetLister) List(selector labels.Selector) (ret []*v1alpha1.PodPre
 }
 
 // PodPresets returns an object that can list and get PodPresets.
-func (s *podPresetLister) PodPresets(namespace string, optional_tenant ...string) PodPresetNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *podPresetLister) PodPresets(namespace string) PodPresetNamespaceLister {
+	return podPresetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *podPresetLister) PodPresetsWithMultiTenancy(namespace string, tenant string) PodPresetNamespaceLister {
 	return podPresetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

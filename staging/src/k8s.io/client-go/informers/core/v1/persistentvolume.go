@@ -47,32 +47,35 @@ type persistentVolumeInformer struct {
 // NewPersistentVolumeInformer constructs a new informer for PersistentVolume type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewPersistentVolumeInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
-	return NewFilteredPersistentVolumeInformer(client, resyncPeriod, indexers, nil, optional_tenant...)
+func NewPersistentVolumeInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredPersistentVolumeInformer(client, resyncPeriod, indexers, nil)
+}
+
+func NewPersistentVolumeInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
+	return NewFilteredPersistentVolumeInformerWithMultiTenancy(client, resyncPeriod, indexers, nil, tenant)
 }
 
 // NewFilteredPersistentVolumeInformer constructs a new informer for PersistentVolume type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredPersistentVolumeInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func NewFilteredPersistentVolumeInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+	return NewFilteredPersistentVolumeInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "default")
+}
 
+func NewFilteredPersistentVolumeInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1().PersistentVolumes(tenant).List(options)
+				return client.CoreV1().PersistentVolumesWithMultiTenancy(tenant).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1().PersistentVolumes(tenant).Watch(options)
+				return client.CoreV1().PersistentVolumesWithMultiTenancy(tenant).Watch(options)
 			},
 		},
 		&corev1.PersistentVolume{},
@@ -82,7 +85,7 @@ func NewFilteredPersistentVolumeInformer(client kubernetes.Interface, resyncPeri
 }
 
 func (f *persistentVolumeInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredPersistentVolumeInformer(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
+	return NewFilteredPersistentVolumeInformerWithMultiTenancy(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *persistentVolumeInformer) Informer() cache.SharedIndexInformer {

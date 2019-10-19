@@ -28,11 +28,11 @@ type FakeBatchV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeBatchV1) Jobs(namespace string, optional_tenant ...string) v1.JobInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeBatchV1) Jobs(namespace string) v1.JobInterface {
+	return &FakeJobs{c, namespace, "default"}
+}
+
+func (c *FakeBatchV1) JobsWithMultiTenancy(namespace string, tenant string) v1.JobInterface {
 	return &FakeJobs{c, namespace, tenant}
 }
 

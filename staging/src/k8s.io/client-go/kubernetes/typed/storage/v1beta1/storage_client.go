@@ -49,8 +49,12 @@ func (c *StorageV1beta1Client) StorageClasses() StorageClassInterface {
 	return newStorageClasses(c)
 }
 
-func (c *StorageV1beta1Client) VolumeAttachments(tenant ...string) VolumeAttachmentInterface {
-	return newVolumeAttachments(c, tenant...)
+func (c *StorageV1beta1Client) VolumeAttachments() VolumeAttachmentInterface {
+	return newVolumeAttachmentsWithMultiTenancy(c, "default")
+}
+
+func (c *StorageV1beta1Client) VolumeAttachmentsWithMultiTenancy(tenant string) VolumeAttachmentInterface {
+	return newVolumeAttachmentsWithMultiTenancy(c, tenant)
 }
 
 // NewForConfig creates a new StorageV1beta1Client for the given config.

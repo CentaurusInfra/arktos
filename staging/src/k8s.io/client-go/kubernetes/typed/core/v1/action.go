@@ -32,7 +32,8 @@ import (
 // ActionsGetter has a method to return a ActionInterface.
 // A group's client should implement this interface.
 type ActionsGetter interface {
-	Actions(namespace string, optional_tenant ...string) ActionInterface
+	Actions(namespace string) ActionInterface
+	ActionsWithMultiTenancy(namespace string, tenant string) ActionInterface
 }
 
 // ActionInterface has methods to work with Action resources.
@@ -57,12 +58,11 @@ type actions struct {
 }
 
 // newActions returns a Actions
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newActions(c *CoreV1Client, namespace string, optional_tenant ...string) *actions {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newActions(c *CoreV1Client, namespace string) *actions {
+	return newActionsWithMultiTenancy(c, namespace, "default")
+}
+
+func newActionsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *actions {
 	return &actions{
 		client: c.RESTClient(),
 		ns:     namespace,

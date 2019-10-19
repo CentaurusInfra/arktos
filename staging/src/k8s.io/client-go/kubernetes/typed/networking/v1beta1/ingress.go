@@ -32,7 +32,8 @@ import (
 // IngressesGetter has a method to return a IngressInterface.
 // A group's client should implement this interface.
 type IngressesGetter interface {
-	Ingresses(namespace string, optional_tenant ...string) IngressInterface
+	Ingresses(namespace string) IngressInterface
+	IngressesWithMultiTenancy(namespace string, tenant string) IngressInterface
 }
 
 // IngressInterface has methods to work with Ingress resources.
@@ -57,12 +58,11 @@ type ingresses struct {
 }
 
 // newIngresses returns a Ingresses
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newIngresses(c *NetworkingV1beta1Client, namespace string, optional_tenant ...string) *ingresses {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newIngresses(c *NetworkingV1beta1Client, namespace string) *ingresses {
+	return newIngressesWithMultiTenancy(c, namespace, "default")
+}
+
+func newIngressesWithMultiTenancy(c *NetworkingV1beta1Client, namespace string, tenant string) *ingresses {
 	return &ingresses{
 		client: c.RESTClient(),
 		ns:     namespace,

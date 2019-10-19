@@ -28,11 +28,11 @@ type FakeBatchV2alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeBatchV2alpha1) CronJobs(namespace string, optional_tenant ...string) v2alpha1.CronJobInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeBatchV2alpha1) CronJobs(namespace string) v2alpha1.CronJobInterface {
+	return &FakeCronJobs{c, namespace, "default"}
+}
+
+func (c *FakeBatchV2alpha1) CronJobsWithMultiTenancy(namespace string, tenant string) v2alpha1.CronJobInterface {
 	return &FakeCronJobs{c, namespace, tenant}
 }
 

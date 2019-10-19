@@ -30,7 +30,8 @@ type ExampleLister interface {
 	// List lists all Examples in the indexer.
 	List(selector labels.Selector) (ret []*v1.Example, err error)
 	// Examples returns an object that can list and get Examples.
-	Examples(namespace string, optional_tenant ...string) ExampleNamespaceLister
+	Examples(namespace string) ExampleNamespaceLister
+	ExamplesWithMultiTenancy(namespace string, tenant string) ExampleNamespaceLister
 	ExampleListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *exampleLister) List(selector labels.Selector) (ret []*v1.Example, err e
 }
 
 // Examples returns an object that can list and get Examples.
-func (s *exampleLister) Examples(namespace string, optional_tenant ...string) ExampleNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *exampleLister) Examples(namespace string) ExampleNamespaceLister {
+	return exampleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *exampleLister) ExamplesWithMultiTenancy(namespace string, tenant string) ExampleNamespaceLister {
 	return exampleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

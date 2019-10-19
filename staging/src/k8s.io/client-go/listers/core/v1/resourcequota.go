@@ -30,7 +30,8 @@ type ResourceQuotaLister interface {
 	// List lists all ResourceQuotas in the indexer.
 	List(selector labels.Selector) (ret []*v1.ResourceQuota, err error)
 	// ResourceQuotas returns an object that can list and get ResourceQuotas.
-	ResourceQuotas(namespace string, optional_tenant ...string) ResourceQuotaNamespaceLister
+	ResourceQuotas(namespace string) ResourceQuotaNamespaceLister
+	ResourceQuotasWithMultiTenancy(namespace string, tenant string) ResourceQuotaNamespaceLister
 	ResourceQuotaListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *resourceQuotaLister) List(selector labels.Selector) (ret []*v1.Resource
 }
 
 // ResourceQuotas returns an object that can list and get ResourceQuotas.
-func (s *resourceQuotaLister) ResourceQuotas(namespace string, optional_tenant ...string) ResourceQuotaNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *resourceQuotaLister) ResourceQuotas(namespace string) ResourceQuotaNamespaceLister {
+	return resourceQuotaNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *resourceQuotaLister) ResourceQuotasWithMultiTenancy(namespace string, tenant string) ResourceQuotaNamespaceLister {
 	return resourceQuotaNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

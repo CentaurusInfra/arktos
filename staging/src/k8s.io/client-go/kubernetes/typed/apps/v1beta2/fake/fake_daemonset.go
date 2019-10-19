@@ -42,7 +42,7 @@ var daemonsetsKind = schema.GroupVersionKind{Group: "apps", Version: "v1beta2", 
 // Get takes name of the daemonSet, and returns the corresponding daemonSet object, and an error if there is any.
 func (c *FakeDaemonSets) Get(name string, options v1.GetOptions) (result *v1beta2.DaemonSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(daemonsetsResource, c.ns, name, c.te), &v1beta2.DaemonSet{})
+		Invokes(testing.NewGetActionWithMultiTenancy(daemonsetsResource, c.ns, name, c.te), &v1beta2.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *FakeDaemonSets) Get(name string, options v1.GetOptions) (result *v1beta
 // List takes label and field selectors, and returns the list of DaemonSets that match those selectors.
 func (c *FakeDaemonSets) List(opts v1.ListOptions) (result *v1beta2.DaemonSetList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(daemonsetsResource, daemonsetsKind, c.ns, opts, c.te), &v1beta2.DaemonSetList{})
+		Invokes(testing.NewListActionWithMultiTenancy(daemonsetsResource, daemonsetsKind, c.ns, opts, c.te), &v1beta2.DaemonSetList{})
 
 	if obj == nil {
 		return nil, err
@@ -76,14 +76,14 @@ func (c *FakeDaemonSets) List(opts v1.ListOptions) (result *v1beta2.DaemonSetLis
 // Watch returns a watch.Interface that watches the requested daemonSets.
 func (c *FakeDaemonSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(daemonsetsResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(daemonsetsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a daemonSet and creates it.  Returns the server's representation of the daemonSet, and an error, if there is any.
 func (c *FakeDaemonSets) Create(daemonSet *v1beta2.DaemonSet) (result *v1beta2.DaemonSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(daemonsetsResource, c.ns, daemonSet, c.te), &v1beta2.DaemonSet{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(daemonsetsResource, c.ns, daemonSet, c.te), &v1beta2.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *FakeDaemonSets) Create(daemonSet *v1beta2.DaemonSet) (result *v1beta2.D
 // Update takes the representation of a daemonSet and updates it. Returns the server's representation of the daemonSet, and an error, if there is any.
 func (c *FakeDaemonSets) Update(daemonSet *v1beta2.DaemonSet) (result *v1beta2.DaemonSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(daemonsetsResource, c.ns, daemonSet, c.te), &v1beta2.DaemonSet{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(daemonsetsResource, c.ns, daemonSet, c.te), &v1beta2.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *FakeDaemonSets) Update(daemonSet *v1beta2.DaemonSet) (result *v1beta2.D
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeDaemonSets) UpdateStatus(daemonSet *v1beta2.DaemonSet) (*v1beta2.DaemonSet, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(daemonsetsResource, "status", c.ns, daemonSet, c.te), &v1beta2.DaemonSet{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(daemonsetsResource, "status", c.ns, daemonSet, c.te), &v1beta2.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -119,14 +119,14 @@ func (c *FakeDaemonSets) UpdateStatus(daemonSet *v1beta2.DaemonSet) (*v1beta2.Da
 // Delete takes name of the daemonSet and deletes it. Returns an error if one occurs.
 func (c *FakeDaemonSets) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(daemonsetsResource, c.ns, name, c.te), &v1beta2.DaemonSet{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(daemonsetsResource, c.ns, name, c.te), &v1beta2.DaemonSet{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeDaemonSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(daemonsetsResource, c.ns, listOptions, c.te)
+	action := testing.NewDeleteCollectionActionWithMultiTenancy(daemonsetsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta2.DaemonSetList{})
 	return err
@@ -135,7 +135,7 @@ func (c *FakeDaemonSets) DeleteCollection(options *v1.DeleteOptions, listOptions
 // Patch applies the patch and returns the patched daemonSet.
 func (c *FakeDaemonSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.DaemonSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(daemonsetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta2.DaemonSet{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(daemonsetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta2.DaemonSet{})
 
 	if obj == nil {
 		return nil, err

@@ -48,32 +48,35 @@ type endpointsInformer struct {
 // NewEndpointsInformer constructs a new informer for Endpoints type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewEndpointsInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
-	return NewFilteredEndpointsInformer(client, namespace, resyncPeriod, indexers, nil, optional_tenant...)
+func NewEndpointsInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredEndpointsInformer(client, namespace, resyncPeriod, indexers, nil)
+}
+
+func NewEndpointsInformerWithMultiTenancy(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
+	return NewFilteredEndpointsInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, nil, tenant)
 }
 
 // NewFilteredEndpointsInformer constructs a new informer for Endpoints type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredEndpointsInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func NewFilteredEndpointsInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+	return NewFilteredEndpointsInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, tweakListOptions, "default")
+}
 
+func NewFilteredEndpointsInformerWithMultiTenancy(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1().Endpoints(namespace, tenant).List(options)
+				return client.CoreV1().EndpointsWithMultiTenancy(namespace, tenant).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1().Endpoints(namespace, tenant).Watch(options)
+				return client.CoreV1().EndpointsWithMultiTenancy(namespace, tenant).Watch(options)
 			},
 		},
 		&corev1.Endpoints{},
@@ -83,7 +86,7 @@ func NewFilteredEndpointsInformer(client kubernetes.Interface, namespace string,
 }
 
 func (f *endpointsInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredEndpointsInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions, f.tenant)
+	return NewFilteredEndpointsInformerWithMultiTenancy(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *endpointsInformer) Informer() cache.SharedIndexInformer {

@@ -30,7 +30,8 @@ type ConfigMapLister interface {
 	// List lists all ConfigMaps in the indexer.
 	List(selector labels.Selector) (ret []*v1.ConfigMap, err error)
 	// ConfigMaps returns an object that can list and get ConfigMaps.
-	ConfigMaps(namespace string, optional_tenant ...string) ConfigMapNamespaceLister
+	ConfigMaps(namespace string) ConfigMapNamespaceLister
+	ConfigMapsWithMultiTenancy(namespace string, tenant string) ConfigMapNamespaceLister
 	ConfigMapListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *configMapLister) List(selector labels.Selector) (ret []*v1.ConfigMap, e
 }
 
 // ConfigMaps returns an object that can list and get ConfigMaps.
-func (s *configMapLister) ConfigMaps(namespace string, optional_tenant ...string) ConfigMapNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *configMapLister) ConfigMaps(namespace string) ConfigMapNamespaceLister {
+	return configMapNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *configMapLister) ConfigMapsWithMultiTenancy(namespace string, tenant string) ConfigMapNamespaceLister {
 	return configMapNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

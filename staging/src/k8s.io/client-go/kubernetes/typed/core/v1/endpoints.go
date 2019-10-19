@@ -32,7 +32,8 @@ import (
 // EndpointsGetter has a method to return a EndpointsInterface.
 // A group's client should implement this interface.
 type EndpointsGetter interface {
-	Endpoints(namespace string, optional_tenant ...string) EndpointsInterface
+	Endpoints(namespace string) EndpointsInterface
+	EndpointsWithMultiTenancy(namespace string, tenant string) EndpointsInterface
 }
 
 // EndpointsInterface has methods to work with Endpoints resources.
@@ -56,12 +57,11 @@ type endpoints struct {
 }
 
 // newEndpoints returns a Endpoints
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newEndpoints(c *CoreV1Client, namespace string, optional_tenant ...string) *endpoints {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newEndpoints(c *CoreV1Client, namespace string) *endpoints {
+	return newEndpointsWithMultiTenancy(c, namespace, "default")
+}
+
+func newEndpointsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *endpoints {
 	return &endpoints{
 		client: c.RESTClient(),
 		ns:     namespace,

@@ -30,7 +30,8 @@ type LimitRangeLister interface {
 	// List lists all LimitRanges in the indexer.
 	List(selector labels.Selector) (ret []*v1.LimitRange, err error)
 	// LimitRanges returns an object that can list and get LimitRanges.
-	LimitRanges(namespace string, optional_tenant ...string) LimitRangeNamespaceLister
+	LimitRanges(namespace string) LimitRangeNamespaceLister
+	LimitRangesWithMultiTenancy(namespace string, tenant string) LimitRangeNamespaceLister
 	LimitRangeListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *limitRangeLister) List(selector labels.Selector) (ret []*v1.LimitRange,
 }
 
 // LimitRanges returns an object that can list and get LimitRanges.
-func (s *limitRangeLister) LimitRanges(namespace string, optional_tenant ...string) LimitRangeNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *limitRangeLister) LimitRanges(namespace string) LimitRangeNamespaceLister {
+	return limitRangeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *limitRangeLister) LimitRangesWithMultiTenancy(namespace string, tenant string) LimitRangeNamespaceLister {
 	return limitRangeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

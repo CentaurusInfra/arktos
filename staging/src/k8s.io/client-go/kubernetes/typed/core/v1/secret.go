@@ -32,7 +32,8 @@ import (
 // SecretsGetter has a method to return a SecretInterface.
 // A group's client should implement this interface.
 type SecretsGetter interface {
-	Secrets(namespace string, optional_tenant ...string) SecretInterface
+	Secrets(namespace string) SecretInterface
+	SecretsWithMultiTenancy(namespace string, tenant string) SecretInterface
 }
 
 // SecretInterface has methods to work with Secret resources.
@@ -56,12 +57,11 @@ type secrets struct {
 }
 
 // newSecrets returns a Secrets
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newSecrets(c *CoreV1Client, namespace string, optional_tenant ...string) *secrets {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newSecrets(c *CoreV1Client, namespace string) *secrets {
+	return newSecretsWithMultiTenancy(c, namespace, "default")
+}
+
+func newSecretsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *secrets {
 	return &secrets{
 		client: c.RESTClient(),
 		ns:     namespace,

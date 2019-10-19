@@ -30,7 +30,8 @@ type TokenReviewLister interface {
 	// List lists all TokenReviews in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.TokenReview, err error)
 	// TokenReviews returns an object that can list and get TokenReviews.
-	TokenReviews(optional_tenant ...string) TokenReviewTenantLister
+	TokenReviews() TokenReviewTenantLister
+	TokenReviewsWithMultiTenancy(tenant string) TokenReviewTenantLister
 	// Get retrieves the TokenReview from the index for a given name.
 	Get(name string) (*v1beta1.TokenReview, error)
 	TokenReviewListerExpansion
@@ -67,11 +68,11 @@ func (s *tokenReviewLister) Get(name string) (*v1beta1.TokenReview, error) {
 }
 
 // TokenReviews returns an object that can list and get TokenReviews.
-func (s *tokenReviewLister) TokenReviews(optional_tenant ...string) TokenReviewTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *tokenReviewLister) TokenReviews() TokenReviewTenantLister {
+	return tokenReviewTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *tokenReviewLister) TokenReviewsWithMultiTenancy(tenant string) TokenReviewTenantLister {
 	return tokenReviewTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

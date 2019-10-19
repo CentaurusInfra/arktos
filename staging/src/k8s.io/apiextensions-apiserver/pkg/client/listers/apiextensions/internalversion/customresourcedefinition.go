@@ -30,7 +30,8 @@ type CustomResourceDefinitionLister interface {
 	// List lists all CustomResourceDefinitions in the indexer.
 	List(selector labels.Selector) (ret []*apiextensions.CustomResourceDefinition, err error)
 	// CustomResourceDefinitions returns an object that can list and get CustomResourceDefinitions.
-	CustomResourceDefinitions(optional_tenant ...string) CustomResourceDefinitionTenantLister
+	CustomResourceDefinitions() CustomResourceDefinitionTenantLister
+	CustomResourceDefinitionsWithMultiTenancy(tenant string) CustomResourceDefinitionTenantLister
 	// Get retrieves the CustomResourceDefinition from the index for a given name.
 	Get(name string) (*apiextensions.CustomResourceDefinition, error)
 	CustomResourceDefinitionListerExpansion
@@ -67,11 +68,11 @@ func (s *customResourceDefinitionLister) Get(name string) (*apiextensions.Custom
 }
 
 // CustomResourceDefinitions returns an object that can list and get CustomResourceDefinitions.
-func (s *customResourceDefinitionLister) CustomResourceDefinitions(optional_tenant ...string) CustomResourceDefinitionTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *customResourceDefinitionLister) CustomResourceDefinitions() CustomResourceDefinitionTenantLister {
+	return customResourceDefinitionTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *customResourceDefinitionLister) CustomResourceDefinitionsWithMultiTenancy(tenant string) CustomResourceDefinitionTenantLister {
 	return customResourceDefinitionTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

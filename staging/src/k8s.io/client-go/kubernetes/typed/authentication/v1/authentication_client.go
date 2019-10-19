@@ -34,8 +34,12 @@ type AuthenticationV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AuthenticationV1Client) TokenReviews(tenant ...string) TokenReviewInterface {
-	return newTokenReviews(c, tenant...)
+func (c *AuthenticationV1Client) TokenReviews() TokenReviewInterface {
+	return newTokenReviewsWithMultiTenancy(c, "default")
+}
+
+func (c *AuthenticationV1Client) TokenReviewsWithMultiTenancy(tenant string) TokenReviewInterface {
+	return newTokenReviewsWithMultiTenancy(c, tenant)
 }
 
 // NewForConfig creates a new AuthenticationV1Client for the given config.

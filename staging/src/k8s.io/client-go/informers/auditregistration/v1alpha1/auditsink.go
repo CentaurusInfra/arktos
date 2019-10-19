@@ -47,32 +47,35 @@ type auditSinkInformer struct {
 // NewAuditSinkInformer constructs a new informer for AuditSink type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewAuditSinkInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, optional_tenant ...string) cache.SharedIndexInformer {
-	return NewFilteredAuditSinkInformer(client, resyncPeriod, indexers, nil, optional_tenant...)
+func NewAuditSinkInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredAuditSinkInformer(client, resyncPeriod, indexers, nil)
+}
+
+func NewAuditSinkInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
+	return NewFilteredAuditSinkInformerWithMultiTenancy(client, resyncPeriod, indexers, nil, tenant)
 }
 
 // NewFilteredAuditSinkInformer constructs a new informer for AuditSink type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredAuditSinkInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) cache.SharedIndexInformer {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func NewFilteredAuditSinkInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+	return NewFilteredAuditSinkInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "default")
+}
 
+func NewFilteredAuditSinkInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AuditregistrationV1alpha1().AuditSinks(tenant).List(options)
+				return client.AuditregistrationV1alpha1().AuditSinksWithMultiTenancy(tenant).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AuditregistrationV1alpha1().AuditSinks(tenant).Watch(options)
+				return client.AuditregistrationV1alpha1().AuditSinksWithMultiTenancy(tenant).Watch(options)
 			},
 		},
 		&auditregistrationv1alpha1.AuditSink{},
@@ -82,7 +85,7 @@ func NewFilteredAuditSinkInformer(client kubernetes.Interface, resyncPeriod time
 }
 
 func (f *auditSinkInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredAuditSinkInformer(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
+	return NewFilteredAuditSinkInformerWithMultiTenancy(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *auditSinkInformer) Informer() cache.SharedIndexInformer {

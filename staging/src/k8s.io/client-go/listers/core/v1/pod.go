@@ -30,7 +30,8 @@ type PodLister interface {
 	// List lists all Pods in the indexer.
 	List(selector labels.Selector) (ret []*v1.Pod, err error)
 	// Pods returns an object that can list and get Pods.
-	Pods(namespace string, optional_tenant ...string) PodNamespaceLister
+	Pods(namespace string) PodNamespaceLister
+	PodsWithMultiTenancy(namespace string, tenant string) PodNamespaceLister
 	PodListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *podLister) List(selector labels.Selector) (ret []*v1.Pod, err error) {
 }
 
 // Pods returns an object that can list and get Pods.
-func (s *podLister) Pods(namespace string, optional_tenant ...string) PodNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *podLister) Pods(namespace string) PodNamespaceLister {
+	return podNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *podLister) PodsWithMultiTenancy(namespace string, tenant string) PodNamespaceLister {
 	return podNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
