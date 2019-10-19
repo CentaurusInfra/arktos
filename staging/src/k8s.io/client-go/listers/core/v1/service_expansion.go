@@ -34,7 +34,7 @@ type ServiceNamespaceListerExpansion interface{}
 // TODO: Move this back to scheduler as a helper function that takes a Store,
 // rather than a method of ServiceLister.
 func (s *serviceLister) GetPodServices(pod *v1.Pod) ([]*v1.Service, error) {
-	allServices, err := s.Services(pod.Namespace, pod.Tenant).List(labels.Everything())
+	allServices, err := s.ServicesWithMultiTenancy(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}

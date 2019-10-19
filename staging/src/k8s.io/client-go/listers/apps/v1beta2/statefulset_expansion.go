@@ -46,7 +46,7 @@ func (s *statefulSetLister) GetPodStatefulSets(pod *v1.Pod) ([]*apps.StatefulSet
 		return nil, fmt.Errorf("no StatefulSets found for pod %v because it has no labels", pod.Name)
 	}
 
-	list, err := s.StatefulSets(pod.Namespace, pod.Tenant).List(labels.Everything())
+	list, err := s.StatefulSetsWithMultiTenancy(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}

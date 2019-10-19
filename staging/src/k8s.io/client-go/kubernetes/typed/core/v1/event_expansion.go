@@ -38,7 +38,8 @@ type EventExpansion interface {
 	Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v1.EventList, error)
 	// Returns the appropriate field selector based on the API version being used to communicate with the server.
 	// The returned field selector can be used with List and Watch to filter desired events.
-	GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant ...string) fields.Selector
+	GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector
+	GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant string) fields.Selector
 }
 
 // CreateWithEventNamespace makes a new event. Returns the copy of the event the server returns,
@@ -136,17 +137,17 @@ func (e *events) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v1.Ev
 
 // Returns the appropriate field selector based on the API version being used to communicate with the server.
 // The returned field selector can be used with List and Watch to filter desired events.
-func (e *events) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant ...string) fields.Selector {
+func (e *events) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector {
+	return e.GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID, v1.TenantDefault)
+}
+func (e *events) GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant string) fields.Selector {
 	apiVersion := e.client.APIVersion().String()
 	field := fields.Set{}
 	if involvedObjectName != nil {
 		field[GetInvolvedObjectNameFieldLabel(apiVersion)] = *involvedObjectName
 	}
-	if len(involvedObjectTenant) > 0 {
-		field["involvedObject.tenant"] = involvedObjectTenant[0]
-	} else {
-		field["involvedObject.tenant"] = "default"
-	}
+	field["involvedObject.tenant"] = involvedObjectTenant
+
 	if involvedObjectNamespace != nil {
 		field["involvedObject.namespace"] = *involvedObjectNamespace
 	}

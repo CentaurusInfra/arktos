@@ -47,7 +47,7 @@ func (s *daemonSetLister) GetPodDaemonSets(pod *v1.Pod) ([]*apps.DaemonSet, erro
 		return nil, fmt.Errorf("no daemon sets found for pod %v because it has no labels", pod.Name)
 	}
 
-	list, err := s.DaemonSets(pod.Namespace, pod.Tenant).List(labels.Everything())
+	list, err := s.DaemonSetsWithMultiTenancy(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (s *daemonSetLister) GetHistoryDaemonSets(history *apps.ControllerRevision)
 		return nil, fmt.Errorf("no DaemonSet found for ControllerRevision %s because it has no labels", history.Name)
 	}
 
-	list, err := s.DaemonSets(history.Namespace, history.Tenant).List(labels.Everything())
+	list, err := s.DaemonSetsWithMultiTenancy(history.Namespace, history.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
