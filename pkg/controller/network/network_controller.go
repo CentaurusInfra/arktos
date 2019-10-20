@@ -28,6 +28,9 @@ package network
 
 import (
 	"fmt"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -39,6 +42,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/controller"
+	"os"
 	"time"
 
 	"k8s.io/klog"
@@ -138,6 +142,32 @@ func (nc *NetworkController) createPort(obj interface{}) {
 
 // When a pod is updated.
 func (nc *NetworkController) updatePort(old, cur interface{}) {
+
+	new := cur.(*v1.Pod)
+	prev := old.(*v1.Pod)
+	needCreate := false
+	needUpdate := false
+
+	if new.Spec.NodeName != prev.Spec.NodeName {
+		needUpdate = true
+	}
+
+	pod := new.DeepCopy()
+	for _, nic := range new.Spec.Nics {
+		if nic.PortId == "" {
+			// create port : pod.Spec.Nics[index].PortId
+			needCreate = true
+		} else if needUpdate {
+			// update port
+		}
+	}
+
+	if needUpdate || needCreate {
+		_, err := nc.kubeClient.CoreV1().Pods(pod.Namespace).Update(pod)
+		if err != nil {
+			klog.Error("Network-controller update error (%v).", err)
+		}
+	}
 }
 
 // When a pod is deleted, delete .
