@@ -30,6 +30,10 @@ import (
 	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsbinding"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -152,10 +156,12 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 		needUpdate = true
 	}
 
+	client := GetOpenstackClient()
 	pod := new.DeepCopy()
-	for _, nic := range new.Spec.Nics {
+	for i, nic := range pod.Spec.Nics {
 		if nic.PortId == "" {
 			// create port : pod.Spec.Nics[index].PortId
+			pod.Spec.Nics[i].PortId = CreatePort(client, pod.Spec.VPC, nic.SubnetName, pod.Spec.NodeName)
 			needCreate = true
 		} else if needUpdate {
 			// update port
@@ -199,4 +205,60 @@ func (nc *NetworkController) syncPod(key string) error {
 	klog.Infof("Network-controller - list all pod %#v.", allPods)
 
 	return err
+}
+
+func GetOpenstackClient() *gophercloud.ProviderClient{
+	opts := gophercloud.AuthOptions{
+		IdentityEndpoint: os.Getenv("IdentityEndpoint"), 	//"http://192.168.113.135/identity/v3",
+		Username:         os.Getenv("Username"), 			//"admin",
+		Password:         os.Getenv("Password"),			//openstack password
+		DomainName:       os.Getenv("DomainName"),			//"default",
+		TenantName:       os.Getenv("TenantName"),			//"demo",
+	}
+
+	provider, err := openstack.AuthenticatedClient(opts)
+	if err != nil {
+		klog.Errorf("Network controller AuthenticatedClient : (%v)" , err)
+		return nil
+	}
+
+	return provider
+}
+
+func CreatePort(provider *gophercloud.ProviderClient, vpc string, subnetname string, nodeID string) string {
+	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
+		Region: os.Getenv("Region"),}) //"RegionOne"
+	if err != nil {
+		klog.Error(err)
+	}
+
+	networkid, err := networks.IDFromName(client, vpc)
+	if err != nil {
+		klog.Error(err)
+		return ""
+	}
+	subnetid, err := subnets.IDFromName(client, subnetname)
+	if err != nil {
+		klog.Error(err)
+		return ""
+	}
+	createOpts := ports.CreateOpts{
+		NetworkID:    networkid,
+		FixedIPs: []ports.IP{
+			{SubnetID: subnetid},
+		},
+	}
+
+	bindingCreateOpts := portsbinding.CreateOptsExt{
+		CreateOptsBuilder: createOpts,
+		HostID:            nodeID,
+	}
+
+	port, err := ports.Create(client, bindingCreateOpts).Extract()
+	if err != nil {
+		klog.Error(err)
+		return ""
+	}
+
+	return port.ID
 }
