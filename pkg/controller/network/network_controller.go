@@ -170,8 +170,15 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 	}
 }
 
-// When a pod is deleted, delete .
+// When a pod is deleted, delete ports.
 func (nc *NetworkController) deletePort(obj interface{}) {
+	pod := obj.(*v1.Pod)
+
+	for _, nic := range pod.Spec.Nics {
+		if nic.PortId != "" {
+			// delete port : pod.Spec.Nics[index].PortId
+		}
+	}
 }
 
 func (nc *NetworkController) syncPod(key string) error {
