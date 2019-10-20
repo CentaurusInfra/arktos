@@ -179,10 +179,12 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 // When a pod is deleted, delete ports.
 func (nc *NetworkController) deletePort(obj interface{}) {
 	pod := obj.(*v1.Pod)
+	client := GetOpenstackClient()
 
-	for _, nic := range pod.Spec.Nics {
+	for index, nic := range pod.Spec.Nics {
 		if nic.PortId != "" {
 			// delete port : pod.Spec.Nics[index].PortId
+			DeletePort(client, pod.Spec.Nics[index].PortId)
 		}
 	}
 }
@@ -261,4 +263,17 @@ func CreatePort(provider *gophercloud.ProviderClient, vpc string, subnetname str
 	}
 
 	return port.ID
+}
+
+func DeletePort(provider *gophercloud.ProviderClient, portID string) {
+	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
+		Region: os.Getenv("Region"),}) //"RegionOne"
+	if err != nil {
+		klog.Error(err)
+	}
+
+	err = ports.Delete(client, portID).ExtractErr()
+	if err != nil {
+		klog.Error(err)
+	}
 }
