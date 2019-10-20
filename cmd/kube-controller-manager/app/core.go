@@ -61,6 +61,7 @@ import (
 	"k8s.io/kubernetes/pkg/quota/v1/generic"
 	quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
 	"k8s.io/kubernetes/pkg/util/metrics"
+	networkcontroller "k8s.io/kubernetes/pkg/controller/network"
 )
 
 func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -446,5 +447,15 @@ func startTTLAfterFinishedController(ctx ControllerContext) (http.Handler, bool,
 		ctx.InformerFactory.Batch().V1().Jobs(),
 		ctx.ClientBuilder.ClientOrDie("ttl-after-finished-controller"),
 	).Run(int(ctx.ComponentConfig.TTLAfterFinishedController.ConcurrentTTLSyncs), ctx.Stop)
+	return nil, true, nil
+}
+
+func startNetworkController(ctx ControllerContext) (http.Handler, bool, error) {
+	klog.V(2).Infof("Starting start %v controller", "network-controller")
+
+	go networkcontroller.NewNetworkController(
+		ctx.InformerFactory.Core().V1().Pods(),
+		ctx.ClientBuilder.ClientOrDie("network-controller"),
+	).Run(1, ctx.Stop)
 	return nil, true, nil
 }
