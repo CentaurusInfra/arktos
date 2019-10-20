@@ -146,7 +146,6 @@ func (nc *NetworkController) createPort(obj interface{}) {
 
 // When a pod is updated.
 func (nc *NetworkController) updatePort(old, cur interface{}) {
-
 	new := cur.(*v1.Pod)
 	prev := old.(*v1.Pod)
 	needCreate := false
@@ -164,7 +163,8 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 			pod.Spec.Nics[i].PortId = CreatePort(client, pod.Spec.VPC, nic.SubnetName, pod.Spec.NodeName)
 			needCreate = true
 		} else if needUpdate {
-			// update port
+			// update port binding host only
+			UpdatePort(client, pod.Spec.Nics[i].PortId, new.Spec.NodeName)
 		}
 	}
 
@@ -273,6 +273,27 @@ func DeletePort(provider *gophercloud.ProviderClient, portID string) {
 	}
 
 	err = ports.Delete(client, portID).ExtractErr()
+	if err != nil {
+		klog.Error(err)
+	}
+}
+
+func UpdatePort(provider *gophercloud.ProviderClient, portID string, hostID string)  {
+	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
+		Region: "RegionOne",})
+	if err != nil {
+		klog.Error(err)
+	}
+
+	portUpdateOpts := ports.UpdateOpts{
+	}
+
+	updateOpts := portsbinding.UpdateOptsExt{
+		UpdateOptsBuilder: portUpdateOpts,
+		HostID:            hostID,
+	}
+
+	_, err = ports.Update(client, portID, updateOpts).Extract()
 	if err != nil {
 		klog.Error(err)
 	}
