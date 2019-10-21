@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ Lister = &dynamicLister{}
@@ -81,7 +83,7 @@ func (l *dynamicTenantLister) List(selector labels.Selector) (ret []*unstructure
 // Get retrieves a resource from the indexer for a given tenant and name.
 func (l *dynamicTenantLister) Get(name string) (*unstructured.Unstructured, error) {
 	key := l.tenant + "/" + name
-	if l.tenant == "default" {
+	if l.tenant == metav1.TenantDefault {
 		key = name
 	}
 	obj, exists, err := l.indexer.GetByKey(key)
@@ -96,7 +98,7 @@ func (l *dynamicTenantLister) Get(name string) (*unstructured.Unstructured, erro
 
 // Namespace returns an object that can list and get resources from a given namespace.
 func (l *dynamicLister) Namespace(namespace string) NamespaceLister {
-	return &dynamicNamespaceLister{indexer: l.indexer, tenant: "default", namespace: namespace, gvr: l.gvr}
+	return &dynamicNamespaceLister{indexer: l.indexer, tenant: metav1.TenantDefault, namespace: namespace, gvr: l.gvr}
 }
 
 func (l *dynamicLister) NamespaceWithMultiTenancy(namespace string, tenant string) NamespaceLister {
@@ -122,7 +124,7 @@ func (l *dynamicNamespaceLister) List(selector labels.Selector) (ret []*unstruct
 // Get retrieves a resource from the indexer for a given namespace and name.
 func (l *dynamicNamespaceLister) Get(name string) (*unstructured.Unstructured, error) {
 	key := l.tenant + "/" + l.namespace + "/" + name
-	if l.tenant == "default" {
+	if l.tenant == metav1.TenantDefault {
 		key = l.namespace + "/" + name
 	}
 	obj, exists, err := l.indexer.GetByKey(key)

@@ -147,7 +147,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20171111001504-be1fbeda1936 // indirect
 	github.com/vmware/govmomi v0.20.1
 	github.com/xlab/handysort v0.0.0-20150421192137-fb3537ed64a1 // indirect
-	golang.org/x/crypto v0.0.0-20181025213731-e84da0312774
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/lint v0.0.0-20181217174547-8f45f776aaf1
 	golang.org/x/net v0.0.0-20190206173232-65e2d4e15006
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
@@ -159,7 +159,7 @@ require (
 	google.golang.org/grpc v1.13.0
 	gopkg.in/gcfg.v1 v1.2.0
 	gopkg.in/square/go-jose.v2 v2.0.0-20180411045311-89060dee6a84
-	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0
 	k8s.io/apiextensions-apiserver v0.0.0
 	k8s.io/apimachinery v0.0.0
