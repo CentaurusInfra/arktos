@@ -26,7 +26,7 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
-	"k8s.io/kubernetes/pkg/apis/core"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // groupInterfaceGenerator generates the per-group interface file.
@@ -84,7 +84,7 @@ func (g *groupInterfaceGenerator) GenerateType(c *generator.Context, t *types.Ty
 		"interfacesTweakListOptionsFunc":  c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "TweakListOptionsFunc"}),
 		"interfacesSharedInformerFactory": c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "SharedInformerFactory"}),
 		"versions":                        versions,
-		"DefaultTenant":                   core.TenantDefault,
+		"DefaultTenant":                   metav1.TenantDefault,
 	}
 
 	sw.Do(groupTemplate, m)

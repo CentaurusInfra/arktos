@@ -24,8 +24,8 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
-	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // versionInterfaceGenerator generates the per-version interface file.
@@ -66,7 +66,7 @@ func (g *versionInterfaceGenerator) GenerateType(c *generator.Context, t *types.
 		"interfacesTweakListOptionsFunc":  c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "TweakListOptionsFunc"}),
 		"interfacesSharedInformerFactory": c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "SharedInformerFactory"}),
 		"types":                           g.types,
-		"DefaultTenant":                   core.TenantDefault,
+		"DefaultTenant":                   metav1.TenantDefault,
 	}
 
 	sw.Do(versionTemplate, m)

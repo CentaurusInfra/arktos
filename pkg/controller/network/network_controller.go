@@ -74,14 +74,14 @@ func NewNetworkController(podInformer coreinformers.PodInformer, kubeClient clie
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	nc := &NetworkController{
-		kubeClient:       kubeClient,
-		podLister:        podInformer.Lister(),
-		podListerSynced:  podInformer.Informer().HasSynced,
-		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "network"),
+		kubeClient:      kubeClient,
+		podLister:       podInformer.Lister(),
+		podListerSynced: podInformer.Informer().HasSynced,
+		queue:           workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "network"),
 	}
 
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: nc.createPort,
+		AddFunc:    nc.createPort,
 		UpdateFunc: nc.updatePort,
 		DeleteFunc: nc.deletePort,
 	})
@@ -209,18 +209,18 @@ func (nc *NetworkController) syncPod(key string) error {
 	return err
 }
 
-func GetOpenstackClient() *gophercloud.ProviderClient{
+func GetOpenstackClient() *gophercloud.ProviderClient {
 	opts := gophercloud.AuthOptions{
-		IdentityEndpoint: os.Getenv("IdentityEndpoint"), 	//"http://192.168.113.135/identity/v3",
-		Username:         os.Getenv("Username"), 			//"admin",
-		Password:         os.Getenv("Password"),			//openstack password
-		DomainName:       os.Getenv("DomainName"),			//"default",
-		TenantName:       os.Getenv("TenantName"),			//"demo",
+		IdentityEndpoint: os.Getenv("IdentityEndpoint"), //"http://192.168.113.135/identity/v3",
+		Username:         os.Getenv("Username"),         //"admin",
+		Password:         os.Getenv("Password"),         //openstack password
+		DomainName:       os.Getenv("DomainName"),       //"default",
+		TenantName:       os.Getenv("TenantName"),       //"demo",
 	}
 
 	provider, err := openstack.AuthenticatedClient(opts)
 	if err != nil {
-		klog.Errorf("Network controller AuthenticatedClient : (%v)" , err)
+		klog.Errorf("Network controller AuthenticatedClient : (%v)", err)
 		return nil
 	}
 
@@ -229,7 +229,7 @@ func GetOpenstackClient() *gophercloud.ProviderClient{
 
 func CreatePort(provider *gophercloud.ProviderClient, vpc string, subnetname string, nodeID string) string {
 	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Region: os.Getenv("Region"),}) //"RegionOne"
+		Region: os.Getenv("Region")}) //"RegionOne"
 	if err != nil {
 		klog.Error(err)
 	}
@@ -245,7 +245,7 @@ func CreatePort(provider *gophercloud.ProviderClient, vpc string, subnetname str
 		return ""
 	}
 	createOpts := ports.CreateOpts{
-		NetworkID:    networkid,
+		NetworkID: networkid,
 		FixedIPs: []ports.IP{
 			{SubnetID: subnetid},
 		},
@@ -267,7 +267,7 @@ func CreatePort(provider *gophercloud.ProviderClient, vpc string, subnetname str
 
 func DeletePort(provider *gophercloud.ProviderClient, portID string) {
 	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Region: os.Getenv("Region"),}) //"RegionOne"
+		Region: os.Getenv("Region")}) //"RegionOne"
 	if err != nil {
 		klog.Error(err)
 	}
@@ -278,15 +278,14 @@ func DeletePort(provider *gophercloud.ProviderClient, portID string) {
 	}
 }
 
-func UpdatePort(provider *gophercloud.ProviderClient, portID string, hostID string)  {
+func UpdatePort(provider *gophercloud.ProviderClient, portID string, hostID string) {
 	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Region: "RegionOne",})
+		Region: "RegionOne"})
 	if err != nil {
 		klog.Error(err)
 	}
 
-	portUpdateOpts := ports.UpdateOpts{
-	}
+	portUpdateOpts := ports.UpdateOpts{}
 
 	updateOpts := portsbinding.UpdateOptsExt{
 		UpdateOptsBuilder: portUpdateOpts,

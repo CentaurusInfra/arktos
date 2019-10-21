@@ -25,9 +25,9 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 	"k8s.io/code-generator/cmd/client-gen/path"
-	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // genGroup produces a file for a group client, e.g. ExtensionsClient for the extension group.
@@ -117,7 +117,7 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 			"type":          t,
 			"GroupGoName":   g.groupGoName,
 			"Version":       namer.IC(g.version),
-			"DefaultTenant": core.TenantDefault,
+			"DefaultTenant": metav1.TenantDefault,
 		}
 
 		switch {

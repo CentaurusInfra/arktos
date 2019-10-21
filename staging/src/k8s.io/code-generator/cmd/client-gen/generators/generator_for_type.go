@@ -28,7 +28,7 @@ import (
 
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 
-	"k8s.io/kubernetes/pkg/apis/core"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // genClientForType produces a file for each top-level type.
@@ -147,7 +147,7 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"watchInterface":       c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
 		"RESTClientInterface":  c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
 		"schemeParameterCodec": c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
-		"DefaultTenant":        core.TenantDefault,
+		"DefaultTenant":        metav1.TenantDefault,
 	}
 
 	sw.Do(getterComment, m)

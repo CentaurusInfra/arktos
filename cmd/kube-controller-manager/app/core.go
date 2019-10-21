@@ -41,6 +41,7 @@ import (
 	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
+	networkcontroller "k8s.io/kubernetes/pkg/controller/network"
 	nodeipamcontroller "k8s.io/kubernetes/pkg/controller/nodeipam"
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam"
 	lifecyclecontroller "k8s.io/kubernetes/pkg/controller/nodelifecycle"
@@ -61,7 +62,6 @@ import (
 	"k8s.io/kubernetes/pkg/quota/v1/generic"
 	quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
 	"k8s.io/kubernetes/pkg/util/metrics"
-	networkcontroller "k8s.io/kubernetes/pkg/controller/network"
 )
 
 func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {

@@ -25,9 +25,9 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 	clientgentypes "k8s.io/code-generator/cmd/client-gen/types"
-	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/klog"
 )
@@ -107,7 +107,7 @@ func (g *informerGenerator) GenerateType(c *generator.Context, t *types.Type, w 
 		"v1ListOptions":                   c.Universe.Type(v1ListOptions),
 		"version":                         namer.IC(g.groupVersion.Version.String()),
 		"watchInterface":                  c.Universe.Type(watchInterface),
-		"DefaultTenant":                   core.TenantDefault,
+		"DefaultTenant":                   metav1.TenantDefault,
 	}
 
 	sw.Do(typeInformerInterface, m)
