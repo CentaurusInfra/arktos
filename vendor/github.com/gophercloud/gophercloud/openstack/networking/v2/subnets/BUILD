@@ -8,12 +8,12 @@ go_library(
         "results.go",
         "urls.go",
     ],
-    importmap = "k8s.io/kubernetes/vendor/github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/trusts",
-    importpath = "github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/trusts",
+    importmap = "k8s.io/kubernetes/vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/subnets",
+    importpath = "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets",
     visibility = ["//visibility:public"],
     deps = [
         "//vendor/github.com/gophercloud/gophercloud:go_default_library",
-        "//vendor/github.com/gophercloud/gophercloud/openstack/identity/v3/tokens:go_default_library",
+        "//vendor/github.com/gophercloud/gophercloud/pagination:go_default_library",
     ],
 )
 

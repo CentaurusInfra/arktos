@@ -286,7 +286,7 @@ replace (
 	github.com/google/gofuzz => github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
 	github.com/google/uuid => github.com/google/uuid v1.0.0
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d
-	github.com/gophercloud/gophercloud => github.com/gophercloud/gophercloud v0.0.0-20190126172459-c818fa66e4c8
+	github.com/gophercloud/gophercloud => github.com/gophercloud/gophercloud v0.6.0
 	github.com/gopherjs/gopherjs => github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1
 	github.com/gorilla/context => github.com/gorilla/context v1.1.1
 	github.com/gorilla/mux => github.com/gorilla/mux v1.7.0

@@ -32,6 +32,7 @@ filegroup(
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/loadbalancers:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/monitors:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/pools:all-srcs",
+        "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsbinding:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules:all-srcs",
     ],
