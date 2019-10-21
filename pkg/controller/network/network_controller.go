@@ -290,7 +290,7 @@ func UpdatePort(provider *gophercloud.ProviderClient, portID string, hostID stri
 
 	updateOpts := portsbinding.UpdateOptsExt{
 		UpdateOptsBuilder: portUpdateOpts,
-		HostID:            hostID,
+		HostID:            &hostID,
 	}
 
 	_, err = ports.Update(client, portID, updateOpts).Extract()
