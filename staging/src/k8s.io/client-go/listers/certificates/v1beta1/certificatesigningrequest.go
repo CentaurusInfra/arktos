@@ -30,7 +30,8 @@ type CertificateSigningRequestLister interface {
 	// List lists all CertificateSigningRequests in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.CertificateSigningRequest, err error)
 	// CertificateSigningRequests returns an object that can list and get CertificateSigningRequests.
-	CertificateSigningRequests(optional_tenant ...string) CertificateSigningRequestTenantLister
+	CertificateSigningRequests() CertificateSigningRequestTenantLister
+	CertificateSigningRequestsWithMultiTenancy(tenant string) CertificateSigningRequestTenantLister
 	// Get retrieves the CertificateSigningRequest from the index for a given name.
 	Get(name string) (*v1beta1.CertificateSigningRequest, error)
 	CertificateSigningRequestListerExpansion
@@ -67,11 +68,11 @@ func (s *certificateSigningRequestLister) Get(name string) (*v1beta1.Certificate
 }
 
 // CertificateSigningRequests returns an object that can list and get CertificateSigningRequests.
-func (s *certificateSigningRequestLister) CertificateSigningRequests(optional_tenant ...string) CertificateSigningRequestTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *certificateSigningRequestLister) CertificateSigningRequests() CertificateSigningRequestTenantLister {
+	return certificateSigningRequestTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *certificateSigningRequestLister) CertificateSigningRequestsWithMultiTenancy(tenant string) CertificateSigningRequestTenantLister {
 	return certificateSigningRequestTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

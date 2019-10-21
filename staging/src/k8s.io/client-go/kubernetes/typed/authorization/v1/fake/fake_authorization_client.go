@@ -28,35 +28,35 @@ type FakeAuthorizationV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAuthorizationV1) LocalSubjectAccessReviews(namespace string, optional_tenant ...string) v1.LocalSubjectAccessReviewInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAuthorizationV1) LocalSubjectAccessReviews(namespace string) v1.LocalSubjectAccessReviewInterface {
+	return &FakeLocalSubjectAccessReviews{c, namespace, "default"}
+}
+
+func (c *FakeAuthorizationV1) LocalSubjectAccessReviewsWithMultiTenancy(namespace string, tenant string) v1.LocalSubjectAccessReviewInterface {
 	return &FakeLocalSubjectAccessReviews{c, namespace, tenant}
 }
 
-func (c *FakeAuthorizationV1) SelfSubjectAccessReviews(optional_tenant ...string) v1.SelfSubjectAccessReviewInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAuthorizationV1) SelfSubjectAccessReviews() v1.SelfSubjectAccessReviewInterface {
+	return &FakeSelfSubjectAccessReviews{c, "default"}
+}
+
+func (c *FakeAuthorizationV1) SelfSubjectAccessReviewsWithMultiTenancy(tenant string) v1.SelfSubjectAccessReviewInterface {
 	return &FakeSelfSubjectAccessReviews{c, tenant}
 }
 
-func (c *FakeAuthorizationV1) SelfSubjectRulesReviews(optional_tenant ...string) v1.SelfSubjectRulesReviewInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAuthorizationV1) SelfSubjectRulesReviews() v1.SelfSubjectRulesReviewInterface {
+	return &FakeSelfSubjectRulesReviews{c, "default"}
+}
+
+func (c *FakeAuthorizationV1) SelfSubjectRulesReviewsWithMultiTenancy(tenant string) v1.SelfSubjectRulesReviewInterface {
 	return &FakeSelfSubjectRulesReviews{c, tenant}
 }
 
-func (c *FakeAuthorizationV1) SubjectAccessReviews(optional_tenant ...string) v1.SubjectAccessReviewInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeAuthorizationV1) SubjectAccessReviews() v1.SubjectAccessReviewInterface {
+	return &FakeSubjectAccessReviews{c, "default"}
+}
+
+func (c *FakeAuthorizationV1) SubjectAccessReviewsWithMultiTenancy(tenant string) v1.SubjectAccessReviewInterface {
 	return &FakeSubjectAccessReviews{c, tenant}
 }
 

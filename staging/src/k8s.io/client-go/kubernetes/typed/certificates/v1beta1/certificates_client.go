@@ -34,8 +34,12 @@ type CertificatesV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *CertificatesV1beta1Client) CertificateSigningRequests(tenant ...string) CertificateSigningRequestInterface {
-	return newCertificateSigningRequests(c, tenant...)
+func (c *CertificatesV1beta1Client) CertificateSigningRequests() CertificateSigningRequestInterface {
+	return newCertificateSigningRequestsWithMultiTenancy(c, "default")
+}
+
+func (c *CertificatesV1beta1Client) CertificateSigningRequestsWithMultiTenancy(tenant string) CertificateSigningRequestInterface {
+	return newCertificateSigningRequestsWithMultiTenancy(c, tenant)
 }
 
 // NewForConfig creates a new CertificatesV1beta1Client for the given config.

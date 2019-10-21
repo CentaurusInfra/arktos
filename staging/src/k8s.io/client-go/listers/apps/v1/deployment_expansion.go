@@ -44,7 +44,7 @@ func (s *deploymentLister) GetDeploymentsForReplicaSet(rs *apps.ReplicaSet) ([]*
 	}
 
 	// TODO: MODIFY THIS METHOD so that it checks for the podTemplateSpecHash label
-	dList, err := s.Deployments(rs.Namespace, rs.Tenant).List(labels.Everything())
+	dList, err := s.DeploymentsWithMultiTenancy(rs.Namespace, rs.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}

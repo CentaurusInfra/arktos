@@ -86,15 +86,14 @@ func (c *dynamicClient) Resource(resource schema.GroupVersionResource) Namespace
 	return &dynamicResourceClient{client: c, resource: resource}
 }
 
-func (c *dynamicResourceClient) Namespace(ns string, optional_tenant ...string) ResourceInterface {
-	te := "default"
-	if len(optional_tenant) > 0 {
-		te = optional_tenant[0]
-	}
+func (c *dynamicResourceClient) Namespace(ns string) ResourceInterface {
+	return c.NamespaceWithMultiTenancy(ns, metav1.TenantDefault)
+}
 
+func (c *dynamicResourceClient) NamespaceWithMultiTenancy(ns string, tenant string) ResourceInterface {
 	ret := *c
 	ret.namespace = ns
-	ret.tenant = te
+	ret.tenant = tenant
 	return &ret
 }
 

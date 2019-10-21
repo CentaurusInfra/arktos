@@ -37,20 +37,36 @@ type AuthorizationV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AuthorizationV1beta1Client) LocalSubjectAccessReviews(namespace string, optional_tenant ...string) LocalSubjectAccessReviewInterface {
-	return newLocalSubjectAccessReviews(c, namespace, optional_tenant...)
+func (c *AuthorizationV1beta1Client) LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewInterface {
+	return newLocalSubjectAccessReviewsWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *AuthorizationV1beta1Client) SelfSubjectAccessReviews(tenant ...string) SelfSubjectAccessReviewInterface {
-	return newSelfSubjectAccessReviews(c, tenant...)
+func (c *AuthorizationV1beta1Client) LocalSubjectAccessReviewsWithMultiTenancy(namespace string, tenant string) LocalSubjectAccessReviewInterface {
+	return newLocalSubjectAccessReviewsWithMultiTenancy(c, namespace, tenant)
 }
 
-func (c *AuthorizationV1beta1Client) SelfSubjectRulesReviews(tenant ...string) SelfSubjectRulesReviewInterface {
-	return newSelfSubjectRulesReviews(c, tenant...)
+func (c *AuthorizationV1beta1Client) SelfSubjectAccessReviews() SelfSubjectAccessReviewInterface {
+	return newSelfSubjectAccessReviewsWithMultiTenancy(c, "default")
 }
 
-func (c *AuthorizationV1beta1Client) SubjectAccessReviews(tenant ...string) SubjectAccessReviewInterface {
-	return newSubjectAccessReviews(c, tenant...)
+func (c *AuthorizationV1beta1Client) SelfSubjectAccessReviewsWithMultiTenancy(tenant string) SelfSubjectAccessReviewInterface {
+	return newSelfSubjectAccessReviewsWithMultiTenancy(c, tenant)
+}
+
+func (c *AuthorizationV1beta1Client) SelfSubjectRulesReviews() SelfSubjectRulesReviewInterface {
+	return newSelfSubjectRulesReviewsWithMultiTenancy(c, "default")
+}
+
+func (c *AuthorizationV1beta1Client) SelfSubjectRulesReviewsWithMultiTenancy(tenant string) SelfSubjectRulesReviewInterface {
+	return newSelfSubjectRulesReviewsWithMultiTenancy(c, tenant)
+}
+
+func (c *AuthorizationV1beta1Client) SubjectAccessReviews() SubjectAccessReviewInterface {
+	return newSubjectAccessReviewsWithMultiTenancy(c, "default")
+}
+
+func (c *AuthorizationV1beta1Client) SubjectAccessReviewsWithMultiTenancy(tenant string) SubjectAccessReviewInterface {
+	return newSubjectAccessReviewsWithMultiTenancy(c, tenant)
 }
 
 // NewForConfig creates a new AuthorizationV1beta1Client for the given config.

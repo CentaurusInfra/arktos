@@ -46,7 +46,7 @@ func (l *jobLister) GetPodJobs(pod *v1.Pod) (jobs []batch.Job, err error) {
 	}
 
 	var list []*batch.Job
-	list, err = l.Jobs(pod.Namespace, pod.Tenant).List(labels.Everything())
+	list, err = l.JobsWithMultiTenancy(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return
 	}

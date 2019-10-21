@@ -25,6 +25,7 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 	"k8s.io/code-generator/cmd/client-gen/path"
 )
@@ -113,9 +114,10 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 			return err
 		}
 		wrapper := map[string]interface{}{
-			"type":        t,
-			"GroupGoName": g.groupGoName,
-			"Version":     namer.IC(g.version),
+			"type":          t,
+			"GroupGoName":   g.groupGoName,
+			"Version":       namer.IC(g.version),
+			"DefaultTenant": metav1.TenantDefault,
 		}
 
 		switch {
@@ -161,14 +163,22 @@ type $.GroupGoName$$.Version$Client struct {
 `
 
 var getterImplNamespaceScoped = `
-func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$(namespace string, optional_tenant ...string) $.type|public$Interface {
-	return new$.type|publicPlural$(c, namespace, optional_tenant...)
+func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$(namespace string) $.type|public$Interface {
+	return new$.type|publicPlural$WithMultiTenancy(c, namespace, "$.DefaultTenant$")
+}
+
+func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$WithMultiTenancy(namespace string, tenant string) $.type|public$Interface {
+	return new$.type|publicPlural$WithMultiTenancy(c, namespace, tenant)
 }
 `
 
 var getterImplTenantScoped = `
-func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$(tenant ...string) $.type|public$Interface {
-	return new$.type|publicPlural$(c, tenant...)
+func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$() $.type|public$Interface {
+	return new$.type|publicPlural$WithMultiTenancy(c, "$.DefaultTenant$")
+}
+
+func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$WithMultiTenancy(tenant string) $.type|public$Interface {
+	return new$.type|publicPlural$WithMultiTenancy(c, tenant)
 }
 `
 

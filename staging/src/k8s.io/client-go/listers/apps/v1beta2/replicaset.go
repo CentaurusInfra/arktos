@@ -30,7 +30,8 @@ type ReplicaSetLister interface {
 	// List lists all ReplicaSets in the indexer.
 	List(selector labels.Selector) (ret []*v1beta2.ReplicaSet, err error)
 	// ReplicaSets returns an object that can list and get ReplicaSets.
-	ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetNamespaceLister
+	ReplicaSets(namespace string) ReplicaSetNamespaceLister
+	ReplicaSetsWithMultiTenancy(namespace string, tenant string) ReplicaSetNamespaceLister
 	ReplicaSetListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *replicaSetLister) List(selector labels.Selector) (ret []*v1beta2.Replic
 }
 
 // ReplicaSets returns an object that can list and get ReplicaSets.
-func (s *replicaSetLister) ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *replicaSetLister) ReplicaSets(namespace string) ReplicaSetNamespaceLister {
+	return replicaSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *replicaSetLister) ReplicaSetsWithMultiTenancy(namespace string, tenant string) ReplicaSetNamespaceLister {
 	return replicaSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

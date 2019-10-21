@@ -30,7 +30,8 @@ type ActionLister interface {
 	// List lists all Actions in the indexer.
 	List(selector labels.Selector) (ret []*v1.Action, err error)
 	// Actions returns an object that can list and get Actions.
-	Actions(namespace string, optional_tenant ...string) ActionNamespaceLister
+	Actions(namespace string) ActionNamespaceLister
+	ActionsWithMultiTenancy(namespace string, tenant string) ActionNamespaceLister
 	ActionListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *actionLister) List(selector labels.Selector) (ret []*v1.Action, err err
 }
 
 // Actions returns an object that can list and get Actions.
-func (s *actionLister) Actions(namespace string, optional_tenant ...string) ActionNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *actionLister) Actions(namespace string) ActionNamespaceLister {
+	return actionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *actionLister) ActionsWithMultiTenancy(namespace string, tenant string) ActionNamespaceLister {
 	return actionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

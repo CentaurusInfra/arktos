@@ -33,11 +33,11 @@ func (c *FakeMetricsV1beta1) NodeMetricses() v1beta1.NodeMetricsInterface {
 	return &FakeNodeMetricses{c}
 }
 
-func (c *FakeMetricsV1beta1) PodMetricses(namespace string, optional_tenant ...string) v1beta1.PodMetricsInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeMetricsV1beta1) PodMetricses(namespace string) v1beta1.PodMetricsInterface {
+	return &FakePodMetricses{c, namespace, "default"}
+}
+
+func (c *FakeMetricsV1beta1) PodMetricsesWithMultiTenancy(namespace string, tenant string) v1beta1.PodMetricsInterface {
 	return &FakePodMetricses{c, namespace, tenant}
 }
 

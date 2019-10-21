@@ -30,7 +30,8 @@ type Lister interface {
 	// Tenant returns an object that can list and get resources in a given tenant.
 	Tenant(tenant string) TenantLister
 	// Namespace returns an object that can list and get resources in a given namespace.
-	Namespace(namespace string, optional_tenant ...string) NamespaceLister
+	Namespace(namespace string) NamespaceLister
+	NamespaceWithMultiTenancy(namespace string, tenant string) NamespaceLister
 }
 
 // TenantLister helps list and get resources.

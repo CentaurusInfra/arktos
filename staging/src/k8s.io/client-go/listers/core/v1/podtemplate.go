@@ -30,7 +30,8 @@ type PodTemplateLister interface {
 	// List lists all PodTemplates in the indexer.
 	List(selector labels.Selector) (ret []*v1.PodTemplate, err error)
 	// PodTemplates returns an object that can list and get PodTemplates.
-	PodTemplates(namespace string, optional_tenant ...string) PodTemplateNamespaceLister
+	PodTemplates(namespace string) PodTemplateNamespaceLister
+	PodTemplatesWithMultiTenancy(namespace string, tenant string) PodTemplateNamespaceLister
 	PodTemplateListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *podTemplateLister) List(selector labels.Selector) (ret []*v1.PodTemplat
 }
 
 // PodTemplates returns an object that can list and get PodTemplates.
-func (s *podTemplateLister) PodTemplates(namespace string, optional_tenant ...string) PodTemplateNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *podTemplateLister) PodTemplates(namespace string) PodTemplateNamespaceLister {
+	return podTemplateNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *podTemplateLister) PodTemplatesWithMultiTenancy(namespace string, tenant string) PodTemplateNamespaceLister {
 	return podTemplateNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

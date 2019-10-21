@@ -38,7 +38,7 @@ func (c *FakePods) Bind(binding *v1.Binding) error {
 
 func (c *FakePods) GetBinding(name string) (result *v1.Binding, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewGetSubresourceAction(podsResource, c.ns, "binding", name, c.te), &v1.Binding{})
+		Invokes(core.NewGetSubresourceActionWithMultiTenancy(podsResource, c.ns, "binding", name, c.te), &v1.Binding{})
 
 	if obj == nil {
 		return nil, err

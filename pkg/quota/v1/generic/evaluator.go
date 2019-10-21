@@ -87,8 +87,13 @@ func (p *protectedLister) Get(name string) (runtime.Object, error) {
 	}
 	return p.delegate.Get(name)
 }
-func (p *protectedLister) ByNamespace(namespace string, optional_tenant ...string) cache.GenericNamespaceLister {
-	return &protectedNamespaceLister{p.hasSynced, p.notReadyErr, p.delegate.ByNamespace(namespace, optional_tenant...)}
+
+func (p *protectedLister) ByNamespace(namespace string) cache.GenericNamespaceLister {
+	return &protectedNamespaceLister{p.hasSynced, p.notReadyErr, p.delegate.ByNamespace(namespace)}
+}
+
+func (p *protectedLister) ByNamespaceWithMultiTenancy(namespace string, tenant string) cache.GenericNamespaceLister {
+	return &protectedNamespaceLister{p.hasSynced, p.notReadyErr, p.delegate.ByNamespaceWithMultiTenancy(namespace, tenant)}
 }
 
 func (p *protectedLister) ByTenant(tenant string) cache.GenericTenantLister {

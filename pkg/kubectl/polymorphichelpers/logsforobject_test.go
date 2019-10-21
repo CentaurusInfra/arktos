@@ -249,11 +249,11 @@ func testPod() runtime.Object {
 	}
 }
 
-func getLogsAction(namespace string, opts *corev1.PodLogOptions, optional_tenant ...string) testclient.Action {
+func getLogsAction(namespace string, opts *corev1.PodLogOptions) testclient.Action {
 	action := testclient.GenericActionImpl{}
 	action.Verb = "get"
 	action.Namespace = namespace
-	action.Tenant = testclient.ComputeTenant(optional_tenant...)
+	action.Tenant = metav1.TenantDefault
 	action.Resource = podsResource
 	action.Subresource = "log"
 	action.Value = opts

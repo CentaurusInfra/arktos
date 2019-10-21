@@ -43,11 +43,11 @@ func (c *FakeStorageV1beta1) StorageClasses() v1beta1.StorageClassInterface {
 	return &FakeStorageClasses{c}
 }
 
-func (c *FakeStorageV1beta1) VolumeAttachments(optional_tenant ...string) v1beta1.VolumeAttachmentInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeStorageV1beta1) VolumeAttachments() v1beta1.VolumeAttachmentInterface {
+	return &FakeVolumeAttachments{c, "default"}
+}
+
+func (c *FakeStorageV1beta1) VolumeAttachmentsWithMultiTenancy(tenant string) v1beta1.VolumeAttachmentInterface {
 	return &FakeVolumeAttachments{c, tenant}
 }
 

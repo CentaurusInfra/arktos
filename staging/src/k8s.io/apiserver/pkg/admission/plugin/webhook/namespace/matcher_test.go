@@ -47,11 +47,11 @@ func (f fakeNamespaceLister) Get(name string) (*corev1.Namespace, error) {
 	return nil, errors.NewNotFound(corev1.Resource("namespaces"), name)
 }
 
-func (f fakeNamespaceLister) Namespaces(optional_tenant ...string) listerv1.NamespaceTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (f fakeNamespaceLister) Namespaces() listerv1.NamespaceTenantLister {
+	return fakeNamespaceTenantLister{tenant: "default"}
+}
+
+func (f fakeNamespaceLister) NamespacesWithMultiTenancy(tenant string) listerv1.NamespaceTenantLister {
 	return fakeNamespaceTenantLister{tenant: tenant}
 }
 

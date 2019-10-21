@@ -32,7 +32,8 @@ import (
 // JobsGetter has a method to return a JobInterface.
 // A group's client should implement this interface.
 type JobsGetter interface {
-	Jobs(namespace string, optional_tenant ...string) JobInterface
+	Jobs(namespace string) JobInterface
+	JobsWithMultiTenancy(namespace string, tenant string) JobInterface
 }
 
 // JobInterface has methods to work with Job resources.
@@ -57,12 +58,11 @@ type jobs struct {
 }
 
 // newJobs returns a Jobs
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newJobs(c *BatchV1Client, namespace string, optional_tenant ...string) *jobs {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newJobs(c *BatchV1Client, namespace string) *jobs {
+	return newJobsWithMultiTenancy(c, namespace, "default")
+}
+
+func newJobsWithMultiTenancy(c *BatchV1Client, namespace string, tenant string) *jobs {
 	return &jobs{
 		client: c.RESTClient(),
 		ns:     namespace,

@@ -35,7 +35,7 @@ func (c *FakeEvents) CreateWithEventNamespace(event *v1.Event) (*v1.Event, error
 	case c.te != "" && c.ns == "":
 		action = core.NewTenantCreateAction(eventsResource, event, c.te)
 	case c.te != "" && c.ns != "":
-		action = core.NewCreateAction(eventsResource, c.ns, event, c.te)
+		action = core.NewCreateActionWithMultiTenancy(eventsResource, c.ns, event, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
@@ -57,7 +57,7 @@ func (c *FakeEvents) UpdateWithEventNamespace(event *v1.Event) (*v1.Event, error
 	case c.te != "" && c.ns == "":
 		action = core.NewTenantUpdateAction(eventsResource, event, c.te)
 	case c.te != "" && c.ns != "":
-		action = core.NewUpdateAction(eventsResource, c.ns, event, c.te)
+		action = core.NewUpdateActionWithMultiTenancy(eventsResource, c.ns, event, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
@@ -82,7 +82,7 @@ func (c *FakeEvents) PatchWithEventNamespace(event *v1.Event, data []byte) (*v1.
 	case c.te != "" && c.ns == "":
 		action = core.NewTenantPatchAction(eventsResource, event.Name, pt, data, c.te)
 	case c.te != "" && c.ns != "":
-		action = core.NewPatchAction(eventsResource, c.ns, event.Name, pt, data, c.te)
+		action = core.NewPatchActionWithMultiTenancy(eventsResource, c.ns, event.Name, pt, data, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
@@ -104,7 +104,7 @@ func (c *FakeEvents) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v
 	case c.te != "" && c.ns == "":
 		action = core.NewTenantListAction(eventsResource, eventsKind, metav1.ListOptions{}, c.te)
 	case c.te != "" && c.ns != "":
-		action = core.NewListAction(eventsResource, eventsKind, c.ns, metav1.ListOptions{}, c.te)
+		action = core.NewListActionWithMultiTenancy(eventsResource, eventsKind, c.ns, metav1.ListOptions{}, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
@@ -120,7 +120,11 @@ func (c *FakeEvents) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v
 	return obj.(*v1.EventList), err
 }
 
-func (c *FakeEvents) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant ...string) fields.Selector {
+func (c *FakeEvents) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector {
+	return c.GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID, v1.TenantDefault)
+}
+
+func (c *FakeEvents) GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant string) fields.Selector {
 	action := core.GenericActionImpl{}
 	action.Verb = "get-field-selector"
 	action.Resource = eventsResource

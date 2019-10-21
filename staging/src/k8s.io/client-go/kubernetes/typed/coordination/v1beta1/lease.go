@@ -32,7 +32,8 @@ import (
 // LeasesGetter has a method to return a LeaseInterface.
 // A group's client should implement this interface.
 type LeasesGetter interface {
-	Leases(namespace string, optional_tenant ...string) LeaseInterface
+	Leases(namespace string) LeaseInterface
+	LeasesWithMultiTenancy(namespace string, tenant string) LeaseInterface
 }
 
 // LeaseInterface has methods to work with Lease resources.
@@ -56,12 +57,11 @@ type leases struct {
 }
 
 // newLeases returns a Leases
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newLeases(c *CoordinationV1beta1Client, namespace string, optional_tenant ...string) *leases {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newLeases(c *CoordinationV1beta1Client, namespace string) *leases {
+	return newLeasesWithMultiTenancy(c, namespace, "default")
+}
+
+func newLeasesWithMultiTenancy(c *CoordinationV1beta1Client, namespace string, tenant string) *leases {
 	return &leases{
 		client: c.RESTClient(),
 		ns:     namespace,

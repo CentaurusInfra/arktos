@@ -22,7 +22,7 @@ import (
 )
 
 func (c *FakeServiceAccounts) CreateToken(name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-	obj, err := c.Fake.Invokes(core.NewCreateSubresourceAction(serviceaccountsResource, name, "token", c.ns, tr, c.te), &authenticationv1.TokenRequest{})
+	obj, err := c.Fake.Invokes(core.NewCreateSubresourceActionWithMultiTenancy(serviceaccountsResource, name, "token", c.ns, tr, c.te), &authenticationv1.TokenRequest{})
 
 	if obj == nil {
 		return nil, err

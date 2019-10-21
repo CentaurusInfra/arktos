@@ -32,7 +32,8 @@ import (
 // DeploymentsGetter has a method to return a DeploymentInterface.
 // A group's client should implement this interface.
 type DeploymentsGetter interface {
-	Deployments(namespace string, optional_tenant ...string) DeploymentInterface
+	Deployments(namespace string) DeploymentInterface
+	DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentInterface
 }
 
 // DeploymentInterface has methods to work with Deployment resources.
@@ -57,12 +58,11 @@ type deployments struct {
 }
 
 // newDeployments returns a Deployments
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newDeployments(c *AppsV1beta1Client, namespace string, optional_tenant ...string) *deployments {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newDeployments(c *AppsV1beta1Client, namespace string) *deployments {
+	return newDeploymentsWithMultiTenancy(c, namespace, "default")
+}
+
+func newDeploymentsWithMultiTenancy(c *AppsV1beta1Client, namespace string, tenant string) *deployments {
 	return &deployments{
 		client: c.RESTClient(),
 		ns:     namespace,

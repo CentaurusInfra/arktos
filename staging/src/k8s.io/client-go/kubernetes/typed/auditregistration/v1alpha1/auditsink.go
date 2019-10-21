@@ -32,7 +32,8 @@ import (
 // AuditSinksGetter has a method to return a AuditSinkInterface.
 // A group's client should implement this interface.
 type AuditSinksGetter interface {
-	AuditSinks(optional_tenant ...string) AuditSinkInterface
+	AuditSinks() AuditSinkInterface
+	AuditSinksWithMultiTenancy(tenant string) AuditSinkInterface
 }
 
 // AuditSinkInterface has methods to work with AuditSink resources.
@@ -55,11 +56,11 @@ type auditSinks struct {
 }
 
 // newAuditSinks returns a AuditSinks
-func newAuditSinks(c *AuditregistrationV1alpha1Client, optional_tenant ...string) *auditSinks {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newAuditSinks(c *AuditregistrationV1alpha1Client) *auditSinks {
+	return newAuditSinksWithMultiTenancy(c, "default")
+}
+
+func newAuditSinksWithMultiTenancy(c *AuditregistrationV1alpha1Client, tenant string) *auditSinks {
 	return &auditSinks{
 		client: c.RESTClient(),
 		te:     tenant,

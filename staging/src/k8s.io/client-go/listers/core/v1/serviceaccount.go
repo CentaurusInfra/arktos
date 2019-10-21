@@ -30,7 +30,8 @@ type ServiceAccountLister interface {
 	// List lists all ServiceAccounts in the indexer.
 	List(selector labels.Selector) (ret []*v1.ServiceAccount, err error)
 	// ServiceAccounts returns an object that can list and get ServiceAccounts.
-	ServiceAccounts(namespace string, optional_tenant ...string) ServiceAccountNamespaceLister
+	ServiceAccounts(namespace string) ServiceAccountNamespaceLister
+	ServiceAccountsWithMultiTenancy(namespace string, tenant string) ServiceAccountNamespaceLister
 	ServiceAccountListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *serviceAccountLister) List(selector labels.Selector) (ret []*v1.Service
 }
 
 // ServiceAccounts returns an object that can list and get ServiceAccounts.
-func (s *serviceAccountLister) ServiceAccounts(namespace string, optional_tenant ...string) ServiceAccountNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *serviceAccountLister) ServiceAccounts(namespace string) ServiceAccountNamespaceLister {
+	return serviceAccountNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *serviceAccountLister) ServiceAccountsWithMultiTenancy(namespace string, tenant string) ServiceAccountNamespaceLister {
 	return serviceAccountNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

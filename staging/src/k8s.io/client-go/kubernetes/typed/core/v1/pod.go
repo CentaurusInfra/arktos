@@ -32,7 +32,8 @@ import (
 // PodsGetter has a method to return a PodInterface.
 // A group's client should implement this interface.
 type PodsGetter interface {
-	Pods(namespace string, optional_tenant ...string) PodInterface
+	Pods(namespace string) PodInterface
+	PodsWithMultiTenancy(namespace string, tenant string) PodInterface
 }
 
 // PodInterface has methods to work with Pod resources.
@@ -57,12 +58,11 @@ type pods struct {
 }
 
 // newPods returns a Pods
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newPods(c *CoreV1Client, namespace string, optional_tenant ...string) *pods {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPods(c *CoreV1Client, namespace string) *pods {
+	return newPodsWithMultiTenancy(c, namespace, "default")
+}
+
+func newPodsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *pods {
 	return &pods{
 		client: c.RESTClient(),
 		ns:     namespace,

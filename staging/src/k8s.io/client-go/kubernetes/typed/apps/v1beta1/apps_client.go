@@ -36,16 +36,28 @@ type AppsV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AppsV1beta1Client) ControllerRevisions(namespace string, optional_tenant ...string) ControllerRevisionInterface {
-	return newControllerRevisions(c, namespace, optional_tenant...)
+func (c *AppsV1beta1Client) ControllerRevisions(namespace string) ControllerRevisionInterface {
+	return newControllerRevisionsWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *AppsV1beta1Client) Deployments(namespace string, optional_tenant ...string) DeploymentInterface {
-	return newDeployments(c, namespace, optional_tenant...)
+func (c *AppsV1beta1Client) ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionInterface {
+	return newControllerRevisionsWithMultiTenancy(c, namespace, tenant)
 }
 
-func (c *AppsV1beta1Client) StatefulSets(namespace string, optional_tenant ...string) StatefulSetInterface {
-	return newStatefulSets(c, namespace, optional_tenant...)
+func (c *AppsV1beta1Client) Deployments(namespace string) DeploymentInterface {
+	return newDeploymentsWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *AppsV1beta1Client) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentInterface {
+	return newDeploymentsWithMultiTenancy(c, namespace, tenant)
+}
+
+func (c *AppsV1beta1Client) StatefulSets(namespace string) StatefulSetInterface {
+	return newStatefulSetsWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *AppsV1beta1Client) StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetInterface {
+	return newStatefulSetsWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new AppsV1beta1Client for the given config.

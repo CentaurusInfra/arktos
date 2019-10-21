@@ -145,11 +145,11 @@ func TestDynamicSharedInformerFactory(t *testing.T) {
 	}
 }
 
-func newUnstructured(apiVersion, kind, namespace, name string, optional_tenant ...string) *unstructured.Unstructured {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Unstructured {
+	return newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name, metav1.TenantDefault)
+}
+
+func newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name string, tenant string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": apiVersion,

@@ -25,7 +25,8 @@ import (
 // SubjectAccessReviewsGetter has a method to return a SubjectAccessReviewInterface.
 // A group's client should implement this interface.
 type SubjectAccessReviewsGetter interface {
-	SubjectAccessReviews(optional_tenant ...string) SubjectAccessReviewInterface
+	SubjectAccessReviews() SubjectAccessReviewInterface
+	SubjectAccessReviewsWithMultiTenancy(tenant string) SubjectAccessReviewInterface
 }
 
 // SubjectAccessReviewInterface has methods to work with SubjectAccessReview resources.
@@ -40,11 +41,11 @@ type subjectAccessReviews struct {
 }
 
 // newSubjectAccessReviews returns a SubjectAccessReviews
-func newSubjectAccessReviews(c *AuthorizationV1Client, optional_tenant ...string) *subjectAccessReviews {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newSubjectAccessReviews(c *AuthorizationV1Client) *subjectAccessReviews {
+	return newSubjectAccessReviewsWithMultiTenancy(c, "default")
+}
+
+func newSubjectAccessReviewsWithMultiTenancy(c *AuthorizationV1Client, tenant string) *subjectAccessReviews {
 	return &subjectAccessReviews{
 		client: c.RESTClient(),
 		te:     tenant,

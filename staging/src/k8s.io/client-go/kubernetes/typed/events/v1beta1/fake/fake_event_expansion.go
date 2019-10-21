@@ -33,7 +33,7 @@ func (c *FakeEvents) CreateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Ev
 	case c.te != "" && c.ns == "":
 		action = core.NewTenantCreateAction(eventsResource, event, c.te)
 	case c.te != "" && c.ns != "":
-		action = core.NewCreateAction(eventsResource, c.ns, event, c.te)
+		action = core.NewCreateActionWithMultiTenancy(eventsResource, c.ns, event, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
@@ -55,7 +55,7 @@ func (c *FakeEvents) UpdateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Ev
 	case c.te != "" && c.ns == "":
 		action = core.NewTenantUpdateAction(eventsResource, event, c.te)
 	case c.te != "" && c.ns != "":
-		action = core.NewUpdateAction(eventsResource, c.ns, event, c.te)
+		action = core.NewUpdateActionWithMultiTenancy(eventsResource, c.ns, event, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
@@ -77,7 +77,7 @@ func (c *FakeEvents) PatchWithEventNamespace(event *v1beta1.Event, data []byte) 
 	case c.te != "" && c.ns == "":
 		action = core.NewTenantPatchAction(eventsResource, event.Name, pt, data, c.te)
 	case c.te != "" && c.ns != "":
-		action = core.NewPatchAction(eventsResource, c.ns, event.Name, pt, data, c.te)
+		action = core.NewPatchActionWithMultiTenancy(eventsResource, c.ns, event.Name, pt, data, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}

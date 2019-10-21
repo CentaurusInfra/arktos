@@ -39,8 +39,12 @@ func (c *ExampleV1Client) ClusterTestTypes() ClusterTestTypeInterface {
 	return newClusterTestTypes(c)
 }
 
-func (c *ExampleV1Client) TestTypes(namespace string, optional_tenant ...string) TestTypeInterface {
-	return newTestTypes(c, namespace, optional_tenant...)
+func (c *ExampleV1Client) TestTypes(namespace string) TestTypeInterface {
+	return newTestTypesWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *ExampleV1Client) TestTypesWithMultiTenancy(namespace string, tenant string) TestTypeInterface {
+	return newTestTypesWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new ExampleV1Client for the given config.

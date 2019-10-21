@@ -32,7 +32,8 @@ import (
 // HorizontalPodAutoscalersGetter has a method to return a HorizontalPodAutoscalerInterface.
 // A group's client should implement this interface.
 type HorizontalPodAutoscalersGetter interface {
-	HorizontalPodAutoscalers(namespace string, optional_tenant ...string) HorizontalPodAutoscalerInterface
+	HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerInterface
+	HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) HorizontalPodAutoscalerInterface
 }
 
 // HorizontalPodAutoscalerInterface has methods to work with HorizontalPodAutoscaler resources.
@@ -57,12 +58,11 @@ type horizontalPodAutoscalers struct {
 }
 
 // newHorizontalPodAutoscalers returns a HorizontalPodAutoscalers
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newHorizontalPodAutoscalers(c *AutoscalingV2beta2Client, namespace string, optional_tenant ...string) *horizontalPodAutoscalers {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newHorizontalPodAutoscalers(c *AutoscalingV2beta2Client, namespace string) *horizontalPodAutoscalers {
+	return newHorizontalPodAutoscalersWithMultiTenancy(c, namespace, "default")
+}
+
+func newHorizontalPodAutoscalersWithMultiTenancy(c *AutoscalingV2beta2Client, namespace string, tenant string) *horizontalPodAutoscalers {
 	return &horizontalPodAutoscalers{
 		client: c.RESTClient(),
 		ns:     namespace,

@@ -28,11 +28,11 @@ type FakeCertificatesV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCertificatesV1beta1) CertificateSigningRequests(optional_tenant ...string) v1beta1.CertificateSigningRequestInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeCertificatesV1beta1) CertificateSigningRequests() v1beta1.CertificateSigningRequestInterface {
+	return &FakeCertificateSigningRequests{c, "default"}
+}
+
+func (c *FakeCertificatesV1beta1) CertificateSigningRequestsWithMultiTenancy(tenant string) v1beta1.CertificateSigningRequestInterface {
 	return &FakeCertificateSigningRequests{c, tenant}
 }
 

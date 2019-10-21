@@ -32,7 +32,8 @@ import (
 // PriorityClassesGetter has a method to return a PriorityClassInterface.
 // A group's client should implement this interface.
 type PriorityClassesGetter interface {
-	PriorityClasses(optional_tenant ...string) PriorityClassInterface
+	PriorityClasses() PriorityClassInterface
+	PriorityClassesWithMultiTenancy(tenant string) PriorityClassInterface
 }
 
 // PriorityClassInterface has methods to work with PriorityClass resources.
@@ -55,11 +56,11 @@ type priorityClasses struct {
 }
 
 // newPriorityClasses returns a PriorityClasses
-func newPriorityClasses(c *SchedulingV1Client, optional_tenant ...string) *priorityClasses {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPriorityClasses(c *SchedulingV1Client) *priorityClasses {
+	return newPriorityClassesWithMultiTenancy(c, "default")
+}
+
+func newPriorityClassesWithMultiTenancy(c *SchedulingV1Client, tenant string) *priorityClasses {
 	return &priorityClasses{
 		client: c.RESTClient(),
 		te:     tenant,

@@ -50,7 +50,7 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		gvr := action.GetResource()
 		ns := action.GetNamespace()
 		te := action.GetTenant()
-		watch, err := o.Watch(gvr, ns, te)
+		watch, err := o.WatchWithMultiTenancy(gvr, ns, te)
 		if err != nil {
 			return false, nil, err
 		}

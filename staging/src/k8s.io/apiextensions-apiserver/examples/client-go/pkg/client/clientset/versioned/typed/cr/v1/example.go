@@ -32,7 +32,8 @@ import (
 // ExamplesGetter has a method to return a ExampleInterface.
 // A group's client should implement this interface.
 type ExamplesGetter interface {
-	Examples(namespace string, optional_tenant ...string) ExampleInterface
+	Examples(namespace string) ExampleInterface
+	ExamplesWithMultiTenancy(namespace string, tenant string) ExampleInterface
 }
 
 // ExampleInterface has methods to work with Example resources.
@@ -56,12 +57,11 @@ type examples struct {
 }
 
 // newExamples returns a Examples
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newExamples(c *CrV1Client, namespace string, optional_tenant ...string) *examples {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newExamples(c *CrV1Client, namespace string) *examples {
+	return newExamplesWithMultiTenancy(c, namespace, "default")
+}
+
+func newExamplesWithMultiTenancy(c *CrV1Client, namespace string, tenant string) *examples {
 	return &examples{
 		client: c.RESTClient(),
 		ns:     namespace,

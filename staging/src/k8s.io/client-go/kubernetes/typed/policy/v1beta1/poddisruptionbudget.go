@@ -32,7 +32,8 @@ import (
 // PodDisruptionBudgetsGetter has a method to return a PodDisruptionBudgetInterface.
 // A group's client should implement this interface.
 type PodDisruptionBudgetsGetter interface {
-	PodDisruptionBudgets(namespace string, optional_tenant ...string) PodDisruptionBudgetInterface
+	PodDisruptionBudgets(namespace string) PodDisruptionBudgetInterface
+	PodDisruptionBudgetsWithMultiTenancy(namespace string, tenant string) PodDisruptionBudgetInterface
 }
 
 // PodDisruptionBudgetInterface has methods to work with PodDisruptionBudget resources.
@@ -57,12 +58,11 @@ type podDisruptionBudgets struct {
 }
 
 // newPodDisruptionBudgets returns a PodDisruptionBudgets
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newPodDisruptionBudgets(c *PolicyV1beta1Client, namespace string, optional_tenant ...string) *podDisruptionBudgets {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPodDisruptionBudgets(c *PolicyV1beta1Client, namespace string) *podDisruptionBudgets {
+	return newPodDisruptionBudgetsWithMultiTenancy(c, namespace, "default")
+}
+
+func newPodDisruptionBudgetsWithMultiTenancy(c *PolicyV1beta1Client, namespace string, tenant string) *podDisruptionBudgets {
 	return &podDisruptionBudgets{
 		client: c.RESTClient(),
 		ns:     namespace,

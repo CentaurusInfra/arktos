@@ -30,7 +30,8 @@ type FooLister interface {
 	// List lists all Foos in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.Foo, err error)
 	// Foos returns an object that can list and get Foos.
-	Foos(namespace string, optional_tenant ...string) FooNamespaceLister
+	Foos(namespace string) FooNamespaceLister
+	FoosWithMultiTenancy(namespace string, tenant string) FooNamespaceLister
 	FooListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *fooLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err err
 }
 
 // Foos returns an object that can list and get Foos.
-func (s *fooLister) Foos(namespace string, optional_tenant ...string) FooNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *fooLister) Foos(namespace string) FooNamespaceLister {
+	return fooNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *fooLister) FoosWithMultiTenancy(namespace string, tenant string) FooNamespaceLister {
 	return fooNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

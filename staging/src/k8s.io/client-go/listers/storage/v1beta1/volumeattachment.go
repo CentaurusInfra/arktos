@@ -30,7 +30,8 @@ type VolumeAttachmentLister interface {
 	// List lists all VolumeAttachments in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.VolumeAttachment, err error)
 	// VolumeAttachments returns an object that can list and get VolumeAttachments.
-	VolumeAttachments(optional_tenant ...string) VolumeAttachmentTenantLister
+	VolumeAttachments() VolumeAttachmentTenantLister
+	VolumeAttachmentsWithMultiTenancy(tenant string) VolumeAttachmentTenantLister
 	// Get retrieves the VolumeAttachment from the index for a given name.
 	Get(name string) (*v1beta1.VolumeAttachment, error)
 	VolumeAttachmentListerExpansion
@@ -67,11 +68,11 @@ func (s *volumeAttachmentLister) Get(name string) (*v1beta1.VolumeAttachment, er
 }
 
 // VolumeAttachments returns an object that can list and get VolumeAttachments.
-func (s *volumeAttachmentLister) VolumeAttachments(optional_tenant ...string) VolumeAttachmentTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *volumeAttachmentLister) VolumeAttachments() VolumeAttachmentTenantLister {
+	return volumeAttachmentTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *volumeAttachmentLister) VolumeAttachmentsWithMultiTenancy(tenant string) VolumeAttachmentTenantLister {
 	return volumeAttachmentTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

@@ -30,7 +30,8 @@ type AuditSinkLister interface {
 	// List lists all AuditSinks in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.AuditSink, err error)
 	// AuditSinks returns an object that can list and get AuditSinks.
-	AuditSinks(optional_tenant ...string) AuditSinkTenantLister
+	AuditSinks() AuditSinkTenantLister
+	AuditSinksWithMultiTenancy(tenant string) AuditSinkTenantLister
 	// Get retrieves the AuditSink from the index for a given name.
 	Get(name string) (*v1alpha1.AuditSink, error)
 	AuditSinkListerExpansion
@@ -67,11 +68,11 @@ func (s *auditSinkLister) Get(name string) (*v1alpha1.AuditSink, error) {
 }
 
 // AuditSinks returns an object that can list and get AuditSinks.
-func (s *auditSinkLister) AuditSinks(optional_tenant ...string) AuditSinkTenantLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *auditSinkLister) AuditSinks() AuditSinkTenantLister {
+	return auditSinkTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *auditSinkLister) AuditSinksWithMultiTenancy(tenant string) AuditSinkTenantLister {
 	return auditSinkTenantLister{indexer: s.indexer, tenant: tenant}
 }
 

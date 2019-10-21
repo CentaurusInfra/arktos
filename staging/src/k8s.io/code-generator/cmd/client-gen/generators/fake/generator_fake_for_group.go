@@ -26,8 +26,8 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
-	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // genFakeForGroup produces a file for a group client, e.g. ExtensionsClient for the extension group.
@@ -92,7 +92,7 @@ func (g *genFakeForGroup) GenerateType(c *generator.Context, t *types.Type, w io
 			"GroupGoName":       g.groupGoName,
 			"Version":           namer.IC(g.version),
 			"realClientPackage": strings.ToLower(filepath.Base(g.realClientPackage)),
-			"DefaultTenant":     core.TenantDefault,
+			"DefaultTenant":     metav1.TenantDefault,
 		}
 
 		switch {
@@ -120,21 +120,21 @@ type Fake$.GroupGoName$$.Version$ struct {
 `
 
 var getterImplNamespaceScoped = `
-func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$(namespace string, optional_tenant ...string) $.realClientPackage$.$.type|public$Interface {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$(namespace string) $.realClientPackage$.$.type|public$Interface {
+	return &Fake$.type|publicPlural${c, namespace, "$.DefaultTenant$"}
+}
+
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$WithMultiTenancy(namespace string, tenant string) $.realClientPackage$.$.type|public$Interface {
 	return &Fake$.type|publicPlural${c, namespace, tenant}
 }
 `
 
 var getterImplTenantScoped = `
-func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$(optional_tenant ...string) $.realClientPackage$.$.type|public$Interface {
-	tenant := "$.DefaultTenant$"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$() $.realClientPackage$.$.type|public$Interface {
+	return &Fake$.type|publicPlural${c, "$.DefaultTenant$"}
+}
+
+func (c *Fake$.GroupGoName$$.Version$) $.type|publicPlural$WithMultiTenancy(tenant string) $.realClientPackage$.$.type|public$Interface {
 	return &Fake$.type|publicPlural${c, tenant}
 }
 `

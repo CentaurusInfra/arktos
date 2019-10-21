@@ -32,7 +32,8 @@ import (
 // FoosGetter has a method to return a FooInterface.
 // A group's client should implement this interface.
 type FoosGetter interface {
-	Foos(namespace string, optional_tenant ...string) FooInterface
+	Foos(namespace string) FooInterface
+	FoosWithMultiTenancy(namespace string, tenant string) FooInterface
 }
 
 // FooInterface has methods to work with Foo resources.
@@ -57,12 +58,11 @@ type foos struct {
 }
 
 // newFoos returns a Foos
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newFoos(c *SamplecontrollerV1alpha1Client, namespace string, optional_tenant ...string) *foos {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newFoos(c *SamplecontrollerV1alpha1Client, namespace string) *foos {
+	return newFoosWithMultiTenancy(c, namespace, "default")
+}
+
+func newFoosWithMultiTenancy(c *SamplecontrollerV1alpha1Client, namespace string, tenant string) *foos {
 	return &foos{
 		client: c.RESTClient(),
 		ns:     namespace,

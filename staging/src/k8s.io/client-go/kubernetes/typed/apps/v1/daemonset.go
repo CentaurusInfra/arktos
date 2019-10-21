@@ -32,7 +32,8 @@ import (
 // DaemonSetsGetter has a method to return a DaemonSetInterface.
 // A group's client should implement this interface.
 type DaemonSetsGetter interface {
-	DaemonSets(namespace string, optional_tenant ...string) DaemonSetInterface
+	DaemonSets(namespace string) DaemonSetInterface
+	DaemonSetsWithMultiTenancy(namespace string, tenant string) DaemonSetInterface
 }
 
 // DaemonSetInterface has methods to work with DaemonSet resources.
@@ -57,12 +58,11 @@ type daemonSets struct {
 }
 
 // newDaemonSets returns a DaemonSets
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newDaemonSets(c *AppsV1Client, namespace string, optional_tenant ...string) *daemonSets {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newDaemonSets(c *AppsV1Client, namespace string) *daemonSets {
+	return newDaemonSetsWithMultiTenancy(c, namespace, "default")
+}
+
+func newDaemonSetsWithMultiTenancy(c *AppsV1Client, namespace string, tenant string) *daemonSets {
 	return &daemonSets{
 		client: c.RESTClient(),
 		ns:     namespace,

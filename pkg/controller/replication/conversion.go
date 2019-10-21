@@ -86,8 +86,12 @@ func (l conversionLister) List(selector labels.Selector) ([]*apps.ReplicaSet, er
 	return convertSlice(rcList)
 }
 
-func (l conversionLister) ReplicaSets(namespace string, optional_tenant ...string) appslisters.ReplicaSetNamespaceLister {
-	return conversionNamespaceLister{l.rcLister.ReplicationControllers(namespace, optional_tenant...)}
+func (l conversionLister) ReplicaSets(namespace string) appslisters.ReplicaSetNamespaceLister {
+	return conversionNamespaceLister{l.rcLister.ReplicationControllers(namespace)}
+}
+
+func (l conversionLister) ReplicaSetsWithMultiTenancy(namespace string, tenant string) appslisters.ReplicaSetNamespaceLister {
+	return conversionNamespaceLister{l.rcLister.ReplicationControllersWithMultiTenancy(namespace, tenant)}
 }
 
 func (l conversionLister) GetPodReplicaSets(pod *v1.Pod) ([]*apps.ReplicaSet, error) {
@@ -194,8 +198,12 @@ type conversionAppsV1Client struct {
 	appsv1client.AppsV1Interface
 }
 
-func (c conversionAppsV1Client) ReplicaSets(namespace string, optional_tenant ...string) appsv1client.ReplicaSetInterface {
-	return conversionClient{c.clientset.CoreV1().ReplicationControllers(namespace, optional_tenant...)}
+func (c conversionAppsV1Client) ReplicaSets(namespace string) appsv1client.ReplicaSetInterface {
+	return conversionClient{c.clientset.CoreV1().ReplicationControllers(namespace)}
+}
+
+func (c conversionAppsV1Client) ReplicaSetsWithMultiTenancy(namespace string, tenant string) appsv1client.ReplicaSetInterface {
+	return conversionClient{c.clientset.CoreV1().ReplicationControllersWithMultiTenancy(namespace, tenant)}
 }
 
 type conversionClient struct {

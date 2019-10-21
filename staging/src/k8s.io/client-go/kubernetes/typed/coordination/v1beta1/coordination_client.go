@@ -34,8 +34,12 @@ type CoordinationV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *CoordinationV1beta1Client) Leases(namespace string, optional_tenant ...string) LeaseInterface {
-	return newLeases(c, namespace, optional_tenant...)
+func (c *CoordinationV1beta1Client) Leases(namespace string) LeaseInterface {
+	return newLeasesWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *CoordinationV1beta1Client) LeasesWithMultiTenancy(namespace string, tenant string) LeaseInterface {
+	return newLeasesWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new CoordinationV1beta1Client for the given config.

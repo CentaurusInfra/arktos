@@ -1163,7 +1163,7 @@ func makeBasePodAndStatusWithNICs() (*v1.Pod, *kubecontainer.PodStatus) {
 			Network: &runtimeapi.PodSandboxNetworkStatus{
 				Ip: "10.0.0.100",
 				Nics: []*runtimeapi.NICStatus{
-					&runtimeapi.NICStatus{Name: "eth0"},
+					{Name: "eth0"},
 				},
 			},
 		},

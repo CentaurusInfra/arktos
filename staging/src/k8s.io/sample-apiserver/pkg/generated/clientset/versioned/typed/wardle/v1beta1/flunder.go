@@ -32,7 +32,8 @@ import (
 // FlundersGetter has a method to return a FlunderInterface.
 // A group's client should implement this interface.
 type FlundersGetter interface {
-	Flunders(namespace string, optional_tenant ...string) FlunderInterface
+	Flunders(namespace string) FlunderInterface
+	FlundersWithMultiTenancy(namespace string, tenant string) FlunderInterface
 }
 
 // FlunderInterface has methods to work with Flunder resources.
@@ -57,12 +58,11 @@ type flunders struct {
 }
 
 // newFlunders returns a Flunders
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newFlunders(c *WardleV1beta1Client, namespace string, optional_tenant ...string) *flunders {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newFlunders(c *WardleV1beta1Client, namespace string) *flunders {
+	return newFlundersWithMultiTenancy(c, namespace, "default")
+}
+
+func newFlundersWithMultiTenancy(c *WardleV1beta1Client, namespace string, tenant string) *flunders {
 	return &flunders{
 		client: c.RESTClient(),
 		ns:     namespace,

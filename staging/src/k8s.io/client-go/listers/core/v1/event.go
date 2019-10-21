@@ -30,7 +30,8 @@ type EventLister interface {
 	// List lists all Events in the indexer.
 	List(selector labels.Selector) (ret []*v1.Event, err error)
 	// Events returns an object that can list and get Events.
-	Events(namespace string, optional_tenant ...string) EventNamespaceLister
+	Events(namespace string) EventNamespaceLister
+	EventsWithMultiTenancy(namespace string, tenant string) EventNamespaceLister
 	EventListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *eventLister) List(selector labels.Selector) (ret []*v1.Event, err error
 }
 
 // Events returns an object that can list and get Events.
-func (s *eventLister) Events(namespace string, optional_tenant ...string) EventNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *eventLister) Events(namespace string) EventNamespaceLister {
+	return eventNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *eventLister) EventsWithMultiTenancy(namespace string, tenant string) EventNamespaceLister {
 	return eventNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

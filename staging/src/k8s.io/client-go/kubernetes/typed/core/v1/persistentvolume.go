@@ -32,7 +32,8 @@ import (
 // PersistentVolumesGetter has a method to return a PersistentVolumeInterface.
 // A group's client should implement this interface.
 type PersistentVolumesGetter interface {
-	PersistentVolumes(optional_tenant ...string) PersistentVolumeInterface
+	PersistentVolumes() PersistentVolumeInterface
+	PersistentVolumesWithMultiTenancy(tenant string) PersistentVolumeInterface
 }
 
 // PersistentVolumeInterface has methods to work with PersistentVolume resources.
@@ -56,11 +57,11 @@ type persistentVolumes struct {
 }
 
 // newPersistentVolumes returns a PersistentVolumes
-func newPersistentVolumes(c *CoreV1Client, optional_tenant ...string) *persistentVolumes {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPersistentVolumes(c *CoreV1Client) *persistentVolumes {
+	return newPersistentVolumesWithMultiTenancy(c, "default")
+}
+
+func newPersistentVolumesWithMultiTenancy(c *CoreV1Client, tenant string) *persistentVolumes {
 	return &persistentVolumes{
 		client: c.RESTClient(),
 		te:     tenant,

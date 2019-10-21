@@ -43,7 +43,7 @@ func (s *replicaSetLister) GetPodReplicaSets(pod *v1.Pod) ([]*apps.ReplicaSet, e
 		return nil, fmt.Errorf("no ReplicaSets found for pod %v because it has no labels", pod.Name)
 	}
 
-	list, err := s.ReplicaSets(pod.Namespace, pod.Tenant).List(labels.Everything())
+	list, err := s.ReplicaSetsWithMultiTenancy(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}

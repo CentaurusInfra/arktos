@@ -25,6 +25,8 @@ import (
 	"k8s.io/gengo/generator"
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // groupInterfaceGenerator generates the per-group interface file.
@@ -82,6 +84,7 @@ func (g *groupInterfaceGenerator) GenerateType(c *generator.Context, t *types.Ty
 		"interfacesTweakListOptionsFunc":  c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "TweakListOptionsFunc"}),
 		"interfacesSharedInformerFactory": c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "SharedInformerFactory"}),
 		"versions":                        versions,
+		"DefaultTenant":                   metav1.TenantDefault,
 	}
 
 	sw.Do(groupTemplate, m)
@@ -106,19 +109,18 @@ type group struct {
 }
 
 // New returns a new Interface.
-func New(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$,optional_tenant... string) Interface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func New(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$,) Interface {
+	return &group{factory: f, namespace: namespace, tenant: "$.DefaultTenant$", tweakListOptions: tweakListOptions}
+}
 
+func NewWithMultiTenancy(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, tenant string) Interface {
 	return &group{factory: f, namespace: namespace, tenant: tenant, tweakListOptions: tweakListOptions}
 }
 
 $range .versions$
 // $.Name$ returns a new $.Interface|raw$.
 func (g *group) $.Name$() $.Interface|raw$ {
-	return $.New|raw$(g.factory, g.namespace, g.tweakListOptions, g.tenant)
+	return $.New|raw$WithMultiTenancy(g.factory, g.namespace, g.tweakListOptions, g.tenant)
 }
 $end$
 `

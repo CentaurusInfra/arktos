@@ -30,7 +30,8 @@ type ReplicationControllerLister interface {
 	// List lists all ReplicationControllers in the indexer.
 	List(selector labels.Selector) (ret []*v1.ReplicationController, err error)
 	// ReplicationControllers returns an object that can list and get ReplicationControllers.
-	ReplicationControllers(namespace string, optional_tenant ...string) ReplicationControllerNamespaceLister
+	ReplicationControllers(namespace string) ReplicationControllerNamespaceLister
+	ReplicationControllersWithMultiTenancy(namespace string, tenant string) ReplicationControllerNamespaceLister
 	ReplicationControllerListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *replicationControllerLister) List(selector labels.Selector) (ret []*v1.
 }
 
 // ReplicationControllers returns an object that can list and get ReplicationControllers.
-func (s *replicationControllerLister) ReplicationControllers(namespace string, optional_tenant ...string) ReplicationControllerNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *replicationControllerLister) ReplicationControllers(namespace string) ReplicationControllerNamespaceLister {
+	return replicationControllerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *replicationControllerLister) ReplicationControllersWithMultiTenancy(namespace string, tenant string) ReplicationControllerNamespaceLister {
 	return replicationControllerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

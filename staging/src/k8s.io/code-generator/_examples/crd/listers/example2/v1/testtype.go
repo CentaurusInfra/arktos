@@ -30,7 +30,8 @@ type TestTypeLister interface {
 	// List lists all TestTypes in the indexer.
 	List(selector labels.Selector) (ret []*v1.TestType, err error)
 	// TestTypes returns an object that can list and get TestTypes.
-	TestTypes(namespace string, optional_tenant ...string) TestTypeNamespaceLister
+	TestTypes(namespace string) TestTypeNamespaceLister
+	TestTypesWithMultiTenancy(namespace string, tenant string) TestTypeNamespaceLister
 	TestTypeListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *testTypeLister) List(selector labels.Selector) (ret []*v1.TestType, err
 }
 
 // TestTypes returns an object that can list and get TestTypes.
-func (s *testTypeLister) TestTypes(namespace string, optional_tenant ...string) TestTypeNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *testTypeLister) TestTypes(namespace string) TestTypeNamespaceLister {
+	return testTypeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *testTypeLister) TestTypesWithMultiTenancy(namespace string, tenant string) TestTypeNamespaceLister {
 	return testTypeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

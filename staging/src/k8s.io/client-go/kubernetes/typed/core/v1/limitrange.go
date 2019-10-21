@@ -32,7 +32,8 @@ import (
 // LimitRangesGetter has a method to return a LimitRangeInterface.
 // A group's client should implement this interface.
 type LimitRangesGetter interface {
-	LimitRanges(namespace string, optional_tenant ...string) LimitRangeInterface
+	LimitRanges(namespace string) LimitRangeInterface
+	LimitRangesWithMultiTenancy(namespace string, tenant string) LimitRangeInterface
 }
 
 // LimitRangeInterface has methods to work with LimitRange resources.
@@ -56,12 +57,11 @@ type limitRanges struct {
 }
 
 // newLimitRanges returns a LimitRanges
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newLimitRanges(c *CoreV1Client, namespace string, optional_tenant ...string) *limitRanges {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newLimitRanges(c *CoreV1Client, namespace string) *limitRanges {
+	return newLimitRangesWithMultiTenancy(c, namespace, "default")
+}
+
+func newLimitRangesWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *limitRanges {
 	return &limitRanges{
 		client: c.RESTClient(),
 		ns:     namespace,

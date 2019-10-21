@@ -30,7 +30,8 @@ type NetworkPolicyLister interface {
 	// List lists all NetworkPolicies in the indexer.
 	List(selector labels.Selector) (ret []*v1.NetworkPolicy, err error)
 	// NetworkPolicies returns an object that can list and get NetworkPolicies.
-	NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyNamespaceLister
+	NetworkPolicies(namespace string) NetworkPolicyNamespaceLister
+	NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyNamespaceLister
 	NetworkPolicyListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *networkPolicyLister) List(selector labels.Selector) (ret []*v1.NetworkP
 }
 
 // NetworkPolicies returns an object that can list and get NetworkPolicies.
-func (s *networkPolicyLister) NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *networkPolicyLister) NetworkPolicies(namespace string) NetworkPolicyNamespaceLister {
+	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *networkPolicyLister) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyNamespaceLister {
 	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

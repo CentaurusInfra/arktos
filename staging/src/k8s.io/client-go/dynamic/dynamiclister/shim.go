@@ -20,6 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ cache.GenericLister = &dynamicListerShim{}
@@ -61,13 +63,13 @@ func (s *dynamicListerShim) ByTenant(tenant string) cache.GenericTenantLister {
 	}
 }
 
-func (s *dynamicListerShim) ByNamespace(namespace string, optional_tenant ...string) cache.GenericNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *dynamicListerShim) ByNamespace(namespace string) cache.GenericNamespaceLister {
+	return s.ByNamespaceWithMultiTenancy(namespace, metav1.TenantDefault)
+}
+
+func (s *dynamicListerShim) ByNamespaceWithMultiTenancy(namespace string, tenant string) cache.GenericNamespaceLister {
 	return &dynamicNamespaceListerShim{
-		namespaceLister: s.lister.Namespace(namespace, tenant),
+		namespaceLister: s.lister.NamespaceWithMultiTenancy(namespace, tenant),
 	}
 }
 

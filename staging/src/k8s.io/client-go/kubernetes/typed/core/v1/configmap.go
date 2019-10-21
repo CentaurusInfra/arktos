@@ -32,7 +32,8 @@ import (
 // ConfigMapsGetter has a method to return a ConfigMapInterface.
 // A group's client should implement this interface.
 type ConfigMapsGetter interface {
-	ConfigMaps(namespace string, optional_tenant ...string) ConfigMapInterface
+	ConfigMaps(namespace string) ConfigMapInterface
+	ConfigMapsWithMultiTenancy(namespace string, tenant string) ConfigMapInterface
 }
 
 // ConfigMapInterface has methods to work with ConfigMap resources.
@@ -56,12 +57,11 @@ type configMaps struct {
 }
 
 // newConfigMaps returns a ConfigMaps
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newConfigMaps(c *CoreV1Client, namespace string, optional_tenant ...string) *configMaps {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newConfigMaps(c *CoreV1Client, namespace string) *configMaps {
+	return newConfigMapsWithMultiTenancy(c, namespace, "default")
+}
+
+func newConfigMapsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *configMaps {
 	return &configMaps{
 		client: c.RESTClient(),
 		ns:     namespace,

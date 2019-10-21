@@ -28,11 +28,11 @@ type FakeCoordinationV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCoordinationV1) Leases(namespace string, optional_tenant ...string) v1.LeaseInterface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (c *FakeCoordinationV1) Leases(namespace string) v1.LeaseInterface {
+	return &FakeLeases{c, namespace, "default"}
+}
+
+func (c *FakeCoordinationV1) LeasesWithMultiTenancy(namespace string, tenant string) v1.LeaseInterface {
 	return &FakeLeases{c, namespace, tenant}
 }
 

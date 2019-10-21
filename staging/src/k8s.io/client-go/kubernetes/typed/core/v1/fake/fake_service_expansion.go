@@ -22,5 +22,5 @@ import (
 )
 
 func (c *FakeServices) ProxyGet(scheme, name, port, path string, params map[string]string) restclient.ResponseWrapper {
-	return c.Fake.InvokesProxy(core.NewProxyGetAction(servicesResource, c.ns, scheme, name, port, path, params, c.te))
+	return c.Fake.InvokesProxy(core.NewProxyGetActionWithMultiTenancy(servicesResource, c.ns, scheme, name, port, path, params, c.te))
 }

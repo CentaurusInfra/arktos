@@ -34,8 +34,12 @@ type CrV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *CrV1Client) Examples(namespace string, optional_tenant ...string) ExampleInterface {
-	return newExamples(c, namespace, optional_tenant...)
+func (c *CrV1Client) Examples(namespace string) ExampleInterface {
+	return newExamplesWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *CrV1Client) ExamplesWithMultiTenancy(namespace string, tenant string) ExampleInterface {
+	return newExamplesWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new CrV1Client for the given config.

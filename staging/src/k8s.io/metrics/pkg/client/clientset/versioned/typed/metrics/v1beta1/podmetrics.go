@@ -31,7 +31,8 @@ import (
 // PodMetricsesGetter has a method to return a PodMetricsInterface.
 // A group's client should implement this interface.
 type PodMetricsesGetter interface {
-	PodMetricses(namespace string, optional_tenant ...string) PodMetricsInterface
+	PodMetricses(namespace string) PodMetricsInterface
+	PodMetricsesWithMultiTenancy(namespace string, tenant string) PodMetricsInterface
 }
 
 // PodMetricsInterface has methods to work with PodMetrics resources.
@@ -50,12 +51,11 @@ type podMetricses struct {
 }
 
 // newPodMetricses returns a PodMetricses
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newPodMetricses(c *MetricsV1beta1Client, namespace string, optional_tenant ...string) *podMetricses {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPodMetricses(c *MetricsV1beta1Client, namespace string) *podMetricses {
+	return newPodMetricsesWithMultiTenancy(c, namespace, "default")
+}
+
+func newPodMetricsesWithMultiTenancy(c *MetricsV1beta1Client, namespace string, tenant string) *podMetricses {
 	return &podMetricses{
 		client: c.RESTClient(),
 		ns:     namespace,

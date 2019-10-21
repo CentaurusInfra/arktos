@@ -32,7 +32,8 @@ import (
 // RolesGetter has a method to return a RoleInterface.
 // A group's client should implement this interface.
 type RolesGetter interface {
-	Roles(namespace string, optional_tenant ...string) RoleInterface
+	Roles(namespace string) RoleInterface
+	RolesWithMultiTenancy(namespace string, tenant string) RoleInterface
 }
 
 // RoleInterface has methods to work with Role resources.
@@ -56,12 +57,11 @@ type roles struct {
 }
 
 // newRoles returns a Roles
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newRoles(c *RbacV1beta1Client, namespace string, optional_tenant ...string) *roles {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newRoles(c *RbacV1beta1Client, namespace string) *roles {
+	return newRolesWithMultiTenancy(c, namespace, "default")
+}
+
+func newRolesWithMultiTenancy(c *RbacV1beta1Client, namespace string, tenant string) *roles {
 	return &roles{
 		client: c.RESTClient(),
 		ns:     namespace,

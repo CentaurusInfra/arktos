@@ -30,7 +30,8 @@ type EvictionLister interface {
 	// List lists all Evictions in the indexer.
 	List(selector labels.Selector) (ret []*v1beta1.Eviction, err error)
 	// Evictions returns an object that can list and get Evictions.
-	Evictions(namespace string, optional_tenant ...string) EvictionNamespaceLister
+	Evictions(namespace string) EvictionNamespaceLister
+	EvictionsWithMultiTenancy(namespace string, tenant string) EvictionNamespaceLister
 	EvictionListerExpansion
 }
 
@@ -53,11 +54,11 @@ func (s *evictionLister) List(selector labels.Selector) (ret []*v1beta1.Eviction
 }
 
 // Evictions returns an object that can list and get Evictions.
-func (s *evictionLister) Evictions(namespace string, optional_tenant ...string) EvictionNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *evictionLister) Evictions(namespace string) EvictionNamespaceLister {
+	return evictionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+}
+
+func (s *evictionLister) EvictionsWithMultiTenancy(namespace string, tenant string) EvictionNamespaceLister {
 	return evictionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 

@@ -32,7 +32,8 @@ import (
 // PodSecurityPoliciesGetter has a method to return a PodSecurityPolicyInterface.
 // A group's client should implement this interface.
 type PodSecurityPoliciesGetter interface {
-	PodSecurityPolicies(optional_tenant ...string) PodSecurityPolicyInterface
+	PodSecurityPolicies() PodSecurityPolicyInterface
+	PodSecurityPoliciesWithMultiTenancy(tenant string) PodSecurityPolicyInterface
 }
 
 // PodSecurityPolicyInterface has methods to work with PodSecurityPolicy resources.
@@ -55,11 +56,11 @@ type podSecurityPolicies struct {
 }
 
 // newPodSecurityPolicies returns a PodSecurityPolicies
-func newPodSecurityPolicies(c *PolicyV1beta1Client, optional_tenant ...string) *podSecurityPolicies {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newPodSecurityPolicies(c *PolicyV1beta1Client) *podSecurityPolicies {
+	return newPodSecurityPoliciesWithMultiTenancy(c, "default")
+}
+
+func newPodSecurityPoliciesWithMultiTenancy(c *PolicyV1beta1Client, tenant string) *podSecurityPolicies {
 	return &podSecurityPolicies{
 		client: c.RESTClient(),
 		te:     tenant,

@@ -33,7 +33,8 @@ import (
 // ReplicationControllersGetter has a method to return a ReplicationControllerInterface.
 // A group's client should implement this interface.
 type ReplicationControllersGetter interface {
-	ReplicationControllers(namespace string, optional_tenant ...string) ReplicationControllerInterface
+	ReplicationControllers(namespace string) ReplicationControllerInterface
+	ReplicationControllersWithMultiTenancy(namespace string, tenant string) ReplicationControllerInterface
 }
 
 // ReplicationControllerInterface has methods to work with ReplicationController resources.
@@ -61,12 +62,11 @@ type replicationControllers struct {
 }
 
 // newReplicationControllers returns a ReplicationControllers
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newReplicationControllers(c *CoreV1Client, namespace string, optional_tenant ...string) *replicationControllers {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newReplicationControllers(c *CoreV1Client, namespace string) *replicationControllers {
+	return newReplicationControllersWithMultiTenancy(c, namespace, "default")
+}
+
+func newReplicationControllersWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *replicationControllers {
 	return &replicationControllers{
 		client: c.RESTClient(),
 		ns:     namespace,

@@ -32,7 +32,8 @@ import (
 // ResourceQuotasGetter has a method to return a ResourceQuotaInterface.
 // A group's client should implement this interface.
 type ResourceQuotasGetter interface {
-	ResourceQuotas(namespace string, optional_tenant ...string) ResourceQuotaInterface
+	ResourceQuotas(namespace string) ResourceQuotaInterface
+	ResourceQuotasWithMultiTenancy(namespace string, tenant string) ResourceQuotaInterface
 }
 
 // ResourceQuotaInterface has methods to work with ResourceQuota resources.
@@ -57,12 +58,11 @@ type resourceQuotas struct {
 }
 
 // newResourceQuotas returns a ResourceQuotas
-// for backward compatibility, the parameter tenant is optional. The tenant is set to default when it is missing.
-func newResourceQuotas(c *CoreV1Client, namespace string, optional_tenant ...string) *resourceQuotas {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func newResourceQuotas(c *CoreV1Client, namespace string) *resourceQuotas {
+	return newResourceQuotasWithMultiTenancy(c, namespace, "default")
+}
+
+func newResourceQuotasWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *resourceQuotas {
 	return &resourceQuotas{
 		client: c.RESTClient(),
 		ns:     namespace,

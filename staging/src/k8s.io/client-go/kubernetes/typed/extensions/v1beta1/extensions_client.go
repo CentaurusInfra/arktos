@@ -39,28 +39,52 @@ type ExtensionsV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ExtensionsV1beta1Client) DaemonSets(namespace string, optional_tenant ...string) DaemonSetInterface {
-	return newDaemonSets(c, namespace, optional_tenant...)
+func (c *ExtensionsV1beta1Client) DaemonSets(namespace string) DaemonSetInterface {
+	return newDaemonSetsWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *ExtensionsV1beta1Client) Deployments(namespace string, optional_tenant ...string) DeploymentInterface {
-	return newDeployments(c, namespace, optional_tenant...)
+func (c *ExtensionsV1beta1Client) DaemonSetsWithMultiTenancy(namespace string, tenant string) DaemonSetInterface {
+	return newDaemonSetsWithMultiTenancy(c, namespace, tenant)
 }
 
-func (c *ExtensionsV1beta1Client) Ingresses(namespace string, optional_tenant ...string) IngressInterface {
-	return newIngresses(c, namespace, optional_tenant...)
+func (c *ExtensionsV1beta1Client) Deployments(namespace string) DeploymentInterface {
+	return newDeploymentsWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *ExtensionsV1beta1Client) NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyInterface {
-	return newNetworkPolicies(c, namespace, optional_tenant...)
+func (c *ExtensionsV1beta1Client) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentInterface {
+	return newDeploymentsWithMultiTenancy(c, namespace, tenant)
 }
 
-func (c *ExtensionsV1beta1Client) PodSecurityPolicies(tenant ...string) PodSecurityPolicyInterface {
-	return newPodSecurityPolicies(c, tenant...)
+func (c *ExtensionsV1beta1Client) Ingresses(namespace string) IngressInterface {
+	return newIngressesWithMultiTenancy(c, namespace, "default")
 }
 
-func (c *ExtensionsV1beta1Client) ReplicaSets(namespace string, optional_tenant ...string) ReplicaSetInterface {
-	return newReplicaSets(c, namespace, optional_tenant...)
+func (c *ExtensionsV1beta1Client) IngressesWithMultiTenancy(namespace string, tenant string) IngressInterface {
+	return newIngressesWithMultiTenancy(c, namespace, tenant)
+}
+
+func (c *ExtensionsV1beta1Client) NetworkPolicies(namespace string) NetworkPolicyInterface {
+	return newNetworkPoliciesWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *ExtensionsV1beta1Client) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyInterface {
+	return newNetworkPoliciesWithMultiTenancy(c, namespace, tenant)
+}
+
+func (c *ExtensionsV1beta1Client) PodSecurityPolicies() PodSecurityPolicyInterface {
+	return newPodSecurityPoliciesWithMultiTenancy(c, "default")
+}
+
+func (c *ExtensionsV1beta1Client) PodSecurityPoliciesWithMultiTenancy(tenant string) PodSecurityPolicyInterface {
+	return newPodSecurityPoliciesWithMultiTenancy(c, tenant)
+}
+
+func (c *ExtensionsV1beta1Client) ReplicaSets(namespace string) ReplicaSetInterface {
+	return newReplicaSetsWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *ExtensionsV1beta1Client) ReplicaSetsWithMultiTenancy(namespace string, tenant string) ReplicaSetInterface {
+	return newReplicaSetsWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new ExtensionsV1beta1Client for the given config.

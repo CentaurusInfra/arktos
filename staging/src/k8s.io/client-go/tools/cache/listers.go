@@ -142,7 +142,8 @@ type GenericLister interface {
 	// ByTenant will give you a GenericTenantLister for one tenant
 	ByTenant(tenant string) GenericTenantLister
 	// ByNamespace will give you a GenericNamespaceLister for one namespace
-	ByNamespace(namespace string, optional_tenant ...string) GenericNamespaceLister
+	ByNamespace(namespace string) GenericNamespaceLister
+	ByNamespaceWithMultiTenancy(namespace string, tenant string) GenericNamespaceLister
 }
 
 // GenericTenantLister is a lister skin on a generic Indexer
@@ -177,12 +178,11 @@ func (s *genericLister) List(selector labels.Selector) (ret []runtime.Object, er
 	return ret, err
 }
 
-func (s *genericLister) ByNamespace(namespace string, optional_tenant ...string) GenericNamespaceLister {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func (s *genericLister) ByNamespace(namespace string) GenericNamespaceLister {
+	return &genericNamespaceLister{indexer: s.indexer, tenant: metav1.TenantDefault, namespace: namespace, resource: s.resource}
+}
 
+func (s *genericLister) ByNamespaceWithMultiTenancy(namespace string, tenant string) GenericNamespaceLister {
 	return &genericNamespaceLister{indexer: s.indexer, tenant: tenant, namespace: namespace, resource: s.resource}
 }
 

@@ -42,7 +42,7 @@ var flundersKind = schema.GroupVersionKind{Group: "wardle.k8s.io", Version: "v1a
 // Get takes name of the flunder, and returns the corresponding flunder object, and an error if there is any.
 func (c *FakeFlunders) Get(name string, options v1.GetOptions) (result *v1alpha1.Flunder, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(flundersResource, c.ns, name, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewGetActionWithMultiTenancy(flundersResource, c.ns, name, c.te), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *FakeFlunders) Get(name string, options v1.GetOptions) (result *v1alpha1
 // List takes label and field selectors, and returns the list of Flunders that match those selectors.
 func (c *FakeFlunders) List(opts v1.ListOptions) (result *v1alpha1.FlunderList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(flundersResource, flundersKind, c.ns, opts, c.te), &v1alpha1.FlunderList{})
+		Invokes(testing.NewListActionWithMultiTenancy(flundersResource, flundersKind, c.ns, opts, c.te), &v1alpha1.FlunderList{})
 
 	if obj == nil {
 		return nil, err
@@ -76,14 +76,14 @@ func (c *FakeFlunders) List(opts v1.ListOptions) (result *v1alpha1.FlunderList, 
 // Watch returns a watch.Interface that watches the requested flunders.
 func (c *FakeFlunders) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(flundersResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(flundersResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a flunder and creates it.  Returns the server's representation of the flunder, and an error, if there is any.
 func (c *FakeFlunders) Create(flunder *v1alpha1.Flunder) (result *v1alpha1.Flunder, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(flundersResource, c.ns, flunder, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(flundersResource, c.ns, flunder, c.te), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *FakeFlunders) Create(flunder *v1alpha1.Flunder) (result *v1alpha1.Flund
 // Update takes the representation of a flunder and updates it. Returns the server's representation of the flunder, and an error, if there is any.
 func (c *FakeFlunders) Update(flunder *v1alpha1.Flunder) (result *v1alpha1.Flunder, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(flundersResource, c.ns, flunder, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(flundersResource, c.ns, flunder, c.te), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *FakeFlunders) Update(flunder *v1alpha1.Flunder) (result *v1alpha1.Flund
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeFlunders) UpdateStatus(flunder *v1alpha1.Flunder) (*v1alpha1.Flunder, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(flundersResource, "status", c.ns, flunder, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(flundersResource, "status", c.ns, flunder, c.te), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -119,14 +119,14 @@ func (c *FakeFlunders) UpdateStatus(flunder *v1alpha1.Flunder) (*v1alpha1.Flunde
 // Delete takes name of the flunder and deletes it. Returns an error if one occurs.
 func (c *FakeFlunders) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(flundersResource, c.ns, name, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(flundersResource, c.ns, name, c.te), &v1alpha1.Flunder{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeFlunders) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(flundersResource, c.ns, listOptions, c.te)
+	action := testing.NewDeleteCollectionActionWithMultiTenancy(flundersResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.FlunderList{})
 	return err
@@ -135,7 +135,7 @@ func (c *FakeFlunders) DeleteCollection(options *v1.DeleteOptions, listOptions v
 // Patch applies the patch and returns the patched flunder.
 func (c *FakeFlunders) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Flunder, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(flundersResource, c.te, c.ns, name, pt, data, subresources...), &v1alpha1.Flunder{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(flundersResource, c.te, c.ns, name, pt, data, subresources...), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err

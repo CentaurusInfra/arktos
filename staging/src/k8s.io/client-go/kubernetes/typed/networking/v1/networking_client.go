@@ -34,8 +34,12 @@ type NetworkingV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *NetworkingV1Client) NetworkPolicies(namespace string, optional_tenant ...string) NetworkPolicyInterface {
-	return newNetworkPolicies(c, namespace, optional_tenant...)
+func (c *NetworkingV1Client) NetworkPolicies(namespace string) NetworkPolicyInterface {
+	return newNetworkPoliciesWithMultiTenancy(c, namespace, "default")
+}
+
+func (c *NetworkingV1Client) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyInterface {
+	return newNetworkPoliciesWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new NetworkingV1Client for the given config.

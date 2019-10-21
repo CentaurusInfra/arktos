@@ -42,7 +42,7 @@ var cronjobsKind = schema.GroupVersionKind{Group: "batch", Version: "v1beta1", K
 // Get takes name of the cronJob, and returns the corresponding cronJob object, and an error if there is any.
 func (c *FakeCronJobs) Get(name string, options v1.GetOptions) (result *v1beta1.CronJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(cronjobsResource, c.ns, name, c.te), &v1beta1.CronJob{})
+		Invokes(testing.NewGetActionWithMultiTenancy(cronjobsResource, c.ns, name, c.te), &v1beta1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *FakeCronJobs) Get(name string, options v1.GetOptions) (result *v1beta1.
 // List takes label and field selectors, and returns the list of CronJobs that match those selectors.
 func (c *FakeCronJobs) List(opts v1.ListOptions) (result *v1beta1.CronJobList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(cronjobsResource, cronjobsKind, c.ns, opts, c.te), &v1beta1.CronJobList{})
+		Invokes(testing.NewListActionWithMultiTenancy(cronjobsResource, cronjobsKind, c.ns, opts, c.te), &v1beta1.CronJobList{})
 
 	if obj == nil {
 		return nil, err
@@ -76,14 +76,14 @@ func (c *FakeCronJobs) List(opts v1.ListOptions) (result *v1beta1.CronJobList, e
 // Watch returns a watch.Interface that watches the requested cronJobs.
 func (c *FakeCronJobs) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(cronjobsResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(cronjobsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a cronJob and creates it.  Returns the server's representation of the cronJob, and an error, if there is any.
 func (c *FakeCronJobs) Create(cronJob *v1beta1.CronJob) (result *v1beta1.CronJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(cronjobsResource, c.ns, cronJob, c.te), &v1beta1.CronJob{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(cronjobsResource, c.ns, cronJob, c.te), &v1beta1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *FakeCronJobs) Create(cronJob *v1beta1.CronJob) (result *v1beta1.CronJob
 // Update takes the representation of a cronJob and updates it. Returns the server's representation of the cronJob, and an error, if there is any.
 func (c *FakeCronJobs) Update(cronJob *v1beta1.CronJob) (result *v1beta1.CronJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(cronjobsResource, c.ns, cronJob, c.te), &v1beta1.CronJob{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(cronjobsResource, c.ns, cronJob, c.te), &v1beta1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *FakeCronJobs) Update(cronJob *v1beta1.CronJob) (result *v1beta1.CronJob
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeCronJobs) UpdateStatus(cronJob *v1beta1.CronJob) (*v1beta1.CronJob, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(cronjobsResource, "status", c.ns, cronJob, c.te), &v1beta1.CronJob{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(cronjobsResource, "status", c.ns, cronJob, c.te), &v1beta1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -119,14 +119,14 @@ func (c *FakeCronJobs) UpdateStatus(cronJob *v1beta1.CronJob) (*v1beta1.CronJob,
 // Delete takes name of the cronJob and deletes it. Returns an error if one occurs.
 func (c *FakeCronJobs) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(cronjobsResource, c.ns, name, c.te), &v1beta1.CronJob{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(cronjobsResource, c.ns, name, c.te), &v1beta1.CronJob{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeCronJobs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(cronjobsResource, c.ns, listOptions, c.te)
+	action := testing.NewDeleteCollectionActionWithMultiTenancy(cronjobsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.CronJobList{})
 	return err
@@ -135,7 +135,7 @@ func (c *FakeCronJobs) DeleteCollection(options *v1.DeleteOptions, listOptions v
 // Patch applies the patch and returns the patched cronJob.
 func (c *FakeCronJobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CronJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(cronjobsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.CronJob{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(cronjobsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.CronJob{})
 
 	if obj == nil {
 		return nil, err

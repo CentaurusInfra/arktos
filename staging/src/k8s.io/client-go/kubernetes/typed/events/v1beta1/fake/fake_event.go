@@ -42,7 +42,7 @@ var eventsKind = schema.GroupVersionKind{Group: "events.k8s.io", Version: "v1bet
 // Get takes name of the event, and returns the corresponding event object, and an error if there is any.
 func (c *FakeEvents) Get(name string, options v1.GetOptions) (result *v1beta1.Event, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(eventsResource, c.ns, name, c.te), &v1beta1.Event{})
+		Invokes(testing.NewGetActionWithMultiTenancy(eventsResource, c.ns, name, c.te), &v1beta1.Event{})
 
 	if obj == nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *FakeEvents) Get(name string, options v1.GetOptions) (result *v1beta1.Ev
 // List takes label and field selectors, and returns the list of Events that match those selectors.
 func (c *FakeEvents) List(opts v1.ListOptions) (result *v1beta1.EventList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(eventsResource, eventsKind, c.ns, opts, c.te), &v1beta1.EventList{})
+		Invokes(testing.NewListActionWithMultiTenancy(eventsResource, eventsKind, c.ns, opts, c.te), &v1beta1.EventList{})
 
 	if obj == nil {
 		return nil, err
@@ -76,14 +76,14 @@ func (c *FakeEvents) List(opts v1.ListOptions) (result *v1beta1.EventList, err e
 // Watch returns a watch.Interface that watches the requested events.
 func (c *FakeEvents) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(eventsResource, c.ns, opts, c.te))
+		InvokesWatch(testing.NewWatchActionWithMultiTenancy(eventsResource, c.ns, opts, c.te))
 
 }
 
 // Create takes the representation of a event and creates it.  Returns the server's representation of the event, and an error, if there is any.
 func (c *FakeEvents) Create(event *v1beta1.Event) (result *v1beta1.Event, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(eventsResource, c.ns, event, c.te), &v1beta1.Event{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(eventsResource, c.ns, event, c.te), &v1beta1.Event{})
 
 	if obj == nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *FakeEvents) Create(event *v1beta1.Event) (result *v1beta1.Event, err er
 // Update takes the representation of a event and updates it. Returns the server's representation of the event, and an error, if there is any.
 func (c *FakeEvents) Update(event *v1beta1.Event) (result *v1beta1.Event, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(eventsResource, c.ns, event, c.te), &v1beta1.Event{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(eventsResource, c.ns, event, c.te), &v1beta1.Event{})
 
 	if obj == nil {
 		return nil, err
@@ -107,14 +107,14 @@ func (c *FakeEvents) Update(event *v1beta1.Event) (result *v1beta1.Event, err er
 // Delete takes name of the event and deletes it. Returns an error if one occurs.
 func (c *FakeEvents) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(eventsResource, c.ns, name, c.te), &v1beta1.Event{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(eventsResource, c.ns, name, c.te), &v1beta1.Event{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeEvents) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(eventsResource, c.ns, listOptions, c.te)
+	action := testing.NewDeleteCollectionActionWithMultiTenancy(eventsResource, c.ns, listOptions, c.te)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.EventList{})
 	return err
@@ -123,7 +123,7 @@ func (c *FakeEvents) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 // Patch applies the patch and returns the patched event.
 func (c *FakeEvents) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Event, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(eventsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.Event{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(eventsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.Event{})
 
 	if obj == nil {
 		return nil, err

@@ -43,26 +43,25 @@ type group struct {
 }
 
 // New returns a new Interface.
-func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, optional_tenant ...string) Interface {
-	tenant := "default"
-	if len(optional_tenant) > 0 {
-		tenant = optional_tenant[0]
-	}
+func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
+	return &group{factory: f, namespace: namespace, tenant: "default", tweakListOptions: tweakListOptions}
+}
 
+func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) Interface {
 	return &group{factory: f, namespace: namespace, tenant: tenant, tweakListOptions: tweakListOptions}
 }
 
 // V1 returns a new v1.Interface.
 func (g *group) V1() v1.Interface {
-	return v1.New(g.factory, g.namespace, g.tweakListOptions, g.tenant)
+	return v1.NewWithMultiTenancy(g.factory, g.namespace, g.tweakListOptions, g.tenant)
 }
 
 // V1beta1 returns a new v1beta1.Interface.
 func (g *group) V1beta1() v1beta1.Interface {
-	return v1beta1.New(g.factory, g.namespace, g.tweakListOptions, g.tenant)
+	return v1beta1.NewWithMultiTenancy(g.factory, g.namespace, g.tweakListOptions, g.tenant)
 }
 
 // V2alpha1 returns a new v2alpha1.Interface.
 func (g *group) V2alpha1() v2alpha1.Interface {
-	return v2alpha1.New(g.factory, g.namespace, g.tweakListOptions, g.tenant)
+	return v2alpha1.NewWithMultiTenancy(g.factory, g.namespace, g.tweakListOptions, g.tenant)
 }
