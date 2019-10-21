@@ -48,6 +48,7 @@ filegroup(
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/networks:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/ports:all-srcs",
+        "//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/subnets:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud/openstack/utils:all-srcs",
     ],
     tags = ["automanaged"],

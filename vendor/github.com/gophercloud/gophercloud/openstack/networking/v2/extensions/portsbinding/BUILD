@@ -6,15 +6,11 @@ go_library(
         "doc.go",
         "requests.go",
         "results.go",
-        "urls.go",
     ],
-    importmap = "k8s.io/kubernetes/vendor/github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/trusts",
-    importpath = "github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/trusts",
+    importmap = "k8s.io/kubernetes/vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsbinding",
+    importpath = "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsbinding",
     visibility = ["//visibility:public"],
-    deps = [
-        "//vendor/github.com/gophercloud/gophercloud:go_default_library",
-        "//vendor/github.com/gophercloud/gophercloud/openstack/identity/v3/tokens:go_default_library",
-    ],
+    deps = ["//vendor/github.com/gophercloud/gophercloud/openstack/networking/v2/ports:go_default_library"],
 )
 
 filegroup(
