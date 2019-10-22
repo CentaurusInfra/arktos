@@ -1001,6 +1001,18 @@ func (NFSVolumeSource) SwaggerDoc() map[string]string {
 	return map_NFSVolumeSource
 }
 
+var map_NICStatus = map[string]string{
+	"":       "NICStatus contains details for the current status of this nic.",
+	"name":   "Name of nic",
+	"portID": "ID of nic",
+	"state":  "Lifecycle state of nic",
+	"reason": "Brief CamelCase string explaining why nic is in its current state.",
+}
+
+func (NICStatus) SwaggerDoc() map[string]string {
+	return map_NICStatus
+}
+
 var map_Namespace = map[string]string{
 	"":         "Namespace provides a scope for Names. Use of multiple namespaces is optional.",
 	"metadata": "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata",
@@ -1659,6 +1671,7 @@ var map_PodStatus = map[string]string{
 	"containerStatuses":     "The list has one entry per container in the manifest. Each entry is currently the output of `docker inspect`. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status",
 	"qosClass":              "The Quality of Service (QOS) classification assigned to the pod based on resource requirements See PodQOSClass type for available QOS classes More info: https://git.k8s.io/community/contributors/design-proposals/node/resource-qos.md",
 	"virtualMachineStatus":  "Virtual machine status currently a pod can only have one virtual machine",
+	"nicStatuses":           "NIC status",
 }
 
 func (PodStatus) SwaggerDoc() map[string]string {

@@ -1931,6 +1931,25 @@ message NFSVolumeSource {
   optional bool readOnly = 3;
 }
 
+// NICStatus contains details for the current status of this nic.
+message NICStatus {
+  // Name of nic
+  // +optional
+  optional string name = 1;
+
+  // ID of nic
+  // +optional
+  optional string portID = 2;
+
+  // Lifecycle state of nic
+  // +optional
+  optional string state = 3;
+
+  // Brief CamelCase string explaining why nic is in its current state.
+  // +optional
+  optional string reason = 4;
+}
+
 // Namespace provides a scope for Names.
 // Use of multiple namespaces is optional.
 message Namespace {
@@ -3492,6 +3511,10 @@ message PodStatus {
   // currently a pod can only have one virtual machine
   // +optional
   optional VirtualMachineStatus virtualMachineStatus = 12;
+
+  // NIC status
+  // +optional
+  repeated NICStatus nicStatuses = 13;
 }
 
 // PodStatusResult is a wrapper for PodStatus returned by kubelet that can be encode/decoded

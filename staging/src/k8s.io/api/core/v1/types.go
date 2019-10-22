@@ -3323,6 +3323,33 @@ type PodDNSConfigOption struct {
 	Value *string `json:"value,omitempty" protobuf:"bytes,2,opt,name=value"`
 }
 
+// DeviceState is a label for the device state at the current time.
+type DeviceState string
+
+// These are the valid states of devices.
+const (
+	DeviceUnknown    DeviceState = "Unknown"
+	DeviceInProgress DeviceState = "InProgress"
+	DeviceReady      DeviceState = "Ready"
+	DeviceFailed     DeviceState = "Failed"
+)
+
+// NICStatus contains details for the current status of this nic.
+type NICStatus struct {
+	// Name of nic
+	// +optional
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	// ID of nic
+	// +optional
+	PortID string `protobuf:"bytes,2,opt,name=portID" json:"portID,omitempty"`
+	// Lifecycle state of nic
+	// +optional
+	State DeviceState `protobuf:"bytes,3,opt,name=state,casttype=DeviceState" json:"state,omitempty"`
+	// Brief CamelCase string explaining why nic is in its current state.
+	// +optional
+	Reason string `protobuf:"bytes,4,opt,name=reason" json:"reason,omitempty"`
+}
+
 // PodStatus represents information about the status of a pod. Status may trail the actual
 // state of a system, especially if the node that hosts the pod cannot contact the control
 // plane.
@@ -3403,6 +3430,9 @@ type PodStatus struct {
 	// currently a pod can only have one virtual machine
 	// +optional
 	VirtualMachineStatus *VirtualMachineStatus `json:"virtualMachineStatus,omitempty" protobuf:"bytes,12,opt,name=virtualMachineStatus"`
+	// NIC status
+	// +optional
+	NICStatuses []NICStatus `json:"nicStatuses,omitempty" protobuf:"bytes,13,opt,name=nicStatuses"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -162,6 +162,14 @@
       "lastTerminationState": -1579157235,
       "powerState": "6ĴC浔Ű壝ž(-譵ņ錕?øē",
       "restartCount": 1944931763
-    }
+    },
+    "nicStatuses": [
+      {
+        "name": "64",
+        "portID": "65",
+        "state": "]鴍",
+        "reason": "66"
+      }
+    ]
   }
 }

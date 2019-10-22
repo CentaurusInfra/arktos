@@ -1180,6 +1180,14 @@
       "lastTerminationState": -1818094196,
       "powerState": "Ʉ6ɲǛʦ緒gbƂ室逎",
       "restartCount": -98889803
-    }
+    },
+    "nicStatuses": [
+      {
+        "name": "379",
+        "portID": "380",
+        "state": "Ǫ槲Ǭ9|`gɩŢɽǣ(^\u003cu",
+        "reason": "381"
+      }
+    ]
   }
 }

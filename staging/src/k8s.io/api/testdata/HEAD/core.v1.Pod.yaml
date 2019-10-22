@@ -802,6 +802,11 @@ status:
         message: "349"
         reason: "348"
   message: "342"
+  nicStatuses:
+  - name: "379"
+    portID: "380"
+    reason: "381"
+    state: Ǫ槲Ǭ9|`gɩŢɽǣ(^<u
   nominatedNodeName: "344"
   phase: ',豇\ù+ƅ當ñw隍勗讆鏚U駯Ĕ驢'
   podIP: "346"

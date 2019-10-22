@@ -114,6 +114,11 @@ status:
         message: "34"
         reason: "33"
   message: "27"
+  nicStatuses:
+  - name: "64"
+    portID: "65"
+    reason: "66"
+    state: ']鴍'
   nominatedNodeName: "29"
   phase: ƗǸƢ6/ʕV
   podIP: "31"

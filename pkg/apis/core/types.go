@@ -3035,6 +3035,33 @@ type PodDNSConfigOption struct {
 	Value *string
 }
 
+// DeviceState is a label for the device state at the current time.
+type DeviceState string
+
+// These are the valid states of devices.
+const (
+	DeviceUnknown    DeviceState = "Unkown"
+	DeviceInProgress DeviceState = "InProgress"
+	DeviceReady      DeviceState = "Ready"
+	DeviceFailed     DeviceState = "Failed"
+)
+
+// NICStatus contains details for the current status of this nic.
+type NICStatus struct {
+	// Name of nic
+	// +optional
+	Name string
+	// ID of nic
+	// +optional
+	PortID string
+	// Lifecycle state of nic
+	// +optional
+	State DeviceState
+	// Brief CamelCase string explaining why nic is in its current state.
+	// +optional
+	Reason string
+}
+
 // PodStatus represents information about the status of a pod. Status may trail the actual
 // state of a system.
 type PodStatus struct {
@@ -3084,6 +3111,9 @@ type PodStatus struct {
 	// currently a pod can only have one virtual machine
 	// +optional
 	VirtualMachineStatus *VirtualMachineStatus
+	// NIC status
+	// +optional
+	NICStatuses []NICStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
