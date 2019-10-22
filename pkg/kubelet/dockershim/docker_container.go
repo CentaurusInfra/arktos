@@ -474,3 +474,15 @@ func (ds *dockerService) performPlatformSpecificContainerCleanupAndLogErrors(con
 func (ds *dockerService) RebootVM(_ context.Context, _ *runtimeapi.RebootVMRequest) (*runtimeapi.RebootVMResponse, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+
+func (ds *dockerService) AttachNetworkInterface(_ context.Context, _ *runtimeapi.DeviceAttachDetachRequest) (*runtimeapi.DeviceAttachDetachResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (ds *dockerService) DetachNetworkInterface(_ context.Context, _ *runtimeapi.DeviceAttachDetachRequest) (*runtimeapi.DeviceAttachDetachResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (ds *dockerService) ListNetworkInterfaces(_ context.Context, _ *runtimeapi.ListDeviceRequest) (*runtimeapi.ListDeviceResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}

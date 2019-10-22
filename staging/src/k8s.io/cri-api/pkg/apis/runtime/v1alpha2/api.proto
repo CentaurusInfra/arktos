@@ -110,6 +110,14 @@ service RuntimeService {
 
     // RebootVM reboots the VM domain and returns error msg if there is any
     rpc RebootVM(RebootVMRequest) returns (RebootVMResponse) {}
+
+    // AttachNetworkInterface adds new NIC to the POD-VM
+    rpc AttachNetworkInterface(DeviceAttachDetachRequest) returns (DeviceAttachDetachResponse) {}
+    // DetachNetworkInterface removes a NIC to the POD-VM
+    rpc DetachNetworkInterface(DeviceAttachDetachRequest) returns (DeviceAttachDetachResponse) {}
+    // ListNetworkInterfaces lists NICs attached to the POD-VM
+    rpc ListNetworkInterfaces(ListDeviceRequest) returns (ListDeviceResponse) {}
+
 }
 
 // ImageService defines the public APIs for managing images.
@@ -1315,3 +1323,32 @@ message RebootVMRequest {
 }
 
 message RebootVMResponse {}
+
+message NicSpec {
+    // Name of the NIC to the VM
+    string Name = 1;
+    string SubnetName = 2;
+    string PortId = 3;
+    string IpAddress = 4;
+    bool IsIpV6Enabled = 5;
+    string tag = 6;
+    string VPC = 7;
+}
+
+message DeviceAttachDetachRequest {
+    string PodSandboxID = 1;
+    string VmName = 2;
+    NicSpec Nic = 3;
+}
+
+message DeviceAttachDetachResponse {}
+
+message ListDeviceRequest{
+     string PodSandboxId = 1;
+     string VmName = 2;
+     string NicName = 3;
+}
+
+message ListDeviceResponse {
+    repeated NicSpec Nics = 1;
+}

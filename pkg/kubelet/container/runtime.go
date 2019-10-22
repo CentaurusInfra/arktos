@@ -125,6 +125,18 @@ type Runtime interface {
 type VmService interface {
 	// Reboot VM, this will relay to virDomainReboot in libvirt
 	RebootVM(*v1.Pod, string) error
+	VmDeviceManagerService
+}
+
+// VM related device management methods, Nic, Volumes, etc.
+type VmDeviceManagerService interface {
+	// Attach new NIC to the VM in the POD
+	AttachNetworkInterface(*v1.Pod, string, *v1.Nic) error
+	// Detach NIC from the VM in the POD
+	DetachNetworkInterface(*v1.Pod, string, *v1.Nic) error
+	// List all or one NICs attached to the VM in the POD
+	// TODO: consider add interface status as part of the return
+	ListNetworkInterfaces(*v1.Pod, string) ([]*v1.Nic, error)
 }
 
 // TODO: this interface will be needed for VM workload type as well with the return value to be generic

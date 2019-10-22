@@ -155,3 +155,19 @@ func (r *Mock) ImageStats() (*ImageStats, error) {
 func (r *Mock) UpdatePodCIDR(c string) error {
 	return nil
 }
+
+// VM service interface methods
+func (r *Mock) AttachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) error {
+	args := r.Called(fmt.Sprintf("%s-%s-%s", pod.Name, vmName, nic.Name))
+	return args.Error(0)
+}
+
+func (r *Mock) DetachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) error {
+	args := r.Called(fmt.Sprintf("%s-%s-%s", pod.Name, vmName, nic.Name))
+	return args.Error(0)
+}
+
+func (r *Mock) ListNetworkInterfaces(pod *v1.Pod, vmName string) ([]*v1.Nic, error) {
+	args := r.Called(fmt.Sprintf("%s-%s-%s", pod.Name, vmName))
+	return []*v1.Nic{{"testNic", "testsubnet", "fakePortId", "fakeIP", "test", false}}, args.Error(0)
+}

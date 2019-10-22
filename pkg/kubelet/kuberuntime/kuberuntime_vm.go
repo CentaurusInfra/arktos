@@ -18,6 +18,7 @@ package kuberuntime
 
 import (
 	"k8s.io/api/core/v1"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
 )
 
@@ -39,4 +40,44 @@ func (m *kubeGenericRuntimeManager) RebootVM(pod *v1.Pod, vmName string) error {
 	klog.V(4).Infof("Retrieved containerID %v for VM %s", containerID, vmName)
 
 	return runtimeService.RebootVM(containerID.ID)
+}
+
+// VM service interface methods
+func (m *kubeGenericRuntimeManager) AttachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) error {
+	klog.V(4).Infof("Attaching NIC %v to Pod-VM %s-%s", nic, pod.Name, vmName)
+
+	runtimeService, _ := m.GetRuntimeServiceByPod(pod)
+	return runtimeService.AttachNetworkInterface(pod.Name, vmName, KubeNicToRuntimeNic(nic))
+}
+
+func (m *kubeGenericRuntimeManager) DetachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) error {
+	klog.V(4).Infof("Detaching NIC %v to Pod-VM %s-%s", nic, pod.Name, vmName)
+
+	runtimeService, _ := m.GetRuntimeServiceByPod(pod)
+	return runtimeService.DetachNetworkInterface(pod.Name, vmName, KubeNicToRuntimeNic(nic))
+}
+
+func (m *kubeGenericRuntimeManager) ListNetworkInterfaces(pod *v1.Pod, vmName string) ([]*v1.Nic, error) {
+	klog.V(4).Infof("Listing NICs attached to Pod-VM %s-%s", pod.Name, vmName)
+
+	runtimeService, _ := m.GetRuntimeServiceByPod(pod)
+	runtimeNics, err := runtimeService.ListNetworkInterfaces(pod.Name, vmName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	kubeNics := make([]*v1.Nic, len(runtimeNics))
+	for i, nic := range runtimeNics {
+		kubeNics[i] = RuntimeNicToKubeNic(nic)
+	}
+	return kubeNics, nil
+}
+
+func RuntimeNicToKubeNic(runtimeNic *runtimeapi.NicSpec) *v1.Nic {
+	return &v1.Nic{Name: runtimeNic.Name, SubnetName: runtimeNic.SubnetName, PortId: runtimeNic.PortId, IpAddress: runtimeNic.IpAddress}
+}
+
+func KubeNicToRuntimeNic(kubeNic *v1.Nic) *runtimeapi.NicSpec {
+	return &runtimeapi.NicSpec{Name: kubeNic.Name, SubnetName: kubeNic.SubnetName, PortId: kubeNic.PortId, IpAddress: kubeNic.IpAddress}
 }

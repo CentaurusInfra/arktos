@@ -420,3 +420,28 @@ func (f *FakeContainerCommandRunner) RunInContainer(containerID ContainerID, cmd
 
 	return []byte(f.Stdout), f.Err
 }
+
+// VM service interface methods
+func (f *FakeRuntime) AttachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) error {
+	f.Lock()
+	defer f.Unlock()
+
+	f.CalledFunctions = append(f.CalledFunctions, "AttachNetworkInterface")
+	return f.Err
+}
+
+func (f *FakeRuntime) DetachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) error {
+	f.Lock()
+	defer f.Unlock()
+
+	f.CalledFunctions = append(f.CalledFunctions, "DetachNetworkInterface")
+	return f.Err
+}
+
+func (f *FakeRuntime) ListNetworkInterfaces(pod *v1.Pod, vmName string) ([]*v1.Nic, error) {
+	f.Lock()
+	defer f.Unlock()
+
+	f.CalledFunctions = append(f.CalledFunctions, "ListNetworkInterfaces")
+	return nil, f.Err
+}

@@ -530,3 +530,55 @@ func (r *RemoteRuntimeService) RebootVM(vmID string) error {
 
 	return nil
 }
+
+// Add new NIC to PodSandbox-VM
+// An important note, in our system:
+// 1. The VM name from k8s Podspec equals the VN -- please refer to createContainer code path
+// 2. pod ID == podSandBoxID
+func (r *RemoteRuntimeService) AttachNetworkInterface(podSandboxID string, vmName string, nic *runtimeapi.NicSpec) error {
+	klog.V(4).Infof("Calling runtime service to attach NIC %v to PodSandbox-VM %s-%s", nic, podSandboxID, vmName)
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	_, err := r.runtimeClient.AttachNetworkInterface(ctx,
+		&runtimeapi.DeviceAttachDetachRequest{PodSandboxID: podSandboxID, VmName: vmName, Nic: nic})
+
+	if err != nil {
+		klog.Errorf("AttacheNetworkInterface %s-%s from runtime service failed: %v", podSandboxID, vmName, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *RemoteRuntimeService) DetachNetworkInterface(podSandboxID string, vmName string, nic *runtimeapi.NicSpec) error {
+	klog.V(4).Infof("Calling runtime service to detach NIC %v from PodSandbox-VM %s-%s", nic, podSandboxID, vmName)
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	_, err := r.runtimeClient.DetachNetworkInterface(ctx,
+		&runtimeapi.DeviceAttachDetachRequest{PodSandboxID: podSandboxID, VmName: vmName, Nic: nic})
+
+	if err != nil {
+		klog.Errorf("DetacheNetworkInterface %s-%s from runtime service failed: %v", podSandboxID, vmName, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *RemoteRuntimeService) ListNetworkInterfaces(podSandboxID string, vmName string) ([]*runtimeapi.NicSpec, error) {
+	klog.V(4).Infof("Calling runtime service to list NICs attached to PodSandbox-VM %s-%s", podSandboxID, vmName)
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	resp, err := r.runtimeClient.ListNetworkInterfaces(ctx,
+		&runtimeapi.ListDeviceRequest{PodSandboxId: podSandboxID, VmName: vmName, NicName: ""})
+
+	if err != nil {
+		klog.Errorf("ListNetworkInterfaces on %s-%s from runtime service failed: %v", podSandboxID, vmName, err)
+		return nil, err
+	}
+
+	return resp.Nics, nil
+}

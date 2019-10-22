@@ -123,4 +123,16 @@ type ImageManagerService interface {
 type VmManager interface {
 	// Reboot VM, this will relay to virDomainReboot in libvirt
 	RebootVM(vmID string) error
+	VmDeviceManagerService
+}
+
+// VM related device management methods, Nic, Volumes, etc.
+type VmDeviceManagerService interface {
+	// Attach new NIC to the VM in the POD
+	AttachNetworkInterface(string, string, *runtimeapi.NicSpec) error
+	// Detach NIC from the VM in the POD
+	DetachNetworkInterface(string, string, *runtimeapi.NicSpec) error
+	// List all or one NICs attached to the VM in the POD
+	// TODO: consider add interface status as part of the return
+	ListNetworkInterfaces(string, string) ([]*runtimeapi.NicSpec, error)
 }

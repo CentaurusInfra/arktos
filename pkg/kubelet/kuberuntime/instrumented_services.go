@@ -318,3 +318,30 @@ func (in instrumentedImageManagerService) ImageFsInfo() ([]*runtimeapi.Filesyste
 	recordError(operation, err)
 	return fsInfo, nil
 }
+
+func (in instrumentedRuntimeService) AttachNetworkInterface(podSandboxID string, vmName string, nic *runtimeapi.NicSpec) error {
+	const operation = "AttachNetworkInterface"
+	defer recordOperation(operation, time.Now())
+
+	err := in.service.AttachNetworkInterface(podSandboxID, vmName, nic)
+	recordError(operation, err)
+	return err
+}
+
+func (in instrumentedRuntimeService) DetachNetworkInterface(podSandboxID string, vmName string, nic *runtimeapi.NicSpec) error {
+	const operation = "DetachNetworkInterface"
+	defer recordOperation(operation, time.Now())
+
+	err := in.service.DetachNetworkInterface(podSandboxID, vmName, nic)
+	recordError(operation, err)
+	return err
+}
+
+func (in instrumentedRuntimeService) ListNetworkInterfaces(podSandboxID string, vmName string) ([]*runtimeapi.NicSpec, error) {
+	const operation = "ListNetworkInterface"
+	defer recordOperation(operation, time.Now())
+
+	nics, err := in.service.ListNetworkInterfaces(podSandboxID, vmName)
+	recordError(operation, err)
+	return nics, err
+}

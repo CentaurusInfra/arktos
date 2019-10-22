@@ -304,3 +304,16 @@ func (f *RemoteRuntime) RebootVM(ctx context.Context, req *kubeapi.RebootVMReque
 
 	return &kubeapi.RebootVMResponse{}, nil
 }
+
+//TODO: fake interface methods implementation
+func (f *RemoteRuntime) AttachNetworkInterface(ctx context.Context, req *kubeapi.DeviceAttachDetachRequest) (*kubeapi.DeviceAttachDetachResponse, error) {
+	return &kubeapi.DeviceAttachDetachResponse{}, nil
+}
+
+func (f *RemoteRuntime) DetachNetworkInterface(ctx context.Context, req *kubeapi.DeviceAttachDetachRequest) (*kubeapi.DeviceAttachDetachResponse, error) {
+	return &kubeapi.DeviceAttachDetachResponse{}, nil
+}
+
+func (f *RemoteRuntime) ListNetworkInterfaces(ctx context.Context, req *kubeapi.ListDeviceRequest) (*kubeapi.ListDeviceResponse, error) {
+	return &kubeapi.ListDeviceResponse{}, nil
+}

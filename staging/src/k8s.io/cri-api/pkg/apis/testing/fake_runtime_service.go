@@ -588,3 +588,42 @@ func (r *FakeRuntimeService) RebootVM(vmID string) error {
 
 	return nil
 }
+
+func (r *FakeRuntimeService) AttachNetworkInterface(podSandboxID string, vmName string, nic *runtimeapi.NicSpec) error {
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "AttachNetworkInterface")
+
+	if err := r.popError("AttachNetworkInterface"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *FakeRuntimeService) DetachNetworkInterface(podSandboxID string, vmName string, nic *runtimeapi.NicSpec) error {
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "AttachNetworkInterface")
+
+	if err := r.popError("DetachNetworkInterface"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *FakeRuntimeService) ListNetworkInterfaces(podSandboxID string, vmName string) ([]*runtimeapi.NicSpec, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "ListNetworkInterface")
+
+	if err := r.popError("ListNetworkInterface"); err != nil {
+		return nil, err
+	}
+
+	return []*runtimeapi.NicSpec{{Name: "testNic", SubnetName: "testSubnet", PortId: "testPortId", IpAddress: "testIpAddress"}}, nil
+}
