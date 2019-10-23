@@ -22,12 +22,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -37,6 +38,7 @@ import (
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	// TODO: remove this import if
 	// api.Registry.GroupOrDie(v1.GroupName).GroupVersions[0].String() is changed
@@ -2356,5 +2358,38 @@ func TestTruncatePodHostname(t *testing.T) {
 		output, err := truncatePodHostnameIfNeeded("test-pod", test.input)
 		assert.NoError(t, err)
 		assert.Equal(t, test.output, output)
+	}
+}
+
+func TestConvertStatusToAPIStatusWithNICStatus(t *testing.T) {
+	pod := &v1.Pod{}
+	criPodStatus := &kubecontainer.PodStatus{
+		SandboxStatuses: []*runtimeapi.PodSandboxStatus{
+			&runtimeapi.PodSandboxStatus{
+				Network: &runtimeapi.PodSandboxNetworkStatus{
+					Nics: []*runtimeapi.NICStatus{
+						&runtimeapi.NICStatus{
+							Name:   "eth0",
+							PortId: "12345",
+							State:  runtimeapi.NICState_NIC_INPROGRESS,
+							Reason: "being provisioning"},
+					},
+				},
+			},
+		},
+	}
+	apiNICStatusExpected := []v1.NICStatus{
+		// todo[vnic-hotplug]: use proper const v1.DeviceInProgress like instead of literal string
+		{Name: "eth0", PortID: "12345", State: "NIC_INPROGRESS", Reason: "being provisioning"},
+	}
+
+	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+	defer testKubelet.Cleanup()
+	kubelet := testKubelet.kubelet
+
+	apiStatus := kubelet.convertStatusToAPIStatus(pod, criPodStatus)
+	apiNICStatusActual := apiStatus.NICStatuses
+	if !reflect.DeepEqual(&apiNICStatusActual, &apiNICStatusExpected) {
+		t.Errorf("expecting %v, got %v", apiNICStatusExpected, apiNICStatusActual)
 	}
 }

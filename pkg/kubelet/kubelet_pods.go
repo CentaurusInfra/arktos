@@ -32,7 +32,7 @@ import (
 	"strings"
 	"sync"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -1476,7 +1476,34 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 			apiPodStatus.Conditions = append(apiPodStatus.Conditions, c)
 		}
 	}
+
+	// ensures nic status copied to api core pod status
+	// todo[vnic-hotplug]: to let kubelet to keep nic status of every pod, so as to get from kubelet instead of runtime query of PodSandboxStatus
+	if len(podStatus.SandboxStatuses) > 0 {
+		if network := podStatus.SandboxStatuses[0].GetNetwork(); network != nil {
+			apiPodStatus.NICStatuses = toAPINICStatuses(network.GetNics())
+		}
+	}
+
 	return &apiPodStatus
+}
+
+func toAPINICStatuses(nicStatuses []*runtimeapi.NICStatus) []v1.NICStatus {
+	var result []v1.NICStatus
+	for _, s := range nicStatuses {
+		result = append(result, toAPINICStatus(s))
+	}
+
+	return result
+}
+
+func toAPINICStatus(s *runtimeapi.NICStatus) v1.NICStatus {
+	return v1.NICStatus{
+		Name:   s.GetName(),
+		PortID: s.GetPortId(),
+		State:  v1.DeviceState(s.GetState().String()),
+		Reason: s.GetReason(),
+	}
 }
 
 // convertToAPIContainerStatuses converts the given internal container
