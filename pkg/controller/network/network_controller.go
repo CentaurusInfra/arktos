@@ -171,7 +171,7 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 	if needUpdate || needCreate {
 		_, err := nc.kubeClient.CoreV1().Pods(pod.Namespace).Update(pod)
 		if err != nil {
-			klog.Error("Network-controller update error (%v).", err)
+			klog.Errorf("Network-controller update error (%v).", err)
 		}
 	}
 }

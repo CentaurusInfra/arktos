@@ -731,10 +731,10 @@ func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, nam
 }
 
 // Sort Controller Instances by controller key
-func SortControllerInstancesByKeyAndConvertToLocal(controllerInstances []v1.ControllerInstance) []controllerInstanceLocal {
+func SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap map[string]v1.ControllerInstance) []controllerInstanceLocal {
 	// copy map
 	var sortedControllerInstancesLocal []controllerInstanceLocal
-	for _, controllerInstance := range controllerInstances {
+	for _, controllerInstance := range controllerInstanceMap {
 		instance := controllerInstanceLocal{
 			instanceName:  controllerInstance.Name,
 			controllerKey: controllerInstance.ControllerKey,
@@ -757,16 +757,6 @@ func SortControllerInstancesByKeyAndConvertToLocal(controllerInstances []v1.Cont
 	}
 
 	return sortedControllerInstancesLocal
-}
-
-func isControllerInstanceExisted(controllerInstances []v1.ControllerInstance, controllerName string) bool {
-	for _, instance := range controllerInstances {
-		if instance.Name == controllerName {
-			return true
-		}
-	}
-
-	return false
 }
 
 // WaitForCacheSync is a wrapper around cache.WaitForCacheSync that generates log messages

@@ -116,10 +116,10 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 	klog.Infof("Received event for NEW controller instance %v. CIM %v", newControllerInstance.Name, cim.instanceId)
 
 	cim.mux.Lock()
-	klog.Infof("mux locked addControllerInstance. CIM %v", cim.instanceId)
+	klog.Infof("mux acquired addControllerInstance. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux unlocked addControllerInstance. CIM %v", cim.instanceId)
+		klog.Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
 	}()
 
 	if cim.currentControllers == nil {
@@ -177,10 +177,10 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 	}
 
 	cim.mux.Lock()
-	klog.Infof("mux locked updateControllerInstance. CIM %v", cim.instanceId)
+	klog.Infof("mux acquired updateControllerInstance. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux unlocked updateControllerInstance. CIM %v", cim.instanceId)
+		klog.Infof("mux released updateControllerInstance. CIM %v", cim.instanceId)
 	}()
 
 	cim.currentControllers[oldControllerInstance.ControllerType][oldControllerInstance.Name] = *curControllerInstance
@@ -209,10 +209,10 @@ func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) 
 
 	klog.Infof("Received event for delete controller instance %v. CIM %v", controllerinstance.Name, cim.instanceId)
 	cim.mux.Lock()
-	klog.Infof("mux locked deleteControllerInstance. CIM %v", cim.instanceId)
+	klog.Infof("mux acquired deleteControllerInstance. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux unlocked deleteControllerInstance. CIM %v", cim.instanceId)
+		klog.Infof("mux released deleteControllerInstance. CIM %v", cim.instanceId)
 	}()
 
 	if l, ok := cim.currentControllers[controllerinstance.ControllerType]; ok {
@@ -249,10 +249,10 @@ func (cim *ControllerInstanceManager) ListControllerInstances(controllerType str
 
 func (cim *ControllerInstanceManager) syncControllerInstances() error {
 	cim.mux.Lock()
-	klog.Infof("mux locked syncControllerInstances. CIM %v", cim.instanceId)
+	klog.Infof("mux acquired syncControllerInstances. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux unlocked syncControllerInstances. CIM %v", cim.instanceId)
+		klog.Infof("mux released syncControllerInstances. CIM %v", cim.instanceId)
 	}()
 
 	controllerInstanceList, err := cim.kubeClient.CoreV1().ControllerInstances().List(metav1.ListOptions{})
