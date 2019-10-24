@@ -67,6 +67,8 @@ type UpdatePodOptions struct {
 	OnCompleteFunc OnCompleteFunc
 	// if update type is kill, use the specified options to kill the pod.
 	KillPodOptions *KillPodOptions
+	// if update type is action, perform the specified action on the pod
+	Action *v1.Action
 }
 
 // PodWorkers is an abstract interface for testability.
@@ -88,6 +90,8 @@ type syncPodOptions struct {
 	podStatus *kubecontainer.PodStatus
 	// if update type is kill, use the specified options to kill the pod.
 	killPodOptions *KillPodOptions
+	// if update type is action, perform the specified action on the pod
+	action *v1.Action
 }
 
 // the function to invoke to perform a sync.
@@ -174,6 +178,7 @@ func (p *podWorkers) managePodLoop(podUpdates <-chan UpdatePodOptions) {
 			err = p.syncPodFn(syncPodOptions{
 				mirrorPod:      update.MirrorPod,
 				pod:            update.Pod,
+				action:         update.Action,
 				podStatus:      status,
 				killPodOptions: update.KillPodOptions,
 				updateType:     update.UpdateType,

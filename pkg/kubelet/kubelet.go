@@ -19,24 +19,18 @@ package kubelet
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path"
-	"regexp"
 	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
-	dockerapi "github.com/docker/docker/client"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1470,6 +1464,12 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	podStatus := o.podStatus
 	updateType := o.updateType
 
+	// if action is requested, perform action on pod
+	if updateType == kubetypes.SyncPodAction {
+		kl.DoPodAction(o.action, pod)
+		return nil
+	}
+
 	// if we want to kill a pod, do it now!
 	if updateType == kubetypes.SyncPodKill {
 		killPodOptions := o.killPodOptions
@@ -2021,6 +2021,28 @@ func (kl *Kubelet) dispatchWork(pod *v1.Pod, syncType kubetypes.SyncPodType, mir
 	}
 }
 
+func (kl *Kubelet) dispatchAction(pod *v1.Pod, action *v1.Action, start time.Time) {
+	if kl.podIsTerminated(pod) {
+		if pod.DeletionTimestamp != nil {
+			kl.statusManager.TerminatePod(pod)
+		}
+		return
+	}
+	// Run the sync in an async worker.
+	kl.podWorkers.UpdatePod(&UpdatePodOptions{
+		Pod:        pod,
+		Action:     action,
+		MirrorPod:  nil,
+		UpdateType: kubetypes.SyncPodAction,
+		OnCompleteFunc: func(err error) {
+			if err != nil {
+				metrics.PodWorkerDuration.WithLabelValues(kubetypes.SyncPodAction.String()).Observe(metrics.SinceInSeconds(start))
+				metrics.DeprecatedPodWorkerLatency.WithLabelValues(kubetypes.SyncPodAction.String()).Observe(metrics.SinceInMicroseconds(start))
+			}
+		},
+	})
+}
+
 // TODO: handle mirror pods in a separate component (issue #17251)
 func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 	// Mirror pod ADD/UPDATE/DELETE operations are considered an UPDATE to the
@@ -2031,168 +2053,32 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 	}
 }
 
-func GetVirtletLibvirtContainer() (*dockerapi.Client, *dockertypes.Container, error) {
-	//TODO: This is OK for demo, but use CRI instead of docker direct.
-	//TODO: Don't do this everytime - store it in KL
-	dockercli, err := dockerapi.NewClientWithOpts(dockerapi.FromEnv)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	containers, err := dockercli.ContainerList(context.Background(), dockertypes.ContainerListOptions{})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	i := 0
-	found := false
-	for i = range containers {
-		if strings.Contains(strings.Join(containers[i].Names, " "), "libvirt_virtlet") {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return nil, nil, errors.New("virtlet libvirt container not found")
-	}
-
-	return dockercli, &containers[i], nil
-}
-
-func GetVMDomainID(pod *v1.Pod) (string, error) {
-	podVMContainer := pod.Status.ContainerStatuses[0]
-	re := regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}`)
-	domainVMID := re.FindStringSubmatch(podVMContainer.ContainerID)
-	if len(domainVMID) != 1 {
-		return "", errors.New(fmt.Sprintf("Could not find domain VM ID from virtlet container %s", podVMContainer.ContainerID))
-	}
-	domainID := fmt.Sprintf("virtlet-%s-%s", domainVMID[0], podVMContainer.Name)
-	return domainID, nil
-}
-
-func (kl *Kubelet) DoRebootVM(pod *v1.Pod) error {
-	klog.V(4).Infof("Rebooting VM %s-%s", pod.Name, pod.Spec.VirtualMachine.Name)
-	if err := kl.containerRuntime.RebootVM(pod, pod.Spec.VirtualMachine.Name); err != nil {
-		klog.V(4).Infof("Failed Reboot VM %s-%s. with error: %v", pod.Name, pod.Spec.VirtualMachine.Name, err)
-		return err
-	}
-
-	klog.V(4).Infof("Successfully rebooted VM %s-%s", pod.Name, pod.Spec.VirtualMachine.Name)
-	return nil
-}
-
-func (kl *Kubelet) DoSnapshotVM(pod *v1.Pod, snapshotName string) (string, error) {
-	var snapshotID string
-	if _, libvirtContainer, err := GetVirtletLibvirtContainer(); err != nil {
-		return "", err
-	} else {
-		domainID, derr := GetVMDomainID(pod)
-		if derr != nil {
-			return "", derr
-		}
-		//TODO: Figure out how to use dockercli exec instead of os.exec
-		klog.V(4).Infof("Snapshotting virtlet VM %s", domainID)
-		cmd := "docker"
-		cmdArgs := []string{"exec", "-i", libvirtContainer.ID, "virsh", "snapshot-create-as", domainID}
-		if snapshotName != "" {
-			cmdArgs = append(cmdArgs, "--name", snapshotName)
-		}
-		out, err := exec.Command(cmd, cmdArgs...).CombinedOutput()
-		if err != nil {
-			klog.Errorf("Libvirt container command failed. Error: %+v - %+v", err, out)
-			return "", errors.New(fmt.Sprintf("Libvirt container command failed for pod %s. Error: %s - %s", pod.Name, err.Error(), out))
-		}
-		klog.V(4).Infof("Snapshot virtlet VM command output: %s", out)
-		re := regexp.MustCompile(` `)
-		snapshotID = re.Split(string(out), -1)[2]
-	}
-	return snapshotID, nil
-}
-
-func (kl *Kubelet) DoRestoreVM(pod *v1.Pod, snapshotID string) error {
-	if _, libvirtContainer, err := GetVirtletLibvirtContainer(); err != nil {
-		return err
-	} else {
-		domainID, derr := GetVMDomainID(pod)
-		if derr != nil {
-			return derr
-		}
-		//TODO: Figure out how to use dockercli exec instead of os.exec
-		klog.V(4).Infof("Restoring virtlet VM %s to snapshot %s", domainID, snapshotID)
-		cmd := "docker"
-		cmdArgs := []string{"exec", "-i", libvirtContainer.ID, "virsh", "snapshot-revert", domainID, "--snapshotname", snapshotID}
-		out, err := exec.Command(cmd, cmdArgs...).CombinedOutput()
-		if err != nil {
-			klog.Errorf("Libvirt container command failed. Error: %+v - %+v", err, out)
-			return errors.New(fmt.Sprintf("Libvirt container command failed for pod %s. Error: %s - %s", pod.Name, err.Error(), out))
-		}
-		klog.V(4).Infof("Revert virtlet VM command output: %s", out)
-	}
-	return nil
-}
-
-func (kl *Kubelet) DoPodAction(action *v1.Action) {
-	// TODO: Design for kubelet action handling, this code should go in a different file
-	// TODO: Dispatch action - update status as below once action is complete (in a callback)
-	var err error
-	var errStr string
-	podActionStatus := &v1.PodActionStatus{
-		PodName: action.Spec.PodAction.PodName,
-	}
-
-	pod, exist := kl.GetPodByName(action.Namespace, action.Spec.PodAction.PodName)
-	if exist {
-		actionOp := strings.Split(action.Name, "-")[0]
-		switch actionOp {
-		case string(v1.RebootOp):
-			// Reboot (VM) Pod
-			if err = kl.DoRebootVM(pod); err == nil {
-				klog.V(4).Infof("Performed reboot action for Pod %s", action.Spec.PodAction.PodName)
-				podActionStatus.RebootStatus = &v1.RebootStatus{RebootSuccessful: true}
-			}
-		case string(v1.SnapshotOp):
-			// Take snapshot of (VM) Pod
-			var snapshotID string
-			if snapshotID, err = kl.DoSnapshotVM(pod, action.Spec.PodAction.SnapshotAction.SnapshotName); err == nil {
-				klog.V(4).Infof("Performed snapshot action for Pod %s", action.Spec.PodAction.PodName)
-				podActionStatus.SnapshotStatus = &v1.SnapshotStatus{SnapshotID: snapshotID}
-			}
-		case string(v1.RestoreOp):
-			// Restore (VM) Pod to specified snapshot ID
-			if err = kl.DoRestoreVM(pod, action.Spec.PodAction.RestoreAction.SnapshotID); err == nil {
-				klog.V(4).Infof("Performed restore action for Pod %s", action.Spec.PodAction.PodName)
-				podActionStatus.RestoreStatus = &v1.RestoreStatus{RestoreSuccessful: true}
-			}
-		default:
-			errStr = fmt.Sprintf("Action %s is not supported", action.Name)
-		}
-	} else {
-		errStr = fmt.Sprintf("Pod %s not found", action.Spec.PodAction.PodName)
-	}
-
-	if err != nil {
-		errStr = err.Error()
-	}
-	if errStr != "" {
-		klog.V(2).Infof("Action %s for Pod %s failed. Error: %s", action.Name, action.Spec.PodAction.PodName, errStr)
-	}
-	action.Status = v1.ActionStatus{
-		Complete:        true,
-		PodActionStatus: podActionStatus,
-		Error:           errStr,
-	}
-	if _, err := kl.kubeClient.CoreV1().Actions(action.Namespace).UpdateStatus(action); err != nil {
-		klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
-	}
-}
-
 // HandlePodActions is the callback in SyncHandler for actions
 func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
+	start := kl.clock.Now()
 	for _, action := range update.Actions {
-		if !action.Status.Complete {
-			kl.DoPodAction(action)
+		if action.Status.Complete {
+			continue
 		}
+
+		pod, exist := kl.GetPodByName(action.Namespace, action.Spec.PodAction.PodName)
+		if !exist {
+			errStr := fmt.Sprintf("Pod %s not found", action.Spec.PodAction.PodName)
+			klog.Error(errStr)
+			action.Status = v1.ActionStatus{
+				Complete: true,
+				PodActionStatus: &v1.PodActionStatus{
+					PodName: action.Spec.PodAction.PodName,
+				},
+				Error: errStr,
+			}
+			if _, err := kl.kubeClient.CoreV1().Actions(action.Namespace).UpdateStatus(action); err != nil {
+				klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
+			}
+			continue
+		}
+
+		kl.dispatchAction(pod, action, start)
 	}
 }
 

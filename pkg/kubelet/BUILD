@@ -21,6 +21,7 @@ go_library(
         "kubelet_pods.go",
         "kubelet_resources.go",
         "kubelet_volumes.go",
+        "pod_actions.go",
         "pod_container_deletor.go",
         "pod_workers.go",
         "reason_cache.go",
