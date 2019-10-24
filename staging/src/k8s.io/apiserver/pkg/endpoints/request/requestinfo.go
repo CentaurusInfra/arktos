@@ -220,8 +220,18 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 				currentParts = currentParts[2:]
 			}
 
+			// if a specific namespace is given, the tenant is resolved to "default"
 			if requestInfo.Tenant == metav1.TenantNone {
 				requestInfo.Tenant = metav1.TenantDefault
+			}
+		} else {
+			if requestInfo.Tenant == metav1.TenantNone {
+				// if url is like "/api/v1/namespaces", tenant is resolved to TenantAll for "get" operation and "default" for other non-read operations
+				if req.Method == "GET" {
+					requestInfo.Tenant = metav1.TenantAll
+				} else {
+					requestInfo.Tenant = metav1.TenantDefault
+				}
 			}
 		}
 	} else {
