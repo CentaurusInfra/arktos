@@ -629,3 +629,627 @@ func TestHelperReplace(t *testing.T) {
 		})
 	}
 }
+
+func TestHelperDeleteWithMultiTenancy(t *testing.T) {
+	tests := []struct {
+		name    string
+		Err     bool
+		Req     func(*http.Request) bool
+		Resp    *http.Response
+		HttpErr error
+	}{
+		{
+			name:    "test1",
+			HttpErr: errors.New("failure"),
+			Err:     true,
+		},
+		{
+			name: "test2",
+			Resp: &http.Response{
+				StatusCode: http.StatusNotFound,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusFailure}),
+			},
+			Err: true,
+		},
+		{
+			name: "test3pkg/kubectl/genericclioptions/resource/helper_test.go",
+			Resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusSuccess}),
+			},
+			Req: func(req *http.Request) bool {
+				if req.Method != "DELETE" {
+					t.Errorf("unexpected method: %#v", req)
+					return false
+				}
+				// req.URL should be "/tenants/bar/namespaces/foo/baz"
+				parts := splitPath(req.URL.Path)
+				if len(parts) < 5 {
+					t.Errorf("expected URL path to have 5 parts: %s", req.URL.Path)
+					return false
+				}
+				if parts[1] != "bar" {
+					t.Errorf("url doesn't contain tenant: %#v", req)
+					return false
+				}
+				if parts[3] != "foo" {
+					t.Errorf("url doesn't contain namespace: %#v", req)
+					return false
+				}
+				if parts[4] != "baz" {
+					t.Errorf("url doesn't contain name: %#v", req)
+					return false
+				}
+				return true
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &fake.RESTClient{
+				NegotiatedSerializer: scheme.Codecs,
+				Resp:                 tt.Resp,
+				Err:                  tt.HttpErr,
+			}
+			modifier := &Helper{
+				RESTClient:      client,
+				TenantScoped:    true,
+				NamespaceScoped: true,
+			}
+			_, err := modifier.DeleteWithMultiTenancy("bar", "foo", "baz")
+			if (err != nil) != tt.Err {
+				t.Errorf("unexpected error: %t %v", tt.Err, err)
+			}
+			if err != nil {
+				return
+			}
+			if tt.Req != nil && !tt.Req(client.Req) {
+				t.Errorf("unexpected request: %#v", client.Req)
+			}
+		})
+	}
+}
+
+func TestHelperCreateWithMultiTenancy(t *testing.T) {
+	expectPost := func(req *http.Request) bool {
+		if req.Method != "POST" {
+			t.Errorf("unexpected method: %#v", req)
+			return false
+		}
+		parts := splitPath(req.URL.Path)
+		if len(parts) < 4 {
+			t.Errorf("expected URL path to have 4 parts: %s", req.URL.Path)
+			return false
+		}
+		if parts[1] != "bar" {
+			t.Errorf("url doesn't contain tenant: %#v", req)
+			return false
+		}
+		if parts[3] != "foo" {
+			t.Errorf("url doesn't contain namespace: %#v", req)
+			return false
+		}
+		return true
+	}
+
+	tests := []struct {
+		name    string
+		Resp    *http.Response
+		HttpErr error
+		Modify  bool
+		Object  runtime.Object
+
+		ExpectObject runtime.Object
+		Err          bool
+		Req          func(*http.Request) bool
+	}{
+		{
+			name:    "test1",
+			HttpErr: errors.New("failure"),
+			Err:     true,
+		},
+		{
+			name: "test1",
+			Resp: &http.Response{
+				StatusCode: http.StatusNotFound,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusFailure}),
+			},
+			Err: true,
+		},
+		{
+			name: "test1",
+			Resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusSuccess}),
+			},
+			Object:       &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			ExpectObject: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			Req:          expectPost,
+		},
+		{
+			name:         "test1",
+			Modify:       false,
+			Object:       &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"}},
+			ExpectObject: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"}},
+			Resp:         &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&metav1.Status{Status: metav1.StatusSuccess})},
+			Req:          expectPost,
+		},
+		{
+			name:   "test1",
+			Modify: true,
+			Object: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"},
+				Spec:       V1DeepEqualSafePodSpec(),
+			},
+			ExpectObject: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec:       V1DeepEqualSafePodSpec(),
+			},
+			Resp: &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&metav1.Status{Status: metav1.StatusSuccess})},
+			Req:  expectPost,
+		},
+	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &fake.RESTClient{
+				GroupVersion:         corev1GV,
+				NegotiatedSerializer: scheme.Codecs,
+				Resp:                 tt.Resp,
+				Err:                  tt.HttpErr,
+			}
+			modifier := &Helper{
+				RESTClient:      client,
+				TenantScoped:    true,
+				NamespaceScoped: true,
+			}
+			_, err := modifier.CreateWithMultiTenancy("bar", "foo", tt.Modify, tt.Object, nil)
+			if (err != nil) != tt.Err {
+				t.Errorf("%d: unexpected error: %t %v", i, tt.Err, err)
+			}
+			if err != nil {
+				return
+			}
+			if tt.Req != nil && !tt.Req(client.Req) {
+				t.Errorf("%d: unexpected request: %#v", i, client.Req)
+			}
+			body, err := ioutil.ReadAll(client.Req.Body)
+			if err != nil {
+				t.Fatalf("%d: unexpected error: %#v", i, err)
+			}
+			t.Logf("got body: %s", string(body))
+			expect := []byte{}
+			if tt.ExpectObject != nil {
+				expect = []byte(runtime.EncodeOrDie(corev1Codec, tt.ExpectObject))
+			}
+			if !reflect.DeepEqual(expect, body) {
+				t.Errorf("%d: unexpected body: %s (expected %s)", i, string(body), string(expect))
+			}
+		})
+	}
+}
+
+func TestHelperGetWithMultiTenancy(t *testing.T) {
+	tests := []struct {
+		name    string
+		Err     bool
+		Req     func(*http.Request) bool
+		Resp    *http.Response
+		HttpErr error
+	}{
+		{
+			name:    "test1",
+			HttpErr: errors.New("failure"),
+			Err:     true,
+		},
+		{
+			name: "test1",
+			Resp: &http.Response{
+				StatusCode: http.StatusNotFound,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusFailure}),
+			},
+			Err: true,
+		},
+		{
+			name: "test1",
+			Resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header(),
+				Body:       objBody(&corev1.Pod{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"}, ObjectMeta: metav1.ObjectMeta{Name: "foo"}}),
+			},
+			Req: func(req *http.Request) bool {
+				if req.Method != "GET" {
+					t.Errorf("unexpected method: %#v", req)
+					return false
+				}
+				parts := splitPath(req.URL.Path)
+				if parts[1] != "bar" {
+					t.Errorf("url doesn't contain tenant: %#v", req)
+					return false
+				}
+				if parts[3] != "foo" {
+					t.Errorf("url doesn't contain namespace: %#v", req)
+					return false
+				}
+				if parts[4] != "baz" {
+					t.Errorf("url doesn't contain name: %#v", req)
+					return false
+				}
+				return true
+			},
+		},
+	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &fake.RESTClient{
+				GroupVersion:         corev1GV,
+				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+				Resp:                 tt.Resp,
+				Err:                  tt.HttpErr,
+			}
+			modifier := &Helper{
+				RESTClient:      client,
+				TenantScoped:    true,
+				NamespaceScoped: true,
+			}
+			obj, err := modifier.GetWithMultiTenancy("bar", "foo", "baz", false)
+
+			if (err != nil) != tt.Err {
+				t.Errorf("unexpected error: %d %t %v", i, tt.Err, err)
+			}
+			if err != nil {
+				return
+			}
+			if obj.(*corev1.Pod).Name != "foo" {
+				t.Errorf("unexpected object: %#v", obj)
+			}
+			if tt.Req != nil && !tt.Req(client.Req) {
+				t.Errorf("unexpected request: %#v", client.Req)
+			}
+		})
+	}
+}
+
+func TestHelperListWithMultiTenancy(t *testing.T) {
+	tests := []struct {
+		name    string
+		Err     bool
+		Req     func(*http.Request) bool
+		Resp    *http.Response
+		HttpErr error
+	}{
+		{
+			name:    "test1",
+			HttpErr: errors.New("failure"),
+			Err:     true,
+		},
+		{
+			name: "test2",
+			Resp: &http.Response{
+				StatusCode: http.StatusNotFound,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusFailure}),
+			},
+			Err: true,
+		},
+		{
+			name: "test3",
+			Resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header(),
+				Body: objBody(&corev1.PodList{
+					Items: []corev1.Pod{{
+						ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+					},
+					},
+				}),
+			},
+			Req: func(req *http.Request) bool {
+				if req.Method != "GET" {
+					t.Errorf("unexpected method: %#v", req)
+					return false
+				}
+				expectedURL := "/tenants/baz/namespaces/foo"
+				if req.URL.Path != expectedURL {
+					t.Errorf("unexpecte url: %v, expected %v", req.URL, expectedURL)
+					return false
+				}
+				if req.URL.Query().Get(metav1.LabelSelectorQueryParam(corev1GV.String())) != labels.SelectorFromSet(labels.Set{"foo": "baz"}).String() {
+					t.Errorf("url doesn't contain query parameters: %#v", req.URL)
+					return false
+				}
+				return true
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &fake.RESTClient{
+				GroupVersion:         corev1GV,
+				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+				Resp:                 tt.Resp,
+				Err:                  tt.HttpErr,
+			}
+			modifier := &Helper{
+				RESTClient:      client,
+				TenantScoped:     true,
+				NamespaceScoped: true,
+			}
+			obj, err := modifier.ListWithMultiTenancy("baz", "foo", corev1GV.String(), false, &metav1.ListOptions{LabelSelector: "foo=baz"})
+			if (err != nil) != tt.Err {
+				t.Errorf("unexpected error: %t %v", tt.Err, err)
+			}
+			if err != nil {
+				return
+			}
+			if obj.(*corev1.PodList).Items[0].Name != "foo" {
+				t.Errorf("unexpected object: %#v", obj)
+			}
+			if tt.Req != nil && !tt.Req(client.Req) {
+				t.Errorf("unexpected request: %#v", client.Req)
+			}
+		})
+	}
+}
+
+
+func TestHelperListSelectorCombinationWithMultiTenancy(t *testing.T) {
+	tests := []struct {
+		Name          string
+		Err           bool
+		ErrMsg        string
+		FieldSelector string
+		LabelSelector string
+	}{
+		{
+			Name: "No selector",
+			Err:  false,
+		},
+		{
+			Name:          "Only Label Selector",
+			Err:           false,
+			LabelSelector: "foo=baz",
+		},
+		{
+			Name:          "Only Field Selector",
+			Err:           false,
+			FieldSelector: "xyz=zyx",
+		},
+		{
+			Name:          "Both Label and Field Selector",
+			Err:           false,
+			LabelSelector: "foo=baz",
+			FieldSelector: "xyz=zyx",
+		},
+	}
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     header(),
+		Body: objBody(&corev1.PodList{
+			Items: []corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			},
+			},
+		}),
+	}
+	client := &fake.RESTClient{
+		NegotiatedSerializer: scheme.Codecs,
+		Resp:                 resp,
+		Err:                  nil,
+	}
+	modifier := &Helper{
+		RESTClient:      client,
+		TenantScoped:    true,
+		NamespaceScoped: true,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			_, err := modifier.ListWithMultiTenancy("bar", "foo",
+				corev1GV.String(),
+				false,
+				&metav1.ListOptions{LabelSelector: tt.LabelSelector, FieldSelector: tt.FieldSelector})
+			if tt.Err {
+				if err == nil {
+					t.Errorf("%q expected error: %q", tt.Name, tt.ErrMsg)
+				}
+				if err != nil && err.Error() != tt.ErrMsg {
+					t.Errorf("%q expected error: %q", tt.Name, tt.ErrMsg)
+				}
+			}
+		})
+	}
+}
+
+func TestHelperReplaceWithMultiTenancy(t *testing.T) {
+	expectPut := func(path string, req *http.Request) bool {
+		if req.Method != "PUT" {
+			t.Errorf("unexpected method: %#v", req)
+			return false
+		}
+		if req.URL.Path != path {
+			t.Errorf("unexpected url: %v expected: %v ", req.URL, path)
+			return false
+		}
+		return true
+	}
+
+	tests := []struct {
+		Name            string
+		Resp            *http.Response
+		HTTPClient      *http.Client
+		HttpErr         error
+		Overwrite       bool
+		Object          runtime.Object
+		Namespace       string
+		NamespaceScoped bool
+		Tenant       string
+		TenantScoped bool
+
+		ExpectPath   string
+		ExpectObject runtime.Object
+		Err          bool
+		Req          func(string, *http.Request) bool
+	}{
+		{
+			Name:            "test1",
+			Namespace:       "bar",
+			NamespaceScoped: true,
+			Tenant:          "qux",
+			TenantScoped:    true,
+			HttpErr:         errors.New("failure"),
+			Err:             true,
+		},
+		{
+			Name:            "test2",
+			Namespace:       "bar",
+			NamespaceScoped: true,
+			Tenant:          "qux",
+			TenantScoped:    true,
+			Object:          &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			Resp: &http.Response{
+				StatusCode: http.StatusNotFound,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusFailure}),
+			},
+			Err: true,
+		},
+		{
+			Name:            "test3",
+			Namespace:       "bar",
+			NamespaceScoped: true,
+			Tenant:          "qux",
+			TenantScoped:    true,
+			Object:          &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			ExpectPath:      "/tenants/qux/namespaces/bar/foo",
+			ExpectObject:    &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			Resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header(),
+				Body:       objBody(&metav1.Status{Status: metav1.StatusSuccess}),
+			},
+			Req: expectPut,
+		},
+		// namespace scoped resource
+		{
+			Name:            "test4",
+			Namespace:       "bar",
+			NamespaceScoped: true,
+			Tenant:          "qux",
+			TenantScoped:    true,
+			Object: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec:       V1DeepEqualSafePodSpec(),
+			},
+			ExpectPath: "/tenants/qux/namespaces/bar/foo",
+			ExpectObject: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"},
+				Spec:       V1DeepEqualSafePodSpec(),
+			},
+			Overwrite: true,
+			HTTPClient: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+				if req.Method == "PUT" {
+					return &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&metav1.Status{Status: metav1.StatusSuccess})}, nil
+				}
+				return &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"}})}, nil
+			}),
+			Req: expectPut,
+		},
+		// tenant scoped resource
+		{
+			Name:            "test5",
+			Namespace:       "",
+			NamespaceScoped: false,
+			Tenant:          "qux",
+			TenantScoped:    true,
+			Object: &corev1.PersistentVolume{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			},
+			ExpectPath: "/tenants/qux/foo",
+			ExpectObject: &corev1.PersistentVolume{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"},
+			},
+			Overwrite: true,
+			HTTPClient: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+				if req.Method == "PUT" {
+					return &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&metav1.Status{Status: metav1.StatusSuccess})}, nil
+				}
+				return &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"}})}, nil
+			}),
+			Req: expectPut,
+		},
+		// cluster scoped resource
+		{
+			Name: "test6",
+			Object: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			},
+			ExpectObject: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"},
+			},
+			Overwrite:  true,
+			ExpectPath: "/foo",
+			HTTPClient: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+				if req.Method == "PUT" {
+					return &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&metav1.Status{Status: metav1.StatusSuccess})}, nil
+				}
+				return &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"}})}, nil
+			}),
+			Req: expectPut,
+		},
+		{
+			Name:            "test7",
+			Namespace:       "bar",
+			NamespaceScoped: true,
+			Tenant:          "qux",
+			TenantScoped:    true,
+			Object:          &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"}},
+			ExpectPath:      "/tenants/qux/namespaces/bar/foo",
+			ExpectObject:    &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"}},
+			Resp:            &http.Response{StatusCode: http.StatusOK, Header: header(), Body: objBody(&metav1.Status{Status: metav1.StatusSuccess})},
+			Req:             expectPut,
+		},
+	}
+	for i, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			client := &fake.RESTClient{
+				GroupVersion:         corev1GV,
+				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+				Client:               tt.HTTPClient,
+				Resp:                 tt.Resp,
+				Err:                  tt.HttpErr,
+			}
+			modifier := &Helper{
+				RESTClient:      client,
+				TenantScoped: tt.TenantScoped,
+				NamespaceScoped: tt.NamespaceScoped,
+			}
+			_, err := modifier.ReplaceWithMultiTenancy(tt.Tenant, tt.Namespace, "foo", tt.Overwrite, tt.Object)
+			if (err != nil) != tt.Err {
+				t.Errorf("%d: unexpected error: %t %v", i, tt.Err, err)
+			}
+			if err != nil {
+				return
+			}
+			if tt.Req != nil && !tt.Req(tt.ExpectPath, client.Req) {
+				t.Errorf("%d: unexpected request: %#v", i, client.Req)
+			}
+			body, err := ioutil.ReadAll(client.Req.Body)
+			if err != nil {
+				t.Fatalf("%d: unexpected error: %#v", i, err)
+			}
+			expect := []byte{}
+			if tt.ExpectObject != nil {
+				expect = []byte(runtime.EncodeOrDie(corev1Codec, tt.ExpectObject))
+			}
+			if !reflect.DeepEqual(expect, body) {
+				t.Errorf("%d: unexpected body: %s", i, string(body))
+			}
+		})
+	}
+}

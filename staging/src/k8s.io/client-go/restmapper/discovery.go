@@ -92,11 +92,18 @@ func NewDiscoveryRESTMapper(groupResources []*APIGroupResources) meta.RESTMapper
 
 			gv := schema.GroupVersion{Group: group.Group.Name, Version: discoveryVersion.Version}
 			versionMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{gv})
-
 			for _, resource := range resources {
-				scope := meta.RESTScopeNamespace
-				if !resource.Namespaced {
+				var scope meta.RESTScope
+				switch {
+				case !resource.Namespaced && !resource.Tenanted:
 					scope = meta.RESTScopeRoot
+				case !resource.Namespaced && resource.Tenanted:
+					scope = meta.RESTScopeTenant
+				case resource.Namespaced && resource.Tenanted:
+					scope = meta.RESTScopeNamespace
+				default:
+					// for backward compatibility, if namespace is set but tenant not set, the scope is namespace
+					scope = meta.RESTScopeNamespace
 				}
 
 				// if we have a slash, then this is a subresource and we shouldn't create mappings for those.

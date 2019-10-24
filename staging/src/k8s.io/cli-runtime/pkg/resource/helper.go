@@ -38,6 +38,8 @@ type Helper struct {
 	RESTClient RESTClient
 	// True if the resource type is scoped to namespaces
 	NamespaceScoped bool
+	// True if the resource type is scoped to tenants
+	TenantScoped bool
 }
 
 // NewHelper creates a Helper from a ResourceMapping
@@ -46,6 +48,7 @@ func NewHelper(client RESTClient, mapping *meta.RESTMapping) *Helper {
 		Resource:        mapping.Resource.Resource,
 		RESTClient:      client,
 		NamespaceScoped: mapping.Scope.Name() == meta.RESTScopeNameNamespace,
+		TenantScoped:    mapping.Scope.Name() == meta.RESTScopeNameNamespace || mapping.Scope.Name() == meta.RESTScopeNameTenant,
 	}
 }
 
@@ -182,4 +185,159 @@ func (m *Helper) Replace(namespace, name string, overwrite bool, obj runtime.Obj
 
 func (m *Helper) replaceResource(c RESTClient, resource, namespace, name string, obj runtime.Object) (runtime.Object, error) {
 	return c.Put().NamespaceIfScoped(namespace, m.NamespaceScoped).Resource(resource).Name(name).Body(obj).Do().Get()
+}
+
+func (m *Helper) GetWithMultiTenancy(tenant, namespace, name string, export bool) (runtime.Object, error) {
+	req := m.RESTClient.Get().
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(m.Resource).
+		Name(name)
+	if export {
+		// TODO: I should be part of GetOptions
+		req.Param("export", strconv.FormatBool(export))
+	}
+	return req.Do().Get()
+}
+
+func (m *Helper) ListWithMultiTenancy(tenant, namespace, apiVersion string, export bool, options *metav1.ListOptions) (runtime.Object, error) {
+	req := m.RESTClient.Get().
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(m.Resource).
+		VersionedParams(options, metav1.ParameterCodec)
+	if export {
+		// TODO: I should be part of ListOptions
+		req.Param("export", strconv.FormatBool(export))
+	}
+	return req.Do().Get()
+}
+
+func (m *Helper) WatchWithMultiTenancy(tenant, namespace, apiVersion string, options *metav1.ListOptions) (watch.Interface, error) {
+	options.Watch = true
+	return m.RESTClient.Get().
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(m.Resource).
+		VersionedParams(options, metav1.ParameterCodec).
+		Watch()
+}
+
+func (m *Helper) WatchSingleWithMultiTenancy(tenant, namespace, name, resourceVersion string) (watch.Interface, error) {
+	return m.RESTClient.Get().
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(m.Resource).
+		VersionedParams(&metav1.ListOptions{
+			ResourceVersion: resourceVersion,
+			Watch:           true,
+			FieldSelector:   fields.OneTermEqualSelector("metadata.name", name).String(),
+		}, metav1.ParameterCodec).
+		Watch()
+}
+
+func (m *Helper) DeleteWithMultiTenancy(tenant, namespace, name string) (runtime.Object, error) {
+	return m.DeleteWithOptionsWithMultiTenancy(tenant, namespace, name, nil)
+}
+
+func (m *Helper) DeleteWithOptionsWithMultiTenancy(tenant, namespace, name string, options *metav1.DeleteOptions) (runtime.Object, error) {
+	return m.RESTClient.Delete().
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(m.Resource).
+		Name(name).
+		Body(options).
+		Do().
+		Get()
+}
+
+func (m *Helper) CreateWithMultiTenancy(tenant, namespace string, modify bool, obj runtime.Object, options *metav1.CreateOptions) (runtime.Object, error) {
+	if options == nil {
+		options = &metav1.CreateOptions{}
+	}
+	if modify {
+		// Attempt to version the object based on client logic.
+		version, err := metadataAccessor.ResourceVersion(obj)
+		if err != nil {
+			// We don't know how to clear the version on this object, so send it to the server as is
+			return m.createResourceWithMultiTenancy(m.RESTClient, m.Resource, tenant, namespace, obj, options)
+		}
+		if version != "" {
+			if err := metadataAccessor.SetResourceVersion(obj, ""); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return m.createResourceWithMultiTenancy(m.RESTClient, m.Resource, tenant, namespace, obj, options)
+}
+
+func (m *Helper) createResourceWithMultiTenancy(c RESTClient, resource, tenant, namespace string, obj runtime.Object, options *metav1.CreateOptions) (runtime.Object, error) {
+	return c.Post().
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(resource).
+		VersionedParams(options, metav1.ParameterCodec).
+		Body(obj).
+		Do().
+		Get()
+}
+func (m *Helper) PatchWithMultiTenancy(tenant, namespace, name string, pt types.PatchType, data []byte, options *metav1.PatchOptions) (runtime.Object, error) {
+	if options == nil {
+		options = &metav1.PatchOptions{}
+	}
+	return m.RESTClient.Patch(pt).
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(m.Resource).
+		Name(name).
+		VersionedParams(options, metav1.ParameterCodec).
+		Body(data).
+		Do().
+		Get()
+}
+
+func (m *Helper) ReplaceWithMultiTenancy(tenant, namespace, name string, overwrite bool, obj runtime.Object) (runtime.Object, error) {
+	c := m.RESTClient
+
+	// Attempt to version the object based on client logic.
+	version, err := metadataAccessor.ResourceVersion(obj)
+	if err != nil {
+		// We don't know how to version this object, so send it to the server as is
+		return m.replaceResourceWithMultiTenancy(c, m.Resource, tenant, namespace, name, obj)
+	}
+	if version == "" && overwrite {
+		// Retrieve the current version of the object to overwrite the server object
+		serverObj, err := c.Get().
+			TenantIfScoped(tenant, m.TenantScoped).
+			NamespaceIfScoped(namespace, m.NamespaceScoped).
+			Resource(m.Resource).
+			Name(name).
+			Do().
+			Get()
+		if err != nil {
+			// The object does not exist, but we want it to be created
+			return m.replaceResourceWithMultiTenancy(c, m.Resource, tenant, namespace, name, obj)
+		}
+		serverVersion, err := metadataAccessor.ResourceVersion(serverObj)
+		if err != nil {
+			return nil, err
+		}
+		if err := metadataAccessor.SetResourceVersion(obj, serverVersion); err != nil {
+			return nil, err
+		}
+	}
+
+	return m.replaceResourceWithMultiTenancy(c, m.Resource, tenant, namespace, name, obj)
+}
+
+func (m *Helper) replaceResourceWithMultiTenancy(c RESTClient, resource, tenant, namespace, name string, obj runtime.Object) (runtime.Object, error) {
+	return c.Put().
+		TenantIfScoped(tenant, m.TenantScoped).
+		NamespaceIfScoped(namespace, m.NamespaceScoped).
+		Resource(resource).
+		Name(name).
+		Body(obj).
+		Do().
+		Get()
 }

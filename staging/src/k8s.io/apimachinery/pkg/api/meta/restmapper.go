@@ -39,6 +39,10 @@ var RESTScopeNamespace = &restScope{
 	name: RESTScopeNameNamespace,
 }
 
+var RESTScopeTenant = &restScope{
+	name: RESTScopeNameTenant,
+}
+
 var RESTScopeRoot = &restScope{
 	name: RESTScopeNameRoot,
 }
