@@ -154,6 +154,18 @@ func (c *ControllerBase) DoneProcessingWorkItem() {
 	c.workItemCountMux.Unlock()
 }
 
+func (c *ControllerBase) SetWorkloadNum(workloadNum int) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
+	_, isOK := c.controllerInstanceMap[c.controllerName]
+	if isOK && c.curPos >= 0 {
+		c.sortedControllerInstancesLocal[c.curPos].workloadNum = int32(workloadNum)
+	} else {
+		klog.Fatalf("Current controller instance not in map")
+	}
+}
+
 func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 	var stopSign chan<- interface{}
 	for {

@@ -461,7 +461,10 @@ func (rsc *ReplicaSetController) processNextWorkItem() bool {
 	if quit {
 		return false
 	}
-	defer rsc.queue.Done(key)
+	defer func() {
+		rsc.queue.Done(key)
+		rsc.SetWorkloadNum(rsc.queue.Len())
+	}()
 
 	workloadKey := key.(string)
 

@@ -667,3 +667,23 @@ func assertControllerKeyCoversEntireRange(t *testing.T, sortedControllerInstance
 
 	assert.Equal(t, int64(math.MaxInt64), sortedControllerInstanceLocal[numofControllers-1].controllerKey)
 }
+
+func TestSetWorkloadNum(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	stopCh := make(chan struct{})
+	updateCh := make(chan string)
+	defer close(stopCh)
+	defer close(updateCh)
+
+	controllerType := "foo"
+	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh)
+	assert.True(t, controllerInstanceBase.IsControllerActive())
+
+	assert.Equal(t, int32(0), controllerInstanceBase.sortedControllerInstancesLocal[0].workloadNum)
+
+	newWorkloadNum := 100
+	controllerInstanceBase.SetWorkloadNum(newWorkloadNum)
+	assert.Equal(t, int32(newWorkloadNum), controllerInstanceBase.sortedControllerInstancesLocal[0].workloadNum)
+
+	controllerInstanceBase.ReportHealth()
+}
