@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -996,6 +997,11 @@ func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) []s
 		if name == "" {
 			// vnic w/o name, not suitable for hotplug
 			// todo[nic-hotplug]: update user/design doc about vnic name requirement
+			continue
+		}
+
+		if len(strings.TrimSpace(vnic.PortId)) == 0 {
+			// portID not filled yet; fine to skip this time
 			continue
 		}
 

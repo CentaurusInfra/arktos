@@ -1134,6 +1134,13 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 				Hotplugs:           ConfigChanges{NICsToAttach: []string{"eth1"}},
 			},
 		},
+		"no hotplug if portID missing": {
+			mutatePodFn: func(pod *v1.Pod) {
+				nicNew := v1.Nic{Name: "eth1",}
+				pod.Spec.Nics = append(pod.Spec.Nics, nicNew)
+			},
+			actions: noAction,
+		},
 	} {
 		pod, status := makeBasePodAndStatusWithNICs()
 		if test.mutatePodFn != nil {
