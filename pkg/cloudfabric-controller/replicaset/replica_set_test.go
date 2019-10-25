@@ -57,10 +57,13 @@ func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh ch
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	updateChan := make(chan string)
 
-	cim := controller.NewControllerInstanceManager(
-		informers.Core().V1().ControllerInstances(),
-		client,
-		updateChan)
+	cim := controller.GetControllerInstanceManager()
+	if cim == nil {
+		cim = controller.NewControllerInstanceManager(
+			informers.Core().V1().ControllerInstances(),
+			client,
+			updateChan)
+	}
 	go cim.Run(stopCh)
 
 	ret := NewReplicaSetController(

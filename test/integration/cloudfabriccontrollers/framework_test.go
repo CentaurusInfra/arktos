@@ -125,15 +125,14 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	t.Logf("new rms [%#v]", controllerInstanceList3)
 
 	// controller instance 2 release workloads
-	/* TODO: need to comment as ETCD sync seems stopped working at this point - wait for ETCD sync to be fixed and reenable this part of test
 	rm2.DoneProcessingCurrentWorkloads()
 	time.Sleep(5 * time.Second)
 	rsControllerInstanceRead3, err = client3.CoreV1().ControllerInstances().Get(rm3.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
 	assert.False(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
-	*/
-	// case 4. 1st controller instance died - This needs to be done in unit test as integration test would be flaky
+
 	/*
+		// case 4. 1st controller instance died - This needs to be done in unit test as integration test would be flaky
 		close(stopCh1)
 		// need to manually delete the controller instance from registry as default 5 minute timeout will cause test timeout during batch test.
 		err = client3.CoreV1().ControllerInstances().Delete(rm1.GetControllerName(), &metav1.DeleteOptions{})
@@ -143,6 +142,7 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, controllerInstanceList4)
 		assert.Equal(t, 2, len(controllerInstanceList4.Items))
+		t.Logf("new rms [%#v]", controllerInstanceList4)
 
 		rsControllerInstanceRead2, err = client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
 		assert.Nil(t, err)

@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"math"
@@ -64,6 +65,18 @@ var unlockedControllerInstanceName string
 func mockUnlockcontrollerInstanceHandler(local controllerInstanceLocal) error {
 	unlockedControllerInstanceName = local.instanceName
 	return nil
+}
+
+func TestGetControllerInstanceManager(t *testing.T) {
+	instance = nil
+	cim := GetControllerInstanceManager()
+	assert.Nil(t, cim)
+
+	client := fake.NewSimpleClientset()
+	informers := informers.NewSharedInformerFactory(client, 0)
+	updateCh := make(chan string)
+	cim = NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, updateCh)
+	assert.NotNil(t, cim)
 }
 
 func TestGenerateKey(t *testing.T) {

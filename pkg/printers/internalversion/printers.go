@@ -261,7 +261,7 @@ func AddHandlers(h printers.PrintHandler) {
 		{Name: "Name", Type: "string", Format: "name", Description: "Name"},
 		{Name: "ControllerType", Type: "string", Format: "name", Description: "The controller type of the controller instance."},
 		{Name: "UID", Type: "string", Format: "name", Description: "The UUID of the controller instance."},
-		{Name: "HashKey", Type: "integer", Description: "The hash key of the controller instance."},
+		{Name: "ControllerKey", Type: "integer", Description: "The key of the controller instance."},
 		{Name: "WorkloadNum", Type: "integer", Description: "The number of workload instances assigned to this controller instance."},
 		{Name: "IsLocked", Type: "boolean", Description: "The controller is locked or not."},
 	}
@@ -1146,7 +1146,7 @@ func printControllerInstance(obj *api.ControllerInstance, options printers.Print
 	row.Cells = append(row.Cells, obj.Name)
 	row.Cells = append(row.Cells, obj.ControllerType)
 	row.Cells = append(row.Cells, obj.UID)
-	row.Cells = append(row.Cells, obj.HashKey)
+	row.Cells = append(row.Cells, obj.ControllerKey)
 	row.Cells = append(row.Cells, obj.WorkloadNum)
 	row.Cells = append(row.Cells, obj.IsLocked)
 	return []metav1beta1.TableRow{row}, nil

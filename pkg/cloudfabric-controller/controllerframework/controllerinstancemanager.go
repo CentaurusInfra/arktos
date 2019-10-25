@@ -55,17 +55,21 @@ type ControllerInstanceManager struct {
 }
 
 var instance *ControllerInstanceManager
+var checkInstanceHandler = checkInstanceExistence
 
 func GetControllerInstanceManager() *ControllerInstanceManager {
-	if instance == nil {
-		klog.Fatalf("Unexpected reference to controller instance manager - uninitialized")
-		return nil
-	}
-
 	return instance
 }
 
+func checkInstanceExistence() {
+	if instance != nil {
+		klog.Fatalf("Unexpected reference to controller instance manager - initialized")
+	}
+}
+
 func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInformer, kubeClient clientset.Interface, instanceChangeNotifyChan chan string) *ControllerInstanceManager {
+	checkInstanceHandler()
+
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
@@ -235,6 +239,10 @@ func (cim *ControllerInstanceManager) Run(stopCh <-chan struct{}) {
 	}
 
 	<-stopCh
+}
+
+func (cim *ControllerInstanceManager) GetUpdateCh() chan string {
+	return cim.controllerInstanceChangeChan
 }
 
 func (cim *ControllerInstanceManager) ListControllerInstances(controllerType string) (map[string]v1.ControllerInstance, error) {

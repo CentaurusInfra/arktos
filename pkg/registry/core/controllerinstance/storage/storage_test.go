@@ -88,7 +88,7 @@ func TestCreateSetsFields(t *testing.T) {
 	if actual.UID != controllerInstance.UID {
 		t.Errorf("unexpected controller uid: %#v", actual)
 	}
-	if actual.HashKey != controllerInstance.HashKey {
+	if actual.ControllerKey != controllerInstance.ControllerKey {
 		t.Errorf("unexpected controller key: %#v", actual)
 	}
 	if actual.WorkloadNum != controllerInstance.WorkloadNum {

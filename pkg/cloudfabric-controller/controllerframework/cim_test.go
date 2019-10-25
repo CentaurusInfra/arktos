@@ -37,6 +37,7 @@ func createControllerInstanceManager(stopCh chan struct{}, updateCh chan string)
 
 	cim.controllerListerSynced = alwaysReady
 	cim.notifyHandler = mockNotifyHander
+	checkInstanceHandler = mockCheckInstanceHander
 	return GetControllerInstanceManager(), informers
 }
 
@@ -61,9 +62,8 @@ func mockNotifyHander(controllerInstance *v1.ControllerInstance) {
 	return
 }
 
-// Write during read
-func TestSyncControllerInstancesWriteLock(t *testing.T) {
-
+func mockCheckInstanceHander() {
+	return
 }
 
 func testAddEvent(t *testing.T, cim *ControllerInstanceManager, notifyTimes int) (*v1.ControllerInstance, string, map[string]v1.ControllerInstance) {

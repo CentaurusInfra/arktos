@@ -135,14 +135,20 @@ func rmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.Cont
 	}
 	resyncPeriod := 12 * time.Hour
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "rs-informers")), resyncPeriod)
-	updateCh := make(chan string)
+	var updateCh chan string
 
 	// controller instance manager set up
-	cim := controller.NewControllerInstanceManager(
-		informers.Core().V1().ControllerInstances(),
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "controller-instance-manager")),
-		updateCh,
-	)
+	cim := controller.GetControllerInstanceManager()
+	if cim == nil {
+		updateCh = make(chan string)
+		cim = controller.NewControllerInstanceManager(
+			informers.Core().V1().ControllerInstances(),
+			clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "controller-instance-manager")),
+			updateCh,
+		)
+	} else {
+		updateCh = cim.GetUpdateCh()
+	}
 
 	rm := replicaset.NewReplicaSetController(
 		informers.Apps().V1().ReplicaSets(),
