@@ -111,6 +111,12 @@ service RuntimeService {
     // RebootVM reboots the VM domain and returns error msg if there is any
     rpc RebootVM(RebootVMRequest) returns (RebootVMResponse) {}
 
+    // CreateSnapshot creates a snapshot of the current VM domain
+    rpc CreateSnapshot(CreateSnapshotRequest) returns (CreateSnapshotResponse) {}
+
+    // RestoreToSnapshot restores the current VM domain to the given snapshot
+    rpc RestoreToSnapshot(RestoreToSnapshotRequest) returns (RestoreToSnapshotResponse) {}
+
     // AttachNetworkInterface adds new NIC to the POD-VM
     rpc AttachNetworkInterface(DeviceAttachDetachRequest) returns (DeviceAttachDetachResponse) {}
     // DetachNetworkInterface removes a NIC to the POD-VM
@@ -1323,6 +1329,28 @@ message RebootVMRequest {
 }
 
 message RebootVMResponse {}
+
+message CreateSnapshotRequest {
+    // ID of the VM 
+    string vmID = 1;
+    // Desired snapshot ID 
+    string snapshotID = 2;
+    // Flags for future extension. Now it should be 0.
+    int64 flags = 3;
+}
+
+message CreateSnapshotResponse {}
+
+message RestoreToSnapshotRequest {
+    // ID of the VM 
+    string vmID = 1;
+    // Target snapshot ID
+    string snapshotID = 2;
+    // Flags for future extension. Now it should be 0.
+    int64 flags = 3;
+}
+
+message RestoreToSnapshotResponse {}
 
 message NicSpec {
     // Name of the NIC to the VM

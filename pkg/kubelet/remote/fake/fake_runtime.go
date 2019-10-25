@@ -305,6 +305,26 @@ func (f *RemoteRuntime) RebootVM(ctx context.Context, req *kubeapi.RebootVMReque
 	return &kubeapi.RebootVMResponse{}, nil
 }
 
+// CreateSnapshot creates a snapshot of current VM domain
+func (f *RemoteRuntime) CreateSnapshot(ctx context.Context, req *kubeapi.CreateSnapshotRequest) (*kubeapi.CreateSnapshotResponse, error) {
+	err := f.RuntimeService.CreateSnapshot(req.VmID, req.SnapshotID, req.Flags)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubeapi.CreateSnapshotResponse{}, nil
+}
+
+// RestoreToSnapshot restores VM domain to the given shanpshot
+func (f *RemoteRuntime) RestoreToSnapshot(ctx context.Context, req *kubeapi.RestoreToSnapshotRequest) (*kubeapi.RestoreToSnapshotResponse, error) {
+	err := f.RuntimeService.RestoreToSnapshot(req.VmID, req.SnapshotID, req.Flags)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubeapi.RestoreToSnapshotResponse{}, nil
+}
+
 //TODO: fake interface methods implementation
 func (f *RemoteRuntime) AttachNetworkInterface(ctx context.Context, req *kubeapi.DeviceAttachDetachRequest) (*kubeapi.DeviceAttachDetachResponse, error) {
 	return &kubeapi.DeviceAttachDetachResponse{}, nil

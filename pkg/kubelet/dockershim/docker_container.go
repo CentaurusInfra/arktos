@@ -475,6 +475,14 @@ func (ds *dockerService) RebootVM(_ context.Context, _ *runtimeapi.RebootVMReque
 	return nil, fmt.Errorf("not implemented")
 }
 
+func (ds *dockerService) CreateSnapshot(_ context.Context, _ *runtimeapi.CreateSnapshotRequest) (*runtimeapi.CreateSnapshotResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (ds *dockerService) RestoreToSnapshot(_ context.Context, _ *runtimeapi.RestoreToSnapshotRequest) (*runtimeapi.RestoreToSnapshotResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 func (ds *dockerService) AttachNetworkInterface(_ context.Context, _ *runtimeapi.DeviceAttachDetachRequest) (*runtimeapi.DeviceAttachDetachResponse, error) {
 	return nil, fmt.Errorf("not implemented")
 }

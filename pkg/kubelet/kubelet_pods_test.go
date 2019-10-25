@@ -2365,10 +2365,10 @@ func TestConvertStatusToAPIStatusWithNICStatus(t *testing.T) {
 	pod := &v1.Pod{}
 	criPodStatus := &kubecontainer.PodStatus{
 		SandboxStatuses: []*runtimeapi.PodSandboxStatus{
-			&runtimeapi.PodSandboxStatus{
+			{
 				Network: &runtimeapi.PodSandboxNetworkStatus{
 					Nics: []*runtimeapi.NICStatus{
-						&runtimeapi.NICStatus{
+						{
 							Name:   "eth0",
 							PortId: "12345",
 							State:  runtimeapi.NICState_NIC_INPROGRESS,

@@ -131,7 +131,7 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	rsControllerInstanceRead3, err = client3.CoreV1().ControllerInstances().Get(rm3.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
 	assert.False(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
-*/
+	*/
 	// case 4. 1st controller instance died - This needs to be done in unit test as integration test would be flaky
 	/*
 		close(stopCh1)

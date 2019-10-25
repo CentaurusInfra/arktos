@@ -161,6 +161,24 @@ func (in instrumentedRuntimeService) RebootVM(vmID string) error {
 	return err
 }
 
+func (in instrumentedRuntimeService) CreateSnapshot(vmID string, snapshotID string, flags int64) error {
+	const operation = "CreateSnapshot"
+	defer recordOperation(operation, time.Now())
+
+	err := in.service.CreateSnapshot(vmID, snapshotID, flags)
+	recordError(operation, err)
+	return err
+}
+
+func (in instrumentedRuntimeService) RestoreToSnapshot(vmID string, snapshotID string, flags int64) error {
+	const operation = "RestoreToSnapshot"
+	defer recordOperation(operation, time.Now())
+
+	err := in.service.RestoreToSnapshot(vmID, snapshotID, flags)
+	recordError(operation, err)
+	return err
+}
+
 func (in instrumentedRuntimeService) ExecSync(containerID string, cmd []string, timeout time.Duration) ([]byte, []byte, error) {
 	const operation = "exec_sync"
 	defer recordOperation(operation, time.Now())

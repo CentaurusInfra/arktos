@@ -531,6 +531,42 @@ func (r *RemoteRuntimeService) RebootVM(vmID string) error {
 	return nil
 }
 
+func (r *RemoteRuntimeService) CreateSnapshot(vmID string, snapshotID string, flags int64) error {
+	klog.V(4).Infof("Calling runtime service to create snapshot for VM %s and snapshot %s", vmID, snapshotID)
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	_, err := r.runtimeClient.CreateSnapshot(ctx, &runtimeapi.CreateSnapshotRequest{
+		VmID:       vmID,
+		SnapshotID: snapshotID,
+		Flags:      flags})
+
+	if err != nil {
+		klog.Errorf("CreateSnapshot(vm %s, snapshotID %s) from runtime service failed: %v", vmID, snapshotID, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *RemoteRuntimeService) RestoreToSnapshot(vmID string, snapshotID string, flags int64) error {
+	klog.V(4).Infof("Calling runtime service to restore VM %s to snapshot %s", vmID, snapshotID)
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	_, err := r.runtimeClient.RestoreToSnapshot(ctx, &runtimeapi.RestoreToSnapshotRequest{
+		VmID:       vmID,
+		SnapshotID: snapshotID,
+		Flags:      0})
+
+	if err != nil {
+		klog.Errorf("RestoreToSnapshot(vm %s, snapshotID %s) from runtime service failed: %v", vmID, snapshotID, err)
+		return err
+	}
+
+	return nil
+}
+
 // Add new NIC to PodSandbox-VM
 // An important note, in our system:
 // 1. The VM name from k8s Podspec equals the VN -- please refer to createContainer code path

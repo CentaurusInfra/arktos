@@ -123,6 +123,13 @@ type ImageManagerService interface {
 type VmManager interface {
 	// Reboot VM, this will relay to virDomainReboot in libvirt
 	RebootVM(vmID string) error
+
+	// CreateSnapshot creates a snapshot of the current VM domain
+	CreateSnapshot(vmID string, snapshotID string, flag int64) error
+
+	// RestoreToSnapshot restores the current VM domain to the given snapshot
+	RestoreToSnapshot(vmID string, snapshotID string, flag int64) error
+
 	VmDeviceManagerService
 }
 

@@ -589,6 +589,32 @@ func (r *FakeRuntimeService) RebootVM(vmID string) error {
 	return nil
 }
 
+func (r *FakeRuntimeService) CreateSnapshot(vmID string, snapshotID string, flags int64) error {
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "CreateSnapshot")
+
+	if err := r.popError("CreateSnapshot"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *FakeRuntimeService) RestoreToSnapshot(vmID string, snapshotID string, flags int64) error {
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "RestoreToSnapshot")
+
+	if err := r.popError("RestoreToSnapshot"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *FakeRuntimeService) AttachNetworkInterface(podSandboxID string, vmName string, nic *runtimeapi.NicSpec) error {
 	r.Lock()
 	defer r.Unlock()
