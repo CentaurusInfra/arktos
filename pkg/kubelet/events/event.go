@@ -84,4 +84,10 @@ const (
 	// Lifecycle hooks
 	FailedPostStartHook = "FailedPostStartHook"
 	FailedPreStopHook   = "FailedPreStopHook"
+
+	// device hotplug event reason list
+	DeviceAttached = "DeviceAttached"
+	DeviceDetached = "DeviceDetached"
+	FailedAttachDevice = "FailedAttachDevice"
+	FailedDetachDevice = "FailedDetachDevice"
 )

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	cadvisorapi "github.com/google/cadvisor/info/v1"
+	"go.uber.org/multierr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1007,6 +1008,7 @@ func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) []s
 			}
 		}
 		if !foundInStatus {
+			// todo[vnic-hotplug]: to ensure portID exists
 			plugins = append(plugins, name)
 		}
 	}
@@ -1239,9 +1241,76 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 		result.AddSyncResult(m.reconfigureVm(pod, podSandboxID, podSandboxConfig, podStatus, backOff, pullSecrets, podIP))
 	}
 
-	// todo[nic-hotplug]: step 8: request to attach/detach hotplug nics
+	// todo[nic-hotplug]: to handle nic plug out
+	if len(podContainerChanges.Hotplugs.NICsToAttach) > 0 {
+		// we don't attempt the recovery of failed nic hotplug; fine to ignore error
+		// todo[vnic-hotplug]: to handle nic hotplug error to support nic hotplug recovery if it is desired feature
+		m.attachNICs(pod, podSandboxID, podContainerChanges.Hotplugs.NICsToAttach)
+	}
 
 	return
+}
+
+func (m *kubeGenericRuntimeManager) attachNICs(pod *v1.Pod, podSandboxID string, nics []string) *kubecontainer.SyncResult {
+	result := kubecontainer.NewSyncResult(kubecontainer.HotplugDevice, pod.Name)
+
+	// todo[vnic-hotplug]: some pod type may not support hotplug at all; avoid calling the method doomed to fail
+	if err := m.doAttachNICs(pod, podSandboxID, nics); err != nil {
+		result.Fail(err, "error happened on attaching NICs")
+	}
+
+	return result
+}
+
+func (m *kubeGenericRuntimeManager) doAttachNICs(pod *v1.Pod, sandbox string, nics []string) error {
+	var result error
+
+	for _, nicName := range nics {
+		nicSpec, err := getNICSpec(pod, nicName)
+		if err != nil {
+			result = multierr.Append(result, fmt.Errorf("failed to attach nic %q: %v", nicName, err))
+			continue
+		}
+
+		// todo[vnic-hotplug]: consider to use CRI batch method if available
+		// todo[vnic-hotplug]: to fill vm id if it is really required by CRI runtime
+		if err := m.AttachNetworkInterface(pod, ""/*vmName*/, nicSpec); err != nil{
+			result = multierr.Append(result, fmt.Errorf("failed to attach nic %q: %v", nicName, err))
+		}
+	}
+
+	return result
+}
+
+func (m *kubeGenericRuntimeManager) attachNIC(pod *v1.Pod, vmName string, nic *v1.Nic) error {
+	ref, referr := ref.GetReference(legacyscheme.Scheme, pod)
+	if referr != nil {
+		klog.Errorf("Couldn't make a ref to pod %q: '%v'", format.Pod(pod), referr)
+	}
+
+	if err := m.AttachNetworkInterface(pod, vmName, nic); err != nil{
+		klog.Warningf("error happened when pod %s/%s attaching nic %s: %v", pod.Namespace, pod.Name, nic.Name, err)
+		if referr == nil {
+			m.recorder.Eventf(ref, v1.EventTypeWarning, events.FailedAttachDevice, "network interface %q hotplug had error: %v", nic.Name, err)
+		}
+		return err
+	}
+
+	klog.V(4).Infof("pod %s/%s attached nic hotplug %s", pod.Namespace, pod.Name, nic.Name)
+	if referr == nil {
+		m.recorder.Eventf(ref, v1.EventTypeNormal, events.DeviceAttached, "network interfaces %q hotplug succeeded", nic.Name)
+	}
+	return nil
+}
+
+func getNICSpec(pod *v1.Pod, name string) (*v1.Nic, error) {
+	for _, nic := range pod.Spec.Nics {
+		if nic.Name == name {
+			return &nic, nil
+		}
+	}
+
+	return nil, errors.New("nic spec not found")
 }
 
 func (m *kubeGenericRuntimeManager) reconfigureVm(pod *v1.Pod, podSandboxID string,

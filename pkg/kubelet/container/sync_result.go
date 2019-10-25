@@ -62,6 +62,7 @@ const (
 	CreatePodSandbox SyncAction = "CreatePodSandbox"
 	ConfigPodSandbox SyncAction = "ConfigPodSandbox"
 	KillPodSandbox   SyncAction = "KillPodSandbox"
+	HotplugDevice    SyncAction = "HotplugDevice"
 )
 
 // SyncResult is the result of sync action.

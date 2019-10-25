@@ -1105,8 +1105,6 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 	_, _, m, err := createTestRuntimeManager()
 	require.NoError(t, err)
 
-	// Createing a pair reference pod and status for the test cases to refer
-	// the specific fields.
 	_, baseStatus := makeBasePodAndStatusWithNICs()
 	noAction := podActions{
 		SandboxID:          baseStatus.SandboxStatuses[0].Id,
@@ -1120,7 +1118,7 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 		mutateStatusFn func(*kubecontainer.PodStatus)
 		actions        podActions
 	}{
-		"everying is good; do nothing": {
+		"everything is good; do nothing": {
 			actions: noAction,
 		},
 		"hotplug vnic if nic plugin requested": {
@@ -1169,4 +1167,34 @@ func makeBasePodAndStatusWithNICs() (*v1.Pod, *kubecontainer.PodStatus) {
 		},
 	}
 	return pod, status
+}
+
+func TestAttachNICs(t *testing.T) {
+	_, _, m, err := createTestRuntimeManager()
+	require.NoError(t, err)
+
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:       "12345678",
+			Name:      "foo",
+			Namespace: "foo-ns",
+		},
+		Spec: v1.PodSpec{
+			VPC: "vps-demo",
+			Nics: []v1.Nic {
+				{Name: "eth0", PortId: "0000", },
+				{Name: "eth1", PortId: "1111", },
+				{Name: "eth2", PortId: "2222", },
+			},
+		},
+	}
+
+	syncResult := m.attachNICs(pod, "sandbox0", []string{"eth1", "eth2"})
+
+	if syncResult.Action != kubecontainer.HotplugDevice {
+		t.Errorf("expecting HotplugDevice, got %q", syncResult.Action)
+	}
+	if syncResult.Error != nil {
+		t.Errorf("got unexpected error: %+v", syncResult.Error)
+	}
 }
