@@ -36,7 +36,7 @@ type mapper struct {
 }
 
 // InfoForData creates an Info object for the given data. An error is returned
-// if any of the decoding or client lookup steps fail. Name and namespace will be
+// if any of the decoding or client lookup steps fail. Name, namespace and tenant will be
 // set into Info if the mapping's MetadataAccessor can retrieve them.
 func (m *mapper) infoForData(data []byte, source string) (*Info, error) {
 	obj, gvk, err := m.decoder.Decode(data, nil, nil)
@@ -46,10 +46,12 @@ func (m *mapper) infoForData(data []byte, source string) (*Info, error) {
 
 	name, _ := metadataAccessor.Name(obj)
 	namespace, _ := metadataAccessor.Namespace(obj)
+	tenant, _ := metadataAccessor.Tenant(obj)
 	resourceVersion, _ := metadataAccessor.ResourceVersion(obj)
 
 	ret := &Info{
 		Source:          source,
+		Tenant:          tenant,
 		Namespace:       namespace,
 		Name:            name,
 		ResourceVersion: resourceVersion,
@@ -94,9 +96,12 @@ func (m *mapper) infoForObject(obj runtime.Object, typer runtime.ObjectTyper, pr
 
 	name, _ := metadataAccessor.Name(obj)
 	namespace, _ := metadataAccessor.Namespace(obj)
+	tenant, _ := metadataAccessor.Tenant(obj)
+
 	resourceVersion, _ := metadataAccessor.ResourceVersion(obj)
 	ret := &Info{
 		Namespace:       namespace,
+		Tenant:          tenant,
 		Name:            name,
 		ResourceVersion: resourceVersion,
 

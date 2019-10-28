@@ -64,6 +64,10 @@ type ClientConfig interface {
 	Namespace() (string, bool, error)
 	// ConfigAccess returns the rules for loading/persisting the config.
 	ConfigAccess() ConfigAccess
+	// Tenant returns the tenant resulting from the merged
+	// result of all overrides and a boolean indicating if it was
+	// overridden
+	Tenant() (string, bool, error)
 }
 
 type PersistAuthProviderConfigForUser func(user string) restclient.AuthProviderConfigPersister
@@ -305,6 +309,32 @@ func canIdentifyUser(config restclient.Config) bool {
 		config.ExecProvider != nil
 }
 
+// Tenant implements ClientConfig
+func (config *DirectClientConfig) Tenant() (string, bool, error) {
+	if config.overrides != nil && config.overrides.Context.Tenant != "" {
+		// In the event we have an empty config but we do have a tenant override, we should return
+		// the tenant override instead of having config.ConfirmUsable() return an error. This allows
+		// things like in-cluster clients to execute `kubectl get pods --tenant=foo` and have the
+		// --tenant flag honored instead of being ignored.
+		return config.overrides.Context.Tenant, true, nil
+	}
+
+	if err := config.ConfirmUsable(); err != nil {
+		return "", false, err
+	}
+
+	configContext, err := config.getContext()
+	if err != nil {
+		return "", false, err
+	}
+
+	if len(configContext.Tenant) == 0 {
+		return "default", false, nil
+	}
+
+	return configContext.Tenant, false, nil
+}
+
 // Namespace implements ClientConfig
 func (config *DirectClientConfig) Namespace() (string, bool, error) {
 	if config.overrides != nil && config.overrides.Context.Namespace != "" {
@@ -500,6 +530,24 @@ func (config *inClusterClientConfig) ClientConfig() (*restclient.Config, error) 
 	}
 
 	return icc, err
+}
+
+func (config *inClusterClientConfig) Tenant() (string, bool, error) {
+	// This way assumes you've set the POD_TENANT environment variable using the downward API.
+	// This check has to be done first for backwards compatibility with the way InClusterConfig was originally set up
+	if te := os.Getenv("POD_TENANT"); te != "" {
+		return te, false, nil
+	}
+
+	// Fall back to the tenant associated with the service account token, if available
+	// TODO: save the token in the file
+	if data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/tenant"); err == nil {
+		if te := strings.TrimSpace(string(data)); len(te) > 0 {
+			return te, false, nil
+		}
+	}
+
+	return "default", false, nil
 }
 
 func (config *inClusterClientConfig) Namespace() (string, bool, error) {

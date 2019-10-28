@@ -133,6 +133,9 @@ type Context struct {
 	// Extensions holds additional information. This is useful for extenders so that reads and writes don't clobber unknown fields
 	// +optional
 	Extensions []NamedExtension `json:"extensions,omitempty"`
+	// Tenant is the default tenant to use on unspecified requests
+	// +optional
+	Tenant string `json:"tenant,omitempty"`
 }
 
 // NamedCluster relates nicknames to cluster information

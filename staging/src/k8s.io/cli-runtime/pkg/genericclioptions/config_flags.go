@@ -52,6 +52,7 @@ const (
 	flagPassword         = "password"
 	flagTimeout          = "request-timeout"
 	flagHTTPCacheDir     = "cache-dir"
+	flagTenant           = "tenant"
 )
 
 var defaultCacheDir = filepath.Join(homedir.HomeDir(), ".kube", "http-cache")
@@ -101,6 +102,8 @@ type ConfigFlags struct {
 	// propagate the config to the places that need it, rather than
 	// loading the config multiple times
 	usePersistentConfig bool
+
+	Tenant *string
 }
 
 // ToRESTConfig implements RESTClientGetter.
@@ -176,6 +179,9 @@ func (f *ConfigFlags) toRawKubeConfigLoader() clientcmd.ClientConfig {
 	}
 	if f.AuthInfoName != nil {
 		overrides.Context.AuthInfo = *f.AuthInfoName
+	}
+	if f.Tenant != nil {
+		overrides.Context.Tenant = *f.Tenant
 	}
 	if f.Namespace != nil {
 		overrides.Context.Namespace = *f.Namespace
@@ -284,6 +290,9 @@ func (f *ConfigFlags) AddFlags(flags *pflag.FlagSet) {
 	if f.AuthInfoName != nil {
 		flags.StringVar(f.AuthInfoName, flagAuthInfoName, *f.AuthInfoName, "The name of the kubeconfig user to use")
 	}
+	if f.Tenant != nil {
+		flags.StringVarP(f.Tenant, flagTenant, "E", *f.Tenant, "If present, the tenant scope for this CLI request")
+	}
 	if f.Namespace != nil {
 		flags.StringVarP(f.Namespace, flagNamespace, "n", *f.Namespace, "If present, the namespace scope for this CLI request")
 	}
@@ -337,6 +346,8 @@ func NewConfigFlags(usePersistentConfig bool) *ConfigFlags {
 		ImpersonateGroup: &impersonateGroup,
 
 		usePersistentConfig: usePersistentConfig,
+
+		Tenant: stringptr(""),
 	}
 }
 

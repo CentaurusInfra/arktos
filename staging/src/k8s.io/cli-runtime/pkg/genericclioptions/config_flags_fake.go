@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
@@ -76,11 +77,16 @@ func (f *TestConfigFlags) WithDiscoveryClient(c discovery.CachedDiscoveryInterfa
 }
 
 func (f *TestConfigFlags) WithNamespace(ns string) *TestConfigFlags {
+	return f.WithNamespaceWithMultiTenancy(ns, metav1.TenantDefault)
+}
+
+func (f *TestConfigFlags) WithNamespaceWithMultiTenancy(ns, te string) *TestConfigFlags {
 	if f.clientConfig == nil {
 		panic("attempt to obtain a test RawKubeConfigLoader with no clientConfig specified")
 	}
 	f.clientConfig = &namespacedClientConfig{
 		delegate:  f.clientConfig,
+		tenant:    te,
 		namespace: ns,
 	}
 	return f
@@ -92,7 +98,12 @@ func NewTestConfigFlags() *TestConfigFlags {
 
 type namespacedClientConfig struct {
 	delegate  clientcmd.ClientConfig
+	tenant    string
 	namespace string
+}
+
+func (c *namespacedClientConfig) Tenant() (string, bool, error) {
+	return c.tenant, false, nil
 }
 
 func (c *namespacedClientConfig) Namespace() (string, bool, error) {

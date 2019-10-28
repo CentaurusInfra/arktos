@@ -976,7 +976,7 @@ func TestHelperListWithMultiTenancy(t *testing.T) {
 			}
 			modifier := &Helper{
 				RESTClient:      client,
-				TenantScoped:     true,
+				TenantScoped:    true,
 				NamespaceScoped: true,
 			}
 			obj, err := modifier.ListWithMultiTenancy("baz", "foo", corev1GV.String(), false, &metav1.ListOptions{LabelSelector: "foo=baz"})
@@ -995,7 +995,6 @@ func TestHelperListWithMultiTenancy(t *testing.T) {
 		})
 	}
 }
-
 
 func TestHelperListSelectorCombinationWithMultiTenancy(t *testing.T) {
 	tests := []struct {
@@ -1088,8 +1087,8 @@ func TestHelperReplaceWithMultiTenancy(t *testing.T) {
 		Object          runtime.Object
 		Namespace       string
 		NamespaceScoped bool
-		Tenant       string
-		TenantScoped bool
+		Tenant          string
+		TenantScoped    bool
 
 		ExpectPath   string
 		ExpectObject runtime.Object
@@ -1226,7 +1225,7 @@ func TestHelperReplaceWithMultiTenancy(t *testing.T) {
 			}
 			modifier := &Helper{
 				RESTClient:      client,
-				TenantScoped: tt.TenantScoped,
+				TenantScoped:    tt.TenantScoped,
 				NamespaceScoped: tt.NamespaceScoped,
 			}
 			_, err := modifier.ReplaceWithMultiTenancy(tt.Tenant, tt.Namespace, "foo", tt.Overwrite, tt.Object)

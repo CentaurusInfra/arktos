@@ -88,6 +88,9 @@ type Info struct {
 	ResourceVersion string
 	// Optional, should this resource be exported, stripped of cluster-specific and instance specific fields
 	Export bool
+
+	// Tenant will be set if the object is tenant-scoped or namespace-scoped and has a specified value.
+	Tenant string
 }
 
 // Visit implements Visitor
@@ -101,6 +104,24 @@ func (i *Info) Get() (err error) {
 	if err != nil {
 		if errors.IsNotFound(err) && len(i.Namespace) > 0 && i.Namespace != metav1.NamespaceDefault && i.Namespace != metav1.NamespaceAll {
 			err2 := i.Client.Get().AbsPath("api", "v1", "namespaces", i.Namespace).Do().Error()
+			if err2 != nil && errors.IsNotFound(err2) {
+				return err2
+			}
+		}
+		return err
+	}
+	i.Object = obj
+	i.ResourceVersion, _ = metadataAccessor.ResourceVersion(obj)
+	return nil
+}
+
+// Get retrieves the object from the tenant, Namespace and Name fields
+func (i *Info) GetWithMultiTenancy() (err error) {
+	obj, err := NewHelper(i.Client, i.Mapping).GetWithMultiTenancy(i.Tenant, i.Namespace, i.Name, i.Export)
+	if err != nil {
+		if errors.IsNotFound(err) && len(i.Namespace) > 0 && i.Namespace != metav1.NamespaceDefault && i.Namespace != metav1.NamespaceAll &&
+			len(i.Tenant) > 0 && i.Tenant != metav1.TenantAll {
+			err2 := i.Client.Get().AbsPath("api", "v1", "tenants", i.Tenant, "namespaces", i.Namespace).Do().Error()
 			if err2 != nil && errors.IsNotFound(err2) {
 				return err2
 			}
@@ -132,6 +153,14 @@ func (i *Info) Refresh(obj runtime.Object, ignoreError bool) error {
 	} else {
 		i.Namespace = namespace
 	}
+	tenant, err := metadataAccessor.Tenant(obj)
+	if err != nil {
+		if !ignoreError {
+			return err
+		}
+	} else {
+		i.Tenant = tenant
+	}
 	version, err := metadataAccessor.ResourceVersion(obj)
 	if err != nil {
 		if !ignoreError {
@@ -158,7 +187,7 @@ func (i *Info) ObjectName() string {
 
 // String returns the general purpose string representation
 func (i *Info) String() string {
-	basicInfo := fmt.Sprintf("Name: %q, Namespace: %q\nObject: %+q", i.Name, i.Namespace, i.Object)
+	basicInfo := fmt.Sprintf("Name: %q, Namespace: %q, Tenant: %q\nObject: %+q", i.Name, i.Namespace, i.Tenant, i.Object)
 	if i.Mapping != nil {
 		mappingInfo := fmt.Sprintf("Resource: %q, GroupVersionKind: %q", i.Mapping.Resource.String(),
 			i.Mapping.GroupVersionKind.String())
@@ -169,17 +198,35 @@ func (i *Info) String() string {
 
 // Namespaced returns true if the object belongs to a namespace
 func (i *Info) Namespaced() bool {
+	return i.Scope() == meta.RESTScopeNameNamespace
+}
+
+// Scope returns the scope of the object
+func (i *Info) Scope() meta.RESTScopeName {
 	if i.Mapping != nil {
 		// if we have RESTMapper info, use it
-		return i.Mapping.Scope.Name() == meta.RESTScopeNameNamespace
+		return i.Mapping.Scope.Name()
 	}
-	// otherwise, use the presence of a namespace in the info as an indicator
-	return len(i.Namespace) > 0
+	// otherwise, use the presence of tenant and namespace in the info as an indicator
+	switch {
+	// not checking len(i.Tenant) > 0 here for backward compatibility
+	case len(i.Namespace) > 0 && len(i.Tenant) > 0:
+		return meta.RESTScopeNameNamespace
+	case len(i.Tenant) > 0:
+		return meta.RESTScopeNameTenant
+	default:
+		return meta.RESTScopeNameRoot
+	}
 }
 
 // Watch returns server changes to this object after it was retrieved.
 func (i *Info) Watch(resourceVersion string) (watch.Interface, error) {
 	return NewHelper(i.Client, i.Mapping).WatchSingle(i.Namespace, i.Name, resourceVersion)
+}
+
+// Watch returns server changes to this object after it was retrieved.
+func (i *Info) WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
+	return NewHelper(i.Client, i.Mapping).WatchSingleWithMultiTenancy(i.Tenant, i.Namespace, i.Name, resourceVersion)
 }
 
 // ResourceMapping returns the mapping for this resource and implements ResourceMapping
@@ -578,6 +625,7 @@ func (v *StreamVisitor) Visit(fn VisitorFunc) error {
 			}
 			return fmt.Errorf("error parsing %s: %v", v.Source, err)
 		}
+
 		// TODO: This needs to be able to handle object in other encodings and schemas.
 		ext.Raw = bytes.TrimSpace(ext.Raw)
 		if len(ext.Raw) == 0 || bytes.Equal(ext.Raw, []byte("null")) {
@@ -609,14 +657,36 @@ func UpdateObjectNamespace(info *Info, err error) error {
 	return nil
 }
 
+func UpdateObjectTenant(info *Info, err error) error {
+	if err != nil {
+		return err
+	}
+	if info.Object != nil {
+		return metadataAccessor.SetTenant(info.Object, info.Tenant)
+	}
+	return nil
+}
+
 // FilterNamespace omits the namespace if the object is not namespace scoped
 func FilterNamespace(info *Info, err error) error {
 	if err != nil {
 		return err
 	}
-	if !info.Namespaced() {
+	if info.Scope() != meta.RESTScopeNameNamespace {
 		info.Namespace = ""
 		UpdateObjectNamespace(info, nil)
+	}
+	return nil
+}
+
+// FilterTenant omits the tenant if the object is not tenant or namespace scoped
+func FilterTenant(info *Info, err error) error {
+	if err != nil {
+		return err
+	}
+	if info.Scope() != meta.RESTScopeNameTenant && info.Scope() != meta.RESTScopeNameNamespace {
+		info.Tenant = ""
+		UpdateObjectTenant(info, nil)
 	}
 	return nil
 }
@@ -628,12 +698,35 @@ func SetNamespace(namespace string) VisitorFunc {
 		if err != nil {
 			return err
 		}
-		if !info.Namespaced() {
+
+		if info.Scope() != meta.RESTScopeNameNamespace {
 			return nil
 		}
 		if len(info.Namespace) == 0 {
 			info.Namespace = namespace
 			UpdateObjectNamespace(info, nil)
+		}
+		return nil
+	}
+}
+
+// SetTenant ensures that every Info object visited will have a tenant
+// set. If info.Object is set, it will be mutated as well.
+func SetTenant(tenant string) VisitorFunc {
+	return func(info *Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.Scope() != meta.RESTScopeNameTenant && info.Scope() != meta.RESTScopeNameNamespace {
+			return nil
+		}
+		if len(info.Tenant) == 0 {
+			info.Tenant = tenant
+			if tenant == "" {
+				info.Tenant = metav1.TenantDefault
+			}
+			UpdateObjectTenant(info, nil)
 		}
 		return nil
 	}
@@ -648,7 +741,7 @@ func RequireNamespace(namespace string) VisitorFunc {
 		if err != nil {
 			return err
 		}
-		if !info.Namespaced() {
+		if info.Scope() != meta.RESTScopeNameNamespace {
 			return nil
 		}
 		if len(info.Namespace) == 0 {
@@ -658,6 +751,33 @@ func RequireNamespace(namespace string) VisitorFunc {
 		}
 		if info.Namespace != namespace {
 			return fmt.Errorf("the namespace from the provided object %q does not match the namespace %q. You must pass '--namespace=%s' to perform this operation.", info.Namespace, namespace, info.Namespace)
+		}
+		return nil
+	}
+}
+
+// RequireTenant will either set a tenant if none is provided on the
+// Info object, or if the tenant is set and does not match the provided
+// value, returns an error. This is intended to guard against administrators
+// accidentally operating on resources outside their tenant.
+func RequireTenant(tenant string) VisitorFunc {
+	return func(info *Info, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Scope() != meta.RESTScopeNameTenant && info.Scope() != meta.RESTScopeNameNamespace {
+			return nil
+		}
+		if len(info.Tenant) == 0 {
+			info.Tenant = tenant
+			if tenant == "" {
+				info.Tenant = metav1.TenantDefault
+			}
+			UpdateObjectTenant(info, nil)
+			return nil
+		}
+		if info.Tenant != tenant {
+			return fmt.Errorf("the tenant from the provided object %q does not match the tenant %q. You must pass '--tenant=%s' to perform this operation.", info.Tenant, tenant, info.Tenant)
 		}
 		return nil
 	}
@@ -675,7 +795,10 @@ func RetrieveLatest(info *Info, err error) error {
 	if len(info.Name) == 0 {
 		return nil
 	}
-	if info.Namespaced() && len(info.Namespace) == 0 {
+	if len(info.Tenant) == 0 && (info.Scope() == meta.RESTScopeNameNamespace || info.Scope() == meta.RESTScopeNameTenant) {
+		info.Tenant = metav1.TenantDefault
+	}
+	if len(info.Namespace) == 0 && info.Scope() == meta.RESTScopeNameNamespace {
 		return fmt.Errorf("no namespace set on resource %s %q", info.Mapping.Resource, info.Name)
 	}
 	return info.Get()
@@ -695,6 +818,16 @@ func RetrieveLazy(info *Info, err error) error {
 // CreateAndRefresh creates an object from input info and refreshes info with that object
 func CreateAndRefresh(info *Info) error {
 	obj, err := NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, nil)
+	if err != nil {
+		return err
+	}
+	info.Refresh(obj, true)
+	return nil
+}
+
+// CreateAndRefresh creates an object from input info and refreshes info with that object
+func CreateAndRefreshWithMultiTenancy(info *Info) error {
+	obj, err := NewHelper(info.Client, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, nil)
 	if err != nil {
 		return err
 	}

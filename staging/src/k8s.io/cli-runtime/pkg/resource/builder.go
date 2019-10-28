@@ -106,6 +106,11 @@ type Builder struct {
 
 	// fakeClientFn is used for testing
 	fakeClientFn FakeClientFunc
+
+	tenant        string
+	allTenant     bool
+	defaultTenant bool
+	requireTenant bool
 }
 
 var missingResourceError = fmt.Errorf(`You must provide one or more resources by argument or filename.
@@ -214,6 +219,10 @@ func (b *Builder) AddError(err error) *Builder {
 // If ContinueOnError() is set prior to this method, objects on the path that are not
 // recognized will be ignored (but logged at V(2)).
 func (b *Builder) FilenameParam(enforceNamespace bool, filenameOptions *FilenameOptions) *Builder {
+	return b.FilenameParamWithMultiTenancy(false, enforceNamespace, filenameOptions)
+}
+
+func (b *Builder) FilenameParamWithMultiTenancy(enforceTenant, enforceNamespace bool, filenameOptions *FilenameOptions) *Builder {
 	if errs := filenameOptions.validate(); len(errs) > 0 {
 		b.errs = append(b.errs, errs...)
 		return b
@@ -241,6 +250,10 @@ func (b *Builder) FilenameParam(enforceNamespace bool, filenameOptions *Filename
 	if filenameOptions.Kustomize != "" {
 		b.paths = append(b.paths, &KustomizeVisitor{filenameOptions.Kustomize,
 			NewStreamVisitor(nil, b.mapper, filenameOptions.Kustomize, b.schema)})
+	}
+
+	if enforceTenant {
+		b.RequireTenant()
 	}
 
 	if enforceNamespace {
@@ -464,6 +477,38 @@ func (b *Builder) FieldSelectorParam(s string) *Builder {
 // ExportParam accepts the export boolean for these resources
 func (b *Builder) ExportParam(export bool) *Builder {
 	b.export = export
+	return b
+}
+
+// TenantParam accepts the tenant that these resources should be
+// considered under from - used by DefaultTenant() and RequireTenant()
+func (b *Builder) TenantParam(tenant string) *Builder {
+	b.tenant = tenant
+	return b
+}
+
+// DefaultTenant instructs the builder to set the tenant value for any object found
+// to TenantParam() if empty.
+func (b *Builder) DefaultTenant() *Builder {
+	b.defaultTenant = true
+	return b
+}
+
+// AllTenants instructs the builder to metav1.TenantAll as a tenant to request resources
+// across all of the tenant. This overrides the tenant set by TenantParam().
+func (b *Builder) AllTenants(allTenant bool) *Builder {
+	if allTenant {
+		b.tenant = metav1.TenantAll
+	}
+	b.allTenant = allTenant
+	return b
+}
+
+// RequireTenant instructs the builder to set the tenant value for any object found
+// to TenantParam() if empty, and if the value on the resource does not match
+// TenantParam() an error will be returned.
+func (b *Builder) RequireTenant() *Builder {
+	b.requireTenant = true
 	return b
 }
 
@@ -860,11 +905,15 @@ func (b *Builder) visitBySelector() *Result {
 			result.err = err
 			return result
 		}
-		selectorNamespace := b.namespace
-		if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
+		selectorTenant, selectorNamespace := b.tenant, b.namespace
+		if mapping.Scope.Name() == meta.RESTScopeNameTenant {
 			selectorNamespace = ""
 		}
-		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, labelSelector, fieldSelector, b.export, b.limitChunks))
+		if mapping.Scope.Name() == meta.RESTScopeNameRoot {
+			selectorTenant = ""
+			selectorNamespace = ""
+		}
+		visitors = append(visitors, NewSelector(client, mapping, selectorTenant, selectorNamespace, labelSelector, fieldSelector, b.export, b.limitChunks))
 	}
 	if b.continueOnError {
 		result.visitor = EagerVisitorList(visitors)
@@ -895,6 +944,46 @@ func (b *Builder) getClient(gv schema.GroupVersion) (RESTClient, error) {
 	}
 
 	return NewClientWithOptions(client, b.requestTransforms...), nil
+}
+
+func (b *Builder) checkResourceTenantNamespace(mappingScope meta.RESTScopeName) (string, string, error) {
+	selectorNamespace := b.namespace
+	selectorTenant := b.tenant
+
+	switch mappingScope {
+	case meta.RESTScopeNameRoot:
+		selectorNamespace = ""
+		selectorTenant = ""
+
+	case meta.RESTScopeNameTenant:
+		selectorNamespace = ""
+		if len(b.tenant) == 0 {
+			b.tenant = metav1.TenantDefault
+			selectorTenant = metav1.TenantDefault
+		}
+		if b.allTenant {
+			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")
+		}
+
+	case meta.RESTScopeNameNamespace:
+		if len(b.tenant) == 0 {
+			b.tenant = metav1.TenantDefault
+			selectorTenant = metav1.TenantDefault
+		}
+		if b.allTenant {
+			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")
+		}
+
+		if len(b.namespace) == 0 {
+			errMsg := "namespace may not be empty when retrieving a resource by name"
+			if b.allNamespace {
+				errMsg = "a resource cannot be retrieved by name across all namespaces"
+			}
+			return "", "", fmt.Errorf(errMsg)
+		}
+	}
+
+	return selectorTenant, selectorNamespace, nil
 }
 
 func (b *Builder) visitByResource() *Result {
@@ -946,22 +1035,16 @@ func (b *Builder) visitByResource() *Result {
 			return result.withError(fmt.Errorf("could not find a client for resource %q", tuple.Resource))
 		}
 
-		selectorNamespace := b.namespace
-		if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
-			selectorNamespace = ""
-		} else {
-			if len(b.namespace) == 0 {
-				errMsg := "namespace may not be empty when retrieving a resource by name"
-				if b.allNamespace {
-					errMsg = "a resource cannot be retrieved by name across all namespaces"
-				}
-				return result.withError(fmt.Errorf(errMsg))
-			}
+		selectorTenant, selectorNamespace, err := b.checkResourceTenantNamespace(mapping.Scope.Name())
+
+		if err != nil {
+			return result.withError(err)
 		}
 
 		info := &Info{
 			Client:    client,
 			Mapping:   mapping,
+			Tenant:    selectorTenant,
 			Namespace: selectorNamespace,
 			Name:      tuple.Name,
 			Export:    b.export,
@@ -1009,17 +1092,9 @@ func (b *Builder) visitByName() *Result {
 		return result
 	}
 
-	selectorNamespace := b.namespace
-	if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
-		selectorNamespace = ""
-	} else {
-		if len(b.namespace) == 0 {
-			errMsg := "namespace may not be empty when retrieving a resource by name"
-			if b.allNamespace {
-				errMsg = "a resource cannot be retrieved by name across all namespaces"
-			}
-			return result.withError(fmt.Errorf(errMsg))
-		}
+	selectorTenant, selectorNamespace, err := b.checkResourceTenantNamespace(mapping.Scope.Name())
+	if err != nil {
+		return result.withError(err)
 	}
 
 	visitors := []Visitor{}
@@ -1027,6 +1102,7 @@ func (b *Builder) visitByName() *Result {
 		info := &Info{
 			Client:    client,
 			Mapping:   mapping,
+			Tenant:    selectorTenant,
 			Namespace: selectorNamespace,
 			Name:      name,
 			Export:    b.export,
@@ -1067,7 +1143,10 @@ func (b *Builder) visitByPaths() *Result {
 
 	// only items from disk can be refetched
 	if b.latest {
-		// must set namespace prior to fetching
+		// must set tenant/namespace prior to fetching
+		if b.defaultTenant {
+			visitors = NewDecoratedVisitor(visitors, SetTenant(b.tenant))
+		}
 		if b.defaultNamespace {
 			visitors = NewDecoratedVisitor(visitors, SetNamespace(b.namespace))
 		}
@@ -1099,6 +1178,13 @@ func (b *Builder) Do() *Result {
 		r.visitor = NewFlattenListVisitor(r.visitor, b.objectTyper, b.mapper)
 	}
 	helpers := []VisitorFunc{}
+	if b.defaultTenant {
+		helpers = append(helpers, SetTenant(b.tenant))
+	}
+	if b.requireTenant {
+		helpers = append(helpers, RequireTenant(b.tenant))
+	}
+	helpers = append(helpers, FilterTenant)
 	if b.defaultNamespace {
 		helpers = append(helpers, SetNamespace(b.namespace))
 	}

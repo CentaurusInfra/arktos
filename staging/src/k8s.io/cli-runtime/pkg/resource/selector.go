@@ -29,6 +29,7 @@ import (
 type Selector struct {
 	Client        RESTClient
 	Mapping       *meta.RESTMapping
+	Tenant        string
 	Namespace     string
 	LabelSelector string
 	FieldSelector string
@@ -37,10 +38,11 @@ type Selector struct {
 }
 
 // NewSelector creates a resource selector which hides details of getting items by their label selector.
-func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace, labelSelector, fieldSelector string, export bool, limitChunks int64) *Selector {
+func NewSelector(client RESTClient, mapping *meta.RESTMapping, tenant, namespace, labelSelector, fieldSelector string, export bool, limitChunks int64) *Selector {
 	return &Selector{
 		Client:        client,
 		Mapping:       mapping,
+		Tenant:        tenant,
 		Namespace:     namespace,
 		LabelSelector: labelSelector,
 		FieldSelector: fieldSelector,
@@ -53,7 +55,8 @@ func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace, labelS
 func (r *Selector) Visit(fn VisitorFunc) error {
 	var continueToken string
 	for {
-		list, err := NewHelper(r.Client, r.Mapping).List(
+		list, err := NewHelper(r.Client, r.Mapping).ListWithMultiTenancy(
+			r.Tenant,
 			r.Namespace,
 			r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
 			r.Export,
@@ -88,9 +91,9 @@ func (r *Selector) Visit(fn VisitorFunc) error {
 		resourceVersion, _ := metadataAccessor.ResourceVersion(list)
 		nextContinueToken, _ := metadataAccessor.Continue(list)
 		info := &Info{
-			Client:  r.Client,
-			Mapping: r.Mapping,
-
+			Client:          r.Client,
+			Mapping:         r.Mapping,
+			Tenant:          r.Tenant,
 			Namespace:       r.Namespace,
 			ResourceVersion: resourceVersion,
 
@@ -109,6 +112,11 @@ func (r *Selector) Visit(fn VisitorFunc) error {
 
 func (r *Selector) Watch(resourceVersion string) (watch.Interface, error) {
 	return NewHelper(r.Client, r.Mapping).Watch(r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
+		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
+}
+
+func (r *Selector) WatchtWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
+	return NewHelper(r.Client, r.Mapping).WatchWithMultiTenancy(r.Tenant, r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
 		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
 }
 

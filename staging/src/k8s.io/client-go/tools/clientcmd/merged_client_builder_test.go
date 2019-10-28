@@ -43,6 +43,8 @@ type testClientConfig struct {
 	namespace          string
 	namespaceSpecified bool
 	err                error
+	tenant             string
+	tenantSpecified    bool
 }
 
 func (c *testClientConfig) RawConfig() (clientcmdapi.Config, error) {
@@ -56,6 +58,9 @@ func (c *testClientConfig) ClientConfig() (*restclient.Config, error) {
 }
 func (c *testClientConfig) Namespace() (string, bool, error) {
 	return c.namespace, c.namespaceSpecified, c.err
+}
+func (c *testClientConfig) Tenant() (string, bool, error) {
+	return c.tenant, c.tenantSpecified, c.err
 }
 func (c *testClientConfig) ConfigAccess() ConfigAccess {
 	return nil

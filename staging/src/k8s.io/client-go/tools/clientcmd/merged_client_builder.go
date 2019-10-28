@@ -127,6 +127,46 @@ func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, e
 	return mergedConfig, err
 }
 
+// Tenant implements KubeConfig
+func (config *DeferredLoadingClientConfig) Tenant() (string, bool, error) {
+	mergedKubeConfig, err := config.createClientConfig()
+	if err != nil {
+		return "", false, err
+	}
+
+	te, overridden, err := mergedKubeConfig.Tenant()
+	// if we get an error and it is not empty config, or if the merged config defined an explicit tenant, or
+	// if in-cluster config is not possible, return immediately
+	if (err != nil && !IsEmptyConfig(err)) || overridden || !config.icc.Possible() {
+		// return on any error except empty config
+		return te, overridden, err
+	}
+
+	if len(te) > 0 {
+		// if we got a non-default tenant from the kubeconfig, use it
+		if te != "default" {
+			return te, false, nil
+		}
+
+		// if we got a default tenant, determine whether it was explicit or implicit
+		if raw, err := mergedKubeConfig.RawConfig(); err == nil {
+			// determine the current context
+			currentContext := raw.CurrentContext
+			if config.overrides != nil && len(config.overrides.CurrentContext) > 0 {
+				currentContext = config.overrides.CurrentContext
+			}
+			if context := raw.Contexts[currentContext]; context != nil && len(context.Tenant) > 0 {
+				return te, false, nil
+			}
+		}
+	}
+
+	klog.V(4).Infof("Using in-cluster tenant")
+
+	// allow the tenant from the service account token directory to be used.
+	return config.icc.Tenant()
+}
+
 // Namespace implements KubeConfig
 func (config *DeferredLoadingClientConfig) Namespace() (string, bool, error) {
 	mergedKubeConfig, err := config.createClientConfig()

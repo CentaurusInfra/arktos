@@ -3,6 +3,7 @@ kind: ReplicationController
 metadata:
   name: namespaced-rc
   namespace: existing-ns
+  tenant:    default
 spec:
   replicas: 1
   selector:
