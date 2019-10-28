@@ -605,13 +605,13 @@ func TestTransform(t *testing.T) {
 		wantBody      func(*testing.T, io.Reader)
 	}{
 		{
-			name:   "v1beta1 verify columns on cluster scoped resources",
+			name:   "v1beta1 verify columns on namespaces",
 			accept: "application/json;as=Table;g=meta.k8s.io;v=v1beta1",
 			object: func(t *testing.T) (metav1.Object, string, string) {
 				return &metav1.ObjectMeta{Name: "default", Namespace: ""}, "", "namespaces"
 			},
 			wantBody: func(t *testing.T, w io.Reader) {
-				expectTableWatchEvents(t, 1, 3, metav1.IncludeMetadata, json.NewDecoder(w))
+				expectTableWatchEvents(t, 1, 4, metav1.IncludeMetadata, json.NewDecoder(w))
 			},
 		},
 		{
@@ -859,15 +859,14 @@ func TestTransform(t *testing.T) {
 				}
 			},
 		},
-
 		{
-			name:   "v1 verify columns on cluster scoped resources",
+			name:   "v1 verify columns on namespaces",
 			accept: "application/json;as=Table;g=meta.k8s.io;v=v1",
 			object: func(t *testing.T) (metav1.Object, string, string) {
 				return &metav1.ObjectMeta{Name: "default", Namespace: ""}, "", "namespaces"
 			},
 			wantBody: func(t *testing.T, w io.Reader) {
-				expectTableV1WatchEvents(t, 1, 3, metav1.IncludeMetadata, json.NewDecoder(w))
+				expectTableV1WatchEvents(t, 1, 4, metav1.IncludeMetadata, json.NewDecoder(w))
 			},
 		},
 		{

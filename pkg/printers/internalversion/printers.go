@@ -253,6 +253,7 @@ func AddHandlers(h printers.PrintHandler) {
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Status", Type: "string", Description: "The status of the namespace"},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
+		{Name: "Tenant", Type: "string", Description: "The tenant that the namespace belongs to"},
 	}
 	h.TableHandler(namespaceColumnDefinitions, printNamespace)
 	h.TableHandler(namespaceColumnDefinitions, printNamespaceList)
@@ -1123,7 +1124,7 @@ func printNamespace(obj *api.Namespace, options printers.PrintOptions) ([]metav1
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
-	row.Cells = append(row.Cells, obj.Name, string(obj.Status.Phase), translateTimestampSince(obj.CreationTimestamp))
+	row.Cells = append(row.Cells, obj.Name, string(obj.Status.Phase), translateTimestampSince(obj.CreationTimestamp), obj.Tenant)
 	return []metav1beta1.TableRow{row}, nil
 }
 

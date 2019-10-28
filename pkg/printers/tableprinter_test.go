@@ -89,12 +89,14 @@ func TestPrintRowsForHandlerEntry(t *testing.T) {
 				columnDefinitions: testNamespaceColumnDefinitions,
 				printFunc:         printFunc,
 			},
-			opt: PrintOptions{},
+			opt: PrintOptions{
+				WithTenant: true,
+			},
 			obj: &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{Name: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Tenant: "test-te"},
 			},
 			includeHeader: true,
-			expectOut:     "NAME\tSTATUS\tAGE\ntest\t\t<unknow>\n",
+			expectOut:     "TENANT\tNAME\tSTATUS\tAGE\ntest-te\ttest\t\t<unknow>\n",
 		},
 		{
 			name: "print namespace and withnamespace true, should not print header",

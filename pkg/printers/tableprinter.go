@@ -46,6 +46,7 @@ var (
 	}
 
 	withNamespacePrefixColumns = []string{"NAMESPACE"} // TODO(erictune): print cluster name too.
+	withTenantPrefixColumns = []string{"TENANT"}
 )
 
 // NewTablePrinter creates a printer suitable for calling PrintObj().
@@ -184,11 +185,14 @@ func printTable(table *metav1beta1.Table, output io.Writer, options PrintOptions
 }
 
 // decorateTable takes a table and attempts to add label columns and the
-// namespace column. It will fill empty columns with nil (if the object
+// tenant/namespace column. It will fill empty columns with nil (if the object
 // does not expose metadata). It returns an error if the table cannot
 // be decorated.
 func decorateTable(table *metav1beta1.Table, options PrintOptions) error {
 	width := len(table.ColumnDefinitions) + len(options.ColumnLabels)
+	if options.WithTenant {
+		width++
+	}
 	if options.WithNamespace {
 		width++
 	}
@@ -210,13 +214,23 @@ func decorateTable(table *metav1beta1.Table, options PrintOptions) error {
 
 	if width != len(table.ColumnDefinitions) {
 		columns = make([]metav1beta1.TableColumnDefinition, 0, width)
+
+		if options.WithTenant {
+			columns = append(columns, metav1beta1.TableColumnDefinition{
+				Name: "Tenant",
+				Type: "string",
+			})
+		}
+
 		if options.WithNamespace {
 			columns = append(columns, metav1beta1.TableColumnDefinition{
 				Name: "Namespace",
 				Type: "string",
 			})
 		}
+		
 		columns = append(columns, table.ColumnDefinitions...)
+
 		for _, label := range formatLabelHeaders(options.ColumnLabels) {
 			columns = append(columns, metav1beta1.TableColumnDefinition{
 				Name: label,
@@ -234,7 +248,7 @@ func decorateTable(table *metav1beta1.Table, options PrintOptions) error {
 	rows := table.Rows
 
 	includeLabels := len(options.ColumnLabels) > 0 || options.ShowLabels
-	if includeLabels || options.WithNamespace || nameColumn != -1 {
+	if includeLabels || options.WithNamespace || options.WithTenant || nameColumn != -1 {
 		for i := range rows {
 			row := rows[i]
 
@@ -249,8 +263,12 @@ func decorateTable(table *metav1beta1.Table, options PrintOptions) error {
 				}
 			}
 			// if we can't get an accessor, fill out the appropriate columns with empty spaces
-			if m == nil {
+			if m == nil {				
 				if options.WithNamespace {
+					r := make([]interface{}, 1, width)
+					row.Cells = append(r, row.Cells...)
+				}
+				if options.WithTenant {
 					r := make([]interface{}, 1, width)
 					row.Cells = append(r, row.Cells...)
 				}
@@ -264,6 +282,12 @@ func decorateTable(table *metav1beta1.Table, options PrintOptions) error {
 			if options.WithNamespace {
 				r := make([]interface{}, 1, width)
 				r[0] = m.GetNamespace()
+				row.Cells = append(r, row.Cells...)
+			}
+
+			if options.WithTenant {
+				r := make([]interface{}, 1, width)
+				r[0] = m.GetTenant()
 				row.Cells = append(r, row.Cells...)
 			}
 			if includeLabels {
@@ -304,6 +328,9 @@ func printRowsForHandlerEntry(output io.Writer, handler *handlerEntry, obj runti
 		if options.WithNamespace {
 			headers = append(withNamespacePrefixColumns, headers...)
 		}
+		if options.WithTenant {
+			headers = append(withTenantPrefixColumns, headers...)
+		}
 		printHeader(headers, output)
 	}
 
@@ -318,6 +345,15 @@ func printRowsForHandlerEntry(output io.Writer, handler *handlerEntry, obj runti
 // printRows writes the provided rows to output.
 func printRows(output io.Writer, rows []metav1beta1.TableRow, options PrintOptions) {
 	for _, row := range rows {
+		if options.WithTenant {
+			if obj := row.Object.Object; obj != nil {
+				if m, err := meta.Accessor(obj); err == nil {
+					fmt.Fprint(output, m.GetTenant())
+				}
+			}
+			fmt.Fprint(output, "\t")
+		}
+
 		if options.WithNamespace {
 			if obj := row.Object.Object; obj != nil {
 				if m, err := meta.Accessor(obj); err == nil {
