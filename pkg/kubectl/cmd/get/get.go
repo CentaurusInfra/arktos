@@ -54,7 +54,7 @@ import (
 // GetOptions contains the input to the get command.
 type GetOptions struct {
 	PrintFlags             *PrintFlags
-	ToPrinter              func(*meta.RESTMapping, bool, bool) (printers.ResourcePrinterFunc, error)
+	ToPrinter              func(*meta.RESTMapping, bool, bool, bool) (printers.ResourcePrinterFunc, error)
 	IsHumanReadablePrinter bool
 	PrintWithOpenAPICols   bool
 
@@ -81,6 +81,10 @@ type GetOptions struct {
 	Export         bool
 
 	genericclioptions.IOStreams
+
+	AllTenants     bool
+	Tenant         string
+	ExplicitTenant bool
 }
 
 var (
@@ -182,6 +186,7 @@ func NewCmdGet(parent string, f cmdutil.Factory, streams genericclioptions.IOStr
 	cmd.Flags().StringVarP(&o.LabelSelector, "selector", "l", o.LabelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().StringVar(&o.FieldSelector, "field-selector", o.FieldSelector, "Selector (field query) to filter on, supports '=', '==', and '!='.(e.g. --field-selector key1=value1,key2=value2). The server only supports a limited number of field queries per type.")
 	cmd.Flags().BoolVarP(&o.AllNamespaces, "all-namespaces", "A", o.AllNamespaces, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
+	cmd.Flags().BoolVarP(&o.AllTenants, "all-tenants", "T", o.AllTenants, "If present, list the requested object(s) across all tenants. Tenant in current context is ignored even if specified with --tenant.")
 	cmdutil.AddIncludeUninitializedFlag(cmd)
 	addOpenAPIPrintColumnFlags(cmd, o)
 	addServerPrintColumnFlags(cmd, o)
@@ -201,6 +206,14 @@ func (o *GetOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 	}
 
 	var err error
+	o.Tenant, o.ExplicitTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+	if o.AllTenants {
+		o.ExplicitTenant = false
+	}
+
 	o.Namespace, o.ExplicitNamespace, err = f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
@@ -234,7 +247,7 @@ func (o *GetOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 		o.IsHumanReadablePrinter = true
 	}
 
-	o.ToPrinter = func(mapping *meta.RESTMapping, withNamespace bool, withKind bool) (printers.ResourcePrinterFunc, error) {
+	o.ToPrinter = func(mapping *meta.RESTMapping, withNamespace bool, withKind bool, withTenant bool) (printers.ResourcePrinterFunc, error) {
 		// make a new copy of current flags / opts before mutating
 		printFlags := o.PrintFlags.Copy()
 
@@ -251,6 +264,9 @@ func (o *GetOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 		}
 		if withKind {
 			printFlags.EnsureWithKind()
+		}
+		if withTenant {
+			printFlags.EnsureWithTenant()
 		}
 
 		printer, err := printFlags.ToPrinter()
@@ -457,8 +473,9 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 
 	r := f.NewBuilder().
 		Unstructured().
+		TenantParam(o.Tenant).DefaultTenant().AllTenants(o.AllTenants).
 		NamespaceParam(o.Namespace).DefaultNamespace().AllNamespaces(o.AllNamespaces).
-		FilenameParam(o.ExplicitNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.ExplicitTenant, o.ExplicitNamespace, &o.FilenameOptions).
 		LabelSelectorParam(o.LabelSelector).
 		FieldSelectorParam(o.FieldSelector).
 		ExportParam(o.Export).
@@ -528,8 +545,14 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 
 		printWithNamespace := o.AllNamespaces
 
-		if mapping != nil && mapping.Scope.Name() == meta.RESTScopeNameRoot {
+		if mapping != nil && mapping.Scope.Name() != meta.RESTScopeNameNamespace {
 			printWithNamespace = false
+		}
+
+		printWithTenant := o.AllTenants
+
+		if mapping != nil && (mapping.Scope.Name() != meta.RESTScopeNameNamespace && mapping.Scope.Name() != meta.RESTScopeNameTenant) {
+			printWithTenant = false
 		}
 
 		if shouldGetNewPrinterForMapping(printer, lastMapping, mapping) {
@@ -543,7 +566,7 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 				fmt.Fprintln(o.ErrOut)
 			}
 
-			printer, err = o.ToPrinter(mapping, printWithNamespace, printWithKind)
+			printer, err = o.ToPrinter(mapping, printWithNamespace, printWithKind, printWithTenant)
 			if err != nil {
 				if !errs.Has(err.Error()) {
 					errs.Insert(err.Error())
@@ -615,8 +638,9 @@ func (o *GetOptions) raw(f cmdutil.Factory) error {
 func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	r := f.NewBuilder().
 		Unstructured().
+		TenantParam(o.Tenant).DefaultTenant().AllTenants(o.AllTenants).
 		NamespaceParam(o.Namespace).DefaultNamespace().AllNamespaces(o.AllNamespaces).
-		FilenameParam(o.ExplicitNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.ExplicitTenant, o.ExplicitNamespace, &o.FilenameOptions).
 		LabelSelectorParam(o.LabelSelector).
 		FieldSelectorParam(o.FieldSelector).
 		ExportParam(o.Export).
@@ -639,7 +663,7 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 
 	info := infos[0]
 	mapping := info.ResourceMapping()
-	printer, err := o.ToPrinter(mapping, o.AllNamespaces, false)
+	printer, err := o.ToPrinter(mapping, o.AllNamespaces, false, o.AllTenants)
 	if err != nil {
 		return err
 	}
@@ -690,7 +714,7 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 	}
 
 	// print watched changes
-	w, err := r.Watch(rv)
+	w, err := r.WatchWithMultiTenancy(rv)
 	if err != nil {
 		return err
 	}
@@ -754,7 +778,7 @@ func (o *GetOptions) printGeneric(r *resource.Result) error {
 		return utilerrors.Reduce(utilerrors.Flatten(utilerrors.NewAggregate(errs)))
 	}
 
-	printer, err := o.ToPrinter(nil, false, false)
+	printer, err := o.ToPrinter(nil, false, false, false)
 	if err != nil {
 		return err
 	}

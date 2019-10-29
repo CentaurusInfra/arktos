@@ -23,7 +23,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -37,7 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/util/diff"
@@ -47,51 +45,15 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
 	restclientwatch "k8s.io/client-go/rest/watch"
-	"k8s.io/kube-openapi/pkg/util/proto"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
 	openapitesting "k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi/testing"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
-var (
-	openapiSchemaPath = filepath.Join("..", "..", "..", "..", "api", "openapi-spec", "swagger.json")
-
-	grace              = int64(30)
-	enableServiceLinks = corev1.DefaultEnableServiceLinks
-)
-
-func testComponentStatusData() *corev1.ComponentStatusList {
-	good := corev1.ComponentStatus{
-		Conditions: []corev1.ComponentCondition{
-			{Type: corev1.ComponentHealthy, Status: corev1.ConditionTrue, Message: "ok"},
-		},
-		ObjectMeta: metav1.ObjectMeta{Name: "servergood"},
-	}
-
-	bad := corev1.ComponentStatus{
-		Conditions: []corev1.ComponentCondition{
-			{Type: corev1.ComponentHealthy, Status: corev1.ConditionFalse, Message: "", Error: "bad status: 500"},
-		},
-		ObjectMeta: metav1.ObjectMeta{Name: "serverbad"},
-	}
-
-	unknown := corev1.ComponentStatus{
-		Conditions: []corev1.ComponentCondition{
-			{Type: corev1.ComponentHealthy, Status: corev1.ConditionUnknown, Message: "", Error: "fizzbuzz error"},
-		},
-		ObjectMeta: metav1.ObjectMeta{Name: "serverunknown"},
-	}
-
-	return &corev1.ComponentStatusList{
-		Items: []corev1.ComponentStatus{good, bad, unknown},
-	}
-}
-
 // Verifies that schemas that are not in the master tree of Kubernetes can be retrieved via Get.
-func TestGetUnknownSchemaObject(t *testing.T) {
+func TestGetUnknownSchemaObjectWithMultiTenancy(t *testing.T) {
 	t.Skip("This test is completely broken.  The first thing it does is add the object to the scheme!")
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	_, _, codec := cmdtesting.NewExternalScheme()
 	tf.OpenAPISchemaFunc = openapitesting.CreateOpenAPISchemaFunc(openapiSchemaPath)
@@ -142,8 +104,8 @@ func TestGetUnknownSchemaObject(t *testing.T) {
 }
 
 // Verifies that schemas that are not in the master tree of Kubernetes can be retrieved via Get.
-func TestGetSchemaObject(t *testing.T) {
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+func TestGetSchemaObjectWithMultiTenancy(t *testing.T) {
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(corev1.SchemeGroupVersion)
 	t.Logf("%v", string(runtime.EncodeOrDie(codec, &corev1.ReplicationController{ObjectMeta: metav1.ObjectMeta{Name: "foo"}})))
@@ -163,10 +125,10 @@ func TestGetSchemaObject(t *testing.T) {
 	}
 }
 
-func TestGetObjectsWithOpenAPIOutputFormatPresent(t *testing.T) {
+func TestGetObjectsWithOpenAPIOutputFormatPresentWithMultiTenancy(t *testing.T) {
 	pods, _, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -192,37 +154,10 @@ foo    10
 	}
 }
 
-type FakeResources struct {
-	resources map[schema.GroupVersionKind]proto.Schema
-}
-
-func (f FakeResources) LookupResource(s schema.GroupVersionKind) proto.Schema {
-	return f.resources[s]
-}
-
-var _ openapi.Resources = &FakeResources{}
-
-func testOpenAPISchemaData() (openapi.Resources, error) {
-	return &FakeResources{
-		resources: map[schema.GroupVersionKind]proto.Schema{
-			{
-				Version: "v1",
-				Kind:    "Pod",
-			}: &proto.Primitive{
-				BaseSchema: proto.BaseSchema{
-					Extensions: map[string]interface{}{
-						"x-kubernetes-print-columns": "custom-columns=NAME:.metadata.name,RSRC:.metadata.resourceVersion",
-					},
-				},
-			},
-		},
-	}, nil
-}
-
-func TestGetObjects(t *testing.T) {
+func TestGetObjectsWithMultiTenancy(t *testing.T) {
 	pods, _, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -244,10 +179,10 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func TestGetObjectsShowKind(t *testing.T) {
+func TestGetObjectsShowKindWithMultiTenancy(t *testing.T) {
 	pods, _, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -270,10 +205,10 @@ pod/foo   0/0              0          <unknown>
 	}
 }
 
-func TestGetMultipleResourceTypesShowKinds(t *testing.T) {
+func TestGetMultipleResourceTypesShowKindsWithMultiTenancy(t *testing.T) {
 	pods, svcs, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
@@ -281,25 +216,25 @@ func TestGetMultipleResourceTypesShowKinds(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/pods" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/pods" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case p == "/namespaces/test/replicationcontrollers" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/replicationcontrollers" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.ReplicationControllerList{})}, nil
-			case p == "/namespaces/test/services" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/services" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svcs)}, nil
-			case p == "/namespaces/test/statefulsets" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/statefulsets" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &appsv1.StatefulSetList{})}, nil
-			case p == "/namespaces/test/horizontalpodautoscalers" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/horizontalpodautoscalers" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &autoscalingv1.HorizontalPodAutoscalerList{})}, nil
-			case p == "/namespaces/test/jobs" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/jobs" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &batchv1.JobList{})}, nil
-			case p == "/namespaces/test/cronjobs" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/cronjobs" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &batchv1beta1.CronJobList{})}, nil
-			case p == "/namespaces/test/daemonsets" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/daemonsets" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &appsv1.DaemonSetList{})}, nil
-			case p == "/namespaces/test/deployments" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/deployments" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &extensionsv1beta1.DeploymentList{})}, nil
-			case p == "/namespaces/test/replicasets" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/replicasets" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &extensionsv1beta1.ReplicaSetList{})}, nil
 
 			default:
@@ -325,10 +260,10 @@ service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 	}
 }
 
-func TestGetObjectsShowLabels(t *testing.T) {
+func TestGetObjectsShowLabelsWithMultiTenancy(t *testing.T) {
 	pods, _, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -351,8 +286,8 @@ foo    0/0              0          <unknown>   <none>
 	}
 }
 
-func TestGetEmptyTable(t *testing.T) {
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+func TestGetEmptyTableWithMultiTenancy(t *testing.T) {
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 
 	emptyTable := ioutil.NopCloser(bytes.NewBufferString(`{
@@ -389,7 +324,7 @@ func TestGetEmptyTable(t *testing.T) {
 	}
 }
 
-func TestGetObjectIgnoreNotFound(t *testing.T) {
+func TestGetObjectIgnoreNotFoundWithMultiTenancy(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 
 	ns := &corev1.NamespaceList{
@@ -398,13 +333,13 @@ func TestGetObjectIgnoreNotFound(t *testing.T) {
 		},
 		Items: []corev1.Namespace{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "testns", Namespace: "test", ResourceVersion: "11"},
+				ObjectMeta: metav1.ObjectMeta{Name: "testns", Namespace: "test", Tenant: "test-te", ResourceVersion: "11"},
 				Spec:       corev1.NamespaceSpec{},
 			},
 		},
 	}
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -412,9 +347,9 @@ func TestGetObjectIgnoreNotFound(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/pods/nonexistentpod" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/pods/nonexistentpod" && m == "GET":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.StringBody("")}, nil
-			case p == "/api/v1/namespaces/test" && m == "GET":
+			case p == "/api/v1/tenants/test-te/namespaces/test" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &ns.Items[0])}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -435,14 +370,14 @@ func TestGetObjectIgnoreNotFound(t *testing.T) {
 	}
 }
 
-func TestGetSortedObjects(t *testing.T) {
+func TestGetSortedObjectsWithMultiTenancy(t *testing.T) {
 	pods := &corev1.PodList{
 		ListMeta: metav1.ListMeta{
 			ResourceVersion: "15",
 		},
 		Items: []corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "test", ResourceVersion: "10"},
+				ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "test", Tenant: "test-te", ResourceVersion: "10"},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					DNSPolicy:                     corev1.DNSClusterFirst,
@@ -452,7 +387,7 @@ func TestGetSortedObjects(t *testing.T) {
 				},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", ResourceVersion: "11"},
+				ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", Tenant: "test-te", ResourceVersion: "11"},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					DNSPolicy:                     corev1.DNSClusterFirst,
@@ -462,7 +397,7 @@ func TestGetSortedObjects(t *testing.T) {
 				},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", ResourceVersion: "9"},
+				ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", Tenant: "test-te", ResourceVersion: "9"},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					DNSPolicy:                     corev1.DNSClusterFirst,
@@ -474,7 +409,7 @@ func TestGetSortedObjects(t *testing.T) {
 		},
 	}
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -502,8 +437,8 @@ c      0/0              0          <unknown>
 	}
 }
 
-func TestGetSortedObjectsUnstructuredTable(t *testing.T) {
-	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sortTestTableData()[0])
+func TestGetSortedObjectsUnstructuredTableWithMultiTenancy(t *testing.T) {
+	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sortTestTableDataWithMultiTenancy()[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -514,7 +449,7 @@ func TestGetSortedObjectsUnstructuredTable(t *testing.T) {
 	// t.Log(string(unstructuredBytes))
 	body := ioutil.NopCloser(bytes.NewReader(unstructuredBytes))
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 
 	tf.UnstructuredClient = &fake.RESTClient{
@@ -541,11 +476,11 @@ c      custom-c
 	}
 }
 
-func sortTestData() []runtime.Object {
+func sortTestDataWithMultiTenancy() []runtime.Object {
 	return []runtime.Object{
 		&corev1.Pod{
 			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-			ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "test", ResourceVersion: "10"},
+			ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "test", Tenant: "test-te", ResourceVersion: "10"},
 			Spec: corev1.PodSpec{
 				RestartPolicy:                 corev1.RestartPolicyAlways,
 				DNSPolicy:                     corev1.DNSClusterFirst,
@@ -556,7 +491,7 @@ func sortTestData() []runtime.Object {
 		},
 		&corev1.Pod{
 			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-			ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", ResourceVersion: "11"},
+			ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", Tenant: "test-te", ResourceVersion: "11"},
 			Spec: corev1.PodSpec{
 				RestartPolicy:                 corev1.RestartPolicyAlways,
 				DNSPolicy:                     corev1.DNSClusterFirst,
@@ -567,7 +502,7 @@ func sortTestData() []runtime.Object {
 		},
 		&corev1.Pod{
 			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-			ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", ResourceVersion: "9"},
+			ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", Tenant: "test-te", ResourceVersion: "9"},
 			Spec: corev1.PodSpec{
 				RestartPolicy:                 corev1.RestartPolicyAlways,
 				DNSPolicy:                     corev1.DNSClusterFirst,
@@ -579,7 +514,7 @@ func sortTestData() []runtime.Object {
 	}
 }
 
-func sortTestTableData() []runtime.Object {
+func sortTestTableDataWithMultiTenancy() []runtime.Object {
 	return []runtime.Object{
 		&metav1beta1.Table{
 			TypeMeta: metav1.TypeMeta{APIVersion: "meta.k8s.io/v1beta1", Kind: "Table"},
@@ -593,7 +528,7 @@ func sortTestTableData() []runtime.Object {
 					Object: runtime.RawExtension{
 						Object: &corev1.Pod{
 							TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-							ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "test", ResourceVersion: "10"},
+							ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "test", Tenant: "test-te", ResourceVersion: "10"},
 							Spec: corev1.PodSpec{
 								RestartPolicy:                 corev1.RestartPolicyAlways,
 								DNSPolicy:                     corev1.DNSClusterFirst,
@@ -609,7 +544,7 @@ func sortTestTableData() []runtime.Object {
 					Object: runtime.RawExtension{
 						Object: &corev1.Pod{
 							TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-							ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", ResourceVersion: "11"},
+							ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", Tenant: "test-te", ResourceVersion: "11"},
 							Spec: corev1.PodSpec{
 								RestartPolicy:                 corev1.RestartPolicyAlways,
 								DNSPolicy:                     corev1.DNSClusterFirst,
@@ -625,7 +560,7 @@ func sortTestTableData() []runtime.Object {
 					Object: runtime.RawExtension{
 						Object: &corev1.Pod{
 							TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-							ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", ResourceVersion: "9"},
+							ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", Tenant: "test-te", ResourceVersion: "9"},
 							Spec: corev1.PodSpec{
 								RestartPolicy:                 corev1.RestartPolicyAlways,
 								DNSPolicy:                     corev1.DNSClusterFirst,
@@ -641,7 +576,7 @@ func sortTestTableData() []runtime.Object {
 	}
 }
 
-func TestRuntimeSorter(t *testing.T) {
+func TestRuntimeSorterWithMultiTenancy(t *testing.T) {
 	tests := []struct {
 		name        string
 		field       string
@@ -662,7 +597,7 @@ func TestRuntimeSorter(t *testing.T) {
 		{
 			name:  "ensure sorter returns original position",
 			field: "metadata.name",
-			objs:  sortTestData(),
+			objs:  sortTestDataWithMultiTenancy(),
 			op: func(sorter *RuntimeSorter, objs []runtime.Object, out io.Writer) error {
 				for idx := range objs {
 					p := sorter.OriginalPosition(idx)
@@ -675,7 +610,7 @@ func TestRuntimeSorter(t *testing.T) {
 		{
 			name:  "ensure sorter handles table object position",
 			field: "metadata.name",
-			objs:  sortTestTableData(),
+			objs:  sortTestTableDataWithMultiTenancy(),
 			op: func(sorter *RuntimeSorter, objs []runtime.Object, out io.Writer) error {
 				for idx := range objs {
 					p := sorter.OriginalPosition(idx)
@@ -688,7 +623,7 @@ func TestRuntimeSorter(t *testing.T) {
 		{
 			name:  "ensure sorter sorts table objects",
 			field: "metadata.name",
-			objs:  sortTestData(),
+			objs:  sortTestDataWithMultiTenancy(),
 			op: func(sorter *RuntimeSorter, objs []runtime.Object, out io.Writer) error {
 				for _, o := range objs {
 					fmt.Fprintf(out, "%s,", o.(*corev1.Pod).Name)
@@ -700,14 +635,14 @@ func TestRuntimeSorter(t *testing.T) {
 		{
 			name:        "ensure sorter rejects mixed Table + non-Table object lists",
 			field:       "metadata.name",
-			objs:        append(sortTestData(), sortTestTableData()...),
+			objs:        append(sortTestDataWithMultiTenancy(), sortTestTableDataWithMultiTenancy()...),
 			op:          func(sorter *RuntimeSorter, objs []runtime.Object, out io.Writer) error { return nil },
 			expectError: "sorting is not supported on mixed Table",
 		},
 		{
 			name:        "ensure sorter errors out on invalid jsonpath",
 			field:       "metadata.unknown",
-			objs:        sortTestData(),
+			objs:        sortTestDataWithMultiTenancy(),
 			op:          func(sorter *RuntimeSorter, objs []runtime.Object, out io.Writer) error { return nil },
 			expectError: "couldn't find any field with path",
 		},
@@ -743,10 +678,10 @@ func TestRuntimeSorter(t *testing.T) {
 
 }
 
-func TestGetObjectsIdentifiedByFile(t *testing.T) {
+func TestGetObjectsIdentifiedByFileWithMultiTenancy(t *testing.T) {
 	pods, _, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -769,10 +704,10 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func TestGetListObjects(t *testing.T) {
+func TestGetListObjectsWithMultiTenancy(t *testing.T) {
 	pods, _, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -795,10 +730,10 @@ bar    0/0              0          <unknown>
 	}
 }
 
-func TestGetListComponentStatus(t *testing.T) {
+func TestGetListComponentStatusWithMultiTenancy(t *testing.T) {
 	statuses := testComponentStatusData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -822,7 +757,7 @@ serverunknown   Unhealthy             fizzbuzz error
 	}
 }
 
-func TestGetMixedGenericObjects(t *testing.T) {
+func TestGetMixedGenericObjectsWithMultiTenancy(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 
 	// ensure that a runtime.Object without
@@ -838,7 +773,7 @@ func TestGetMixedGenericObjects(t *testing.T) {
 		Code:    0,
 	}
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -846,7 +781,7 @@ func TestGetMixedGenericObjects(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, structuredObj)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -884,10 +819,10 @@ func TestGetMixedGenericObjects(t *testing.T) {
 	}
 }
 
-func TestGetMultipleTypeObjects(t *testing.T) {
+func TestGetMultipleTypeObjectsWithMultiTenancy(t *testing.T) {
 	pods, svc, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -895,9 +830,9 @@ func TestGetMultipleTypeObjects(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/test-te/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -922,10 +857,10 @@ service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 	}
 }
 
-func TestGetMultipleTypeObjectsAsList(t *testing.T) {
+func TestGetMultipleTypeObjectsAsListWithMultiTenancy(t *testing.T) {
 	pods, svc, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -933,9 +868,9 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/test-te/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -963,7 +898,7 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "name": "foo",
                 "namespace": "test",
                 "resourceVersion": "10",
-                "tenant": "default"
+                "tenant": "test-te"
             },
             "spec": {
                 "dnsPolicy": "ClusterFirst",
@@ -982,7 +917,7 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "name": "bar",
                 "namespace": "test",
                 "resourceVersion": "11",
-                "tenant": "default"
+                "tenant": "test-te"
             },
             "spec": {
                 "dnsPolicy": "ClusterFirst",
@@ -1001,7 +936,7 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "name": "baz",
                 "namespace": "test",
                 "resourceVersion": "12",
-                "tenant": "default"
+                "tenant": "test-te"
             },
             "spec": {
                 "sessionAffinity": "None",
@@ -1024,10 +959,10 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
 	}
 }
 
-func TestGetMultipleTypeObjectsWithLabelSelector(t *testing.T) {
+func TestGetMultipleTypeObjectsWithLabelSelectorWithMultiTenancy(t *testing.T) {
 	pods, svc, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1038,9 +973,9 @@ func TestGetMultipleTypeObjectsWithLabelSelector(t *testing.T) {
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/test-te/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -1067,10 +1002,10 @@ service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 	}
 }
 
-func TestGetMultipleTypeObjectsWithFieldSelector(t *testing.T) {
+func TestGetMultipleTypeObjectsWithFieldSelectorWithMultiTenancy(t *testing.T) {
 	pods, svc, _ := cmdtesting.TestData()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1081,9 +1016,9 @@ func TestGetMultipleTypeObjectsWithFieldSelector(t *testing.T) {
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/test-te/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -1110,7 +1045,7 @@ service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 	}
 }
 
-func TestGetMultipleTypeObjectsWithDirectReference(t *testing.T) {
+func TestGetMultipleTypeObjectsWithDirectReferenceWithMultiTenancy(t *testing.T) {
 	_, svc, _ := cmdtesting.TestData()
 	node := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1118,7 +1053,7 @@ func TestGetMultipleTypeObjectsWithDirectReference(t *testing.T) {
 		},
 	}
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1128,7 +1063,7 @@ func TestGetMultipleTypeObjectsWithDirectReference(t *testing.T) {
 			switch req.URL.Path {
 			case "/nodes/foo":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, node)}, nil
-			case "/namespaces/test/services/bar":
+			case "/tenants/test-te/namespaces/test/services/bar":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -1153,12 +1088,13 @@ node/foo   Unknown   <none>   <unknown>
 	}
 }
 
-func watchTestData() ([]corev1.Pod, []watch.Event) {
+func watchTestDataWithMultiTenancy() ([]corev1.Pod, []watch.Event) {
 	pods := []corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "bar",
 				Namespace:       "test",
+				Tenant:          "test-te",
 				ResourceVersion: "9",
 			},
 			Spec: corev1.PodSpec{
@@ -1173,6 +1109,7 @@ func watchTestData() ([]corev1.Pod, []watch.Event) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "foo",
 				Namespace:       "test",
+				Tenant:          "test-te",
 				ResourceVersion: "10",
 			},
 			Spec: corev1.PodSpec{
@@ -1192,6 +1129,7 @@ func watchTestData() ([]corev1.Pod, []watch.Event) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            "bar",
 					Namespace:       "test",
+					Tenant:          "test-te",
 					ResourceVersion: "9",
 				},
 				Spec: corev1.PodSpec{
@@ -1209,6 +1147,7 @@ func watchTestData() ([]corev1.Pod, []watch.Event) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            "foo",
 					Namespace:       "test",
+					Tenant:          "test-te",
 					ResourceVersion: "10",
 				},
 				Spec: corev1.PodSpec{
@@ -1227,6 +1166,7 @@ func watchTestData() ([]corev1.Pod, []watch.Event) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            "foo",
 					Namespace:       "test",
+					Tenant:          "test-te",
 					ResourceVersion: "11",
 				},
 				Spec: corev1.PodSpec{
@@ -1244,6 +1184,7 @@ func watchTestData() ([]corev1.Pod, []watch.Event) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            "foo",
 					Namespace:       "test",
+					Tenant:          "test-te",
 					ResourceVersion: "12",
 				},
 				Spec: corev1.PodSpec{
@@ -1259,10 +1200,10 @@ func watchTestData() ([]corev1.Pod, []watch.Event) {
 	return pods, events
 }
 
-func TestWatchLabelSelector(t *testing.T) {
-	pods, events := watchTestData()
+func TestWatchLabelSelectorWithMultiTenancy(t *testing.T) {
+	pods, events := watchTestDataWithMultiTenancy()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1279,9 +1220,9 @@ func TestWatchLabelSelector(t *testing.T) {
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" {
-					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[2:])}, nil
+					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBodyWithMultiTenancy(codec, events[2:])}, nil
 				}
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, podList)}, nil
 			default:
@@ -1310,10 +1251,10 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func TestWatchFieldSelector(t *testing.T) {
-	pods, events := watchTestData()
+func TestWatchFieldSelectorWithMultiTenancy(t *testing.T) {
+	pods, events := watchTestDataWithMultiTenancy()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1330,9 +1271,9 @@ func TestWatchFieldSelector(t *testing.T) {
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" {
-					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[2:])}, nil
+					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBodyWithMultiTenancy(codec, events[2:])}, nil
 				}
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, podList)}, nil
 			default:
@@ -1361,10 +1302,10 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func TestWatchResource(t *testing.T) {
-	pods, events := watchTestData()
+func TestWatchResourceWithMultiTenancy(t *testing.T) {
+	pods, events := watchTestDataWithMultiTenancy()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1372,11 +1313,11 @@ func TestWatchResource(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods/foo":
+			case "/tenants/test-te/namespaces/test/pods/foo":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods[1])}, nil
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" && req.URL.Query().Get("fieldSelector") == "metadata.name=foo" {
-					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[1:])}, nil
+					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBodyWithMultiTenancy(codec, events[1:])}, nil
 				}
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 				return nil, nil
@@ -1404,7 +1345,7 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func TestWatchResourceTable(t *testing.T) {
+func TestWatchResourceTableWithMultiTenancy(t *testing.T) {
 	columns := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: "the name", Priority: 0},
 		{Name: "Active", Type: "boolean", Description: "active", Priority: 0},
@@ -1419,7 +1360,7 @@ func TestWatchResourceTable(t *testing.T) {
 				Object: runtime.RawExtension{
 					Object: &corev1.Pod{
 						TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-						ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", ResourceVersion: "10"},
+						ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", Tenant: "test-te", ResourceVersion: "10"},
 					},
 				},
 			},
@@ -1428,7 +1369,7 @@ func TestWatchResourceTable(t *testing.T) {
 				Object: runtime.RawExtension{
 					Object: &corev1.Pod{
 						TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-						ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", ResourceVersion: "20"},
+						ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", Tenant: "test-te", ResourceVersion: "20"},
 					},
 				},
 			},
@@ -1446,7 +1387,7 @@ func TestWatchResourceTable(t *testing.T) {
 					Object: runtime.RawExtension{
 						Object: &corev1.Pod{
 							TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-							ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", ResourceVersion: "30"},
+							ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "test", Tenant: "test-te", ResourceVersion: "30"},
 						},
 					},
 				}},
@@ -1461,7 +1402,7 @@ func TestWatchResourceTable(t *testing.T) {
 					Object: runtime.RawExtension{
 						Object: &corev1.Pod{
 							TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
-							ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", ResourceVersion: "40"},
+							ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "test", Tenant: "test-te", ResourceVersion: "40"},
 						},
 					},
 				}},
@@ -1469,7 +1410,7 @@ func TestWatchResourceTable(t *testing.T) {
 		},
 	}
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1477,12 +1418,12 @@ func TestWatchResourceTable(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				if req.URL.Query().Get("watch") != "true" && req.URL.Query().Get("fieldSelector") == "" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, listTable)}, nil
 				}
 				if req.URL.Query().Get("watch") == "true" && req.URL.Query().Get("fieldSelector") == "" {
-					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events)}, nil
+					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBodyWithMultiTenancy(codec, events)}, nil
 				}
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 				return nil, nil
@@ -1511,10 +1452,10 @@ b      false
 	}
 }
 
-func TestWatchResourceIdentifiedByFile(t *testing.T) {
-	pods, events := watchTestData()
+func TestWatchResourceIdentifiedByFileWithMultiTenancy(t *testing.T) {
+	pods, events := watchTestDataWithMultiTenancy()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1522,11 +1463,11 @@ func TestWatchResourceIdentifiedByFile(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/replicationcontrollers/cassandra":
+			case "/tenants/test-te/namespaces/test/replicationcontrollers/cassandra":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods[1])}, nil
-			case "/namespaces/test/replicationcontrollers":
+			case "/tenants/test-te/namespaces/test/replicationcontrollers":
 				if req.URL.Query().Get("watch") == "true" && req.URL.Query().Get("fieldSelector") == "metadata.name=cassandra" {
-					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[1:])}, nil
+					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBodyWithMultiTenancy(codec, events[1:])}, nil
 				}
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 				return nil, nil
@@ -1555,10 +1496,10 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func TestWatchOnlyResource(t *testing.T) {
-	pods, events := watchTestData()
+func TestWatchOnlyResourceWithMultiTenancy(t *testing.T) {
+	pods, events := watchTestDataWithMultiTenancy()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1566,11 +1507,11 @@ func TestWatchOnlyResource(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods/foo":
+			case "/tenants/test-te/namespaces/test/pods/foo":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods[1])}, nil
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" && req.URL.Query().Get("fieldSelector") == "metadata.name=foo" {
-					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[1:])}, nil
+					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBodyWithMultiTenancy(codec, events[1:])}, nil
 				}
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 				return nil, nil
@@ -1597,10 +1538,10 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func TestWatchOnlyList(t *testing.T) {
-	pods, events := watchTestData()
+func TestWatchOnlyListWithMultiTenancy(t *testing.T) {
+	pods, events := watchTestDataWithMultiTenancy()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1614,9 +1555,9 @@ func TestWatchOnlyList(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" {
-					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[2:])}, nil
+					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBodyWithMultiTenancy(codec, events[2:])}, nil
 				}
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, podList)}, nil
 			default:
@@ -1642,7 +1583,7 @@ foo    0/0              0          <unknown>
 	}
 }
 
-func watchBody(codec runtime.Codec, events []watch.Event) io.ReadCloser {
+func watchBodyWithMultiTenancy(codec runtime.Codec, events []watch.Event) io.ReadCloser {
 	buf := bytes.NewBuffer([]byte{})
 	enc := restclientwatch.NewEncoder(streaming.NewEncoder(buf, codec), codec)
 	for i := range events {
@@ -1653,10 +1594,10 @@ func watchBody(codec runtime.Codec, events []watch.Event) io.ReadCloser {
 	return json.Framer.NewFrameReader(ioutil.NopCloser(buf))
 }
 
-func TestGetMultipleTypeObjectsWithLabelRangeSelector(t *testing.T) {
+func TestGetMultipleTypeObjectsWithLabelRangeSelectorWithMultiTenancy(t *testing.T) {
 	pods := cmdtesting.TestDataWithHashKey()
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -1667,10 +1608,10 @@ func TestGetMultipleTypeObjectsWithLabelRangeSelector(t *testing.T) {
 				t.Fatalf("The request does not have expected range params. Request url: %#v,and request: %#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/test-te/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
 			default:
-				t.Fatalf("The request url path does not start with /namespaces/test/pods. Request url: %#v,and request: %#v", req.URL, req)
+				t.Fatalf("The request url path does not start with /tenants/test-te/namespaces/test/pods. Request url: %#v,and request: %#v", req.URL, req)
 				return nil, nil
 			}
 		}),

@@ -86,8 +86,8 @@ const (
 	FailedPreStopHook   = "FailedPreStopHook"
 
 	// device hotplug event reason list
-	DeviceAttached = "DeviceAttached"
-	DeviceDetached = "DeviceDetached"
+	DeviceAttached     = "DeviceAttached"
+	DeviceDetached     = "DeviceDetached"
 	FailedAttachDevice = "FailedAttachDevice"
 	FailedDetachDevice = "FailedDetachDevice"
 )

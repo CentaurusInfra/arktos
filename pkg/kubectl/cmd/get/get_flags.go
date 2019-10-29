@@ -52,6 +52,12 @@ func (f *PrintFlags) EnsureWithNamespace() error {
 	return f.HumanReadableFlags.EnsureWithNamespace()
 }
 
+// EnsureWithTenant ensures that humanreadable flags return
+// a printer capable of printing with a "tenant" column.
+func (f *PrintFlags) EnsureWithTenant() error {
+	return f.HumanReadableFlags.EnsureWithTenant()
+}
+
 // EnsureWithKind ensures that humanreadable flags return
 // a printer capable of including resource kinds.
 func (f *PrintFlags) EnsureWithKind() error {

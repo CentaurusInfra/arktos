@@ -40,6 +40,7 @@ type HumanPrintFlags struct {
 	Kind               schema.GroupKind
 	AbsoluteTimestamps bool
 	WithNamespace      bool
+	WithTenant         bool
 }
 
 // SetKind sets the Kind option
@@ -57,6 +58,12 @@ func (f *HumanPrintFlags) EnsureWithKind() error {
 // EnsureWithNamespace sets the "WithNamespace" humanreadable option to true.
 func (f *HumanPrintFlags) EnsureWithNamespace() error {
 	f.WithNamespace = true
+	return nil
+}
+
+// EnsureWithTenant sets the "WithTenant" humanreadable option to true.
+func (f *HumanPrintFlags) EnsureWithTenant() error {
+	f.WithTenant = true
 	return nil
 }
 
@@ -92,6 +99,7 @@ func (f *HumanPrintFlags) ToPrinter(outputFormat string) (printers.ResourcePrint
 		WithKind:      showKind,
 		NoHeaders:     f.NoHeaders,
 		Wide:          outputFormat == "wide",
+		WithTenant:    f.WithTenant,
 		WithNamespace: f.WithNamespace,
 		ColumnLabels:  columnLabels,
 		ShowLabels:    showLabels,
@@ -131,6 +139,7 @@ func NewHumanPrintFlags() *HumanPrintFlags {
 	return &HumanPrintFlags{
 		NoHeaders:          false,
 		WithNamespace:      false,
+		WithTenant:         false,
 		AbsoluteTimestamps: false,
 		ColumnLabels:       &columnLabels,
 

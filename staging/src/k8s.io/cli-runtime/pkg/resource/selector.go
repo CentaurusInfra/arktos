@@ -115,7 +115,7 @@ func (r *Selector) Watch(resourceVersion string) (watch.Interface, error) {
 		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
 }
 
-func (r *Selector) WatchtWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
+func (r *Selector) WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
 	return NewHelper(r.Client, r.Mapping).WatchWithMultiTenancy(r.Tenant, r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
 		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
 }

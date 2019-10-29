@@ -71,6 +71,7 @@ go_test(
         "customcolumn_test.go",
         "get_test.go",
         "humanreadable_flags_test.go",
+        "multi_tenancy_get_test.go",
         "sorter_test.go",
     ],
     data = [

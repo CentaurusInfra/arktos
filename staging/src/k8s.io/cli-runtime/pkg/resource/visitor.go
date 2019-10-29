@@ -52,6 +52,7 @@ const (
 // beginning after the provided resource version.
 type Watchable interface {
 	Watch(resourceVersion string) (watch.Interface, error)
+	WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error)
 }
 
 // ResourceMapping allows an object to return the resource mapping associated with
@@ -120,7 +121,7 @@ func (i *Info) GetWithMultiTenancy() (err error) {
 	obj, err := NewHelper(i.Client, i.Mapping).GetWithMultiTenancy(i.Tenant, i.Namespace, i.Name, i.Export)
 	if err != nil {
 		if errors.IsNotFound(err) && len(i.Namespace) > 0 && i.Namespace != metav1.NamespaceDefault && i.Namespace != metav1.NamespaceAll &&
-			len(i.Tenant) > 0 && i.Tenant != metav1.TenantAll {
+			len(i.Tenant) > 0 && i.Tenant != metav1.TenantDefault && i.Tenant != metav1.TenantAll {
 			err2 := i.Client.Get().AbsPath("api", "v1", "tenants", i.Tenant, "namespaces", i.Namespace).Do().Error()
 			if err2 != nil && errors.IsNotFound(err2) {
 				return err2
@@ -801,7 +802,7 @@ func RetrieveLatest(info *Info, err error) error {
 	if len(info.Namespace) == 0 && info.Scope() == meta.RESTScopeNameNamespace {
 		return fmt.Errorf("no namespace set on resource %s %q", info.Mapping.Resource, info.Name)
 	}
-	return info.Get()
+	return info.GetWithMultiTenancy()
 }
 
 // RetrieveLazy updates the object if it has not been loaded yet.
@@ -810,7 +811,7 @@ func RetrieveLazy(info *Info, err error) error {
 		return err
 	}
 	if info.Object == nil {
-		return info.Get()
+		return info.GetWithMultiTenancy()
 	}
 	return nil
 }

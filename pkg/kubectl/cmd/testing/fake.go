@@ -138,6 +138,7 @@ type InternalNamespacedType struct {
 
 	Name      string
 	Namespace string
+	Tenant    string
 }
 
 // ExternalNamespacedType schema for external namespaced types
@@ -149,6 +150,7 @@ type ExternalNamespacedType struct {
 
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+	Tenant    string `json:"tenant"`
 }
 
 // ExternalNamespacedType2 schema for external namespaced types
@@ -160,6 +162,7 @@ type ExternalNamespacedType2 struct {
 
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+	Tenant    string `json:"tenant"`
 }
 
 // GetObjectKind returns the ObjectKind schema
@@ -203,10 +206,17 @@ func (obj *ExternalNamespacedType2) GroupVersionKind() schema.GroupVersionKind {
 
 // NewInternalNamespacedType returns an initialized instance of InternalNamespacedType
 func NewInternalNamespacedType(kind, apiversion, name, namespace string) *InternalNamespacedType {
+	return NewInternalNamespacedTypeWithMultiTenancy(kind, apiversion, name, namespace, metav1.TenantDefault)
+}
+
+// NewInternalNamespacedType returns an initialized instance of InternalNamespacedType
+func NewInternalNamespacedTypeWithMultiTenancy(kind, apiversion, name, namespace, tenant string) *InternalNamespacedType {
 	item := InternalNamespacedType{Kind: kind,
 		APIVersion: apiversion,
 		Name:       name,
-		Namespace:  namespace}
+		Namespace:  namespace,
+		Tenant:     tenant,
+	}
 	return &item
 }
 
@@ -336,6 +346,11 @@ func NewTestFactory() *TestFactory {
 // WithNamespace is used to mention namespace reactively
 func (f *TestFactory) WithNamespace(ns string) *TestFactory {
 	f.kubeConfigFlags.WithNamespace(ns)
+	return f
+}
+
+func (f *TestFactory) WithNamespaceWithMultiTenancy(ns, te string) *TestFactory {
+	f.kubeConfigFlags.WithNamespaceWithMultiTenancy(ns, te)
 	return f
 }
 
