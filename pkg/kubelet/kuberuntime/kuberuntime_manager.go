@@ -1466,14 +1466,15 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 		return nil, err
 	}
 
-	podFullName := format.Pod(&v1.Pod{
+	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			UID:       uid,
 			HashKey:   fuzzer.GetHashOfUUID(uid),
 		},
-	})
+	}
+	podFullName := format.Pod(pod)
 	klog.V(4).Infof("getSandboxIDByPodUID got sandbox IDs %q for pod %q", podSandboxIDs, podFullName)
 
 	sandboxStatuses := make([]*runtimeapi.PodSandboxStatus, len(podSandboxIDs))
@@ -1494,6 +1495,12 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 		// Only get pod IP from latest sandbox
 		if idx == 0 && podSandboxStatus.State == runtimeapi.PodSandboxState_SANDBOX_READY {
 			podIP = m.determinePodSandboxIP(namespace, name, podSandboxStatus)
+
+			// incorporate details of nic status got from separate cri extension call
+			// if pod sandbox status does not include such info, as fallback measure
+			if podSandboxStatus.Network == nil || len(podSandboxStatus.Network.Nics) == 0 {
+				m.incorporateNICStatus (pod, podSandboxStatus)
+			}
 		}
 	}
 
@@ -1519,6 +1526,33 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 		SandboxStatuses:   sandboxStatuses,
 		ContainerStatuses: containerStatuses,
 	}, nil
+}
+
+func (m *kubeGenericRuntimeManager) incorporateNICStatus (pod *v1.Pod, podSandboxStatus *runtimeapi.PodSandboxStatus) {
+	// todo[vnic-hotplug]: avoid calling api for some runtime that does not support nic hotplug
+	// todo[vnic-hotplug]: set proper vmName if really required; or eliminate if not
+	nics, err := m.ListNetworkInterfaces(pod, "" /*vmName*/)
+	if err != nil {
+		// fine for some runtime not able to honor such api
+		return
+	}
+
+	statuses := []*runtimeapi.NICStatus{}
+	for _, nic := range nics {
+		status := &runtimeapi.NICStatus{
+			Name:   nic.Name,
+			PortId: nic.PortId,
+			State:  runtimeapi.NICState_NIC_UNKNOWN, // todo[vnic-hotplug]: set proper state if available from runtime api
+		}
+		statuses = append(statuses, status)
+	}
+
+	if len(statuses) > 0 {
+		if podSandboxStatus.Network == nil {
+			podSandboxStatus.Network = &runtimeapi.PodSandboxNetworkStatus{}
+		}
+		podSandboxStatus.Network.Nics = statuses
+	}
 }
 
 // GarbageCollect removes dead containers using the specified container gc policy.
