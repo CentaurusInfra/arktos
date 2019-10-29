@@ -145,17 +145,24 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 				if err != nil {
 					return nil, fmt.Errorf("unexpected error when extracting UID from oldObj: %v", err.Error())
 				} else if !isNotZeroObject {
-					if mutatingAdmission.Handles(admission.Create) {
-						return newObj, mutatingAdmission.Admit(admission.NewAttributesRecord(newObj, nil, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Create, updateToCreateOptions(options), dryrun.IsDryRun(options.DryRun), userInfo), scope)
+					// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
+					// TODO: enable the admission check for all resources
+					if tenant == "" || tenant == metav1.TenantDefault {
+						if mutatingAdmission.Handles(admission.Create) {
+							return newObj, mutatingAdmission.Admit(admission.NewAttributesRecord(newObj, nil, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Create, updateToCreateOptions(options), dryrun.IsDryRun(options.DryRun), userInfo), scope)
+						}
 					}
 				} else {
-					if mutatingAdmission.Handles(admission.Update) {
-						return newObj, mutatingAdmission.Admit(admission.NewAttributesRecord(newObj, oldObj, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Update, options, dryrun.IsDryRun(options.DryRun), userInfo), scope)
+					// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
+					// TODO: enable the admission check for all resources
+					if tenant == "" || tenant == metav1.TenantDefault {
+						if mutatingAdmission.Handles(admission.Update) {
+							return newObj, mutatingAdmission.Admit(admission.NewAttributesRecord(newObj, oldObj, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Update, options, dryrun.IsDryRun(options.DryRun), userInfo), scope)
+						}
 					}
 				}
 				return newObj, nil
 			})
-
 		}
 
 		createAuthorizerAttributes := authorizer.AttributesRecord{
@@ -173,16 +180,24 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 
 		trace.Step("About to store object in database")
 		wasCreated := false
+		// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
+		// TODO: enable the admission check for all resources
+		admissionValidateFunc := rest.AdmissionToValidateObjectFuncWithMultiTenancy
+		admissionUpdateFunc := rest.AdmissionToValidateObjectUpdateFuncWithMultiTenancy
+		if tenant == "" || tenant == metav1.TenantDefault {
+			admissionValidateFunc = rest.AdmissionToValidateObjectFunc
+			admissionUpdateFunc = rest.AdmissionToValidateObjectUpdateFunc
+		}
 		result, err := finishRequest(timeout, func() (runtime.Object, error) {
 			obj, created, err := r.Update(
 				ctx,
 				name,
 				rest.DefaultUpdatedObjectInfo(obj, transformers...),
-				withAuthorization(rest.AdmissionToValidateObjectFunc(
+				withAuthorization(admissionValidateFunc(
 					admit,
 					admission.NewAttributesRecord(nil, nil, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Create, updateToCreateOptions(options), dryrun.IsDryRun(options.DryRun), userInfo), scope),
 					scope.Authorizer, createAuthorizerAttributes),
-				rest.AdmissionToValidateObjectUpdateFunc(
+				admissionUpdateFunc(
 					admit,
 					admission.NewAttributesRecord(nil, nil, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Update, options, dryrun.IsDryRun(options.DryRun), userInfo), scope),
 				false,

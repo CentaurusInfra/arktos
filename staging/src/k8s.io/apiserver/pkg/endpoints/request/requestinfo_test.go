@@ -180,7 +180,7 @@ func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 
 		// resource paths
 		{"GET", "/api/v1/tenants", "list", "api", "", "v1", "", "", "tenants", "", "", []string{"tenants"}},
-		{"GET", "/api/v1/tenants/fake_te", "get", "api", "", "v1", "fake_te", "", "tenants", "", "fake_te", []string{"tenants", "fake_te"}},
+		{"GET", "/api/v1/tenants/fake_te", "get", "api", "", "v1", "", "", "tenants", "", "fake_te", []string{"tenants", "fake_te"}},
 		{"GET", "/api/v1/tenants/fake_te/namespaces", "list", "api", "", "v1", "fake_te", "", "namespaces", "", "", []string{"namespaces"}},
 		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns", "get", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "", "fake_ns", []string{"namespaces", "fake_ns"}},
 
@@ -214,8 +214,8 @@ func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo/proxy/subpath", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "proxy", "foo", []string{"pods", "foo", "proxy", "subpath"}},
 		{"PUT", "/api/v1/tenants/fake_te/namespaces/fake_ns/finalize", "update", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "finalize", "fake_ns", []string{"namespaces", "fake_ns", "finalize"}},
 		{"PUT", "/api/v1/tenants/fake_te/namespaces/fake_ns/status", "update", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "status", "fake_ns", []string{"namespaces", "fake_ns", "status"}},
-		{"PUT", "/api/v1/tenants/fake_te/finalize", "update", "api", "", "v1", "fake_te", "", "tenants", "finalize", "fake_te", []string{"tenants", "fake_te", "finalize"}},
-		{"PUT", "/api/v1/tenants/fake_te/status", "update", "api", "", "v1", "fake_te", "", "tenants", "status", "fake_te", []string{"tenants", "fake_te", "status"}},
+		{"PUT", "/api/v1/tenants/fake_te/finalize", "update", "api", "", "v1", "", "", "tenants", "finalize", "fake_te", []string{"tenants", "fake_te", "finalize"}},
+		{"PUT", "/api/v1/tenants/fake_te/status", "update", "api", "", "v1", "", "", "tenants", "status", "fake_te", []string{"tenants", "fake_te", "status"}},
 		{"PUT", "/api/v1/namespaces", "update", "api", "", "v1", tenantDefault, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
 
 		// verb identification

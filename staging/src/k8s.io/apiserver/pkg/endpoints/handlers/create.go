@@ -137,11 +137,15 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 
 		userInfo, _ := request.UserFrom(ctx)
 		admissionAttributes := admission.NewAttributesRecord(obj, nil, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Create, options, dryrun.IsDryRun(options.DryRun), userInfo)
-		if mutatingAdmission, ok := admit.(admission.MutationInterface); ok && mutatingAdmission.Handles(admission.Create) {
-			err = mutatingAdmission.Admit(admissionAttributes, scope)
-			if err != nil {
-				scope.err(err, w, req)
-				return
+		// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
+		// TODO: enable the admission check for all resources
+		if tenant == "" || tenant == metav1.TenantDefault {
+			if mutatingAdmission, ok := admit.(admission.MutationInterface); ok && mutatingAdmission.Handles(admission.Create) {
+				err = mutatingAdmission.Admit(admissionAttributes, scope)
+				if err != nil {
+					scope.err(err, w, req)
+					return
+				}
 			}
 		}
 
@@ -160,12 +164,19 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 		}
 
 		trace.Step("About to store object in database")
+		// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
+		// TODO: enable the admission check for all resources
+		admissionValidateFunc := rest.AdmissionToValidateObjectFuncWithMultiTenancy
+		if tenant == "" || tenant == metav1.TenantDefault {
+			admissionValidateFunc = rest.AdmissionToValidateObjectFunc
+		}
+
 		result, err := finishRequest(timeout, func() (runtime.Object, error) {
 			return r.Create(
 				ctx,
 				name,
 				obj,
-				rest.AdmissionToValidateObjectFunc(admit, admissionAttributes, scope),
+				admissionValidateFunc(admit, admissionAttributes, scope),
 				options,
 			)
 		})

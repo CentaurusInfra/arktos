@@ -195,3 +195,10 @@ func AdmissionToValidateObjectFunc(admit admission.Interface, staticAttributes a
 		return validatingAdmission.Validate(finalAttributes, o)
 	}
 }
+
+// TODO: multi-tenancy validation
+func AdmissionToValidateObjectFuncWithMultiTenancy(admit admission.Interface, staticAttributes admission.Attributes, o admission.ObjectInterfaces) ValidateObjectFunc {
+	return func(obj runtime.Object) error {
+		return nil
+	}
+}

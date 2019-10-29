@@ -181,3 +181,10 @@ func AdmissionToValidateObjectDeleteFunc(admit admission.Interface, staticAttrib
 		return nil
 	}
 }
+
+// TODO: multi-tenancy admission check
+func AdmissionToValidateObjectDeleteFuncWithMultiTenancy(admit admission.Interface, staticAttributes admission.Attributes, objInterfaces admission.ObjectInterfaces) ValidateObjectFunc {
+	return func(old runtime.Object) error {
+		return nil
+	}
+}

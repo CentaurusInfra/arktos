@@ -74,6 +74,10 @@ var specialVerbs = sets.NewString("proxy", "watch")
 // specialVerbsNoSubresources contains root verbs which do not allow subresources
 var specialVerbsNoSubresources = sets.NewString("proxy")
 
+// tenantSubresources contains subresources of tenant
+// this list allows the parser to distinguish between a tenant subresource, and a tenanted resource
+var tenantSubresources = sets.NewString("status", "finalize")
+
 // namespaceSubresources contains subresources of namespace
 // this list allows the parser to distinguish between a namespace subresource, and a namespaced resource
 var namespaceSubresources = sets.NewString("status", "finalize")
@@ -196,17 +200,16 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 
 	// URL forms: /tenants/{tenant}/...,
 	if currentParts[0] == "tenants" {
-		if len(currentParts) > 1 {
+		if len(currentParts) > 2 && !tenantSubresources.Has(currentParts[2]) {
 			requestInfo.Tenant = currentParts[1]
-
-			// There should be namespace name or resource kind after tenant name,
-			// move currentParts to include it as a resource in its own right
-			if len(currentParts) > 2 && !namespaceSubresources.Has(currentParts[2]) {
-				currentParts = currentParts[2:]
-			}
+			currentParts = currentParts[2:]
+		} else {
+			// the tenant will be "" if
+			// 1. the tenants/tenant_name does not exist
+			// 2. the url ends in "tenants/tenant_name" , "tenants/tenant_name/status" or "tenant/tenant_name/finalzie", 
+			// the tenant value is set to "" as it is operation on the tenant resource itself, which is cluster-scoped.
+			requestInfo.Tenant = metav1.TenantNone
 		}
-	} else {
-		requestInfo.Tenant = metav1.TenantNone
 	}
 
 	// URL forms: /namespaces/{namespace}/{kind}/*, where parts are adjusted to be relative to kind

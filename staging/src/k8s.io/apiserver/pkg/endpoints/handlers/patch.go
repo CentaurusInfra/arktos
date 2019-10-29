@@ -189,6 +189,15 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			Name:            name,
 		}
 
+		// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
+		// TODO: enable the admission check for all resources
+		admissionValidateFunc := rest.AdmissionToValidateObjectFuncWithMultiTenancy
+		admissionUpdateFunc := rest.AdmissionToValidateObjectUpdateFuncWithMultiTenancy
+		if tenant == "" || tenant == metav1.TenantDefault {
+			admissionValidateFunc = rest.AdmissionToValidateObjectFunc
+			admissionUpdateFunc = rest.AdmissionToValidateObjectUpdateFunc
+		}
+
 		p := patcher{
 			namer:           scope.Namer,
 			creater:         scope.Creater,
@@ -204,8 +213,8 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 
 			hubGroupVersion: scope.HubGroupVersion,
 
-			createValidation: withAuthorization(rest.AdmissionToValidateObjectFunc(admit, staticCreateAttributes, scope), scope.Authorizer, createAuthorizerAttributes),
-			updateValidation: rest.AdmissionToValidateObjectUpdateFunc(admit, staticUpdateAttributes, scope),
+			createValidation: withAuthorization(admissionValidateFunc(admit, staticCreateAttributes, scope), scope.Authorizer, createAuthorizerAttributes),
+			updateValidation: admissionUpdateFunc(admit, staticUpdateAttributes, scope),
 			admissionCheck:   mutatingAdmission,
 
 			codec: codec,
