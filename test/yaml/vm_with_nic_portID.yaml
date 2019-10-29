@@ -4,8 +4,8 @@ metadata:
   name: vm-with-nic-portid
 spec:
   virtualMachine:
-    name: testVM
-    image: virtlet.cloud/cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
+    name: vm
+    image: download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img.img
     resources:
       limits:
         cpu: "1"
