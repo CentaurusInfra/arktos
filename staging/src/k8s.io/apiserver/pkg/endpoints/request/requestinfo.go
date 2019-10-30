@@ -206,7 +206,7 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 		} else {
 			// the tenant will be "" if
 			// 1. the tenants/tenant_name does not exist
-			// 2. the url ends in "tenants/tenant_name" , "tenants/tenant_name/status" or "tenant/tenant_name/finalzie", 
+			// 2. the url ends in "tenants/tenant_name" , "tenants/tenant_name/status" or "tenant/tenant_name/finalzie",
 			// the tenant value is set to "" as it is operation on the tenant resource itself, which is cluster-scoped.
 			requestInfo.Tenant = metav1.TenantNone
 		}

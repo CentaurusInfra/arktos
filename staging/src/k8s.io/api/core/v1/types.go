@@ -2364,6 +2364,12 @@ type VirtualMachine struct {
 	// default running
 	// +optional
 	PowerSpec VmPowerSpec `json:"powerSpec,omitempty" protobuf:"bytes,12,opt,name=powerSpec,casttype=VmPowerSpec"`
+	// volumeDevices is the list of block devices to be used by the container.
+	// This is a beta feature.
+	// +patchMergeKey=devicePath
+	// +patchStrategy=merge
+	// +optional
+	VolumeDevices []VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,13,rep,name=volumeDevices"`
 }
 
 // Handler defines a specific action that should be taken

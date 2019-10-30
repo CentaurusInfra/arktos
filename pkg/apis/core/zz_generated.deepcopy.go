@@ -5828,6 +5828,11 @@ func (in *VirtualMachine) DeepCopyInto(out *VirtualMachine) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.VolumeDevices != nil {
+		in, out := &in.VolumeDevices, &out.VolumeDevices
+		*out = make([]VolumeDevice, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

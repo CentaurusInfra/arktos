@@ -1280,7 +1280,7 @@ func (m *kubeGenericRuntimeManager) doAttachNICs(pod *v1.Pod, sandbox string, ni
 
 		// todo[vnic-hotplug]: consider to use CRI batch method if available
 		// todo[vnic-hotplug]: to fill vm id if it is really required by CRI runtime
-		if err := m.AttachNetworkInterface(pod, ""/*vmName*/, nicSpec); err != nil{
+		if err := m.AttachNetworkInterface(pod, "" /*vmName*/, nicSpec); err != nil {
 			result = multierr.Append(result, fmt.Errorf("failed to attach nic %q: %v", nicName, err))
 		}
 	}
@@ -1294,7 +1294,7 @@ func (m *kubeGenericRuntimeManager) attachNIC(pod *v1.Pod, vmName string, nic *v
 		klog.Errorf("Couldn't make a ref to pod %q: '%v'", format.Pod(pod), referr)
 	}
 
-	if err := m.AttachNetworkInterface(pod, vmName, nic); err != nil{
+	if err := m.AttachNetworkInterface(pod, vmName, nic); err != nil {
 		klog.Warningf("error happened when pod %s/%s attaching nic %s: %v", pod.Namespace, pod.Name, nic.Name, err)
 		if referr == nil {
 			m.recorder.Eventf(ref, v1.EventTypeWarning, events.FailedAttachDevice, "network interface %q hotplug had error: %v", nic.Name, err)
@@ -1499,7 +1499,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 			// incorporate details of nic status got from separate cri extension call
 			// if pod sandbox status does not include such info, as fallback measure
 			if podSandboxStatus.Network == nil || len(podSandboxStatus.Network.Nics) == 0 {
-				m.incorporateNICStatus (pod, podSandboxStatus)
+				m.incorporateNICStatus(pod, podSandboxStatus)
 			}
 		}
 	}
@@ -1528,7 +1528,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 	}, nil
 }
 
-func (m *kubeGenericRuntimeManager) incorporateNICStatus (pod *v1.Pod, podSandboxStatus *runtimeapi.PodSandboxStatus) {
+func (m *kubeGenericRuntimeManager) incorporateNICStatus(pod *v1.Pod, podSandboxStatus *runtimeapi.PodSandboxStatus) {
 	// todo[vnic-hotplug]: avoid calling api for some runtime that does not support nic hotplug
 	// todo[vnic-hotplug]: set proper vmName if really required; or eliminate if not
 	nics, err := m.ListNetworkInterfaces(pod, "" /*vmName*/)

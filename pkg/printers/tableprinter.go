@@ -46,7 +46,7 @@ var (
 	}
 
 	withNamespacePrefixColumns = []string{"NAMESPACE"} // TODO(erictune): print cluster name too.
-	withTenantPrefixColumns = []string{"TENANT"}
+	withTenantPrefixColumns    = []string{"TENANT"}
 )
 
 // NewTablePrinter creates a printer suitable for calling PrintObj().
@@ -228,7 +228,7 @@ func decorateTable(table *metav1beta1.Table, options PrintOptions) error {
 				Type: "string",
 			})
 		}
-		
+
 		columns = append(columns, table.ColumnDefinitions...)
 
 		for _, label := range formatLabelHeaders(options.ColumnLabels) {
@@ -263,7 +263,7 @@ func decorateTable(table *metav1beta1.Table, options PrintOptions) error {
 				}
 			}
 			// if we can't get an accessor, fill out the appropriate columns with empty spaces
-			if m == nil {				
+			if m == nil {
 				if options.WithNamespace {
 					r := make([]interface{}, 1, width)
 					row.Cells = append(r, row.Cells...)

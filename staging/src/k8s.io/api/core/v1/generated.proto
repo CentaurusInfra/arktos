@@ -4975,6 +4975,13 @@ message VirtualMachine {
   // default running
   // +optional
   optional string powerSpec = 12;
+
+  // volumeDevices is the list of block devices to be used by the container.
+  // This is a beta feature.
+  // +patchMergeKey=devicePath
+  // +patchStrategy=merge
+  // +optional
+  repeated VolumeDevice volumeDevices = 13;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance

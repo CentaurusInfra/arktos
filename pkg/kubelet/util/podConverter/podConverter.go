@@ -117,6 +117,8 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 			Name:            pod.Spec.VirtualMachine.Name,
 			Image:           pod.Spec.VirtualMachine.Image,
 			ImagePullPolicy: pod.Spec.VirtualMachine.ImagePullPolicy,
+			VolumeMounts:    pod.Spec.VirtualMachine.VolumeMounts,
+			VolumeDevices:   pod.Spec.VirtualMachine.VolumeDevices,
 		},
 	}
 

@@ -1136,7 +1136,7 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 		},
 		"no hotplug if portID missing": {
 			mutatePodFn: func(pod *v1.Pod) {
-				nicNew := v1.Nic{Name: "eth1",}
+				nicNew := v1.Nic{Name: "eth1"}
 				pod.Spec.Nics = append(pod.Spec.Nics, nicNew)
 			},
 			actions: noAction,
@@ -1188,10 +1188,10 @@ func TestAttachNICs(t *testing.T) {
 		},
 		Spec: v1.PodSpec{
 			VPC: "vps-demo",
-			Nics: []v1.Nic {
-				{Name: "eth0", PortId: "0000", },
-				{Name: "eth1", PortId: "1111", },
-				{Name: "eth2", PortId: "2222", },
+			Nics: []v1.Nic{
+				{Name: "eth0", PortId: "0000"},
+				{Name: "eth1", PortId: "1111"},
+				{Name: "eth2", PortId: "2222"},
 			},
 		},
 	}

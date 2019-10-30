@@ -8287,6 +8287,7 @@ func autoConvert_v1_VirtualMachine_To_core_VirtualMachine(in *v1.VirtualMachine,
 	out.ShutdownBehavior = in.ShutdownBehavior
 	out.BootVolume = in.BootVolume
 	out.PowerSpec = core.VmPowerSpec(in.PowerSpec)
+	out.VolumeDevices = *(*[]core.VolumeDevice)(unsafe.Pointer(&in.VolumeDevices))
 	return nil
 }
 
@@ -8310,6 +8311,7 @@ func autoConvert_core_VirtualMachine_To_v1_VirtualMachine(in *core.VirtualMachin
 	out.ShutdownBehavior = in.ShutdownBehavior
 	out.BootVolume = in.BootVolume
 	out.PowerSpec = v1.VmPowerSpec(in.PowerSpec)
+	out.VolumeDevices = *(*[]v1.VolumeDevice)(unsafe.Pointer(&in.VolumeDevices))
 	return nil
 }
 

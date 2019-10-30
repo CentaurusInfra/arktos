@@ -2415,6 +2415,7 @@ var map_VirtualMachine = map[string]string{
 	"shutdownBehavior":        "stop | terminate VM. default to stop",
 	"bootVolume":              "if not specified, the first volume in the volume slice will be used",
 	"powerSpec":               "default running",
+	"volumeDevices":           "volumeDevices is the list of block devices to be used by the container. This is a beta feature.",
 }
 
 func (VirtualMachine) SwaggerDoc() map[string]string {

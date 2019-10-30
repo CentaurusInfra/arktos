@@ -2166,6 +2166,8 @@ type VirtualMachine struct {
 	// default running
 	// +optional
 	PowerSpec VmPowerSpec
+	// +optional
+	VolumeDevices []VolumeDevice
 }
 
 // Handler defines a specific action that should be taken
