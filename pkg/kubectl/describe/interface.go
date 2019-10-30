@@ -41,7 +41,7 @@ type DescriberFunc func(restClientGetter genericclioptions.RESTClientGetter, map
 // if the output could not be generated. Implementers typically
 // abstract the retrieval of the named object from a remote server.
 type Describer interface {
-	Describe(namespace, name string, describerSettings DescriberSettings) (output string, err error)
+	Describe(tenant, namespace, name string, describerSettings DescriberSettings) (output string, err error)
 }
 
 // DescriberSettings holds display configuration for each object

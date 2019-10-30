@@ -69,7 +69,10 @@ filegroup(
 
 go_test(
     name = "go_default_test",
-    srcs = ["describe_test.go"],
+    srcs = [
+        "describe_test.go",
+        "multi_tenancy_describe_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//pkg/kubectl/describe:go_default_library",

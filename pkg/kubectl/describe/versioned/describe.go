@@ -235,24 +235,25 @@ type genericDescriber struct {
 	events  corev1client.EventsGetter
 }
 
-func (g *genericDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (output string, err error) {
-	obj, err := g.dynamic.Resource(g.mapping.Resource).Namespace(namespace).Get(name, metav1.GetOptions{})
+func (g *genericDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (output string, err error) {
+	obj, err := g.dynamic.Resource(g.mapping.Resource).NamespaceWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = g.events.Events(namespace).Search(scheme.Scheme, obj)
+		events, _ = g.events.EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, obj)
 	}
 
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", obj.GetName())
 		w.Write(LEVEL_0, "Namespace:\t%s\n", obj.GetNamespace())
+		w.Write(LEVEL_0, "Tenant:\t%s\n", obj.GetTenant())
 		printLabelsMultiline(w, "Labels", obj.GetLabels())
 		printAnnotationsMultiline(w, "Annotations", obj.GetAnnotations())
-		printUnstructuredContent(w, LEVEL_0, obj.UnstructuredContent(), "", ".metadata.name", ".metadata.namespace", ".metadata.labels", ".metadata.annotations")
+		printUnstructuredContent(w, LEVEL_0, obj.UnstructuredContent(), "", ".metadata.name", ".metadata.namespace", ".metadata.tenant", ".metadata.labels", ".metadata.annotations")
 		if events != nil {
 			DescribeEvents(events, w)
 		}
@@ -357,8 +358,8 @@ type NamespaceDescriber struct {
 	clientset.Interface
 }
 
-func (d *NamespaceDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	ns, err := d.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+func (d *NamespaceDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	ns, err := d.CoreV1().NamespacesWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -389,6 +390,7 @@ func describeNamespace(namespace *corev1.Namespace, resourceQuotaList *corev1.Re
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", namespace.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", namespace.Tenant)
 		printLabelsMultiline(w, "Labels", namespace.Labels)
 		printAnnotationsMultiline(w, "Annotations", namespace.Annotations)
 		w.Write(LEVEL_0, "Status:\t%s\n", string(namespace.Status.Phase))
@@ -530,8 +532,8 @@ type LimitRangeDescriber struct {
 	clientset.Interface
 }
 
-func (d *LimitRangeDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	lr := d.CoreV1().LimitRanges(namespace)
+func (d *LimitRangeDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	lr := d.CoreV1().LimitRangesWithMultiTenancy(namespace, tenant)
 
 	limitRange, err := lr.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -545,6 +547,7 @@ func describeLimitRange(limitRange *corev1.LimitRange) (string, error) {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", limitRange.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", limitRange.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", limitRange.Tenant)
 		w.Write(LEVEL_0, "Type\tResource\tMin\tMax\tDefault Request\tDefault Limit\tMax Limit/Request Ratio\n")
 		w.Write(LEVEL_0, "----\t--------\t---\t---\t---------------\t-------------\t-----------------------\n")
 		describeLimitRangeSpec(limitRange.Spec, "", w)
@@ -557,8 +560,8 @@ type ResourceQuotaDescriber struct {
 	clientset.Interface
 }
 
-func (d *ResourceQuotaDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	rq := d.CoreV1().ResourceQuotas(namespace)
+func (d *ResourceQuotaDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	rq := d.CoreV1().ResourceQuotasWithMultiTenancy(namespace, tenant)
 
 	resourceQuota, err := rq.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -587,6 +590,7 @@ func describeQuota(resourceQuota *corev1.ResourceQuota) (string, error) {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", resourceQuota.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", resourceQuota.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", resourceQuota.Tenant)
 		if len(resourceQuota.Spec.Scopes) > 0 {
 			scopes := make([]string, 0, len(resourceQuota.Spec.Scopes))
 			for _, scope := range resourceQuota.Spec.Scopes {
@@ -627,11 +631,11 @@ type PodDescriber struct {
 	clientset.Interface
 }
 
-func (d *PodDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	pod, err := d.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+func (d *PodDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	pod, err := d.CoreV1().PodsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if describerSettings.ShowEvents {
-			eventsInterface := d.CoreV1().Events(namespace)
+			eventsInterface := d.CoreV1().EventsWithMultiTenancy(namespace, tenant)
 			selector := eventsInterface.GetFieldSelector(&name, &namespace, nil, nil)
 			options := metav1.ListOptions{FieldSelector: selector.String()}
 			events, err2 := eventsInterface.List(options)
@@ -656,7 +660,7 @@ func (d *PodDescriber) Describe(namespace, name string, describerSettings descri
 			if _, isMirrorPod := pod.Annotations[corev1.MirrorPodAnnotationKey]; isMirrorPod {
 				ref.UID = types.UID(pod.Annotations[corev1.MirrorPodAnnotationKey])
 			}
-			events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, ref)
+			events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, ref)
 		}
 	}
 
@@ -668,6 +672,7 @@ func describePod(pod *corev1.Pod, events *corev1.EventList) (string, error) {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", pod.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", pod.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", pod.Tenant)
 		if pod.Spec.Priority != nil {
 			w.Write(LEVEL_0, "Priority:\t%d\n", *pod.Spec.Priority)
 		}
@@ -1292,8 +1297,8 @@ type PersistentVolumeDescriber struct {
 	clientset.Interface
 }
 
-func (d *PersistentVolumeDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.CoreV1().PersistentVolumes()
+func (d *PersistentVolumeDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.CoreV1().PersistentVolumesWithMultiTenancy(tenant)
 
 	pv, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -1302,7 +1307,7 @@ func (d *PersistentVolumeDescriber) Describe(namespace, name string, describerSe
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, pv)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, pv)
 	}
 
 	return describePersistentVolume(pv, events)
@@ -1354,6 +1359,7 @@ func describePersistentVolume(pv *corev1.PersistentVolume, events *corev1.EventL
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", pv.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", pv.Tenant)
 		printLabelsMultiline(w, "Labels", pv.ObjectMeta.Labels)
 		printAnnotationsMultiline(w, "Annotations", pv.ObjectMeta.Annotations)
 		w.Write(LEVEL_0, "Finalizers:\t%v\n", pv.ObjectMeta.Finalizers)
@@ -1440,22 +1446,22 @@ type PersistentVolumeClaimDescriber struct {
 	clientset.Interface
 }
 
-func (d *PersistentVolumeClaimDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.CoreV1().PersistentVolumeClaims(namespace)
+func (d *PersistentVolumeClaimDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.CoreV1().PersistentVolumeClaimsWithMultiTenancy(namespace, tenant)
 
 	pvc, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
-	pc := d.CoreV1().Pods(namespace)
+	pc := d.CoreV1().PodsWithMultiTenancy(namespace, tenant)
 
 	mountPods, err := getMountPods(pc, pvc.Name)
 	if err != nil {
 		return "", err
 	}
 
-	events, _ := d.CoreV1().Events(namespace).Search(scheme.Scheme, pvc)
+	events, _ := d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, pvc)
 
 	return describePersistentVolumeClaim(pvc, events, mountPods)
 }
@@ -1498,6 +1504,7 @@ func describePersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim, events *co
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", pvc.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", pvc.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", pvc.Tenant)
 		w.Write(LEVEL_0, "StorageClass:\t%s\n", storageutil.GetPersistentVolumeClaimClass(pvc))
 		if pvc.ObjectMeta.DeletionTimestamp != nil {
 			w.Write(LEVEL_0, "Status:\tTerminating (lasts %s)\n", translateTimestampSince(*pvc.ObjectMeta.DeletionTimestamp))
@@ -1901,9 +1908,9 @@ type ReplicationControllerDescriber struct {
 	clientset.Interface
 }
 
-func (d *ReplicationControllerDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	rc := d.CoreV1().ReplicationControllers(namespace)
-	pc := d.CoreV1().Pods(namespace)
+func (d *ReplicationControllerDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	rc := d.CoreV1().ReplicationControllersWithMultiTenancy(namespace, tenant)
+	pc := d.CoreV1().PodsWithMultiTenancy(namespace, tenant)
 
 	controller, err := rc.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -1917,7 +1924,7 @@ func (d *ReplicationControllerDescriber) Describe(namespace, name string, descri
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, controller)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, controller)
 	}
 
 	return describeReplicationController(controller, events, running, waiting, succeeded, failed)
@@ -1928,6 +1935,7 @@ func describeReplicationController(controller *corev1.ReplicationController, eve
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", controller.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", controller.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", controller.Tenant)
 		w.Write(LEVEL_0, "Selector:\t%s\n", labels.FormatLabels(controller.Spec.Selector))
 		printLabelsMultiline(w, "Labels", controller.Labels)
 		printAnnotationsMultiline(w, "Annotations", controller.Annotations)
@@ -1976,9 +1984,9 @@ type ReplicaSetDescriber struct {
 	clientset.Interface
 }
 
-func (d *ReplicaSetDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	rsc := d.AppsV1().ReplicaSets(namespace)
-	pc := d.CoreV1().Pods(namespace)
+func (d *ReplicaSetDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	rsc := d.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant)
+	pc := d.CoreV1().PodsWithMultiTenancy(namespace, tenant)
 
 	rs, err := rsc.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -1994,7 +2002,7 @@ func (d *ReplicaSetDescriber) Describe(namespace, name string, describerSettings
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, rs)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, rs)
 	}
 
 	return describeReplicaSet(rs, events, running, waiting, succeeded, failed, getPodErr)
@@ -2005,6 +2013,7 @@ func describeReplicaSet(rs *appsv1.ReplicaSet, events *corev1.EventList, running
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", rs.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", rs.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", rs.Tenant)
 		w.Write(LEVEL_0, "Selector:\t%s\n", metav1.FormatLabelSelector(rs.Spec.Selector))
 		printLabelsMultiline(w, "Labels", rs.Labels)
 		printAnnotationsMultiline(w, "Annotations", rs.Annotations)
@@ -2038,15 +2047,15 @@ type JobDescriber struct {
 	clientset.Interface
 }
 
-func (d *JobDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	job, err := d.BatchV1().Jobs(namespace).Get(name, metav1.GetOptions{})
+func (d *JobDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	job, err := d.BatchV1().JobsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, job)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, job)
 	}
 
 	return describeJob(job, events)
@@ -2057,6 +2066,7 @@ func describeJob(job *batchv1.Job, events *corev1.EventList) (string, error) {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", job.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", job.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", job.Tenant)
 		selector, _ := metav1.LabelSelectorAsSelector(job.Spec.Selector)
 		w.Write(LEVEL_0, "Selector:\t%s\n", selector)
 		printLabelsMultiline(w, "Labels", job.Labels)
@@ -2096,15 +2106,15 @@ type CronJobDescriber struct {
 	client clientset.Interface
 }
 
-func (d *CronJobDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	cronJob, err := d.client.BatchV1beta1().CronJobs(namespace).Get(name, metav1.GetOptions{})
+func (d *CronJobDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	cronJob, err := d.client.BatchV1beta1().CronJobsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.client.CoreV1().Events(namespace).Search(scheme.Scheme, cronJob)
+		events, _ = d.client.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, cronJob)
 	}
 	return describeCronJob(cronJob, events)
 }
@@ -2114,6 +2124,7 @@ func describeCronJob(cronJob *batchv1beta1.CronJob, events *corev1.EventList) (s
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", cronJob.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", cronJob.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", cronJob.Tenant)
 		printLabelsMultiline(w, "Labels", cronJob.Labels)
 		printAnnotationsMultiline(w, "Annotations", cronJob.Annotations)
 		w.Write(LEVEL_0, "Schedule:\t%s\n", cronJob.Spec.Schedule)
@@ -2192,9 +2203,9 @@ type DaemonSetDescriber struct {
 	clientset.Interface
 }
 
-func (d *DaemonSetDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	dc := d.AppsV1().DaemonSets(namespace)
-	pc := d.CoreV1().Pods(namespace)
+func (d *DaemonSetDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	dc := d.AppsV1().DaemonSetsWithMultiTenancy(namespace, tenant)
+	pc := d.CoreV1().PodsWithMultiTenancy(namespace, tenant)
 
 	daemon, err := dc.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -2212,7 +2223,7 @@ func (d *DaemonSetDescriber) Describe(namespace, name string, describerSettings 
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, daemon)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, daemon)
 	}
 
 	return describeDaemonSet(daemon, events, running, waiting, succeeded, failed)
@@ -2250,8 +2261,8 @@ type SecretDescriber struct {
 	clientset.Interface
 }
 
-func (d *SecretDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.CoreV1().Secrets(namespace)
+func (d *SecretDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.CoreV1().SecretsWithMultiTenancy(namespace, tenant)
 
 	secret, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -2266,6 +2277,7 @@ func describeSecret(secret *corev1.Secret) (string, error) {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", secret.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", secret.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", secret.Tenant)
 		printLabelsMultiline(w, "Labels", secret.Labels)
 		skipAnnotations := sets.NewString(corev1.LastAppliedConfigAnnotation)
 		printAnnotationsMultilineWithFilter(w, "Annotations", secret.Annotations, skipAnnotations)
@@ -2290,8 +2302,8 @@ type IngressDescriber struct {
 	clientset.Interface
 }
 
-func (i *IngressDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := i.NetworkingV1beta1().Ingresses(namespace)
+func (i *IngressDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := i.NetworkingV1beta1().IngressesWithMultiTenancy(namespace, tenant)
 	ing, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -2324,6 +2336,7 @@ func (i *IngressDescriber) describeIngress(ing *networkingv1beta1.Ingress, descr
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%v\n", ing.Name)
 		w.Write(LEVEL_0, "Namespace:\t%v\n", ing.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", ing.Tenant)
 		w.Write(LEVEL_0, "Address:\t%v\n", loadBalancerStatusStringer(ing.Status.LoadBalancer, true))
 		def := ing.Spec.Backend
 		ns := ing.Namespace
@@ -2398,18 +2411,18 @@ type ServiceDescriber struct {
 	clientset.Interface
 }
 
-func (d *ServiceDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.CoreV1().Services(namespace)
+func (d *ServiceDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.CoreV1().ServicesWithMultiTenancy(namespace, tenant)
 
 	service, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
-	endpoints, _ := d.CoreV1().Endpoints(namespace).Get(name, metav1.GetOptions{})
+	endpoints, _ := d.CoreV1().EndpointsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, service)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, service)
 	}
 	return describeService(service, endpoints, events)
 }
@@ -2438,6 +2451,7 @@ func describeService(service *corev1.Service, endpoints *corev1.Endpoints, event
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", service.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", service.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", service.Tenant)
 		printLabelsMultiline(w, "Labels", service.Labels)
 		printAnnotationsMultiline(w, "Annotations", service.Annotations)
 		w.Write(LEVEL_0, "Selector:\t%s\n", labels.FormatLabels(service.Spec.Selector))
@@ -2496,8 +2510,8 @@ type EndpointsDescriber struct {
 	clientset.Interface
 }
 
-func (d *EndpointsDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.CoreV1().Endpoints(namespace)
+func (d *EndpointsDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.CoreV1().EndpointsWithMultiTenancy(namespace, tenant)
 
 	ep, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -2506,7 +2520,7 @@ func (d *EndpointsDescriber) Describe(namespace, name string, describerSettings 
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, ep)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, ep)
 	}
 
 	return describeEndpoints(ep, events)
@@ -2517,6 +2531,7 @@ func describeEndpoints(ep *corev1.Endpoints, events *corev1.EventList) (string, 
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", ep.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", ep.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", ep.Tenant)
 		printLabelsMultiline(w, "Labels", ep.Labels)
 		printAnnotationsMultiline(w, "Annotations", ep.Annotations)
 
@@ -2571,8 +2586,8 @@ type ServiceAccountDescriber struct {
 	clientset.Interface
 }
 
-func (d *ServiceAccountDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.CoreV1().ServiceAccounts(namespace)
+func (d *ServiceAccountDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant)
 
 	serviceAccount, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -2584,7 +2599,7 @@ func (d *ServiceAccountDescriber) Describe(namespace, name string, describerSett
 	// missingSecrets is the set of all secrets present in the
 	// serviceAccount but not present in the set of existing secrets.
 	missingSecrets := sets.NewString()
-	secrets, err := d.CoreV1().Secrets(namespace).List(metav1.ListOptions{})
+	secrets, err := d.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{})
 
 	// errors are tolerated here in order to describe the serviceAccount with all
 	// of the secrets that it references, even if those secrets cannot be fetched.
@@ -2618,7 +2633,7 @@ func (d *ServiceAccountDescriber) Describe(namespace, name string, describerSett
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = d.CoreV1().Events(namespace).Search(scheme.Scheme, serviceAccount)
+		events, _ = d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, serviceAccount)
 	}
 
 	return describeServiceAccount(serviceAccount, tokens, missingSecrets, events)
@@ -2629,6 +2644,7 @@ func describeServiceAccount(serviceAccount *corev1.ServiceAccount, tokens []core
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", serviceAccount.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", serviceAccount.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", serviceAccount.Tenant)
 		printLabelsMultiline(w, "Labels", serviceAccount.Labels)
 		printAnnotationsMultiline(w, "Annotations", serviceAccount.Annotations)
 
@@ -2688,8 +2704,8 @@ type RoleDescriber struct {
 	clientset.Interface
 }
 
-func (d *RoleDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	role, err := d.RbacV1().Roles(namespace).Get(name, metav1.GetOptions{})
+func (d *RoleDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	role, err := d.RbacV1().RolesWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -2727,7 +2743,7 @@ type ClusterRoleDescriber struct {
 	clientset.Interface
 }
 
-func (d *ClusterRoleDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+func (d *ClusterRoleDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
 	role, err := d.RbacV1().ClusterRoles().Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -2783,8 +2799,8 @@ type RoleBindingDescriber struct {
 	clientset.Interface
 }
 
-func (d *RoleBindingDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	binding, err := d.RbacV1().RoleBindings(namespace).Get(name, metav1.GetOptions{})
+func (d *RoleBindingDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	binding, err := d.RbacV1().RoleBindingsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -2792,6 +2808,7 @@ func (d *RoleBindingDescriber) Describe(namespace, name string, describerSetting
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", binding.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", binding.Tenant)
 		printLabelsMultiline(w, "Labels", binding.Labels)
 		printAnnotationsMultiline(w, "Annotations", binding.Annotations)
 
@@ -2815,7 +2832,7 @@ type ClusterRoleBindingDescriber struct {
 	clientset.Interface
 }
 
-func (d *ClusterRoleBindingDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+func (d *ClusterRoleBindingDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
 	binding, err := d.RbacV1().ClusterRoleBindings().Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -2847,7 +2864,7 @@ type NodeDescriber struct {
 	clientset.Interface
 }
 
-func (d *NodeDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+func (d *NodeDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
 	mc := d.CoreV1().Nodes()
 	node, err := mc.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -2861,7 +2878,7 @@ func (d *NodeDescriber) Describe(namespace, name string, describerSettings descr
 	// in a policy aware setting, users may have access to a node, but not all pods
 	// in that case, we note that the user does not have access to the pods
 	canViewPods := true
-	nodeNonTerminatedPodsList, err := d.CoreV1().Pods(namespace).List(metav1.ListOptions{FieldSelector: fieldSelector.String()})
+	nodeNonTerminatedPodsList, err := d.CoreV1().PodsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{FieldSelector: fieldSelector.String()})
 	if err != nil {
 		if !errors.IsForbidden(err) {
 			return "", err
@@ -2971,12 +2988,12 @@ type StatefulSetDescriber struct {
 	client clientset.Interface
 }
 
-func (p *StatefulSetDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	ps, err := p.client.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+func (p *StatefulSetDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	ps, err := p.client.AppsV1().StatefulSetsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
-	pc := p.client.CoreV1().Pods(namespace)
+	pc := p.client.CoreV1().PodsWithMultiTenancy(namespace, tenant)
 
 	selector, err := metav1.LabelSelectorAsSelector(ps.Spec.Selector)
 	if err != nil {
@@ -2990,7 +3007,7 @@ func (p *StatefulSetDescriber) Describe(namespace, name string, describerSetting
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = p.client.CoreV1().Events(namespace).Search(scheme.Scheme, ps)
+		events, _ = p.client.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, ps)
 	}
 
 	return describeStatefulSet(ps, selector, events, running, waiting, succeeded, failed)
@@ -3001,6 +3018,7 @@ func describeStatefulSet(ps *appsv1.StatefulSet, selector labels.Selector, event
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", ps.ObjectMeta.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", ps.ObjectMeta.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", ps.ObjectMeta.Tenant)
 		w.Write(LEVEL_0, "CreationTimestamp:\t%s\n", ps.CreationTimestamp.Time.Format(time.RFC1123Z))
 		w.Write(LEVEL_0, "Selector:\t%s\n", selector)
 		printLabelsMultiline(w, "Labels", ps.Labels)
@@ -3029,7 +3047,7 @@ type CertificateSigningRequestDescriber struct {
 	client clientset.Interface
 }
 
-func (p *CertificateSigningRequestDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+func (p *CertificateSigningRequestDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
 	csr, err := p.client.CertificatesV1beta1().CertificateSigningRequests().Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -3046,7 +3064,7 @@ func (p *CertificateSigningRequestDescriber) Describe(namespace, name string, de
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = p.client.CoreV1().Events(namespace).Search(scheme.Scheme, csr)
+		events, _ = p.client.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, csr)
 	}
 
 	return describeCertificateSigningRequest(csr, cr, status, events)
@@ -3065,6 +3083,7 @@ func describeCertificateSigningRequest(csr *certificatesv1beta1.CertificateSigni
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", csr.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", csr.Tenant)
 		w.Write(LEVEL_0, "Labels:\t%s\n", labels.FormatLabels(csr.Labels))
 		w.Write(LEVEL_0, "Annotations:\t%s\n", labels.FormatLabels(csr.Annotations))
 		w.Write(LEVEL_0, "CreationTimestamp:\t%s\n", csr.CreationTimestamp.Time.Format(time.RFC1123Z))
@@ -3106,24 +3125,24 @@ type HorizontalPodAutoscalerDescriber struct {
 	client clientset.Interface
 }
 
-func (d *HorizontalPodAutoscalerDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+func (d *HorizontalPodAutoscalerDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
 	var events *corev1.EventList
 
 	// autoscaling/v2beta2 is introduced since v1.12 and autoscaling/v1 does not have full backward compatibility
 	// with autoscaling/v2beta2, so describer will try to get and describe hpa v2beta2 object firstly, if it fails,
 	// describer will fall back to do with hpa v1 object
-	hpaV2beta2, err := d.client.AutoscalingV2beta2().HorizontalPodAutoscalers(namespace).Get(name, metav1.GetOptions{})
+	hpaV2beta2, err := d.client.AutoscalingV2beta2().HorizontalPodAutoscalersWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err == nil {
 		if describerSettings.ShowEvents {
-			events, _ = d.client.CoreV1().Events(namespace).Search(scheme.Scheme, hpaV2beta2)
+			events, _ = d.client.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, hpaV2beta2)
 		}
 		return describeHorizontalPodAutoscalerV2beta2(hpaV2beta2, events, d)
 	}
 
-	hpaV1, err := d.client.AutoscalingV1().HorizontalPodAutoscalers(namespace).Get(name, metav1.GetOptions{})
+	hpaV1, err := d.client.AutoscalingV1().HorizontalPodAutoscalersWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err == nil {
 		if describerSettings.ShowEvents {
-			events, _ = d.client.CoreV1().Events(namespace).Search(scheme.Scheme, hpaV1)
+			events, _ = d.client.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, hpaV1)
 		}
 		return describeHorizontalPodAutoscalerV1(hpaV1, events, d)
 	}
@@ -3136,6 +3155,7 @@ func describeHorizontalPodAutoscalerV2beta2(hpa *autoscalingv2beta2.HorizontalPo
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", hpa.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", hpa.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", hpa.Tenant)
 		printLabelsMultiline(w, "Labels", hpa.Labels)
 		printAnnotationsMultiline(w, "Annotations", hpa.Annotations)
 		w.Write(LEVEL_0, "CreationTimestamp:\t%s\n", hpa.CreationTimestamp.Time.Format(time.RFC1123Z))
@@ -3237,6 +3257,7 @@ func describeHorizontalPodAutoscalerV1(hpa *autoscalingv1.HorizontalPodAutoscale
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", hpa.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", hpa.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", hpa.Tenant)
 		printLabelsMultiline(w, "Labels", hpa.Labels)
 		printAnnotationsMultiline(w, "Annotations", hpa.Annotations)
 		w.Write(LEVEL_0, "CreationTimestamp:\t%s\n", hpa.CreationTimestamp.Time.Format(time.RFC1123Z))
@@ -3389,8 +3410,8 @@ type DeploymentDescriber struct {
 	client clientset.Interface
 }
 
-func (dd *DeploymentDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	d, err := dd.client.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+func (dd *DeploymentDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	d, err := dd.client.AppsV1().DeploymentsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -3400,7 +3421,7 @@ func (dd *DeploymentDescriber) Describe(namespace, name string, describerSetting
 	}
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = dd.client.CoreV1().Events(namespace).Search(scheme.Scheme, d)
+		events, _ = dd.client.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, d)
 	}
 
 	return describeDeployment(d, selector, d, events, dd)
@@ -3411,6 +3432,7 @@ func describeDeployment(d *appsv1.Deployment, selector labels.Selector, internal
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", d.ObjectMeta.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", d.ObjectMeta.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", d.ObjectMeta.Tenant)
 		w.Write(LEVEL_0, "CreationTimestamp:\t%s\n", d.CreationTimestamp.Time.Format(time.RFC1123Z))
 		printLabelsMultiline(w, "Labels", d.Labels)
 		printAnnotationsMultiline(w, "Annotations", d.Annotations)
@@ -3492,8 +3514,8 @@ type ConfigMapDescriber struct {
 	clientset.Interface
 }
 
-func (d *ConfigMapDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.CoreV1().ConfigMaps(namespace)
+func (d *ConfigMapDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant)
 
 	configMap, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -3504,6 +3526,7 @@ func (d *ConfigMapDescriber) Describe(namespace, name string, describerSettings 
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", configMap.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", configMap.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", configMap.Tenant)
 		printLabelsMultiline(w, "Labels", configMap.Labels)
 		printAnnotationsMultiline(w, "Annotations", configMap.Annotations)
 
@@ -3513,7 +3536,7 @@ func (d *ConfigMapDescriber) Describe(namespace, name string, describerSettings 
 			w.Write(LEVEL_0, "%s\n", string(v))
 		}
 		if describerSettings.ShowEvents {
-			events, err := d.CoreV1().Events(namespace).Search(scheme.Scheme, configMap)
+			events, err := d.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, configMap)
 			if err != nil {
 				return err
 			}
@@ -3530,8 +3553,8 @@ type NetworkPolicyDescriber struct {
 	clientset.Interface
 }
 
-func (d *NetworkPolicyDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	c := d.NetworkingV1().NetworkPolicies(namespace)
+func (d *NetworkPolicyDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	c := d.NetworkingV1().NetworkPoliciesWithMultiTenancy(namespace, tenant)
 
 	networkPolicy, err := c.Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -3546,6 +3569,7 @@ func describeNetworkPolicy(networkPolicy *networkingv1.NetworkPolicy) (string, e
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", networkPolicy.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", networkPolicy.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", networkPolicy.Tenant)
 		w.Write(LEVEL_0, "Created on:\t%s\n", networkPolicy.CreationTimestamp)
 		printLabelsMultiline(w, "Labels", networkPolicy.Labels)
 		printAnnotationsMultiline(w, "Annotations", networkPolicy.Annotations)
@@ -3661,7 +3685,7 @@ type StorageClassDescriber struct {
 	clientset.Interface
 }
 
-func (s *StorageClassDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+func (s *StorageClassDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
 	sc, err := s.StorageV1().StorageClasses().Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -3669,7 +3693,7 @@ func (s *StorageClassDescriber) Describe(namespace, name string, describerSettin
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = s.CoreV1().Events(namespace).Search(scheme.Scheme, sc)
+		events, _ = s.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, sc)
 	}
 
 	return describeStorageClass(sc, events)
@@ -3745,15 +3769,15 @@ type PodDisruptionBudgetDescriber struct {
 	clientset.Interface
 }
 
-func (p *PodDisruptionBudgetDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	pdb, err := p.PolicyV1beta1().PodDisruptionBudgets(namespace).Get(name, metav1.GetOptions{})
+func (p *PodDisruptionBudgetDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	pdb, err := p.PolicyV1beta1().PodDisruptionBudgetsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = p.CoreV1().Events(namespace).Search(scheme.Scheme, pdb)
+		events, _ = p.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, pdb)
 	}
 
 	return describePodDisruptionBudget(pdb, events)
@@ -3764,6 +3788,7 @@ func describePodDisruptionBudget(pdb *policyv1beta1.PodDisruptionBudget, events 
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", pdb.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", pdb.Namespace)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", pdb.Tenant)
 
 		if pdb.Spec.MinAvailable != nil {
 			w.Write(LEVEL_0, "Min available:\t%s\n", pdb.Spec.MinAvailable.String())
@@ -3794,7 +3819,7 @@ type PriorityClassDescriber struct {
 	clientset.Interface
 }
 
-func (s *PriorityClassDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+func (s *PriorityClassDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
 	pc, err := s.SchedulingV1().PriorityClasses().Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -3802,7 +3827,7 @@ func (s *PriorityClassDescriber) Describe(namespace, name string, describerSetti
 
 	var events *corev1.EventList
 	if describerSettings.ShowEvents {
-		events, _ = s.CoreV1().Events(namespace).Search(scheme.Scheme, pc)
+		events, _ = s.CoreV1().EventsWithMultiTenancy(namespace, tenant).Search(scheme.Scheme, pc)
 	}
 
 	return describePriorityClass(pc, events)
@@ -3812,6 +3837,7 @@ func describePriorityClass(pc *schedulingv1.PriorityClass, events *corev1.EventL
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", pc.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", pc.Tenant)
 		w.Write(LEVEL_0, "Value:\t%v\n", pc.Value)
 		w.Write(LEVEL_0, "GlobalDefault:\t%v\n", pc.GlobalDefault)
 		w.Write(LEVEL_0, "Description:\t%s\n", pc.Description)
@@ -3830,8 +3856,8 @@ type PodSecurityPolicyDescriber struct {
 	clientset.Interface
 }
 
-func (d *PodSecurityPolicyDescriber) Describe(namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	psp, err := d.PolicyV1beta1().PodSecurityPolicies().Get(name, metav1.GetOptions{})
+func (d *PodSecurityPolicyDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
+	psp, err := d.PolicyV1beta1().PodSecurityPoliciesWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -3843,6 +3869,7 @@ func describePodSecurityPolicy(psp *policyv1beta1.PodSecurityPolicy) (string, er
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", psp.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", psp.Tenant)
 
 		w.Write(LEVEL_0, "\nSettings:\n")
 

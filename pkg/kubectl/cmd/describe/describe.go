@@ -86,6 +86,10 @@ type DescribeOptions struct {
 	FilenameOptions   *resource.FilenameOptions
 
 	genericclioptions.IOStreams
+
+	Tenant        string
+	EnforceTenant bool
+	AllTenants    bool
 }
 
 func NewCmdDescribe(parent string, f cmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
@@ -115,6 +119,7 @@ func NewCmdDescribe(parent string, f cmdutil.Factory, streams genericclioptions.
 	cmdutil.AddFilenameOptionFlags(cmd, o.FilenameOptions, usage)
 	cmd.Flags().StringVarP(&o.Selector, "selector", "l", o.Selector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().BoolVarP(&o.AllNamespaces, "all-namespaces", "A", o.AllNamespaces, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
+	cmd.Flags().BoolVar(&o.AllTenants, "all-tenants", o.AllTenants, "If present, list the requested object(s) across all tenants. Tenant in current context is ignored even if specified with --tenant.")
 	cmd.Flags().BoolVar(&o.DescriberSettings.ShowEvents, "show-events", o.DescriberSettings.ShowEvents, "If true, display events related to the described object.")
 	cmdutil.AddIncludeUninitializedFlag(cmd)
 	return cmd
@@ -129,6 +134,15 @@ func (o *DescribeOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 
 	if o.AllNamespaces {
 		o.EnforceNamespace = false
+	}
+
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
+	if o.AllTenants {
+		o.EnforceTenant = false
 	}
 
 	if len(args) == 0 && cmdutil.IsFilenameSliceEmpty(o.FilenameOptions.Filenames, o.FilenameOptions.Kustomize) {
@@ -154,8 +168,9 @@ func (o *DescribeOptions) Run() error {
 	r := o.NewBuilder().
 		Unstructured().
 		ContinueOnError().
+		TenantParam(o.Tenant).DefaultTenant().AllTenants(o.AllTenants).
 		NamespaceParam(o.Namespace).DefaultNamespace().AllNamespaces(o.AllNamespaces).
-		FilenameParam(o.EnforceNamespace, o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, o.FilenameOptions).
 		LabelSelectorParam(o.Selector).
 		ResourceTypeOrNameArgs(true, o.BuilderArgs...).
 		Flatten().
@@ -187,7 +202,7 @@ func (o *DescribeOptions) Run() error {
 			errs.Insert(err.Error())
 			continue
 		}
-		s, err := describer.Describe(info.Namespace, info.Name, *o.DescriberSettings)
+		s, err := describer.Describe(info.Tenant, info.Namespace, info.Name, *o.DescriberSettings)
 		if err != nil {
 			if errs.Has(err.Error()) {
 				continue
@@ -210,6 +225,7 @@ func (o *DescribeOptions) Run() error {
 func (o *DescribeOptions) DescribeMatchingResources(originalError error, resource, prefix string) error {
 	r := o.NewBuilder().
 		Unstructured().
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		ResourceTypeOrNameArgs(true, resource).
 		SingleResourceType().
@@ -232,7 +248,7 @@ func (o *DescribeOptions) DescribeMatchingResources(originalError error, resourc
 		info := infos[ix]
 		if strings.HasPrefix(info.Name, prefix) {
 			isFound = true
-			s, err := describer.Describe(info.Namespace, info.Name, *o.DescriberSettings)
+			s, err := describer.Describe(info.Tenant, info.Namespace, info.Name, *o.DescriberSettings)
 			if err != nil {
 				return err
 			}

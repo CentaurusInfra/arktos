@@ -57,5 +57,5 @@ type PrintOptions struct {
 	// indicates if it is OK to ignore missing keys for rendering an output template.
 	AllowMissingKeys bool
 
-	WithTenant      bool
+	WithTenant bool
 }

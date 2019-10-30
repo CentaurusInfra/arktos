@@ -22,18 +22,16 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/rest/fake"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"k8s.io/kubernetes/pkg/kubectl/describe"
 	versioneddescribe "k8s.io/kubernetes/pkg/kubectl/describe/versioned"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
 // Verifies that schemas that are not in the master tree of Kubernetes can be retrieved via Get.
-func TestDescribeUnknownSchemaObject(t *testing.T) {
+func TestDescribeUnknownSchemaObjectWithMultiTenancy(t *testing.T) {
 	d := &testDescriber{Output: "test output"}
 	oldFn := versioneddescribe.DescriberFn
 	defer func() {
@@ -41,7 +39,7 @@ func TestDescribeUnknownSchemaObject(t *testing.T) {
 	}()
 	versioneddescribe.DescriberFn = d.describerFor
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("non-default")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("non-default", "test-te")
 	defer tf.Cleanup()
 	_, _, codec := cmdtesting.NewExternalScheme()
 
@@ -55,7 +53,7 @@ func TestDescribeUnknownSchemaObject(t *testing.T) {
 	cmd := NewCmdDescribe("kubectl", tf, streams)
 	cmd.Run(cmd, []string{"type", "foo"})
 
-	if d.Name != "foo" || d.Namespace != "" {
+	if d.Name != "foo" || d.Namespace != "" || d.Tenant != "" {
 		t.Errorf("unexpected describer: %#v", d)
 	}
 
@@ -65,7 +63,7 @@ func TestDescribeUnknownSchemaObject(t *testing.T) {
 }
 
 // Verifies that schemas that are not in the master tree of Kubernetes can be retrieved via Get.
-func TestDescribeUnknownNamespacedSchemaObject(t *testing.T) {
+func TestDescribeUnknownNamespacedSchemaObjectWithMultiTenancy(t *testing.T) {
 	d := &testDescriber{Output: "test output"}
 	oldFn := versioneddescribe.DescriberFn
 	defer func() {
@@ -81,14 +79,14 @@ func TestDescribeUnknownNamespacedSchemaObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Resp:                 &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, cmdtesting.NewInternalNamespacedType("", "", "foo", "non-default"))},
 	}
-	tf.WithNamespace("non-default")
+	tf.WithNamespaceWithMultiTenancy("non-default", "test-te")
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
 	cmd := NewCmdDescribe("kubectl", tf, streams)
 	cmd.Run(cmd, []string{"namespacedtype", "foo"})
 
-	if d.Name != "foo" || d.Namespace != "non-default" {
+	if d.Name != "foo" || d.Namespace != "non-default" || d.Tenant != "test-te" {
 		t.Errorf("unexpected describer: %#v", d)
 	}
 
@@ -97,7 +95,7 @@ func TestDescribeUnknownNamespacedSchemaObject(t *testing.T) {
 	}
 }
 
-func TestDescribeObject(t *testing.T) {
+func TestDescribeObjectWithMultiTenancy(t *testing.T) {
 	d := &testDescriber{Output: "test output"}
 	oldFn := versioneddescribe.DescriberFn
 	defer func() {
@@ -106,7 +104,7 @@ func TestDescribeObject(t *testing.T) {
 	versioneddescribe.DescriberFn = d.describerFor
 
 	_, _, rc := cmdtesting.TestData()
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -114,7 +112,7 @@ func TestDescribeObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == "GET":
+			case p == "/tenants/test-te/namespaces/test/replicationcontrollers/redis-master" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -129,7 +127,7 @@ func TestDescribeObject(t *testing.T) {
 	cmd.Flags().Set("filename", "../../../../test/e2e/testing-manifests/guestbook/legacy/redis-master-controller.yaml")
 	cmd.Run(cmd, []string{})
 
-	if d.Name != "redis-master" || d.Namespace != "test" {
+	if d.Name != "redis-master" || d.Namespace != "test" || d.Tenant != "test-te" {
 		t.Errorf("unexpected describer: %#v", d)
 	}
 
@@ -138,7 +136,7 @@ func TestDescribeObject(t *testing.T) {
 	}
 }
 
-func TestDescribeListObjects(t *testing.T) {
+func TestDescribeListObjectsWithMultiTenancy(t *testing.T) {
 	d := &testDescriber{Output: "test output"}
 	oldFn := versioneddescribe.DescriberFn
 	defer func() {
@@ -147,7 +145,7 @@ func TestDescribeListObjects(t *testing.T) {
 	versioneddescribe.DescriberFn = d.describerFor
 
 	pods, _, _ := cmdtesting.TestData()
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -165,7 +163,7 @@ func TestDescribeListObjects(t *testing.T) {
 	}
 }
 
-func TestDescribeObjectShowEvents(t *testing.T) {
+func TestDescribeObjectShowEventsWithMultiTenancy(t *testing.T) {
 	d := &testDescriber{Output: "test output"}
 	oldFn := versioneddescribe.DescriberFn
 	defer func() {
@@ -174,7 +172,7 @@ func TestDescribeObjectShowEvents(t *testing.T) {
 	versioneddescribe.DescriberFn = d.describerFor
 
 	pods, _, _ := cmdtesting.TestData()
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -191,7 +189,7 @@ func TestDescribeObjectShowEvents(t *testing.T) {
 	}
 }
 
-func TestDescribeObjectSkipEvents(t *testing.T) {
+func TestDescribeObjectSkipEventsWithMultiTenancy(t *testing.T) {
 	d := &testDescriber{Output: "test output"}
 	oldFn := versioneddescribe.DescriberFn
 	defer func() {
@@ -200,7 +198,7 @@ func TestDescribeObjectSkipEvents(t *testing.T) {
 	versioneddescribe.DescriberFn = d.describerFor
 
 	pods, _, _ := cmdtesting.TestData()
-	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", "test-te")
 	defer tf.Cleanup()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
@@ -217,7 +215,7 @@ func TestDescribeObjectSkipEvents(t *testing.T) {
 	}
 }
 
-func TestDescribeHelpMessage(t *testing.T) {
+func TestDescribeHelpMessageWithMultiTenancy(t *testing.T) {
 	tf := cmdtesting.NewTestFactory()
 	defer tf.Cleanup()
 
@@ -243,20 +241,4 @@ func TestDescribeHelpMessage(t *testing.T) {
 	if strings.Contains(got, unexpected) {
 		t.Errorf("Expected not to contain: \n %v\nGot:\n %v\n", unexpected, got)
 	}
-}
-
-type testDescriber struct {
-	Name, Namespace, Tenant string
-	Settings                describe.DescriberSettings
-	Output                  string
-	Err                     error
-}
-
-func (t *testDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (output string, err error) {
-	t.Tenant, t.Namespace, t.Name = tenant, namespace, name
-	t.Settings = describerSettings
-	return t.Output, t.Err
-}
-func (t *testDescriber) describerFor(restClientGetter genericclioptions.RESTClientGetter, mapping *meta.RESTMapping) (describe.Describer, error) {
-	return t, nil
 }
