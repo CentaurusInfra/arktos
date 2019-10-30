@@ -42,7 +42,10 @@ filegroup(
 
 go_test(
     name = "go_default_test",
-    srcs = ["wait_test.go"],
+    srcs = [
+        "multi_tenancy_wait_test.go",
+        "wait_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//staging/src/k8s.io/apimachinery/pkg/api/meta:go_default_library",

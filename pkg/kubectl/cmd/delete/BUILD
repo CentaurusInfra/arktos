@@ -28,7 +28,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["delete_test.go"],
+    srcs = [
+        "delete_test.go",
+        "multi_tenancy_delete_test.go",
+    ],
     data = [
         "//test/e2e/testing-manifests:all-srcs",
     ],

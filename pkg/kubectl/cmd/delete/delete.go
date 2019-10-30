@@ -150,6 +150,11 @@ func (o *DeleteOptions) Complete(f cmdutil.Factory, args []string, cmd *cobra.Co
 		return err
 	}
 
+	cmdTenant, enforceTenant, err := f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.WarnClusterScope = enforceNamespace && !o.DeleteAllNamespaces
 
 	if o.DeleteAll || len(o.LabelSelector) > 0 || len(o.FieldSelector) > 0 {
@@ -173,8 +178,9 @@ func (o *DeleteOptions) Complete(f cmdutil.Factory, args []string, cmd *cobra.Co
 	r := f.NewBuilder().
 		Unstructured().
 		ContinueOnError().
+		TenantParam(cmdTenant).DefaultTenant().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(enforceTenant, enforceNamespace, &o.FilenameOptions).
 		LabelSelectorParam(o.LabelSelector).
 		FieldSelectorParam(o.FieldSelector).
 		SelectAllParam(o.DeleteAll).
@@ -262,6 +268,7 @@ func (o *DeleteOptions) DeleteResult(r *resource.Result) error {
 		}
 		resourceLocation := cmdwait.ResourceLocation{
 			GroupResource: info.Mapping.Resource.GroupResource(),
+			Tenant:        info.Tenant,
 			Namespace:     info.Namespace,
 			Name:          info.Name,
 		}
@@ -321,7 +328,7 @@ func (o *DeleteOptions) DeleteResult(r *resource.Result) error {
 }
 
 func (o *DeleteOptions) deleteResource(info *resource.Info, deleteOptions *metav1.DeleteOptions) (runtime.Object, error) {
-	deleteResponse, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptions(info.Namespace, info.Name, deleteOptions)
+	deleteResponse, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptionsWithMultiTenancy(info.Tenant, info.Namespace, info.Name, deleteOptions)
 	if err != nil {
 		return nil, cmdutil.AddSourceToErr("deleting", info.Source, err)
 	}

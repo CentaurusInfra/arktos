@@ -38,21 +38,13 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 )
 
-func newUnstructuredList(items ...*unstructured.Unstructured) *unstructured.UnstructuredList {
-	list := &unstructured.UnstructuredList{}
-	for i := range items {
-		list.Items = append(list.Items, *items[i])
-	}
-	return list
-}
-
-func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Unstructured {
+func newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name string, tenant string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": apiVersion,
 			"kind":       kind,
 			"metadata": map[string]interface{}{
-				"tenant":    metav1.TenantDefault,
+				"tenant":    tenant,
 				"namespace": namespace,
 				"name":      name,
 				"uid":       "some-UID-value",
@@ -61,27 +53,7 @@ func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Uns
 	}
 }
 
-func newUnstructuredStatus(status *metav1.Status) runtime.Unstructured {
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(status)
-	if err != nil {
-		panic(err)
-	}
-	return &unstructured.Unstructured{
-		Object: obj,
-	}
-}
-
-func addCondition(in *unstructured.Unstructured, name, status string) *unstructured.Unstructured {
-	conditions, _, _ := unstructured.NestedSlice(in.Object, "status", "conditions")
-	conditions = append(conditions, map[string]interface{}{
-		"type":   name,
-		"status": status,
-	})
-	unstructured.SetNestedSlice(in.Object, conditions, "status", "conditions")
-	return in
-}
-
-func TestWaitForDeletion(t *testing.T) {
+func TestWaitForDeletionWithMultiTenancy(t *testing.T) {
 	scheme := runtime.NewScheme()
 
 	tests := []struct {
@@ -103,7 +75,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -144,13 +116,13 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructuredList(newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")), nil
+					return true, newUnstructuredList(newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")), nil
 				})
 				count := 0
 				fakeClient.PrependWatchReactor("theresource", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
@@ -170,8 +142,8 @@ func TestWaitForDeletion(t *testing.T) {
 			},
 			timeout: 10 * time.Second,
 			uidMap: UIDMap{
-				ResourceLocation{Tenant: metav1.TenantDefault, Namespace: "ns-foo", Name: "name-foo"}:                                                                               types.UID("some-UID-value"),
-				ResourceLocation{GroupResource: schema.GroupResource{Group: "group", Resource: "theresource"}, Tenant: metav1.TenantDefault, Namespace: "ns-foo", Name: "name-foo"}: types.UID("some-nonmatching-UID-value"),
+				ResourceLocation{Tenant: "test-te", Namespace: "ns-foo", Name: "name-foo"}:                                                                               types.UID("some-UID-value"),
+				ResourceLocation{GroupResource: schema.GroupResource{Group: "group", Resource: "theresource"}, Tenant: "test-te", Namespace: "ns-foo", Name: "name-foo"}: types.UID("some-nonmatching-UID-value"),
 			},
 
 			validateActions: func(t *testing.T, actions []clienttesting.Action) {
@@ -192,13 +164,13 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructuredList(newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")), nil
+					return true, newUnstructuredList(newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")), nil
 				})
 				return fakeClient
 			},
@@ -226,13 +198,13 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					unstructuredObj := newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")
+					unstructuredObj := newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")
 					unstructuredObj.SetResourceVersion("123")
 					unstructuredList := newUnstructuredList(unstructuredObj)
 					unstructuredList.SetResourceVersion("234")
@@ -284,17 +256,17 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructuredList(newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")), nil
+					return true, newUnstructuredList(newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")), nil
 				})
 				fakeClient.PrependWatchReactor("theresource", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
 					fakeWatch := watch.NewRaceFreeFake()
-					fakeWatch.Action(watch.Deleted, newUnstructured("group/version", "TheKind", "ns-foo", "name-foo"))
+					fakeWatch.Action(watch.Deleted, newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te"))
 					return true, fakeWatch, nil
 				})
 				return fakeClient
@@ -322,7 +294,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo-1",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 				{
 					Mapping: &meta.RESTMapping{
@@ -330,25 +302,25 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo-2",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("get", "theresource-1", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructured("group/version", "TheKind", "ns-foo", "name-foo-1"), nil
+					return true, newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo-1", "test-te"), nil
 				})
 				fakeClient.PrependReactor("get", "theresource-2", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructured("group/version", "TheKind", "ns-foo", "name-foo-2"), nil
+					return true, newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo-2", "test-te"), nil
 				})
 				fakeClient.PrependWatchReactor("theresource-1", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
 					fakeWatch := watch.NewRaceFreeFake()
-					fakeWatch.Action(watch.Deleted, newUnstructured("group/version", "TheKind", "ns-foo", "name-foo-1"))
+					fakeWatch.Action(watch.Deleted, newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo-1", "test-te"))
 					return true, fakeWatch, nil
 				})
 				fakeClient.PrependWatchReactor("theresource-2", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
 					fakeWatch := watch.NewRaceFreeFake()
-					fakeWatch.Action(watch.Deleted, newUnstructured("group/version", "TheKind", "ns-foo", "name-foo-2"))
+					fakeWatch.Action(watch.Deleted, newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo-2", "test-te"))
 					return true, fakeWatch, nil
 				})
 				return fakeClient
@@ -376,13 +348,13 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructuredList(newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")), nil
+					return true, newUnstructuredList(newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")), nil
 				})
 				count := 0
 				fakeClient.PrependWatchReactor("theresource", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
@@ -396,7 +368,7 @@ func TestWaitForDeletion(t *testing.T) {
 						}))
 						fakeWatch.Stop()
 					} else {
-						fakeWatch.Action(watch.Deleted, newUnstructured("group/version", "TheKind", "ns-foo", "name-foo"))
+						fakeWatch.Action(watch.Deleted, newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te"))
 					}
 					count++
 					return true, fakeWatch, nil
@@ -456,7 +428,7 @@ func TestWaitForDeletion(t *testing.T) {
 	}
 }
 
-func TestWaitForCondition(t *testing.T) {
+func TestWaitForConditionWithMultiTenancy(t *testing.T) {
 	scheme := runtime.NewScheme()
 
 	tests := []struct {
@@ -477,14 +449,14 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, newUnstructuredList(addCondition(
-						newUnstructured("group/version", "TheKind", "ns-foo", "name-foo"),
+						newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te"),
 						"the-condition", "status-value",
 					)), nil
 				})
@@ -524,7 +496,7 @@ func TestWaitForCondition(t *testing.T) {
 						Resource: schema.GroupVersionResource{Group: "group", Version: "version", Resource: "theresource"},
 					},
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -548,14 +520,14 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, addCondition(
-						newUnstructured("group/version", "TheKind", "ns-foo", "name-foo"),
+						newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te"),
 						"some-other-condition", "status-value",
 					), nil
 				})
@@ -585,13 +557,13 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					unstructuredObj := newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")
+					unstructuredObj := newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")
 					unstructuredObj.SetResourceVersion("123")
 					unstructuredList := newUnstructuredList(unstructuredObj)
 					unstructuredList.SetResourceVersion("234")
@@ -643,18 +615,18 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructuredList(newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")), nil
+					return true, newUnstructuredList(newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")), nil
 				})
 				fakeClient.PrependWatchReactor("theresource", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
 					fakeWatch := watch.NewRaceFreeFake()
 					fakeWatch.Action(watch.Modified, addCondition(
-						newUnstructured("group/version", "TheKind", "ns-foo", "name-foo"),
+						newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te"),
 						"the-condition", "status-value",
 					))
 					return true, fakeWatch, nil
@@ -684,7 +656,7 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -692,7 +664,7 @@ func TestWaitForCondition(t *testing.T) {
 				fakeClient.PrependWatchReactor("theresource", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
 					fakeWatch := watch.NewRaceFreeFake()
 					fakeWatch.Action(watch.Added, addCondition(
-						newUnstructured("group/version", "TheKind", "ns-foo", "name-foo"),
+						newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te"),
 						"the-condition", "status-value",
 					))
 					return true, fakeWatch, nil
@@ -722,13 +694,13 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "test-te",
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
 				fakeClient := dynamicfakeclient.NewSimpleDynamicClient(scheme)
 				fakeClient.PrependReactor("list", "theresource", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
-					return true, newUnstructuredList(newUnstructured("group/version", "TheKind", "ns-foo", "name-foo")), nil
+					return true, newUnstructuredList(newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te")), nil
 				})
 				count := 0
 				fakeClient.PrependWatchReactor("theresource", func(action clienttesting.Action) (handled bool, ret watch.Interface, err error) {
@@ -743,7 +715,7 @@ func TestWaitForCondition(t *testing.T) {
 						fakeWatch.Stop()
 					} else {
 						fakeWatch.Action(watch.Modified, addCondition(
-							newUnstructured("group/version", "TheKind", "ns-foo", "name-foo"),
+							newUnstructuredWithMultiTenancy("group/version", "TheKind", "ns-foo", "name-foo", "test-te"),
 							"the-condition", "status-value",
 						))
 					}

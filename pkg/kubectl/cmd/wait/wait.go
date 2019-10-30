@@ -201,6 +201,7 @@ type ResourceLocation struct {
 	GroupResource schema.GroupResource
 	Namespace     string
 	Name          string
+	Tenant        string
 }
 
 // UIDMap maps ResourceLocation with UID
@@ -263,7 +264,7 @@ func IsDeleted(info *resource.Info, o *WaitOptions) (runtime.Object, bool, error
 		nameSelector := fields.OneTermEqualSelector("metadata.name", info.Name).String()
 
 		// List with a name field selector to get the current resourceVersion to watch from (not the object's resourceVersion)
-		gottenObjList, err := o.DynamicClient.Resource(info.Mapping.Resource).Namespace(info.Namespace).List(metav1.ListOptions{FieldSelector: nameSelector})
+		gottenObjList, err := o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).List(metav1.ListOptions{FieldSelector: nameSelector})
 		if apierrors.IsNotFound(err) {
 			return info.Object, true, nil
 		}
@@ -277,6 +278,7 @@ func IsDeleted(info *resource.Info, o *WaitOptions) (runtime.Object, bool, error
 		gottenObj := &gottenObjList.Items[0]
 		resourceLocation := ResourceLocation{
 			GroupResource: info.Mapping.Resource.GroupResource(),
+			Tenant:        gottenObj.GetTenant(),
 			Namespace:     gottenObj.GetNamespace(),
 			Name:          gottenObj.GetName(),
 		}
