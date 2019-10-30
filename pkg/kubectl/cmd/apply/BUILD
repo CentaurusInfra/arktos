@@ -48,7 +48,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["apply_test.go"],
+    srcs = [
+        "apply_test.go",
+        "multi_tenancy_apply_test.go",
+    ],
     data = [
         "//api/openapi-spec",
         "//test/fixtures",

@@ -92,6 +92,9 @@ type ApplyOptions struct {
 	EnforceNamespace bool
 
 	genericclioptions.IOStreams
+
+	Tenant        string
+	EnforceTenant bool
 }
 
 const (
@@ -262,6 +265,11 @@ func (o *ApplyOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 		return err
 	}
 
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
@@ -346,11 +354,13 @@ func (o *ApplyOptions) Run() error {
 		Unstructured().
 		Schema(o.Validator).
 		ContinueOnError().
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
 		LabelSelectorParam(o.Selector).
 		Flatten().
 		Do()
+
 	if err := r.Err(); err != nil {
 		return err
 	}
@@ -407,7 +417,8 @@ func (o *ApplyOptions) Run() error {
 				options.DryRun = []string{metav1.DryRunAll}
 			}
 
-			obj, err := resource.NewHelper(info.Client, info.Mapping).Patch(
+			obj, err := resource.NewHelper(info.Client, info.Mapping).PatchWithMultiTenancy(
+				info.Tenant,
 				info.Namespace,
 				info.Name,
 				types.ApplyPatchType,
@@ -454,7 +465,7 @@ func (o *ApplyOptions) Run() error {
 		// Print object only if output format other than "name" is specified
 		printObject := len(output) > 0 && !shortOutput
 
-		if err := info.Get(); err != nil {
+		if err := info.GetWithMultiTenancy(); err != nil {
 			if !errors.IsNotFound(err) {
 				return cmdutil.AddSourceToErr(fmt.Sprintf("retrieving current configuration of:\n%s\nfrom server for:", info.String()), info.Source, err)
 			}
@@ -471,7 +482,7 @@ func (o *ApplyOptions) Run() error {
 				if o.ServerDryRun {
 					options.DryRun = []string{metav1.DryRunAll}
 				}
-				obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, &options)
+				obj, err := resource.NewHelper(info.Client, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, &options)
 				if err != nil {
 					return cmdutil.AddSourceToErr("creating", info.Source, err)
 				}
@@ -526,7 +537,7 @@ func (o *ApplyOptions) Run() error {
 				Retries:       maxPatchRetry,
 			}
 
-			patchBytes, patchedObject, err := patcher.Patch(info.Object, modified, info.Source, info.Namespace, info.Name, o.ErrOut)
+			patchBytes, patchedObject, err := patcher.PatchWithMultiTenancy(info.Object, modified, info.Source, info.Tenant, info.Namespace, info.Name, o.ErrOut)
 			if err != nil {
 				return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
 			}
@@ -767,8 +778,28 @@ func runDelete(namespace, name string, mapping *meta.RESTMapping, c dynamic.Inte
 	return c.Resource(mapping.Resource).Namespace(namespace).Delete(name, options)
 }
 
+func runDeleteWithMultiTenancy(tenant, namespace, name string, mapping *meta.RESTMapping, c dynamic.Interface, cascade bool, gracePeriod int, serverDryRun bool) error {
+	options := &metav1.DeleteOptions{}
+	if gracePeriod >= 0 {
+		options = metav1.NewDeleteOptions(int64(gracePeriod))
+	}
+	if serverDryRun {
+		options.DryRun = []string{metav1.DryRunAll}
+	}
+	policy := metav1.DeletePropagationForeground
+	if !cascade {
+		policy = metav1.DeletePropagationOrphan
+	}
+	options.PropagationPolicy = &policy
+	return c.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, tenant).Delete(name, options)
+}
+
 func (p *Patcher) delete(namespace, name string) error {
 	return runDelete(namespace, name, p.Mapping, p.DynamicClient, p.Cascade, p.GracePeriod, p.ServerDryRun)
+}
+
+func (p *Patcher) deleteWithMultiTenancy(tenant, namespace, name string) error {
+	return runDeleteWithMultiTenancy(tenant, namespace, name, p.Mapping, p.DynamicClient, p.Cascade, p.GracePeriod, p.ServerDryRun)
 }
 
 // Patcher defines options to patch OpenAPI objects.
@@ -850,6 +881,92 @@ func addResourceVersion(patch []byte, rv string) ([]byte, error) {
 	return json.Marshal(patchMap)
 }
 
+func (p *Patcher) patchSimpleWithMultiTenancy(obj runtime.Object, modified []byte, source, tenant, namespace, name string, errOut io.Writer) ([]byte, runtime.Object, error) {
+	// Serialize the current configuration of the object from the server.
+	current, err := runtime.Encode(unstructured.UnstructuredJSONScheme, obj)
+	if err != nil {
+		return nil, nil, cmdutil.AddSourceToErr(fmt.Sprintf("serializing current configuration from:\n%v\nfor:", obj), source, err)
+	}
+
+	// Retrieve the original configuration of the object from the annotation.
+	original, err := kubectl.GetOriginalConfiguration(obj)
+	if err != nil {
+		return nil, nil, cmdutil.AddSourceToErr(fmt.Sprintf("retrieving original configuration from:\n%v\nfor:", obj), source, err)
+	}
+
+	var patchType types.PatchType
+	var patch []byte
+	var lookupPatchMeta strategicpatch.LookupPatchMeta
+	var schema oapi.Schema
+	createPatchErrFormat := "creating patch with:\noriginal:\n%s\nmodified:\n%s\ncurrent:\n%s\nfor:"
+
+	// Create the versioned struct from the type defined in the restmapping
+	// (which is the API version we'll be submitting the patch to)
+	versionedObject, err := scheme.Scheme.New(p.Mapping.GroupVersionKind)
+	switch {
+	case runtime.IsNotRegisteredError(err):
+		// fall back to generic JSON merge patch
+		patchType = types.MergePatchType
+		preconditions := []mergepatch.PreconditionFunc{mergepatch.RequireKeyUnchanged("apiVersion"),
+			mergepatch.RequireKeyUnchanged("kind"), mergepatch.RequireMetadataKeyUnchanged("name")}
+		patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(original, modified, current, preconditions...)
+		if err != nil {
+			if mergepatch.IsPreconditionFailed(err) {
+				return nil, nil, fmt.Errorf("%s", "At least one of apiVersion, kind and name was changed")
+			}
+			return nil, nil, cmdutil.AddSourceToErr(fmt.Sprintf(createPatchErrFormat, original, modified, current), source, err)
+		}
+	case err != nil:
+		return nil, nil, cmdutil.AddSourceToErr(fmt.Sprintf("getting instance of versioned object for %v:", p.Mapping.GroupVersionKind), source, err)
+	case err == nil:
+		// Compute a three way strategic merge patch to send to server.
+		patchType = types.StrategicMergePatchType
+
+		// Try to use openapi first if the openapi spec is available and can successfully calculate the patch.
+		// Otherwise, fall back to baked-in types.
+		if p.OpenapiSchema != nil {
+			if schema = p.OpenapiSchema.LookupResource(p.Mapping.GroupVersionKind); schema != nil {
+				lookupPatchMeta = strategicpatch.PatchMetaFromOpenAPI{Schema: schema}
+				if openapiPatch, err := strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, p.Overwrite); err != nil {
+					fmt.Fprintf(errOut, "warning: error calculating patch from openapi spec: %v\n", err)
+				} else {
+					patchType = types.StrategicMergePatchType
+					patch = openapiPatch
+				}
+			}
+		}
+
+		if patch == nil {
+			lookupPatchMeta, err = strategicpatch.NewPatchMetaFromStruct(versionedObject)
+			if err != nil {
+				return nil, nil, cmdutil.AddSourceToErr(fmt.Sprintf(createPatchErrFormat, original, modified, current), source, err)
+			}
+			patch, err = strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, p.Overwrite)
+			if err != nil {
+				return nil, nil, cmdutil.AddSourceToErr(fmt.Sprintf(createPatchErrFormat, original, modified, current), source, err)
+			}
+		}
+	}
+
+	if string(patch) == "{}" {
+		return patch, obj, nil
+	}
+
+	if p.ResourceVersion != nil {
+		patch, err = addResourceVersion(patch, *p.ResourceVersion)
+		if err != nil {
+			return nil, nil, cmdutil.AddSourceToErr("Failed to insert resourceVersion in patch", source, err)
+		}
+	}
+
+	options := metav1.PatchOptions{}
+	if p.ServerDryRun {
+		options.DryRun = []string{metav1.DryRunAll}
+	}
+
+	patchedObj, err := p.Helper.PatchWithMultiTenancy(tenant, namespace, name, patchType, patch, &options)
+	return patch, patchedObj, err
+}
 func (p *Patcher) patchSimple(obj runtime.Object, modified []byte, source, namespace, name string, errOut io.Writer) ([]byte, runtime.Object, error) {
 	// Serialize the current configuration of the object from the server.
 	current, err := runtime.Encode(unstructured.UnstructuredJSONScheme, obj)
@@ -987,6 +1104,63 @@ func (p *Patcher) deleteAndCreate(original runtime.Object, modified []byte, name
 		// restore the original object if we fail to create the new one
 		// but still propagate and advertise error to user
 		recreated, recreateErr := p.Helper.Create(namespace, true, original, &options)
+		if recreateErr != nil {
+			err = fmt.Errorf("An error occurred force-replacing the existing object with the newly provided one:\n\n%v.\n\nAdditionally, an error occurred attempting to restore the original object:\n\n%v", err, recreateErr)
+		} else {
+			createdObject = recreated
+		}
+	}
+	return modified, createdObject, err
+}
+
+func (p *Patcher) PatchWithMultiTenancy(current runtime.Object, modified []byte, source, tenant, namespace, name string, errOut io.Writer) ([]byte, runtime.Object, error) {
+	var getErr error
+	patchBytes, patchObject, err := p.patchSimpleWithMultiTenancy(current, modified, source, tenant, namespace, name, errOut)
+	if p.Retries == 0 {
+		p.Retries = maxPatchRetry
+	}
+	for i := 1; i <= p.Retries && errors.IsConflict(err); i++ {
+		if i > triesBeforeBackOff {
+			p.BackOff.Sleep(backOffPeriod)
+		}
+		current, getErr = p.Helper.GetWithMultiTenancy(tenant, namespace, name, false)
+		if getErr != nil {
+			return nil, nil, getErr
+		}
+		patchBytes, patchObject, err = p.patchSimpleWithMultiTenancy(current, modified, source, tenant, namespace, name, errOut)
+	}
+	if err != nil && (errors.IsConflict(err) || errors.IsInvalid(err)) && p.Force {
+		patchBytes, patchObject, err = p.deleteAndCreateWithMultiTenancy(current, modified, tenant, namespace, name)
+	}
+	return patchBytes, patchObject, err
+}
+
+func (p *Patcher) deleteAndCreateWithMultiTenancy(original runtime.Object, modified []byte, tenant, namespace, name string) ([]byte, runtime.Object, error) {
+	if err := p.deleteWithMultiTenancy(tenant, namespace, name); err != nil {
+		return modified, nil, err
+	}
+	// TODO: use wait
+	if err := wait.PollImmediate(1*time.Second, p.Timeout, func() (bool, error) {
+		if _, err := p.Helper.GetWithMultiTenancy(tenant, namespace, name, false); !errors.IsNotFound(err) {
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		return modified, nil, err
+	}
+	versionedObject, _, err := unstructured.UnstructuredJSONScheme.Decode(modified, nil, nil)
+	if err != nil {
+		return modified, nil, err
+	}
+	options := metav1.CreateOptions{}
+	if p.ServerDryRun {
+		options.DryRun = []string{metav1.DryRunAll}
+	}
+	createdObject, err := p.Helper.CreateWithMultiTenancy(tenant, namespace, true, versionedObject, &options)
+	if err != nil {
+		// restore the original object if we fail to create the new one
+		// but still propagate and advertise error to user
+		recreated, recreateErr := p.Helper.CreateWithMultiTenancy(tenant, namespace, true, original, &options)
 		if recreateErr != nil {
 			err = fmt.Errorf("An error occurred force-replacing the existing object with the newly provided one:\n\n%v.\n\nAdditionally, an error occurred attempting to restore the original object:\n\n%v", err, recreateErr)
 		} else {
