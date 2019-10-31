@@ -280,7 +280,7 @@ func DeletePort(provider *gophercloud.ProviderClient, portID string) {
 
 func UpdatePort(provider *gophercloud.ProviderClient, portID string, hostID string) {
 	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Region: "RegionOne"})
+		Region: os.Getenv("Region")}) //"RegionOne"
 	if err != nil {
 		klog.Error(err)
 	}
