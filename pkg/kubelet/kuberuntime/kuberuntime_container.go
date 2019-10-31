@@ -352,7 +352,7 @@ func (m *kubeGenericRuntimeManager) getKubeletContainers(allContainers bool) ([]
 		containers, err := runtimeService.ListContainers(filter)
 		if err != nil {
 			klog.Errorf("getKubeletContainers failed: %v", err)
-			return nil, err
+			continue
 		}
 
 		all = append(all, containers...)

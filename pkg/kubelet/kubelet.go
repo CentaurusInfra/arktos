@@ -2214,11 +2214,13 @@ func (kl *Kubelet) LatestLoopEntryTime() time.Time {
 	return val.(time.Time)
 }
 
+// breaking change - partial node ready
+// todo[alkaid]: node needs to let scheduler know what runtime is up or not yet on this node
 // updateRuntimeUp calls the container runtime status callback, initializing
 // the runtime dependent modules when the container runtime first comes up,
 // and returns an error if the status check fails.  If the status check is OK,
 // update the container runtime uptime in the kubelet runtimeState.
-// the node RuntimeUp is IIF all runtimes on the node are ready, for both network and compute
+// the node RuntimeUp is IF ANY runtimes on the node are ready, for both network and compute
 func (kl *Kubelet) updateRuntimeUp() {
 	// Periodically log the whole runtime status for debugging.
 	runtimeServices, err := kl.runtimeManager.GetAllRuntimeServices()
@@ -2227,25 +2229,31 @@ func (kl *Kubelet) updateRuntimeUp() {
 		return
 	}
 
+	aRuntimeIsUp := false
 	for _, runtime := range runtimeServices {
 		s1, err := runtime.Status()
 		if err != nil {
 			klog.Errorf("Container runtime sanity check failed: %v", err)
-			return
+			continue
 		}
 		if s1 == nil {
 			klog.Errorf("Container runtime status is nil")
-			return
+			continue
 		}
 		if s1.Conditions == nil || len(s1.Conditions) == 0 {
 			klog.Errorf("Container runtime status conditions is nil or empty")
-			return
+			continue
 		}
 
 		s := toKubeRuntimeStatus(s1)
-		if err := kl.updateOneRuntimeUp(s); err != nil {
-			return
+		if err := kl.updateOneRuntimeUp(s); err == nil {
+			aRuntimeIsUp = true
+			break
 		}
+	}
+
+	if !aRuntimeIsUp {
+		return
 	}
 
 	kl.oneTimeInitializer.Do(kl.initializeRuntimeDependentModules)

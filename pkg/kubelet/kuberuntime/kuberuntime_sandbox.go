@@ -245,8 +245,10 @@ func (m *kubeGenericRuntimeManager) getKubeletSandboxes(all bool) ([]*runtimeapi
 	for _, runtimeService := range runtimeServices {
 		resp, err := m.getKubeletSandboxesByRuntime(runtimeService, all)
 		if err != nil {
-			return nil, err
+			klog.Errorf("getKubeletSandboxesByRuntime failed: %v", err)
+			continue
 		}
+
 		resps = append(resps, resp...)
 	}
 
