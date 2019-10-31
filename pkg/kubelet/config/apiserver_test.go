@@ -19,7 +19,7 @@ package config
 import (
 	"testing"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,6 +39,9 @@ func (lw fakePodLW) List(options metav1.ListOptions) (runtime.Object, error) {
 
 func (lw fakePodLW) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return lw.watchResp, nil
+}
+
+func (lw fakePodLW) Update(options metav1.ListOptions) {
 }
 
 var _ cache.ListerWatcher = fakePodLW{}

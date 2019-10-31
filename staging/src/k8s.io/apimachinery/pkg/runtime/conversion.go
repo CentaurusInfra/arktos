@@ -41,7 +41,7 @@ func DefaultMetaV1FieldSelectorConversion(label, value string) (string, string, 
 	case "metadata.hashkey":
 		return label, value, nil
 	default:
-		return "", "", fmt.Errorf("%q is not a known field selector: only %q, %q, %q", label, "metadata.name", "metadata.namespace", "metadata.tenant")
+		return "", "", fmt.Errorf("%q is not a known field selector: only %q, %q, %q, %q", label, "metadata.name", "metadata.namespace", "metadata.tenant", "metadata.hashkey")
 	}
 }
 

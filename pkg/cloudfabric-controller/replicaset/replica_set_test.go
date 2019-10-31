@@ -19,7 +19,6 @@ package replicaset
 import (
 	"errors"
 	"fmt"
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"math/rand"
 	"net/http/httptest"
 	"net/url"
@@ -29,8 +28,10 @@ import (
 	"testing"
 	"time"
 
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
+
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,6 +57,7 @@ import (
 func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh chan struct{}, burstReplicas int) (*ReplicaSetController, informers.SharedInformerFactory) {
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	updateChan := make(chan string)
+	resetCh := make(chan interface{})
 
 	cim := controller.GetControllerInstanceManager()
 	if cim == nil {
@@ -72,6 +74,7 @@ func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh ch
 		client,
 		burstReplicas,
 		updateChan,
+		resetCh,
 	)
 
 	ret.podListerSynced = alwaysReady
@@ -428,6 +431,7 @@ func TestWatchControllers(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	client.PrependWatchReactor("replicasets", core.DefaultWatchReactor(fakeWatch, nil))
 	stopCh := make(chan struct{})
+	resetCh := make(chan interface{})
 	updatechan := make(chan string)
 	defer close(stopCh)
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
@@ -437,6 +441,7 @@ func TestWatchControllers(t *testing.T) {
 		client,
 		BurstReplicas,
 		updatechan,
+		resetCh,
 	)
 	informers.Start(stopCh)
 

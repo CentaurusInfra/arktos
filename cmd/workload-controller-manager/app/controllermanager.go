@@ -19,8 +19,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"k8s.io/klog"
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"net/http"
 	"time"
 
@@ -33,13 +31,15 @@ import (
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller/replicaset"
+	"k8s.io/klog"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 
 	"k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	cacheddiscovery "k8s.io/client-go/discovery/cached"
 	componentbaseconfig "k8s.io/component-base/config"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/replicaset"
 )
 
 // ControllerContext defines the context object for controller
@@ -64,6 +64,9 @@ type ControllerContext struct {
 
 	// Stop is the stop channel
 	Stop <-chan struct{}
+
+	// Reset is the reset channel for informer filter
+	Reset chan interface{}
 
 	// InformersStarted is closed after all of the controllers have been initialized and are running.  After this point it is safe,
 	// for an individual controller to start the shared informers. Before it is closed, they should not.
@@ -173,6 +176,7 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 		InformersStarted:                         make(chan struct{}),
 		ControllerInstanceUpdateByControllerType: make(chan string),
 	}
+
 	return ctx, nil
 }
 
@@ -210,12 +214,18 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}] {
 		return nil, false, nil
 	}
+	rsInformer := ctx.InformerFactory.Apps().V1().ReplicaSets()
+	ctx.Reset = make(chan interface{})
+	rsInformer.Informer().SetResetCh(ctx.Reset)
+	podInformer := ctx.InformerFactory.Core().V1().Pods()
+
 	go replicaset.NewReplicaSetController(
-		ctx.InformerFactory.Apps().V1().ReplicaSets(),
-		ctx.InformerFactory.Core().V1().Pods(),
+		rsInformer,
+		podInformer,
 		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
 		replicaset.BurstReplicas,
 		ctx.ControllerInstanceUpdateByControllerType,
+		ctx.Reset,
 	).Run(workerNum, ctx.Stop)
 	return nil, true, nil
 }

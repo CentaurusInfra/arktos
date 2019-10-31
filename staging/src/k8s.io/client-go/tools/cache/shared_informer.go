@@ -121,6 +121,7 @@ type SharedIndexInformer interface {
 	// AddIndexers add indexers to the informer before it starts.
 	AddIndexers(indexers Indexers) error
 	GetIndexer() Indexer
+	SetResetCh(chan interface{})
 }
 
 // NewSharedInformer creates a new instance for the listwatcher.
@@ -131,6 +132,7 @@ func NewSharedInformer(lw ListerWatcher, objType runtime.Object, resyncPeriod ti
 // NewSharedIndexInformer creates a new instance for the listwatcher.
 func NewSharedIndexInformer(lw ListerWatcher, objType runtime.Object, defaultEventHandlerResyncPeriod time.Duration, indexers Indexers) SharedIndexInformer {
 	realClock := &clock.RealClock{}
+
 	sharedIndexInformer := &sharedIndexInformer{
 		processor:                       &sharedProcessor{clock: realClock},
 		indexer:                         NewIndexer(DeletionHandlingMetaNamespaceKeyFunc, indexers),
@@ -204,6 +206,8 @@ type sharedIndexInformer struct {
 	// blockDeltas gives a way to stop all event distribution so that a late event handler
 	// can safely join the shared informer.
 	blockDeltas sync.Mutex
+
+	resetCh chan interface{}
 }
 
 // dummyController hides the fact that a SharedInformer is different from a dedicated one
@@ -218,12 +222,19 @@ type dummyController struct {
 func (v *dummyController) Run(stopCh <-chan struct{}) {
 }
 
+func (v *dummyController) RunWithReset(stopCh <-chan struct{}, resetCh chan interface{}) {
+}
+
 func (v *dummyController) HasSynced() bool {
 	return v.informer.HasSynced()
 }
 
 func (c *dummyController) LastSyncResourceVersion() string {
 	return ""
+}
+
+func (c *dummyController) Config() Config {
+	return Config{}
 }
 
 type updateNotification struct {
@@ -254,7 +265,6 @@ func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
 
 		Process: s.HandleDeltas,
 	}
-
 	func() {
 		s.startedLock.Lock()
 		defer s.startedLock.Unlock()
@@ -277,7 +287,7 @@ func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
 		defer s.startedLock.Unlock()
 		s.stopped = true // Don't want any new listeners
 	}()
-	s.controller.Run(stopCh)
+	s.controller.RunWithReset(stopCh, s.resetCh)
 }
 
 func (s *sharedIndexInformer) HasSynced() bool {
@@ -317,6 +327,13 @@ func (s *sharedIndexInformer) AddIndexers(indexers Indexers) error {
 	}
 
 	return s.indexer.AddIndexers(indexers)
+}
+
+func (s *sharedIndexInformer) SetResetCh(resetCh chan interface{}) {
+	s.startedLock.Lock()
+	defer s.startedLock.Unlock()
+
+	s.resetCh = resetCh
 }
 
 func (s *sharedIndexInformer) GetController() Controller {

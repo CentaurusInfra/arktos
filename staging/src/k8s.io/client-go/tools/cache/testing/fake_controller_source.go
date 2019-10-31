@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"sync"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -252,4 +252,10 @@ func (f *FakeControllerSource) Watch(options metav1.ListOptions) (watch.Interfac
 func (f *FakeControllerSource) Shutdown() {
 	f.lock.Lock() // Purposely no unlock.
 	f.Broadcaster.Shutdown()
+}
+
+func (f *FakePVCControllerSource) Update(options metav1.ListOptions) {
+}
+
+func (f *FakeControllerSource) Update(options metav1.ListOptions) {
 }

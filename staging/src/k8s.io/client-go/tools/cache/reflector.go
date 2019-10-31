@@ -404,3 +404,7 @@ func (r *Reflector) setLastSyncResourceVersion(v string) {
 	defer r.lastSyncResourceVersionMutex.Unlock()
 	r.lastSyncResourceVersion = v
 }
+
+func (r *Reflector) ListerWatcher() ListerWatcher{
+	return r.listerWatcher
+}

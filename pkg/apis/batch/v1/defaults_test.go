@@ -211,7 +211,6 @@ func TestSetDefaultJob(t *testing.T) {
 				t.Errorf("%s: unexpected equality: %v", name, actual.Labels)
 			}
 		}
-
 	}
 }
 

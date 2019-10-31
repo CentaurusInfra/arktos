@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	fcache "k8s.io/client-go/tools/cache/testing"
 
-	"github.com/google/gofuzz"
+	fuzz "github.com/google/gofuzz"
 )
 
 func Example() {
@@ -358,6 +358,8 @@ func TestUpdate(t *testing.T) {
 			},
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				return source.List(options)
+			},
+			UpdateFunc: func(options metav1.ListOptions) {
 			},
 		},
 		&v1.Pod{},
