@@ -40,10 +40,17 @@ type Watcher interface {
 	Watch(options metav1.ListOptions) (watch.Interface, error)
 }
 
+// Updater is to set the search conditions of resources for listers and watchers
+type Updater interface {
+	// Update should change the search conditions, such as field selectors
+	Update(options metav1.ListOptions)
+}
+
 // ListerWatcher is any object that knows how to perform an initial list and start a watch on a resource.
 type ListerWatcher interface {
 	Lister
 	Watcher
+	Updater
 }
 
 // ListFunc knows how to list resources
@@ -52,14 +59,19 @@ type ListFunc func(options metav1.ListOptions) (runtime.Object, error)
 // WatchFunc knows how to watch resources
 type WatchFunc func(options metav1.ListOptions) (watch.Interface, error)
 
+// UpdateFunc knows how to update search resource conditions
+type UpdateFunc func(options metav1.ListOptions)
+
 // ListWatch knows how to list and watch a set of apiserver resources.  It satisfies the ListerWatcher interface.
 // It is a convenience function for users of NewReflector, etc.
 // ListFunc and WatchFunc must not be nil
 type ListWatch struct {
-	ListFunc  ListFunc
-	WatchFunc WatchFunc
+	ListFunc   ListFunc
+	WatchFunc  WatchFunc
+	UpdateFunc UpdateFunc
 	// DisableChunking requests no chunking for this list watcher.
 	DisableChunking bool
+	searchOptions  metav1.ListOptions
 }
 
 // Getter interface knows how to access Get method from RESTClient.
@@ -114,10 +126,25 @@ func (lw *ListWatch) List(options metav1.ListOptions) (runtime.Object, error) {
 	if !lw.DisableChunking {
 		return pager.New(pager.SimplePageFunc(lw.ListFunc)).List(context.TODO(), options)
 	}
-	return lw.ListFunc(options)
+	return lw.ListFunc(lw.appendOptions(options))
 }
 
 // Watch a set of apiserver resources
 func (lw *ListWatch) Watch(options metav1.ListOptions) (watch.Interface, error) {
-	return lw.WatchFunc(options)
+	return lw.WatchFunc(lw.appendOptions(options))
+}
+
+// Update the resource search conditions for listers and watchers
+func (lw *ListWatch) Update(options metav1.ListOptions) {
+	lw.searchOptions = options
+}
+
+func (lw *ListWatch) appendOptions(options metav1.ListOptions) metav1.ListOptions {
+	appended := options.DeepCopy()
+	if len(appended.FieldSelector) == 0 {
+		appended.FieldSelector = lw.searchOptions.FieldSelector
+	} else {
+		appended.FieldSelector = appended.FieldSelector + "," + lw.searchOptions.FieldSelector
+	}
+	return *appended
 }

@@ -18,8 +18,14 @@ package cloudfabriccontrollers
 
 import (
 	"fmt"
+	"net/http/httptest"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,11 +45,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/slice"
 	"k8s.io/kubernetes/test/integration/framework"
 	testutil "k8s.io/kubernetes/test/utils"
-	"net/http/httptest"
-	"reflect"
-	"strings"
-	"testing"
-	"time"
 )
 
 const (
@@ -136,6 +137,7 @@ func rmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.Cont
 	resyncPeriod := 12 * time.Hour
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "rs-informers")), resyncPeriod)
 	var updateCh chan string
+	resetCh := make(chan interface{})
 
 	// controller instance manager set up
 	cim := controller.GetControllerInstanceManager()
@@ -156,6 +158,7 @@ func rmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.Cont
 		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "replicaset-controller")),
 		replicaset.BurstReplicas,
 		updateCh,
+		resetCh,
 	)
 
 	if err != nil {

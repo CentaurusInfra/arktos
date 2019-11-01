@@ -34,8 +34,9 @@ import (
 var nevererrc chan error
 
 type testLW struct {
-	ListFunc  func(options metav1.ListOptions) (runtime.Object, error)
-	WatchFunc func(options metav1.ListOptions) (watch.Interface, error)
+	ListFunc   func(options metav1.ListOptions) (runtime.Object, error)
+	WatchFunc  func(options metav1.ListOptions) (watch.Interface, error)
+	UpdateFunc func(options metav1.ListOptions)
 }
 
 func (t *testLW) List(options metav1.ListOptions) (runtime.Object, error) {
@@ -44,7 +45,9 @@ func (t *testLW) List(options metav1.ListOptions) (runtime.Object, error) {
 func (t *testLW) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return t.WatchFunc(options)
 }
-
+func (t *testLW) Update(options metav1.ListOptions) {
+	t.UpdateFunc(options)
+}
 func TestCloseWatchChannelOnError(t *testing.T) {
 	r := NewReflector(&testLW{}, &v1.Pod{}, NewStore(MetaNamespaceKeyFunc), 0)
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "bar"}}

@@ -192,6 +192,9 @@ func (w lw) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return w.watch, nil
 }
 
+func (w lw) Update(options metav1.ListOptions) {
+}
+
 func TestListWatchUntil(t *testing.T) {
 	fw := watch.NewFake()
 	go func() {

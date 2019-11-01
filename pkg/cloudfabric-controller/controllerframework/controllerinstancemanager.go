@@ -18,6 +18,8 @@ package controllerframework
 
 import (
 	"fmt"
+	"strconv"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,11 +33,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"strconv"
 
 	//"k8s.io/kubernetes/pkg/cloudfabric-controller"
-	"k8s.io/kubernetes/pkg/util/metrics"
 	"sync"
+
+	"k8s.io/kubernetes/pkg/util/metrics"
 )
 
 type ControllerInstanceManager struct {

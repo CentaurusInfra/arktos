@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -394,6 +394,8 @@ func (t *testLW) List(options metav1.ListOptions) (runtime.Object, error) {
 }
 func (t *testLW) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return t.WatchFunc(options)
+}
+func (t *testLW) Update(options metav1.ListOptions) {
 }
 
 func TestReflectorForWatchCache(t *testing.T) {

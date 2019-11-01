@@ -981,6 +981,10 @@ func (lw *cacherListerWatcher) Watch(options metav1.ListOptions) (watch.Interfac
 	return lw.storage.WatchList(context.TODO(), lw.resourcePrefix, options.ResourceVersion, storage.Everything)
 }
 
+func (lw *cacherListerWatcher) Update(options metav1.ListOptions) {
+
+}
+
 // errWatcher implements watch.Interface to return a single error
 type errWatcher struct {
 	result chan watch.Event
