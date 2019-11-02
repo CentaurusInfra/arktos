@@ -3,7 +3,9 @@
 ## Feature brief
 vnic hotplug is the ability to allow admin of VM workload able to insert (plug in) or remove (plug out) vnics, while VM is alive. It does not cover adding ip alias to existing vnics, which is vnic update feature, and out of scope of vnic hotplug.
 
-In Alkaid, hotplug is only applicable to VM workloads.
+If the pod is intended to hotplug nic, its has to explicitly assign name to each nic in the initial pod spec. Otherwise, the pod won't be able to patched to request nic hotplugs.
+
+In Alkaid, hotplug is only applicable to VM workloads. Hotplug should not apply to the primary nic (_note: to de decided_)
 
 Admin expresses the intention of hotplug by adding/removing pod.spec.vnics elements.
 
@@ -26,7 +28,7 @@ spec:
         name: eth1
 ```
 
-Deleting portID: 33da18a3-1ad1-428a-90f5-9d906dc498fe would cause eth1 disappear from cni netns, the network resource be released; the corresponding nic inside vm disapper. 
+Deleting eth1/33da18a3-1ad1-428a-90f5-9d906dc498fe element would cause eth1 disappear from cni netns, the network resource be released; the corresponding nic inside vm disapper. 
 
 On the contrast, appending one more element would lead to network resource provision and a new nic appear in the vm. If DHCP is configured properly, the new nic in vm should get its ip address automatically.
 
@@ -72,7 +74,7 @@ Following are proposed as extension of CRI:
 | --- | --- | --- |
 | err | error | whether the method succeed or not |
 
-* method ListDevices
+* method ListDevices (optional?)
 
 | parameter | type | description |
 | --- | --- | --- |
@@ -83,6 +85,18 @@ Following are proposed as extension of CRI:
 | --- | --- | --- |
 | devConfig | (list) message DevConfig | detail of devices |
 | err | error | whether the method succeed or not |
+
+#### message PodSandboxNetworkStatus extension
+If runtime is to support hotplug, it should add details of nic status: []*NICStatus
+
+```go
+type NICStatus struct {
+  Name string
+  PortId string
+  State NICState //unknow, inprogress, ready, failed
+  Reason string  
+}
+```
 
 #### message DeviceConfig
 
@@ -95,7 +109,7 @@ e.g. for nic type, the config could be (see [vnic-type](https://github.com/futur
 ```json
 {
   "vpc": "vpc-demo",
-  [ 
+  "nics": [ 
     { "portid": "port123456", "name": "eth9" }
   ]
 }
