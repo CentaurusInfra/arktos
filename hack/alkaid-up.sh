@@ -1116,6 +1116,8 @@ echo "*******************************************"
 echo "Setup Alkaid components ..."
 echo ""
 
+while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
+
 cluster/kubectl.sh label node 127.0.0.1 extraRuntime=virtlet
 
 cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file hack/runtime/images.yaml

@@ -13,10 +13,6 @@ spec:
       name: virtlet
       labels:
         runtime: virtlet
-      annotations:
-          container.apparmor.security.beta.kubernetes.io/libvirt: localhost/libvirtd
-          container.apparmor.security.beta.kubernetes.io/vms: localhost/vms
-          container.apparmor.security.beta.kubernetes.io/virtlet: localhost/virtlet
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
