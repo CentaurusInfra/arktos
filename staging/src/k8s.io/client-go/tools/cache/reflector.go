@@ -405,6 +405,6 @@ func (r *Reflector) setLastSyncResourceVersion(v string) {
 	r.lastSyncResourceVersion = v
 }
 
-func (r *Reflector) ListerWatcher() ListerWatcher{
+func (r *Reflector) ListerWatcher() ListerWatcher {
 	return r.listerWatcher
 }

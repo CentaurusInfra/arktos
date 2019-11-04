@@ -71,13 +71,13 @@ func GetVirtletVMDomainID(pod *v1.Pod) (string, error) {
 }
 
 func (kl *Kubelet) DoRebootVM(pod *v1.Pod) error {
-	klog.V(4).Infof("Rebooting VM %s-%s", pod.Name, pod.Spec.VirtualMachine.Name)
-	if err := kl.containerRuntime.RebootVM(pod, pod.Spec.VirtualMachine.Name); err != nil {
-		klog.V(4).Infof("Failed Reboot VM %s-%s. with error: %v", pod.Name, pod.Spec.VirtualMachine.Name, err)
+	klog.V(4).Infof("Rebooting VM %s-%s", pod.Name, pod.Spec.Workloads()[0].Name)
+	if err := kl.containerRuntime.RebootVM(pod, pod.Spec.Workloads()[0].Name); err != nil {
+		klog.V(4).Infof("Failed Reboot VM %s-%s. with error: %v", pod.Name, pod.Spec.Workloads()[0].Name, err)
 		return err
 	}
 
-	klog.V(4).Infof("Successfully rebooted VM %s-%s", pod.Name, pod.Spec.VirtualMachine.Name)
+	klog.V(4).Infof("Successfully rebooted VM %s-%s", pod.Name, pod.Spec.Workloads()[0].Name)
 	return nil
 }
 

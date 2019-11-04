@@ -1,0 +1,8 @@
+{
+  "apiVersion": "v1",
+  "kind": "CustomAction",
+  "operation": "reboot",
+  "rebootParams": {
+    "delayInSeconds": 10
+  }
+}

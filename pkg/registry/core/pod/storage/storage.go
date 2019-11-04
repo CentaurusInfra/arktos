@@ -326,7 +326,8 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 			Status:  metav1.StatusSuccess,
 			Message: fmt.Sprintf("Created action '%s' for Pod '%s'", customAction.Operation, pod.Name),
 			Details: &metav1.StatusDetails{
-				UID: actionObj.UID,
+				Name: actionObj.Name,
+				UID:  actionObj.UID,
 			},
 		}
 	} else {

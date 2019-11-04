@@ -71,7 +71,7 @@ type ListWatch struct {
 	UpdateFunc UpdateFunc
 	// DisableChunking requests no chunking for this list watcher.
 	DisableChunking bool
-	searchOptions  metav1.ListOptions
+	searchOptions   metav1.ListOptions
 }
 
 // Getter interface knows how to access Get method from RESTClient.
