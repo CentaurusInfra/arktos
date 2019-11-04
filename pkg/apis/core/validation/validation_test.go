@@ -8870,6 +8870,52 @@ func TestValidatePodUpdate(t *testing.T) {
 			"spec: Forbidden: pod updates may not change fields",
 			"vpc-updates",
 		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vpc-update"},
+				Spec: core.PodSpec{
+					VPC: "vpc-test",
+					Nics: []core.Nic{
+						{PortId: "123456", Name: "eth0"},
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vpc-update"},
+				Spec: core.PodSpec{
+					VPC: "vpc-test",
+					Nics: []core.Nic{
+						{PortId: "123456", Name: "eth0"},
+						{PortId: "abcdef", Name: "eth1"},
+					},
+				},
+			},
+			"",
+			"vpc-delete-secondary-nic",
+		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vpc-update"},
+				Spec: core.PodSpec{
+					VPC: "vpc-test",
+					Nics: []core.Nic{
+						{PortId: "abcdef", Name: "eth1"},
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "vpc-update"},
+				Spec: core.PodSpec{
+					VPC: "vpc-test",
+					Nics: []core.Nic{
+						{PortId: "123456", Name: "eth0"},
+						{PortId: "abcdef", Name: "eth1"},
+					},
+				},
+			},
+			"spec: Forbidden: pod updates may not delete primary nic eth0",
+			"vpc-delete-primary-nic",
+		},
 	}
 
 	for _, test := range tests {

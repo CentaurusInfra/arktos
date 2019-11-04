@@ -3725,6 +3725,23 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		}
 	}
 
+	// eth0 being the primary nic; not allowed to be deleted by patch and update
+	for _, old := range oldPod.Spec.Nics {
+		if old.Name == "eth0" {
+			eth0StillExists := false
+			for _, new := range newPod.Spec.Nics {
+				if new.Name == "eth0" {
+					eth0StillExists = true
+					break
+				}
+			}
+			if !eth0StillExists {
+				allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not delete primary nic eth0\n")))
+			}
+			break
+		}
+	}
+
 	// handle updateable fields by munging those fields prior to deep equal comparison.
 	mungedPod := *newPod
 	// munge spec.containers[*].image
