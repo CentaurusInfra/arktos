@@ -401,6 +401,22 @@ func (f *FakeRuntime) RebootVM(pod *v1.Pod, vmName string) error {
 	return f.Err
 }
 
+func (f *FakeRuntime) CreateSnapshot(pod *v1.Pod, vmName string, snapshotID string) error {
+	f.Lock()
+	defer f.Unlock()
+
+	f.CalledFunctions = append(f.CalledFunctions, "CreateSnapshot")
+	return f.Err
+}
+
+func (f *FakeRuntime) RestoreToSnapshot(pod *v1.Pod, vmName string, snapshotID string) error {
+	f.Lock()
+	defer f.Unlock()
+
+	f.CalledFunctions = append(f.CalledFunctions, "RestoreToSnapshot")
+	return f.Err
+}
+
 type FakeContainerCommandRunner struct {
 	// what to return
 	Stdout string

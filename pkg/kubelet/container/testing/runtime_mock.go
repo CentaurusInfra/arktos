@@ -146,6 +146,14 @@ func (r *Mock) RebootVM(pod *v1.Pod, vmName string) error {
 	args := r.Called(fmt.Sprintf("%s-%s", pod.Name, vmName))
 	return args.Error(0)
 }
+func (r *Mock) CreateSnapshot(pod *v1.Pod, vmName string, snapshotID string) error {
+	args := r.Called(fmt.Sprintf("%s-%s-%s", pod.Name, vmName, snapshotID))
+	return args.Error(0)
+}
+func (r *Mock) RestoreToSnapshot(pod *v1.Pod, vmName string, snapshotID string) error {
+	args := r.Called(fmt.Sprintf("%s-%s-%s", pod.Name, vmName, snapshotID))
+	return args.Error(0)
+}
 func (r *Mock) ImageStats() (*ImageStats, error) {
 	args := r.Called()
 	return args.Get(0).(*ImageStats), args.Error(1)
