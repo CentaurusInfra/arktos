@@ -100,6 +100,9 @@ func newRESTMapper(group string, scheme *runtime.Scheme) meta.RESTMapper {
 			if rootScopedKinds[gv.WithKind(kind).GroupKind()] {
 				scope = meta.RESTScopeRoot
 			}
+			if tenantScopedKinds[gv.WithKind(kind).GroupKind()] {
+				scope = meta.RESTScopeTenant
+			}
 			mapper.Add(gv.WithKind(kind), scope)
 		}
 	}
@@ -109,6 +112,22 @@ func newRESTMapper(group string, scheme *runtime.Scheme) meta.RESTMapper {
 
 // hardcoded is good enough for the test we're running
 var rootScopedKinds = map[schema.GroupKind]bool{
+	{Group: "", Kind: "Node"}:             true,
+	{Group: "", Kind: "ComponentStatus"}:  true,
+
+	{Group: "rbac.authorization.k8s.io", Kind: "ClusterRole"}:        true,
+	{Group: "rbac.authorization.k8s.io", Kind: "ClusterRoleBinding"}: true,
+
+	{Group: "storage.k8s.io", Kind: "StorageClass"}:     true,
+
+	{Group: "apiregistration.k8s.io", Kind: "APIService"}: true,
+
+	{Group: "metrics.k8s.io", Kind: "NodeMetrics"}: true,
+
+	{Group: "wardle.k8s.io", Kind: "Fischer"}: true,
+}
+
+var tenantScopedKinds = map[schema.GroupKind]bool{
 	{Group: "admission.k8s.io", Kind: "AdmissionReview"}: true,
 
 	{Group: "admissionregistration.k8s.io", Kind: "ValidatingWebhookConfiguration"}: true,
@@ -122,10 +141,8 @@ var rootScopedKinds = map[schema.GroupKind]bool{
 
 	{Group: "certificates.k8s.io", Kind: "CertificateSigningRequest"}: true,
 
-	{Group: "", Kind: "Node"}:             true,
 	{Group: "", Kind: "Namespace"}:        true,
 	{Group: "", Kind: "PersistentVolume"}: true,
-	{Group: "", Kind: "ComponentStatus"}:  true,
 
 	{Group: "extensions", Kind: "PodSecurityPolicy"}: true,
 
@@ -133,12 +150,8 @@ var rootScopedKinds = map[schema.GroupKind]bool{
 
 	{Group: "extensions", Kind: "PodSecurityPolicy"}: true,
 
-	{Group: "rbac.authorization.k8s.io", Kind: "ClusterRole"}:        true,
-	{Group: "rbac.authorization.k8s.io", Kind: "ClusterRoleBinding"}: true,
-
 	{Group: "scheduling.k8s.io", Kind: "PriorityClass"}: true,
 
-	{Group: "storage.k8s.io", Kind: "StorageClass"}:     true,
 	{Group: "storage.k8s.io", Kind: "VolumeAttachment"}: true,
 
 	{Group: "apiextensions.k8s.io", Kind: "CustomResourceDefinition"}: true,
@@ -147,12 +160,6 @@ var rootScopedKinds = map[schema.GroupKind]bool{
 
 	{Group: "audit.k8s.io", Kind: "Event"}:  true,
 	{Group: "audit.k8s.io", Kind: "Policy"}: true,
-
-	{Group: "apiregistration.k8s.io", Kind: "APIService"}: true,
-
-	{Group: "metrics.k8s.io", Kind: "NodeMetrics"}: true,
-
-	{Group: "wardle.k8s.io", Kind: "Fischer"}: true,
 }
 
 // hardcoded is good enough for the test we're running

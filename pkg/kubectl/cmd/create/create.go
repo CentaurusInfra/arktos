@@ -447,7 +447,7 @@ func (o *CreateSubcommandOptions) Run() error {
 		if err := scheme.Scheme.Convert(obj, asUnstructured, nil); err != nil {
 			return err
 		}
-		if mapping.Scope.Name() == meta.RESTScopeNameRoot {
+		if mapping.Scope.Name() == meta.RESTScopeNameRoot || mapping.Scope.Name() == meta.RESTScopeNameTenant {
 			o.Namespace = ""
 		}
 		actualObject, err := o.DynamicClient.Resource(mapping.Resource).Namespace(o.Namespace).Create(asUnstructured, metav1.CreateOptions{})

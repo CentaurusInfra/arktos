@@ -509,16 +509,16 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1": {
-					{Name: "pods", Namespaced: true, Kind: "Pod"},
-					{Name: "services", Namespaced: true, Kind: "Service"},
-					{Name: "replicationcontrollers", Namespaced: true, Kind: "ReplicationController"},
-					{Name: "componentstatuses", Namespaced: false, Kind: "ComponentStatus"},
-					{Name: "nodes", Namespaced: false, Kind: "Node"},
-					{Name: "secrets", Namespaced: true, Kind: "Secret"},
-					{Name: "configmaps", Namespaced: true, Kind: "ConfigMap"},
-					{Name: "namespacedtype", Namespaced: true, Kind: "NamespacedType"},
-					{Name: "namespaces", Namespaced: false, Kind: "Namespace"},
-					{Name: "resourcequotas", Namespaced: true, Kind: "ResourceQuota"},
+					{Name: "pods", Namespaced: true, Tenanted: true, Kind: "Pod"},
+					{Name: "services", Namespaced: true, Tenanted: true, Kind: "Service"},
+					{Name: "replicationcontrollers", Namespaced: true, Tenanted: true, Kind: "ReplicationController"},
+					{Name: "componentstatuses", Namespaced: false, Tenanted: true, Kind: "ComponentStatus"},
+					{Name: "nodes", Namespaced: false, Tenanted: false, Kind: "Node"},
+					{Name: "secrets", Namespaced: true, Tenanted: true, Kind: "Secret"},
+					{Name: "configmaps", Namespaced: true, Tenanted: true, Kind: "ConfigMap"},
+					{Name: "namespacedtype", Namespaced: true, Tenanted: true, Kind: "NamespacedType"},
+					{Name: "namespaces", Namespaced: false, Tenanted: true, Kind: "Namespace"},
+					{Name: "resourcequotas", Namespaced: true, Tenanted: true, Kind: "ResourceQuota"},
 				},
 			},
 		},
@@ -532,8 +532,8 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1beta1": {
-					{Name: "deployments", Namespaced: true, Kind: "Deployment"},
-					{Name: "replicasets", Namespaced: true, Kind: "ReplicaSet"},
+					{Name: "deployments", Namespaced: true, Tenanted: true, Kind: "Deployment"},
+					{Name: "replicasets", Namespaced: true, Tenanted: true, Kind: "ReplicaSet"},
 				},
 			},
 		},
@@ -549,15 +549,15 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1beta1": {
-					{Name: "deployments", Namespaced: true, Kind: "Deployment"},
-					{Name: "replicasets", Namespaced: true, Kind: "ReplicaSet"},
+					{Name: "deployments", Namespaced: true, Tenanted: true, Kind: "Deployment"},
+					{Name: "replicasets", Namespaced: true, Tenanted: true, Kind: "ReplicaSet"},
 				},
 				"v1beta2": {
-					{Name: "deployments", Namespaced: true, Kind: "Deployment"},
+					{Name: "deployments", Namespaced: true, Tenanted: true, Kind: "Deployment"},
 				},
 				"v1": {
-					{Name: "deployments", Namespaced: true, Kind: "Deployment"},
-					{Name: "replicasets", Namespaced: true, Kind: "ReplicaSet"},
+					{Name: "deployments", Namespaced: true, Tenanted: true, Kind: "Deployment"},
+					{Name: "replicasets", Namespaced: true, Tenanted: true, Kind: "ReplicaSet"},
 				},
 			},
 		},
@@ -572,10 +572,10 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1beta1": {
-					{Name: "cronjobs", Namespaced: true, Kind: "CronJob"},
+					{Name: "cronjobs", Namespaced: true, Tenanted: true, Kind: "CronJob"},
 				},
 				"v1": {
-					{Name: "jobs", Namespaced: true, Kind: "Job"},
+					{Name: "jobs", Namespaced: true, Tenanted: true, Kind: "Job"},
 				},
 			},
 		},
@@ -590,10 +590,10 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1": {
-					{Name: "horizontalpodautoscalers", Namespaced: true, Kind: "HorizontalPodAutoscaler"},
+					{Name: "horizontalpodautoscalers", Namespaced: true, Tenanted: true, Kind: "HorizontalPodAutoscaler"},
 				},
 				"v2beta1": {
-					{Name: "horizontalpodautoscalers", Namespaced: true, Kind: "HorizontalPodAutoscaler"},
+					{Name: "horizontalpodautoscalers", Namespaced: true, Tenanted: true, Kind: "HorizontalPodAutoscaler"},
 				},
 			},
 		},
@@ -608,11 +608,11 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1beta1": {
-					{Name: "storageclasses", Namespaced: false, Kind: "StorageClass"},
+					{Name: "storageclasses", Namespaced: false, Tenanted: false, Kind: "StorageClass"},
 				},
 				// bogus version of a known group/version/resource to make sure kubectl falls back to generic object mode
 				"v0": {
-					{Name: "storageclasses", Namespaced: false, Kind: "StorageClass"},
+					{Name: "storageclasses", Namespaced: false, Tenanted: false, Kind: "StorageClass"},
 				},
 			},
 		},
@@ -627,10 +627,10 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1": {
-					{Name: "clusterroles", Namespaced: false, Kind: "ClusterRole"},
+					{Name: "clusterroles", Namespaced: false, Tenanted: false, Kind: "ClusterRole"},
 				},
 				"v1beta1": {
-					{Name: "clusterrolebindings", Namespaced: false, Kind: "ClusterRoleBinding"},
+					{Name: "clusterrolebindings", Namespaced: false, Tenanted: false, Kind: "ClusterRoleBinding"},
 				},
 			},
 		},
@@ -644,7 +644,7 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1": {
-					{Name: "bars", Namespaced: true, Kind: "Bar"},
+					{Name: "bars", Namespaced: true, Tenanted: true, Kind: "Bar"},
 				},
 			},
 		},
@@ -660,7 +660,7 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"v1": {
-					{Name: "widgets", Namespaced: true, Kind: "Widget"},
+					{Name: "widgets", Namespaced: true, Tenanted: true, Kind: "Widget"},
 				},
 			},
 		},
@@ -676,7 +676,7 @@ func testDynamicResources() []*restmapper.APIGroupResources {
 			},
 			VersionedResources: map[string][]metav1.APIResource{
 				"unlikelyversion": {
-					{Name: "types", SingularName: "type", Namespaced: false, Kind: "Type"},
+					{Name: "types", SingularName: "type", Namespaced: false, Tenanted: false, Kind: "Type"},
 				},
 			},
 		},
