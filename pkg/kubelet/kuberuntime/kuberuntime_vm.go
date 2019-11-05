@@ -42,6 +42,40 @@ func (m *kubeGenericRuntimeManager) RebootVM(pod *v1.Pod, vmName string) error {
 	return runtimeService.RebootVM(containerID.ID)
 }
 
+func (m *kubeGenericRuntimeManager) CreateSnapshot(pod *v1.Pod, vmName string, snapshotID string) error {
+	klog.V(4).Infof("Create snapshot %s for Pod-VM %s-%s", snapshotID, pod.Name, vmName)
+
+	runtimeService, _ := m.GetRuntimeServiceByPod(pod)
+
+	// get the containerId for the vm from pod and vm name
+	containerID, err := m.containerRefManager.GetContainerIDByRef(pod)
+	if err != nil {
+		klog.V(4).Infof("failed getting containerID. error %v", err)
+		return err
+	}
+	klog.V(4).Infof("Retrieved containerID %v for VM %s", containerID, vmName)
+
+	//use the default flag 0
+	return runtimeService.CreateSnapshot(containerID.ID, snapshotID, 0)
+}
+
+func (m *kubeGenericRuntimeManager) RestoreToSnapshot(pod *v1.Pod, vmName string, snapshotID string) error {
+	klog.V(4).Infof("Restore to snapshot %s for Pod-VM %s-%s", snapshotID, pod.Name, vmName)
+
+	runtimeService, _ := m.GetRuntimeServiceByPod(pod)
+
+	// get the containerId for the vm from pod and vm name
+	containerID, err := m.containerRefManager.GetContainerIDByRef(pod)
+	if err != nil {
+		klog.V(4).Infof("failed getting containerID. error %v", err)
+		return err
+	}
+	klog.V(4).Infof("Retrieved containerID %v for VM %s", containerID, vmName)
+
+	//use the default flag 0
+	return runtimeService.RestoreToSnapshot(containerID.ID, snapshotID, 0)
+}
+
 // VM service interface methods
 func (m *kubeGenericRuntimeManager) AttachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) error {
 	klog.V(4).Infof("Attaching NIC %v to Pod-VM %s-%s", nic, pod.Name, vmName)

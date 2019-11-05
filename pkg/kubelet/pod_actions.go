@@ -17,58 +17,12 @@ limitations under the License.
 package kubelet
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"os/exec"
-	"regexp"
 	"strings"
 
-	dockertypes "github.com/docker/docker/api/types"
-	dockerapi "github.com/docker/docker/client"
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
-
-func GetVirtletLibvirtContainer() (*dockerapi.Client, *dockertypes.Container, error) {
-	//TODO: This is OK for demo, but use CRI instead of docker direct.
-	//TODO: Don't do this everytime - store it in KL
-	dockercli, err := dockerapi.NewClientWithOpts(dockerapi.FromEnv)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	containers, err := dockercli.ContainerList(context.Background(), dockertypes.ContainerListOptions{})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	i := 0
-	found := false
-	for i = range containers {
-		if strings.Contains(strings.Join(containers[i].Names, " "), "libvirt_virtlet") {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return nil, nil, errors.New("virtlet libvirt container not found")
-	}
-
-	return dockercli, &containers[i], nil
-}
-
-func GetVirtletVMDomainID(pod *v1.Pod) (string, error) {
-	podVMContainer := pod.Status.ContainerStatuses[0]
-	re := regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}`)
-	domainVMID := re.FindStringSubmatch(podVMContainer.ContainerID)
-	if len(domainVMID) != 1 {
-		return "", errors.New(fmt.Sprintf("Could not find domain VM ID from virtlet container %s", podVMContainer.ContainerID))
-	}
-	domainID := fmt.Sprintf("virtlet-%s-%s", domainVMID[0], podVMContainer.Name)
-	return domainID, nil
-}
 
 func (kl *Kubelet) DoRebootVM(pod *v1.Pod) error {
 	klog.V(4).Infof("Rebooting VM %s-%s", pod.Name, pod.Spec.Workloads()[0].Name)
@@ -81,53 +35,26 @@ func (kl *Kubelet) DoRebootVM(pod *v1.Pod) error {
 	return nil
 }
 
-func DoSnapshotVirtletVM(pod *v1.Pod, snapshotName string) (string, error) {
-	var snapshotID string
-	if _, libvirtContainer, err := GetVirtletLibvirtContainer(); err != nil {
+func (kl *Kubelet) DoSnapshotVM(pod *v1.Pod, snapshotID string) (string, error) {
+	klog.V(4).Infof("Creating snapshot %s for VM %s-%s", snapshotID, pod.Name, pod.Spec.VirtualMachine.Name)
+	if err := kl.containerRuntime.CreateSnapshot(pod, pod.Spec.VirtualMachine.Name, snapshotID); err != nil {
+		klog.Errorf("Failed to create snapshot for VM %s-%s with error: %v", pod.Name, pod.Spec.VirtualMachine.Name, err)
 		return "", err
-	} else {
-		domainID, derr := GetVirtletVMDomainID(pod)
-		if derr != nil {
-			return "", derr
-		}
-		//TODO: Figure out how to use dockercli exec instead of os.exec
-		klog.V(4).Infof("Snapshotting virtlet VM %s", domainID)
-		cmd := "docker"
-		cmdArgs := []string{"exec", "-i", libvirtContainer.ID, "virsh", "snapshot-create-as", domainID}
-		if snapshotName != "" {
-			cmdArgs = append(cmdArgs, "--name", snapshotName)
-		}
-		out, err := exec.Command(cmd, cmdArgs...).CombinedOutput()
-		if err != nil {
-			klog.Errorf("Libvirt container command failed. Error: %+v - %+v", err, out)
-			return "", errors.New(fmt.Sprintf("Libvirt container command failed for pod %s. Error: %s - %s", pod.Name, err.Error(), out))
-		}
-		klog.V(4).Infof("Snapshot virtlet VM command output: %s", out)
-		re := regexp.MustCompile(` `)
-		snapshotID = re.Split(string(out), -1)[2]
 	}
+
+	klog.V(4).Infof("Successfully created snapshot %s for VM %s-%s", snapshotID, pod.Name, pod.Spec.VirtualMachine.Name)
 	return snapshotID, nil
 }
 
-func DoRestoreVirtletVM(pod *v1.Pod, snapshotID string) error {
-	if _, libvirtContainer, err := GetVirtletLibvirtContainer(); err != nil {
+func (kl *Kubelet) DoRestoreVM(pod *v1.Pod, snapshotID string) error {
+	klog.V(4).Infof("Restoring to snapshot %s for VM %s-%s", snapshotID, pod.Name, pod.Spec.VirtualMachine.Name)
+	if err := kl.containerRuntime.RestoreToSnapshot(pod, pod.Spec.VirtualMachine.Name, snapshotID); err != nil {
+		klog.Errorf("Failed to restore to snapshot %s for VM %s-%s with error: %v", snapshotID,
+			pod.Name, pod.Spec.VirtualMachine.Name, err)
 		return err
-	} else {
-		domainID, derr := GetVirtletVMDomainID(pod)
-		if derr != nil {
-			return derr
-		}
-		//TODO: Figure out how to use dockercli exec instead of os.exec
-		klog.V(4).Infof("Restoring virtlet VM %s to snapshot %s", domainID, snapshotID)
-		cmd := "docker"
-		cmdArgs := []string{"exec", "-i", libvirtContainer.ID, "virsh", "snapshot-revert", domainID, "--snapshotname", snapshotID}
-		out, err := exec.Command(cmd, cmdArgs...).CombinedOutput()
-		if err != nil {
-			klog.Errorf("Libvirt container command failed. Error: %+v - %+v", err, out)
-			return errors.New(fmt.Sprintf("Libvirt container command failed for pod %s. Error: %s - %s", pod.Name, err.Error(), out))
-		}
-		klog.V(4).Infof("Revert virtlet VM command output: %s", out)
 	}
+
+	klog.V(4).Infof("Successfully restored to snapshot %s for VM %s-%s", snapshotID, pod.Name, pod.Spec.VirtualMachine.Name)
 	return nil
 }
 
@@ -149,13 +76,13 @@ func (kl *Kubelet) DoPodAction(action *v1.Action, pod *v1.Pod) {
 	case string(v1.SnapshotOp):
 		// Take snapshot of (VM) Pod
 		var snapshotID string
-		if snapshotID, err = DoSnapshotVirtletVM(pod, action.Spec.PodAction.SnapshotAction.SnapshotName); err == nil {
+		if snapshotID, err = kl.DoSnapshotVM(pod, action.Spec.PodAction.SnapshotAction.SnapshotName); err == nil {
 			klog.V(4).Infof("Performed snapshot action for Pod %s", action.Spec.PodAction.PodName)
 			podActionStatus.SnapshotStatus = &v1.SnapshotStatus{SnapshotID: snapshotID}
 		}
 	case string(v1.RestoreOp):
 		// Restore (VM) Pod to specified snapshot ID
-		if err = DoRestoreVirtletVM(pod, action.Spec.PodAction.RestoreAction.SnapshotID); err == nil {
+		if err = kl.DoRestoreVM(pod, action.Spec.PodAction.RestoreAction.SnapshotID); err == nil {
 			klog.V(4).Infof("Performed restore action for Pod %s", action.Spec.PodAction.PodName)
 			podActionStatus.RestoreStatus = &v1.RestoreStatus{RestoreSuccessful: true}
 		}

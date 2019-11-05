@@ -16,6 +16,9 @@
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
+# containerd socket file path
+export CONTAINERD_SOCK_PATH="/run/containerd/containerd.sock"
+export VIRTLET_SOCK_PATH="/run/virtlet.sock"
 
 # This is required by virtlet deamonset installation
 export ALLOW_PRIVILEGED=true
@@ -152,6 +155,18 @@ fi
 # Stop right away if the build fails
 set -e
 
+# Do dudiligence to ensure containerd service and socket in a working state
+# Containerd service should be part of docker.io installation or apt-get install containerd for Ubuntu OS
+if ! systemctl is-active --quiet containerd; then
+  echo "Containerd is required for Alkid"
+  exit 1
+fi
+
+if [[ -f "${CONTAINERD_SOCK_PATH}" ]]; then
+  echo "Containerd socket file check failed. Please check containerd socket file path"
+  exit 1
+fi
+
 function install_cni {
   echo "Ensuring minimum cni plugin installation..."
   local cni_bin_dir="/opt/cni/bin/"
@@ -282,8 +297,8 @@ LOG_LEVEL=${LOG_LEVEL:-3}
 # Use to increase verbosity on particular files, e.g. LOG_SPEC=token_controller*=5,other_controller*=4
 LOG_SPEC=${LOG_SPEC:-""}
 LOG_DIR=${LOG_DIR:-"/tmp"}
-CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-"docker"}
-CONTAINER_RUNTIME_ENDPOINT=${CONTAINER_RUNTIME_ENDPOINT:-""}
+CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-"remote"}
+CONTAINER_RUNTIME_ENDPOINT=${CONTAINER_RUNTIME_ENDPOINT:-"containerRuntime,container,${CONTAINERD_SOCK_PATH};vmRuntime,vm,${VIRTLET_SOCK_PATH}"}
 RUNTIME_REQUEST_TIMEOUT=${RUNTIME_REQUEST_TIMEOUT:-"2m"}
 IMAGE_SERVICE_ENDPOINT=${IMAGE_SERVICE_ENDPOINT:-""}
 CHAOS_CHANCE=${CHAOS_CHANCE:-0.0}

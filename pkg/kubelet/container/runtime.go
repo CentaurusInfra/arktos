@@ -125,6 +125,8 @@ type Runtime interface {
 type VmService interface {
 	// Reboot VM, this will relay to virDomainReboot in libvirt
 	RebootVM(*v1.Pod, string) error
+	CreateSnapshot(*v1.Pod, string, string) error
+	RestoreToSnapshot(*v1.Pod, string, string) error
 	VmDeviceManagerService
 }
 
