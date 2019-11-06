@@ -99,6 +99,9 @@ AUTHORIZATION_MODE=${AUTHORIZATION_MODE:-"Node,RBAC"}
 KUBECONFIG_TOKEN=${KUBECONFIG_TOKEN:-""}
 AUTH_ARGS=${AUTH_ARGS:-""}
 
+# cloud fabric controller manager config
+WORKLOAD_CONTROLLER_CONFIG_PATH=${WORKLOAD_CONTROLLER_CONFIG_PATH:-"/var/run/kubernetes/controllerconfig.json"}
+
 # Install a default storage class (enabled by default)
 DEFAULT_STORAGE_CLASS=${KUBE_DEFAULT_STORAGE_CLASS:-true}
 
@@ -278,7 +281,7 @@ do
 done
 
 if [ "x${GO_OUT}" == "x" ]; then
-    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube"
+    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
 else
     echo "skipped the build."
 fi
@@ -307,6 +310,7 @@ LOG_SPEC=${LOG_SPEC:-""}
 LOG_DIR=${LOG_DIR:-"/tmp"}
 CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-"remote"}
 CONTAINER_RUNTIME_ENDPOINT=${CONTAINER_RUNTIME_ENDPOINT:-"containerRuntime,container,${CONTAINERD_SOCK_PATH};vmRuntime,vm,${VIRTLET_SOCK_PATH}"}
+
 RUNTIME_REQUEST_TIMEOUT=${RUNTIME_REQUEST_TIMEOUT:-"2m"}
 IMAGE_SERVICE_ENDPOINT=${IMAGE_SERVICE_ENDPOINT:-""}
 CHAOS_CHANCE=${CHAOS_CHANCE:-0.0}
@@ -435,6 +439,11 @@ cleanup()
   [[ -n "${CTLRMGR_PID-}" ]] && mapfile -t CTLRMGR_PIDS < <(pgrep -P "${CTLRMGR_PID}" ; ps -o pid= -p "${CTLRMGR_PID}")
   [[ -n "${CTLRMGR_PIDS-}" ]] && sudo kill "${CTLRMGR_PIDS[@]}" 2>/dev/null
 
+  # Check if the workload-controller-manager is still running
+  [[ -n "${WORKLOAD_CTLRMGR_PID-}" ]] && mapfile -t WORKLOAD_CTLRMGR_PIDS < <(pgrep -P "${WORKLOAD_CTLRMGR_PID}" ; ps -o pid= -p "${WORKLOAD_CTLRMGR_PID}")
+  [[ -n "${WORKLOAD_CTLRMGR_PIDS-}" ]] && sudo kill "${WORKLOAD_CTLRMGR_PIDS[@]}" 2>/dev/null
+
+
   # Check if the kubelet is still running
   [[ -n "${KUBELET_PID-}" ]] && mapfile -t KUBELET_PIDS < <(pgrep -P "${KUBELET_PID}" ; ps -o pid= -p "${KUBELET_PID}")
   [[ -n "${KUBELET_PIDS-}" ]] && sudo kill "${KUBELET_PIDS[@]}" 2>/dev/null
@@ -466,6 +475,11 @@ function healthcheck {
   if [[ -n "${CTLRMGR_PID-}" ]] && ! sudo kill -0 "${CTLRMGR_PID}" 2>/dev/null; then
     warning_log "kube-controller-manager terminated unexpectedly, see ${CTLRMGR_LOG}"
     CTLRMGR_PID=
+  fi
+
+  if [[ -n "${WORKLOAD_CTLRMGR_PID-}" ]] && ! sudo kill -0 "${WORKLOAD_CTLRMGR_PID}" 2>/dev/null; then
+    warning_log "workload-controller-manager terminated unexpectedly, see ${WORKLOAD_CONTROLLER_LOG}"
+    WORKLOAD_CTLRMGR_PID=
   fi
 
   if [[ -n "${KUBELET_PID-}" ]] && ! sudo kill -0 "${KUBELET_PID}" 2>/dev/null; then
@@ -538,6 +552,7 @@ function generate_certs {
 
     # Create client certs signed with client-ca, given id, given CN and a number of groups
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' controller system:kube-controller-manager
+    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' workload-controller system:workload-controller-manager
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' scheduler  system:kube-scheduler
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' admin system:admin system:masters
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-apiserver kube-apiserver
@@ -682,6 +697,7 @@ EOF
     ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" controller
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" scheduler
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" workload-controller
 
     if [[ -z "${AUTH_ARGS}" ]]; then
         AUTH_ARGS="--client-key=${CERT_DIR}/client-admin.key --client-certificate=${CERT_DIR}/client-admin.crt"
@@ -695,6 +711,9 @@ EOF
     ${KUBECTL} config set-cluster local-up-cluster --kubeconfig="${CERT_DIR}/admin-kube-aggregator.kubeconfig" --server="https://${API_HOST_IP}:31090"
     echo "use 'kubectl --kubeconfig=${CERT_DIR}/admin-kube-aggregator.kubeconfig' to use the aggregated API server"
 
+    # Copy workload controller manager config to run path
+    ${CONTROLPLANE_SUDO} cp "cmd/workload-controller-manager/config/controllerconfig.json" "${CERT_DIR}/controllerconfig.json"
+    ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/controllerconfig.json"
 }
 
 function start_controller_manager {
@@ -730,6 +749,17 @@ function start_controller_manager {
       --cert-dir="${CERT_DIR}" \
       --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
     CTLRMGR_PID=$!
+}
+
+function start_workload_controller_manager {
+    controller_config_arg=("--controllerconfig=${WORKLOAD_CONTROLLER_CONFIG_PATH}")
+
+    WORKLOAD_CONTROLLER_LOG=${LOG_DIR}/workload-controller-manager.log
+    ${CONTROLPLANE_SUDO} "${GO_OUT}/workload-controller-manager" \
+      --v="${LOG_LEVEL}" \
+      --kubeconfig "${CERT_DIR}"/workload-controller.kubeconfig \
+      "${controller_config_arg[@]}" >"${WORKLOAD_CONTROLLER_LOG}" 2>&1 &
+    WORKLOAD_CTLRMGR_PID=$!
 }
 
 function start_cloud_controller_manager {
@@ -990,6 +1020,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
 Logs:
   ${APISERVER_LOG:-}
   ${CTLRMGR_LOG:-}
+  ${WORKLOAD_CONTROLLER_LOG:-}
   ${CLOUD_CTLRMGR_LOG:-}
   ${PROXY_LOG:-}
   ${SCHEDULER_LOG:-}
@@ -1036,7 +1067,7 @@ EOF
 fi
 }
 
-# install etcd if ncessary
+# install etcd if necessary
 if ! [[ $(which etcd) ]]; then
   if ! [ -f "${KUBE_ROOT}/third_party/etcd/etcd" ]; then
      echo "cannot find etcd locally. will install one."
@@ -1095,7 +1126,15 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   start_etcd
   set_service_accounts
   start_apiserver
+
+  echo "Applying workload controller manager cluster roles and role bindings now!"
+  # If there are other resources ready to sync thru workload-controller-mananger, please add them to the following clusterrole file
+  cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrole.yaml
+
+  cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
+
   start_controller_manager
+  start_workload_controller_manager
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
   fi

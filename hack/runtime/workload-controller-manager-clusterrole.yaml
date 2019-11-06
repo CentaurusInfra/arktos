@@ -1,0 +1,9 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  namespace: kube-system
+  name: workload-controller-manager-role
+rules:
+- apiGroups: ["", "apps"]
+  resources: ["controllerinstances","events",  "replicasets", "replicasets/status", "pods"]
+  verbs: ["*"]
