@@ -167,6 +167,12 @@ if [[ -f "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
+# Stop AppArmo service before we have scripts to configure it properly
+if systemctl is-active --quiet apparmor; then
+  echo "Stop Apparmor service"
+  sudo systemctl stop apparmor
+fi
+
 function install_cni {
   echo "Ensuring minimum cni plugin installation..."
   local cni_bin_dir="/opt/cni/bin/"
@@ -193,7 +199,9 @@ function install_cni {
   else
     echo "generating cni conf file..."
     local backup_dir="$(dirname ${cni_conf_dir})/$(basename ${cni_conf_dir})_"$(date -d "today" +"%Y%m%d%H%M")
-    sudo mv ${cni_conf_dir} ${backup_dir}
+    if [[ -d "${cni_conf_dir}" ]]; then
+      sudo mv ${cni_conf_dir} ${backup_dir}
+    fi
     sudo mkdir -p ${cni_conf_dir}
     sudo bash -c "cat <<'EOF' > ${cni_conf_file}
 {
@@ -1137,7 +1145,7 @@ cluster/kubectl.sh label node 127.0.0.1 extraRuntime=virtlet
 
 cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file hack/runtime/images.yaml
 
-cluster/kubectl.sh create -f hack/runtime/virtlet-ds.yaml
+cluster/kubectl.sh create -f hack/runtime/vmruntime.yaml
 
 cluster/kubectl.sh get ds --namespace kube-system
 
