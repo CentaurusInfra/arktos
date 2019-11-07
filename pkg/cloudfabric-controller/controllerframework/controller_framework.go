@@ -71,6 +71,8 @@ type ControllerBase struct {
 	mux                                      sync.Mutex
 	unlockControllerInstanceHander           func(local controllerInstanceLocal) error
 	ResetCh                                  chan interface{}
+
+	resetFilterHandler func(newLowerBound, newUpperbound int64)
 }
 
 var (
@@ -113,6 +115,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 	controller.controllerKey = controller.generateKey()
 	controller.controllerName = generateControllerName()
 	controller.unlockControllerInstanceHander = controller.unlockControllerInstance
+	controller.resetFilterHandler = controller.resetFilter
 
 	// First controller instance. No need to wait for others
 	if len(controller.sortedControllerInstancesLocal) == 0 {
@@ -286,15 +289,8 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 		return
 	}
 
-	defer func() {
-		go func() {
-			//TODO check the logic of selfUpdated
-			if isUpdated {
-				klog.Infof("The new range %+v is going to send", []int64{newLowerBound, newUpperbound})
-				c.ResetCh <- []int64{newLowerBound, newUpperbound}
-			}
-		}()
-	}()
+	isSelfRangeUpdated := false
+
 	if isUpdated {
 		defer func() {
 			c.curPos = newPos
@@ -303,6 +299,10 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 
 			if isSelfUpdated {
 				c.controllerKey = c.sortedControllerInstancesLocal[c.curPos].controllerKey
+			}
+
+			if isSelfRangeUpdated {
+				c.resetFilterHandler(newLowerBound, newUpperbound)
 			}
 		}()
 	}
@@ -313,6 +313,10 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 			currentControllerInstance = sortedNewControllerInstancesLocal[newPos]
 		} else {
 			currentControllerInstance = c.sortedControllerInstancesLocal[c.curPos]
+
+			if currentControllerInstance.lowerboundKey != newLowerBound || currentControllerInstance.controllerKey != newUpperbound {
+				isSelfRangeUpdated = true
+			}
 		}
 
 		message := fmt.Sprintf("Controller %s instance %s", c.controllerType, c.controllerName)
@@ -395,6 +399,13 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 	c.tryUnlockControllerInstance(sortedNewControllerInstancesLocal, newPos)
 
 	return
+}
+
+func (c *ControllerBase) resetFilter(newLowerBound, newUpperbound int64) {
+	go func() {
+		klog.Infof("The new range %+v is going to send. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
+		c.ResetCh <- []int64{newLowerBound, newUpperbound}
+	}()
 }
 
 func (c *ControllerBase) tryUnlockControllerInstance(sortedControllerInstances []controllerInstanceLocal, pos int) {

@@ -432,15 +432,17 @@ func TestWatchControllers(t *testing.T) {
 	client.PrependWatchReactor("replicasets", core.DefaultWatchReactor(fakeWatch, nil))
 	stopCh := make(chan struct{})
 	resetCh := make(chan interface{})
-	updatechan := make(chan string)
+	updateCh := make(chan string)
 	defer close(stopCh)
+	defer close(updateCh)
+	defer close(resetCh)
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	manager := NewReplicaSetController(
 		informers.Apps().V1().ReplicaSets(),
 		informers.Core().V1().Pods(),
 		client,
 		BurstReplicas,
-		updatechan,
+		updateCh,
 		resetCh,
 	)
 	informers.Start(stopCh)
