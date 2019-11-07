@@ -26,7 +26,13 @@ import (
 	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/klog"
 )
+
+func mockResetHander(newLowerBound, newUpperbound int64) {
+	klog.Infof("Mocked sent reset message to channel")
+	return
+}
 
 func createControllerInstanceBaseAndCIM(t *testing.T, client clientset.Interface, cim *ControllerInstanceManager, controllerType string, stopCh chan struct{},
 	updateCh chan string, resetCh chan interface{}) (*ControllerBase, *ControllerInstanceManager) {
@@ -38,6 +44,7 @@ func createControllerInstanceBaseAndCIM(t *testing.T, client clientset.Interface
 
 	newControllerInstance1, err := NewControllerBase(controllerType, client, updateCh, resetCh)
 	newControllerInstance1.unlockControllerInstanceHander = mockUnlockcontrollerInstanceHandler
+	newControllerInstance1.resetFilterHandler = mockResetHander
 	cim.addControllerInstance(convertControllerBaseToControllerInstance(newControllerInstance1))
 
 	assert.Nil(t, err)
@@ -79,6 +86,8 @@ func TestGetControllerInstanceManager(t *testing.T) {
 	updateCh := make(chan string)
 	cim = NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, updateCh)
 	assert.NotNil(t, cim)
+
+	checkInstanceHandler = mockCheckInstanceHander
 }
 
 func TestGenerateKey(t *testing.T) {
@@ -88,6 +97,7 @@ func TestGenerateKey(t *testing.T) {
 	resetCh := make(chan interface{})
 	defer close(stopCh)
 	defer close(updateCh)
+	defer close(resetCh)
 
 	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, "foo", stopCh, updateCh, resetCh)
 
@@ -115,6 +125,7 @@ func TestConsolidateControllerInstances_Sort(t *testing.T) {
 	resetCh := make(chan interface{})
 	defer close(stopCh)
 	defer close(updateCh)
+	defer close(resetCh)
 
 	// 2nd controller instance will share same workload space with 1st one
 	controllerType := "foo"
@@ -175,6 +186,7 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	resetCh := make(chan interface{})
 	defer close(stopCh)
 	defer close(updateCh)
+	defer close(resetCh)
 
 	controllerType := "foo"
 	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
@@ -300,6 +312,7 @@ func TestGetMaxInterval(t *testing.T) {
 	resetCh := make(chan interface{})
 	defer close(stopCh)
 	defer close(updateCh)
+	defer close(resetCh)
 
 	controllerType := "foo"
 	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
@@ -366,6 +379,7 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	resetCh := make(chan interface{})
 	defer close(stopCh)
 	defer close(updateCh)
+	defer close(resetCh)
 
 	// 1st controller instance
 	controllerType1 := "foo"
@@ -377,6 +391,7 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	resetCh2 := make(chan interface{})
 	defer close(stopCh2)
 	defer close(updateCh2)
+	defer close(resetCh2)
 
 	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)
@@ -435,6 +450,7 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	resetCh3 := make(chan interface{})
 	defer close(stopCh3)
 	defer close(updateCh3)
+	defer close(resetCh3)
 
 	controllerInstanceBaseFoo3, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh3, updateCh3, resetCh3)
 	assert.NotNil(t, controllerInstanceBaseFoo3)
@@ -546,6 +562,7 @@ func TestControllerInstanceLifeCycle2(t *testing.T) {
 	resetCh := make(chan interface{})
 	defer close(stopCh)
 	defer close(updateCh)
+	defer close(resetCh)
 
 	// create instance A
 	controllerType1 := "foo"
@@ -558,6 +575,7 @@ func TestControllerInstanceLifeCycle2(t *testing.T) {
 	resetCh2 := make(chan interface{})
 	defer close(stopCh2)
 	defer close(updateCh2)
+	defer close(resetCh2)
 
 	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)

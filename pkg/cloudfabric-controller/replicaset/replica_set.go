@@ -107,8 +107,6 @@ type ReplicaSetController struct {
 
 	// Controllers that need to be synced
 	queue workqueue.RateLimitingInterface
-
-	resetCh chan interface{}
 }
 
 // NewReplicaSetController configures a replica set controller with the specified event recorder
@@ -150,7 +148,6 @@ func NewBaseController(rsInformer appsinformers.ReplicaSetInformer, podInformer 
 		burstReplicas:    burstReplicas,
 		expectations:     controller.NewUIDTrackingControllerExpectations(controller.NewControllerExpectations()),
 		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), queueName),
-		resetCh:          resetCh,
 	}
 
 	rsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

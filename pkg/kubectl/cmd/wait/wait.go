@@ -291,7 +291,7 @@ func IsDeleted(info *resource.Info, o *WaitOptions) (runtime.Object, bool, error
 		watchOptions := metav1.ListOptions{}
 		watchOptions.FieldSelector = nameSelector
 		watchOptions.ResourceVersion = gottenObjList.GetResourceVersion()
-		objWatch, err := o.DynamicClient.Resource(info.Mapping.Resource).Namespace(info.Namespace).Watch(watchOptions)
+		objWatch, err := o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).Watch(watchOptions)
 		if err != nil {
 			return gottenObj, false, err
 		}
@@ -363,7 +363,7 @@ func (w ConditionalWait) IsConditionMet(info *resource.Info, o *WaitOptions) (ru
 
 		var gottenObj *unstructured.Unstructured
 		// List with a name field selector to get the current resourceVersion to watch from (not the object's resourceVersion)
-		gottenObjList, err := o.DynamicClient.Resource(info.Mapping.Resource).Namespace(info.Namespace).List(metav1.ListOptions{FieldSelector: nameSelector})
+		gottenObjList, err := o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).List(metav1.ListOptions{FieldSelector: nameSelector})
 
 		resourceVersion := ""
 		switch {
@@ -386,7 +386,7 @@ func (w ConditionalWait) IsConditionMet(info *resource.Info, o *WaitOptions) (ru
 		watchOptions := metav1.ListOptions{}
 		watchOptions.FieldSelector = nameSelector
 		watchOptions.ResourceVersion = resourceVersion
-		objWatch, err := o.DynamicClient.Resource(info.Mapping.Resource).Namespace(info.Namespace).Watch(watchOptions)
+		objWatch, err := o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).Watch(watchOptions)
 		if err != nil {
 			return gottenObj, false, err
 		}
