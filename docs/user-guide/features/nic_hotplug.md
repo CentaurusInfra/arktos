@@ -59,3 +59,17 @@ Inside of vm instance, run following commands to verify that the secondary nic i
 netstat -i
 ip address
 ```
+
+## Plug out the secondary nic
+Following yaml file, denoted as patch-delete-eth1.yaml, identifies eth1 to be plug out:
+```yaml
+spec:
+  nics:
+    - $patch: delete
+      name: "eth1"
+```
+
+Run following command to request eth1 plugout:
+```bash
+kubectl patch pod nginx-pod -p "$(cat patch-delete-eth1.yaml)"
+```
