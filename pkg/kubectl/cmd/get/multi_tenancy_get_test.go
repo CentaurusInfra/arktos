@@ -171,8 +171,8 @@ func TestGetObjectsWithMultiTenancy(t *testing.T) {
 	cmd.SetOutput(buf)
 	cmd.Run(cmd, []string{"pods", "foo"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -197,8 +197,8 @@ func TestGetObjectsShowKindWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("show-kind", "true")
 	cmd.Run(cmd, []string{"pods", "foo"})
 
-	expected := `NAME      READY   STATUS   RESTARTS   AGE
-pod/foo   0/0              0          <unknown>
+	expected := `NAME      HASHKEY   READY   STATUS   RESTARTS   AGE
+pod/foo   0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -249,9 +249,9 @@ func TestGetMultipleResourceTypesShowKindsWithMultiTenancy(t *testing.T) {
 	cmd.SetOutput(buf)
 	cmd.Run(cmd, []string{"all"})
 
-	expected := `NAME      READY   STATUS   RESTARTS   AGE
-pod/foo   0/0              0          <unknown>
-pod/bar   0/0              0          <unknown>
+	expected := `NAME      HASHKEY   READY   STATUS   RESTARTS   AGE
+pod/foo   0         0/0              0          <unknown>
+pod/bar   0         0/0              0          <unknown>
 NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 `
@@ -278,8 +278,8 @@ func TestGetObjectsShowLabelsWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("show-labels", "true")
 	cmd.Run(cmd, []string{"pods", "foo"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE         LABELS
-foo    0/0              0          <unknown>   <none>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE         LABELS
+foo    0         0/0              0          <unknown>   <none>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -427,10 +427,10 @@ func TestGetSortedObjectsWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("sort-by", ".metadata.name")
 	cmd.Run(cmd, []string{"pods"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-a      0/0              0          <unknown>
-b      0/0              0          <unknown>
-c      0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+a      0         0/0              0          <unknown>
+b      0         0/0              0          <unknown>
+c      0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -696,8 +696,8 @@ func TestGetObjectsIdentifiedByFileWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("filename", "../../../../test/e2e/testing-manifests/statefulset/cassandra/controller.yaml")
 	cmd.Run(cmd, []string{})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -721,9 +721,9 @@ func TestGetListObjectsWithMultiTenancy(t *testing.T) {
 	cmd.SetOutput(buf)
 	cmd.Run(cmd, []string{"pods"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
-bar    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    0         0/0              0          <unknown>
+bar    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -846,9 +846,9 @@ func TestGetMultipleTypeObjectsWithMultiTenancy(t *testing.T) {
 	cmd.SetOutput(buf)
 	cmd.Run(cmd, []string{"pods,services"})
 
-	expected := `NAME      READY   STATUS   RESTARTS   AGE
-pod/foo   0/0              0          <unknown>
-pod/bar   0/0              0          <unknown>
+	expected := `NAME      HASHKEY   READY   STATUS   RESTARTS   AGE
+pod/foo   0         0/0              0          <unknown>
+pod/bar   0         0/0              0          <unknown>
 NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 `
@@ -991,9 +991,9 @@ func TestGetMultipleTypeObjectsWithLabelSelectorWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("selector", "a=b")
 	cmd.Run(cmd, []string{"pods,services"})
 
-	expected := `NAME      READY   STATUS   RESTARTS   AGE
-pod/foo   0/0              0          <unknown>
-pod/bar   0/0              0          <unknown>
+	expected := `NAME      HASHKEY   READY   STATUS   RESTARTS   AGE
+pod/foo   0         0/0              0          <unknown>
+pod/bar   0         0/0              0          <unknown>
 NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 `
@@ -1034,9 +1034,9 @@ func TestGetMultipleTypeObjectsWithFieldSelectorWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("field-selector", "a=b")
 	cmd.Run(cmd, []string{"pods,services"})
 
-	expected := `NAME      READY   STATUS   RESTARTS   AGE
-pod/foo   0/0              0          <unknown>
-pod/bar   0/0              0          <unknown>
+	expected := `NAME      HASHKEY   READY   STATUS   RESTARTS   AGE
+pod/foo   0         0/0              0          <unknown>
+pod/bar   0         0/0              0          <unknown>
 NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 service/baz   ClusterIP   <none>       <none>        <none>    <unknown>
 `
@@ -1240,11 +1240,11 @@ func TestWatchLabelSelectorWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("selector", "a=b")
 	cmd.Run(cmd, []string{"pods"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-bar    0/0              0          <unknown>
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+bar    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -1291,11 +1291,11 @@ func TestWatchFieldSelectorWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("field-selector", "a=b")
 	cmd.Run(cmd, []string{"pods"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-bar    0/0              0          <unknown>
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+bar    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -1335,10 +1335,10 @@ func TestWatchResourceWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("watch", "true")
 	cmd.Run(cmd, []string{"pods", "foo"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -1486,10 +1486,10 @@ func TestWatchResourceIdentifiedByFileWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("filename", "../../../../test/e2e/testing-manifests/statefulset/cassandra/controller.yaml")
 	cmd.Run(cmd, []string{})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -1529,9 +1529,9 @@ func TestWatchOnlyResourceWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("watch-only", "true")
 	cmd.Run(cmd, []string{"pods", "foo"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -1574,9 +1574,9 @@ func TestWatchOnlyListWithMultiTenancy(t *testing.T) {
 	cmd.Flags().Set("watch-only", "true")
 	cmd.Run(cmd, []string{"pods"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
-foo    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    0         0/0              0          <unknown>
+foo    0         0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)
@@ -1624,9 +1624,9 @@ func TestGetMultipleTypeObjectsWithLabelRangeSelectorWithMultiTenancy(t *testing
 	cmd.Flags().Set("selector", "a='{gt:10,lt:50}'")
 	cmd.Run(cmd, []string{"pods"})
 
-	expected := `NAME   READY   STATUS   RESTARTS   AGE
-foo    0/0              0          <unknown>
-bar    0/0              0          <unknown>
+	expected := `NAME   HASHKEY   READY   STATUS   RESTARTS   AGE
+foo    10        0/0              0          <unknown>
+bar    30        0/0              0          <unknown>
 `
 	if e, a := expected, buf.String(); e != a {
 		t.Errorf("expected\n%v\ngot\n%v", e, a)

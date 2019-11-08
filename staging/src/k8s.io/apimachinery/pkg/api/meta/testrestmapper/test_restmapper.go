@@ -112,13 +112,13 @@ func newRESTMapper(group string, scheme *runtime.Scheme) meta.RESTMapper {
 
 // hardcoded is good enough for the test we're running
 var rootScopedKinds = map[schema.GroupKind]bool{
-	{Group: "", Kind: "Node"}:             true,
-	{Group: "", Kind: "ComponentStatus"}:  true,
+	{Group: "", Kind: "Node"}:            true,
+	{Group: "", Kind: "ComponentStatus"}: true,
 
 	{Group: "rbac.authorization.k8s.io", Kind: "ClusterRole"}:        true,
 	{Group: "rbac.authorization.k8s.io", Kind: "ClusterRoleBinding"}: true,
 
-	{Group: "storage.k8s.io", Kind: "StorageClass"}:     true,
+	{Group: "storage.k8s.io", Kind: "StorageClass"}: true,
 
 	{Group: "apiregistration.k8s.io", Kind: "APIService"}: true,
 

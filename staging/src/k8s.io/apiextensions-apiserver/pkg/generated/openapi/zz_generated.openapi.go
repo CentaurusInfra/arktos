@@ -2063,10 +2063,11 @@ func schema_pkg_apis_meta_v1_ObjectMeta(ref common.ReferenceCallback) common.Ope
 							Format:      "",
 						},
 					},
-					"hashkey": {
+					"hashKey": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
+							Description: "HashKey is used to distribute workload. It is typically generated automatically by the server on successful creation of a resource and is not allowed to change on PUT operations.\n\nPopulated by the system. Read-only.",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 					"resourceVersion": {
@@ -2239,10 +2240,11 @@ func schema_pkg_apis_meta_v1_OwnerReference(ref common.ReferenceCallback) common
 							Format:      "",
 						},
 					},
-					"hashkey": {
+					"hashKey": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
+							Description: "Hashkey of the referent.",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 					"controller": {
@@ -2260,7 +2262,7 @@ func schema_pkg_apis_meta_v1_OwnerReference(ref common.ReferenceCallback) common
 						},
 					},
 				},
-				Required: []string{"apiVersion", "kind", "name", "uid", "hashkey"},
+				Required: []string{"apiVersion", "kind", "name", "uid", "hashKey"},
 			},
 		},
 	}

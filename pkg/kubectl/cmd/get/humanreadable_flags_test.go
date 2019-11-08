@@ -56,38 +56,38 @@ func TestHumanReadablePrinterSupportsExpectedOptions(t *testing.T) {
 	}{
 		{
 			name:           "empty output format matches a humanreadable printer",
-			expectedOutput: "NAME\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\nfoo\\ +0/0\\ +0\\ +<unknown>\n",
+			expectedOutput: "NAME\\ +HASHKEY\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\nfoo\\ +0\\ +0/0\\ +0\\ +<unknown>\n",
 		},
 		{
 			name:           "\"wide\" output format prints",
 			outputFormat:   "wide",
-			expectedOutput: "NAME\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\\ +IP\\ +NODE\\ +NOMINATED NODE\\ +READINESS GATES\nfoo\\ +0/0\\ +0\\ +<unknown>\\ +<none>\\ +<none>\\ +<none>\\ +<none>\n",
+			expectedOutput: "NAME\\ +HASHKEY\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\\ +IP\\ +NODE\\ +NOMINATED NODE\\ +READINESS GATES\nfoo\\ +0\\ +0/0\\ +0\\ +<unknown>\\ +<none>\\ +<none>\\ +<none>\\ +<none>\n",
 		},
 		{
 			name:           "no-headers prints output with no headers",
 			noHeaders:      true,
-			expectedOutput: "foo\\ +0/0\\ +0\\ +<unknown>\n",
+			expectedOutput: "foo\\ +0\\ +0/0\\ +0\\ +<unknown>\n",
 		},
 		{
 			name:           "no-headers and a \"wide\" output format prints output with no headers and additional columns",
 			outputFormat:   "wide",
 			noHeaders:      true,
-			expectedOutput: "foo\\ +0/0\\ +0\\ +<unknown>\\ +<none>\\ +<none>\\ +<none>\\ +<none>\n",
+			expectedOutput: "foo\\ +0\\ +0/0\\ +0\\ +<unknown>\\ +<none>\\ +<none>\\ +<none>\\ +<none>\n",
 		},
 		{
 			name:           "show-kind displays the resource's kind, even when printing a single type of resource",
 			showKind:       true,
-			expectedOutput: "NAME\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\npod/foo\\ +0/0\\ +0\\ +<unknown>\n",
+			expectedOutput: "NAME\\ +HASHKEY\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\npod/foo\\ +0\\ +0/0\\ +0\\ +<unknown>\n",
 		},
 		{
 			name:           "label-columns prints specified label values in new column",
 			columnLabels:   []string{"l1"},
-			expectedOutput: "NAME\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\\ +L1\nfoo\\ +0/0\\ +0\\ +<unknown>\\ +value\n",
+			expectedOutput: "NAME\\ +HASHKEY\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\\ +L1\nfoo\\ +0\\ +0/0\\ +0\\ +<unknown>\\ +value\n",
 		},
 		{
 			name:           "withNamespace displays an additional NAMESPACE column",
 			withNamespace:  true,
-			expectedOutput: "NAMESPACE\\ +NAME\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\n\\ +foo\\ +0/0\\ +0\\ +<unknown>\n",
+			expectedOutput: "NAMESPACE\\ +NAME\\ +HASHKEY\\ +READY\\ +STATUS\\ +RESTARTS\\ +AGE\n\\ +foo\\ +0\\ +0/0\\ +0\\ +<unknown>\n",
 		},
 		{
 			name:          "no printer is matched on an invalid outputFormat",

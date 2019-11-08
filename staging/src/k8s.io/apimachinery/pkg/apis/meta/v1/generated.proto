@@ -605,6 +605,12 @@ message ObjectMeta {
   // +optional
   optional string uid = 5;
 
+  // HashKey is used to distribute workload. It is typically generated automatically by the server
+  // on successful creation of a resource and is not allowed to change on PUT operations.
+  //
+  // Populated by the system.
+  // Read-only.
+  // +optional
   optional int64 hashKey = 19;
 
   // An opaque value that represents the internal version of this object that can
@@ -747,6 +753,7 @@ message OwnerReference {
   // More info: http://kubernetes.io/docs/user-guide/identifiers#uids
   optional string uid = 4;
 
+  // Hashkey of the referent.
   optional int64 hashKey = 8;
 
   // If true, this reference points to the managing controller.
