@@ -171,7 +171,13 @@ type ObjectMeta struct {
 	// +optional
 	UID types.UID `json:"uid,omitempty" protobuf:"bytes,5,opt,name=uid,casttype=k8s.io/kubernetes/pkg/types.UID"`
 
-	HashKey int64 `json:"hashkey,omitempty" protobuf:"varint,19,opt,name=hashKey"`
+	// HashKey is used to distribute workload. It is typically generated automatically by the server
+	// on successful creation of a resource and is not allowed to change on PUT operations.
+	//
+	// Populated by the system.
+	// Read-only.
+	// +optional
+	HashKey int64 `json:"hashKey,omitempty" protobuf:"varint,19,opt,name=hashKey"`
 
 	// An opaque value that represents the internal version of this object that can
 	// be used by clients to determine when objects have changed. May be used for optimistic
@@ -354,7 +360,8 @@ type OwnerReference struct {
 	// More info: http://kubernetes.io/docs/user-guide/identifiers#uids
 	UID types.UID `json:"uid" protobuf:"bytes,4,opt,name=uid,casttype=k8s.io/apimachinery/pkg/types.UID"`
 
-	HashKey int64 `json:"hashkey" protobuf:"varint,8,opt,name=hashKey"`
+	// Hashkey of the referent.
+	HashKey int64 `json:"hashKey" protobuf:"varint,8,opt,name=hashKey"`
 
 	// If true, this reference points to the managing controller.
 	// +optional
