@@ -165,7 +165,7 @@ if ! systemctl is-active --quiet containerd; then
   exit 1
 fi
 
-if [[ -f "${CONTAINERD_SOCK_PATH}" ]]; then
+if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   echo "Containerd socket file check failed. Please check containerd socket file path"
   exit 1
 fi

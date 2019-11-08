@@ -1434,11 +1434,13 @@ func (m *kubeGenericRuntimeManager) killPodWithSyncResult(pod *v1.Pod, runningPo
 		if err != nil {
 			killSandboxResult.Fail(errors.New("GetRuntimeServiceForPod"), err.Error())
 			klog.Errorf("Failed to get runtime service for sandbox %q", podSandbox.ID)
+			continue
 		}
 
 		if err := runtimeService.StopPodSandbox(podSandbox.ID.ID); err != nil {
 			killSandboxResult.Fail(kubecontainer.ErrKillPodSandbox, err.Error())
 			klog.Errorf("Failed to stop sandbox %q", podSandbox.ID)
+			continue
 		}
 	}
 
