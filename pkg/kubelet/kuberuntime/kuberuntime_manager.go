@@ -709,8 +709,7 @@ type containerToKillInfo struct {
 type ConfigChanges struct {
 	// Device hotplug requests to cope with
 	NICsToAttach []string
-
-	// todo[nic-hotplug]: add nics to detach
+	NICsToDetach []string
 }
 
 // podActions keeps information what to do for a pod.
@@ -966,11 +965,15 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 		}
 	}
 
-	// always attemp to identify hotplug nic based on pod spec & pod status (got from runtime)
+	// always attempts to identify hotplug nic based on pod spec & pod status (got from runtime)
 	if m.canHotplugNIC(pod, podStatus) {
 		if len(podStatus.SandboxStatuses) > 0 && podStatus.SandboxStatuses[0].GetNetwork() != nil {
-			if nicsToAttach := computeNICHotplugs(pod.Spec.Nics, podStatus.SandboxStatuses[0].GetNetwork().GetNics()); len(nicsToAttach) > 0 {
+			nicsToAttach, nicsToDetach := computeNICHotplugs(pod.Spec.Nics, podStatus.SandboxStatuses[0].GetNetwork().GetNics())
+			if len(nicsToAttach) > 0 {
 				changes.Hotplugs.NICsToAttach = nicsToAttach
+			}
+			if len(nicsToDetach) > 0 {
+				changes.Hotplugs.NICsToDetach = nicsToDetach
 			}
 		}
 	}
@@ -984,14 +987,13 @@ func (m *kubeGenericRuntimeManager) canHotplugNIC(pod *v1.Pod, podStatus *kubeco
 	return len(podStatus.SandboxStatuses) > 0 && len(podStatus.SandboxStatuses[0].GetNetwork().GetNics()) > 0
 }
 
-// todo[nic-hotplug]: improve method to support plug out
-func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) []string {
+func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) (plugins, plugouts []string) {
 	if len(nicStatuses) == 0 {
 		// none nic status details; unable to derive nic hotplugs
-		return nil
+		return
 	}
 
-	plugins := []string{}
+	nicsValidInSpec := []string{}
 	for _, vnic := range vnics {
 		name := vnic.Name
 		if name == "" {
@@ -1005,21 +1007,37 @@ func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) []s
 			continue
 		}
 
-		foundInStatus := false
-		for _, status := range nicStatuses {
-			// the current state of nic doies not matter, since what counts for is whether nic being new to runtime or not
-			if name == status.Name {
-				foundInStatus = true
+		nicsValidInSpec = append(nicsValidInSpec, name)
+	}
+
+	nicsInStatus := []string{}
+	for _, status := range nicStatuses {
+		nicsInStatus = append(nicsInStatus, status.Name)
+	}
+
+	plugins = getSlicesDifference(nicsValidInSpec, nicsInStatus)
+	plugouts = getSlicesDifference(nicsInStatus, nicsValidInSpec)
+
+	return
+}
+
+// slice1 - slice2
+func getSlicesDifference(slice1, slice2 []string) (difference []string) {
+	for _, name := range slice1 {
+		found := false
+		for _, n := range slice2 {
+			if n == name {
+				found = true
 				break
 			}
 		}
-		if !foundInStatus {
-			// todo[vnic-hotplug]: to ensure portID exists
-			plugins = append(plugins, name)
+
+		if !found {
+			difference = append(difference, name)
 		}
 	}
 
-	return plugins
+	return difference
 }
 
 func (m *kubeGenericRuntimeManager) vmPowerStateChangesRequired(pod *v1.Pod, podStatus *kubecontainer.PodStatus) bool {
