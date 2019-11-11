@@ -276,7 +276,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 	// Non-assumed pods should never be skipped.
 	isAssumed, err := sched.config.SchedulerCache.IsAssumedPod(pod)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("failed to check whether pod %s/%s is assumed: %v", pod.Namespace, pod.Name, err))
+		utilruntime.HandleError(fmt.Errorf("failed to check whether pod %s/%s/%s is assumed: %v", pod.Tenant, pod.Namespace, pod.Name, err))
 		return false
 	}
 	if !isAssumed {
@@ -286,7 +286,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 	// Gets the assumed pod from the cache.
 	assumedPod, err := sched.config.SchedulerCache.GetPod(pod)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("failed to get assumed pod %s/%s from cache: %v", pod.Namespace, pod.Name, err))
+		utilruntime.HandleError(fmt.Errorf("failed to get assumed pod %s/%s/%s from cache: %v", pod.Tenant, pod.Namespace, pod.Name, err))
 		return false
 	}
 
@@ -310,7 +310,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 	if !reflect.DeepEqual(assumedPodCopy, podCopy) {
 		return false
 	}
-	klog.V(3).Infof("Skipping pod %s/%s update", pod.Namespace, pod.Name)
+	klog.V(3).Infof("Skipping pod %s/%s/%s update", pod.Tenant, pod.Namespace, pod.Name)
 	return true
 }
 

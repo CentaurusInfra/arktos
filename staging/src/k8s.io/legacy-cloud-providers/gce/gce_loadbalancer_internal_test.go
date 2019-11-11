@@ -281,7 +281,7 @@ func TestEnsureInternalLoadBalancerHealthCheckConfigurable(t *testing.T) {
 	sharedHealthCheck := !servicehelper.RequestsOnlyLocalTraffic(svc)
 	hcName := makeHealthCheckName(lbName, vals.ClusterID, sharedHealthCheck)
 	hcPath, hcPort := GetNodesHealthCheckPath(), GetNodesHealthCheckPort()
-	nm := types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}
+	nm := types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace, Tenant: svc.Tenant}
 
 	// Create a healthcheck with an incorrect threshold
 	existingHC := newInternalLBHealthCheck(hcName, nm, sharedHealthCheck, hcPath, hcPort)
@@ -343,7 +343,7 @@ func TestUpdateInternalLoadBalancerBackendServices(t *testing.T) {
 		bs.SelfLink,
 		fmt.Sprintf("%s/regions/%s/backendServices/%s", urlBase, vals.Region, bs.Name),
 	)
-	assert.Equal(t, bs.Description, `{"kubernetes.io/service-name":"/"}`)
+	assert.Equal(t, bs.Description, `{"kubernetes.io/service-name":"//"}`)
 	assert.Equal(
 		t,
 		bs.HealthChecks,

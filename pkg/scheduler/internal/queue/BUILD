@@ -26,6 +26,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "multi_tenancy_scheduling_queue_test.go",
         "pod_backoff_test.go",
         "scheduling_queue_test.go",
     ],

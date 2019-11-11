@@ -64,7 +64,7 @@ func (g *Cloud) ensureExternalLoadBalancer(clusterName string, clusterID string,
 		portStr = append(portStr, fmt.Sprintf("%s/%d", p.Protocol, p.Port))
 	}
 
-	serviceName := types.NamespacedName{Namespace: apiService.Namespace, Name: apiService.Name}
+	serviceName := types.NamespacedName{Tenant: apiService.Tenant, Namespace: apiService.Namespace, Name: apiService.Name}
 	lbRefStr := fmt.Sprintf("%v(%v)", loadBalancerName, serviceName)
 	klog.V(2).Infof("ensureExternalLoadBalancer(%s, %v, %v, %v, %v, %v)", lbRefStr, g.region, requestedIP, portStr, hostNames, apiService.Annotations)
 
@@ -288,7 +288,7 @@ func (g *Cloud) updateExternalLoadBalancer(clusterName string, service *v1.Servi
 // ensureExternalLoadBalancerDeleted is the external implementation of LoadBalancer.EnsureLoadBalancerDeleted
 func (g *Cloud) ensureExternalLoadBalancerDeleted(clusterName, clusterID string, service *v1.Service) error {
 	loadBalancerName := g.GetLoadBalancerName(context.TODO(), clusterName, service)
-	serviceName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	serviceName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	lbRefStr := fmt.Sprintf("%v(%v)", loadBalancerName, serviceName)
 
 	var hcNames []string
@@ -352,7 +352,7 @@ func (g *Cloud) ensureExternalLoadBalancerDeleted(clusterName, clusterID string,
 
 // DeleteExternalTargetPoolAndChecks Deletes an external load balancer pool and verifies the operation
 func (g *Cloud) DeleteExternalTargetPoolAndChecks(service *v1.Service, name, region, clusterID string, hcNames ...string) error {
-	serviceName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	serviceName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	lbRefStr := fmt.Sprintf("%v(%v)", name, serviceName)
 
 	if err := g.DeleteTargetPool(name, region); err != nil && isHTTPErrorCode(err, http.StatusNotFound) {
@@ -464,7 +464,7 @@ func verifyUserRequestedIP(s CloudAddressService, region, requestedIP, fwdRuleIP
 }
 
 func (g *Cloud) ensureTargetPoolAndHealthCheck(tpExists, tpNeedsRecreation bool, svc *v1.Service, loadBalancerName, clusterID, ipAddressToUse string, hosts []*gceInstance, hcToCreate, hcToDelete *compute.HttpHealthCheck) error {
-	serviceName := types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}
+	serviceName := types.NamespacedName{Tenant: svc.Tenant, Namespace: svc.Namespace, Name: svc.Name}
 	lbRefStr := fmt.Sprintf("%v(%v)", loadBalancerName, serviceName)
 
 	if tpExists && tpNeedsRecreation {
@@ -939,6 +939,7 @@ func (g *Cloud) createFirewall(svc *v1.Service, name, region, desc string, sourc
 	if err != nil {
 		return err
 	}
+
 	if err = g.CreateFirewall(firewall); err != nil {
 		if isHTTPErrorCode(err, http.StatusConflict) {
 			return nil

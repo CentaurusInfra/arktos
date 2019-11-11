@@ -53,6 +53,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "factory_test.go",
+        "multi_tenancy_factory_test.go",
         "plugins_test.go",
     ],
     embed = [":go_default_library"],

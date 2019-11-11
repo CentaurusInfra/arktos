@@ -23,6 +23,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "host_ports_test.go",
+        "multi_tenancy_node_info_test.go",
         "node_info_test.go",
         "util_test.go",
     ],

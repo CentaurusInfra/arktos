@@ -640,12 +640,12 @@ func (cache *schedulerCache) cleanupAssumedPods(now time.Time) {
 			panic("Key found in assumed set but not in podStates. Potentially a logical error.")
 		}
 		if !ps.bindingFinished {
-			klog.V(3).Infof("Couldn't expire cache for pod %v/%v. Binding is still in progress.",
-				ps.pod.Namespace, ps.pod.Name)
+			klog.V(3).Infof("Couldn't expire cache for pod %v/%v/%v. Binding is still in progress.",
+				ps.pod.Tenant, ps.pod.Namespace, ps.pod.Name)
 			continue
 		}
 		if now.After(*ps.deadline) {
-			klog.Warningf("Pod %s/%s expired", ps.pod.Namespace, ps.pod.Name)
+			klog.Warningf("Pod %s/%s/%s expired", ps.pod.Tenant, ps.pod.Namespace, ps.pod.Name)
 			if err := cache.expirePod(key, ps); err != nil {
 				klog.Errorf("ExpirePod failed for %s: %v", key, err)
 			}

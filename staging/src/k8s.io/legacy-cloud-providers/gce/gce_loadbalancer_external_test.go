@@ -613,7 +613,7 @@ func TestFirewallNeedsUpdate(t *testing.T) {
 	status, err := createExternalLoadBalancer(gce, svc, []string{"test-node-1"}, vals.ClusterName, vals.ClusterID, vals.ZoneName)
 	require.NotNil(t, status)
 	require.NoError(t, err)
-	svcName := "/" + svc.ObjectMeta.Name
+	svcName := "//" + svc.ObjectMeta.Name
 	region := vals.Region
 
 	ipAddr := status.Ingress[0].IP
