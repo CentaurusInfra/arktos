@@ -76,6 +76,13 @@ func TestConvertDownwardAPIFieldLabel(t *testing.T) {
 			expectedLabel: "metadata.hashkey",
 			expectedValue: "10",
 		},
+		{
+			version:       "v1",
+			label:         "metadata.ownerReferences.hashkey.ReplicaSet",
+			value:         "20",
+			expectedLabel: "metadata.ownerReferences.hashkey.ReplicaSet",
+			expectedValue: "20",
+		},
 	}
 	for _, tc := range testCases {
 		label, value, err := ConvertDownwardAPIFieldLabel(tc.version, tc.label, tc.value)
