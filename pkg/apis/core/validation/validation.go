@@ -3863,10 +3863,6 @@ func ValidatePodBinding(binding *core.Binding) field.ErrorList {
 		// TODO: When validation becomes versioned, this gets more complicated.
 		allErrs = append(allErrs, field.NotSupported(field.NewPath("target", "kind"), binding.Target.Kind, []string{"Node", "<empty>"}))
 	}
-	if len(binding.Target.Name) == 0 {
-		// TODO: When validation becomes versioned, this gets more complicated.
-		allErrs = append(allErrs, field.Required(field.NewPath("target", "name"), ""))
-	}
 
 	return allErrs
 }

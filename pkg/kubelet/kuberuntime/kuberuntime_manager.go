@@ -948,21 +948,11 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 			klog.V(2).Infof("Container %q (%q) of pod %s: %s", container.Name, containerStatus.ID, format.Pod(pod), message)
 		}
 	} else {
-		// Keep the container if it's in shutdown mode
-		klog.V(4).Infof("keeping pod %v with shutdown vm alive", pod.Name)
 		keepCount++
 	}
 
 	if keepCount == 0 && len(changes.ContainersToStart) == 0 {
 		changes.KillPod = true
-	}
-
-	// VM state changes are only performed during pod running state, i.e., no starting
-	// or killing operations.
-	if pod.Spec.VirtualMachine != nil && len(changes.ContainersToStart) == 0 && len(changes.ContainersToKill) == 0 {
-		if m.vmPowerStateChangesRequired(pod, podStatus) {
-			changes.ContainersToUpdate = append(changes.ContainersToUpdate, 0)
-		}
 	}
 
 	// always attempts to identify hotplug nic based on pod spec & pod status (got from runtime)
@@ -1038,20 +1028,6 @@ func getSlicesDifference(slice1, slice2 []string) (difference []string) {
 	}
 
 	return difference
-}
-
-func (m *kubeGenericRuntimeManager) vmPowerStateChangesRequired(pod *v1.Pod, podStatus *kubecontainer.PodStatus) bool {
-
-	// In a vm pod there is only one vm, which is mapped to containers[0]
-	// Currently we only support two changes:  from running to shutdown, and from shutdown to running
-	//requireStart := len(podStatus.ContainerStatuses)==0 &&
-	requireStart := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning &&
-		pod.Status.VirtualMachineStatus.PowerState == v1.Shutdown
-	requireStop := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
-		pod.Status.VirtualMachineStatus.PowerState == v1.Running
-
-	klog.V(4).Infof("power state change: requireStart = %v, requireStop = %v", requireStart, requireStop)
-	return requireStart || requireStop
 }
 
 func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, podStatus *kubecontainer.PodStatus, pullSecrets []v1.Secret, backOff *flowcontrol.Backoff) (result kubecontainer.PodSyncResult) {

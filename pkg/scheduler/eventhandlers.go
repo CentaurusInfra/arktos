@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"k8s.io/klog"
 	"reflect"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -226,6 +227,33 @@ func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
 		klog.Errorf("scheduler cache UpdatePod failed: %v", err)
 	}
 
+	// unbind pod from node if VM is being shutdown
+	if newPod.Status.VirtualMachineStatus != nil && oldPod.Status.VirtualMachineStatus != nil &&
+		oldPod.Status.VirtualMachineStatus.PowerState == v1.Running &&
+		newPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown {
+
+		klog.Infof("unbinding pod %v due to VM shutdown", newPod.Name)
+		assumedPod := newPod.DeepCopy()
+
+		err := sched.bind(assumedPod, &v1.Binding{
+			ObjectMeta: metav1.ObjectMeta{Tenant: assumedPod.Tenant,
+				Namespace: assumedPod.Namespace,
+				Name: assumedPod.Name,
+				UID: assumedPod.UID,
+				HashKey: assumedPod.HashKey},
+
+			Target: v1.ObjectReference{
+				Kind: "Node",
+				Name: "",
+			},
+		})
+		if err != nil {
+			klog.Errorf("error binding pod: %v", err)
+		} else {
+			klog.Infof("host name set to empty in pod %v", newPod.Name)
+		}
+	}
+
 	sched.config.SchedulingQueue.AssignedPodUpdated(newPod)
 }
 
@@ -260,6 +288,12 @@ func (sched *Scheduler) deletePodFromCache(obj interface{}) {
 // assignedPod selects pods that are assigned (scheduled and running).
 func assignedPod(pod *v1.Pod) bool {
 	return len(pod.Spec.NodeName) != 0
+}
+
+func vmPodShouldSleep(pod *v1.Pod) bool {
+	return pod.Status.VirtualMachineStatus != nil &&
+		pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
+		pod.Status.VirtualMachineStatus.PowerState == v1.Shutdown;
 }
 
 // responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.
@@ -357,7 +391,7 @@ func AddAllEventHandlers(
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
 				case *v1.Pod:
-					return !assignedPod(t) && responsibleForPod(t, schedulerName)
+					return !assignedPod(t) && responsibleForPod(t, schedulerName) && !vmPodShouldSleep(t)
 				case cache.DeletedFinalStateUnknown:
 					if pod, ok := t.Obj.(*v1.Pod); ok {
 						return !assignedPod(pod) && responsibleForPod(pod, schedulerName)

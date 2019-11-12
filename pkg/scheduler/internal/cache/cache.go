@@ -358,9 +358,34 @@ func (cache *schedulerCache) addPod(pod *v1.Pod) {
 
 // Assumes that lock is already acquired.
 func (cache *schedulerCache) updatePod(oldPod, newPod *v1.Pod) error {
+	// no cache update for pod with VM in shutdown state 
+	if newPod.Status.VirtualMachineStatus != nil && oldPod.Status.VirtualMachineStatus != nil &&
+		oldPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown &&
+		newPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown {
+		klog.Infof("skipped updating cache for shutdown vm pod %v", newPod.Name)
+		return nil
+	}
+
 	if err := cache.removePod(oldPod); err != nil {
 		return err
 	}
+
+	// if a VM is running and set to be shutdown, only deduce resource from cache
+	if newPod.Status.VirtualMachineStatus != nil && oldPod.Status.VirtualMachineStatus != nil &&
+		oldPod.Status.VirtualMachineStatus.PowerState == v1.Running &&
+		newPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown {
+		klog.Infof("vm pod %v removed from cache", newPod.Name)
+
+		key, err := schedulernodeinfo.GetPodKey(newPod)
+		if err != nil {
+			return err
+		}
+		delete(cache.podStates, key)
+		klog.Infof("removed %v (%v) from podStates", key, newPod.Name)
+
+		return nil
+	}
+
 	cache.addPod(newPod)
 	return nil
 }
@@ -431,7 +456,8 @@ func (cache *schedulerCache) UpdatePod(oldPod, newPod *v1.Pod) error {
 	// An assumed pod won't have Update/Remove event. It needs to have Add event
 	// before Update event, in which case the state would change from Assumed to Added.
 	case ok && !cache.assumedPods[key]:
-		if currState.pod.Spec.NodeName != newPod.Spec.NodeName {
+		// virtual machine pod could change node name while container pod shouldn't
+		if currState.pod.Spec.NodeName != newPod.Spec.NodeName && newPod.Spec.VirtualMachine == nil {
 			klog.Errorf("Pod %v updated on a different node than previously added to.", key)
 			klog.Fatalf("Schedulercache is corrupted and can badly affect scheduling decisions")
 		}
