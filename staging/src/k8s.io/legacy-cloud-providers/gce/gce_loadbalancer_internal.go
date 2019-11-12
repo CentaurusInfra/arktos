@@ -45,7 +45,7 @@ func (g *Cloud) ensureInternalLoadBalancer(clusterName, clusterID string, svc *v
 		// Do not manage loadBalancer for services using NEGs
 		return &svc.Status.LoadBalancer, nil
 	}
-	nm := types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}
+	nm := types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace, Tenant: svc.Tenant}
 	ports, protocol := getPortsAndProtocol(svc.Spec.Ports)
 	if protocol != v1.ProtocolTCP && protocol != v1.ProtocolUDP {
 		return nil, fmt.Errorf("Invalid protocol %s, only TCP and UDP are supported", string(protocol))

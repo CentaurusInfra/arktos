@@ -1141,6 +1141,23 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 			},
 			actions: noAction,
 		},
+		"hot plug out secondary nic": {
+			mutatePodFn: func(pod *v1.Pod) {
+				pod.Spec.Nics = []v1.Nic{
+					{
+						Name:   "eth0", // primary nic
+						PortId: "12345",
+					},
+				}
+			},
+			actions: podActions{
+				SandboxID:          baseStatus.SandboxStatuses[0].Id,
+				ContainersToStart:  []int{},
+				ContainersToUpdate: []int{},
+				ContainersToKill:   map[kubecontainer.ContainerID]containerToKillInfo{},
+				Hotplugs:           ConfigChanges{NICsToDetach: []string{"eth9"}},
+			},
+		},
 	} {
 		pod, status := makeBasePodAndStatusWithNICs()
 		if test.mutatePodFn != nil {
@@ -1158,8 +1175,12 @@ func makeBasePodAndStatusWithNICs() (*v1.Pod, *kubecontainer.PodStatus) {
 	pod, status := makeBasePodAndStatus()
 	pod.Spec.Nics = []v1.Nic{
 		{
-			Name:   "eth0",
+			Name:   "eth0",		// primary nic
 			PortId: "12345",
+		},
+		{
+			Name:   "eth9",		//secondary nic able to plug out
+			PortId: "99999",
 		},
 	}
 	status.SandboxStatuses = []*runtimeapi.PodSandboxStatus{
@@ -1169,6 +1190,7 @@ func makeBasePodAndStatusWithNICs() (*v1.Pod, *kubecontainer.PodStatus) {
 				Ip: "10.0.0.100",
 				Nics: []*runtimeapi.NICStatus{
 					{Name: "eth0"},
+					{Name: "eth9"},
 				},
 			},
 		},

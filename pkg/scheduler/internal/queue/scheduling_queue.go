@@ -208,16 +208,16 @@ func (p *PriorityQueue) Add(pod *v1.Pod) error {
 	defer p.lock.Unlock()
 	pInfo := p.newPodInfo(pod)
 	if err := p.activeQ.Add(pInfo); err != nil {
-		klog.Errorf("Error adding pod %v/%v to the scheduling queue: %v", pod.Namespace, pod.Name, err)
+		klog.Errorf("Error adding pod %v/%v/%v to the scheduling queue: %v", pod.Tenant, pod.Namespace, pod.Name, err)
 		return err
 	}
 	if p.unschedulableQ.get(pod) != nil {
-		klog.Errorf("Error: pod %v/%v is already in the unschedulable queue.", pod.Namespace, pod.Name)
+		klog.Errorf("Error: pod %v/%v/%v is already in the unschedulable queue.", pod.Tenant, pod.Namespace, pod.Name)
 		p.unschedulableQ.delete(pod)
 	}
 	// Delete pod from backoffQ if it is backing off
 	if err := p.podBackoffQ.Delete(pInfo); err == nil {
-		klog.Errorf("Error: pod %v/%v is already in the podBackoff queue.", pod.Namespace, pod.Name)
+		klog.Errorf("Error: pod %v/%v/%v is already in the podBackoff queue.", pod.Tenant, pod.Namespace, pod.Name)
 	}
 	p.nominatedPods.add(pod, "")
 	p.cond.Broadcast()
@@ -243,7 +243,7 @@ func (p *PriorityQueue) AddIfNotPresent(pod *v1.Pod) error {
 	}
 	err := p.activeQ.Add(pInfo)
 	if err != nil {
-		klog.Errorf("Error adding pod %v/%v to the scheduling queue: %v", pod.Namespace, pod.Name, err)
+		klog.Errorf("Error adding pod %v/%v/%v to the scheduling queue: %v", pod.Tenant, pod.Namespace, pod.Name, err)
 	} else {
 		p.nominatedPods.add(pod, "")
 		p.cond.Broadcast()
@@ -254,6 +254,7 @@ func (p *PriorityQueue) AddIfNotPresent(pod *v1.Pod) error {
 // nsNameForPod returns a namespacedname for a pod
 func nsNameForPod(pod *v1.Pod) ktypes.NamespacedName {
 	return ktypes.NamespacedName{
+		Tenant:    pod.Tenant,
 		Namespace: pod.Namespace,
 		Name:      pod.Name,
 	}
@@ -747,7 +748,7 @@ func (npm *nominatedPodMap) add(p *v1.Pod, nodeName string) {
 	npm.nominatedPodToNode[p.UID] = nnn
 	for _, np := range npm.nominatedPods[nnn] {
 		if np.UID == p.UID {
-			klog.V(4).Infof("Pod %v/%v already exists in the nominated map!", p.Namespace, p.Name)
+			klog.V(4).Infof("Pod %v/%v/%v already exists in the nominated map!", p.Tenant, p.Namespace, p.Name)
 			return
 		}
 	}
@@ -812,7 +813,7 @@ func MakeNextPodFunc(queue SchedulingQueue) func() *v1.Pod {
 	return func() *v1.Pod {
 		pod, err := queue.Pop()
 		if err == nil {
-			klog.V(4).Infof("About to try and schedule pod %v/%v", pod.Namespace, pod.Name)
+			klog.V(4).Infof("About to try and schedule pod %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 			return pod
 		}
 		klog.Errorf("Error while retrieving next pod from scheduling queue: %v", err)

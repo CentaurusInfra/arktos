@@ -29,6 +29,7 @@ import (
 // consider using NamespacedNameOrDie() in testing.go in this package.
 
 type NamespacedName struct {
+	Tenant    string
 	Namespace string
 	Name      string
 }
@@ -39,5 +40,5 @@ const (
 
 // String returns the general purpose string representation
 func (n NamespacedName) String() string {
-	return fmt.Sprintf("%s%c%s", n.Namespace, Separator, n.Name)
+	return fmt.Sprintf("%s%c%s%c%s", n.Tenant, Separator, n.Namespace, Separator, n.Name)
 }

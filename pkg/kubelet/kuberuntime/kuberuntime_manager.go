@@ -709,8 +709,7 @@ type containerToKillInfo struct {
 type ConfigChanges struct {
 	// Device hotplug requests to cope with
 	NICsToAttach []string
-
-	// todo[nic-hotplug]: add nics to detach
+	NICsToDetach []string
 }
 
 // podActions keeps information what to do for a pod.
@@ -949,8 +948,6 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 			klog.V(2).Infof("Container %q (%q) of pod %s: %s", container.Name, containerStatus.ID, format.Pod(pod), message)
 		}
 	} else {
-		// Keep the container if it's in shutdown mode
-		klog.V(4).Infof("keeping pod %v with shutdown vm alive", pod.Name)
 		keepCount++
 	}
 
@@ -958,19 +955,15 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 		changes.KillPod = true
 	}
 
-	// VM state changes are only performed during pod running state, i.e., no starting
-	// or killing operations.
-	if pod.Spec.VirtualMachine != nil && len(changes.ContainersToStart) == 0 && len(changes.ContainersToKill) == 0 {
-		if m.vmPowerStateChangesRequired(pod, podStatus) {
-			changes.ContainersToUpdate = append(changes.ContainersToUpdate, 0)
-		}
-	}
-
-	// always attemp to identify hotplug nic based on pod spec & pod status (got from runtime)
+	// always attempts to identify hotplug nic based on pod spec & pod status (got from runtime)
 	if m.canHotplugNIC(pod, podStatus) {
 		if len(podStatus.SandboxStatuses) > 0 && podStatus.SandboxStatuses[0].GetNetwork() != nil {
-			if nicsToAttach := computeNICHotplugs(pod.Spec.Nics, podStatus.SandboxStatuses[0].GetNetwork().GetNics()); len(nicsToAttach) > 0 {
+			nicsToAttach, nicsToDetach := computeNICHotplugs(pod.Spec.Nics, podStatus.SandboxStatuses[0].GetNetwork().GetNics())
+			if len(nicsToAttach) > 0 {
 				changes.Hotplugs.NICsToAttach = nicsToAttach
+			}
+			if len(nicsToDetach) > 0 {
+				changes.Hotplugs.NICsToDetach = nicsToDetach
 			}
 		}
 	}
@@ -984,14 +977,13 @@ func (m *kubeGenericRuntimeManager) canHotplugNIC(pod *v1.Pod, podStatus *kubeco
 	return len(podStatus.SandboxStatuses) > 0 && len(podStatus.SandboxStatuses[0].GetNetwork().GetNics()) > 0
 }
 
-// todo[nic-hotplug]: improve method to support plug out
-func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) []string {
+func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) (plugins, plugouts []string) {
 	if len(nicStatuses) == 0 {
 		// none nic status details; unable to derive nic hotplugs
-		return nil
+		return
 	}
 
-	plugins := []string{}
+	nicsValidInSpec := []string{}
 	for _, vnic := range vnics {
 		name := vnic.Name
 		if name == "" {
@@ -1005,35 +997,37 @@ func computeNICHotplugs(vnics []v1.Nic, nicStatuses []*runtimeapi.NICStatus) []s
 			continue
 		}
 
-		foundInStatus := false
-		for _, status := range nicStatuses {
-			// the current state of nic doies not matter, since what counts for is whether nic being new to runtime or not
-			if name == status.Name {
-				foundInStatus = true
+		nicsValidInSpec = append(nicsValidInSpec, name)
+	}
+
+	nicsInStatus := []string{}
+	for _, status := range nicStatuses {
+		nicsInStatus = append(nicsInStatus, status.Name)
+	}
+
+	plugins = getSlicesDifference(nicsValidInSpec, nicsInStatus)
+	plugouts = getSlicesDifference(nicsInStatus, nicsValidInSpec)
+
+	return
+}
+
+// slice1 - slice2
+func getSlicesDifference(slice1, slice2 []string) (difference []string) {
+	for _, name := range slice1 {
+		found := false
+		for _, n := range slice2 {
+			if n == name {
+				found = true
 				break
 			}
 		}
-		if !foundInStatus {
-			// todo[vnic-hotplug]: to ensure portID exists
-			plugins = append(plugins, name)
+
+		if !found {
+			difference = append(difference, name)
 		}
 	}
 
-	return plugins
-}
-
-func (m *kubeGenericRuntimeManager) vmPowerStateChangesRequired(pod *v1.Pod, podStatus *kubecontainer.PodStatus) bool {
-
-	// In a vm pod there is only one vm, which is mapped to containers[0]
-	// Currently we only support two changes:  from running to shutdown, and from shutdown to running
-	//requireStart := len(podStatus.ContainerStatuses)==0 &&
-	requireStart := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning &&
-		pod.Status.VirtualMachineStatus.PowerState == v1.Shutdown
-	requireStop := pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
-		pod.Status.VirtualMachineStatus.PowerState == v1.Running
-
-	klog.V(4).Infof("power state change: requireStart = %v, requireStop = %v", requireStart, requireStop)
-	return requireStart || requireStop
+	return difference
 }
 
 func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, podStatus *kubecontainer.PodStatus, pullSecrets []v1.Secret, backOff *flowcontrol.Backoff) (result kubecontainer.PodSyncResult) {

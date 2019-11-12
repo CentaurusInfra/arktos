@@ -1344,7 +1344,6 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 
 	//TODO: handle more situations for VM type
 	if pod.Spec.VirtualMachine != nil {
-
 		if s.VirtualMachineStatus != nil && s.VirtualMachineStatus.State == v1.VmActive {
 			klog.V(4).Infof("Set Phase Running for VM pod: %v", pod.Name)
 			s.Phase = v1.PodRunning
@@ -1384,6 +1383,13 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 		Type:   v1.PodScheduled,
 		Status: v1.ConditionTrue,
 	})
+
+	// clear the host and pod it field when VM is shutdown
+	if pod.Spec.VirtualMachine != nil &&  s.VirtualMachineStatus.PowerState == v1.Shutdown {
+		s.HostIP = ""
+		s.PodIP = ""
+		return *s
+	}
 
 	if kl.kubeClient != nil {
 		hostIP, err := kl.getHostIPAnyWay()
@@ -1426,6 +1432,19 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 	//       OR switch to using libvirt VM runtime state which matches with current VM power state
 	if vmPod {
 		apiPodStatus.VirtualMachineStatus = &v1.VirtualMachineStatus{Name: pod.Name}
+
+		// mark vm pod as to shutdown
+		// scheduler observes this and make the kill by unbinding pod from this node
+		if len(podStatus.ContainerStatuses) != 0 {
+			if pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
+				podStatus.ContainerStatuses[0].State == kubecontainer.ContainerStateRunning {
+				apiPodStatus.VirtualMachineStatus.State = v1.VmStopped
+				apiPodStatus.VirtualMachineStatus.PowerState = v1.Shutdown
+				apiPodStatus.VirtualMachineStatus.Ready = false
+				return &apiPodStatus
+			}
+		}
+
 		if len(podStatus.ContainerStatuses) != 0 { // VM is active if len(podStatus.ContainerStatuses)!=0
 			apiPodStatus.VirtualMachineStatus.VirtualMachineId = podStatus.ContainerStatuses[0].ID.ID
 			switch podStatus.ContainerStatuses[0].State {

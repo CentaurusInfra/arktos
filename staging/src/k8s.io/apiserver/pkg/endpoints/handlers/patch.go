@@ -530,10 +530,17 @@ func (p *patcher) applyAdmission(ctx context.Context, patchedObject runtime.Obje
 		operation = admission.Update
 		options = patchToUpdateOptions(p.options)
 	}
-	if p.admissionCheck != nil && p.admissionCheck.Handles(operation) {
-		attributes := p.admissionAttributes(ctx, patchedObject, currentObject, operation, options)
-		return patchedObject, p.admissionCheck.Admit(attributes, p.objectInterfaces)
+
+	// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
+	// TODO: enable the admission check for all resources
+	tenant, ok := request.TenantFrom(ctx)
+	if ok && (tenant == "" || tenant == metav1.TenantDefault) {
+		if p.admissionCheck != nil && p.admissionCheck.Handles(operation) {
+			attributes := p.admissionAttributes(ctx, patchedObject, currentObject, operation, options)
+			return patchedObject, p.admissionCheck.Admit(attributes, p.objectInterfaces)
+		}
 	}
+
 	return patchedObject, nil
 }
 

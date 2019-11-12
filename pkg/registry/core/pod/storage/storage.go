@@ -187,7 +187,7 @@ func (r *BindingREST) setPodHostAndAnnotations(ctx context.Context, podID, oldMa
 		if pod.DeletionTimestamp != nil {
 			return nil, fmt.Errorf("pod %s is being deleted, cannot be assigned to a host", pod.Name)
 		}
-		if pod.Spec.NodeName != oldMachine {
+		if pod.Spec.VirtualMachine == nil && pod.Spec.NodeName != oldMachine {
 			return nil, fmt.Errorf("pod %v is already assigned to node %q", pod.Name, pod.Spec.NodeName)
 		}
 		pod.Spec.NodeName = machine

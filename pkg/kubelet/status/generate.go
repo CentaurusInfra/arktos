@@ -31,6 +31,7 @@ const (
 	ContainersNotInitialized = "ContainersNotInitialized"
 	ReadinessGatesNotReady   = "ReadinessGatesNotReady"
 	VmNotReady               = "VirtualMachineNotReady"
+	VmShutdown		 		 = "VirtualMachineShutdown"
 	UnknownVmStatus          = "UnknownVirtualMachineStatus"
 )
 
@@ -96,6 +97,14 @@ func GenerateContainersReadyCondition(spec *v1.PodSpec, containerStatuses []v1.C
 func GeneratePodReadyCondition(spec *v1.PodSpec, conditions []v1.PodCondition, containerStatuses []v1.ContainerStatus, vmStatus *v1.VirtualMachineStatus, podPhase v1.PodPhase) v1.PodCondition {
 	if vmStatus != nil {
 		if !vmStatus.Ready {
+			if vmStatus.PowerState == v1.Shutdown &&
+				vmStatus.State == v1.VmStopped {
+				return v1.PodCondition{
+					Type:   v1.PodReady,
+					Status: v1.ConditionFalse,
+					Reason: VmShutdown,
+				}
+			}
 			return v1.PodCondition{
 				Type:    v1.PodReady,
 				Status:  v1.ConditionFalse,

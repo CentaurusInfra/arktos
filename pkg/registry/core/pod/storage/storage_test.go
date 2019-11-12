@@ -700,7 +700,7 @@ func TestEtcdCreateBinding(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: metav1.NamespaceDefault, Name: "foo"},
 				Target:     api.ObjectReference{},
 			},
-			errOK: func(err error) bool { return err != nil },
+			errOK: func(err error) bool { return err == nil },
 		},
 		"badKind": {
 			binding: api.Binding{
