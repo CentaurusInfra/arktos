@@ -1227,3 +1227,32 @@ func TestAttachNICs(t *testing.T) {
 		t.Errorf("got unexpected error: %+v", syncResult.Error)
 	}
 }
+
+func TestDetachNICs(t *testing.T) {
+	_, _, m, err := createTestRuntimeManager()
+	require.NoError(t, err)
+
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:       "12345678",
+			Name:      "foo",
+			Namespace: "foo-ns",
+		},
+		Spec: v1.PodSpec{
+			VPC: "vps-demo",
+			Nics: []v1.Nic{
+				{Name: "eth0", PortId: "0000"},
+				{Name: "eth1", PortId: "1111"},
+			},
+		},
+	}
+
+	syncResult := m.detachNICs(pod, "sandbox0", []string{"eth2"})
+
+	if syncResult.Action != kubecontainer.HotplugDevice {
+		t.Errorf("expecting HotplugDevice, got %q", syncResult.Action)
+	}
+	if syncResult.Error != nil {
+		t.Errorf("got unexpected error: %+v", syncResult.Error)
+	}
+}
