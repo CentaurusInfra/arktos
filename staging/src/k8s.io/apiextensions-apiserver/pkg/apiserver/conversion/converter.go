@@ -18,6 +18,7 @@ package conversion
 
 import (
 	"fmt"
+	"strings"
 
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
@@ -119,13 +120,16 @@ type crConverter struct {
 }
 
 func (c *crConverter) ConvertFieldLabel(gvk schema.GroupVersionKind, label, value string) (string, string, error) {
-	// We currently only support metadata.hashkey, metadata.namespace and metadata.name.
+	// We currently only support metadata.hashkey, metadata.ownerReferences.*(Kind), metadata.namespace and metadata.name.
 	switch {
 	case label == "metadata.name" || label == "metadata.hashkey":
 		return label, value, nil
 	case !c.clusterScoped && label == "metadata.namespace":
 		return label, value, nil
 	default:
+		if strings.HasPrefix(label, "metadata.ownerReferences.") {
+			return label, value, nil
+		}
 		return "", "", fmt.Errorf("field label not supported: %s", label)
 	}
 }

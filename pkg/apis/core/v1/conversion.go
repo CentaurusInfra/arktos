@@ -19,6 +19,7 @@ package v1
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -75,6 +76,9 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 			case "spec.host":
 				return "spec.nodeName", value, nil
 			default:
+				if strings.HasPrefix(label, "metadata.ownerReferences.") {
+					return label, value, nil
+				}
 				return "", "", fmt.Errorf("field label not supported: %s", label)
 			}
 		},

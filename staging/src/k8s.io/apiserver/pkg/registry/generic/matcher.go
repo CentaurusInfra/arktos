@@ -41,6 +41,9 @@ func ObjectMetaFieldsSet(objectMeta *metav1.ObjectMeta, hasNamespaceField bool) 
 func AddObjectMetaFieldsSet(source fields.Set, objectMeta *metav1.ObjectMeta, hasNamespaceField bool) fields.Set {
 	source["metadata.name"] = objectMeta.Name
 	source["metadata.hashkey"] = strconv.FormatInt(objectMeta.HashKey, 10)
+	for _, ownerRef := range objectMeta.GetOwnerReferences() {
+		source["metadata.ownerReferences.hashkey."+ownerRef.Kind] = strconv.FormatInt(ownerRef.HashKey, 10)
+	}
 	if hasNamespaceField {
 		source["metadata.namespace"] = objectMeta.Namespace
 	}

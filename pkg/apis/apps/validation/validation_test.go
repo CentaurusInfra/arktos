@@ -360,6 +360,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			for i := range errs {
 				field := errs[i].Field
 				if !strings.HasPrefix(field, "spec.template.") &&
+					!strings.HasPrefix(field, "metadata.ownerReferences.") &&
 					field != "metadata.name" &&
 					field != "metadata.namespace" &&
 					field != "metadata.hashkey" &&
@@ -1957,6 +1958,7 @@ func TestValidateDaemonSet(t *testing.T) {
 			field := errs[i].Field
 			if !strings.HasPrefix(field, "spec.template.") &&
 				!strings.HasPrefix(field, "spec.updateStrategy") &&
+				!strings.HasPrefix(field, "metadata.ownerReferences.") &&
 				field != "metadata.name" &&
 				field != "metadata.namespace" &&
 				field != "metadata.hashkey" &&
@@ -2919,6 +2921,7 @@ func TestValidateReplicaSet(t *testing.T) {
 		for i := range errs {
 			field := errs[i].Field
 			if !strings.HasPrefix(field, "spec.template.") &&
+				!strings.HasPrefix(field, "metadata.ownerReferences.") &&
 				field != "metadata.name" &&
 				field != "metadata.namespace" &&
 				field != "metadata.hashkey" &&

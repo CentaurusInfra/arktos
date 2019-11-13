@@ -18,6 +18,7 @@ package pods
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/kubernetes/pkg/fieldpath"
 )
@@ -59,6 +60,9 @@ func ConvertDownwardAPIFieldLabel(version, label, value string) (string, string,
 	case "spec.host":
 		return "spec.nodeName", value, nil
 	default:
+		if strings.HasPrefix(label, "metadata.ownerReferences.") {
+			return label, value, nil
+		}
 		return "", "", fmt.Errorf("field label not supported: %s", label)
 	}
 }
