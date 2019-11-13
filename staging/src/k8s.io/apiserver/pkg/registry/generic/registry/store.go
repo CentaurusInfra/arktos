@@ -1267,6 +1267,7 @@ func (e *Store) calculateUpdateTTL(obj runtime.Object, defaultTTLOnUpdate int64)
 // present when the object is exported.
 func exportObjectMeta(accessor metav1.Object, exact bool) {
 	accessor.SetUID("")
+	accessor.SetHashKey(0)
 	if !exact {
 		accessor.SetNamespace("")
 		accessor.SetTenant("")

@@ -37,6 +37,9 @@ func TestFillObjectMetaSystemFields(t *testing.T) {
 	if len(resource.UID) == 0 {
 		t.Errorf("resource.UID missing")
 	}
+	if resource.HashKey == 0 {
+		t.Errorf("resource.HashKey missing")
+	}
 }
 
 // TestHasObjectMetaSystemFieldValues validates that true is returned if and only if all fields are populated
