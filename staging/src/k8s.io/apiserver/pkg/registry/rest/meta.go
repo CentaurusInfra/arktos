@@ -18,6 +18,7 @@ package rest
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -27,7 +28,9 @@ import (
 // FillObjectMetaSystemFields populates fields that are managed by the system on ObjectMeta.
 func FillObjectMetaSystemFields(meta metav1.Object) {
 	meta.SetCreationTimestamp(metav1.Now())
-	meta.SetUID(uuid.NewUUID())
+	uid := uuid.NewUUID()
+	meta.SetUID(uid)
+	meta.SetHashKey(fuzzer.GetHashOfUUID(uid))
 	meta.SetSelfLink("")
 }
 

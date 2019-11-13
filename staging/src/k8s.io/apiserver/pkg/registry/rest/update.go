@@ -133,6 +133,11 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 	if len(objectMeta.GetUID()) == 0 {
 		objectMeta.SetUID(oldMeta.GetUID())
 	}
+	// Use the existing HashKey if none is provided
+	if objectMeta.GetHashKey() == 0 {
+		objectMeta.SetHashKey(oldMeta.GetHashKey())
+	}
+
 	// ignore changes to timestamp
 	if oldCreationTime := oldMeta.GetCreationTimestamp(); !oldCreationTime.IsZero() {
 		objectMeta.SetCreationTimestamp(oldMeta.GetCreationTimestamp())

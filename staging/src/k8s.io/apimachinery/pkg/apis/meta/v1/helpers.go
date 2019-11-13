@@ -237,7 +237,7 @@ func NewRVDeletionPrecondition(rv string) *DeleteOptions {
 // HasObjectMetaSystemFieldValues returns true if fields that are managed by the system on ObjectMeta have values.
 func HasObjectMetaSystemFieldValues(meta Object) bool {
 	return !meta.GetCreationTimestamp().Time.IsZero() ||
-		len(meta.GetUID()) != 0
+		(len(meta.GetUID()) != 0 && meta.GetHashKey() != 0)
 }
 
 // ResetObjectMetaForStatus forces the meta fields for a status update to match the meta fields

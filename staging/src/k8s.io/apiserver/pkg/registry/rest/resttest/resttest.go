@@ -404,6 +404,7 @@ func (t *Tester) testCreateDryRunEquals(obj runtime.Object) {
 	createdFakeMeta.SetResourceVersion("")
 	createdMeta.SetResourceVersion("")
 	createdMeta.SetUID(createdFakeMeta.GetUID())
+	createdMeta.SetHashKey(createdFakeMeta.GetHashKey())
 
 	if e, a := created, createdFake; !apiequality.Semantic.DeepEqual(e, a) {
 		t.Errorf("unexpected obj: %#v, expected %#v", e, a)
