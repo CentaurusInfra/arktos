@@ -27,11 +27,13 @@ import (
 )
 
 func TestPatchPodStatus(t *testing.T) {
+	tenant := "te"
 	ns := "ns"
 	name := "name"
 	client := &fake.Clientset{}
-	client.CoreV1().Pods(ns).Create(&v1.Pod{
+	client.CoreV1().PodsWithMultiTenancy(ns, tenant).Create(&v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    tenant,
 			Namespace: ns,
 			Name:      name,
 		},
@@ -78,7 +80,7 @@ func TestPatchPodStatus(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		_, patchBytes, err := PatchPodStatus(client, ns, name, getPodStatus(), tc.mutate(getPodStatus()))
+		_, patchBytes, err := PatchPodStatus(client, tenant, ns, name, getPodStatus(), tc.mutate(getPodStatus()))
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

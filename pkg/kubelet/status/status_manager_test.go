@@ -46,6 +46,8 @@ import (
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
+const testTenant = "test-te"
+
 // Generate new instance of test pod with the same initial value.
 func getTestPod() *v1.Pod {
 	return &v1.Pod{
@@ -57,7 +59,7 @@ func getTestPod() *v1.Pod {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    testTenant,
 		},
 	}
 }
@@ -153,7 +155,7 @@ func TestNewStatusPreservesPodStartTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    testTenant,
 		},
 		Status: v1.PodStatus{},
 	}
@@ -187,7 +189,7 @@ func TestNewStatusSetsReadyTransitionTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    testTenant,
 		},
 		Status: v1.PodStatus{},
 	}
@@ -235,7 +237,7 @@ func TestChangedStatusUpdatesLastTransitionTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    testTenant,
 		},
 		Status: v1.PodStatus{},
 	}
@@ -275,7 +277,7 @@ func TestUnchangedStatusPreservesLastTransitionTime(t *testing.T) {
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    testTenant,
 		},
 		Status: v1.PodStatus{},
 	}

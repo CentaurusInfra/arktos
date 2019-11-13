@@ -49,6 +49,7 @@ type versionedPodStatus struct {
 	// Pod name & namespace, for sending updates to API server.
 	podName      string
 	podNamespace string
+	podTenant    string
 }
 
 type podStatusSyncRequest struct {
@@ -330,11 +331,11 @@ func (m *manager) updateStatusInternal(pod *v1.Pod, status v1.PodStatus, forceUp
 
 	// Check for illegal state transition in containers
 	if err := checkContainerStateTransition(oldStatus.ContainerStatuses, status.ContainerStatuses, pod.Spec.RestartPolicy); err != nil {
-		klog.Errorf("Status update on pod %v/%v aborted: %v", pod.Namespace, pod.Name, err)
+		klog.Errorf("Status update on pod %v/%v/%v aborted: %v", pod.Tenant, pod.Namespace, pod.Name, err)
 		return false
 	}
 	if err := checkContainerStateTransition(oldStatus.InitContainerStatuses, status.InitContainerStatuses, pod.Spec.RestartPolicy); err != nil {
-		klog.Errorf("Status update on pod %v/%v aborted: %v", pod.Namespace, pod.Name, err)
+		klog.Errorf("Status update on pod %v/%v/%v aborted: %v", pod.Tenant, pod.Namespace, pod.Name, err)
 		return false
 	}
 
@@ -372,6 +373,7 @@ func (m *manager) updateStatusInternal(pod *v1.Pod, status v1.PodStatus, forceUp
 		version:      cachedStatus.version + 1,
 		podName:      pod.Name,
 		podNamespace: pod.Namespace,
+		podTenant:    pod.Tenant,
 	}
 	m.podStatuses[pod.UID] = newStatus
 
@@ -444,7 +446,7 @@ func (m *manager) syncBatch() {
 			syncedUID := kubetypes.MirrorPodUID(uid)
 			if mirrorUID, ok := podToMirror[kubetypes.ResolvedPodUID(uid)]; ok {
 				if mirrorUID == "" {
-					klog.V(5).Infof("Static pod %q (%s/%s) does not have a corresponding mirror pod; skipping", uid, status.podName, status.podNamespace)
+					klog.V(5).Infof("Static pod %q (%s/%s/%s) does not have a corresponding mirror pod; skipping", uid, status.podName, status.podNamespace, status.podTenant)
 					continue
 				}
 				syncedUID = mirrorUID
@@ -476,7 +478,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	}
 
 	// TODO: make me easier to express from client code
-	pod, err := m.kubeClient.CoreV1().Pods(status.podNamespace).Get(status.podName, metav1.GetOptions{})
+	pod, err := m.kubeClient.CoreV1().PodsWithMultiTenancy(status.podNamespace, status.podTenant).Get(status.podName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		klog.V(3).Infof("Pod %q (%s) does not exist on the server", status.podName, uid)
 		// If the Pod is deleted the status will be cleared in
@@ -484,7 +486,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 		return
 	}
 	if err != nil {
-		klog.Warningf("Failed to get status for pod %q: %v", format.PodDesc(status.podName, status.podNamespace, uid), err)
+		klog.Warningf("Failed to get status for pod %q: %v", format.PodDescWithMultiTenancy(status.podName, status.podNamespace, status.podTenant, uid), err)
 		return
 	}
 
@@ -497,7 +499,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	}
 
 	oldStatus := pod.Status.DeepCopy()
-	newPod, patchBytes, err := statusutil.PatchPodStatus(m.kubeClient, pod.Namespace, pod.Name, *oldStatus, mergePodStatus(*oldStatus, status.status))
+	newPod, patchBytes, err := statusutil.PatchPodStatus(m.kubeClient, pod.Tenant, pod.Namespace, pod.Name, *oldStatus, mergePodStatus(*oldStatus, status.status))
 	klog.V(3).Infof("Patch status for pod %q with %q", format.Pod(pod), patchBytes)
 	if err != nil {
 		klog.Warningf("Failed to update status for pod %q: %v", format.Pod(pod), err)
@@ -511,9 +513,9 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	// We don't handle graceful deletion of mirror pods.
 	if m.canBeDeleted(pod, status.status) {
 		deleteOptions := metav1.NewDeleteOptions(0)
-		// Use the pod UID as the precondition for deletion to prevent deleting a newly created pod with the same name and namespace.
+		// Use the pod UID as the precondition for deletion to prevent deleting a newly created pod with the same name and namespace under the same tenant.
 		deleteOptions.Preconditions = metav1.NewUIDPreconditions(string(pod.UID))
-		err = m.kubeClient.CoreV1().Pods(pod.Namespace).Delete(pod.Name, deleteOptions)
+		err = m.kubeClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Delete(pod.Name, deleteOptions)
 		if err != nil {
 			klog.Warningf("Failed to delete status for pod %q: %v", format.Pod(pod), err)
 			return

@@ -27,37 +27,37 @@ import (
 )
 
 // PatchPodStatus patches pod status.
-func PatchPodStatus(c clientset.Interface, namespace, name string, oldPodStatus, newPodStatus v1.PodStatus) (*v1.Pod, []byte, error) {
-	patchBytes, err := preparePatchBytesforPodStatus(namespace, name, oldPodStatus, newPodStatus)
+func PatchPodStatus(c clientset.Interface, tenant, namespace, name string, oldPodStatus, newPodStatus v1.PodStatus) (*v1.Pod, []byte, error) {
+	patchBytes, err := preparePatchBytesforPodStatus(tenant, namespace, name, oldPodStatus, newPodStatus)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	updatedPod, err := c.CoreV1().Pods(namespace).Patch(name, types.StrategicMergePatchType, patchBytes, "status")
+	updatedPod, err := c.CoreV1().PodsWithMultiTenancy(namespace, tenant).Patch(name, types.StrategicMergePatchType, patchBytes, "status")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to patch status %q for pod %q/%q: %v", patchBytes, namespace, name, err)
+		return nil, nil, fmt.Errorf("failed to patch status %q for pod %q/%q/%q: %v \n pods type %T ", patchBytes, tenant, namespace, name, err, c.CoreV1().PodsWithMultiTenancy(namespace, tenant))
 	}
 	return updatedPod, patchBytes, nil
 }
 
-func preparePatchBytesforPodStatus(namespace, name string, oldPodStatus, newPodStatus v1.PodStatus) ([]byte, error) {
+func preparePatchBytesforPodStatus(tenant, namespace, name string, oldPodStatus, newPodStatus v1.PodStatus) ([]byte, error) {
 	oldData, err := json.Marshal(v1.Pod{
 		Status: oldPodStatus,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to Marshal oldData for pod %q/%q: %v", namespace, name, err)
+		return nil, fmt.Errorf("failed to Marshal oldData for pod %q/%q/%q: %v", tenant, namespace, name, err)
 	}
 
 	newData, err := json.Marshal(v1.Pod{
 		Status: newPodStatus,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to Marshal newData for pod %q/%q: %v", namespace, name, err)
+		return nil, fmt.Errorf("failed to Marshal newData for pod %q/%q/%q: %v", tenant, namespace, name, err)
 	}
 
 	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, v1.Pod{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to CreateTwoWayMergePatch for pod %q/%q: %v", namespace, name, err)
+		return nil, fmt.Errorf("failed to CreateTwoWayMergePatch for pod %q/%q/%q: %v", tenant, namespace, name, err)
 	}
 	return patchBytes, nil
 }
