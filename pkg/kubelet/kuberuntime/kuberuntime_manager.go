@@ -1236,11 +1236,6 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 		}
 	}
 
-	// Step 7: change the running VM if its target state changes
-	if len(podContainerChanges.ContainersToUpdate) > 0 {
-		result.AddSyncResult(m.reconfigureVm(pod, podSandboxID, podSandboxConfig, podStatus, backOff, pullSecrets, podIP))
-	}
-
 	if len(podContainerChanges.Hotplugs.NICsToAttach) > 0 {
 		// we don't attempt the recovery of failed nic hotplug; fine to ignore error
 		// todo[vnic-hotplug]: to handle nic hotplug error to support nic hotplug recovery if it is desired feature
@@ -1366,58 +1361,6 @@ func getNICSpec(pod *v1.Pod, name string) (*v1.Nic, bool) {
 	}
 
 	return nil, false
-}
-
-func (m *kubeGenericRuntimeManager) reconfigureVm(pod *v1.Pod, podSandboxID string,
-	podSandboxConfig *runtimeapi.PodSandboxConfig, podStatus *kubecontainer.PodStatus,
-	backOff *flowcontrol.Backoff, pullSecrets []v1.Secret, podIP string) *kubecontainer.SyncResult {
-
-	// We have only one vm in the pod, and it's mapped to containers[0]
-	// And currently we only support two changes:  from running to shutdown, and from shutdown to running
-	container := &pod.Spec.Containers[0]
-	containerStatus := podStatus.FindContainerStatusByName(container.Name)
-
-	// From running to shutdown (stop vm)
-	if pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
-		pod.Status.VirtualMachineStatus.PowerState == v1.Running &&
-		len(podStatus.ContainerStatuses) != 0 {
-		stopContainerResult := kubecontainer.NewSyncResult(kubecontainer.KillContainer, container.Name)
-
-		klog.V(4).Infof("Stopping the virtual machine in pod %+v status:%+v", format.Pod(pod), podStatus)
-		if err := m.killContainer(pod, containerStatus.ID, container.Name, "stopping the virtual machine", nil); err != nil {
-			stopContainerResult.Fail(kubecontainer.ErrKillContainer, err.Error())
-			klog.Errorf("killContainer %q(id=%q) for pod %q failed: %v", container.Name, containerStatus.ID, format.Pod(pod), err)
-		}
-		return stopContainerResult
-	}
-
-	// From shutdown to running (start vm)
-	if pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning &&
-		pod.Status.VirtualMachineStatus.PowerState == v1.Shutdown {
-
-		startContainerResult := kubecontainer.NewSyncResult(kubecontainer.StartContainer, container.Name)
-
-		isInBackOff, msg, err := m.doBackOff(pod, container, podStatus, backOff)
-		if isInBackOff {
-			startContainerResult.Fail(err, msg)
-			klog.V(4).Infof("Backing off starting the virtual machine in pod %v", format.Pod(pod))
-		}
-
-		klog.V(4).Infof("Starting the virtual machine in pod %v", format.Pod(pod))
-		if msg, err := m.startContainer(podSandboxID, podSandboxConfig, container, pod, podStatus, pullSecrets, podIP); err != nil {
-			startContainerResult.Fail(err, msg)
-			switch {
-			case err == images.ErrImagePullBackOff:
-				klog.V(3).Infof("Virtual machine start failed: %v: %s", err, msg)
-			default:
-				utilruntime.HandleError(fmt.Errorf("Virtual machine start failed: %v: %s", err, msg))
-			}
-		}
-
-		return startContainerResult
-	}
-
-	return nil
 }
 
 // If a container is still in backoff, the function will return a brief backoff error and
