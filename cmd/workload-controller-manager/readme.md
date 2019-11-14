@@ -27,7 +27,7 @@ See [disable replicaset controller in kube controller manager](https://github.co
 ## Use field selector in Kubectl
 Example: pod has hashkey as 0
 ```
-$ kubectl get pod --all-namespaces
+$ kubectl get pod --all-namespaces --field-selector metadata.hashkey=0
 NAMESPACE     NAME                       HASHKEY   READY   STATUS    RESTARTS   AGE
 kube-system   kube-dns-59bc784c6-spjkh   0         3/3     Running   0          31s
 ```
@@ -56,3 +56,35 @@ $ kubectl get pod --all-namespaces --field-selector metadata.hashkey=lte:-1,meta
   No resources found.
 ```
 
+#### Get pod with owner references replicaset hashkey as 0
+```  
+$ kubectl get pod --all-namespaces --field-selector metadata.ownerReferences.hashkey.ReplicaSet=0
+ NAMESPACE     NAME                       HASHKEY   READY   STATUS              RESTARTS   AGE
+ default       busybox-7cc9f9c486-8758n   0         1/1     Running             0          3m
+```
+
+#### Get pod with owner references replicaset hashkey <=-1
+```  
+$ kubectl get pod --all-namespaces --field-selector metadata.ownerReferences.hashkey.ReplicaSet=lte:-1
+  No resources found.
+```
+
+#### Get pod with owner references replicaset hashkey > -1
+```  
+$ kubectl get pod --all-namespaces --field-selector metadata.ownerReferences.hashkey.ReplicaSet=gt:-1
+ NAMESPACE     NAME                       HASHKEY   READY   STATUS              RESTARTS   AGE
+ default       busybox-7cc9f9c486-8758n   0         1/1     Running             0          3m
+```
+
+#### Get pod with -10 <= owner references replicaset  hashkey < 10 
+```  
+$ kubectl get pod --all-namespaces --field-selector metadata.ownerReferences.hashkey.ReplicaSet=gte:-10,metadata.ownerReferences.hashkey.ReplicaSet=lt:10
+ NAMESPACE     NAME                       HASHKEY   READY   STATUS              RESTARTS   AGE
+ default       busybox-7cc9f9c486-8758n   0         1/1     Running             0          3m
+```
+
+#### Get pod with -10 < owner references replicaset  hashkey <= -1
+```
+$ kubectl get pod --all-namespaces --field-selector metadata.ownerReferences.hashkey.ReplicaSet=gt:-10,metadata.ownerReferences.hashkey.ReplicaSet=lte:-1
+ No resources found.
+```
