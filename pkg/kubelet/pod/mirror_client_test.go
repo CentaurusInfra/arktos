@@ -26,27 +26,28 @@ func TestParsePodFullName(t *testing.T) {
 	type nameTuple struct {
 		Name      string
 		Namespace string
+		Tenant    string
 	}
 	successfulCases := map[string]nameTuple{
-		"bar_foo":         {Name: "bar", Namespace: "foo"},
-		"bar.org_foo.com": {Name: "bar.org", Namespace: "foo.com"},
-		"bar-bar_foo":     {Name: "bar-bar", Namespace: "foo"},
+		"bar_foo_baz":         {Name: "bar", Namespace: "foo", Tenant: "baz"},
+		"bar.org_foo.com_baz": {Name: "bar.org", Namespace: "foo.com", Tenant: "baz"},
+		"bar-bar_foo_baz":     {Name: "bar-bar", Namespace: "foo", Tenant: "baz"},
 	}
-	failedCases := []string{"barfoo", "bar_foo_foo", "", "bar_", "_foo"}
+	failedCases := []string{"barfoo", "bar_foo", "", "bar_", "_foo"}
 
 	for podFullName, expected := range successfulCases {
-		name, namespace, err := kubecontainer.ParsePodFullName(podFullName)
+		name, namespace, tenant, err := kubecontainer.ParsePodFullName(podFullName)
 		if err != nil {
 			t.Errorf("unexpected error when parsing the full name: %v", err)
 			continue
 		}
-		if name != expected.Name || namespace != expected.Namespace {
+		if name != expected.Name || namespace != expected.Namespace || tenant != expected.Tenant {
 			t.Errorf("expected name %q, namespace %q; got name %q, namespace %q",
 				expected.Name, expected.Namespace, name, namespace)
 		}
 	}
 	for _, podFullName := range failedCases {
-		_, _, err := kubecontainer.ParsePodFullName(podFullName)
+		_, _, _, err := kubecontainer.ParsePodFullName(podFullName)
 		if err == nil {
 			t.Errorf("expected error when parsing the full name, got none")
 		}

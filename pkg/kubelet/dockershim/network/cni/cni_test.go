@@ -133,7 +133,7 @@ func NewFakeHost(kubeClient clientset.Interface, pods []*containertest.FakePod, 
 	return host
 }
 
-func (fnh *fakeNetworkHost) GetPodByName(name, namespace string) (*v1.Pod, bool) {
+func (fnh *fakeNetworkHost) GetPodByName(name, namespace, tenant string) (*v1.Pod, bool) {
 	return nil, false
 }
 
@@ -255,7 +255,7 @@ func TestCNIPlugin(t *testing.T) {
 	bandwidthAnnotation["kubernetes.io/egress-bandwidth"] = "1M"
 
 	// Set up the pod
-	err = plug.SetUpPod("podNamespace", "podName", containerID, bandwidthAnnotation, nil)
+	err = plug.SetUpPod("podTenant", "podNamespace", "podName", containerID, bandwidthAnnotation, nil)
 	if err != nil {
 		t.Errorf("Expected nil: %v", err)
 	}
@@ -309,7 +309,7 @@ func TestCNIPlugin(t *testing.T) {
 	}
 
 	// Get its IP address
-	status, err := plug.GetPodNetworkStatus("podNamespace", "podName", containerID)
+	status, err := plug.GetPodNetworkStatus("podTenant", "podNamespace", "podName", containerID)
 	if err != nil {
 		t.Errorf("Failed to read pod network status: %v", err)
 	}
@@ -318,7 +318,7 @@ func TestCNIPlugin(t *testing.T) {
 	}
 
 	// Tear it down
-	err = plug.TearDownPod("podNamespace", "podName", containerID)
+	err = plug.TearDownPod("podTenant", "podNamespace", "podName", containerID)
 	if err != nil {
 		t.Errorf("Expected nil: %v", err)
 	}

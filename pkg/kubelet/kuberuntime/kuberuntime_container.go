@@ -164,7 +164,7 @@ func (m *kubeGenericRuntimeManager) startContainer(podSandboxID string, podSandb
 	containerMeta := containerConfig.GetMetadata()
 	sandboxMeta := podSandboxConfig.GetMetadata()
 	legacySymlink := legacyLogSymlink(containerID, containerMeta.Name, sandboxMeta.Name,
-		sandboxMeta.Namespace)
+		sandboxMeta.Namespace, sandboxMeta.Tenant)
 	containerLog := filepath.Join(podSandboxConfig.LogDirectory, containerConfig.LogPath)
 	// only create legacy symlink if containerLog path exists (or the error is not IsNotExist).
 	// Because if containerLog path does not exist, only dandling legacySymlink is created.
@@ -215,7 +215,7 @@ func (m *kubeGenericRuntimeManager) generateContainerConfig(container *v1.Contai
 	}
 
 	command, args := kubecontainer.ExpandContainerCommandAndArgs(container, opts.Envs)
-	logDir := BuildContainerLogsDirectory(pod.Namespace, pod.Name, pod.UID, container.Name)
+	logDir := BuildContainerLogsDirectory(pod.Tenant, pod.Namespace, pod.Name, pod.UID, container.Name)
 	err = m.osInterface.MkdirAll(logDir, 0755)
 	if err != nil {
 		return nil, cleanupAction, fmt.Errorf("create container log directory for container %s failed: %v", container.Name, err)
@@ -401,7 +401,7 @@ func (m *kubeGenericRuntimeManager) readLastStringFromContainerLogs(path string)
 }
 
 // getPodContainerStatuses gets all containers' statuses for the pod.
-func (m *kubeGenericRuntimeManager) getPodContainerStatuses(uid kubetypes.UID, name, namespace string) ([]*kubecontainer.ContainerStatus, error) {
+func (m *kubeGenericRuntimeManager) getPodContainerStatuses(uid kubetypes.UID, name, namespace, tenant string) ([]*kubecontainer.ContainerStatus, error) {
 	// Select all containers of the given pod.
 	runtimeService, err := m.GetRuntimeServiceByPodID(uid)
 	if err != nil {
@@ -435,7 +435,7 @@ func (m *kubeGenericRuntimeManager) getPodContainerStatuses(uid kubetypes.UID, n
 			if checkLogs {
 				// if dockerLegacyService is populated, we're supposed to use it to fetch logs
 				if m.legacyLogProvider != nil {
-					tMessage, err = m.legacyLogProvider.GetContainerLogTail(uid, name, namespace, kubecontainer.ContainerID{Type: m.runtimeName, ID: c.Id})
+					tMessage, err = m.legacyLogProvider.GetContainerLogTail(uid, name, namespace, tenant, kubecontainer.ContainerID{Type: m.runtimeName, ID: c.Id})
 					if err != nil {
 						tMessage = fmt.Sprintf("Error reading termination message from logs: %v", err)
 					}
@@ -883,7 +883,7 @@ func (m *kubeGenericRuntimeManager) removeContainerLog(containerID string) error
 	// Remove the legacy container log symlink.
 	// TODO(random-liu): Remove this after cluster logging supports CRI container log path.
 	legacySymlink := legacyLogSymlink(containerID, labeledInfo.ContainerName, labeledInfo.PodName,
-		labeledInfo.PodNamespace)
+		labeledInfo.PodNamespace, labeledInfo.PodTenant)
 	if err := m.osInterface.Remove(legacySymlink); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove container %q log legacy symbolic link %q: %v",
 			containerID, legacySymlink, err)

@@ -88,8 +88,8 @@ func (r *Mock) KillContainerInPod(container v1.Container, pod *v1.Pod) error {
 	return args.Error(0)
 }
 
-func (r *Mock) GetPodStatus(uid types.UID, name, namespace string) (*PodStatus, error) {
-	args := r.Called(uid, name, namespace)
+func (r *Mock) GetPodStatus(uid types.UID, name, namespace, tenant string) (*PodStatus, error) {
+	args := r.Called(uid, name, namespace, tenant)
 	return args.Get(0).(*PodStatus), args.Error(1)
 }
 

@@ -486,7 +486,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 		return
 	}
 	if err != nil {
-		klog.Warningf("Failed to get status for pod %q: %v", format.PodDescWithMultiTenancy(status.podName, status.podNamespace, status.podTenant, uid), err)
+		klog.Warningf("Failed to get status for pod %q: %v", format.PodDesc(status.podName, status.podNamespace, status.podTenant, uid), err)
 		return
 	}
 

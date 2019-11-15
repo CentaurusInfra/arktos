@@ -24,9 +24,10 @@ import (
 
 func TestPodSandboxCheckpoint(t *testing.T) {
 	data := &CheckpointData{HostNetwork: true}
-	checkpoint := NewPodSandboxCheckpoint("ns1", "sandbox1", data)
-	version, name, namespace, _, hostNetwork := checkpoint.GetData()
+	checkpoint := NewPodSandboxCheckpoint("test-te", "ns1", "sandbox1", data)
+	version, name, namespace, tenant, _, hostNetwork := checkpoint.GetData()
 	assert.Equal(t, schemaVersion, version)
+	assert.Equal(t, "test-te", tenant)
 	assert.Equal(t, "ns1", namespace)
 	assert.Equal(t, "sandbox1", name)
 	assert.Equal(t, true, hostNetwork)

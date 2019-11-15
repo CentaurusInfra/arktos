@@ -60,7 +60,7 @@ func (plugin *cniNetworkPlugin) platformInit() error {
 
 // TODO: Use the addToNetwork function to obtain the IP of the Pod. That will assume idempotent ADD call to the plugin.
 // Also fix the runtime's call to Status function to be done only in the case that the IP is lost, no need to do periodic calls
-func (plugin *cniNetworkPlugin) GetPodNetworkStatus(namespace string, name string, id kubecontainer.ContainerID) (*network.PodNetworkStatus, error) {
+func (plugin *cniNetworkPlugin) GetPodNetworkStatus(tenant, namespace string, name string, id kubecontainer.ContainerID) (*network.PodNetworkStatus, error) {
 	netnsPath, err := plugin.host.GetNetNS(id.ID)
 	if err != nil {
 		return nil, fmt.Errorf("CNI failed to retrieve network namespace path: %v", err)

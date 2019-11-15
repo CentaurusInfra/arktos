@@ -54,7 +54,7 @@ type Manager interface {
 	GetPodByFullName(podFullName string) (*v1.Pod, bool)
 	// GetPodByName provides the (non-mirror) pod that matches namespace and
 	// name, as well as whether the pod was found.
-	GetPodByName(namespace, name string) (*v1.Pod, bool)
+	GetPodByName(tenant, namespace, name string) (*v1.Pod, bool)
 	// GetPodByUID provides the (non-mirror) pod that matches pod UID, as well as
 	// whether the pod is found.
 	GetPodByUID(types.UID) (*v1.Pod, bool)
@@ -272,8 +272,8 @@ func (pm *basicManager) GetPodByUID(uid types.UID) (*v1.Pod, bool) {
 	return pod, ok
 }
 
-func (pm *basicManager) GetPodByName(namespace, name string) (*v1.Pod, bool) {
-	podFullName := kubecontainer.BuildPodFullName(name, namespace)
+func (pm *basicManager) GetPodByName(tenant, namespace, name string) (*v1.Pod, bool) {
+	podFullName := kubecontainer.BuildPodFullName(name, namespace, tenant)
 	return pm.GetPodByFullName(podFullName)
 }
 

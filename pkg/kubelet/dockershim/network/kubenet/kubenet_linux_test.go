@@ -108,7 +108,7 @@ func TestGetPodNetworkStatus(t *testing.T) {
 	fakeKubenet := newFakeKubenetPlugin(podIPMap, &fexec, fhost)
 
 	for i, tc := range testCases {
-		out, err := fakeKubenet.GetPodNetworkStatus("", "", kubecontainer.ContainerID{ID: tc.id})
+		out, err := fakeKubenet.GetPodNetworkStatus("", "", "", kubecontainer.ContainerID{ID: tc.id})
 		if tc.expectError {
 			if err == nil {
 				t.Errorf("Test case %d expects error but got none", i)
@@ -152,7 +152,7 @@ func TestTeardownCallsShaper(t *testing.T) {
 	existingContainerID := kubecontainer.BuildContainerID("docker", "123")
 	kubenet.podIPs[existingContainerID] = "10.0.0.1"
 
-	if err := kubenet.TearDownPod("namespace", "name", existingContainerID); err != nil {
+	if err := kubenet.TearDownPod("tenant", "namespace", "name", existingContainerID); err != nil {
 		t.Fatalf("Unexpected error in TearDownPod: %v", err)
 	}
 	assert.Equal(t, []string{"10.0.0.1/32"}, fshaper.ResetCIDRs, "shaper.Reset should have been called")
@@ -249,7 +249,7 @@ func TestTearDownWithoutRuntime(t *testing.T) {
 
 		mockcni.On("DelNetwork", mock.AnythingOfType("*libcni.NetworkConfig"), mock.AnythingOfType("*libcni.RuntimeConf")).Return(nil)
 
-		if err := kubenet.TearDownPod("namespace", "name", existingContainerID); err != nil {
+		if err := kubenet.TearDownPod("tenant", "namespace", "name", existingContainerID); err != nil {
 			t.Fatalf("Unexpected error in TearDownPod: %v", err)
 		}
 		// Assert that the CNI DelNetwork made it through and we didn't crash

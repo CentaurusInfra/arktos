@@ -37,7 +37,7 @@ func NewFakeHost(kubeClient clientset.Interface) *fakeNetworkHost {
 	return host
 }
 
-func (fnh *fakeNetworkHost) GetPodByName(name, namespace string) (*v1.Pod, bool) {
+func (fnh *fakeNetworkHost) GetPodByName(name, namespace, tenant string) (*v1.Pod, bool) {
 	return nil, false
 }
 

@@ -28,7 +28,7 @@ func BuildContainerName(metadata *runtimeapi.ContainerMetadata, sandboxID string
 }
 
 func BuildSandboxName(metadata *runtimeapi.PodSandboxMetadata) string {
-	return fmt.Sprintf("%s_%s_%s_%d", metadata.Name, metadata.Namespace, metadata.Uid, metadata.Attempt)
+	return fmt.Sprintf("%s_%s_%s_%s_%d", metadata.Name, metadata.Namespace, metadata.Tenant, metadata.Uid, metadata.Attempt)
 }
 
 func filterInLabels(filter, labels map[string]string) bool {

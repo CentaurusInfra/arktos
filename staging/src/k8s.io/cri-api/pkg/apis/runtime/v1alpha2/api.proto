@@ -320,6 +320,8 @@ message PodSandboxMetadata {
     string namespace = 3;
     // Attempt number of creating the sandbox. Default: 0.
     uint32 attempt = 4;
+    // Pod tenant of the sandbox. Same as the pod tenant in the PodSpec.
+    string tenant = 5;
 }
 
 // PodSandboxConfig holds all the required and optional fields for creating a

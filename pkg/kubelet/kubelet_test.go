@@ -1065,6 +1065,7 @@ func TestGetContainerInfoForMirrorPods(t *testing.T) {
 				UID:       "1234",
 				Name:      "qux",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					kubetypes.ConfigSourceAnnotationKey: "file",
 				},
@@ -1080,6 +1081,7 @@ func TestGetContainerInfoForMirrorPods(t *testing.T) {
 				UID:       "5678",
 				Name:      "qux",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					kubetypes.ConfigSourceAnnotationKey: "api",
 					kubetypes.ConfigMirrorAnnotationKey: "mirror",
@@ -1104,6 +1106,7 @@ func TestGetContainerInfoForMirrorPods(t *testing.T) {
 			ID:        "1234",
 			Name:      "qux",
 			Namespace: "ns",
+			Tenant:    "te",
 			Containers: []*kubecontainer.Container{
 				{
 					Name: "foo",
@@ -1115,7 +1118,7 @@ func TestGetContainerInfoForMirrorPods(t *testing.T) {
 
 	kubelet.podManager.SetPods(pods)
 	// Use the mirror pod UID to retrieve the stats.
-	stats, err := kubelet.GetContainerInfo("qux_ns", "5678", "foo", cadvisorReq)
+	stats, err := kubelet.GetContainerInfo("qux_ns_te", "5678", "foo", cadvisorReq)
 	assert.NoError(t, err)
 	require.NotNil(t, stats)
 }

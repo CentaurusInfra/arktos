@@ -306,11 +306,12 @@ func TestGetPodStatus(t *testing.T) {
 	// Set fake sandbox and faked containers to fakeRuntime.
 	makeAndSetFakePod(t, m, fakeRuntime, pod)
 
-	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	assert.NoError(t, err)
 	assert.Equal(t, pod.UID, podStatus.ID)
 	assert.Equal(t, pod.Name, podStatus.Name)
 	assert.Equal(t, pod.Namespace, podStatus.Namespace)
+	assert.Equal(t, pod.Tenant, podStatus.Tenant)
 	assert.Equal(t, apitest.FakePodSandboxIP, podStatus.IP)
 }
 
@@ -530,7 +531,7 @@ func TestPruneInitContainers(t *testing.T) {
 	fakes := makeFakeContainers(t, m, templates)
 	fakeRuntime.SetFakeContainers(fakes)
 	m.podRuntimeServiceMap[string(pod.UID)] = fakeRuntime
-	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	assert.NoError(t, err)
 
 	m.pruneInitContainersBeforeStart(pod, podStatus)
@@ -580,7 +581,7 @@ func TestSyncPodWithInitContainers(t *testing.T) {
 	m.podRuntimeServiceMap[string(pod.UID)] = fakeRuntime
 
 	// 1. should only create the init container.
-	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	assert.NoError(t, err)
 	result := m.SyncPod(pod, podStatus, []v1.Secret{}, backOff)
 	assert.NoError(t, result.Error())
@@ -590,7 +591,7 @@ func TestSyncPodWithInitContainers(t *testing.T) {
 	verifyContainerStatuses(t, fakeRuntime, expected, "start only the init container")
 
 	// 2. should not create app container because init container is still running.
-	podStatus, err = m.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+	podStatus, err = m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	assert.NoError(t, err)
 	result = m.SyncPod(pod, podStatus, []v1.Secret{}, backOff)
 	assert.NoError(t, result.Error())
@@ -605,7 +606,7 @@ func TestSyncPodWithInitContainers(t *testing.T) {
 	require.NoError(t, err)
 	fakeRuntime.StopContainer(initID0, 0)
 	// Sync again.
-	podStatus, err = m.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+	podStatus, err = m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	assert.NoError(t, err)
 	result = m.SyncPod(pod, podStatus, []v1.Secret{}, backOff)
 	assert.NoError(t, result.Error())
@@ -620,7 +621,7 @@ func TestSyncPodWithInitContainers(t *testing.T) {
 	// Stop the pod sandbox.
 	fakeRuntime.StopPodSandbox(sandboxID)
 	// Sync again.
-	podStatus, err = m.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+	podStatus, err = m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	assert.NoError(t, err)
 	result = m.SyncPod(pod, podStatus, []v1.Secret{}, backOff)
 	assert.NoError(t, result.Error())

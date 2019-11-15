@@ -37,7 +37,7 @@ func (plugin *cniNetworkPlugin) platformInit() error {
 }
 
 // GetPodNetworkStatus : Assuming addToNetwork is idempotent, we can call this API as many times as required to get the IPAddress
-func (plugin *cniNetworkPlugin) GetPodNetworkStatus(namespace string, name string, id kubecontainer.ContainerID) (*network.PodNetworkStatus, error) {
+func (plugin *cniNetworkPlugin) GetPodNetworkStatus(tenant, namespace string, name string, id kubecontainer.ContainerID) (*network.PodNetworkStatus, error) {
 	netnsPath, err := plugin.host.GetNetNS(id.ID)
 	if err != nil {
 		return nil, fmt.Errorf("CNI failed to retrieve network namespace path: %v", err)

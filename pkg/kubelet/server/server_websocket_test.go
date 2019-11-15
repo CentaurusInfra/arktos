@@ -57,6 +57,7 @@ func TestServeWSPortForward(t *testing.T) {
 		"normal port with uid":          {port: "8000", uid: true, shouldError: false},
 	}
 
+	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 
@@ -71,9 +72,10 @@ func TestServeWSPortForward(t *testing.T) {
 
 			portForwardFuncDone := make(chan struct{})
 
-			fw.fakeKubelet.getPortForwardCheck = func(name, namespace string, uid types.UID, opts portforward.V4Options) {
+			fw.fakeKubelet.getPortForwardCheck = func(name, namespace, tenant string, uid types.UID, opts portforward.V4Options) {
 				assert.Equal(t, podName, name, "pod name")
 				assert.Equal(t, podNamespace, namespace, "pod namespace")
+				assert.Equal(t, podTenant, tenant, "pod tenant")
 				if test.uid {
 					assert.Equal(t, testUID, string(uid), "uid")
 				}
@@ -104,9 +106,9 @@ func TestServeWSPortForward(t *testing.T) {
 
 			var url string
 			if test.uid {
-				url = fmt.Sprintf("ws://%s/portForward/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podNamespace, podName, testUID, test.port)
+				url = fmt.Sprintf("ws://%s/portForward/%s/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName, testUID, test.port)
 			} else {
-				url = fmt.Sprintf("ws://%s/portForward/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podNamespace, podName, test.port)
+				url = fmt.Sprintf("ws://%s/portForward/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName, test.port)
 			}
 
 			ws, err := websocket.Dial(url, "", "http://127.0.0.1/")
@@ -152,6 +154,7 @@ func TestServeWSPortForward(t *testing.T) {
 func TestServeWSMultiplePortForward(t *testing.T) {
 	portsText := []string{"7000,8000", "9000"}
 	ports := []uint16{7000, 8000, 9000}
+	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 
@@ -167,9 +170,10 @@ func TestServeWSMultiplePortForward(t *testing.T) {
 	portsMutex := sync.Mutex{}
 	portsForwarded := map[int32]struct{}{}
 
-	fw.fakeKubelet.getPortForwardCheck = func(name, namespace string, uid types.UID, opts portforward.V4Options) {
+	fw.fakeKubelet.getPortForwardCheck = func(name, namespace, tenant string, uid types.UID, opts portforward.V4Options) {
 		assert.Equal(t, podName, name, "pod name")
 		assert.Equal(t, podNamespace, namespace, "pod namespace")
+		assert.Equal(t, podTenant, tenant, "pod tenant")
 	}
 
 	ss.fakeRuntime.portForwardFunc = func(podSandboxID string, port int32, stream io.ReadWriteCloser) error {
@@ -191,7 +195,7 @@ func TestServeWSMultiplePortForward(t *testing.T) {
 		return nil
 	}
 
-	url := fmt.Sprintf("ws://%s/portForward/%s/%s?", fw.testHTTPServer.Listener.Addr().String(), podNamespace, podName)
+	url := fmt.Sprintf("ws://%s/portForward/%s/%s/%s?", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName)
 	for _, port := range portsText {
 		url = url + fmt.Sprintf("port=%s&", port)
 	}

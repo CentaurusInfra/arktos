@@ -168,12 +168,12 @@ func (_m *StatsProvider) GetPodCgroupRoot() string {
 }
 
 // GetPodByName provides a mock function with given fields: namespace, name
-func (_m *StatsProvider) GetPodByName(namespace string, name string) (*corev1.Pod, bool) {
-	ret := _m.Called(namespace, name)
+func (_m *StatsProvider) GetPodByName(tenant string, namespace string, name string) (*corev1.Pod, bool) {
+	ret := _m.Called(tenant, namespace, name)
 
 	var r0 *corev1.Pod
-	if rf, ok := ret.Get(0).(func(string, string) *corev1.Pod); ok {
-		r0 = rf(namespace, name)
+	if rf, ok := ret.Get(0).(func(string, string, string) *corev1.Pod); ok {
+		r0 = rf(tenant, namespace, name)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*corev1.Pod)

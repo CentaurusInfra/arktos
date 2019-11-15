@@ -80,7 +80,7 @@ func TestPodAndPodDesc(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		realPodDesc := PodDescWithMultiTenancy(testCase.podName, testCase.podNamesapce, testCase.podTenant, testCase.podUID)
+		realPodDesc := PodDesc(testCase.podName, testCase.podNamesapce, testCase.podTenant, testCase.podUID)
 		assert.Equalf(t, testCase.expectedValue, realPodDesc, "Failed to test: %s", testCase.caseName)
 	}
 }

@@ -282,7 +282,7 @@ func (f *FakeRuntime) KillContainerInPod(container v1.Container, pod *v1.Pod) er
 	return f.Err
 }
 
-func (f *FakeRuntime) GetPodStatus(uid types.UID, name, namespace string) (*PodStatus, error) {
+func (f *FakeRuntime) GetPodStatus(uid types.UID, name, namespace, tenant string) (*PodStatus, error) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -385,7 +385,7 @@ func (f *FakeStreamingRuntime) GetAttach(id ContainerID, stdin, stdout, stderr, 
 	return &url.URL{Host: FakeHost}, f.Err
 }
 
-func (f *FakeStreamingRuntime) GetPortForward(podName, podNamespace string, podUID types.UID, ports []int32) (*url.URL, error) {
+func (f *FakeStreamingRuntime) GetPortForward(podName, podNamespace, podTenant string, podUID types.UID, ports []int32) (*url.URL, error) {
 	f.Lock()
 	defer f.Unlock()
 

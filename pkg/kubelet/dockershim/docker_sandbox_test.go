@@ -35,15 +35,16 @@ import (
 )
 
 // A helper to create a basic config.
-func makeSandboxConfig(name, namespace, uid string, attempt uint32) *runtimeapi.PodSandboxConfig {
-	return makeSandboxConfigWithLabelsAndAnnotations(name, namespace, uid, attempt, map[string]string{}, map[string]string{})
+func makeSandboxConfig(name, namespace, tenant, uid string, attempt uint32) *runtimeapi.PodSandboxConfig {
+	return makeSandboxConfigWithLabelsAndAnnotations(name, namespace, tenant, uid, attempt, map[string]string{}, map[string]string{})
 }
 
-func makeSandboxConfigWithLabelsAndAnnotations(name, namespace, uid string, attempt uint32, labels, annotations map[string]string) *runtimeapi.PodSandboxConfig {
+func makeSandboxConfigWithLabelsAndAnnotations(name, namespace, tenant, uid string, attempt uint32, labels, annotations map[string]string) *runtimeapi.PodSandboxConfig {
 	return &runtimeapi.PodSandboxConfig{
 		Metadata: &runtimeapi.PodSandboxMetadata{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 			Uid:       uid,
 			Attempt:   attempt,
 		},
@@ -56,11 +57,11 @@ func makeSandboxConfigWithLabelsAndAnnotations(name, namespace, uid string, atte
 // whether the correct metadatas, states, and labels are returned.
 func TestListSandboxes(t *testing.T) {
 	ds, _, fakeClock := newTestDockerService()
-	name, namespace := "foo", "bar"
+	name, namespace, tenant := "foo", "bar", "baz"
 	configs := []*runtimeapi.PodSandboxConfig{}
 	for i := 0; i < 3; i++ {
 		c := makeSandboxConfigWithLabelsAndAnnotations(fmt.Sprintf("%s%d", name, i),
-			fmt.Sprintf("%s%d", namespace, i), fmt.Sprintf("%d", i), 0,
+			fmt.Sprintf("%s%d", namespace, i), tenant, fmt.Sprintf("%d", i), 0,
 			map[string]string{"label": fmt.Sprintf("foo%d", i)},
 			map[string]string{"annotation": fmt.Sprintf("bar%d", i)},
 		)
@@ -96,7 +97,7 @@ func TestSandboxStatus(t *testing.T) {
 	ds, fDocker, fClock := newTestDockerService()
 	labels := map[string]string{"label": "foobar1"}
 	annotations := map[string]string{"annotation": "abc"}
-	config := makeSandboxConfigWithLabelsAndAnnotations("foo", "bar", "1", 0, labels, annotations)
+	config := makeSandboxConfigWithLabelsAndAnnotations("foo", "bar", "baz", "1", 0, labels, annotations)
 	r := rand.New(rand.NewSource(0)).Uint32()
 	podIP := fmt.Sprintf("10.%d.%d.%d", byte(r>>16), byte(r>>8), byte(r))
 
@@ -158,7 +159,7 @@ func TestSandboxStatus(t *testing.T) {
 // would happen on kubelet restart
 func TestSandboxStatusAfterRestart(t *testing.T) {
 	ds, _, fClock := newTestDockerService()
-	config := makeSandboxConfig("foo", "bar", "1", 0)
+	config := makeSandboxConfig("foo", "bar", "baz", "1", 0)
 	r := rand.New(rand.NewSource(0)).Uint32()
 	podIP := fmt.Sprintf("10.%d.%d.%d", byte(r>>16), byte(r>>8), byte(r))
 
@@ -210,16 +211,17 @@ func TestNetworkPluginInvocation(t *testing.T) {
 
 	name := "foo0"
 	ns := "bar0"
+	te := "baz0"
 	c := makeSandboxConfigWithLabelsAndAnnotations(
-		name, ns, "0", 0,
+		name, ns, te, "0", 0,
 		map[string]string{"label": name},
 		map[string]string{"annotation": ns},
 	)
 	cID := kubecontainer.ContainerID{Type: runtimeName, ID: libdocker.GetFakeContainerID(fmt.Sprintf("/%v", makeSandboxName(c)))}
 
 	mockPlugin.EXPECT().Name().Return("mockNetworkPlugin").AnyTimes()
-	setup := mockPlugin.EXPECT().SetUpPod(ns, name, cID)
-	mockPlugin.EXPECT().TearDownPod(ns, name, cID).After(setup)
+	setup := mockPlugin.EXPECT().SetUpPod(te, ns, name, cID)
+	mockPlugin.EXPECT().TearDownPod(te, ns, name, cID).After(setup)
 
 	_, err := ds.RunPodSandbox(getTestCTX(), &runtimeapi.RunPodSandboxRequest{Config: c})
 	require.NoError(t, err)
@@ -237,8 +239,9 @@ func TestHostNetworkPluginInvocation(t *testing.T) {
 
 	name := "foo0"
 	ns := "bar0"
+	te := "baz0"
 	c := makeSandboxConfigWithLabelsAndAnnotations(
-		name, ns, "0", 0,
+		name, ns, te, "0", 0,
 		map[string]string{"label": name},
 		map[string]string{"annotation": ns},
 	)
@@ -269,18 +272,19 @@ func TestSetUpPodFailure(t *testing.T) {
 
 	name := "foo0"
 	ns := "bar0"
+	te := "baz0"
 	c := makeSandboxConfigWithLabelsAndAnnotations(
-		name, ns, "0", 0,
+		name, ns, te, "0", 0,
 		map[string]string{"label": name},
 		map[string]string{"annotation": ns},
 	)
 	cID := kubecontainer.ContainerID{Type: runtimeName, ID: libdocker.GetFakeContainerID(fmt.Sprintf("/%v", makeSandboxName(c)))}
 	mockPlugin.EXPECT().Name().Return("mockNetworkPlugin").AnyTimes()
-	mockPlugin.EXPECT().SetUpPod(ns, name, cID).Return(errors.New("setup pod error")).AnyTimes()
+	mockPlugin.EXPECT().SetUpPod(te, ns, name, cID).Return(errors.New("setup pod error")).AnyTimes()
 	// If SetUpPod() fails, we expect TearDownPod() to immediately follow
-	mockPlugin.EXPECT().TearDownPod(ns, name, cID)
+	mockPlugin.EXPECT().TearDownPod(te, ns, name, cID)
 	// Assume network plugin doesn't return error, dockershim should still be able to return not ready correctly.
-	mockPlugin.EXPECT().GetPodNetworkStatus(ns, name, cID).Return(&network.PodNetworkStatus{IP: net.IP("127.0.0.01")}, nil).AnyTimes()
+	mockPlugin.EXPECT().GetPodNetworkStatus(te, ns, name, cID).Return(&network.PodNetworkStatus{IP: net.IP("127.0.0.01")}, nil).AnyTimes()
 
 	t.Logf("RunPodSandbox should return error")
 	_, err := ds.RunPodSandbox(getTestCTX(), &runtimeapi.RunPodSandboxRequest{Config: c})

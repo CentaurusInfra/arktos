@@ -63,6 +63,7 @@ func makeSandboxName(s *runtimeapi.PodSandboxConfig) string {
 		s.Metadata.Namespace,                  // 3
 		s.Metadata.Uid,                        // 4
 		fmt.Sprintf("%d", s.Metadata.Attempt), // 5
+		s.Metadata.Tenant,                     // 6
 	}, nameDelimiter)
 }
 
@@ -74,6 +75,7 @@ func makeContainerName(s *runtimeapi.PodSandboxConfig, c *runtimeapi.ContainerCo
 		s.Metadata.Namespace,                  // 3: sandbox namesapce
 		s.Metadata.Uid,                        // 4  sandbox uid
 		fmt.Sprintf("%d", c.Metadata.Attempt), // 5
+		s.Metadata.Tenant,                     // 6
 	}, nameDelimiter)
 }
 
@@ -102,7 +104,7 @@ func parseSandboxName(name string) (*runtimeapi.PodSandboxMetadata, error) {
 	parts := strings.Split(name, nameDelimiter)
 	// Tolerate the random suffix.
 	// TODO(random-liu): Remove 7 field case when docker 1.11 is deprecated.
-	if len(parts) != 6 && len(parts) != 7 {
+	if len(parts) != 7 && len(parts) != 8 {
 		return nil, fmt.Errorf("failed to parse the sandbox name: %q", name)
 	}
 	if parts[0] != kubePrefix {
@@ -119,6 +121,7 @@ func parseSandboxName(name string) (*runtimeapi.PodSandboxMetadata, error) {
 		Namespace: parts[3],
 		Uid:       parts[4],
 		Attempt:   attempt,
+		Tenant:    parts[6],
 	}, nil
 }
 
@@ -130,7 +133,7 @@ func parseContainerName(name string) (*runtimeapi.ContainerMetadata, error) {
 	parts := strings.Split(name, nameDelimiter)
 	// Tolerate the random suffix.
 	// TODO(random-liu): Remove 7 field case when docker 1.11 is deprecated.
-	if len(parts) != 6 && len(parts) != 7 {
+	if len(parts) != 7 && len(parts) != 8 {
 		return nil, fmt.Errorf("failed to parse the container name: %q", name)
 	}
 	if parts[0] != kubePrefix {

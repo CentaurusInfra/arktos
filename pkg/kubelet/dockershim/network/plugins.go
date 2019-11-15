@@ -65,13 +65,13 @@ type NetworkPlugin interface {
 	// SetUpPod is the method called after the infra container of
 	// the pod has been created but before the other containers of the
 	// pod are launched.
-	SetUpPod(namespace string, name string, podSandboxID kubecontainer.ContainerID, annotations, options map[string]string) error
+	SetUpPod(tenant string, namespace string, name string, podSandboxID kubecontainer.ContainerID, annotations, options map[string]string) error
 
 	// TearDownPod is the method called before a pod's infra container will be deleted
-	TearDownPod(namespace string, name string, podSandboxID kubecontainer.ContainerID) error
+	TearDownPod(tenant string, namespace string, name string, podSandboxID kubecontainer.ContainerID) error
 
 	// GetPodNetworkStatus is the method called to obtain the ipv4 or ipv6 addresses of the container
-	GetPodNetworkStatus(namespace string, name string, podSandboxID kubecontainer.ContainerID) (*PodNetworkStatus, error)
+	GetPodNetworkStatus(tenant string, namespace string, name string, podSandboxID kubecontainer.ContainerID) (*PodNetworkStatus, error)
 
 	// Status returns error if the network plugin is in error state
 	Status() error
@@ -209,15 +209,15 @@ func (plugin *NoopNetworkPlugin) Capabilities() utilsets.Int {
 	return utilsets.NewInt()
 }
 
-func (plugin *NoopNetworkPlugin) SetUpPod(namespace string, name string, id kubecontainer.ContainerID, annotations, options map[string]string) error {
+func (plugin *NoopNetworkPlugin) SetUpPod(tenant string, namespace string, name string, id kubecontainer.ContainerID, annotations, options map[string]string) error {
 	return nil
 }
 
-func (plugin *NoopNetworkPlugin) TearDownPod(namespace string, name string, id kubecontainer.ContainerID) error {
+func (plugin *NoopNetworkPlugin) TearDownPod(tenant string, namespace string, name string, id kubecontainer.ContainerID) error {
 	return nil
 }
 
-func (plugin *NoopNetworkPlugin) GetPodNetworkStatus(namespace string, name string, id kubecontainer.ContainerID) (*PodNetworkStatus, error) {
+func (plugin *NoopNetworkPlugin) GetPodNetworkStatus(tenant string, namespace string, name string, id kubecontainer.ContainerID) (*PodNetworkStatus, error) {
 	return nil, nil
 }
 
@@ -357,13 +357,13 @@ func recordOperation(operation string, start time.Time) {
 	metrics.DeprecatedNetworkPluginOperationsLatency.WithLabelValues(operation).Observe(metrics.SinceInMicroseconds(start))
 }
 
-func (pm *PluginManager) GetPodNetworkStatus(podNamespace, podName string, id kubecontainer.ContainerID) (*PodNetworkStatus, error) {
+func (pm *PluginManager) GetPodNetworkStatus(podTenant, podNamespace, podName string, id kubecontainer.ContainerID) (*PodNetworkStatus, error) {
 	defer recordOperation("get_pod_network_status", time.Now())
-	fullPodName := kubecontainer.BuildPodFullName(podName, podNamespace)
+	fullPodName := kubecontainer.BuildPodFullName(podName, podNamespace, podTenant)
 	pm.podLock(fullPodName).Lock()
 	defer pm.podUnlock(fullPodName)
 
-	netStatus, err := pm.plugin.GetPodNetworkStatus(podNamespace, podName, id)
+	netStatus, err := pm.plugin.GetPodNetworkStatus(podTenant, podNamespace, podName, id)
 	if err != nil {
 		return nil, fmt.Errorf("NetworkPlugin %s failed on the status hook for pod %q: %v", pm.plugin.Name(), fullPodName, err)
 	}
@@ -371,28 +371,28 @@ func (pm *PluginManager) GetPodNetworkStatus(podNamespace, podName string, id ku
 	return netStatus, nil
 }
 
-func (pm *PluginManager) SetUpPod(podNamespace, podName string, id kubecontainer.ContainerID, annotations, options map[string]string) error {
+func (pm *PluginManager) SetUpPod(podTenant, podNamespace, podName string, id kubecontainer.ContainerID, annotations, options map[string]string) error {
 	defer recordOperation("set_up_pod", time.Now())
-	fullPodName := kubecontainer.BuildPodFullName(podName, podNamespace)
+	fullPodName := kubecontainer.BuildPodFullName(podName, podNamespace, podTenant)
 	pm.podLock(fullPodName).Lock()
 	defer pm.podUnlock(fullPodName)
 
 	klog.V(3).Infof("Calling network plugin %s to set up pod %q", pm.plugin.Name(), fullPodName)
-	if err := pm.plugin.SetUpPod(podNamespace, podName, id, annotations, options); err != nil {
+	if err := pm.plugin.SetUpPod(podTenant, podNamespace, podName, id, annotations, options); err != nil {
 		return fmt.Errorf("NetworkPlugin %s failed to set up pod %q network: %v", pm.plugin.Name(), fullPodName, err)
 	}
 
 	return nil
 }
 
-func (pm *PluginManager) TearDownPod(podNamespace, podName string, id kubecontainer.ContainerID) error {
+func (pm *PluginManager) TearDownPod(podTenant, podNamespace, podName string, id kubecontainer.ContainerID) error {
 	defer recordOperation("tear_down_pod", time.Now())
-	fullPodName := kubecontainer.BuildPodFullName(podName, podNamespace)
+	fullPodName := kubecontainer.BuildPodFullName(podName, podNamespace, podTenant)
 	pm.podLock(fullPodName).Lock()
 	defer pm.podUnlock(fullPodName)
 
 	klog.V(3).Infof("Calling network plugin %s to tear down pod %q", pm.plugin.Name(), fullPodName)
-	if err := pm.plugin.TearDownPod(podNamespace, podName, id); err != nil {
+	if err := pm.plugin.TearDownPod(podTenant, podNamespace, podName, id); err != nil {
 		return fmt.Errorf("NetworkPlugin %s failed to teardown pod %q network: %v", pm.plugin.Name(), fullPodName, err)
 	}
 

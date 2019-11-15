@@ -46,6 +46,7 @@ func TestGetSetPods(t *testing.T) {
 			UID:       "987654321",
 			Name:      "bar",
 			Namespace: "default",
+			Tenant:    "test-te",
 			Annotations: map[string]string{
 				kubetypes.ConfigSourceAnnotationKey: "api",
 				kubetypes.ConfigMirrorAnnotationKey: "mirror",
@@ -57,6 +58,7 @@ func TestGetSetPods(t *testing.T) {
 			UID:         "123456789",
 			Name:        "bar",
 			Namespace:   "default",
+			Tenant:      "test-te",
 			Annotations: map[string]string{kubetypes.ConfigSourceAnnotationKey: "file"},
 		},
 	}
@@ -67,6 +69,7 @@ func TestGetSetPods(t *testing.T) {
 				UID:         "999999999",
 				Name:        "taco",
 				Namespace:   "default",
+				Tenant:      "test-te",
 				Annotations: map[string]string{kubetypes.ConfigSourceAnnotationKey: "api"},
 			},
 		},
@@ -104,11 +107,11 @@ func TestGetSetPods(t *testing.T) {
 	}
 
 	// Test the basic Get methods.
-	actualPod, ok := podManager.GetPodByFullName("bar_default")
+	actualPod, ok := podManager.GetPodByFullName("bar_default_test-te")
 	if !ok || !reflect.DeepEqual(actualPod, staticPod) {
 		t.Errorf("unable to get pod by full name; expected: %#v, got: %#v", staticPod, actualPod)
 	}
-	actualPod, ok = podManager.GetPodByName("default", "bar")
+	actualPod, ok = podManager.GetPodByName("test-te", "default", "bar")
 	if !ok || !reflect.DeepEqual(actualPod, staticPod) {
 		t.Errorf("unable to get pod by name; expected: %#v, got: %#v", staticPod, actualPod)
 	}
@@ -121,6 +124,7 @@ func TestDeletePods(t *testing.T) {
 			UID:       types.UID("mirror-pod-uid"),
 			Name:      "mirror-static-pod-name",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    "test-te",
 			Annotations: map[string]string{
 				kubetypes.ConfigSourceAnnotationKey: "api",
 				kubetypes.ConfigMirrorAnnotationKey: "mirror",
@@ -132,6 +136,7 @@ func TestDeletePods(t *testing.T) {
 			UID:         types.UID("static-pod-uid"),
 			Name:        "mirror-static-pod-name",
 			Namespace:   metav1.NamespaceDefault,
+			Tenant:      "test-te",
 			Annotations: map[string]string{kubetypes.ConfigSourceAnnotationKey: "file"},
 		},
 	}
@@ -142,6 +147,7 @@ func TestDeletePods(t *testing.T) {
 				UID:         types.UID("extra-pod-uid"),
 				Name:        "extra-pod-name",
 				Namespace:   metav1.NamespaceDefault,
+				Tenant:      "test-te",
 				Annotations: map[string]string{kubetypes.ConfigSourceAnnotationKey: "api"},
 			},
 		},
@@ -164,7 +170,7 @@ func TestDeletePods(t *testing.T) {
 		t.Fatalf("Run getOrphanedMirrorPodNames() error, expected %d orphaned mirror pods, got %d orphaned mirror pods; ", expectedOrphanedMirrorPodNameNum, len(orphanedMirrorPodNames))
 	}
 
-	expectedOrphanedMirrorPodName := mirrorPod.Name + "_" + mirrorPod.Namespace
+	expectedOrphanedMirrorPodName := mirrorPod.Name + "_" + mirrorPod.Namespace + "_" + mirrorPod.Tenant
 	if orphanedMirrorPodNames[0] != expectedOrphanedMirrorPodName {
 		t.Fatalf("Run getOrphanedMirrorPodNames() error, expected orphaned mirror pod name : %s, got orphaned mirror pod name %s; ", expectedOrphanedMirrorPodName, orphanedMirrorPodNames[0])
 	}

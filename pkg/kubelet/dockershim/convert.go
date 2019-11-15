@@ -166,12 +166,13 @@ func containerToRuntimeAPISandbox(c *dockertypes.Container) (*runtimeapi.PodSand
 
 func checkpointToRuntimeAPISandbox(id string, checkpoint DockershimCheckpoint) *runtimeapi.PodSandbox {
 	state := runtimeapi.PodSandboxState_SANDBOX_NOTREADY
-	_, name, namespace, _, _ := checkpoint.GetData()
+	_, name, namespace, tenant, _, _ := checkpoint.GetData()
 	return &runtimeapi.PodSandbox{
 		Id: id,
 		Metadata: &runtimeapi.PodSandboxMetadata{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		State: state,
 	}

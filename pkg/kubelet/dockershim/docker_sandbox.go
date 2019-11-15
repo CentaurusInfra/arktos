@@ -174,13 +174,14 @@ func (ds *dockerService) RunPodSandbox(ctx context.Context, r *runtimeapi.RunPod
 		}
 		networkOptions["dns"] = string(dnsOption)
 	}
-	err = ds.network.SetUpPod(config.GetMetadata().Namespace, config.GetMetadata().Name, cID, config.Annotations, networkOptions)
+
+	err = ds.network.SetUpPod(config.GetMetadata().Tenant, config.GetMetadata().Namespace, config.GetMetadata().Name, cID, config.Annotations, networkOptions)
 	if err != nil {
 		errList := []error{fmt.Errorf("failed to set up sandbox container %q network for pod %q: %v", createResp.ID, config.Metadata.Name, err)}
 
 		// Ensure network resources are cleaned up even if the plugin
 		// succeeded but an error happened between that success and here.
-		err = ds.network.TearDownPod(config.GetMetadata().Namespace, config.GetMetadata().Name, cID)
+		err = ds.network.TearDownPod(config.GetMetadata().Tenant, config.GetMetadata().Namespace, config.GetMetadata().Name, cID)
 		if err != nil {
 			errList = append(errList, fmt.Errorf("failed to clean up sandbox container %q network for pod %q: %v", createResp.ID, config.Metadata.Name, err))
 		}
@@ -202,7 +203,7 @@ func (ds *dockerService) RunPodSandbox(ctx context.Context, r *runtimeapi.RunPod
 // better to cut our losses assuming an out of band GC routine will cleanup
 // after us?
 func (ds *dockerService) StopPodSandbox(ctx context.Context, r *runtimeapi.StopPodSandboxRequest) (*runtimeapi.StopPodSandboxResponse, error) {
-	var namespace, name string
+	var tenant, namespace, name string
 	var hostNetwork bool
 
 	podSandboxID := r.PodSandboxId
@@ -211,11 +212,12 @@ func (ds *dockerService) StopPodSandbox(ctx context.Context, r *runtimeapi.StopP
 	// Try to retrieve minimal sandbox information from docker daemon or sandbox checkpoint.
 	inspectResult, metadata, statusErr := ds.getPodSandboxDetails(podSandboxID)
 	if statusErr == nil {
+		tenant = metadata.Tenant
 		namespace = metadata.Namespace
 		name = metadata.Name
 		hostNetwork = (networkNamespaceMode(inspectResult) == runtimeapi.NamespaceMode_NODE)
 	} else {
-		checkpoint := NewPodSandboxCheckpoint("", "", &CheckpointData{})
+		checkpoint := NewPodSandboxCheckpoint("", "", "", &CheckpointData{})
 		checkpointErr := ds.checkpointManager.GetCheckpoint(podSandboxID, checkpoint)
 
 		// Proceed if both sandbox container and checkpoint could not be found. This means that following
@@ -237,7 +239,7 @@ func (ds *dockerService) StopPodSandbox(ctx context.Context, r *runtimeapi.StopP
 					fmt.Errorf("failed to get sandbox status: %v", statusErr)})
 			}
 		} else {
-			_, name, namespace, _, hostNetwork = checkpoint.GetData()
+			_, name, namespace, tenant, _, hostNetwork = checkpoint.GetData()
 		}
 	}
 
@@ -254,7 +256,7 @@ func (ds *dockerService) StopPodSandbox(ctx context.Context, r *runtimeapi.StopP
 	if !hostNetwork && (ready || !ok) {
 		// Only tear down the pod network if we haven't done so already
 		cID := kubecontainer.BuildContainerID(runtimeName, podSandboxID)
-		err := ds.network.TearDownPod(namespace, name, cID)
+		err := ds.network.TearDownPod(tenant, namespace, name, cID)
 		if err == nil {
 			ds.setNetworkReady(podSandboxID, false)
 		} else {
@@ -332,7 +334,7 @@ func (ds *dockerService) getIPFromPlugin(sandbox *dockertypes.ContainerJSON) (st
 	}
 	msg := fmt.Sprintf("Couldn't find network status for %s/%s through plugin", metadata.Namespace, metadata.Name)
 	cID := kubecontainer.BuildContainerID(runtimeName, sandbox.ID)
-	networkStatus, err := ds.network.GetPodNetworkStatus(metadata.Namespace, metadata.Name, cID)
+	networkStatus, err := ds.network.GetPodNetworkStatus(metadata.Tenant, metadata.Namespace, metadata.Name, cID)
 	if err != nil {
 		return "", err
 	}
@@ -532,7 +534,7 @@ func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPod
 		if _, ok := sandboxIDs[id]; ok {
 			continue
 		}
-		checkpoint := NewPodSandboxCheckpoint("", "", &CheckpointData{})
+		checkpoint := NewPodSandboxCheckpoint("", "", "", &CheckpointData{})
 		err := ds.checkpointManager.GetCheckpoint(id, checkpoint)
 		if err != nil {
 			klog.Errorf("Failed to retrieve checkpoint for sandbox %q: %v", id, err)
@@ -678,7 +680,7 @@ func constructPodSandboxCheckpoint(config *runtimeapi.PodSandboxConfig) checkpoi
 	if config.GetLinux().GetSecurityContext().GetNamespaceOptions().GetNetwork() == runtimeapi.NamespaceMode_NODE {
 		data.HostNetwork = true
 	}
-	return NewPodSandboxCheckpoint(config.Metadata.Namespace, config.Metadata.Name, &data)
+	return NewPodSandboxCheckpoint(config.Metadata.Tenant, config.Metadata.Namespace, config.Metadata.Name, &data)
 }
 
 func toCheckpointProtocol(protocol runtimeapi.Protocol) Protocol {

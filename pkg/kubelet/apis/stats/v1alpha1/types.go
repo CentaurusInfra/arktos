@@ -153,6 +153,7 @@ type ContainerStats struct {
 type PodReference struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+	Tenant    string `json:"tenant"`
 	UID       string `json:"uid"`
 }
 

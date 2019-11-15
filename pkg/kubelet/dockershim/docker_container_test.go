@@ -60,7 +60,7 @@ func TestListContainers(t *testing.T) {
 	sConfigs := []*runtimeapi.PodSandboxConfig{}
 	for i := 0; i < 3; i++ {
 		s := makeSandboxConfig(fmt.Sprintf("%s%d", podName, i),
-			fmt.Sprintf("%s%d", namespace, i), fmt.Sprintf("%d", i), 0)
+			fmt.Sprintf("%s%d", namespace, i), "test-te", fmt.Sprintf("%d", i), 0)
 		labels := map[string]string{"abc.xyz": fmt.Sprintf("label%d", i)}
 		annotations := map[string]string{"foo.bar.baz": fmt.Sprintf("annotation%d", i)}
 		c := makeContainerConfig(s, fmt.Sprintf("%s%d", containerName, i),
@@ -107,7 +107,7 @@ func TestListContainers(t *testing.T) {
 // the status returned reflects the operations performed.
 func TestContainerStatus(t *testing.T) {
 	ds, fDocker, fClock := newTestDockerService()
-	sConfig := makeSandboxConfig("foo", "bar", "1", 0)
+	sConfig := makeSandboxConfig("foo", "bar", "baz", "1", 0)
 	labels := map[string]string{"abc.xyz": "foo"}
 	annotations := map[string]string{"foo.bar.baz": "abc"}
 	imageName := "iamimage"
@@ -200,7 +200,7 @@ func TestContainerLogPath(t *testing.T) {
 	podLogPath := "/pod/1"
 	containerLogPath := "0"
 	kubeletContainerLogPath := filepath.Join(podLogPath, containerLogPath)
-	sConfig := makeSandboxConfig("foo", "bar", "1", 0)
+	sConfig := makeSandboxConfig("foo", "bar", "baz", "1", 0)
 	sConfig.LogDirectory = podLogPath
 	config := makeContainerConfig(sConfig, "pause", "iamimage", 0, nil, nil)
 	config.LogPath = containerLogPath
@@ -243,7 +243,7 @@ func TestContainerLogPath(t *testing.T) {
 // TestContainerCreationConflict tests the logic to work around docker container
 // creation naming conflict bug.
 func TestContainerCreationConflict(t *testing.T) {
-	sConfig := makeSandboxConfig("foo", "bar", "1", 0)
+	sConfig := makeSandboxConfig("foo", "bar", "baz", "1", 0)
 	config := makeContainerConfig(sConfig, "pause", "iamimage", 0, map[string]string{}, map[string]string{})
 	containerName := makeContainerName(sConfig, config)
 	const sandboxId = "sandboxid"
@@ -262,7 +262,7 @@ func TestContainerCreationConflict(t *testing.T) {
 	}{
 		"no create error": {
 			expectCalls:  []string{"create"},
-			expectFields: 6,
+			expectFields: 7,
 		},
 		"random create error": {
 			createError: randomError,
@@ -284,7 +284,7 @@ func TestContainerCreationConflict(t *testing.T) {
 			createError:  conflictError,
 			removeError:  noContainerError,
 			expectCalls:  []string{"create", "remove", "create"},
-			expectFields: 7,
+			expectFields: 8,
 		},
 	} {
 		t.Logf("TestCase: %s", desc)

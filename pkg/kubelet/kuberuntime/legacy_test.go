@@ -52,7 +52,8 @@ func TestLegacyLogSymLink(t *testing.T) {
 	containerName := randStringBytes(70)
 	podName := randStringBytes(128)
 	podNamespace := randStringBytes(10)
+	podTenant := randStringBytes(10)
 	// The file name cannot exceed 255 characters. Since .log suffix is required, the prefix cannot exceed 251 characters.
-	expectedPath := path.Join(legacyContainerLogsDir, fmt.Sprintf("%s_%s_%s-%s", podName, podNamespace, containerName, containerID)[:251]+".log")
-	as.Equal(expectedPath, legacyLogSymlink(containerID, containerName, podName, podNamespace))
+	expectedPath := path.Join(legacyContainerLogsDir, fmt.Sprintf("%s_%s_%s_%s-%s", podName, podNamespace, podTenant, containerName, containerID)[:251]+".log")
+	as.Equal(expectedPath, legacyLogSymlink(containerID, containerName, podName, podNamespace, podTenant))
 }

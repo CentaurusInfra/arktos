@@ -114,7 +114,7 @@ func (kl *Kubelet) runPod(pod *v1.Pod, retryDelay time.Duration) error {
 	delay := retryDelay
 	retry := 0
 	for {
-		status, err := kl.containerRuntime.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+		status, err := kl.containerRuntime.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 		if err != nil {
 			return fmt.Errorf("Unable to get status for pod %q: %v", format.Pod(pod), err)
 		}
@@ -163,7 +163,7 @@ func (kl *Kubelet) isPodRunning(pod *v1.Pod, status *kubecontainer.PodStatus) bo
 
 // getFailedContainer returns failed container name for pod.
 func (kl *Kubelet) getFailedContainers(pod *v1.Pod) ([]string, error) {
-	status, err := kl.containerRuntime.GetPodStatus(pod.UID, pod.Name, pod.Namespace)
+	status, err := kl.containerRuntime.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get status for pod %q: %v", format.Pod(pod), err)
 	}

@@ -19,6 +19,7 @@ package types
 const (
 	KubernetesPodNameLabel       = "io.kubernetes.pod.name"
 	KubernetesPodNamespaceLabel  = "io.kubernetes.pod.namespace"
+	KubernetesPodTenantLabel     = "io.kubernetes.pod.tenant"
 	KubernetesPodUIDLabel        = "io.kubernetes.pod.uid"
 	KubernetesContainerNameLabel = "io.kubernetes.container.name"
 )
@@ -37,4 +38,8 @@ func GetPodUID(labels map[string]string) string {
 
 func GetPodNamespace(labels map[string]string) string {
 	return labels[KubernetesPodNamespaceLabel]
+}
+
+func GetPodTenant(labels map[string]string) string {
+	return labels[KubernetesPodTenantLabel]
 }

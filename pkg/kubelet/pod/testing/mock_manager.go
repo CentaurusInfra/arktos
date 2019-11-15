@@ -141,12 +141,12 @@ func (_m *MockManager) GetPodByMirrorPod(_a0 *v1.Pod) (*v1.Pod, bool) {
 }
 
 // GetPodByName provides a mock function with given fields: namespace, name
-func (_m *MockManager) GetPodByName(namespace string, name string) (*v1.Pod, bool) {
-	ret := _m.Called(namespace, name)
+func (_m *MockManager) GetPodByName(tenant, namespace string, name string) (*v1.Pod, bool) {
+	ret := _m.Called(tenant, namespace, name)
 
 	var r0 *v1.Pod
-	if rf, ok := ret.Get(0).(func(string, string) *v1.Pod); ok {
-		r0 = rf(namespace, name)
+	if rf, ok := ret.Get(0).(func(string, string, string) *v1.Pod); ok {
+		r0 = rf(tenant, namespace, name)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1.Pod)
@@ -154,8 +154,8 @@ func (_m *MockManager) GetPodByName(namespace string, name string) (*v1.Pod, boo
 	}
 
 	var r1 bool
-	if rf, ok := ret.Get(1).(func(string, string) bool); ok {
-		r1 = rf(namespace, name)
+	if rf, ok := ret.Get(1).(func(string, string, string) bool); ok {
+		r1 = rf(tenant, namespace, name)
 	} else {
 		r1 = ret.Get(1).(bool)
 	}

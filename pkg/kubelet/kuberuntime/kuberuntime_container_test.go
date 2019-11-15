@@ -40,6 +40,7 @@ func TestRemoveContainer(t *testing.T) {
 			UID:       "12345678",
 			Name:      "bar",
 			Namespace: "new",
+			Tenant:    "test-te",
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -61,8 +62,8 @@ func TestRemoveContainer(t *testing.T) {
 	err = m.removeContainer(containerID)
 	assert.NoError(t, err)
 	// Verify container log is removed
-	expectedContainerLogPath := filepath.Join(podLogsRootDirectory, "new_bar_12345678", "foo", "0.log")
-	expectedContainerLogSymlink := legacyLogSymlink(containerID, "foo", "bar", "new")
+	expectedContainerLogPath := filepath.Join(podLogsRootDirectory, "test-te_new_bar_12345678", "foo", "0.log")
+	expectedContainerLogSymlink := legacyLogSymlink(containerID, "foo", "bar", "new", "test-te")
 	assert.Equal(t, fakeOS.Removes, []string{expectedContainerLogPath, expectedContainerLogSymlink})
 	// Verify container is removed
 	assert.Contains(t, fakeRuntime.Called, "RemoveContainer")
@@ -87,7 +88,7 @@ func TestKillContainer(t *testing.T) {
 		{
 			caseName: "Failed to find container in pods, expect to return error",
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "pod1_id", Name: "pod1", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{UID: "pod1_id", Name: "pod1", Namespace: "default", Tenant: "test-te"},
 				Spec:       v1.PodSpec{Containers: []v1.Container{{Name: "empty_container"}}},
 			},
 			containerID:         kubecontainer.ContainerID{Type: "docker", ID: "not_exist_container_id"},
@@ -218,6 +219,7 @@ func TestLifeCycleHook(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "default",
+			Tenant:    "test-te",
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{

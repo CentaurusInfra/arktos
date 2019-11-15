@@ -93,9 +93,9 @@ func TestPluginManager(t *testing.T) {
 		podName := fmt.Sprintf("pod%d", i)
 		containerID := kubecontainer.ContainerID{ID: podName}
 
-		fnp.EXPECT().SetUpPod("", podName, containerID).Return(nil).Times(4)
-		fnp.EXPECT().GetPodNetworkStatus("", podName, containerID).Return(&network.PodNetworkStatus{IP: net.ParseIP("1.2.3.4")}, nil).Times(4)
-		fnp.EXPECT().TearDownPod("", podName, containerID).Return(nil).Times(4)
+		fnp.EXPECT().SetUpPod("", "", podName, containerID).Return(nil).Times(4)
+		fnp.EXPECT().GetPodNetworkStatus("", "", podName, containerID).Return(&network.PodNetworkStatus{IP: net.ParseIP("1.2.3.4")}, nil).Times(4)
+		fnp.EXPECT().TearDownPod("", "", podName, containerID).Return(nil).Times(4)
 
 		for x := 0; x < 4; x++ {
 			allDoneWg.Add(1)
@@ -108,17 +108,17 @@ func TestPluginManager(t *testing.T) {
 				// concurrently.
 				allCreatedWg.Wait()
 
-				if err := pm.SetUpPod("", name, id, nil, nil); err != nil {
+				if err := pm.SetUpPod("", "", name, id, nil, nil); err != nil {
 					t.Errorf("Failed to set up pod %q: %v", name, err)
 					return
 				}
 
-				if _, err := pm.GetPodNetworkStatus("", name, id); err != nil {
+				if _, err := pm.GetPodNetworkStatus("", "", name, id); err != nil {
 					t.Errorf("Failed to inspect pod %q: %v", name, err)
 					return
 				}
 
-				if err := pm.TearDownPod("", name, id); err != nil {
+				if err := pm.TearDownPod("", "", name, id); err != nil {
 					t.Errorf("Failed to tear down pod %q: %v", name, err)
 					return
 				}
@@ -132,7 +132,7 @@ func TestPluginManager(t *testing.T) {
 	allDoneWg.Wait()
 }
 
-type hookableFakeNetworkPluginSetupHook func(namespace, name string, id kubecontainer.ContainerID)
+type hookableFakeNetworkPluginSetupHook func(tenant, namespace, name string, id kubecontainer.ContainerID)
 
 type hookableFakeNetworkPlugin struct {
 	setupHook hookableFakeNetworkPluginSetupHook
@@ -159,18 +159,18 @@ func (p *hookableFakeNetworkPlugin) Capabilities() utilsets.Int {
 	return utilsets.NewInt()
 }
 
-func (p *hookableFakeNetworkPlugin) SetUpPod(namespace string, name string, id kubecontainer.ContainerID, annotations, options map[string]string) error {
+func (p *hookableFakeNetworkPlugin) SetUpPod(tenant string, namespace string, name string, id kubecontainer.ContainerID, annotations, options map[string]string) error {
 	if p.setupHook != nil {
-		p.setupHook(namespace, name, id)
+		p.setupHook(tenant, namespace, name, id)
 	}
 	return nil
 }
 
-func (p *hookableFakeNetworkPlugin) TearDownPod(string, string, kubecontainer.ContainerID) error {
+func (p *hookableFakeNetworkPlugin) TearDownPod(string, string, string, kubecontainer.ContainerID) error {
 	return nil
 }
 
-func (p *hookableFakeNetworkPlugin) GetPodNetworkStatus(string, string, kubecontainer.ContainerID) (*network.PodNetworkStatus, error) {
+func (p *hookableFakeNetworkPlugin) GetPodNetworkStatus(string, string, string, kubecontainer.ContainerID) (*network.PodNetworkStatus, error) {
 	return &network.PodNetworkStatus{IP: net.ParseIP("10.1.2.3")}, nil
 }
 
@@ -189,7 +189,7 @@ func TestMultiPodParallelNetworkOps(t *testing.T) {
 	// has its own locks which don't allow the parallel network operation
 	// to proceed.
 	didWait := false
-	fakePlugin := newHookableFakeNetworkPlugin(func(podNamespace, podName string, id kubecontainer.ContainerID) {
+	fakePlugin := newHookableFakeNetworkPlugin(func(podTenant, podNamespace, podName string, id kubecontainer.ContainerID) {
 		if podName == "waiter" {
 			podWg.Wait()
 			didWait = true
@@ -210,12 +210,12 @@ func TestMultiPodParallelNetworkOps(t *testing.T) {
 		// Setup will block on the runner pod completing.  If network
 		// operations locking isn't correct (eg pod network operations
 		// block other pods) setUpPod() will never return.
-		if err := pm.SetUpPod("", podName, containerID, nil, nil); err != nil {
+		if err := pm.SetUpPod("", "", podName, containerID, nil, nil); err != nil {
 			t.Errorf("Failed to set up waiter pod: %v", err)
 			return
 		}
 
-		if err := pm.TearDownPod("", podName, containerID); err != nil {
+		if err := pm.TearDownPod("", "", podName, containerID); err != nil {
 			t.Errorf("Failed to tear down waiter pod: %v", err)
 			return
 		}
@@ -230,12 +230,12 @@ func TestMultiPodParallelNetworkOps(t *testing.T) {
 		podName := "runner"
 		containerID := kubecontainer.ContainerID{ID: podName}
 
-		if err := pm.SetUpPod("", podName, containerID, nil, nil); err != nil {
+		if err := pm.SetUpPod("", "", podName, containerID, nil, nil); err != nil {
 			t.Errorf("Failed to set up runner pod: %v", err)
 			return
 		}
 
-		if err := pm.TearDownPod("", podName, containerID); err != nil {
+		if err := pm.TearDownPod("", "", podName, containerID); err != nil {
 			t.Errorf("Failed to tear down runner pod: %v", err)
 			return
 		}

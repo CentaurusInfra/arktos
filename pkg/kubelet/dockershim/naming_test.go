@@ -25,9 +25,9 @@ import (
 )
 
 func TestSandboxNameRoundTrip(t *testing.T) {
-	config := makeSandboxConfig("foo", "bar", "iamuid", 3)
+	config := makeSandboxConfig("foo", "bar", "baz", "iamuid", 3)
 	actualName := makeSandboxName(config)
-	assert.Equal(t, "k8s_POD_foo_bar_iamuid_3", actualName)
+	assert.Equal(t, "k8s_POD_foo_bar_iamuid_3_baz", actualName)
 
 	actualMetadata, err := parseSandboxName(actualName)
 	assert.NoError(t, err)
@@ -51,7 +51,7 @@ func TestNonParsableSandboxNames(t *testing.T) {
 }
 
 func TestContainerNameRoundTrip(t *testing.T) {
-	sConfig := makeSandboxConfig("foo", "bar", "iamuid", 3)
+	sConfig := makeSandboxConfig("foo", "bar", "baz", "iamuid", 3)
 	name, attempt := "pause", uint32(5)
 	config := &runtimeapi.ContainerConfig{
 		Metadata: &runtimeapi.ContainerMetadata{
@@ -60,7 +60,7 @@ func TestContainerNameRoundTrip(t *testing.T) {
 		},
 	}
 	actualName := makeContainerName(sConfig, config)
-	assert.Equal(t, "k8s_pause_foo_bar_iamuid_5", actualName)
+	assert.Equal(t, "k8s_pause_foo_bar_iamuid_5_baz", actualName)
 
 	actualMetadata, err := parseContainerName(actualName)
 	assert.NoError(t, err)
@@ -85,7 +85,7 @@ func TestNonParsableContainerNames(t *testing.T) {
 
 func TestParseRandomizedNames(t *testing.T) {
 	// Test randomized sandbox name.
-	sConfig := makeSandboxConfig("foo", "bar", "iamuid", 3)
+	sConfig := makeSandboxConfig("foo", "bar", "baz", "iamuid", 3)
 	sActualName := randomizeName(makeSandboxName(sConfig))
 	sActualMetadata, err := parseSandboxName(sActualName)
 	assert.NoError(t, err)

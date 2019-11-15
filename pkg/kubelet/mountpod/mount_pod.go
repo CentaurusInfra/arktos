@@ -49,6 +49,7 @@ type basicManager struct {
 type volumePluginRegistration struct {
 	PodName       string `json:"podName"`
 	PodNamespace  string `json:"podNamespace"`
+	PodTenant     string `json:"podTenant"`
 	PodUID        string `json:"podUID"`
 	ContainerName string `json:"containerName"`
 }
@@ -95,6 +96,9 @@ func (m *basicManager) GetMountPod(pluginName string) (pod *v1.Pod, containerNam
 	if len(reg.PodUID) == 0 {
 		return nil, "", fmt.Errorf("unable to parse %s: \"podUID\" is not set", regPath)
 	}
+	if len(reg.PodTenant) == 0 {
+		return nil, "", fmt.Errorf("unable to parse %s: \"podTenant\" is not set", regPath)
+	}
 	if len(reg.PodNamespace) == 0 {
 		return nil, "", fmt.Errorf("unable to parse %s: \"podNamespace\" is not set", regPath)
 	}
@@ -102,7 +106,7 @@ func (m *basicManager) GetMountPod(pluginName string) (pod *v1.Pod, containerNam
 		return nil, "", fmt.Errorf("unable to parse %s: \"podName\" is not set", regPath)
 	}
 
-	pod, ok := m.podManager.GetPodByName(reg.PodNamespace, reg.PodName)
+	pod, ok := m.podManager.GetPodByName(reg.PodTenant, reg.PodNamespace, reg.PodName)
 	if !ok {
 		return nil, "", fmt.Errorf("unable to process %s: pod %s/%s not found", regPath, reg.PodNamespace, reg.PodName)
 	}

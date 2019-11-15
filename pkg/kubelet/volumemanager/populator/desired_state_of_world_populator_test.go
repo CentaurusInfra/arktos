@@ -112,7 +112,7 @@ func TestFindAndAddNewPods_FindAndRemoveDeletedPods(t *testing.T) {
 		t, v1.UniqueVolumeName(generatedVolumeName), false /* expectReportedInUse */, fakesDSW)
 
 	//let the pod be terminated
-	podGet, exist := fakePodManager.GetPodByName(pod.Namespace, pod.Name)
+	podGet, exist := fakePodManager.GetPodByName(pod.Tenant, pod.Namespace, pod.Name)
 	if !exist {
 		t.Fatalf("Failed to get pod by pod name: %s and namespace: %s", pod.Name, pod.Namespace)
 	}
@@ -220,7 +220,7 @@ func TestFindAndRemoveDeletedPodsWithActualState(t *testing.T) {
 		t, v1.UniqueVolumeName(generatedVolumeName), false /* expectReportedInUse */, fakesDSW)
 
 	//let the pod be terminated
-	podGet, exist := fakePodManager.GetPodByName(pod.Namespace, pod.Name)
+	podGet, exist := fakePodManager.GetPodByName(pod.Tenant, pod.Namespace, pod.Name)
 	if !exist {
 		t.Fatalf("Failed to get pod by pod name: %s and namespace: %s", pod.Name, pod.Namespace)
 	}
@@ -336,7 +336,7 @@ func TestFindAndAddNewPods_FindAndRemoveDeletedPods_Valid_Block_VolumeDevices(t 
 		t, v1.UniqueVolumeName(generatedVolumeName), false /* expectReportedInUse */, fakesDSW)
 
 	//let the pod be terminated
-	podGet, exist := fakePodManager.GetPodByName(pod.Namespace, pod.Name)
+	podGet, exist := fakePodManager.GetPodByName(pod.Tenant, pod.Namespace, pod.Name)
 	if !exist {
 		t.Fatalf("Failed to get pod by pod name: %s and namespace: %s", pod.Name, pod.Namespace)
 	}

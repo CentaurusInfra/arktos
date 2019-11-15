@@ -340,9 +340,10 @@ func TestRunInContainerNoSuchPod(t *testing.T) {
 
 	podName := "podFoo"
 	podNamespace := "nsFoo"
+	podTenant := "teFoo"
 	containerName := "containerFoo"
 	output, err := kubelet.RunInContainer(
-		kubecontainer.GetPodFullName(&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: podNamespace}}),
+		kubecontainer.GetPodFullName(&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: podNamespace, Tenant: podTenant}}),
 		"",
 		containerName,
 		[]string{"ls"})
@@ -368,6 +369,7 @@ func TestRunInContainer(t *testing.T) {
 				ID:        "12345678",
 				Name:      "podFoo",
 				Namespace: "nsFoo",
+				Tenant:    "teFoo",
 				Containers: []*kubecontainer.Container{
 					{Name: "containerFoo",
 						ID: containerID,
@@ -376,7 +378,7 @@ func TestRunInContainer(t *testing.T) {
 			}},
 		}
 		cmd := []string{"ls"}
-		actualOutput, err := kubelet.RunInContainer("podFoo_nsFoo", "", "containerFoo", cmd)
+		actualOutput, err := kubelet.RunInContainer("podFoo_nsFoo_teFoo", "", "containerFoo", cmd)
 		assert.Equal(t, containerID, fakeCommandRunner.ContainerID, "(testError=%v) ID", testError)
 		assert.Equal(t, cmd, fakeCommandRunner.Cmd, "(testError=%v) command", testError)
 		// this isn't 100% foolproof as a bug in a real ContainerCommandRunner where it fails to copy to stdout/stderr wouldn't be caught by this test
@@ -2090,6 +2092,7 @@ func TestGetPortForward(t *testing.T) {
 	const (
 		podName                = "podFoo"
 		podNamespace           = "nsFoo"
+		podTenant              = "teFoo"
 		podUID       types.UID = "12345678"
 		port         int32     = 5000
 	)
@@ -2116,6 +2119,7 @@ func TestGetPortForward(t *testing.T) {
 				ID:        podUID,
 				Name:      podName,
 				Namespace: podNamespace,
+				Tenant:    podTenant,
 				Containers: []*kubecontainer.Container{
 					{Name: "foo",
 						ID: kubecontainer.ContainerID{Type: "test", ID: "foo"},
@@ -2129,7 +2133,7 @@ func TestGetPortForward(t *testing.T) {
 		kubelet.containerRuntime = fakeRuntime
 		kubelet.streamingRuntime = fakeRuntime
 
-		redirect, err := kubelet.GetPortForward(tc.podName, podNamespace, podUID, portforward.V4Options{})
+		redirect, err := kubelet.GetPortForward(tc.podName, podNamespace, podTenant, podUID, portforward.V4Options{})
 		if tc.expectError {
 			assert.Error(t, err, description)
 		} else {

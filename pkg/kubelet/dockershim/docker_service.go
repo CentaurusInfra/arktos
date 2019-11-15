@@ -374,7 +374,7 @@ func (ds *dockerService) GetNetNS(podSandboxID string) (string, error) {
 // GetPodPortMappings returns the port mappings of the given podSandbox ID.
 func (ds *dockerService) GetPodPortMappings(podSandboxID string) ([]*hostport.PortMapping, error) {
 	// TODO: get portmappings from docker labels for backward compatibility
-	checkpoint := NewPodSandboxCheckpoint("", "", &CheckpointData{})
+	checkpoint := NewPodSandboxCheckpoint("", "", "", &CheckpointData{})
 	err := ds.checkpointManager.GetCheckpoint(podSandboxID, checkpoint)
 	// Return empty portMappings if checkpoint is not found
 	if err != nil {
@@ -387,7 +387,7 @@ func (ds *dockerService) GetPodPortMappings(podSandboxID string) ([]*hostport.Po
 		}
 		return nil, err
 	}
-	_, _, _, checkpointedPortMappings, _ := checkpoint.GetData()
+	_, _, _, _, checkpointedPortMappings, _ := checkpoint.GetData()
 	portMappings := make([]*hostport.PortMapping, 0, len(checkpointedPortMappings))
 	for _, pm := range checkpointedPortMappings {
 		proto := toAPIProtocol(*pm.Protocol)

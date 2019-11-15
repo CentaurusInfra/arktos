@@ -180,7 +180,7 @@ type KubeGenericRuntime interface {
 // LegacyLogProvider gives the ability to use unsupported docker log drivers (e.g. journald)
 type LegacyLogProvider interface {
 	// Get the last few lines of the logs for a specific container.
-	GetContainerLogTail(uid kubetypes.UID, name, namespace string, containerID kubecontainer.ContainerID) (string, error)
+	GetContainerLogTail(uid kubetypes.UID, name, namespace, tenant string, containerID kubecontainer.ContainerID) (string, error)
 }
 
 // NewKubeGenericRuntimeManager creates a new kubeGenericRuntimeManager
@@ -644,6 +644,7 @@ func (m *kubeGenericRuntimeManager) GetPods(all bool) ([]*kubecontainer.Pod, err
 				ID:        podUID,
 				Name:      s.Metadata.Name,
 				Namespace: s.Metadata.Namespace,
+				Tenant:    s.Metadata.Tenant,
 			}
 		}
 		p := pods[podUID]
@@ -673,6 +674,7 @@ func (m *kubeGenericRuntimeManager) GetPods(all bool) ([]*kubecontainer.Pod, err
 				ID:        labelledInfo.PodUID,
 				Name:      labelledInfo.PodName,
 				Namespace: labelledInfo.PodNamespace,
+				Tenant:    labelledInfo.PodTenant,
 			}
 			pods[labelledInfo.PodUID] = pod
 		}
@@ -1169,7 +1171,7 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 		// host-network, we may use a stale IP.
 		if !kubecontainer.IsHostNetworkPod(pod) {
 			// Overwrite the podIP passed in the pod status, since we just started the pod sandbox.
-			podIP = m.determinePodSandboxIP(pod.Namespace, pod.Name, podSandboxStatus)
+			podIP = m.determinePodSandboxIP(pod.Tenant, pod.Namespace, pod.Name, podSandboxStatus)
 			klog.V(4).Infof("Determined the ip %q for pod %q after sandbox changed", podIP, format.Pod(pod))
 		}
 	}
@@ -1286,14 +1288,14 @@ func (m *kubeGenericRuntimeManager) attachNIC(pod *v1.Pod, vmName string, nic *v
 	}
 
 	if err := m.AttachNetworkInterface(pod, vmName, nic); err != nil {
-		klog.Warningf("error happened when pod %s/%s attaching nic %s: %v", pod.Namespace, pod.Name, nic.Name, err)
+		klog.Warningf("error happened when pod %s/%s/%s attaching nic %s: %v", pod.Tenant, pod.Namespace, pod.Name, nic.Name, err)
 		if referr == nil {
 			m.recorder.Eventf(ref, v1.EventTypeWarning, events.FailedAttachDevice, "network interface %q hotplug had error: %v", nic.Name, err)
 		}
 		return err
 	}
 
-	klog.V(4).Infof("pod %s/%s attached nic hotplug %s", pod.Namespace, pod.Name, nic.Name)
+	klog.V(4).Infof("pod %s/%s/%s attached nic hotplug %s", pod.Tenant, pod.Namespace, pod.Name, nic.Name)
 	if referr == nil {
 		m.recorder.Eventf(ref, v1.EventTypeNormal, events.DeviceAttached, "network interfaces %q hotplug succeeded", nic.Name)
 	}
@@ -1441,7 +1443,7 @@ func (m *kubeGenericRuntimeManager) killPodWithSyncResult(pod *v1.Pod, runningPo
 
 // GetPodStatus retrieves the status of the pod, including the
 // information of all containers in the pod that are visible in Runtime.
-func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namespace string) (*kubecontainer.PodStatus, error) {
+func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namespace, tenant string) (*kubecontainer.PodStatus, error) {
 	// Now we retain restart count of container as a container label. Each time a container
 	// restarts, pod will read the restart count from the registered dead container, increment
 	// it to get the new restart count, and then add a label with the new restart count on
@@ -1464,6 +1466,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 			UID:       uid,
 			HashKey:   fuzzer.GetHashOfUUID(uid),
 		},
@@ -1488,7 +1491,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 
 		// Only get pod IP from latest sandbox
 		if idx == 0 && podSandboxStatus.State == runtimeapi.PodSandboxState_SANDBOX_READY {
-			podIP = m.determinePodSandboxIP(namespace, name, podSandboxStatus)
+			podIP = m.determinePodSandboxIP(tenant, namespace, name, podSandboxStatus)
 
 			// incorporate details of nic status got from separate cri extension call
 			// if pod sandbox status does not include such info, as fallback measure
@@ -1499,7 +1502,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 	}
 
 	// Get statuses of all containers visible in the pod.
-	containerStatuses, err := m.getPodContainerStatuses(uid, name, namespace)
+	containerStatuses, err := m.getPodContainerStatuses(uid, name, namespace, tenant)
 	if err != nil {
 		if m.logReduction.ShouldMessageBePrinted(err.Error(), podFullName) {
 			klog.Errorf("getPodContainerStatuses for pod %q failed: %v", podFullName, err)
@@ -1516,6 +1519,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 		ID:                uid,
 		Name:              name,
 		Namespace:         namespace,
+		Tenant:            tenant,
 		IP:                podIP,
 		SandboxStatuses:   sandboxStatuses,
 		ContainerStatuses: containerStatuses,

@@ -136,7 +136,7 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 	// Kubernetes will not mount /etc/hosts if:
 	// - when the Pod sandbox is being created, its IP is still unknown. Hence, PodIP will not have been set.
 	mountEtcHostsFile := len(podIP) > 0 && runtime.GOOS != "windows"
-	klog.V(3).Infof("container: %v/%v/%v podIP: %q creating hosts mount: %v", pod.Namespace, pod.Name, container.Name, podIP, mountEtcHostsFile)
+	klog.V(3).Infof("container: %v/%v/%v/%v podIP: %q creating hosts mount: %v", pod.Tenant, pod.Namespace, pod.Name, container.Name, podIP, mountEtcHostsFile)
 	mounts := []kubecontainer.Mount{}
 	var cleanupAction func()
 	for i, mount := range container.VolumeMounts {
@@ -1171,12 +1171,12 @@ func (kl *Kubelet) GetKubeletContainerLogs(ctx context.Context, podFullName, con
 	// Pod workers periodically write status to statusManager. If status is not
 	// cached there, something is wrong (or kubelet just restarted and hasn't
 	// caught up yet). Just assume the pod is not ready yet.
-	name, namespace, err := kubecontainer.ParsePodFullName(podFullName)
+	name, namespace, tenant, err := kubecontainer.ParsePodFullName(podFullName)
 	if err != nil {
 		return fmt.Errorf("unable to parse pod full name %q: %v", podFullName, err)
 	}
 
-	pod, ok := kl.GetPodByName(namespace, name)
+	pod, ok := kl.GetPodByName(tenant, namespace, name)
 	if !ok {
 		return fmt.Errorf("pod %q cannot be found - no logs available", name)
 	}
@@ -1742,7 +1742,7 @@ func (kl *Kubelet) GetAttach(podFullName string, podUID types.UID, containerName
 }
 
 // GetPortForward gets the URL the port-forward will be served from, or nil if the Kubelet will serve it.
-func (kl *Kubelet) GetPortForward(podName, podNamespace string, podUID types.UID, portForwardOpts portforward.V4Options) (*url.URL, error) {
+func (kl *Kubelet) GetPortForward(podName, podNamespace, podTenant string, podUID types.UID, portForwardOpts portforward.V4Options) (*url.URL, error) {
 	pods, err := kl.containerRuntime.GetPods(false)
 	if err != nil {
 		return nil, err
@@ -1750,13 +1750,13 @@ func (kl *Kubelet) GetPortForward(podName, podNamespace string, podUID types.UID
 	// Resolve and type convert back again.
 	// We need the static pod UID but the kubecontainer API works with types.UID.
 	podUID = types.UID(kl.podManager.TranslatePodUID(podUID))
-	podFullName := kubecontainer.BuildPodFullName(podName, podNamespace)
+	podFullName := kubecontainer.BuildPodFullName(podName, podNamespace, podTenant)
 	pod := kubecontainer.Pods(pods).FindPod(podFullName, podUID)
 	if pod.IsEmpty() {
 		return nil, fmt.Errorf("pod not found (%q)", podFullName)
 	}
 
-	return kl.streamingRuntime.GetPortForward(podName, podNamespace, podUID, portForwardOpts.Ports)
+	return kl.streamingRuntime.GetPortForward(podName, podNamespace, podTenant, podUID, portForwardOpts.Ports)
 }
 
 // cleanupOrphanedPodCgroups removes cgroups that should no longer exist.

@@ -100,7 +100,7 @@ type Runtime interface {
 	KillPod(pod *v1.Pod, runningPod Pod, gracePeriodOverride *int64) error
 	// GetPodStatus retrieves the status of the pod, including the
 	// information of all containers in the pod that are visible in Runtime.
-	GetPodStatus(uid types.UID, name, namespace string) (*PodStatus, error)
+	GetPodStatus(uid types.UID, name, namespace, tenant string) (*PodStatus, error)
 	// TODO(vmarmol): Unify pod and containerID args.
 	// GetContainerLogs returns logs of a specific container. By
 	// default, it returns a snapshot of the container log. Set 'follow' to true to
@@ -177,7 +177,7 @@ type RuntimeManager interface {
 type StreamingRuntime interface {
 	GetExec(id ContainerID, cmd []string, stdin, stdout, stderr, tty bool) (*url.URL, error)
 	GetAttach(id ContainerID, stdin, stdout, stderr, tty bool) (*url.URL, error)
-	GetPortForward(podName, podNamespace string, podUID types.UID, ports []int32) (*url.URL, error)
+	GetPortForward(podName, podNamespace, podTenant string, podUID types.UID, ports []int32) (*url.URL, error)
 }
 
 type ImageService interface {
@@ -221,6 +221,8 @@ type Pod struct {
 	// components. This is only populated by kuberuntime.
 	// TODO: use the runtimeApi.PodSandbox type directly.
 	Sandboxes []*Container
+
+	Tenant string
 }
 
 // PodPair contains both runtime#Pod and api#Pod
@@ -337,6 +339,8 @@ type PodStatus struct {
 	// Status of the pod sandbox.
 	// Only for kuberuntime now, other runtime may keep it nil.
 	SandboxStatuses []*runtimeapi.PodSandboxStatus
+
+	Tenant string
 }
 
 // ContainerStatus represents the status of a container.
@@ -586,7 +590,7 @@ func (p Pods) FindPodByID(podUID types.UID) Pod {
 // It will return an empty pod if not found.
 func (p Pods) FindPodByFullName(podFullName string) Pod {
 	for i := range p {
-		if BuildPodFullName(p[i].Name, p[i].Namespace) == podFullName {
+		if BuildPodFullName(p[i].Name, p[i].Namespace, p[i].Tenant) == podFullName {
 			return *p[i]
 		}
 	}
@@ -642,6 +646,7 @@ func (p *Pod) ToAPIPod() *v1.Pod {
 	pod.HashKey = fuzzer.GetHashOfUUID(p.ID)
 	pod.Name = p.Name
 	pod.Namespace = p.Namespace
+	pod.Tenant = p.Tenant
 
 	for _, c := range p.Containers {
 		var container v1.Container
@@ -661,21 +666,21 @@ func (p *Pod) IsEmpty() bool {
 func GetPodFullName(pod *v1.Pod) string {
 	// Use underscore as the delimiter because it is not allowed in pod name
 	// (DNS subdomain format), while allowed in the container name format.
-	return pod.Name + "_" + pod.Namespace
+	return pod.Name + "_" + pod.Namespace + "_" + pod.Tenant
 }
 
 // Build the pod full name from pod name and namespace.
-func BuildPodFullName(name, namespace string) string {
-	return name + "_" + namespace
+func BuildPodFullName(name, namespace, tenant string) string {
+	return name + "_" + namespace + "_" + tenant
 }
 
 // Parse the pod full name.
-func ParsePodFullName(podFullName string) (string, string, error) {
+func ParsePodFullName(podFullName string) (string, string, string, error) {
 	parts := strings.Split(podFullName, "_")
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", fmt.Errorf("failed to parse the pod full name %q", podFullName)
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", "", fmt.Errorf("failed to parse the pod full name %q", podFullName)
 	}
-	return parts[0], parts[1], nil
+	return parts[0], parts[1], parts[2], nil
 }
 
 // Option is a functional option type for Runtime, useful for

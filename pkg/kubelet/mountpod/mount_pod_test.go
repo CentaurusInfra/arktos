@@ -41,6 +41,7 @@ func TestGetVolumeExec(t *testing.T) {
 				UID:       "12345678",
 				Name:      "foo",
 				Namespace: "bar",
+				Tenant:    "test-te",
 			},
 			Spec: v1.PodSpec{
 				Containers: []v1.Container{
@@ -84,43 +85,48 @@ func TestGetVolumeExec(t *testing.T) {
 			false,
 		},
 		{
-			"missing podNamespace",
-			`{"podName": "foo", "podUID": "87654321", "containerName": "baz"}`,
-			true,
-		},
-		{
-			"missing podName",
-			`{"podNamespace": "bar", "podUID": "87654321", "containerName": "baz"}`,
-			true,
-		},
-		{
-			"missing containerName",
-			`{"podNamespace": "bar", "podName": "foo", "podUID": "87654321"}`,
-			true,
-		},
-		{
-			"missing podUID",
-			`{"podNamespace": "bar", "podName": "foo", "containerName": "baz"}`,
-			true,
-		},
-		{
-			"missing pod",
-			`{"podNamespace": "bar", "podName": "non-existing-pod", "podUID": "12345678", "containerName": "baz"}`,
-			true,
-		},
-		{
-			"invalid uid",
+			"missing podTenant",
 			`{"podNamespace": "bar", "podName": "foo", "podUID": "87654321", "containerName": "baz"}`,
 			true,
 		},
 		{
+			"missing podNamespace",
+			`{"podTenant": "test-te", "podName": "foo", "podUID": "87654321", "containerName": "baz"}`,
+			true,
+		},
+		{
+			"missing podName",
+			`{"podTenant": "test-te", "podNamespace": "bar", "podUID": "87654321", "containerName": "baz"}`,
+			true,
+		},
+		{
+			"missing containerName",
+			`{"podTenant": "test-te", "podNamespace": "bar", "podName": "foo", "podUID": "87654321"}`,
+			true,
+		},
+		{
+			"missing podUID",
+			`{"podTenant": "test-te", "podNamespace": "bar", "podName": "foo", "containerName": "baz"}`,
+			true,
+		},
+		{
+			"missing pod",
+			`{"podTenant": "test-te", "podNamespace": "bar", "podName": "non-existing-pod", "podUID": "12345678", "containerName": "baz"}`,
+			true,
+		},
+		{
+			"invalid uid",
+			`{"podTenant": "test-te", "podNamespace": "bar", "podName": "foo", "podUID": "87654321", "containerName": "baz"}`,
+			true,
+		},
+		{
 			"invalid container",
-			`{"podNamespace": "bar", "podName": "foo", "podUID": "12345678", "containerName": "invalid"}`,
+			`{"podTenant": "test-te", "podNamespace": "bar", "podName": "foo", "podUID": "12345678", "containerName": "invalid"}`,
 			true,
 		},
 		{
 			"valid pod",
-			`{"podNamespace": "bar", "podName": "foo", "podUID": "12345678", "containerName": "baz"}`,
+			`{"podTenant": "test-te", "podNamespace": "bar", "podName": "foo", "podUID": "12345678", "containerName": "baz"}`,
 			false,
 		},
 	}

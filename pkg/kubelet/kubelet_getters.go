@@ -203,8 +203,8 @@ func (kl *Kubelet) GetPodByFullName(podFullName string) (*v1.Pod, bool) {
 
 // GetPodByName provides the first pod that matches namespace and name, as well
 // as whether the pod was found.
-func (kl *Kubelet) GetPodByName(namespace, name string) (*v1.Pod, bool) {
-	return kl.podManager.GetPodByName(namespace, name)
+func (kl *Kubelet) GetPodByName(tenant, namespace, name string) (*v1.Pod, bool) {
+	return kl.podManager.GetPodByName(tenant, namespace, name)
 }
 
 // GetPodByCgroupfs provides the pod that maps to the specified cgroup, as well

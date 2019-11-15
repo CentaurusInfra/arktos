@@ -46,6 +46,7 @@ type labeledPodSandboxInfo struct {
 	Labels       map[string]string
 	PodName      string
 	PodNamespace string
+	PodTenant    string
 	PodUID       kubetypes.UID
 }
 
@@ -58,6 +59,7 @@ type labeledContainerInfo struct {
 	ContainerName string
 	PodName       string
 	PodNamespace  string
+	PodTenant     string
 	PodUID        kubetypes.UID
 }
 
@@ -83,6 +85,7 @@ func newPodLabels(pod *v1.Pod) map[string]string {
 
 	labels[types.KubernetesPodNameLabel] = pod.Name
 	labels[types.KubernetesPodNamespaceLabel] = pod.Namespace
+	labels[types.KubernetesPodTenantLabel] = pod.Tenant
 	labels[types.KubernetesPodUIDLabel] = string(pod.UID)
 
 	return labels
@@ -98,6 +101,7 @@ func newContainerLabels(container *v1.Container, pod *v1.Pod) map[string]string 
 	labels := map[string]string{}
 	labels[types.KubernetesPodNameLabel] = pod.Name
 	labels[types.KubernetesPodNamespaceLabel] = pod.Namespace
+	labels[types.KubernetesPodTenantLabel] = pod.Tenant
 	labels[types.KubernetesPodUIDLabel] = string(pod.UID)
 	labels[types.KubernetesContainerNameLabel] = container.Name
 
@@ -153,12 +157,13 @@ func getPodSandboxInfoFromLabels(labels map[string]string) *labeledPodSandboxInf
 		Labels:       make(map[string]string),
 		PodName:      getStringValueFromLabel(labels, types.KubernetesPodNameLabel),
 		PodNamespace: getStringValueFromLabel(labels, types.KubernetesPodNamespaceLabel),
+		PodTenant:    getStringValueFromLabel(labels, types.KubernetesPodTenantLabel),
 		PodUID:       kubetypes.UID(getStringValueFromLabel(labels, types.KubernetesPodUIDLabel)),
 	}
 
 	// Remain only labels from v1.Pod
 	for k, v := range labels {
-		if k != types.KubernetesPodNameLabel && k != types.KubernetesPodNamespaceLabel && k != types.KubernetesPodUIDLabel {
+		if k != types.KubernetesPodNameLabel && k != types.KubernetesPodNamespaceLabel && k != types.KubernetesPodTenantLabel && k != types.KubernetesPodUIDLabel {
 			podSandboxInfo.Labels[k] = v
 		}
 	}
@@ -178,6 +183,7 @@ func getContainerInfoFromLabels(labels map[string]string) *labeledContainerInfo 
 	return &labeledContainerInfo{
 		PodName:       getStringValueFromLabel(labels, types.KubernetesPodNameLabel),
 		PodNamespace:  getStringValueFromLabel(labels, types.KubernetesPodNamespaceLabel),
+		PodTenant:     getStringValueFromLabel(labels, types.KubernetesPodTenantLabel),
 		PodUID:        kubetypes.UID(getStringValueFromLabel(labels, types.KubernetesPodUIDLabel)),
 		ContainerName: getStringValueFromLabel(labels, types.KubernetesContainerNameLabel),
 	}

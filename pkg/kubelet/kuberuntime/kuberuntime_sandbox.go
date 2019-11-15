@@ -100,6 +100,7 @@ func (m *kubeGenericRuntimeManager) generatePodSandboxConfig(pod *v1.Pod, attemp
 		Metadata: &runtimeapi.PodSandboxMetadata{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
+			Tenant:    pod.Tenant,
 			Uid:       podUID,
 			Attempt:   attempt,
 		},
@@ -142,7 +143,7 @@ func (m *kubeGenericRuntimeManager) generatePodSandboxConfig(pod *v1.Pod, attemp
 		podSandboxConfig.Hostname = hostname
 	}
 
-	logDir := BuildPodLogsDirectory(pod.Namespace, pod.Name, pod.UID)
+	logDir := BuildPodLogsDirectory(pod.Tenant, pod.Namespace, pod.Name, pod.UID)
 	podSandboxConfig.LogDirectory = logDir
 
 	portMappings := []*runtimeapi.PortMapping{}
@@ -281,7 +282,7 @@ func (m *kubeGenericRuntimeManager) getKubeletSandboxesByRuntime(runtimeService 
 }
 
 // determinePodSandboxIP determines the IP address of the given pod sandbox.
-func (m *kubeGenericRuntimeManager) determinePodSandboxIP(podNamespace, podName string, podSandbox *runtimeapi.PodSandboxStatus) string {
+func (m *kubeGenericRuntimeManager) determinePodSandboxIP(podTenant, podNamespace, podName string, podSandbox *runtimeapi.PodSandboxStatus) string {
 	if podSandbox.Network == nil {
 		klog.Warningf("Pod Sandbox status doesn't have network information, cannot report IP")
 		return ""
@@ -334,13 +335,13 @@ func (m *kubeGenericRuntimeManager) getSandboxIDByPodUID(podUID kubetypes.UID, s
 }
 
 // GetPortForward gets the endpoint the runtime will serve the port-forward request from.
-func (m *kubeGenericRuntimeManager) GetPortForward(podName, podNamespace string, podUID kubetypes.UID, ports []int32) (*url.URL, error) {
+func (m *kubeGenericRuntimeManager) GetPortForward(podName, podNamespace, podTenant string, podUID kubetypes.UID, ports []int32) (*url.URL, error) {
 	sandboxIDs, err := m.getSandboxIDByPodUID(podUID, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find sandboxID for pod %s: %v", format.PodDesc(podName, podNamespace, podUID), err)
+		return nil, fmt.Errorf("failed to find sandboxID for pod %s: %v", format.PodDesc(podName, podNamespace, podTenant, podUID), err)
 	}
 	if len(sandboxIDs) == 0 {
-		return nil, fmt.Errorf("failed to find sandboxID for pod %s", format.PodDesc(podName, podNamespace, podUID))
+		return nil, fmt.Errorf("failed to find sandboxID for pod %s", format.PodDesc(podName, podNamespace, podTenant, podUID))
 	}
 	req := &runtimeapi.PortForwardRequest{
 		PodSandboxId: sandboxIDs[0],

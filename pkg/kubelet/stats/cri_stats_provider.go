@@ -417,6 +417,7 @@ func buildPodStats(podSandbox *runtimeapi.PodSandbox) *statsapi.PodStats {
 			Name:      podSandbox.Metadata.Name,
 			UID:       podSandbox.Metadata.Uid,
 			Namespace: podSandbox.Metadata.Namespace,
+			Tenant:    podSandbox.Metadata.Tenant,
 		},
 		// The StartTime in the summary API is the pod creation time.
 		StartTime: metav1.NewTime(time.Unix(0, podSandbox.CreatedAt)),
@@ -424,6 +425,7 @@ func buildPodStats(podSandbox *runtimeapi.PodSandbox) *statsapi.PodStats {
 }
 
 func (p *criStatsProvider) makePodStorageStats(s *statsapi.PodStats, rootFsInfo *cadvisorapiv2.FsInfo) {
+	podTenant := s.PodRef.Tenant
 	podNs := s.PodRef.Namespace
 	podName := s.PodRef.Name
 	podUID := types.UID(s.PodRef.UID)
@@ -431,7 +433,7 @@ func (p *criStatsProvider) makePodStorageStats(s *statsapi.PodStats, rootFsInfo 
 	if !found {
 		return
 	}
-	podLogDir := kuberuntime.BuildPodLogsDirectory(podNs, podName, podUID)
+	podLogDir := kuberuntime.BuildPodLogsDirectory(podTenant, podNs, podName, podUID)
 	logStats, err := p.getPodLogStats(podLogDir, rootFsInfo)
 	if err != nil {
 		klog.Errorf("Unable to fetch pod log stats for path %s: %v ", podLogDir, err)
@@ -598,7 +600,7 @@ func (p *criStatsProvider) makeContainerStats(
 	// using old log path, empty log stats are returned. This is fine, because we don't
 	// officially support in-place upgrade anyway.
 	var (
-		containerLogPath = kuberuntime.BuildContainerLogsDirectory(meta.GetNamespace(),
+		containerLogPath = kuberuntime.BuildContainerLogsDirectory(meta.GetTenant(), meta.GetNamespace(),
 			meta.GetName(), types.UID(meta.GetUid()), container.GetMetadata().GetName())
 		err error
 	)
@@ -739,6 +741,7 @@ func removeTerminatedPods(pods []*runtimeapi.PodSandbox) []*runtimeapi.PodSandbo
 		refID := statsapi.PodReference{
 			Name:      pod.GetMetadata().GetName(),
 			Namespace: pod.GetMetadata().GetNamespace(),
+			Tenant:    pod.GetMetadata().GetTenant(),
 			// UID is intentionally left empty.
 		}
 		podMap[refID] = append(podMap[refID], pod)
