@@ -80,6 +80,7 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 	kubeAPIServerOptions.Authorization.Modes = []string{"RBAC"}
 	kubeAPIServerOptions.Admission.GenericAdmission.DisablePlugins = []string{"ServiceAccount"}
 	kubeAPIServerOptions.APIEnablement.RuntimeConfig["api/all"] = "true"
+
 	for _, f := range configFuncs {
 		f(kubeAPIServerOptions)
 	}
@@ -261,7 +262,7 @@ func GetResources(t *testing.T, serverResources []*metav1.APIResourceList) []Res
 				Mapping: &meta.RESTMapping{
 					Resource:         gvr,
 					GroupVersionKind: gvk,
-					Scope:            scope(discoveryResource.Namespaced),
+					Scope:            scope(discoveryResource.Namespaced, discoveryResource.Tenanted),
 				},
 				HasDeleteCollection: hasDeleteCollection,
 			})
@@ -271,11 +272,22 @@ func GetResources(t *testing.T, serverResources []*metav1.APIResourceList) []Res
 	return resources
 }
 
-func scope(namespaced bool) meta.RESTScope {
-	if namespaced {
+func scope(namespaceScoped bool, tenantScoped bool) meta.RESTScope {
+	switch {
+	case !namespaceScoped && !tenantScoped:
+		return meta.RESTScopeRoot
+
+	case !namespaceScoped && tenantScoped:
+		return meta.RESTScopeTenant
+
+	case namespaceScoped && tenantScoped:
+		return meta.RESTScopeNamespace
+
+	default:
+		// This is for backward compatibility. If tenant-scope is not defind and namespace-scoped is true,
+		// it is a namespace-scopd resource before multi-tenancy change.
 		return meta.RESTScopeNamespace
 	}
-	return meta.RESTScopeRoot
 }
 
 // JSONToUnstructured converts a JSON stub to unstructured.Unstructured and
@@ -290,11 +302,33 @@ func JSONToUnstructured(stub, namespace string, mapping *meta.RESTMapping, dynam
 	typeMetaAdder["apiVersion"] = mapping.GroupVersionKind.GroupVersion().String()
 	typeMetaAdder["kind"] = mapping.GroupVersionKind.Kind
 
-	if mapping.Scope == meta.RESTScopeRoot {
+	if mapping.Scope == meta.RESTScopeRoot || mapping.Scope == meta.RESTScopeTenant {
 		namespace = ""
 	}
 
 	return dynamicClient.Resource(mapping.Resource).Namespace(namespace), &unstructured.Unstructured{Object: typeMetaAdder}, nil
+}
+
+func JSONToUnstructuredWithMultiTenancy(stub, tenant, namespace string, mapping *meta.RESTMapping, dynamicClient dynamic.Interface) (dynamic.ResourceInterface, *unstructured.Unstructured, error) {
+	typeMetaAdder := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(stub), &typeMetaAdder); err != nil {
+		return nil, nil, err
+	}
+
+	// we don't require GVK on the data we provide, so we fill it in here.  We could, but that seems extraneous.
+	typeMetaAdder["apiVersion"] = mapping.GroupVersionKind.GroupVersion().String()
+	typeMetaAdder["kind"] = mapping.GroupVersionKind.Kind
+
+	ns, te := namespace, tenant
+	if mapping.Scope == meta.RESTScopeRoot {
+		ns, te = "", ""
+	}
+
+	if mapping.Scope == meta.RESTScopeTenant {
+		ns = ""
+	}
+
+	return dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(ns, te), &unstructured.Unstructured{Object: typeMetaAdder}, nil
 }
 
 // CreateTestCRDs creates the given CRDs, any failure causes the test to Fatal.

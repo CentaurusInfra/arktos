@@ -9,6 +9,8 @@ go_test(
         "etcd_cross_group_test.go",
         "etcd_storage_path_test.go",
         "main_test.go",
+        "multi_tenancy_etcd_cross_group_test.go",
+        "multi_tenancy_etcd_storage_path_test.go",
     ],
     embed = [":go_default_library"],
     tags = [
@@ -49,6 +51,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "data.go",
+        "multi_tenancy_data.go",
         "server.go",
     ],
     importpath = "k8s.io/kubernetes/test/integration/etcd",
