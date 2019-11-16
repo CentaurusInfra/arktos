@@ -26,12 +26,13 @@ import (
 
 type objectReference struct {
 	metav1.OwnerReference
-	// This is needed by the dynamic client
+	// Namespace and Tenant are needed by the dynamic client
 	Namespace string
+	Tenant    string
 }
 
 func (s objectReference) String() string {
-	return fmt.Sprintf("[%s/%s, namespace: %s, name: %s, uid: %s]", s.APIVersion, s.Kind, s.Namespace, s.Name, s.UID)
+	return fmt.Sprintf("[%s/%s, tenant %s, namespace: %s, name: %s, uid: %s]", s.APIVersion, s.Kind, s.Tenant, s.Namespace, s.Name, s.UID)
 }
 
 // The single-threaded GraphBuilder.processGraphChanges() is the sole writer of the

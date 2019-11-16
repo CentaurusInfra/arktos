@@ -42,7 +42,7 @@ func deleteOwnerRefStrategicMergePatch(dependentUID types.UID, ownerUIDs ...type
 // getMetadata tries getting object metadata from local cache, and sends GET request to apiserver when
 // local cache is not available or not latest.
 func (gc *GarbageCollector) getMetadata(apiVersion, kind, namespace, name string) (metav1.Object, error) {
-	apiResource, _, err := gc.apiResource(apiVersion, kind)
+	apiResource, _, _, err := gc.apiResource(apiVersion, kind)
 	if err != nil {
 		return nil, err
 	}

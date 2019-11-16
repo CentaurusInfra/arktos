@@ -334,7 +334,7 @@ func (gc *GarbageCollector) isDangling(reference metav1.OwnerReference, item *no
 	// ii) should update the object to remove such references. This is to
 	// prevent objects having references to an old resource from being
 	// deleted during a cluster upgrade.
-	resource, namespaced, err := gc.apiResource(reference.APIVersion, reference.Kind)
+	resource, namespaced, tenanted, err := gc.apiResource(reference.APIVersion, reference.Kind)
 	if err != nil {
 		return false, nil, err
 	}
@@ -342,7 +342,9 @@ func (gc *GarbageCollector) isDangling(reference metav1.OwnerReference, item *no
 	// TODO: It's only necessary to talk to the API server if the owner node
 	// is a "virtual" node. The local graph could lag behind the real
 	// status, but in practice, the difference is small.
-	owner, err = gc.dynamicClient.Resource(resource).Namespace(resourceDefaultNamespace(namespaced, item.identity.Namespace)).Get(reference.Name, metav1.GetOptions{})
+	namespace := resourceDefaultNamespace(namespaced, item.identity.Namespace)
+	tenant := resourceDefaultTenant(tenanted, item.identity.Tenant)
+	owner, err = gc.dynamicClient.Resource(resource).NamespaceWithMultiTenancy(namespace, tenant).Get(reference.Name, metav1.GetOptions{})
 	switch {
 	case errors.IsNotFound(err):
 		gc.absentOwnerCache.Add(reference.UID)

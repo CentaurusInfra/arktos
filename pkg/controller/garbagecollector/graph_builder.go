@@ -326,7 +326,7 @@ func (gb *GraphBuilder) enqueueVirtualDeleteEvent(ref objectReference) {
 		eventType: deleteEvent,
 		obj: &metaonly.MetadataOnlyObject{
 			TypeMeta:   metav1.TypeMeta{APIVersion: ref.APIVersion, Kind: ref.Kind},
-			ObjectMeta: metav1.ObjectMeta{Namespace: ref.Namespace, UID: ref.UID, HashKey: ref.HashKey, Name: ref.Name},
+			ObjectMeta: metav1.ObjectMeta{Namespace: ref.Namespace, UID: ref.UID, HashKey: ref.HashKey, Name: ref.Name, Tenant: ref.Tenant},
 		},
 	})
 }
@@ -345,6 +345,7 @@ func (gb *GraphBuilder) addDependentToOwners(n *node, owners []metav1.OwnerRefer
 				identity: objectReference{
 					OwnerReference: owner,
 					Namespace:      n.identity.Namespace,
+					Tenant:         n.identity.Tenant,
 				},
 				dependents: make(map[*node]struct{}),
 				virtual:    true,
@@ -545,7 +546,7 @@ func (gb *GraphBuilder) processGraphChanges() bool {
 		utilruntime.HandleError(fmt.Errorf("cannot access obj: %v", err))
 		return true
 	}
-	klog.V(5).Infof("GraphBuilder process object: %s/%s, namespace %s, name %s, uid %s, event type %v", event.gvk.GroupVersion().String(), event.gvk.Kind, accessor.GetNamespace(), accessor.GetName(), string(accessor.GetUID()), event.eventType)
+	klog.V(5).Infof("GraphBuilder process object: %s/%s, tenant %s, namespace %s, name %s, uid %s, event type %v", event.gvk.GroupVersion().String(), event.gvk.Kind, accessor.GetTenant(), accessor.GetNamespace(), accessor.GetName(), string(accessor.GetUID()), event.eventType)
 	// Check if the node already exists
 	existingNode, found := gb.uidToNode.Read(accessor.GetUID())
 	if found {
@@ -565,6 +566,7 @@ func (gb *GraphBuilder) processGraphChanges() bool {
 					Name:       accessor.GetName(),
 				},
 				Namespace: accessor.GetNamespace(),
+				Tenant:    accessor.GetTenant(),
 			},
 			dependents:         make(map[*node]struct{}),
 			owners:             accessor.GetOwnerReferences(),

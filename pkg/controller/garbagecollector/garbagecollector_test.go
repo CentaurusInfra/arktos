@@ -226,6 +226,21 @@ func getPod(podName string, ownerReferences []metav1.OwnerReference) *v1.Pod {
 	}
 }
 
+func getPodWithMultiTenancy(podName string, ownerReferences []metav1.OwnerReference) *v1.Pod {
+	return &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            podName,
+			Namespace:       "ns1",
+			Tenant:          "te1",
+			OwnerReferences: ownerReferences,
+		},
+	}
+}
+
 func serilizeOrDie(t *testing.T, object interface{}) []byte {
 	data, err := json.Marshal(object)
 	if err != nil {
@@ -233,8 +248,6 @@ func serilizeOrDie(t *testing.T, object interface{}) []byte {
 	}
 	return data
 }
-
-// test the attemptToDeleteItem function making the expected actions.
 func TestAttemptToDeleteItem(t *testing.T) {
 	pod := getPod("ToBeDeletedPod", []metav1.OwnerReference{
 		{
@@ -283,6 +296,67 @@ func TestAttemptToDeleteItem(t *testing.T) {
 	expectedActionSet.Insert("GET=/api/v1/namespaces/ns1/replicationcontrollers/owner1")
 	expectedActionSet.Insert("DELETE=/api/v1/namespaces/ns1/pods/ToBeDeletedPod")
 	expectedActionSet.Insert("GET=/api/v1/namespaces/ns1/pods/ToBeDeletedPod")
+
+	actualActionSet := sets.NewString()
+	for _, action := range testHandler.actions {
+		actualActionSet.Insert(action.String())
+	}
+	if !expectedActionSet.Equal(actualActionSet) {
+		t.Errorf("expected actions:\n%v\n but got:\n%v\nDifference:\n%v", expectedActionSet,
+			actualActionSet, expectedActionSet.Difference(actualActionSet))
+	}
+}
+
+// test the attemptToDeleteItem function making the expected actions.
+func TestAttemptToDeleteItemWithMultiTenancy(t *testing.T) {
+	pod := getPodWithMultiTenancy("ToBeDeletedPod", []metav1.OwnerReference{
+		{
+			Kind:       "ReplicationController",
+			Name:       "owner1",
+			UID:        "123",
+			APIVersion: "v1",
+		},
+	})
+	testHandler := &fakeActionHandler{
+		response: map[string]FakeResponse{
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/replicationcontrollers/owner1": {
+				404,
+				[]byte{},
+			},
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/pods/ToBeDeletedPod": {
+				200,
+				serilizeOrDie(t, pod),
+			},
+		},
+	}
+	srv, clientConfig := testServerAndClientConfig(testHandler.ServeHTTP)
+	defer srv.Close()
+
+	gc := setupGC(t, clientConfig)
+	defer close(gc.stop)
+
+	item := &node{
+		identity: objectReference{
+			OwnerReference: metav1.OwnerReference{
+				Kind:       pod.Kind,
+				APIVersion: pod.APIVersion,
+				Name:       pod.Name,
+				UID:        pod.UID,
+			},
+			Namespace: pod.Namespace,
+			Tenant:    pod.Tenant,
+		},
+		// owners are intentionally left empty. The attemptToDeleteItem routine should get the latest item from the server.
+		owners: nil,
+	}
+	err := gc.attemptToDeleteItem(item)
+	if err != nil {
+		t.Errorf("Unexpected Error: %v", err)
+	}
+	expectedActionSet := sets.NewString()
+	expectedActionSet.Insert("GET=/api/v1/tenants/te1/namespaces/ns1/replicationcontrollers/owner1")
+	expectedActionSet.Insert("DELETE=/api/v1/tenants/te1/namespaces/ns1/pods/ToBeDeletedPod")
+	expectedActionSet.Insert("GET=/api/v1/tenants/te1/namespaces/ns1/pods/ToBeDeletedPod")
 
 	actualActionSet := sets.NewString()
 	for _, action := range testHandler.actions {
@@ -443,6 +517,7 @@ func podToGCNode(pod *v1.Pod) *node {
 				UID:        pod.UID,
 			},
 			Namespace: pod.Namespace,
+			Tenant:    pod.Tenant,
 		},
 		// owners are intentionally left empty. The attemptToDeleteItem routine should get the latest item from the server.
 		owners: nil,
@@ -539,6 +614,104 @@ func TestAbsentUIDCache(t *testing.T) {
 	count := 0
 	for _, action := range testHandler.actions {
 		if action.String() == "GET=/api/v1/namespaces/ns1/replicationcontrollers/rc1" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected only 1 GET rc1 request, got %d", count)
+	}
+}
+
+func TestAbsentUIDCacheWithMultiTenancy(t *testing.T) {
+	rc1Pod1 := getPodWithMultiTenancy("rc1Pod1", []metav1.OwnerReference{
+		{
+			Kind:       "ReplicationController",
+			Name:       "rc1",
+			UID:        "1",
+			APIVersion: "v1",
+		},
+	})
+	rc1Pod2 := getPodWithMultiTenancy("rc1Pod2", []metav1.OwnerReference{
+		{
+			Kind:       "ReplicationController",
+			Name:       "rc1",
+			UID:        "1",
+			APIVersion: "v1",
+		},
+	})
+	rc2Pod1 := getPodWithMultiTenancy("rc2Pod1", []metav1.OwnerReference{
+		{
+			Kind:       "ReplicationController",
+			Name:       "rc2",
+			UID:        "2",
+			APIVersion: "v1",
+		},
+	})
+	rc3Pod1 := getPodWithMultiTenancy("rc3Pod1", []metav1.OwnerReference{
+		{
+			Kind:       "ReplicationController",
+			Name:       "rc3",
+			UID:        "3",
+			APIVersion: "v1",
+		},
+	})
+	testHandler := &fakeActionHandler{
+		response: map[string]FakeResponse{
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/pods/rc1Pod1": {
+				200,
+				serilizeOrDie(t, rc1Pod1),
+			},
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/pods/rc1Pod2": {
+				200,
+				serilizeOrDie(t, rc1Pod2),
+			},
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/pods/rc2Pod1": {
+				200,
+				serilizeOrDie(t, rc2Pod1),
+			},
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/pods/rc3Pod1": {
+				200,
+				serilizeOrDie(t, rc3Pod1),
+			},
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/replicationcontrollers/rc1": {
+				404,
+				[]byte{},
+			},
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/replicationcontrollers/rc2": {
+				404,
+				[]byte{},
+			},
+			"GET" + "/api/v1/tenants/te1/namespaces/ns1/replicationcontrollers/rc3": {
+				404,
+				[]byte{},
+			},
+		},
+	}
+	srv, clientConfig := testServerAndClientConfig(testHandler.ServeHTTP)
+	defer srv.Close()
+	gc := setupGC(t, clientConfig)
+	defer close(gc.stop)
+	gc.absentOwnerCache = NewUIDCache(2)
+	gc.attemptToDeleteItem(podToGCNode(rc1Pod1))
+	gc.attemptToDeleteItem(podToGCNode(rc2Pod1))
+	// rc1 should already be in the cache, no request should be sent. rc1 should be promoted in the UIDCache
+	gc.attemptToDeleteItem(podToGCNode(rc1Pod2))
+	// after this call, rc2 should be evicted from the UIDCache
+	gc.attemptToDeleteItem(podToGCNode(rc3Pod1))
+	// check cache
+	if !gc.absentOwnerCache.Has(types.UID("1")) {
+		t.Errorf("expected rc1 to be in the cache")
+	}
+	if gc.absentOwnerCache.Has(types.UID("2")) {
+		t.Errorf("expected rc2 to not exist in the cache")
+	}
+	if !gc.absentOwnerCache.Has(types.UID("3")) {
+		t.Errorf("expected rc3 to be in the cache")
+	}
+	// check the request sent to the server
+	count := 0
+	for _, action := range testHandler.actions {
+		if action.String() == "GET=/api/v1/tenants/te1/namespaces/ns1/replicationcontrollers/rc1" {
 			count++
 		}
 	}
@@ -671,6 +844,45 @@ func TestOrphanDependentsFailure(t *testing.T) {
 	}
 }
 
+func TestOrphanDependentsFailureWithMultiTenancy(t *testing.T) {
+	testHandler := &fakeActionHandler{
+		response: map[string]FakeResponse{
+			"PATCH" + "/api/v1/tenants/te1/namespaces/ns1/pods/pod": {
+				409,
+				[]byte{},
+			},
+		},
+	}
+	srv, clientConfig := testServerAndClientConfig(testHandler.ServeHTTP)
+	defer srv.Close()
+
+	gc := setupGC(t, clientConfig)
+	defer close(gc.stop)
+
+	dependents := []*node{
+		{
+			identity: objectReference{
+				OwnerReference: metav1.OwnerReference{
+					Kind:       "Pod",
+					APIVersion: "v1",
+					Name:       "pod",
+				},
+				Namespace: "ns1",
+				Tenant:    "te1",
+			},
+		},
+	}
+	err := gc.orphanDependents(objectReference{}, dependents)
+	expected := `the server reported a conflict`
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		if err != nil {
+			t.Errorf("expected error contains text %q, got %q", expected, err.Error())
+		} else {
+			t.Errorf("expected error contains text %q, got nil", expected)
+		}
+	}
+}
+
 // TestGetDeletableResources ensures GetDeletableResources always returns
 // something usable regardless of discovery output.
 func TestGetDeletableResources(t *testing.T) {
@@ -685,22 +897,22 @@ func TestGetDeletableResources(t *testing.T) {
 					// Valid GroupVersion
 					GroupVersion: "apps/v1",
 					APIResources: []metav1.APIResource{
-						{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
-						{Name: "services", Namespaced: true, Kind: "Service"},
+						{Name: "pods", Namespaced: true, Tenanted: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+						{Name: "services", Namespaced: true, Tenanted: true, Kind: "Service"},
 					},
 				},
 				{
 					// Invalid GroupVersion, should be ignored
 					GroupVersion: "foo//whatever",
 					APIResources: []metav1.APIResource{
-						{Name: "bars", Namespaced: true, Kind: "Bar", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+						{Name: "bars", Namespaced: true, Tenanted: true, Kind: "Bar", Verbs: metav1.Verbs{"delete", "list", "watch"}},
 					},
 				},
 				{
 					// Valid GroupVersion, missing required verbs, should be ignored
 					GroupVersion: "acme/v1",
 					APIResources: []metav1.APIResource{
-						{Name: "widgets", Namespaced: true, Kind: "Widget", Verbs: metav1.Verbs{"delete"}},
+						{Name: "widgets", Namespaced: true, Tenanted: true, Kind: "Widget", Verbs: metav1.Verbs{"delete"}},
 					},
 				},
 			},
@@ -714,8 +926,8 @@ func TestGetDeletableResources(t *testing.T) {
 				{
 					GroupVersion: "apps/v1",
 					APIResources: []metav1.APIResource{
-						{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
-						{Name: "services", Namespaced: true, Kind: "Service"},
+						{Name: "pods", Namespaced: true, Tenanted: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+						{Name: "services", Namespaced: true, Tenanted: true, Kind: "Service"},
 					},
 				},
 			},
@@ -729,8 +941,8 @@ func TestGetDeletableResources(t *testing.T) {
 				{
 					GroupVersion: "apps/v1",
 					APIResources: []metav1.APIResource{
-						{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
-						{Name: "services", Namespaced: true, Kind: "Service"},
+						{Name: "pods", Namespaced: true, Tenanted: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+						{Name: "services", Namespaced: true, Tenanted: true, Kind: "Service"},
 					},
 				},
 			},
@@ -770,7 +982,7 @@ func TestGarbageCollectorSync(t *testing.T) {
 		{
 			GroupVersion: "v1",
 			APIResources: []metav1.APIResource{
-				{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+				{Name: "pods", Namespaced: true, Tenanted: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
 			},
 		},
 	}
@@ -778,8 +990,8 @@ func TestGarbageCollectorSync(t *testing.T) {
 		{
 			GroupVersion: "v1",
 			APIResources: []metav1.APIResource{
-				{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
-				{Name: "secrets", Namespaced: true, Kind: "Secret", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+				{Name: "pods", Namespaced: true, Tenanted: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+				{Name: "secrets", Namespaced: true, Tenanted: true, Kind: "Secret", Verbs: metav1.Verbs{"delete", "list", "watch"}},
 			},
 		},
 	}

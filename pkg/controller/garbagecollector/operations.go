@@ -30,7 +30,8 @@ import (
 	"k8s.io/klog"
 )
 
-// cluster scoped resources don't have namespaces.  Default to the item's namespace, but clear it for cluster scoped resources
+// Cluster-scoped or tenant-scoped resources don't have namespaces.
+// Default to the item's namespace, but clear it for cluster-scoped or tenant-scoped resources
 func resourceDefaultNamespace(namespaced bool, defaultNamespace string) string {
 	if namespaced {
 		return defaultNamespace
@@ -38,42 +39,61 @@ func resourceDefaultNamespace(namespaced bool, defaultNamespace string) string {
 	return ""
 }
 
+// cluster-scoped resources don't have tenants.  Default to the item's tenant, but clear it for cluster scoped resources
+func resourceDefaultTenant(tenanted bool, defaultTenant string) string {
+	if tenanted {
+		return defaultTenant
+	}
+	return ""
+}
+
 // apiResource consults the REST mapper to translate an <apiVersion, kind,
 // namespace> tuple to a unversioned.APIResource struct.
-func (gc *GarbageCollector) apiResource(apiVersion, kind string) (schema.GroupVersionResource, bool, error) {
+func (gc *GarbageCollector) apiResource(apiVersion, kind string) (schema.GroupVersionResource, bool, bool, error) {
 	fqKind := schema.FromAPIVersionAndKind(apiVersion, kind)
 	mapping, err := gc.restMapper.RESTMapping(fqKind.GroupKind(), fqKind.Version)
 	if err != nil {
-		return schema.GroupVersionResource{}, false, newRESTMappingError(kind, apiVersion)
+		return schema.GroupVersionResource{}, false, false, newRESTMappingError(kind, apiVersion)
 	}
-	return mapping.Resource, mapping.Scope == meta.RESTScopeNamespace, nil
+	namespaceScoped := (mapping.Scope == meta.RESTScopeNamespace)
+	tenantScoped := (mapping.Scope == meta.RESTScopeNamespace || mapping.Scope == meta.RESTScopeTenant)
+	return mapping.Resource, namespaceScoped, tenantScoped, nil
 }
 
 func (gc *GarbageCollector) deleteObject(item objectReference, policy *metav1.DeletionPropagation) error {
-	resource, namespaced, err := gc.apiResource(item.APIVersion, item.Kind)
+	resource, namespaced, tenanted, err := gc.apiResource(item.APIVersion, item.Kind)
 	if err != nil {
 		return err
 	}
 	uid := item.UID
 	preconditions := metav1.Preconditions{UID: &uid}
 	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions, PropagationPolicy: policy}
-	return gc.dynamicClient.Resource(resource).Namespace(resourceDefaultNamespace(namespaced, item.Namespace)).Delete(item.Name, &deleteOptions)
+
+	namespace := resourceDefaultNamespace(namespaced, item.Namespace)
+	tenant := resourceDefaultTenant(tenanted, item.Tenant)
+	return gc.dynamicClient.Resource(resource).NamespaceWithMultiTenancy(namespace, tenant).Delete(item.Name, &deleteOptions)
 }
 
 func (gc *GarbageCollector) getObject(item objectReference) (*unstructured.Unstructured, error) {
-	resource, namespaced, err := gc.apiResource(item.APIVersion, item.Kind)
+	resource, namespaced, tenanted, err := gc.apiResource(item.APIVersion, item.Kind)
 	if err != nil {
 		return nil, err
 	}
-	return gc.dynamicClient.Resource(resource).Namespace(resourceDefaultNamespace(namespaced, item.Namespace)).Get(item.Name, metav1.GetOptions{})
+
+	namespace := resourceDefaultNamespace(namespaced, item.Namespace)
+	tenant := resourceDefaultTenant(tenanted, item.Tenant)
+	return gc.dynamicClient.Resource(resource).NamespaceWithMultiTenancy(namespace, tenant).Get(item.Name, metav1.GetOptions{})
 }
 
 func (gc *GarbageCollector) patchObject(item objectReference, patch []byte, pt types.PatchType) (*unstructured.Unstructured, error) {
-	resource, namespaced, err := gc.apiResource(item.APIVersion, item.Kind)
+	resource, namespaced, tenanted, err := gc.apiResource(item.APIVersion, item.Kind)
 	if err != nil {
 		return nil, err
 	}
-	return gc.dynamicClient.Resource(resource).Namespace(resourceDefaultNamespace(namespaced, item.Namespace)).Patch(item.Name, pt, patch, metav1.PatchOptions{})
+
+	namespace := resourceDefaultNamespace(namespaced, item.Namespace)
+	tenant := resourceDefaultTenant(tenanted, item.Tenant)
+	return gc.dynamicClient.Resource(resource).NamespaceWithMultiTenancy(namespace, tenant).Patch(item.Name, pt, patch, metav1.PatchOptions{})
 }
 
 func (gc *GarbageCollector) removeFinalizer(owner *node, targetFinalizer string) error {

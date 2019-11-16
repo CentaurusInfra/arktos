@@ -42,6 +42,7 @@ type gonumVertex struct {
 	deletingDependents bool
 	virtual            bool
 	vertexID           int64
+	tenant             string
 }
 
 func (v *gonumVertex) ID() int64 {
@@ -69,7 +70,7 @@ func (v *gonumVertex) String() string {
 	if v.virtual {
 		virtual = "(virtual)"
 	}
-	return fmt.Sprintf(`%s/%s[%s]-%v%s%s%s%s`, kind, v.name, v.namespace, v.uid, missing, deleting, deletingDependents, virtual)
+	return fmt.Sprintf(`%s/%s[%s/%s]-%v%s%s%s%s`, kind, v.name, v.tenant, v.namespace, v.uid, missing, deleting, deletingDependents, virtual)
 }
 
 func (v *gonumVertex) Attributes() []encoding.Attribute {
@@ -81,10 +82,12 @@ func (v *gonumVertex) Attributes() []encoding.Attribute {
 
 	label := fmt.Sprintf(`uid=%v
 namespace=%v
+tenant=%v
 %v
 `,
 		v.uid,
 		v.namespace,
+		v.tenant,
 		kubectlString,
 	)
 
@@ -119,6 +122,7 @@ namespace=%v
 		{Key: "beingDeleted", Value: fmt.Sprintf(`"%v"`, v.beingDeleted)},
 		{Key: "deletingDependents", Value: fmt.Sprintf(`"%v"`, v.deletingDependents)},
 		{Key: "virtual", Value: fmt.Sprintf(`"%v"`, v.virtual)},
+		{Key: "tenant", Value: fmt.Sprintf(`"%v"`, v.tenant)},
 	}
 }
 
@@ -137,6 +141,7 @@ func NewGonumVertex(node *node, nodeID int64) *gonumVertex {
 		deletingDependents: node.deletingDependents,
 		virtual:            node.virtual,
 		vertexID:           nodeID,
+		tenant:             node.identity.Tenant,
 	}
 }
 
