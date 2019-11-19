@@ -359,9 +359,7 @@ func (cache *schedulerCache) addPod(pod *v1.Pod) {
 // Assumes that lock is already acquired.
 func (cache *schedulerCache) updatePod(oldPod, newPod *v1.Pod) error {
 	// no cache update for pod with VM in shutdown state 
-	if newPod.Status.VirtualMachineStatus != nil && oldPod.Status.VirtualMachineStatus != nil &&
-		oldPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown &&
-		newPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown {
+	if newPod.Status.Phase == v1.PodNoSchedule && oldPod.Status.Phase == v1.PodNoSchedule {
 		klog.Infof("skipped updating cache for shutdown vm pod %v", newPod.Name)
 		return nil
 	}
@@ -371,9 +369,7 @@ func (cache *schedulerCache) updatePod(oldPod, newPod *v1.Pod) error {
 	}
 
 	// if a VM is running and set to be shutdown, only deduce resource from cache
-	if newPod.Status.VirtualMachineStatus != nil && oldPod.Status.VirtualMachineStatus != nil &&
-		oldPod.Status.VirtualMachineStatus.PowerState == v1.Running &&
-		newPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown {
+	if oldPod.Status.Phase == v1.PodRunning && newPod.Status.Phase == v1.PodNoSchedule {
 		klog.Infof("vm pod %v removed from cache", newPod.Name)
 
 		key, err := schedulernodeinfo.GetPodKey(newPod)

@@ -2584,6 +2584,9 @@ const (
 	// PodUnknown means that for some reason the state of the pod could not be obtained, typically due
 	// to an error in communicating with the host of the pod.
 	PodUnknown PodPhase = "Unknown"
+
+	// PodNoSchedule means pod should not be scheduled to any node
+	PodNoSchedule PodPhase = "NoSchedule"
 )
 
 // PodConditionType is a valid value for PodCondition.Type

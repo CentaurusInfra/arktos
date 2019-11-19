@@ -1345,8 +1345,9 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 	//TODO: handle more situations for VM type
 	if pod.Spec.VirtualMachine != nil {
 		if s.VirtualMachineStatus != nil && s.VirtualMachineStatus.State == v1.VmActive {
-			klog.V(4).Infof("Set Phase Running for VM pod: %v", pod.Name)
 			s.Phase = v1.PodRunning
+		} else if s.VirtualMachineStatus != nil && pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown {
+			s.Phase = v1.PodNoSchedule
 		} else {
 			s.Phase = v1.PodPending
 		}
