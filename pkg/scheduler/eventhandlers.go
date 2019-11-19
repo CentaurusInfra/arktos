@@ -267,10 +267,7 @@ func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
 	}
 
 	// unbind pod from node if VM is being shutdown
-	if newPod.Status.VirtualMachineStatus != nil && oldPod.Status.VirtualMachineStatus != nil &&
-		oldPod.Status.VirtualMachineStatus.PowerState == v1.Running &&
-		newPod.Status.VirtualMachineStatus.PowerState == v1.Shutdown {
-
+	if newPod.Status.Phase == v1.PodNoSchedule && oldPod.Status.Phase != v1.PodNoSchedule {
 		klog.Infof("unbinding pod %v due to VM shutdown", newPod.Name)
 		assumedPod := newPod.DeepCopy()
 
@@ -327,9 +324,8 @@ func assignedPod(pod *v1.Pod) bool {
 }
 
 func vmPodShouldSleep(pod *v1.Pod) bool {
-	return pod.Status.VirtualMachineStatus != nil &&
-		pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
-		pod.Status.VirtualMachineStatus.PowerState == v1.Shutdown;
+	return pod.Spec.VirtualMachine != nil && pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
+		pod.Status.Phase == v1.PodNoSchedule
 }
 
 // responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.
