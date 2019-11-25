@@ -408,6 +408,7 @@ const (
 // by the deployment controller to ease testing of actions that it takes.
 type RSControlInterface interface {
 	PatchReplicaSet(namespace, name string, data []byte) error
+	PatchReplicaSetWithMultiTenancy(tenant, namespace, name string, data []byte) error
 }
 
 // RealRSControl is the default implementation of RSControllerInterface.
@@ -423,12 +424,18 @@ func (r RealRSControl) PatchReplicaSet(namespace, name string, data []byte) erro
 	return err
 }
 
+func (r RealRSControl) PatchReplicaSetWithMultiTenancy(tenant, namespace, name string, data []byte) error {
+	_, err := r.KubeClient.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant).Patch(name, types.StrategicMergePatchType, data)
+	return err
+}
+
 // TODO: merge the controller revision interface in controller_history.go with this one
 // ControllerRevisionControlInterface is an interface that knows how to patch
 // ControllerRevisions, as well as increment or decrement them. It is used
 // by the daemonset controller to ease testing of actions that it takes.
 type ControllerRevisionControlInterface interface {
 	PatchControllerRevision(namespace, name string, data []byte) error
+	PatchControllerRevisionWithMultiTenancy(tenant, namespace, name string, data []byte) error
 }
 
 // RealControllerRevisionControl is the default implementation of ControllerRevisionControlInterface.
@@ -443,20 +450,30 @@ func (r RealControllerRevisionControl) PatchControllerRevision(namespace, name s
 	return err
 }
 
+func (r RealControllerRevisionControl) PatchControllerRevisionWithMultiTenancy(tenant, namespace, name string, data []byte) error {
+	_, err := r.KubeClient.AppsV1().ControllerRevisionsWithMultiTenancy(namespace, tenant).Patch(name, types.StrategicMergePatchType, data)
+	return err
+}
+
 // PodControlInterface is an interface that knows how to add or delete pods
 // created as an interface to allow testing.
 type PodControlInterface interface {
 	// CreatePods creates new pods according to the spec.
 	CreatePods(namespace string, template *v1.PodTemplateSpec, object runtime.Object) error
+	CreatePodsWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object) error
 	// CreatePodsOnNode creates a new pod according to the spec on the specified node,
 	// and sets the ControllerRef.
 	CreatePodsOnNode(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error
+	CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error
 	// CreatePodsWithControllerRef creates new pods according to the spec, and sets object as the pod's controller.
 	CreatePodsWithControllerRef(namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error
+	CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error
 	// DeletePod deletes the pod identified by podID.
 	DeletePod(namespace string, podID string, object runtime.Object) error
+	DeletePodWithMultiTenancy(tenant, namespace string, podID string, object runtime.Object) error
 	// PatchPod patches the pod.
 	PatchPod(namespace, name string, data []byte) error
+	PatchPodWithMultiTenancy(tenant, namespace, name string, data []byte) error
 }
 
 // RealPodControl is the default implementation of PodControlInterface.
@@ -518,25 +535,42 @@ func validateControllerRef(controllerRef *metav1.OwnerReference) error {
 }
 
 func (r RealPodControl) CreatePods(namespace string, template *v1.PodTemplateSpec, object runtime.Object) error {
-	return r.createPods("", namespace, template, object, nil)
+	return r.createPods("", metav1.TenantDefault, namespace, template, object, nil)
+}
+
+func (r RealPodControl) CreatePodsWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object) error {
+	return r.createPods("", tenant, namespace, template, object, nil)
 }
 
 func (r RealPodControl) CreatePodsWithControllerRef(namespace string, template *v1.PodTemplateSpec, controllerObject runtime.Object, controllerRef *metav1.OwnerReference) error {
+	return r.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantDefault, namespace, template, controllerObject, controllerRef)
+}
+
+func (r RealPodControl) CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, controllerObject runtime.Object, controllerRef *metav1.OwnerReference) error {
 	if err := validateControllerRef(controllerRef); err != nil {
 		return err
 	}
-	return r.createPods("", namespace, template, controllerObject, controllerRef)
+	return r.createPods("", tenant, namespace, template, controllerObject, controllerRef)
 }
 
 func (r RealPodControl) CreatePodsOnNode(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
+	return r.CreatePodsOnNodeWithMultiTenancy(nodeName, metav1.TenantDefault, namespace, template, object, controllerRef)
+}
+
+func (r RealPodControl) CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
 	if err := validateControllerRef(controllerRef); err != nil {
 		return err
 	}
-	return r.createPods(nodeName, namespace, template, object, controllerRef)
+	return r.createPods(nodeName, tenant, namespace, template, object, controllerRef)
 }
 
 func (r RealPodControl) PatchPod(namespace, name string, data []byte) error {
 	_, err := r.KubeClient.CoreV1().Pods(namespace).Patch(name, types.StrategicMergePatchType, data)
+	return err
+}
+
+func (r RealPodControl) PatchPodWithMultiTenancy(tenant, namespace, name string, data []byte) error {
+	_, err := r.KubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Patch(name, types.StrategicMergePatchType, data)
 	return err
 }
 
@@ -565,7 +599,7 @@ func GetPodFromTemplate(template *v1.PodTemplateSpec, parentObject runtime.Objec
 	return pod, nil
 }
 
-func (r RealPodControl) createPods(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
+func (r RealPodControl) createPods(nodeName, tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
 	pod, err := GetPodFromTemplate(template, object, controllerRef)
 	if err != nil {
 		return err
@@ -576,7 +610,7 @@ func (r RealPodControl) createPods(nodeName, namespace string, template *v1.PodT
 	if labels.Set(pod.Labels).AsSelectorPreValidated().Empty() {
 		return fmt.Errorf("unable to create pods, no labels")
 	}
-	newPod, err := r.KubeClient.CoreV1().Pods(namespace).Create(pod)
+	newPod, err := r.KubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Create(pod)
 	if err != nil {
 		r.Recorder.Eventf(object, v1.EventTypeWarning, FailedCreatePodReason, "Error creating: %v", err)
 		return err
@@ -593,12 +627,16 @@ func (r RealPodControl) createPods(nodeName, namespace string, template *v1.PodT
 }
 
 func (r RealPodControl) DeletePod(namespace string, podID string, object runtime.Object) error {
+	return r.DeletePodWithMultiTenancy(metav1.TenantDefault, namespace, podID, object)
+}
+
+func (r RealPodControl) DeletePodWithMultiTenancy(tenant, namespace string, podID string, object runtime.Object) error {
 	accessor, err := meta.Accessor(object)
 	if err != nil {
 		return fmt.Errorf("object does not have ObjectMeta, %v", err)
 	}
-	klog.V(2).Infof("Controller %v deleting pod %v/%v", accessor.GetName(), namespace, podID)
-	if err := r.KubeClient.CoreV1().Pods(namespace).Delete(podID, nil); err != nil && !apierrors.IsNotFound(err) {
+	klog.V(2).Infof("Controller %v deleting pod %v/%v/%v", accessor.GetName(), tenant, namespace, podID)
+	if err := r.KubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Delete(podID, nil); err != nil && !apierrors.IsNotFound(err) {
 		r.Recorder.Eventf(object, v1.EventTypeWarning, FailedDeletePodReason, "Error deleting: %v", err)
 		return fmt.Errorf("unable to delete pods: %v", err)
 	}
@@ -621,6 +659,10 @@ type FakePodControl struct {
 var _ PodControlInterface = &FakePodControl{}
 
 func (f *FakePodControl) PatchPod(namespace, name string, data []byte) error {
+	return f.PatchPodWithMultiTenancy(metav1.TenantDefault, namespace, name, data)
+}
+
+func (f *FakePodControl) PatchPodWithMultiTenancy(tenant, namespace, name string, data []byte) error {
 	f.Lock()
 	defer f.Unlock()
 	f.Patches = append(f.Patches, data)
@@ -631,6 +673,10 @@ func (f *FakePodControl) PatchPod(namespace, name string, data []byte) error {
 }
 
 func (f *FakePodControl) CreatePods(namespace string, spec *v1.PodTemplateSpec, object runtime.Object) error {
+	return f.CreatePodsWithMultiTenancy(metav1.TenantDefault, namespace, spec, object)
+}
+
+func (f *FakePodControl) CreatePodsWithMultiTenancy(tenant, namespace string, spec *v1.PodTemplateSpec, object runtime.Object) error {
 	f.Lock()
 	defer f.Unlock()
 	f.CreateCallCount++
@@ -645,6 +691,10 @@ func (f *FakePodControl) CreatePods(namespace string, spec *v1.PodTemplateSpec, 
 }
 
 func (f *FakePodControl) CreatePodsWithControllerRef(namespace string, spec *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
+	return f.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantDefault, namespace, spec, object, controllerRef)
+}
+
+func (f *FakePodControl) CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace string, spec *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
 	f.Lock()
 	defer f.Unlock()
 	f.CreateCallCount++
@@ -660,6 +710,10 @@ func (f *FakePodControl) CreatePodsWithControllerRef(namespace string, spec *v1.
 }
 
 func (f *FakePodControl) CreatePodsOnNode(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
+	return f.CreatePodsOnNodeWithMultiTenancy(nodeName, metav1.TenantDefault, namespace, template, object, controllerRef)
+}
+
+func (f *FakePodControl) CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
 	f.Lock()
 	defer f.Unlock()
 	f.CreateCallCount++
@@ -675,6 +729,10 @@ func (f *FakePodControl) CreatePodsOnNode(nodeName, namespace string, template *
 }
 
 func (f *FakePodControl) DeletePod(namespace string, podID string, object runtime.Object) error {
+	return f.DeletePodWithMultiTenancy(metav1.TenantDefault, namespace, podID, object)
+}
+
+func (f *FakePodControl) DeletePodWithMultiTenancy(tenant, namespace string, podID string, object runtime.Object) error {
 	f.Lock()
 	defer f.Unlock()
 	f.DeletePodName = append(f.DeletePodName, podID)
@@ -1100,7 +1158,11 @@ func AddOrUpdateLabelsOnNode(kubeClient clientset.Interface, nodeName string, la
 }
 
 func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, name string) (*v1.ServiceAccount, error) {
-	sa, err := coreClient.ServiceAccounts(namespace).Get(name, metav1.GetOptions{})
+	return getOrCreateServiceAccountWithMultiTenancy(coreClient, metav1.TenantDefault, namespace, name)
+}
+
+func getOrCreateServiceAccountWithMultiTenancy(coreClient v1core.CoreV1Interface, tenant, namespace, name string) (*v1.ServiceAccount, error) {
+	sa, err := coreClient.ServiceAccountsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err == nil {
 		return sa, nil
 	}
@@ -1110,17 +1172,17 @@ func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, nam
 
 	// Create the namespace if we can't verify it exists.
 	// Tolerate errors, since we don't know whether this component has namespace creation permissions.
-	if _, err := coreClient.Namespaces().Get(namespace, metav1.GetOptions{}); apierrors.IsNotFound(err) {
-		if _, err = coreClient.Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}); err != nil && !apierrors.IsAlreadyExists(err) {
-			klog.Warningf("create non-exist namespace %s failed:%v", namespace, err)
+	if _, err := coreClient.NamespacesWithMultiTenancy(tenant).Get(namespace, metav1.GetOptions{}); apierrors.IsNotFound(err) {
+		if _, err = coreClient.NamespacesWithMultiTenancy(tenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}); err != nil && !apierrors.IsAlreadyExists(err) {
+			klog.Warningf("create non-exist namespace %s/%s failed:%v", tenant, namespace, err)
 		}
 	}
 
 	// Create the service account
-	sa, err = coreClient.ServiceAccounts(namespace).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}})
+	sa, err = coreClient.ServiceAccountsWithMultiTenancy(namespace, tenant).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: namespace, Name: name}})
 	if apierrors.IsAlreadyExists(err) {
 		// If we're racing to init and someone else already created it, re-fetch
-		return coreClient.ServiceAccounts(namespace).Get(name, metav1.GetOptions{})
+		return coreClient.ServiceAccountsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
 	return sa, err
 }

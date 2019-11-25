@@ -30,6 +30,7 @@ import (
 	"reflect"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/recognizer"
@@ -356,6 +357,10 @@ func (g TestGroup) SelfLink(resource, name string) string {
 // For ex, this is of the form:
 // /api/v1/watch/namespaces/foo/pods/pod0 for v1.
 func (g TestGroup) ResourcePathWithPrefix(prefix, resource, namespace, name string) string {
+	return g.ResourcePathWithPrefixWithMultiTenancy(prefix, resource, metav1.TenantDefault, namespace, name)
+}
+
+func (g TestGroup) ResourcePathWithPrefixWithMultiTenancy(prefix, resource, tenant, namespace, name string) string {
 	var path string
 	if g.externalGroupVersion.Group == api.GroupName {
 		path = "/api/" + g.externalGroupVersion.Version
@@ -367,6 +372,9 @@ func (g TestGroup) ResourcePathWithPrefix(prefix, resource, namespace, name stri
 
 	if prefix != "" {
 		path = path + "/" + prefix
+	}
+	if tenant != "" && tenant != metav1.TenantDefault {
+		path = path + "/tenants/" + tenant
 	}
 	if namespace != "" {
 		path = path + "/namespaces/" + namespace
@@ -386,13 +394,21 @@ func (g TestGroup) ResourcePathWithPrefix(prefix, resource, namespace, name stri
 // For example, this is of the form:
 // /api/v1/namespaces/foo/pods/pod0 for v1.
 func (g TestGroup) ResourcePath(resource, namespace, name string) string {
-	return g.ResourcePathWithPrefix("", resource, namespace, name)
+	return g.ResourcePathWithPrefixWithMultiTenancy("", resource, metav1.TenantDefault, namespace, name)
+}
+
+func (g TestGroup) ResourcePathWithMultiTenancy(resource, tenant, namespace, name string) string {
+	return g.ResourcePathWithPrefixWithMultiTenancy("", resource, tenant, namespace, name)
 }
 
 // SubResourcePath returns the appropriate path for the given resource, namespace,
 // name and subresource.
 func (g TestGroup) SubResourcePath(resource, namespace, name, sub string) string {
-	path := g.ResourcePathWithPrefix("", resource, namespace, name)
+	return g.SubResourcePathWithMultiTenancy(resource, metav1.TenantDefault, namespace, name, sub)
+}
+
+func (g TestGroup) SubResourcePathWithMultiTenancy(resource, tenant, namespace, name, sub string) string {
+	path := g.ResourcePathWithPrefixWithMultiTenancy("", resource, tenant, namespace, name)
 	if sub != "" {
 		path = path + "/" + sub
 	}
