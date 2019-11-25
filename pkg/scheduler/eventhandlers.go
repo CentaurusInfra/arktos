@@ -18,9 +18,9 @@ package scheduler
 
 import (
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"reflect"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -235,9 +235,9 @@ func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
 		err := sched.bind(assumedPod, &v1.Binding{
 			ObjectMeta: metav1.ObjectMeta{Tenant: assumedPod.Tenant,
 				Namespace: assumedPod.Namespace,
-				Name: assumedPod.Name,
-				UID: assumedPod.UID,
-				HashKey: assumedPod.HashKey},
+				Name:      assumedPod.Name,
+				UID:       assumedPod.UID,
+				HashKey:   assumedPod.HashKey},
 
 			Target: v1.ObjectReference{
 				Kind: "Node",

@@ -358,7 +358,7 @@ func (cache *schedulerCache) addPod(pod *v1.Pod) {
 
 // Assumes that lock is already acquired.
 func (cache *schedulerCache) updatePod(oldPod, newPod *v1.Pod) error {
-	// no cache update for pod with VM in shutdown state 
+	// no cache update for pod with VM in shutdown state
 	if newPod.Status.Phase == v1.PodNoSchedule && oldPod.Status.Phase == v1.PodNoSchedule {
 		klog.Infof("skipped updating cache for shutdown vm pod %v", newPod.Name)
 		return nil

@@ -1386,7 +1386,7 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 	})
 
 	// clear the host and pod it field when VM is shutdown
-	if pod.Spec.VirtualMachine != nil &&  s.VirtualMachineStatus.PowerState == v1.Shutdown {
+	if pod.Spec.VirtualMachine != nil && s.VirtualMachineStatus.PowerState == v1.Shutdown {
 		s.HostIP = ""
 		s.PodIP = ""
 		return *s

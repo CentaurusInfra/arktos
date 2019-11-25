@@ -1176,11 +1176,11 @@ func makeBasePodAndStatusWithNICs() (*v1.Pod, *kubecontainer.PodStatus) {
 	pod, status := makeBasePodAndStatus()
 	pod.Spec.Nics = []v1.Nic{
 		{
-			Name:   "eth0",		// primary nic
+			Name:   "eth0", // primary nic
 			PortId: "12345",
 		},
 		{
-			Name:   "eth9",		//secondary nic able to plug out
+			Name:   "eth9", //secondary nic able to plug out
 			PortId: "99999",
 		},
 	}

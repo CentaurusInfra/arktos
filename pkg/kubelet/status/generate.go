@@ -31,7 +31,7 @@ const (
 	ContainersNotInitialized = "ContainersNotInitialized"
 	ReadinessGatesNotReady   = "ReadinessGatesNotReady"
 	VmNotReady               = "VirtualMachineNotReady"
-	VmShutdown		 		 = "VirtualMachineShutdown"
+	VmShutdown               = "VirtualMachineShutdown"
 	UnknownVmStatus          = "UnknownVirtualMachineStatus"
 )
 
