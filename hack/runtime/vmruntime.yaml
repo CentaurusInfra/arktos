@@ -10,6 +10,11 @@ spec:
       runtime: virtlet
   template:
     metadata:
+      annotations:
+        # the apparmor related annotations will be replaced IF cluster is running under apparmor enabled env
+        apparmorlibvirtname: apparmorlibvirtvalue
+        apparmorvmsname: apparmorvmsvalue
+        apparmorvirtletname: apparmorvirtletvalue
       name: virtlet
       labels:
         runtime: virtlet

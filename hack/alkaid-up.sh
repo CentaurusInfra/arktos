@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+APPARMOR_ENABLED=${APPARMOR_ENABLED:-""}
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 # containerd socket file path
@@ -160,7 +161,7 @@ set -e
 
 # Do dudiligence to ensure containerd service and socket in a working state
 # Containerd service should be part of docker.io installation or apt-get install containerd for Ubuntu OS
-if ! systemctl is-active --quiet containerd; then
+if ! sudo systemctl is-active --quiet containerd; then
   echo "Containerd is required for Alkid"
   exit 1
 fi
@@ -170,9 +171,34 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# Stop AppArmo service before we have scripts to configure it properly
-if systemctl is-active --quiet apparmor; then
-  echo "Stop Apparmor service"
+if [ "${APPARMOR_ENABLED}" == "true" ]; then
+  echo "Config test env under apparmor enabled host"
+  # Start AppArmor service before we have scripts to configure it properly
+  if ! sudo stemctl is-active --quiet apparmor; then
+    echo "Starting Apparmor service"
+    sudo systemctl start apparmor
+  fi
+
+  # install runtime apparmor profiles and reload apparmor
+  echo "Intalling alkaid runtime apparmor profiles"
+  APPARMOR_PROFILE_DIR=${KUBE_ROOT}/hack/runtime/apparmor
+  cp ${APPARMOR_PROFILE_DIR}/libvirt-qemu /etc/apparmor.d/abstractions/
+  sudo install -m 0644 ${APPARMOR_PROFILE_DIR}/libvirtd ${APPARMOR_PROFILE_DIR}/virtlet ${APPARMOR_PROFILE_DIR}/vms -t /etc/apparmor.d/
+  sudo apparmor_parser -r /etc/apparmor.d/libvirtd
+  sudo apparmor_parser -r /etc/apparmor.d/virtlet
+  sudo apparmor_parser -r /etc/apparmor.d/vms
+  echo "Completed"
+  echo "Setting annotations for the runtime daemonset"
+  sed -i 's+apparmorlibvirtname+container.apparmor.security.beta.kubernetes.io/libvirt+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
+  sed -i 's+apparmorlibvirtvalue+localhost/libvirtd+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
+  sed -i 's+apparmorvmsname+container.apparmor.security.beta.kubernetes.io/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
+  sed -i 's+apparmorvmsvalue+localhost/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
+  sed -i 's+apparmorvirtletname+container.apparmor.security.beta.kubernetes.io/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
+  sed -i 's+apparmorvirtletvalue+localhost/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
+  echo "Completed"
+else
+  # TODO: FIXME: if likely, one can move back to apparmor disabled env, the yaml needs reset or re-checkout	
+  echo "Stopping Apparmor service"
   sudo systemctl stop apparmor
 fi
 
