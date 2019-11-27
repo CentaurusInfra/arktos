@@ -46,6 +46,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam"
 	lifecyclecontroller "k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	"k8s.io/kubernetes/pkg/controller/podgc"
+	"k8s.io/kubernetes/pkg/controller/vmpod"
 	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
 	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
@@ -283,6 +284,14 @@ func startPodGCController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.ClientBuilder.ClientOrDie("pod-garbage-collector"),
 		ctx.InformerFactory.Core().V1().Pods(),
 		int(ctx.ComponentConfig.PodGCController.TerminatedPodGCThreshold),
+	).Run(ctx.Stop)
+	return nil, true, nil
+}
+
+func startVMPodController(ctx ControllerContext) (http.Handler, bool, error) {
+	go vmpod.NewVMPod(
+		ctx.ClientBuilder.ClientOrDie("vm-pod-controller"),
+		ctx.InformerFactory.Core().V1().Pods(),
 	).Run(ctx.Stop)
 	return nil, true, nil
 }

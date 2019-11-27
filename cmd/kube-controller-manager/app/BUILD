@@ -62,6 +62,7 @@ go_library(
         "//pkg/controller/podautoscaler:go_default_library",
         "//pkg/controller/podautoscaler/metrics:go_default_library",
         "//pkg/controller/podgc:go_default_library",
+        "//pkg/controller/vmpod:go_default_library",
         "//pkg/controller/replicaset:go_default_library",
         "//pkg/controller/replication:go_default_library",
         "//pkg/controller/resourcequota:go_default_library",

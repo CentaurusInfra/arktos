@@ -288,8 +288,7 @@ func assignedPod(pod *v1.Pod) bool {
 }
 
 func vmPodShouldSleep(pod *v1.Pod) bool {
-	return pod.Spec.VirtualMachine != nil && pod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecShutdown &&
-		pod.Status.Phase == v1.PodNoSchedule
+	return pod.Status.Phase == v1.PodNoSchedule
 }
 
 // responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.

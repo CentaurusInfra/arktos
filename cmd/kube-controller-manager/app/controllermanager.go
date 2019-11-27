@@ -374,6 +374,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["endpoint"] = startEndpointController
 	controllers["replicationcontroller"] = startReplicationController
 	controllers["podgc"] = startPodGCController
+	controllers["vmpod"] = startVMPodController
 	controllers["resourcequota"] = startResourceQuotaController
 	controllers["namespace"] = startNamespaceController
 	controllers["serviceaccount"] = startServiceAccountController
