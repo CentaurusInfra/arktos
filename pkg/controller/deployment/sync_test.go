@@ -38,12 +38,20 @@ func intOrStrP(val int) *intstr.IntOrString {
 }
 
 func TestScale(t *testing.T) {
+	testScale(t, metav1.TenantDefault)
+}
+
+func TestScaleWithMultiTenancy(t *testing.T) {
+	testScale(t, "test-te")
+}
+
+func testScale(t *testing.T, tenant string) {
 	newTimestamp := metav1.Date(2016, 5, 20, 2, 0, 0, 0, time.UTC)
 	oldTimestamp := metav1.Date(2016, 5, 20, 1, 0, 0, 0, time.UTC)
 	olderTimestamp := metav1.Date(2016, 5, 20, 0, 0, 0, 0, time.UTC)
 
 	var updatedTemplate = func(replicas int) *apps.Deployment {
-		d := newDeployment("foo", replicas, nil, nil, nil, map[string]string{"foo": "bar"})
+		d := newDeployment("foo", replicas, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 		d.Spec.Template.Labels["another"] = "label"
 		return d
 	}
@@ -64,140 +72,140 @@ func TestScale(t *testing.T) {
 	}{
 		{
 			name:          "normal scaling event: 10 -> 12",
-			deployment:    newDeployment("foo", 12, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 10, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 12, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 10, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v1", 10, nil, newTimestamp),
+			newRS:  rs("foo-v1", 10, nil, newTimestamp, tenant),
 			oldRSs: []*apps.ReplicaSet{},
 
-			expectedNew: rs("foo-v1", 12, nil, newTimestamp),
+			expectedNew: rs("foo-v1", 12, nil, newTimestamp, tenant),
 			expectedOld: []*apps.ReplicaSet{},
 		},
 		{
 			name:          "normal scaling event: 10 -> 5",
-			deployment:    newDeployment("foo", 5, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 10, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 5, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 10, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v1", 10, nil, newTimestamp),
+			newRS:  rs("foo-v1", 10, nil, newTimestamp, tenant),
 			oldRSs: []*apps.ReplicaSet{},
 
-			expectedNew: rs("foo-v1", 5, nil, newTimestamp),
+			expectedNew: rs("foo-v1", 5, nil, newTimestamp, tenant),
 			expectedOld: []*apps.ReplicaSet{},
 		},
 		{
 			name:          "proportional scaling: 5 -> 10",
-			deployment:    newDeployment("foo", 10, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 5, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 10, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 5, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v2", 2, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 3, nil, oldTimestamp)},
+			newRS:  rs("foo-v2", 2, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 3, nil, oldTimestamp, tenant)},
 
-			expectedNew: rs("foo-v2", 4, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 6, nil, oldTimestamp)},
+			expectedNew: rs("foo-v2", 4, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 6, nil, oldTimestamp, tenant)},
 		},
 		{
 			name:          "proportional scaling: 5 -> 3",
-			deployment:    newDeployment("foo", 3, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 5, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 3, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 5, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v2", 2, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 3, nil, oldTimestamp)},
+			newRS:  rs("foo-v2", 2, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 3, nil, oldTimestamp, tenant)},
 
-			expectedNew: rs("foo-v2", 1, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 2, nil, oldTimestamp)},
+			expectedNew: rs("foo-v2", 1, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 2, nil, oldTimestamp, tenant)},
 		},
 		{
 			name:          "proportional scaling: 9 -> 4",
-			deployment:    newDeployment("foo", 4, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 9, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 4, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 9, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v2", 8, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp)},
+			newRS:  rs("foo-v2", 8, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp, tenant)},
 
-			expectedNew: rs("foo-v2", 4, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 0, nil, oldTimestamp)},
+			expectedNew: rs("foo-v2", 4, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 0, nil, oldTimestamp, tenant)},
 		},
 		{
 			name:          "proportional scaling: 7 -> 10",
-			deployment:    newDeployment("foo", 10, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 7, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 10, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 7, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v3", 2, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 3, nil, oldTimestamp), rs("foo-v1", 2, nil, olderTimestamp)},
+			newRS:  rs("foo-v3", 2, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 3, nil, oldTimestamp, tenant), rs("foo-v1", 2, nil, olderTimestamp, tenant)},
 
-			expectedNew: rs("foo-v3", 3, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 4, nil, oldTimestamp), rs("foo-v1", 3, nil, olderTimestamp)},
+			expectedNew: rs("foo-v3", 3, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 4, nil, oldTimestamp, tenant), rs("foo-v1", 3, nil, olderTimestamp, tenant)},
 		},
 		{
 			name:          "proportional scaling: 13 -> 8",
-			deployment:    newDeployment("foo", 8, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 13, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 8, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 13, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v3", 2, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 8, nil, oldTimestamp), rs("foo-v1", 3, nil, olderTimestamp)},
+			newRS:  rs("foo-v3", 2, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 8, nil, oldTimestamp, tenant), rs("foo-v1", 3, nil, olderTimestamp, tenant)},
 
-			expectedNew: rs("foo-v3", 1, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 5, nil, oldTimestamp), rs("foo-v1", 2, nil, olderTimestamp)},
+			expectedNew: rs("foo-v3", 1, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 5, nil, oldTimestamp, tenant), rs("foo-v1", 2, nil, olderTimestamp, tenant)},
 		},
 		// Scales up the new replica set.
 		{
 			name:          "leftover distribution: 3 -> 4",
-			deployment:    newDeployment("foo", 4, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 3, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 4, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 3, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v3", 1, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp), rs("foo-v1", 1, nil, olderTimestamp)},
+			newRS:  rs("foo-v3", 1, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp, tenant), rs("foo-v1", 1, nil, olderTimestamp, tenant)},
 
-			expectedNew: rs("foo-v3", 2, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp), rs("foo-v1", 1, nil, olderTimestamp)},
+			expectedNew: rs("foo-v3", 2, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp, tenant), rs("foo-v1", 1, nil, olderTimestamp, tenant)},
 		},
 		// Scales down the older replica set.
 		{
 			name:          "leftover distribution: 3 -> 2",
-			deployment:    newDeployment("foo", 2, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 3, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 2, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 3, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v3", 1, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp), rs("foo-v1", 1, nil, olderTimestamp)},
+			newRS:  rs("foo-v3", 1, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp, tenant), rs("foo-v1", 1, nil, olderTimestamp, tenant)},
 
-			expectedNew: rs("foo-v3", 1, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp), rs("foo-v1", 0, nil, olderTimestamp)},
+			expectedNew: rs("foo-v3", 1, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp, tenant), rs("foo-v1", 0, nil, olderTimestamp, tenant)},
 		},
 		// Scales up the latest replica set first.
 		{
 			name:          "proportional scaling (no new rs): 4 -> 5",
-			deployment:    newDeployment("foo", 5, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 4, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 5, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 4, nil, nil, nil, nil, tenant),
 
 			newRS:  nil,
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 2, nil, oldTimestamp), rs("foo-v1", 2, nil, olderTimestamp)},
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 2, nil, oldTimestamp, tenant), rs("foo-v1", 2, nil, olderTimestamp, tenant)},
 
 			expectedNew: nil,
-			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 3, nil, oldTimestamp), rs("foo-v1", 2, nil, olderTimestamp)},
+			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 3, nil, oldTimestamp, tenant), rs("foo-v1", 2, nil, olderTimestamp, tenant)},
 		},
 		// Scales down to zero
 		{
 			name:          "proportional scaling: 6 -> 0",
-			deployment:    newDeployment("foo", 0, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 6, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 0, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 6, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v3", 3, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 2, nil, oldTimestamp), rs("foo-v1", 1, nil, olderTimestamp)},
+			newRS:  rs("foo-v3", 3, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 2, nil, oldTimestamp, tenant), rs("foo-v1", 1, nil, olderTimestamp, tenant)},
 
-			expectedNew: rs("foo-v3", 0, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 0, nil, oldTimestamp), rs("foo-v1", 0, nil, olderTimestamp)},
+			expectedNew: rs("foo-v3", 0, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 0, nil, oldTimestamp, tenant), rs("foo-v1", 0, nil, olderTimestamp, tenant)},
 		},
 		// Scales up from zero
 		{
 			name:          "proportional scaling: 0 -> 6",
-			deployment:    newDeployment("foo", 6, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 6, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 6, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 6, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v3", 0, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 0, nil, oldTimestamp), rs("foo-v1", 0, nil, olderTimestamp)},
+			newRS:  rs("foo-v3", 0, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 0, nil, oldTimestamp, tenant), rs("foo-v1", 0, nil, olderTimestamp, tenant)},
 
-			expectedNew:  rs("foo-v3", 6, nil, newTimestamp),
-			expectedOld:  []*apps.ReplicaSet{rs("foo-v2", 0, nil, oldTimestamp), rs("foo-v1", 0, nil, olderTimestamp)},
+			expectedNew:  rs("foo-v3", 6, nil, newTimestamp, tenant),
+			expectedOld:  []*apps.ReplicaSet{rs("foo-v2", 0, nil, oldTimestamp, tenant), rs("foo-v1", 0, nil, olderTimestamp, tenant)},
 			wasntUpdated: map[string]bool{"foo-v2": true, "foo-v1": true},
 		},
 		// Scenario: deployment.spec.replicas == 3 ( foo-v1.spec.replicas == foo-v2.spec.replicas == foo-v3.spec.replicas == 1 )
@@ -205,65 +213,65 @@ func TestScale(t *testing.T) {
 		// update.
 		{
 			name:          "failed rs update",
-			deployment:    newDeployment("foo", 5, nil, nil, nil, nil),
-			oldDeployment: newDeployment("foo", 5, nil, nil, nil, nil),
+			deployment:    newDeployment("foo", 5, nil, nil, nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 5, nil, nil, nil, nil, tenant),
 
-			newRS:  rs("foo-v3", 2, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp), rs("foo-v1", 1, nil, olderTimestamp)},
+			newRS:  rs("foo-v3", 2, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 1, nil, oldTimestamp, tenant), rs("foo-v1", 1, nil, olderTimestamp, tenant)},
 
-			expectedNew:  rs("foo-v3", 2, nil, newTimestamp),
-			expectedOld:  []*apps.ReplicaSet{rs("foo-v2", 2, nil, oldTimestamp), rs("foo-v1", 1, nil, olderTimestamp)},
+			expectedNew:  rs("foo-v3", 2, nil, newTimestamp, tenant),
+			expectedOld:  []*apps.ReplicaSet{rs("foo-v2", 2, nil, oldTimestamp, tenant), rs("foo-v1", 1, nil, olderTimestamp, tenant)},
 			wasntUpdated: map[string]bool{"foo-v3": true, "foo-v1": true},
 
 			desiredReplicasAnnotations: map[string]int32{"foo-v2": int32(3)},
 		},
 		{
 			name:          "deployment with surge pods",
-			deployment:    newDeployment("foo", 20, nil, intOrStrP(2), nil, nil),
-			oldDeployment: newDeployment("foo", 10, nil, intOrStrP(2), nil, nil),
+			deployment:    newDeployment("foo", 20, nil, intOrStrP(2), nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 10, nil, intOrStrP(2), nil, nil, tenant),
 
-			newRS:  rs("foo-v2", 6, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 6, nil, oldTimestamp)},
+			newRS:  rs("foo-v2", 6, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 6, nil, oldTimestamp, tenant)},
 
-			expectedNew: rs("foo-v2", 11, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 11, nil, oldTimestamp)},
+			expectedNew: rs("foo-v2", 11, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 11, nil, oldTimestamp, tenant)},
 		},
 		{
 			name:          "change both surge and size",
-			deployment:    newDeployment("foo", 50, nil, intOrStrP(6), nil, nil),
-			oldDeployment: newDeployment("foo", 10, nil, intOrStrP(3), nil, nil),
+			deployment:    newDeployment("foo", 50, nil, intOrStrP(6), nil, nil, tenant),
+			oldDeployment: newDeployment("foo", 10, nil, intOrStrP(3), nil, nil, tenant),
 
-			newRS:  rs("foo-v2", 5, nil, newTimestamp),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 8, nil, oldTimestamp)},
+			newRS:  rs("foo-v2", 5, nil, newTimestamp, tenant),
+			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 8, nil, oldTimestamp, tenant)},
 
-			expectedNew: rs("foo-v2", 22, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 34, nil, oldTimestamp)},
+			expectedNew: rs("foo-v2", 22, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 34, nil, oldTimestamp, tenant)},
 		},
 		{
 			name:          "change both size and template",
 			deployment:    updatedTemplate(14),
-			oldDeployment: newDeployment("foo", 10, nil, nil, nil, map[string]string{"foo": "bar"}),
+			oldDeployment: newDeployment("foo", 10, nil, nil, nil, map[string]string{"foo": "bar"}, tenant),
 
 			newRS:  nil,
-			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 7, nil, newTimestamp), rs("foo-v1", 3, nil, oldTimestamp)},
+			oldRSs: []*apps.ReplicaSet{rs("foo-v2", 7, nil, newTimestamp, tenant), rs("foo-v1", 3, nil, oldTimestamp, tenant)},
 
 			expectedNew: nil,
-			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 10, nil, newTimestamp), rs("foo-v1", 4, nil, oldTimestamp)},
+			expectedOld: []*apps.ReplicaSet{rs("foo-v2", 10, nil, newTimestamp, tenant), rs("foo-v1", 4, nil, oldTimestamp, tenant)},
 		},
 		{
 			name:          "saturated but broken new replica set does not affect old pods",
-			deployment:    newDeployment("foo", 2, nil, intOrStrP(1), intOrStrP(1), nil),
-			oldDeployment: newDeployment("foo", 2, nil, intOrStrP(1), intOrStrP(1), nil),
+			deployment:    newDeployment("foo", 2, nil, intOrStrP(1), intOrStrP(1), nil, tenant),
+			oldDeployment: newDeployment("foo", 2, nil, intOrStrP(1), intOrStrP(1), nil, tenant),
 
 			newRS: func() *apps.ReplicaSet {
-				rs := rs("foo-v2", 2, nil, newTimestamp)
+				rs := rs("foo-v2", 2, nil, newTimestamp, tenant)
 				rs.Status.AvailableReplicas = 0
 				return rs
 			}(),
-			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp)},
+			oldRSs: []*apps.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp, tenant)},
 
-			expectedNew: rs("foo-v2", 2, nil, newTimestamp),
-			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp)},
+			expectedNew: rs("foo-v2", 2, nil, newTimestamp, tenant),
+			expectedOld: []*apps.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp, tenant)},
 		},
 	}
 
@@ -340,8 +348,16 @@ func TestScale(t *testing.T) {
 }
 
 func TestDeploymentController_cleanupDeployment(t *testing.T) {
+	testDeploymentController_cleanupDeployment(t, metav1.TenantDefault)
+}
+
+func TestDeploymentController_cleanupDeploymentWithMultiTenancy(t *testing.T) {
+	testDeploymentController_cleanupDeployment(t, "test-te")
+}
+
+func testDeploymentController_cleanupDeployment(t *testing.T, tenant string) {
 	selector := map[string]string{"foo": "bar"}
-	alreadyDeleted := newRSWithStatus("foo-1", 0, 0, selector)
+	alreadyDeleted := newRSWithStatus("foo-1", 0, 0, selector, tenant)
 	now := metav1.Now()
 	alreadyDeleted.DeletionTimestamp = &now
 
@@ -352,9 +368,9 @@ func TestDeploymentController_cleanupDeployment(t *testing.T) {
 	}{
 		{
 			oldRSs: []*apps.ReplicaSet{
-				newRSWithStatus("foo-1", 0, 0, selector),
-				newRSWithStatus("foo-2", 0, 0, selector),
-				newRSWithStatus("foo-3", 0, 0, selector),
+				newRSWithStatus("foo-1", 0, 0, selector, tenant),
+				newRSWithStatus("foo-2", 0, 0, selector, tenant),
+				newRSWithStatus("foo-3", 0, 0, selector, tenant),
 			},
 			revisionHistoryLimit: 1,
 			expectedDeletions:    2,
@@ -362,10 +378,10 @@ func TestDeploymentController_cleanupDeployment(t *testing.T) {
 		{
 			// Only delete the replica set with Spec.Replicas = Status.Replicas = 0.
 			oldRSs: []*apps.ReplicaSet{
-				newRSWithStatus("foo-1", 0, 0, selector),
-				newRSWithStatus("foo-2", 0, 1, selector),
-				newRSWithStatus("foo-3", 1, 0, selector),
-				newRSWithStatus("foo-4", 1, 1, selector),
+				newRSWithStatus("foo-1", 0, 0, selector, tenant),
+				newRSWithStatus("foo-2", 0, 1, selector, tenant),
+				newRSWithStatus("foo-3", 1, 0, selector, tenant),
+				newRSWithStatus("foo-4", 1, 1, selector, tenant),
 			},
 			revisionHistoryLimit: 0,
 			expectedDeletions:    1,
@@ -373,16 +389,16 @@ func TestDeploymentController_cleanupDeployment(t *testing.T) {
 
 		{
 			oldRSs: []*apps.ReplicaSet{
-				newRSWithStatus("foo-1", 0, 0, selector),
-				newRSWithStatus("foo-2", 0, 0, selector),
+				newRSWithStatus("foo-1", 0, 0, selector, tenant),
+				newRSWithStatus("foo-2", 0, 0, selector, tenant),
 			},
 			revisionHistoryLimit: 0,
 			expectedDeletions:    2,
 		},
 		{
 			oldRSs: []*apps.ReplicaSet{
-				newRSWithStatus("foo-1", 1, 1, selector),
-				newRSWithStatus("foo-2", 1, 1, selector),
+				newRSWithStatus("foo-1", 1, 1, selector, tenant),
+				newRSWithStatus("foo-2", 1, 1, selector, tenant),
 			},
 			revisionHistoryLimit: 0,
 			expectedDeletions:    0,
@@ -397,9 +413,9 @@ func TestDeploymentController_cleanupDeployment(t *testing.T) {
 		{
 			// with unlimited revisionHistoryLimit
 			oldRSs: []*apps.ReplicaSet{
-				newRSWithStatus("foo-1", 0, 0, selector),
-				newRSWithStatus("foo-2", 0, 0, selector),
-				newRSWithStatus("foo-3", 0, 0, selector),
+				newRSWithStatus("foo-1", 0, 0, selector, tenant),
+				newRSWithStatus("foo-2", 0, 0, selector, tenant),
+				newRSWithStatus("foo-3", 0, 0, selector, tenant),
 			},
 			revisionHistoryLimit: math.MaxInt32,
 			expectedDeletions:    0,
@@ -430,7 +446,7 @@ func TestDeploymentController_cleanupDeployment(t *testing.T) {
 		informers.Start(stopCh)
 
 		t.Logf(" &test.revisionHistoryLimit: %d", test.revisionHistoryLimit)
-		d := newDeployment("foo", 1, &test.revisionHistoryLimit, nil, nil, map[string]string{"foo": "bar"})
+		d := newDeployment("foo", 1, &test.revisionHistoryLimit, nil, nil, map[string]string{"foo": "bar"}, tenant)
 		controller.cleanupDeployment(test.oldRSs, d)
 
 		gotDeletions := 0

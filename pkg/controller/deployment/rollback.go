@@ -113,7 +113,7 @@ func (dc *DeploymentController) emitRollbackNormalEvent(d *apps.Deployment, mess
 func (dc *DeploymentController) updateDeploymentAndClearRollbackTo(d *apps.Deployment) error {
 	klog.V(4).Infof("Cleans up rollbackTo of deployment %q", d.Name)
 	setRollbackTo(d, nil)
-	_, err := dc.client.AppsV1().Deployments(d.Namespace).Update(d)
+	_, err := dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).Update(d)
 	return err
 }
 

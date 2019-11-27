@@ -35,12 +35,13 @@ var (
 	controllerUID           = "123"
 )
 
-func newPod(podName string, label map[string]string, owner metav1.Object) *v1.Pod {
+func newPod(podName string, label map[string]string, owner metav1.Object, tenant string) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
 			Labels:    label,
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -57,6 +58,14 @@ func newPod(podName string, label map[string]string, owner metav1.Object) *v1.Po
 }
 
 func TestClaimPods(t *testing.T) {
+	testClaimPods(t, metav1.TenantDefault)
+}
+
+func TestClaimPodsWithMultiTenancy(t *testing.T) {
+	testClaimPods(t, "test-te")
+}
+
+func testClaimPods(t *testing.T, tenant string) {
 	controllerKind := schema.GroupVersionKind{}
 	type test struct {
 		name    string
@@ -72,8 +81,8 @@ func TestClaimPods(t *testing.T) {
 				productionLabelSelector,
 				controllerKind,
 				func() error { return nil }),
-			pods:    []*v1.Pod{newPod("pod1", productionLabel, nil), newPod("pod2", testLabel, nil)},
-			claimed: []*v1.Pod{newPod("pod1", productionLabel, nil)},
+			pods:    []*v1.Pod{newPod("pod1", productionLabel, nil, tenant), newPod("pod2", testLabel, nil, tenant)},
+			claimed: []*v1.Pod{newPod("pod1", productionLabel, nil, tenant)},
 		},
 		func() test {
 			controller := v1.ReplicationController{}
@@ -87,7 +96,7 @@ func TestClaimPods(t *testing.T) {
 					productionLabelSelector,
 					controllerKind,
 					func() error { return nil }),
-				pods:    []*v1.Pod{newPod("pod1", productionLabel, nil), newPod("pod2", productionLabel, nil)},
+				pods:    []*v1.Pod{newPod("pod1", productionLabel, nil, tenant), newPod("pod2", productionLabel, nil, tenant)},
 				claimed: nil,
 			}
 		}(),
@@ -103,8 +112,8 @@ func TestClaimPods(t *testing.T) {
 					productionLabelSelector,
 					controllerKind,
 					func() error { return nil }),
-				pods:    []*v1.Pod{newPod("pod1", productionLabel, &controller), newPod("pod2", productionLabel, nil)},
-				claimed: []*v1.Pod{newPod("pod1", productionLabel, &controller)},
+				pods:    []*v1.Pod{newPod("pod1", productionLabel, &controller, tenant), newPod("pod2", productionLabel, nil, tenant)},
+				claimed: []*v1.Pod{newPod("pod1", productionLabel, &controller, tenant)},
 			}
 		}(),
 		func() test {
@@ -119,8 +128,8 @@ func TestClaimPods(t *testing.T) {
 					productionLabelSelector,
 					controllerKind,
 					func() error { return nil }),
-				pods:    []*v1.Pod{newPod("pod1", productionLabel, &controller), newPod("pod2", productionLabel, &controller2)},
-				claimed: []*v1.Pod{newPod("pod1", productionLabel, &controller)},
+				pods:    []*v1.Pod{newPod("pod1", productionLabel, &controller, tenant), newPod("pod2", productionLabel, &controller2, tenant)},
+				claimed: []*v1.Pod{newPod("pod1", productionLabel, &controller, tenant)},
 			}
 		}(),
 		func() test {
@@ -133,15 +142,15 @@ func TestClaimPods(t *testing.T) {
 					productionLabelSelector,
 					controllerKind,
 					func() error { return nil }),
-				pods:    []*v1.Pod{newPod("pod1", productionLabel, &controller), newPod("pod2", testLabel, &controller)},
-				claimed: []*v1.Pod{newPod("pod1", productionLabel, &controller)},
+				pods:    []*v1.Pod{newPod("pod1", productionLabel, &controller, tenant), newPod("pod2", testLabel, &controller, tenant)},
+				claimed: []*v1.Pod{newPod("pod1", productionLabel, &controller, tenant)},
 			}
 		}(),
 		func() test {
 			controller := v1.ReplicationController{}
 			controller.UID = types.UID(controllerUID)
-			podToDelete1 := newPod("pod1", productionLabel, &controller)
-			podToDelete2 := newPod("pod2", productionLabel, nil)
+			podToDelete1 := newPod("pod1", productionLabel, &controller, tenant)
+			podToDelete2 := newPod("pod2", productionLabel, nil, tenant)
 			now := metav1.Now()
 			podToDelete1.DeletionTimestamp = &now
 			podToDelete2.DeletionTimestamp = &now

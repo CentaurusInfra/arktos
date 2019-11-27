@@ -53,13 +53,13 @@ var (
 	noTimestamp = metav1.Time{}
 )
 
-func rs(name string, replicas int, selector map[string]string, timestamp metav1.Time) *apps.ReplicaSet {
+func rs(name string, replicas int, selector map[string]string, timestamp metav1.Time, tenant string) *apps.ReplicaSet {
 	return &apps.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			CreationTimestamp: timestamp,
 			Namespace:         metav1.NamespaceDefault,
-			Tenant:            metav1.TenantDefault,
+			Tenant:            tenant,
 		},
 		Spec: apps.ReplicaSetSpec{
 			Replicas: func() *int32 { i := int32(replicas); return &i }(),
@@ -69,22 +69,22 @@ func rs(name string, replicas int, selector map[string]string, timestamp metav1.
 	}
 }
 
-func newRSWithStatus(name string, specReplicas, statusReplicas int, selector map[string]string) *apps.ReplicaSet {
-	rs := rs(name, specReplicas, selector, noTimestamp)
+func newRSWithStatus(name string, specReplicas, statusReplicas int, selector map[string]string, tenant string) *apps.ReplicaSet {
+	rs := rs(name, specReplicas, selector, noTimestamp, tenant)
 	rs.Status = apps.ReplicaSetStatus{
 		Replicas: int32(statusReplicas),
 	}
 	return rs
 }
 
-func newDeployment(name string, replicas int, revisionHistoryLimit *int32, maxSurge, maxUnavailable *intstr.IntOrString, selector map[string]string) *apps.Deployment {
+func newDeployment(name string, replicas int, revisionHistoryLimit *int32, maxSurge, maxUnavailable *intstr.IntOrString, selector map[string]string, tenant string) *apps.Deployment {
 	d := apps.Deployment{
 		TypeMeta: metav1.TypeMeta{APIVersion: "apps/v1", Kind: "Deployment"},
 		ObjectMeta: metav1.ObjectMeta{
 			UID:         uuid.NewUUID(),
 			Name:        name,
 			Namespace:   metav1.NamespaceDefault,
-			Tenant:      metav1.TenantDefault,
+			Tenant:      tenant,
 			Annotations: make(map[string]string),
 		},
 		Spec: apps.DeploymentSpec{
@@ -121,14 +121,14 @@ func newDeployment(name string, replicas int, revisionHistoryLimit *int32, maxSu
 	return &d
 }
 
-func newReplicaSet(d *apps.Deployment, name string, replicas int) *apps.ReplicaSet {
+func newReplicaSet(d *apps.Deployment, name string, replicas int, tenant string) *apps.ReplicaSet {
 	return &apps.ReplicaSet{
 		TypeMeta: metav1.TypeMeta{Kind: "ReplicaSet"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			UID:             uuid.NewUUID(),
 			Namespace:       metav1.NamespaceDefault,
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Labels:          d.Spec.Selector.MatchLabels,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(d, controllerKind)},
 		},
@@ -156,23 +156,23 @@ type fixture struct {
 }
 
 func (f *fixture) expectGetDeploymentAction(d *apps.Deployment) {
-	action := core.NewGetAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d.Name)
+	action := core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d.Name, d.Tenant)
 	f.actions = append(f.actions, action)
 }
 
 func (f *fixture) expectUpdateDeploymentStatusAction(d *apps.Deployment) {
-	action := core.NewUpdateAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d)
+	action := core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d, d.Tenant)
 	action.Subresource = "status"
 	f.actions = append(f.actions, action)
 }
 
 func (f *fixture) expectUpdateDeploymentAction(d *apps.Deployment) {
-	action := core.NewUpdateAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d)
+	action := core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d, d.Tenant)
 	f.actions = append(f.actions, action)
 }
 
 func (f *fixture) expectCreateRSAction(rs *apps.ReplicaSet) {
-	f.actions = append(f.actions, core.NewCreateAction(schema.GroupVersionResource{Resource: "replicasets"}, rs.Namespace, rs))
+	f.actions = append(f.actions, core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Resource: "replicasets"}, rs.Namespace, rs, rs.Tenant))
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -253,7 +253,7 @@ func (f *fixture) run_(deploymentName string, startInformers bool, expectError b
 func filterInformerActions(actions []core.Action) []core.Action {
 	ret := []core.Action{}
 	for _, action := range actions {
-		if len(action.GetNamespace()) == 0 &&
+		if len(action.GetNamespace()) == 0 && len(action.GetTenant()) == 0 &&
 			(action.Matches("list", "pods") ||
 				action.Matches("list", "deployments") ||
 				action.Matches("list", "replicasets") ||
@@ -269,13 +269,21 @@ func filterInformerActions(actions []core.Action) []core.Action {
 }
 
 func TestSyncDeploymentCreatesReplicaSet(t *testing.T) {
+	testSyncDeploymentCreatesReplicaSet(t, metav1.TenantDefault)
+}
+
+func TestSyncDeploymentCreatesReplicaSetWithMultiTenancy(t *testing.T) {
+	testSyncDeploymentCreatesReplicaSet(t, "test-te")
+}
+
+func testSyncDeploymentCreatesReplicaSet(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	f.dLister = append(f.dLister, d)
 	f.objects = append(f.objects, d)
 
-	rs := newReplicaSet(d, "deploymentrs-4186632231", 1)
+	rs := newReplicaSet(d, "deploymentrs-4186632231", 1, tenant)
 
 	f.expectCreateRSAction(rs)
 	f.expectUpdateDeploymentStatusAction(d)
@@ -285,9 +293,17 @@ func TestSyncDeploymentCreatesReplicaSet(t *testing.T) {
 }
 
 func TestSyncDeploymentDontDoAnythingDuringDeletion(t *testing.T) {
+	testSyncDeploymentDontDoAnythingDuringDeletion(t, metav1.TenantDefault)
+}
+
+func TestSyncDeploymentDontDoAnythingDuringDeletionWithMultiTenancy(t *testing.T) {
+	testSyncDeploymentDontDoAnythingDuringDeletion(t, "test-te")
+}
+
+func testSyncDeploymentDontDoAnythingDuringDeletion(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	now := metav1.Now()
 	d.DeletionTimestamp = &now
 	f.dLister = append(f.dLister, d)
@@ -298,9 +314,17 @@ func TestSyncDeploymentDontDoAnythingDuringDeletion(t *testing.T) {
 }
 
 func TestSyncDeploymentDeletionRace(t *testing.T) {
+	testSyncDeploymentDeletionRace(t, metav1.TenantDefault)
+}
+
+func TestSyncDeploymentDeletionRaceWithMultiTenancy(t *testing.T) {
+	testSyncDeploymentDeletionRace(t, "test-te")
+}
+
+func testSyncDeploymentDeletionRace(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	d2 := *d
 	// Lister (cache) says NOT deleted.
 	f.dLister = append(f.dLister, d)
@@ -310,7 +334,7 @@ func TestSyncDeploymentDeletionRace(t *testing.T) {
 	f.objects = append(f.objects, &d2)
 
 	// The recheck is only triggered if a matching orphan exists.
-	rs := newReplicaSet(d, "rs1", 1)
+	rs := newReplicaSet(d, "rs1", 1, tenant)
 	rs.OwnerReferences = nil
 	f.objects = append(f.objects, rs)
 	f.rsLister = append(f.rsLister, rs)
@@ -322,11 +346,19 @@ func TestSyncDeploymentDeletionRace(t *testing.T) {
 	f.runExpectError(testutil.GetKey(d, t), false)
 }
 
-// issue: https://github.com/kubernetes/kubernetes/issues/23218
 func TestDontSyncDeploymentsWithEmptyPodSelector(t *testing.T) {
+	testDontSyncDeploymentsWithEmptyPodSelector(t, metav1.TenantDefault)
+}
+
+func TestDontSyncDeploymentsWithEmptyPodSelectorWithMultiTenancy(t *testing.T) {
+	testDontSyncDeploymentsWithEmptyPodSelector(t, "test-te")
+}
+
+// issue: https://github.com/kubernetes/kubernetes/issues/23218
+func testDontSyncDeploymentsWithEmptyPodSelector(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	d.Spec.Selector = &metav1.LabelSelector{}
 	f.dLister = append(f.dLister, d)
 	f.objects = append(f.objects, d)
@@ -337,20 +369,28 @@ func TestDontSyncDeploymentsWithEmptyPodSelector(t *testing.T) {
 }
 
 func TestReentrantRollback(t *testing.T) {
+	testReentrantRollback(t, metav1.TenantDefault)
+}
+
+func TestReentrantRollbackWithMultiTenancy(t *testing.T) {
+	testReentrantRollback(t, "test-te")
+}
+
+func testReentrantRollback(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	d.Annotations = map[string]string{util.RevisionAnnotation: "2"}
 	setRollbackTo(d, &extensions.RollbackConfig{Revision: 0})
 	f.dLister = append(f.dLister, d)
 
-	rs1 := newReplicaSet(d, "deploymentrs-old", 0)
+	rs1 := newReplicaSet(d, "deploymentrs-old", 0, tenant)
 	rs1.Annotations = map[string]string{util.RevisionAnnotation: "1"}
 	one := int64(1)
 	rs1.Spec.Template.Spec.TerminationGracePeriodSeconds = &one
 	rs1.Spec.Selector.MatchLabels[apps.DefaultDeploymentUniqueLabelKey] = "hash"
 
-	rs2 := newReplicaSet(d, "deploymentrs-new", 1)
+	rs2 := newReplicaSet(d, "deploymentrs-new", 1, tenant)
 	rs2.Annotations = map[string]string{util.RevisionAnnotation: "2"}
 	rs2.Spec.Selector.MatchLabels[apps.DefaultDeploymentUniqueLabelKey] = "hash"
 
@@ -367,11 +407,19 @@ func TestReentrantRollback(t *testing.T) {
 // will requeue a Recreate deployment iff there is no other pod returned from the
 // client.
 func TestPodDeletionEnqueuesRecreateDeployment(t *testing.T) {
+	testPodDeletionEnqueuesRecreateDeployment(t, metav1.TenantDefault)
+}
+
+func TestPodDeletionEnqueuesRecreateDeploymentWithMultiTenancy(t *testing.T) {
+	testPodDeletionEnqueuesRecreateDeployment(t, "test-te")
+}
+
+func testPodDeletionEnqueuesRecreateDeployment(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	foo.Spec.Strategy.Type = apps.RecreateDeploymentStrategyType
-	rs := newReplicaSet(foo, "foo-1", 1)
+	rs := newReplicaSet(foo, "foo-1", 1, tenant)
 	pod := generatePodFromRS(rs)
 
 	f.dLister = append(f.dLister, foo)
@@ -400,12 +448,20 @@ func TestPodDeletionEnqueuesRecreateDeployment(t *testing.T) {
 // will not requeue a Recreate deployment iff there are other pods returned from the
 // client.
 func TestPodDeletionDoesntEnqueueRecreateDeployment(t *testing.T) {
+	testPodDeletionDoesntEnqueueRecreateDeployment(t, metav1.TenantDefault)
+}
+
+func TestPodDeletionDoesntEnqueueRecreateDeploymentWithMultiTenancy(t *testing.T) {
+	testPodDeletionDoesntEnqueueRecreateDeployment(t, "test-te")
+}
+
+func testPodDeletionDoesntEnqueueRecreateDeployment(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	foo.Spec.Strategy.Type = apps.RecreateDeploymentStrategyType
-	rs1 := newReplicaSet(foo, "foo-1", 1)
-	rs2 := newReplicaSet(foo, "foo-1", 1)
+	rs1 := newReplicaSet(foo, "foo-1", 1, tenant)
+	rs2 := newReplicaSet(foo, "foo-1", 1, tenant)
 	pod1 := generatePodFromRS(rs1)
 	pod2 := generatePodFromRS(rs2)
 
@@ -437,12 +493,20 @@ func TestPodDeletionDoesntEnqueueRecreateDeployment(t *testing.T) {
 // pod returned from the client in the case where a deployment has multiple replica
 // sets, some of which have empty owner references.
 func TestPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t *testing.T) {
+	testPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t, metav1.TenantDefault)
+}
+
+func TestPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeploymentWithMultiTenancy(t *testing.T) {
+	testPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t, "test-te")
+}
+
+func testPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	foo.Spec.Strategy.Type = apps.RecreateDeploymentStrategyType
-	rs1 := newReplicaSet(foo, "foo-1", 1)
-	rs2 := newReplicaSet(foo, "foo-2", 2)
+	rs1 := newReplicaSet(foo, "foo-1", 1, tenant)
+	rs2 := newReplicaSet(foo, "foo-2", 1, tenant)
 	rs2.OwnerReferences = nil
 	pod := generatePodFromRS(rs1)
 
@@ -472,13 +536,22 @@ func TestPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t *testi
 // deletion of a pod will not requeue a Recreate deployment iff there are other pods
 // returned from the client in the case where a deployment has multiple replica sets,
 // some of which have empty owner references.
+
 func TestPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t *testing.T) {
+	testPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t, metav1.TenantDefault)
+}
+
+func TestPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeploymentWithMultiTenancy(t *testing.T) {
+	testPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t, "test-te")
+
+}
+func testPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	foo := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	foo.Spec.Strategy.Type = apps.RecreateDeploymentStrategyType
-	rs1 := newReplicaSet(foo, "foo-1", 1)
-	rs2 := newReplicaSet(foo, "foo-2", 2)
+	rs1 := newReplicaSet(foo, "foo-1", 1, tenant)
+	rs2 := newReplicaSet(foo, "foo-2", 1, tenant)
 	rs2.OwnerReferences = nil
 	pod := generatePodFromRS(rs1)
 
@@ -508,16 +581,25 @@ func TestPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t 
 }
 
 func TestGetReplicaSetsForDeployment(t *testing.T) {
+
+	testGetReplicaSetsForDeployment(t, metav1.TenantDefault)
+}
+
+func TestGetReplicaSetsForDeploymentWithMultiTenancy(t *testing.T) {
+	testGetReplicaSetsForDeployment(t, "test-te")
+}
+
+func testGetReplicaSetsForDeployment(t *testing.T, tenant string) {
 	f := newFixture(t)
 
 	// Two Deployments with same labels.
-	d1 := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("bar", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d1 := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("bar", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
 	// Two ReplicaSets that match labels for both Deployments,
 	// but have ControllerRefs to make ownership explicit.
-	rs1 := newReplicaSet(d1, "rs1", 1)
-	rs2 := newReplicaSet(d2, "rs2", 1)
+	rs1 := newReplicaSet(d1, "rs1", 1, tenant)
+	rs2 := newReplicaSet(d2, "rs2", 1, tenant)
 
 	f.dLister = append(f.dLister, d1, d2)
 	f.rsLister = append(f.rsLister, rs1, rs2)
@@ -558,17 +640,23 @@ func TestGetReplicaSetsForDeployment(t *testing.T) {
 }
 
 func TestGetReplicaSetsForDeploymentAdoptRelease(t *testing.T) {
-	f := newFixture(t)
+	testGetReplicaSetsForDeploymentAdoptRelease(t, metav1.TenantDefault)
+}
 
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+func TestGetReplicaSetsForDeploymentAdoptReleaseWithMultiTenancy(t *testing.T) {
+	testGetReplicaSetsForDeploymentAdoptRelease(t, "test-te")
+}
+
+func testGetReplicaSetsForDeploymentAdoptRelease(t *testing.T, tenant string) {
+	f := newFixture(t)
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
 	// RS with matching labels, but orphaned. Should be adopted and returned.
-	rsAdopt := newReplicaSet(d, "rsAdopt", 1)
+	rsAdopt := newReplicaSet(d, "rsAdopt", 1, tenant)
 	rsAdopt.OwnerReferences = nil
 	// RS with matching ControllerRef, but wrong labels. Should be released.
-	rsRelease := newReplicaSet(d, "rsRelease", 1)
+	rsRelease := newReplicaSet(d, "rsRelease", 1, tenant)
 	rsRelease.Labels = map[string]string{"foo": "notbar"}
-
 	f.dLister = append(f.dLister, d)
 	f.rsLister = append(f.rsLister, rsAdopt, rsRelease)
 	f.objects = append(f.objects, d, rsAdopt, rsRelease)
@@ -596,12 +684,19 @@ func TestGetReplicaSetsForDeploymentAdoptRelease(t *testing.T) {
 }
 
 func TestGetPodMapForReplicaSets(t *testing.T) {
+	testGetPodMapForReplicaSets(t, metav1.TenantDefault)
+}
+
+func TestGetPodMapForReplicaSetsWithMultiTenancy(t *testing.T) {
+	testGetPodMapForReplicaSets(t, "test-te")
+}
+
+func testGetPodMapForReplicaSets(t *testing.T, tenant string) {
 	f := newFixture(t)
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-
-	rs1 := newReplicaSet(d, "rs1", 1)
-	rs2 := newReplicaSet(d, "rs2", 1)
+	rs1 := newReplicaSet(d, "rs1", 1, tenant)
+	rs2 := newReplicaSet(d, "rs2", 1, tenant)
 
 	// Add a Pod for each ReplicaSet.
 	pod1 := generatePodFromRS(rs1)
@@ -662,15 +757,23 @@ func TestGetPodMapForReplicaSets(t *testing.T) {
 }
 
 func TestAddReplicaSet(t *testing.T) {
+	testAddReplicaSet(t, metav1.TenantDefault)
+}
+
+func TestAddReplicaSetWithMultiTenancy(t *testing.T) {
+	testAddReplicaSet(t, "test-te")
+}
+
+func testAddReplicaSet(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
 	// Two ReplicaSets that match labels for both Deployments,
 	// but have ControllerRefs to make ownership explicit.
-	rs1 := newReplicaSet(d1, "rs1", 1)
-	rs2 := newReplicaSet(d2, "rs2", 1)
+	rs1 := newReplicaSet(d1, "rs1", 1, tenant)
+	rs2 := newReplicaSet(d2, "rs2", 1, tenant)
 
 	f.dLister = append(f.dLister, d1, d2)
 	f.objects = append(f.objects, d1, d2, rs1, rs2)
@@ -710,16 +813,24 @@ func TestAddReplicaSet(t *testing.T) {
 }
 
 func TestAddReplicaSetOrphan(t *testing.T) {
+	testAddReplicaSetOrphan(t, metav1.TenantDefault)
+}
+
+func TestAddReplicaSetOrphanWithMultiTenancy(t *testing.T) {
+	testAddReplicaSetOrphan(t, "test-te")
+}
+
+func testAddReplicaSetOrphan(t *testing.T, tenant string) {
 	f := newFixture(t)
 
 	// 2 will match the RS, 1 won't.
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d3 := newDeployment("d3", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d3 := newDeployment("d3", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 	d3.Spec.Selector.MatchLabels = map[string]string{"foo": "notbar"}
 
 	// Make the RS an orphan. Expect matching Deployments to be queued.
-	rs := newReplicaSet(d1, "rs1", 1)
+	rs := newReplicaSet(d1, "rs1", 1, tenant)
 	rs.OwnerReferences = nil
 
 	f.dLister = append(f.dLister, d1, d2, d3)
@@ -739,15 +850,23 @@ func TestAddReplicaSetOrphan(t *testing.T) {
 }
 
 func TestUpdateReplicaSet(t *testing.T) {
+	testUpdateReplicaSet(t, metav1.TenantDefault)
+}
+
+func TestUpdateReplicaSetWithMultiTenancy(t *testing.T) {
+	testUpdateReplicaSet(t, "test-te")
+}
+
+func testUpdateReplicaSet(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
 	// Two ReplicaSets that match labels for both Deployments,
 	// but have ControllerRefs to make ownership explicit.
-	rs1 := newReplicaSet(d1, "rs1", 1)
-	rs2 := newReplicaSet(d2, "rs2", 1)
+	rs1 := newReplicaSet(d1, "rs1", 1, tenant)
+	rs2 := newReplicaSet(d2, "rs2", 1, tenant)
 
 	f.dLister = append(f.dLister, d1, d2)
 	f.rsLister = append(f.rsLister, rs1, rs2)
@@ -794,15 +913,22 @@ func TestUpdateReplicaSet(t *testing.T) {
 }
 
 func TestUpdateReplicaSetOrphanWithNewLabels(t *testing.T) {
+	testUpdateReplicaSetOrphanWithNewLabels(t, metav1.TenantDefault)
+}
+
+func TestUpdateReplicaSetOrphanWithNewLabelsWithMultiTenancy(t *testing.T) {
+	testUpdateReplicaSetOrphanWithNewLabels(t, "test-te")
+}
+
+func testUpdateReplicaSetOrphanWithNewLabels(t *testing.T, tenant string) {
 	f := newFixture(t)
 
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
 	// RS matches both, but is an orphan.
-	rs := newReplicaSet(d1, "rs1", 1)
+	rs := newReplicaSet(d1, "rs1", 1, tenant)
 	rs.OwnerReferences = nil
-
 	f.dLister = append(f.dLister, d1, d2)
 	f.rsLister = append(f.rsLister, rs)
 	f.objects = append(f.objects, d1, d2, rs)
@@ -826,13 +952,19 @@ func TestUpdateReplicaSetOrphanWithNewLabels(t *testing.T) {
 }
 
 func TestUpdateReplicaSetChangeControllerRef(t *testing.T) {
+	testUpdateReplicaSetChangeControllerRef(t, metav1.TenantDefault)
+}
+
+func TestUpdateReplicaSetChangeControllerRefWithMultiTenancy(t *testing.T) {
+	testUpdateReplicaSetChangeControllerRef(t, "test-te")
+}
+
+func testUpdateReplicaSetChangeControllerRef(t *testing.T, tenant string) {
 	f := newFixture(t)
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-
-	rs := newReplicaSet(d1, "rs1", 1)
-
+	rs := newReplicaSet(d1, "rs1", 1, tenant)
 	f.dLister = append(f.dLister, d1, d2)
 	f.rsLister = append(f.rsLister, rs)
 	f.objects = append(f.objects, d1, d2, rs)
@@ -856,13 +988,19 @@ func TestUpdateReplicaSetChangeControllerRef(t *testing.T) {
 }
 
 func TestUpdateReplicaSetRelease(t *testing.T) {
+	testUpdateReplicaSetRelease(t, metav1.TenantDefault)
+}
+
+func TestUpdateReplicaSetReleaseWithMultiTenancy(t *testing.T) {
+	testUpdateReplicaSetRelease(t, "test-te")
+}
+
+func testUpdateReplicaSetRelease(t *testing.T, tenant string) {
 	f := newFixture(t)
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-
-	rs := newReplicaSet(d1, "rs1", 1)
-
+	rs := newReplicaSet(d1, "rs1", 1, tenant)
 	f.dLister = append(f.dLister, d1, d2)
 	f.rsLister = append(f.rsLister, rs)
 	f.objects = append(f.objects, d1, d2, rs)
@@ -886,15 +1024,22 @@ func TestUpdateReplicaSetRelease(t *testing.T) {
 }
 
 func TestDeleteReplicaSet(t *testing.T) {
-	f := newFixture(t)
+	testDeleteReplicaSet(t, metav1.TenantDefault)
+}
 
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+func TestDeleteReplicaSetWithMultiTenancy(t *testing.T) {
+	testDeleteReplicaSet(t, "test-te")
+}
+
+func testDeleteReplicaSet(t *testing.T, tenant string) {
+	f := newFixture(t)
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
 	// Two ReplicaSets that match labels for both Deployments,
 	// but have ControllerRefs to make ownership explicit.
-	rs1 := newReplicaSet(d1, "rs1", 1)
-	rs2 := newReplicaSet(d2, "rs2", 1)
+	rs1 := newReplicaSet(d1, "rs1", 1, tenant)
+	rs2 := newReplicaSet(d2, "rs2", 1, tenant)
 
 	f.dLister = append(f.dLister, d1, d2)
 	f.rsLister = append(f.rsLister, rs1, rs2)
@@ -935,13 +1080,20 @@ func TestDeleteReplicaSet(t *testing.T) {
 }
 
 func TestDeleteReplicaSetOrphan(t *testing.T) {
-	f := newFixture(t)
+	testDeleteReplicaSetOrphan(t, metav1.TenantDefault)
+}
 
-	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"})
+func TestDeleteReplicaSetOrphanWithMultiTenancy(t *testing.T) {
+	testDeleteReplicaSetOrphan(t, "test-te")
+}
+
+func testDeleteReplicaSetOrphan(t *testing.T, tenant string) {
+	f := newFixture(t)
+	d1 := newDeployment("d1", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	d2 := newDeployment("d2", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
 
 	// Make the RS an orphan. Expect matching Deployments to be queued.
-	rs := newReplicaSet(d1, "rs1", 1)
+	rs := newReplicaSet(d1, "rs1", 1, tenant)
 	rs.OwnerReferences = nil
 
 	f.dLister = append(f.dLister, d1, d2)

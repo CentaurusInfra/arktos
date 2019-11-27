@@ -60,11 +60,7 @@ func NewFakeControllerExpectationsLookup(ttl time.Duration) (*ControllerExpectat
 	return &ControllerExpectations{ttlStore}, fakeClock
 }
 
-func newReplicationController(replicas int) *v1.ReplicationController {
-	return newReplicationControllerWithMultiTenancy(replicas, metav1.TenantDefault)
-}
-
-func newReplicationControllerWithMultiTenancy(replicas int, tenant string) *v1.ReplicationController {
+func newReplicationController(replicas int, tenant string) *v1.ReplicationController {
 	rc := &v1.ReplicationController{
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -128,11 +124,7 @@ func newPodList(store cache.Store, count int, status v1.PodPhase, rc *v1.Replica
 	}
 }
 
-func newReplicaSet(name string, replicas int) *apps.ReplicaSet {
-	return newReplicaSetWithMultiTenancy(name, replicas, metav1.TenantDefault)
-}
-
-func newReplicaSetWithMultiTenancy(name string, replicas int, tenant string) *apps.ReplicaSet {
+func newReplicaSet(name string, replicas int, tenant string) *apps.ReplicaSet {
 	return &apps.ReplicaSet{
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -173,22 +165,21 @@ func newReplicaSetWithMultiTenancy(name string, replicas int, tenant string) *ap
 }
 
 func TestControllerExpectations(t *testing.T) {
-	rc := newReplicationController(1)
-	testControllerExpectations(t, rc)
+	testControllerExpectations(t, metav1.TenantDefault)
 }
 
 func TestControllerExpectationsWithMultiTenancy(t *testing.T) {
-	rc := newReplicationControllerWithMultiTenancy(1, "test-te")
-	testControllerExpectations(t, rc)
+	testControllerExpectations(t, "test-te")
 }
 
-func testControllerExpectations(t *testing.T, rc *v1.ReplicationController) {
+func testControllerExpectations(t *testing.T, tenant string) {
 	ttl := 30 * time.Second
 	e, fakeClock := NewFakeControllerExpectationsLookup(ttl)
 	// In practice we can't really have add and delete expectations since we only either create or
 	// delete replicas in one rc pass, and the rc goes to sleep soon after until the expectations are
 	// either fulfilled or timeout.
 	adds, dels := 10, 30
+	rc := newReplicationController(1, tenant)
 
 	// RC fires off adds and deletes at apiserver, then sets expectations
 	rcKey, err := KeyFunc(rc)
@@ -246,30 +237,21 @@ func testControllerExpectations(t *testing.T, rc *v1.ReplicationController) {
 }
 
 func TestUIDExpectations(t *testing.T) {
-	rcList := []*v1.ReplicationController{
-		newReplicationController(2),
-		newReplicationController(1),
-		newReplicationController(0),
-		newReplicationController(5),
-	}
-
-	testUIDExpectations(t, rcList)
+	testUIDExpectations(t, metav1.TenantDefault)
 }
 
 func TestUIDExpectationsWithMultiTenancy(t *testing.T) {
-	rcList := []*v1.ReplicationController{
-		newReplicationControllerWithMultiTenancy(2, "test-te"),
-		newReplicationControllerWithMultiTenancy(1, "test-te"),
-		newReplicationControllerWithMultiTenancy(0, "test-te"),
-		newReplicationControllerWithMultiTenancy(5, "test-te"),
-	}
-
-	testUIDExpectations(t, rcList)
+	testUIDExpectations(t, "test-te")
 }
 
-func testUIDExpectations(t *testing.T, rcList []*v1.ReplicationController) {
+func testUIDExpectations(t *testing.T, tenant string) {
 	uidExp := NewUIDTrackingControllerExpectations(NewControllerExpectations())
-
+	rcList := []*v1.ReplicationController{
+		newReplicationController(2, tenant),
+		newReplicationController(1, tenant),
+		newReplicationController(0, tenant),
+		newReplicationController(5, tenant),
+	}
 	rcToPods := map[string][]string{}
 	rcKeys := []string{}
 	for i := range rcList {
@@ -330,7 +312,7 @@ func TestCreatePods(t *testing.T) {
 		Recorder:   &record.FakeRecorder{},
 	}
 
-	controllerSpec := newReplicationController(1)
+	controllerSpec := newReplicationController(1, metav1.TenantDefault)
 
 	// Make sure createReplica sends a POST to the apiserver with a pod from the controllers pod template
 	err := podControl.CreatePods(ns, controllerSpec.Spec.Template, controllerSpec)
@@ -368,7 +350,7 @@ func TestCreatePodsWithMultiTenancy(t *testing.T) {
 		Recorder:   &record.FakeRecorder{},
 	}
 
-	controllerSpec := newReplicationControllerWithMultiTenancy(1, "test-te")
+	controllerSpec := newReplicationController(1, "test-te")
 
 	// Make sure createReplica sends a POST to the apiserver with a pod from the controllers pod template
 	err := podControl.CreatePodsWithMultiTenancy(tenant, ns, controllerSpec.Spec.Template, controllerSpec)
@@ -396,7 +378,7 @@ func TestDeletePodsAllowsMissing(t *testing.T) {
 		Recorder:   &record.FakeRecorder{},
 	}
 
-	controllerSpec := newReplicationController(1)
+	controllerSpec := newReplicationController(1, metav1.TenantDefault)
 
 	err := podControl.DeletePod("namespace-name", "podName", controllerSpec)
 	assert.NoError(t, err, "unexpected error: %v", err)
@@ -409,24 +391,23 @@ func TestDeletePodsAllowsMissingWithMultiTenancy(t *testing.T) {
 		Recorder:   &record.FakeRecorder{},
 	}
 
-	controllerSpec := newReplicationControllerWithMultiTenancy(1, "test-te")
+	controllerSpec := newReplicationController(1, "test-te")
 
 	err := podControl.DeletePodWithMultiTenancy("tenant-name", "namespace-name", "podName", controllerSpec)
 	assert.NoError(t, err, "unexpected error: %v", err)
 }
 
 func TestActivePodFiltering(t *testing.T) {
-	// This rc is not needed by the test, only the newPodList to give the pods labels/a namespace.
-	rc := newReplicationController(0)
-	testActivePodFiltering(t, rc)
+	testActivePodFiltering(t, metav1.TenantDefault)
 }
 
 func TestActivePodFilteringWithMultiTenancy(t *testing.T) {
-	rc := newReplicationControllerWithMultiTenancy(0, "test-te")
-	testActivePodFiltering(t, rc)
+	testActivePodFiltering(t, "test-te")
 }
 
-func testActivePodFiltering(t *testing.T, rc *v1.ReplicationController) {
+func testActivePodFiltering(t *testing.T, tenant string) {
+	// This rc is not needed by the test, only the newPodList to give the pods labels/a namespace.
+	rc := newReplicationController(0, tenant)
 	podList := newPodList(nil, 5, v1.PodRunning, rc)
 	podList.Items[0].Status.Phase = v1.PodSucceeded
 	podList.Items[1].Status.Phase = v1.PodFailed
@@ -452,19 +433,17 @@ func testActivePodFiltering(t *testing.T, rc *v1.ReplicationController) {
 }
 
 func TestSortingActivePods(t *testing.T) {
-	// This rc is not needed by the test, only the newPodList to give the pods labels/a namespace.
-	rc := newReplicationController(0)
-	testActivePodFiltering(t, rc)
+	testActivePodFiltering(t, metav1.TenantDefault)
 }
 
 func TestSortingActivePodsWithMultiTenancy(t *testing.T) {
-	rc := newReplicationControllerWithMultiTenancy(0, "test-te")
-	testActivePodFiltering(t, rc)
+	testActivePodFiltering(t, "test-te")
 }
 
-func testSortingActivePods(t *testing.T, rc *v1.ReplicationController) {
+func testSortingActivePods(t *testing.T, tenant string) {
 	numPods := 9
-
+	// This rc is not needed by the test, only the newPodList to give the pods labels/a namespace.
+	rc := newReplicationController(0, tenant)
 	podList := newPodList(nil, numPods, v1.PodRunning, rc)
 
 	pods := make([]*v1.Pod, len(podList.Items))
@@ -537,26 +516,20 @@ func testSortingActivePods(t *testing.T, rc *v1.ReplicationController) {
 }
 
 func TestActiveReplicaSetsFiltering(t *testing.T) {
-	var replicaSets []*apps.ReplicaSet
-	replicaSets = append(replicaSets, newReplicaSet("zero", 0))
-	replicaSets = append(replicaSets, nil)
-	replicaSets = append(replicaSets, newReplicaSet("foo", 1))
-	replicaSets = append(replicaSets, newReplicaSet("bar", 2))
-
-	testActiveReplicaSetsFiltering(t, replicaSets)
+	testActiveReplicaSetsFiltering(t, metav1.TenantDefault)
 }
 
 func TestActiveReplicaSetsFilteringWithMultiTenancy(t *testing.T) {
-	var replicaSets []*apps.ReplicaSet
-	replicaSets = append(replicaSets, newReplicaSetWithMultiTenancy("zero", 0, "test-te"))
-	replicaSets = append(replicaSets, nil)
-	replicaSets = append(replicaSets, newReplicaSetWithMultiTenancy("foo", 1, "test-te"))
-	replicaSets = append(replicaSets, newReplicaSetWithMultiTenancy("bar", 2, "test-te"))
-
-	testActiveReplicaSetsFiltering(t, replicaSets)
+	testActiveReplicaSetsFiltering(t, "test-te")
 }
 
-func testActiveReplicaSetsFiltering(t *testing.T, replicaSets []*apps.ReplicaSet) {
+func testActiveReplicaSetsFiltering(t *testing.T, tenant string) {
+	var replicaSets []*apps.ReplicaSet
+	replicaSets = append(replicaSets, newReplicaSet("zero", 0, tenant))
+	replicaSets = append(replicaSets, nil)
+	replicaSets = append(replicaSets, newReplicaSet("foo", 1, tenant))
+	replicaSets = append(replicaSets, newReplicaSet("bar", 2, tenant))
+
 	expectedNames := sets.NewString()
 	for _, rs := range replicaSets[2:] {
 		expectedNames.Insert(rs.Name)

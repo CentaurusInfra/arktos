@@ -407,8 +407,7 @@ const (
 // ReplicaSets, as well as increment or decrement them. It is used
 // by the deployment controller to ease testing of actions that it takes.
 type RSControlInterface interface {
-	PatchReplicaSet(namespace, name string, data []byte) error
-	PatchReplicaSetWithMultiTenancy(tenant, namespace, name string, data []byte) error
+	PatchReplicaSet(tenant, namespace, name string, data []byte) error
 }
 
 // RealRSControl is the default implementation of RSControllerInterface.
@@ -419,12 +418,7 @@ type RealRSControl struct {
 
 var _ RSControlInterface = &RealRSControl{}
 
-func (r RealRSControl) PatchReplicaSet(namespace, name string, data []byte) error {
-	_, err := r.KubeClient.AppsV1().ReplicaSets(namespace).Patch(name, types.StrategicMergePatchType, data)
-	return err
-}
-
-func (r RealRSControl) PatchReplicaSetWithMultiTenancy(tenant, namespace, name string, data []byte) error {
+func (r RealRSControl) PatchReplicaSet(tenant, namespace, name string, data []byte) error {
 	_, err := r.KubeClient.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant).Patch(name, types.StrategicMergePatchType, data)
 	return err
 }
@@ -905,7 +899,7 @@ func FilterReplicaSets(RSes []*apps.ReplicaSet, filterFn filterRS) []*apps.Repli
 // It does exactly what cache.MetaNamespaceKeyFunc would have done
 // except there's not possibility for error since we know the exact type.
 func PodKey(pod *v1.Pod) string {
-	return fmt.Sprintf("%v/%v", pod.Namespace, pod.Name)
+	return fmt.Sprintf("%v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 }
 
 // ControllersByCreationTimestamp sorts a list of ReplicationControllers by creation timestamp, using their names as a tie breaker.

@@ -79,14 +79,14 @@ func skipListerFunc(verb string, url url.URL) bool {
 
 var alwaysReady = func() bool { return true }
 
-func newReplicaSet(replicas int, selectorMap map[string]string) *apps.ReplicaSet {
+func newReplicaSet(replicas int, selectorMap map[string]string, tenant string) *apps.ReplicaSet {
 	rs := &apps.ReplicaSet{
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "ReplicaSet"},
 		ObjectMeta: metav1.ObjectMeta{
 			UID:             uuid.NewUUID(),
 			Name:            "foobar",
 			Namespace:       metav1.NamespaceDefault,
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			ResourceVersion: "18",
 		},
 		Spec: apps.ReplicaSetSpec{
@@ -195,8 +195,15 @@ func validateSyncReplicaSet(t *testing.T, fakePodControl *controller.FakePodCont
 		t.Errorf("Unexpected number of patches.  Expected %d, saw %d\n", e, a)
 	}
 }
-
 func TestSyncReplicaSetDoesNothing(t *testing.T) {
+	testSyncReplicaSetDoesNothing(t, metav1.TenantDefault)
+}
+
+func TestSyncReplicaSetDoesNothingWithMultiTenancy(t *testing.T) {
+	testSyncReplicaSetDoesNothing(t, "test-te")
+}
+
+func testSyncReplicaSetDoesNothing(t *testing.T, tenant string) {
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
@@ -205,7 +212,7 @@ func TestSyncReplicaSetDoesNothing(t *testing.T) {
 
 	// 2 running pods, a controller with 2 replicas, sync is a no-op
 	labelMap := map[string]string{"foo": "bar"}
-	rsSpec := newReplicaSet(2, labelMap)
+	rsSpec := newReplicaSet(2, labelMap, tenant)
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(rsSpec)
 	newPodList(informers.Core().V1().Pods().Informer().GetIndexer(), 2, v1.PodRunning, labelMap, rsSpec, "pod")
 
@@ -215,6 +222,14 @@ func TestSyncReplicaSetDoesNothing(t *testing.T) {
 }
 
 func TestDeleteFinalStateUnknown(t *testing.T) {
+	testDeleteFinalStateUnknown(t, metav1.TenantDefault)
+}
+
+func TestDeleteFinalStateUnknownWithMultiTenancy(t *testing.T) {
+	testDeleteFinalStateUnknown(t, "test-te")
+}
+
+func testDeleteFinalStateUnknown(t *testing.T, tenant string) {
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
@@ -231,7 +246,7 @@ func TestDeleteFinalStateUnknown(t *testing.T) {
 	// The DeletedFinalStateUnknown object should cause the ReplicaSet manager to insert
 	// the controller matching the selectors of the deleted pod into the work queue.
 	labelMap := map[string]string{"foo": "bar"}
-	rsSpec := newReplicaSet(1, labelMap)
+	rsSpec := newReplicaSet(1, labelMap, tenant)
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(rsSpec)
 	pods := newPodList(nil, 1, v1.PodRunning, labelMap, rsSpec, "pod")
 	manager.deletePod(cache.DeletedFinalStateUnknown{Key: "foo", Obj: &pods.Items[0]})
@@ -249,14 +264,22 @@ func TestDeleteFinalStateUnknown(t *testing.T) {
 	}
 }
 
+func TestSyncReplicaSetCreateFailures(t *testing.T) {
+	testSyncReplicaSetCreateFailures(t, metav1.TenantDefault)
+}
+
+func TestSyncReplicaSetCreateFailuresWithMultiTenancy(t *testing.T) {
+	testSyncReplicaSetCreateFailures(t, "test-te")
+}
+
 // Tell the rs to create 100 replicas, but simulate a limit (like a quota limit)
 // of 10, and verify that the rs doesn't make 100 create calls per sync pass
-func TestSyncReplicaSetCreateFailures(t *testing.T) {
+func testSyncReplicaSetCreateFailures(t *testing.T, tenant string) {
 	fakePodControl := controller.FakePodControl{}
 	fakePodControl.CreateLimit = 10
 
 	labelMap := map[string]string{"foo": "bar"}
-	rs := newReplicaSet(fakePodControl.CreateLimit*10, labelMap)
+	rs := newReplicaSet(fakePodControl.CreateLimit*10, labelMap, tenant)
 	client := fake.NewSimpleClientset(rs)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -277,6 +300,14 @@ func TestSyncReplicaSetCreateFailures(t *testing.T) {
 }
 
 func TestSyncReplicaSetDormancy(t *testing.T) {
+	testSyncReplicaSetDormancy(t, metav1.TenantDefault)
+}
+
+func TestSyncReplicaSetDormancyWithMultiTenancy(t *testing.T) {
+	testSyncReplicaSetDormancy(t, "test-te")
+}
+
+func testSyncReplicaSetDormancy(t *testing.T, tenant string) {
 	// Setup a test server so we can lie about the current state of pods
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:    200,
@@ -296,7 +327,7 @@ func TestSyncReplicaSetDormancy(t *testing.T) {
 	manager.podControl = &fakePodControl
 
 	labelMap := map[string]string{"foo": "bar"}
-	rsSpec := newReplicaSet(2, labelMap)
+	rsSpec := newReplicaSet(2, labelMap, tenant)
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(rsSpec)
 	newPodList(informers.Core().V1().Pods().Informer().GetIndexer(), 1, v1.PodRunning, labelMap, rsSpec, "pod")
 
@@ -357,7 +388,7 @@ func TestPodControllerLookup(t *testing.T) {
 		{
 			inRSs: []*apps.ReplicaSet{
 				{ObjectMeta: metav1.ObjectMeta{Name: "basic"}}},
-			pod:       &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo1", Namespace: metav1.NamespaceAll}},
+			pod:       &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo1", Namespace: metav1.NamespaceAll, Tenant: metav1.TenantAll}},
 			outRSName: "",
 		},
 		// Matching labels, not namespace
@@ -458,6 +489,14 @@ func TestWatchControllers(t *testing.T) {
 }
 
 func TestWatchPods(t *testing.T) {
+	testWatchPods(t, metav1.TenantDefault)
+}
+
+func TestWatchPodsWithMultiTenancy(t *testing.T) {
+	testWatchPods(t, "test-te")
+}
+
+func testWatchPods(t *testing.T, tenant string) {
 	client := fake.NewSimpleClientset()
 
 	fakeWatch := watch.NewFake()
@@ -470,18 +509,18 @@ func TestWatchPods(t *testing.T) {
 
 	// Put one ReplicaSet into the shared informer
 	labelMap := map[string]string{"foo": "bar"}
-	testRSSpec := newReplicaSet(1, labelMap)
+	testRSSpec := newReplicaSet(1, labelMap, tenant)
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(testRSSpec)
 
 	received := make(chan string)
 	// The pod update sent through the fakeWatcher should figure out the managing ReplicaSet and
 	// send it into the syncHandler.
 	manager.syncHandler = func(key string) error {
-		namespace, name, err := cache.SplitMetaNamespaceKey(key)
+		tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 		if err != nil {
 			t.Errorf("Error splitting key: %v", err)
 		}
-		rsSpec, err := manager.rsLister.ReplicaSets(namespace).Get(name)
+		rsSpec, err := manager.rsLister.ReplicaSetsWithMultiTenancy(namespace, tenant).Get(name)
 		if err != nil {
 			t.Errorf("Expected to find replica set under key %v: %v", key, err)
 		}
@@ -510,6 +549,14 @@ func TestWatchPods(t *testing.T) {
 }
 
 func TestUpdatePods(t *testing.T) {
+	testUpdatePods(t, metav1.TenantDefault)
+}
+
+func TestUpdatePodsWithMultiTenancy(t *testing.T) {
+	testUpdatePods(t, "test-te")
+}
+
+func testUpdatePods(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	manager, informers := testNewReplicaSetControllerFromClient(fake.NewSimpleClientset(), stopCh, BurstReplicas)
@@ -517,11 +564,11 @@ func TestUpdatePods(t *testing.T) {
 	received := make(chan string)
 
 	manager.syncHandler = func(key string) error {
-		namespace, name, err := cache.SplitMetaNamespaceKey(key)
+		tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 		if err != nil {
 			t.Errorf("Error splitting key: %v", err)
 		}
-		rsSpec, err := manager.rsLister.ReplicaSets(namespace).Get(name)
+		rsSpec, err := manager.rsLister.ReplicaSetsWithMultiTenancy(namespace, tenant).Get(name)
 		if err != nil {
 			t.Errorf("Expected to find replica set under key %v: %v", key, err)
 		}
@@ -533,7 +580,7 @@ func TestUpdatePods(t *testing.T) {
 
 	// Put 2 ReplicaSets and one pod into the informers
 	labelMap1 := map[string]string{"foo": "bar"}
-	testRSSpec1 := newReplicaSet(1, labelMap1)
+	testRSSpec1 := newReplicaSet(1, labelMap1, tenant)
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(testRSSpec1)
 	testRSSpec2 := *testRSSpec1
 	labelMap2 := map[string]string{"bar": "foo"}
@@ -635,9 +682,17 @@ func TestUpdatePods(t *testing.T) {
 }
 
 func TestControllerUpdateRequeue(t *testing.T) {
+	testControllerUpdateRequeue(t, metav1.TenantDefault)
+}
+
+func TestControllerUpdateRequeueWithMultiTenancy(t *testing.T) {
+	testControllerUpdateRequeue(t, "test-te")
+}
+
+func testControllerUpdateRequeue(t *testing.T, tenant string) {
 	// This server should force a requeue of the controller because it fails to update status.Replicas.
 	labelMap := map[string]string{"foo": "bar"}
-	rs := newReplicaSet(1, labelMap)
+	rs := newReplicaSet(1, labelMap, tenant)
 	client := fake.NewSimpleClientset(rs)
 	client.PrependReactor("update", "replicasets",
 		func(action core.Action) (bool, runtime.Object, error) {
@@ -668,7 +723,15 @@ func TestControllerUpdateRequeue(t *testing.T) {
 }
 
 func TestControllerUpdateStatusWithFailure(t *testing.T) {
-	rs := newReplicaSet(1, map[string]string{"foo": "bar"})
+	testControllerUpdateStatusWithFailure(t, metav1.TenantDefault)
+}
+
+func TestControllerUpdateStatusWithFailureWithMultiTenancy(t *testing.T) {
+	testControllerUpdateStatusWithFailure(t, "test-te")
+}
+
+func testControllerUpdateStatusWithFailure(t *testing.T, tenant string) {
+	rs := newReplicaSet(1, map[string]string{"foo": "bar"}, tenant)
 	fakeClient := &fake.Clientset{}
 	fakeClient.AddReactor("get", "replicasets", func(action core.Action) (bool, runtime.Object, error) { return true, rs, nil })
 	fakeClient.AddReactor("*", "*", func(action core.Action) (bool, runtime.Object, error) {
@@ -713,9 +776,9 @@ func TestControllerUpdateStatusWithFailure(t *testing.T) {
 }
 
 // TODO: This test is too hairy for a unittest. It should be moved to an E2E suite.
-func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int) {
+func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int, tenant string) {
 	labelMap := map[string]string{"foo": "bar"}
-	rsSpec := newReplicaSet(numReplicas, labelMap)
+	rsSpec := newReplicaSet(numReplicas, labelMap, tenant)
 	client := fake.NewSimpleClientset(rsSpec)
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
@@ -786,8 +849,9 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 					nsName := strings.Split(key, "/")
 					podsToDelete = append(podsToDelete, &v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      nsName[1],
-							Namespace: nsName[0],
+							Name:      nsName[2],
+							Namespace: nsName[1],
+							Tenant:    nsName[0],
 							Labels:    rsSpec.Spec.Selector.MatchLabels,
 							OwnerReferences: []metav1.OwnerReference{
 								{UID: rsSpec.UID, APIVersion: "v1", Kind: "ReplicaSet", Name: rsSpec.Name, Controller: &isController},
@@ -807,7 +871,7 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 					t.Fatalf("Did not find expectations for ReplicaSet.")
 				}
 				if _, del := podExp.GetExpectations(); del != 1 {
-					t.Fatalf("Expectations are wrong %v", podExp)
+					t.Fatalf("Expectations are wrong %#v", podExp)
 				}
 			}
 
@@ -831,8 +895,9 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 				isController := true
 				lastPod := &v1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsName[1],
-						Namespace: nsName[0],
+						Name:      nsName[2],
+						Namespace: nsName[1],
+						Tenant:    nsName[0],
 						Labels:    rsSpec.Spec.Selector.MatchLabels,
 						OwnerReferences: []metav1.OwnerReference{
 							{UID: rsSpec.UID, APIVersion: "v1", Kind: "ReplicaSet", Name: rsSpec.Name, Controller: &isController},
@@ -854,11 +919,18 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 		pods = newPodList(nil, int(replicas), v1.PodRunning, labelMap, rsSpec, "pod")
 	}
 }
-
 func TestControllerBurstReplicas(t *testing.T) {
-	doTestControllerBurstReplicas(t, 5, 30)
-	doTestControllerBurstReplicas(t, 5, 12)
-	doTestControllerBurstReplicas(t, 3, 2)
+	testControllerBurstReplicas(t, metav1.TenantDefault)
+}
+
+func TestControllerBurstReplicasWithMultiTenancy(t *testing.T) {
+	testControllerBurstReplicas(t, "test-te")
+}
+
+func testControllerBurstReplicas(t *testing.T, tenant string) {
+	doTestControllerBurstReplicas(t, 5, 30, tenant)
+	doTestControllerBurstReplicas(t, 5, 12, tenant)
+	doTestControllerBurstReplicas(t, 3, 2, tenant)
 }
 
 type FakeRSExpectations struct {
@@ -875,6 +947,14 @@ func (fe FakeRSExpectations) SatisfiedExpectations(controllerKey string) bool {
 // TestRSSyncExpectations tests that a pod cannot sneak in between counting active pods
 // and checking expectations.
 func TestRSSyncExpectations(t *testing.T) {
+	testRSSyncExpectations(t, metav1.TenantDefault)
+}
+
+func TestRSSyncExpectationsWithMultiTenancy(t *testing.T) {
+	testRSSyncExpectations(t, "test-te")
+}
+
+func testRSSyncExpectations(t *testing.T, tenant string) {
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
@@ -883,7 +963,7 @@ func TestRSSyncExpectations(t *testing.T) {
 	manager.podControl = &fakePodControl
 
 	labelMap := map[string]string{"foo": "bar"}
-	rsSpec := newReplicaSet(2, labelMap)
+	rsSpec := newReplicaSet(2, labelMap, tenant)
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(rsSpec)
 	pods := newPodList(nil, 2, v1.PodPending, labelMap, rsSpec, "pod")
 	informers.Core().V1().Pods().Informer().GetIndexer().Add(&pods.Items[0])
@@ -902,7 +982,15 @@ func TestRSSyncExpectations(t *testing.T) {
 }
 
 func TestDeleteControllerAndExpectations(t *testing.T) {
-	rs := newReplicaSet(1, map[string]string{"foo": "bar"})
+	testDeleteControllerAndExpectations(t, metav1.TenantDefault)
+}
+
+func TestDeleteControllerAndExpectationsWithMultiTenancy(t *testing.T) {
+	testDeleteControllerAndExpectations(t, "test-te")
+}
+
+func testDeleteControllerAndExpectations(t *testing.T, tenant string) {
+	rs := newReplicaSet(1, map[string]string{"foo": "bar"}, tenant)
 	client := fake.NewSimpleClientset(rs)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -956,6 +1044,14 @@ func shuffle(controllers []*apps.ReplicaSet) []*apps.ReplicaSet {
 }
 
 func TestOverlappingRSs(t *testing.T) {
+	testOverlappingRSs(t, metav1.TenantDefault)
+}
+
+func TestOverlappingRSsWithMultiTenancy(t *testing.T) {
+	testOverlappingRSs(t, "test-te")
+}
+
+func testOverlappingRSs(t *testing.T, tenant string) {
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
 	labelMap := map[string]string{"foo": "bar"}
 
@@ -970,7 +1066,7 @@ func TestOverlappingRSs(t *testing.T) {
 	timestamp := metav1.Date(2014, time.December, 0, 0, 0, 0, 0, time.Local)
 	var controllers []*apps.ReplicaSet
 	for j := 1; j < 10; j++ {
-		rsSpec := newReplicaSet(1, labelMap)
+		rsSpec := newReplicaSet(1, labelMap, tenant)
 		rsSpec.CreationTimestamp = timestamp
 		rsSpec.Name = fmt.Sprintf("rs%d", j)
 		controllers = append(controllers, rsSpec)
@@ -999,13 +1095,21 @@ func TestOverlappingRSs(t *testing.T) {
 }
 
 func TestDeletionTimestamp(t *testing.T) {
+	testDeletionTimestamp(t, metav1.TenantDefault)
+}
+
+func TestDeletionTimestampWithMultiTenancy(t *testing.T) {
+	testDeletionTimestamp(t, "test-te")
+}
+
+func testDeletionTimestamp(t *testing.T, tenant string) {
 	c := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
 	labelMap := map[string]string{"foo": "bar"}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	manager, informers := testNewReplicaSetControllerFromClient(c, stopCh, 10)
 
-	rs := newReplicaSet(1, labelMap)
+	rs := newReplicaSet(1, labelMap, tenant)
 	informers.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(rs)
 	rsKey, err := controller.KeyFunc(rs)
 	if err != nil {
@@ -1106,8 +1210,16 @@ func setupManagerWithGCEnabled(stopCh chan struct{}, objs ...runtime.Object) (ma
 }
 
 func TestDoNotPatchPodWithOtherControlRef(t *testing.T) {
+	testDoNotPatchPodWithOtherControlRef(t, metav1.TenantDefault)
+}
+
+func TestDoNotPatchPodWithOtherControlRefWithMultiTenancy(t *testing.T) {
+	testDoNotPatchPodWithOtherControlRef(t, "test-te")
+}
+
+func testDoNotPatchPodWithOtherControlRef(t *testing.T, tenant string) {
 	labelMap := map[string]string{"foo": "bar"}
-	rs := newReplicaSet(2, labelMap)
+	rs := newReplicaSet(2, labelMap, tenant)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	manager, fakePodControl, informers := setupManagerWithGCEnabled(stopCh, rs)
@@ -1127,8 +1239,16 @@ func TestDoNotPatchPodWithOtherControlRef(t *testing.T) {
 }
 
 func TestPatchPodFails(t *testing.T) {
+	testPatchPodFails(t, metav1.TenantDefault)
+}
+
+func TestPatchPodFailsWithMultiTenancy(t *testing.T) {
+	testPatchPodFails(t, "test-te")
+}
+
+func testPatchPodFails(t *testing.T, tenant string) {
 	labelMap := map[string]string{"foo": "bar"}
-	rs := newReplicaSet(2, labelMap)
+	rs := newReplicaSet(2, labelMap, tenant)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	manager, fakePodControl, informers := setupManagerWithGCEnabled(stopCh, rs)
@@ -1154,11 +1274,19 @@ func TestPatchPodFails(t *testing.T) {
 	}
 }
 
+func TestDoNotAdoptOrCreateIfBeingDeleted(t *testing.T) {
+	testDoNotAdoptOrCreateIfBeingDeleted(t, metav1.TenantDefault)
+}
+
+func TestDoNotAdoptOrCreateIfBeingDeletedWithMultiTenancy(t *testing.T) {
+	testDoNotAdoptOrCreateIfBeingDeleted(t, "test-te")
+}
+
 // RS controller shouldn't adopt or create more pods if the rc is about to be
 // deleted.
-func TestDoNotAdoptOrCreateIfBeingDeleted(t *testing.T) {
+func testDoNotAdoptOrCreateIfBeingDeleted(t *testing.T, tenant string) {
 	labelMap := map[string]string{"foo": "bar"}
-	rs := newReplicaSet(2, labelMap)
+	rs := newReplicaSet(2, labelMap, tenant)
 	now := metav1.Now()
 	rs.DeletionTimestamp = &now
 	stopCh := make(chan struct{})
@@ -1177,9 +1305,17 @@ func TestDoNotAdoptOrCreateIfBeingDeleted(t *testing.T) {
 }
 
 func TestDoNotAdoptOrCreateIfBeingDeletedRace(t *testing.T) {
+	testDoNotAdoptOrCreateIfBeingDeletedRace(t, metav1.TenantDefault)
+}
+
+func TestDoNotAdoptOrCreateIfBeingDeletedRaceWithMultiTenancy(t *testing.T) {
+	testDoNotAdoptOrCreateIfBeingDeletedRace(t, "test-te")
+}
+
+func testDoNotAdoptOrCreateIfBeingDeletedRace(t *testing.T, tenant string) {
 	labelMap := map[string]string{"foo": "bar"}
 	// Bare client says it IS deleted.
-	rs := newReplicaSet(2, labelMap)
+	rs := newReplicaSet(2, labelMap, tenant)
 	now := metav1.Now()
 	rs.DeletionTimestamp = &now
 	stopCh := make(chan struct{})
@@ -1432,8 +1568,16 @@ func TestSlowStartBatch(t *testing.T) {
 }
 
 func TestGetPodsToDelete(t *testing.T) {
+	testGetPodsToDelete(t, metav1.TenantDefault)
+}
+
+func TestGetPodsToDeleteWithMultiTenancy(t *testing.T) {
+	testGetPodsToDelete(t, "test-te")
+}
+
+func testGetPodsToDelete(t *testing.T, tenant string) {
 	labelMap := map[string]string{"name": "foo"}
-	rs := newReplicaSet(1, labelMap)
+	rs := newReplicaSet(1, labelMap, tenant)
 	// an unscheduled, pending pod
 	unscheduledPendingPod := newPod("unscheduled-pending-pod", rs, v1.PodPending, nil, true)
 	// a scheduled, pending pod
@@ -1574,8 +1718,16 @@ func TestGetPodsToDelete(t *testing.T) {
 }
 
 func TestGetPodKeys(t *testing.T) {
+	testGetPodKeys(t, metav1.TenantDefault)
+}
+
+func TestGetPodKeysWithMultiTenancy(t *testing.T) {
+	testGetPodKeys(t, "test-te")
+}
+
+func testGetPodKeys(t *testing.T, tenant string) {
 	labelMap := map[string]string{"name": "foo"}
-	rs := newReplicaSet(1, labelMap)
+	rs := newReplicaSet(1, labelMap, tenant)
 	pod1 := newPod("pod1", rs, v1.PodRunning, nil, true)
 	pod2 := newPod("pod2", rs, v1.PodRunning, nil, true)
 
@@ -1595,7 +1747,7 @@ func TestGetPodKeys(t *testing.T) {
 				pod1,
 				pod2,
 			},
-			[]string{"default/pod1", "default/pod2"},
+			[]string{tenant + "/default/pod1", tenant + "/default/pod2"},
 		},
 	}
 

@@ -1330,6 +1330,14 @@ func TestAnnotationUtils(t *testing.T) {
 }
 
 func TestReplicasAnnotationsNeedUpdate(t *testing.T) {
+	testReplicasAnnotationsNeedUpdate(t, metav1.TenantDefault)
+}
+
+func TestReplicasAnnotationsNeedUpdateWithMultiTenancy(t *testing.T) {
+	testReplicasAnnotationsNeedUpdate(t, "test-te")
+}
+
+func testReplicasAnnotationsNeedUpdate(t *testing.T, tenant string) {
 
 	desiredReplicas := fmt.Sprintf("%d", int32(10))
 	maxReplicas := fmt.Sprintf("%d", int32(20))
@@ -1342,7 +1350,7 @@ func TestReplicasAnnotationsNeedUpdate(t *testing.T) {
 		{
 			name: "test Annotations nil",
 			replicaSet: &apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
@@ -1355,6 +1363,7 @@ func TestReplicasAnnotationsNeedUpdate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "hello",
 					Namespace:   "test",
+					Tenant:      tenant,
 					Annotations: map[string]string{DesiredReplicasAnnotation: "8", MaxReplicasAnnotation: maxReplicas},
 				},
 				Spec: apps.ReplicaSetSpec{
@@ -1369,6 +1378,7 @@ func TestReplicasAnnotationsNeedUpdate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "hello",
 					Namespace:   "test",
+					Tenant:      tenant,
 					Annotations: map[string]string{DesiredReplicasAnnotation: desiredReplicas, MaxReplicasAnnotation: "16"},
 				},
 				Spec: apps.ReplicaSetSpec{
@@ -1383,6 +1393,7 @@ func TestReplicasAnnotationsNeedUpdate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "hello",
 					Namespace:   "test",
+					Tenant:      tenant,
 					Annotations: map[string]string{DesiredReplicasAnnotation: desiredReplicas, MaxReplicasAnnotation: maxReplicas},
 				},
 				Spec: apps.ReplicaSetSpec{

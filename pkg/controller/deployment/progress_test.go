@@ -57,8 +57,8 @@ func currentDeployment(pds *int32, replicas, statusReplicas, updatedReplicas, av
 }
 
 // helper to create RS with given availableReplicas
-func newRSWithAvailable(name string, specReplicas, statusReplicas, availableReplicas int) *apps.ReplicaSet {
-	rs := rs(name, specReplicas, nil, metav1.Time{})
+func newRSWithAvailable(name string, specReplicas, statusReplicas, availableReplicas int, tenant string) *apps.ReplicaSet {
+	rs := rs(name, specReplicas, nil, metav1.Time{}, tenant)
 	rs.Status = apps.ReplicaSetStatus{
 		Replicas:          int32(statusReplicas),
 		AvailableReplicas: int32(availableReplicas),
@@ -184,6 +184,14 @@ func TestRequeueStuckDeployment(t *testing.T) {
 }
 
 func TestSyncRolloutStatus(t *testing.T) {
+	testSyncRolloutStatus(t, metav1.TenantDefault)
+}
+
+func TestSyncRolloutStatusWithMultiTenancy(t *testing.T) {
+	testSyncRolloutStatus(t, "test-te")
+}
+
+func testSyncRolloutStatus(t *testing.T, tenant string) {
 	pds := int32(60)
 	testTime := metav1.Date(2017, 2, 15, 18, 49, 00, 00, time.UTC)
 	failedTimedOut := apps.DeploymentCondition{
@@ -220,13 +228,13 @@ func TestSyncRolloutStatus(t *testing.T) {
 		{
 			name:   "General: remove Progressing condition and do not estimate progress if deployment has no Progress Deadline",
 			d:      currentDeployment(nil, 3, 2, 2, 2, []apps.DeploymentCondition{replicaSetUpdated}),
-			allRSs: []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1)},
-			newRS:  newRSWithAvailable("foo", 3, 2, 2),
+			allRSs: []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1, tenant)},
+			newRS:  newRSWithAvailable("foo", 3, 2, 2, tenant),
 		},
 		{
 			name:            "General: do not estimate progress of deployment with only one active ReplicaSet",
 			d:               currentDeployment(&pds, 3, 3, 3, 3, []apps.DeploymentCondition{newRSAvailable}),
-			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 3, 3, 3)},
+			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 3, 3, 3, tenant)},
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.NewRSAvailableReason,
@@ -236,8 +244,8 @@ func TestSyncRolloutStatus(t *testing.T) {
 		{
 			name:            "DeploymentProgressing: dont update lastTransitionTime if deployment already has Progressing=True",
 			d:               currentDeployment(&pds, 3, 2, 2, 2, []apps.DeploymentCondition{replicaSetUpdated}),
-			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1)},
-			newRS:           newRSWithAvailable("foo", 3, 2, 2),
+			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1, tenant)},
+			newRS:           newRSWithAvailable("foo", 3, 2, 2, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.ReplicaSetUpdatedReason,
@@ -246,8 +254,8 @@ func TestSyncRolloutStatus(t *testing.T) {
 		{
 			name:            "DeploymentProgressing: update everything if deployment has Progressing=False",
 			d:               currentDeployment(&pds, 3, 2, 2, 2, []apps.DeploymentCondition{failedTimedOut}),
-			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1)},
-			newRS:           newRSWithAvailable("foo", 3, 2, 2),
+			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1, tenant)},
+			newRS:           newRSWithAvailable("foo", 3, 2, 2, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.ReplicaSetUpdatedReason,
@@ -255,8 +263,8 @@ func TestSyncRolloutStatus(t *testing.T) {
 		{
 			name:            "DeploymentProgressing: create Progressing condition if it does not exist",
 			d:               currentDeployment(&pds, 3, 2, 2, 2, []apps.DeploymentCondition{}),
-			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1)},
-			newRS:           newRSWithAvailable("foo", 3, 2, 2),
+			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("bar", 0, 1, 1, tenant)},
+			newRS:           newRSWithAvailable("foo", 3, 2, 2, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.ReplicaSetUpdatedReason,
@@ -265,7 +273,7 @@ func TestSyncRolloutStatus(t *testing.T) {
 			name:            "DeploymentComplete: dont update lastTransitionTime if deployment already has Progressing=True",
 			d:               currentDeployment(&pds, 3, 3, 3, 3, []apps.DeploymentCondition{replicaSetUpdated}),
 			allRSs:          []*apps.ReplicaSet{},
-			newRS:           newRSWithAvailable("foo", 3, 3, 3),
+			newRS:           newRSWithAvailable("foo", 3, 3, 3, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.NewRSAvailableReason,
@@ -275,7 +283,7 @@ func TestSyncRolloutStatus(t *testing.T) {
 			name:            "DeploymentComplete: update everything if deployment has Progressing=False",
 			d:               currentDeployment(&pds, 3, 3, 3, 3, []apps.DeploymentCondition{failedTimedOut}),
 			allRSs:          []*apps.ReplicaSet{},
-			newRS:           newRSWithAvailable("foo", 3, 3, 3),
+			newRS:           newRSWithAvailable("foo", 3, 3, 3, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.NewRSAvailableReason,
@@ -284,7 +292,7 @@ func TestSyncRolloutStatus(t *testing.T) {
 			name:            "DeploymentComplete: create Progressing condition if it does not exist",
 			d:               currentDeployment(&pds, 3, 3, 3, 3, []apps.DeploymentCondition{}),
 			allRSs:          []*apps.ReplicaSet{},
-			newRS:           newRSWithAvailable("foo", 3, 3, 3),
+			newRS:           newRSWithAvailable("foo", 3, 3, 3, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.NewRSAvailableReason,
@@ -292,7 +300,7 @@ func TestSyncRolloutStatus(t *testing.T) {
 		{
 			name:            "DeploymentComplete: defend against NPE when newRS=nil",
 			d:               currentDeployment(&pds, 0, 3, 3, 3, []apps.DeploymentCondition{replicaSetUpdated}),
-			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("foo", 0, 0, 0)},
+			allRSs:          []*apps.ReplicaSet{newRSWithAvailable("foo", 0, 0, 0, tenant)},
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionTrue,
 			conditionReason: util.NewRSAvailableReason,
@@ -301,7 +309,7 @@ func TestSyncRolloutStatus(t *testing.T) {
 			name:            "DeploymentTimedOut: update status if rollout exceeds Progress Deadline",
 			d:               currentDeployment(&pds, 3, 2, 2, 2, []apps.DeploymentCondition{replicaSetUpdated}),
 			allRSs:          []*apps.ReplicaSet{},
-			newRS:           newRSWithAvailable("foo", 3, 2, 2),
+			newRS:           newRSWithAvailable("foo", 3, 2, 2, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionFalse,
 			conditionReason: util.TimedOutReason,
@@ -310,7 +318,7 @@ func TestSyncRolloutStatus(t *testing.T) {
 			name:            "DeploymentTimedOut: do not update status if deployment has existing timedOut condition",
 			d:               currentDeployment(&pds, 3, 2, 2, 2, []apps.DeploymentCondition{failedTimedOut}),
 			allRSs:          []*apps.ReplicaSet{},
-			newRS:           newRSWithAvailable("foo", 3, 2, 2),
+			newRS:           newRSWithAvailable("foo", 3, 2, 2, tenant),
 			conditionType:   apps.DeploymentProgressing,
 			conditionStatus: v1.ConditionFalse,
 			conditionReason: util.TimedOutReason,

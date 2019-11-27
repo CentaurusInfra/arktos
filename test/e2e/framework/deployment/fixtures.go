@@ -148,8 +148,8 @@ func GetPodsForDeployment(client clientset.Interface, deployment *apps.Deploymen
 	if replicaSet == nil {
 		return nil, fmt.Errorf("expected a new replica set for deployment %q, found none", deployment.Name)
 	}
-	podListFunc := func(namespace string, options metav1.ListOptions) (*v1.PodList, error) {
-		return client.CoreV1().Pods(namespace).List(options)
+	podListFunc := func(tenant, namespace string, options metav1.ListOptions) (*v1.PodList, error) {
+		return client.CoreV1().PodsWithMultiTenancy(namespace, tenant).List(options)
 	}
 	rsList := []*apps.ReplicaSet{replicaSet}
 	podList, err := deploymentutil.ListPods(deployment, rsList, podListFunc)

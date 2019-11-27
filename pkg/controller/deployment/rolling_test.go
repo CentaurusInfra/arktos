@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	apps "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
@@ -27,6 +28,14 @@ import (
 )
 
 func TestDeploymentController_reconcileNewReplicaSet(t *testing.T) {
+	testDeploymentController_reconcileNewReplicaSet(t, metav1.TenantDefault)
+}
+
+func TestDeploymentController_reconcileNewReplicaSetWithMultiTenancy(t *testing.T) {
+	testDeploymentController_reconcileNewReplicaSet(t, "test-te")
+}
+
+func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string) {
 	tests := []struct {
 		deploymentReplicas  int
 		maxSurge            intstr.IntOrString
@@ -80,11 +89,11 @@ func TestDeploymentController_reconcileNewReplicaSet(t *testing.T) {
 	for i := range tests {
 		test := tests[i]
 		t.Logf("executing scenario %d", i)
-		newRS := rs("foo-v2", test.newReplicas, nil, noTimestamp)
-		oldRS := rs("foo-v2", test.oldReplicas, nil, noTimestamp)
+		newRS := rs("foo-v2", test.newReplicas, nil, noTimestamp, tenant)
+		oldRS := rs("foo-v2", test.oldReplicas, nil, noTimestamp, tenant)
 		allRSs := []*apps.ReplicaSet{newRS, oldRS}
 		maxUnavailable := intstr.FromInt(0)
-		deployment := newDeployment("foo", test.deploymentReplicas, nil, &test.maxSurge, &maxUnavailable, map[string]string{"foo": "bar"})
+		deployment := newDeployment("foo", test.deploymentReplicas, nil, &test.maxSurge, &maxUnavailable, map[string]string{"foo": "bar"}, tenant)
 		fake := fake.Clientset{}
 		controller := &DeploymentController{
 			client:        &fake,
@@ -117,6 +126,14 @@ func TestDeploymentController_reconcileNewReplicaSet(t *testing.T) {
 }
 
 func TestDeploymentController_reconcileOldReplicaSets(t *testing.T) {
+	testDeploymentController_reconcileOldReplicaSets(t, metav1.TenantDefault)
+}
+
+func TestDeploymentController_reconcileOldReplicaSetsWithMultiTenancy(t *testing.T) {
+	testDeploymentController_reconcileOldReplicaSets(t, "test-te")
+}
+
+func testDeploymentController_reconcileOldReplicaSets(t *testing.T, tenant string) {
 	tests := []struct {
 		deploymentReplicas  int
 		maxUnavailable      intstr.IntOrString
@@ -183,14 +200,14 @@ func TestDeploymentController_reconcileOldReplicaSets(t *testing.T) {
 
 		newSelector := map[string]string{"foo": "new"}
 		oldSelector := map[string]string{"foo": "old"}
-		newRS := rs("foo-new", test.newReplicas, newSelector, noTimestamp)
+		newRS := rs("foo-new", test.newReplicas, newSelector, noTimestamp, tenant)
 		newRS.Status.AvailableReplicas = int32(test.readyPodsFromNewRS)
-		oldRS := rs("foo-old", test.oldReplicas, oldSelector, noTimestamp)
+		oldRS := rs("foo-old", test.oldReplicas, oldSelector, noTimestamp, tenant)
 		oldRS.Status.AvailableReplicas = int32(test.readyPodsFromOldRS)
 		oldRSs := []*apps.ReplicaSet{oldRS}
 		allRSs := []*apps.ReplicaSet{oldRS, newRS}
 		maxSurge := intstr.FromInt(0)
-		deployment := newDeployment("foo", test.deploymentReplicas, nil, &maxSurge, &test.maxUnavailable, newSelector)
+		deployment := newDeployment("foo", test.deploymentReplicas, nil, &maxSurge, &test.maxUnavailable, newSelector, tenant)
 		fakeClientset := fake.Clientset{}
 		controller := &DeploymentController{
 			client:        &fakeClientset,
@@ -214,6 +231,14 @@ func TestDeploymentController_reconcileOldReplicaSets(t *testing.T) {
 }
 
 func TestDeploymentController_cleanupUnhealthyReplicas(t *testing.T) {
+	testDeploymentController_cleanupUnhealthyReplicas(t, metav1.TenantDefault)
+}
+
+func TestDeploymentController_cleanupUnhealthyReplicasWithMultiTenancy(t *testing.T) {
+	testDeploymentController_cleanupUnhealthyReplicas(t, "test-te")
+}
+
+func testDeploymentController_cleanupUnhealthyReplicas(t *testing.T, tenant string) {
 	tests := []struct {
 		oldReplicas          int
 		readyPods            int
@@ -253,12 +278,12 @@ func TestDeploymentController_cleanupUnhealthyReplicas(t *testing.T) {
 
 	for i, test := range tests {
 		t.Logf("executing scenario %d", i)
-		oldRS := rs("foo-v2", test.oldReplicas, nil, noTimestamp)
+		oldRS := rs("foo-v2", test.oldReplicas, nil, noTimestamp, tenant)
 		oldRS.Status.AvailableReplicas = int32(test.readyPods)
 		oldRSs := []*apps.ReplicaSet{oldRS}
 		maxSurge := intstr.FromInt(2)
 		maxUnavailable := intstr.FromInt(2)
-		deployment := newDeployment("foo", 10, nil, &maxSurge, &maxUnavailable, nil)
+		deployment := newDeployment("foo", 10, nil, &maxSurge, &maxUnavailable, nil, tenant)
 		fakeClientset := fake.Clientset{}
 
 		controller := &DeploymentController{
@@ -278,6 +303,14 @@ func TestDeploymentController_cleanupUnhealthyReplicas(t *testing.T) {
 }
 
 func TestDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing.T) {
+	testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t, metav1.TenantDefault)
+}
+
+func TestDeploymentController_scaleDownOldReplicaSetsForRollingUpdateWithMultiTenancy(t *testing.T) {
+	testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t, "test-te")
+}
+
+func testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing.T, tenant string) {
 	tests := []struct {
 		deploymentReplicas  int
 		maxUnavailable      intstr.IntOrString
@@ -328,12 +361,12 @@ func TestDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing
 	for i := range tests {
 		test := tests[i]
 		t.Logf("executing scenario %d", i)
-		oldRS := rs("foo-v2", test.oldReplicas, nil, noTimestamp)
+		oldRS := rs("foo-v2", test.oldReplicas, nil, noTimestamp, tenant)
 		oldRS.Status.AvailableReplicas = int32(test.readyPods)
 		allRSs := []*apps.ReplicaSet{oldRS}
 		oldRSs := []*apps.ReplicaSet{oldRS}
 		maxSurge := intstr.FromInt(0)
-		deployment := newDeployment("foo", test.deploymentReplicas, nil, &maxSurge, &test.maxUnavailable, map[string]string{"foo": "bar"})
+		deployment := newDeployment("foo", test.deploymentReplicas, nil, &maxSurge, &test.maxUnavailable, map[string]string{"foo": "bar"}, tenant)
 		fakeClientset := fake.Clientset{}
 		controller := &DeploymentController{
 			client:        &fakeClientset,

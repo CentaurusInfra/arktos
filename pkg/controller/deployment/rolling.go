@@ -91,7 +91,7 @@ func (dc *DeploymentController) reconcileOldReplicaSets(allRSs []*apps.ReplicaSe
 	}
 
 	allPodsCount := deploymentutil.GetReplicaCountForReplicaSets(allRSs)
-	klog.V(4).Infof("New replica set %s/%s has %d available pods.", newRS.Namespace, newRS.Name, newRS.Status.AvailableReplicas)
+	klog.V(4).Infof("New replica set %s/%s/%s has %d available pods.", newRS.Tenant, newRS.Namespace, newRS.Name, newRS.Status.AvailableReplicas)
 	maxUnavailable := deploymentutil.MaxUnavailable(*deployment)
 
 	// Check if we can scale down. We can scale down in the following 2 cases:
@@ -166,7 +166,7 @@ func (dc *DeploymentController) cleanupUnhealthyReplicas(oldRSs []*apps.ReplicaS
 			// cannot scale down this replica set.
 			continue
 		}
-		klog.V(4).Infof("Found %d available pods in old RS %s/%s", targetRS.Status.AvailableReplicas, targetRS.Namespace, targetRS.Name)
+		klog.V(4).Infof("Found %d available pods in old RS %s/%s/%s", targetRS.Status.AvailableReplicas, targetRS.Tenant, targetRS.Namespace, targetRS.Name)
 		if *(targetRS.Spec.Replicas) == targetRS.Status.AvailableReplicas {
 			// no unhealthy replicas found, no scaling required.
 			continue
@@ -175,7 +175,7 @@ func (dc *DeploymentController) cleanupUnhealthyReplicas(oldRSs []*apps.ReplicaS
 		scaledDownCount := int32(integer.IntMin(int(maxCleanupCount-totalScaledDown), int(*(targetRS.Spec.Replicas)-targetRS.Status.AvailableReplicas)))
 		newReplicasCount := *(targetRS.Spec.Replicas) - scaledDownCount
 		if newReplicasCount > *(targetRS.Spec.Replicas) {
-			return nil, 0, fmt.Errorf("when cleaning up unhealthy replicas, got invalid request to scale down %s/%s %d -> %d", targetRS.Namespace, targetRS.Name, *(targetRS.Spec.Replicas), newReplicasCount)
+			return nil, 0, fmt.Errorf("when cleaning up unhealthy replicas, got invalid request to scale down %s/%s/%s %d -> %d", targetRS.Tenant, targetRS.Namespace, targetRS.Name, *(targetRS.Spec.Replicas), newReplicasCount)
 		}
 		_, updatedOldRS, err := dc.scaleReplicaSetAndRecordEvent(targetRS, newReplicasCount, deployment)
 		if err != nil {

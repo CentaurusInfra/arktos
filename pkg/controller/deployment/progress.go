@@ -112,7 +112,7 @@ func (dc *DeploymentController) syncRolloutStatus(allRSs []*apps.ReplicaSet, new
 
 	newDeployment := d
 	newDeployment.Status = newStatus
-	_, err := dc.client.AppsV1().Deployments(newDeployment.Namespace).UpdateStatus(newDeployment)
+	_, err := dc.client.AppsV1().DeploymentsWithMultiTenancy(newDeployment.Namespace, newDeployment.Tenant).UpdateStatus(newDeployment)
 	return err
 }
 

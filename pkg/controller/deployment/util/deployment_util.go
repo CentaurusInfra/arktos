@@ -543,8 +543,8 @@ func GetNewReplicaSet(deployment *apps.Deployment, c appsclient.AppsV1Interface)
 
 // RsListFromClient returns an rsListFunc that wraps the given client.
 func RsListFromClient(c appsclient.AppsV1Interface) RsListFunc {
-	return func(namespace string, options metav1.ListOptions) ([]*apps.ReplicaSet, error) {
-		rsList, err := c.ReplicaSets(namespace).List(options)
+	return func(tenant, namespace string, options metav1.ListOptions) ([]*apps.ReplicaSet, error) {
+		rsList, err := c.ReplicaSetsWithMultiTenancy(namespace, tenant).List(options)
 		if err != nil {
 			return nil, err
 		}
@@ -558,11 +558,11 @@ func RsListFromClient(c appsclient.AppsV1Interface) RsListFunc {
 
 // TODO: switch RsListFunc and podListFunc to full namespacers
 
-// RsListFunc returns the ReplicaSet from the ReplicaSet namespace and the List metav1.ListOptions.
-type RsListFunc func(string, metav1.ListOptions) ([]*apps.ReplicaSet, error)
+// RsListFunc returns the ReplicaSet from the ReplicaSet tenant, namespace and the List metav1.ListOptions.
+type RsListFunc func(tenant, namespace string, options metav1.ListOptions) ([]*apps.ReplicaSet, error)
 
-// podListFunc returns the PodList from the Pod namespace and the List metav1.ListOptions.
-type podListFunc func(string, metav1.ListOptions) (*v1.PodList, error)
+// podListFunc returns the PodList from the Pod tenant/namespace and the List metav1.ListOptions.
+type podListFunc func(tenant, namespace string, options metav1.ListOptions) (*v1.PodList, error)
 
 // ListReplicaSets returns a slice of RSes the given deployment targets.
 // Note that this does NOT attempt to reconcile ControllerRef (adopt/orphan),
@@ -572,12 +572,13 @@ func ListReplicaSets(deployment *apps.Deployment, getRSList RsListFunc) ([]*apps
 	// TODO: Right now we list replica sets by their labels. We should list them by selector, i.e. the replica set's selector
 	//       should be a superset of the deployment's selector, see https://github.com/kubernetes/kubernetes/issues/19830.
 	namespace := deployment.Namespace
+	tenant := deployment.Tenant
 	selector, err := metav1.LabelSelectorAsSelector(deployment.Spec.Selector)
 	if err != nil {
 		return nil, err
 	}
 	options := metav1.ListOptions{LabelSelector: selector.String()}
-	all, err := getRSList(namespace, options)
+	all, err := getRSList(tenant, namespace, options)
 	if err != nil {
 		return nil, err
 	}
@@ -599,12 +600,13 @@ func ListReplicaSets(deployment *apps.Deployment, getRSList RsListFunc) ([]*apps
 // However, it does filter out anything whose ControllerRef doesn't match.
 func ListPods(deployment *apps.Deployment, rsList []*apps.ReplicaSet, getPodList podListFunc) (*v1.PodList, error) {
 	namespace := deployment.Namespace
+	tenant := deployment.Tenant
 	selector, err := metav1.LabelSelectorAsSelector(deployment.Spec.Selector)
 	if err != nil {
 		return nil, err
 	}
 	options := metav1.ListOptions{LabelSelector: selector.String()}
-	all, err := getPodList(namespace, options)
+	all, err := getPodList(tenant, namespace, options)
 	if err != nil {
 		return all, err
 	}

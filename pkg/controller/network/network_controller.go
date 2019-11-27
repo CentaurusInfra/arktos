@@ -169,7 +169,7 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 	}
 
 	if needUpdate || needCreate {
-		_, err := nc.kubeClient.CoreV1().Pods(pod.Namespace).Update(pod)
+		_, err := nc.kubeClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Update(pod)
 		if err != nil {
 			klog.Errorf("Network-controller update error (%v).", err)
 		}
@@ -195,12 +195,12 @@ func (nc *NetworkController) syncPod(key string) error {
 		klog.V(4).Infof("Finished syncing network %q (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, _, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, _, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
 
-	allPods, err := nc.podLister.Pods(namespace).List(labels.Everything())
+	allPods, err := nc.podLister.PodsWithMultiTenancy(namespace, tenant).List(labels.Everything())
 	if err != nil {
 		return err
 	}

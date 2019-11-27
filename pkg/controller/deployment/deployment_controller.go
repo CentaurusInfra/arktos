@@ -28,7 +28,7 @@ import (
 	"k8s.io/klog"
 
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -207,7 +207,7 @@ func (dc *DeploymentController) addReplicaSet(obj interface{}) {
 
 	// If it has a ControllerRef, that's all that matters.
 	if controllerRef := metav1.GetControllerOf(rs); controllerRef != nil {
-		d := dc.resolveControllerRef(rs.Namespace, controllerRef)
+		d := dc.resolveControllerRef(rs.Tenant, rs.Namespace, controllerRef)
 		if d == nil {
 			return
 		}
@@ -242,8 +242,8 @@ func (dc *DeploymentController) getDeploymentsForReplicaSet(rs *apps.ReplicaSet)
 	if len(deployments) > 1 {
 		// ControllerRef will ensure we don't do anything crazy, but more than one
 		// item in this list nevertheless constitutes user error.
-		klog.V(4).Infof("user error! more than one deployment is selecting replica set %s/%s with labels: %#v, returning %s/%s",
-			rs.Namespace, rs.Name, rs.Labels, deployments[0].Namespace, deployments[0].Name)
+		klog.V(4).Infof("user error! more than one deployment is selecting replica set %s/%s/%s with labels: %#v, returning %s/%s/%s",
+			rs.Tenant, rs.Namespace, rs.Name, rs.Labels, deployments[0].Tenant, deployments[0].Namespace, deployments[0].Name)
 	}
 	return deployments
 }
@@ -266,14 +266,14 @@ func (dc *DeploymentController) updateReplicaSet(old, cur interface{}) {
 	controllerRefChanged := !reflect.DeepEqual(curControllerRef, oldControllerRef)
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
-		if d := dc.resolveControllerRef(oldRS.Namespace, oldControllerRef); d != nil {
+		if d := dc.resolveControllerRef(oldRS.Tenant, oldRS.Namespace, oldControllerRef); d != nil {
 			dc.enqueueDeployment(d)
 		}
 	}
 
 	// If it has a ControllerRef, that's all that matters.
 	if curControllerRef != nil {
-		d := dc.resolveControllerRef(curRS.Namespace, curControllerRef)
+		d := dc.resolveControllerRef(curRS.Tenant, curRS.Namespace, curControllerRef)
 		if d == nil {
 			return
 		}
@@ -325,7 +325,7 @@ func (dc *DeploymentController) deleteReplicaSet(obj interface{}) {
 		// No controller should care about orphans being deleted.
 		return
 	}
-	d := dc.resolveControllerRef(rs.Namespace, controllerRef)
+	d := dc.resolveControllerRef(rs.Tenant, rs.Namespace, controllerRef)
 	if d == nil {
 		return
 	}
@@ -419,7 +419,7 @@ func (dc *DeploymentController) getDeploymentForPod(pod *v1.Pod) *apps.Deploymen
 		// Not a pod owned by a replica set.
 		return nil
 	}
-	rs, err = dc.rsLister.ReplicaSets(pod.Namespace).Get(controllerRef.Name)
+	rs, err = dc.rsLister.ReplicaSetsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(controllerRef.Name)
 	if err != nil || rs.UID != controllerRef.UID {
 		klog.V(4).Infof("Cannot get replicaset %q for pod %q: %v", controllerRef.Name, pod.Name, err)
 		return nil
@@ -430,19 +430,19 @@ func (dc *DeploymentController) getDeploymentForPod(pod *v1.Pod) *apps.Deploymen
 	if controllerRef == nil {
 		return nil
 	}
-	return dc.resolveControllerRef(rs.Namespace, controllerRef)
+	return dc.resolveControllerRef(rs.Tenant, rs.Namespace, controllerRef)
 }
 
 // resolveControllerRef returns the controller referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching controller
 // of the correct Kind.
-func (dc *DeploymentController) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) *apps.Deployment {
+func (dc *DeploymentController) resolveControllerRef(tenant, namespace string, controllerRef *metav1.OwnerReference) *apps.Deployment {
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
 	if controllerRef.Kind != controllerKind.Kind {
 		return nil
 	}
-	d, err := dc.dLister.Deployments(namespace).Get(controllerRef.Name)
+	d, err := dc.dLister.DeploymentsWithMultiTenancy(namespace, tenant).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}
@@ -497,23 +497,23 @@ func (dc *DeploymentController) handleErr(err error, key interface{}) {
 func (dc *DeploymentController) getReplicaSetsForDeployment(d *apps.Deployment) ([]*apps.ReplicaSet, error) {
 	// List all ReplicaSets to find those we own but that no longer match our
 	// selector. They will be orphaned by ClaimReplicaSets().
-	rsList, err := dc.rsLister.ReplicaSets(d.Namespace).List(labels.Everything())
+	rsList, err := dc.rsLister.ReplicaSetsWithMultiTenancy(d.Namespace, d.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
 	deploymentSelector, err := metav1.LabelSelectorAsSelector(d.Spec.Selector)
 	if err != nil {
-		return nil, fmt.Errorf("deployment %s/%s has invalid label selector: %v", d.Namespace, d.Name, err)
+		return nil, fmt.Errorf("deployment %s/%s/%s has invalid label selector: %v", d.Tenant, d.Namespace, d.Name, err)
 	}
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing ReplicaSets (see #42639).
 	canAdoptFunc := controller.RecheckDeletionTimestamp(func() (metav1.Object, error) {
-		fresh, err := dc.client.AppsV1().Deployments(d.Namespace).Get(d.Name, metav1.GetOptions{})
+		fresh, err := dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).Get(d.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		if fresh.UID != d.UID {
-			return nil, fmt.Errorf("original Deployment %v/%v is gone: got uid %v, wanted %v", d.Namespace, d.Name, fresh.UID, d.UID)
+			return nil, fmt.Errorf("original Deployment %v/%v/%v is gone: got uid %v, wanted %v", d.Tenant, d.Namespace, d.Name, fresh.UID, d.UID)
 		}
 		return fresh, nil
 	})
@@ -531,7 +531,7 @@ func (dc *DeploymentController) getPodMapForDeployment(d *apps.Deployment, rsLis
 	if err != nil {
 		return nil, err
 	}
-	pods, err := dc.podLister.Pods(d.Namespace).List(selector)
+	pods, err := dc.podLister.PodsWithMultiTenancy(d.Namespace, d.Tenant).List(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -564,11 +564,11 @@ func (dc *DeploymentController) syncDeployment(key string) error {
 		klog.V(4).Infof("Finished syncing deployment %q (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	deployment, err := dc.dLister.Deployments(namespace).Get(name)
+	deployment, err := dc.dLister.DeploymentsWithMultiTenancy(namespace, tenant).Get(name)
 	if errors.IsNotFound(err) {
 		klog.V(2).Infof("Deployment %v has been deleted", key)
 		return nil
@@ -586,7 +586,7 @@ func (dc *DeploymentController) syncDeployment(key string) error {
 		dc.eventRecorder.Eventf(d, v1.EventTypeWarning, "SelectingAll", "This deployment is selecting all pods. A non-empty selector is required.")
 		if d.Status.ObservedGeneration < d.Generation {
 			d.Status.ObservedGeneration = d.Generation
-			dc.client.AppsV1().Deployments(d.Namespace).UpdateStatus(d)
+			dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
 		}
 		return nil
 	}

@@ -209,7 +209,7 @@ func (m *PodControllerRefManager) ClaimPods(pods []*v1.Pod, filters ...func(*v1.
 // the patching fails.
 func (m *PodControllerRefManager) AdoptPod(pod *v1.Pod) error {
 	if err := m.CanAdopt(); err != nil {
-		return fmt.Errorf("can't adopt Pod %v/%v (%v): %v", pod.Namespace, pod.Name, pod.UID, err)
+		return fmt.Errorf("can't adopt Pod %v/%v/%v (%v): %v", pod.Tenant, pod.Namespace, pod.Name, pod.UID, err)
 	}
 	// Note that ValidateOwnerReferences() will reject this patch if another
 	// OwnerReference exists with controller=true.
@@ -217,16 +217,16 @@ func (m *PodControllerRefManager) AdoptPod(pod *v1.Pod) error {
 		`{"metadata":{"ownerReferences":[{"apiVersion":"%s","kind":"%s","name":"%s","uid":"%s","controller":true,"blockOwnerDeletion":true}],"uid":"%s"}}`,
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
 		m.Controller.GetName(), m.Controller.GetUID(), pod.UID)
-	return m.podControl.PatchPod(pod.Namespace, pod.Name, []byte(addControllerPatch))
+	return m.podControl.PatchPodWithMultiTenancy(pod.Tenant, pod.Namespace, pod.Name, []byte(addControllerPatch))
 }
 
 // ReleasePod sends a patch to free the pod from the control of the controller.
 // It returns the error if the patching fails. 404 and 422 errors are ignored.
 func (m *PodControllerRefManager) ReleasePod(pod *v1.Pod) error {
-	klog.V(2).Infof("patching pod %s_%s to remove its controllerRef to %s/%s:%s",
-		pod.Namespace, pod.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.Controller.GetName())
+	klog.V(2).Infof("patching pod %s_%s_%s to remove its controllerRef to %s/%s:%s",
+		pod.Tenant, pod.Namespace, pod.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.Controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.Controller.GetUID(), pod.UID)
-	err := m.podControl.PatchPod(pod.Namespace, pod.Name, []byte(deleteOwnerRefPatch))
+	err := m.podControl.PatchPodWithMultiTenancy(pod.Tenant, pod.Namespace, pod.Name, []byte(deleteOwnerRefPatch))
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// If the pod no longer exists, ignore it.
@@ -331,7 +331,7 @@ func (m *ReplicaSetControllerRefManager) ClaimReplicaSets(sets []*apps.ReplicaSe
 // the error if the patching fails.
 func (m *ReplicaSetControllerRefManager) AdoptReplicaSet(rs *apps.ReplicaSet) error {
 	if err := m.CanAdopt(); err != nil {
-		return fmt.Errorf("can't adopt ReplicaSet %v/%v (%v): %v", rs.Namespace, rs.Name, rs.UID, err)
+		return fmt.Errorf("can't adopt ReplicaSet %v/%v/%v (%v): %v", rs.Tenant, rs.Namespace, rs.Name, rs.UID, err)
 	}
 	// Note that ValidateOwnerReferences() will reject this patch if another
 	// OwnerReference exists with controller=true.
@@ -339,16 +339,16 @@ func (m *ReplicaSetControllerRefManager) AdoptReplicaSet(rs *apps.ReplicaSet) er
 		`{"metadata":{"ownerReferences":[{"apiVersion":"%s","kind":"%s","name":"%s","uid":"%s","controller":true,"blockOwnerDeletion":true}],"uid":"%s"}}`,
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
 		m.Controller.GetName(), m.Controller.GetUID(), rs.UID)
-	return m.rsControl.PatchReplicaSet(rs.Namespace, rs.Name, []byte(addControllerPatch))
+	return m.rsControl.PatchReplicaSet(rs.Tenant, rs.Namespace, rs.Name, []byte(addControllerPatch))
 }
 
 // ReleaseReplicaSet sends a patch to free the ReplicaSet from the control of the Deployment controller.
 // It returns the error if the patching fails. 404 and 422 errors are ignored.
 func (m *ReplicaSetControllerRefManager) ReleaseReplicaSet(replicaSet *apps.ReplicaSet) error {
-	klog.V(2).Infof("patching ReplicaSet %s_%s to remove its controllerRef to %s/%s:%s",
-		replicaSet.Namespace, replicaSet.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.Controller.GetName())
+	klog.V(2).Infof("patching ReplicaSet %s_%s_%s to remove its controllerRef to %s/%s:%s",
+		replicaSet.Tenant, replicaSet.Namespace, replicaSet.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.Controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.Controller.GetUID(), replicaSet.UID)
-	err := m.rsControl.PatchReplicaSet(replicaSet.Namespace, replicaSet.Name, []byte(deleteOwnerRefPatch))
+	err := m.rsControl.PatchReplicaSet(replicaSet.Tenant, replicaSet.Namespace, replicaSet.Name, []byte(deleteOwnerRefPatch))
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// If the ReplicaSet no longer exists, ignore it.
@@ -376,7 +376,7 @@ func RecheckDeletionTimestamp(getObject func() (metav1.Object, error)) func() er
 			return fmt.Errorf("can't recheck DeletionTimestamp: %v", err)
 		}
 		if obj.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", obj.GetNamespace(), obj.GetName(), obj.GetDeletionTimestamp())
+			return fmt.Errorf("%v/%v/%v has just been deleted at %v", obj.GetTenant(), obj.GetNamespace(), obj.GetName(), obj.GetDeletionTimestamp())
 		}
 		return nil
 	}
@@ -466,7 +466,7 @@ func (m *ControllerRevisionControllerRefManager) ClaimControllerRevisions(histor
 // the patching fails.
 func (m *ControllerRevisionControllerRefManager) AdoptControllerRevision(history *apps.ControllerRevision) error {
 	if err := m.CanAdopt(); err != nil {
-		return fmt.Errorf("can't adopt ControllerRevision %v/%v (%v): %v", history.Namespace, history.Name, history.UID, err)
+		return fmt.Errorf("can't adopt ControllerRevision %v/%v/%v (%v): %v", history.Tenant, history.Namespace, history.Name, history.UID, err)
 	}
 	// Note that ValidateOwnerReferences() will reject this patch if another
 	// OwnerReference exists with controller=true.
@@ -474,16 +474,16 @@ func (m *ControllerRevisionControllerRefManager) AdoptControllerRevision(history
 		`{"metadata":{"ownerReferences":[{"apiVersion":"%s","kind":"%s","name":"%s","uid":"%s","controller":true,"blockOwnerDeletion":true}],"uid":"%s"}}`,
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
 		m.Controller.GetName(), m.Controller.GetUID(), history.UID)
-	return m.crControl.PatchControllerRevision(history.Namespace, history.Name, []byte(addControllerPatch))
+	return m.crControl.PatchControllerRevisionWithMultiTenancy(history.Tenant, history.Namespace, history.Name, []byte(addControllerPatch))
 }
 
 // ReleaseControllerRevision sends a patch to free the ControllerRevision from the control of its controller.
 // It returns the error if the patching fails. 404 and 422 errors are ignored.
 func (m *ControllerRevisionControllerRefManager) ReleaseControllerRevision(history *apps.ControllerRevision) error {
-	klog.V(2).Infof("patching ControllerRevision %s_%s to remove its controllerRef to %s/%s:%s",
-		history.Namespace, history.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.Controller.GetName())
+	klog.V(2).Infof("patching ControllerRevision %s_%s_%s to remove its controllerRef to %s/%s:%s",
+		history.Tenant, history.Namespace, history.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.Controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.Controller.GetUID(), history.UID)
-	err := m.crControl.PatchControllerRevision(history.Namespace, history.Name, []byte(deleteOwnerRefPatch))
+	err := m.crControl.PatchControllerRevisionWithMultiTenancy(history.Tenant, history.Namespace, history.Name, []byte(deleteOwnerRefPatch))
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// If the ControllerRevision no longer exists, ignore it.

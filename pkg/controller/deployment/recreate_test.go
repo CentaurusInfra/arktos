@@ -22,6 +22,7 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
@@ -31,13 +32,21 @@ import (
 )
 
 func TestScaleDownOldReplicaSets(t *testing.T) {
+	testScaleDownOldReplicaSets(t, metav1.TenantDefault)
+}
+
+func TestScaleDownOldReplicaSetsWithMultiTenancy(t *testing.T) {
+	testScaleDownOldReplicaSets(t, "test-te")
+}
+
+func testScaleDownOldReplicaSets(t *testing.T, tenant string) {
 	tests := []struct {
 		oldRSSizes []int
 		d          *apps.Deployment
 	}{
 		{
 			oldRSSizes: []int{3},
-			d:          newDeployment("foo", 3, nil, nil, nil, map[string]string{"foo": "bar"}),
+			d:          newDeployment("foo", 3, nil, nil, nil, map[string]string{"foo": "bar"}, tenant),
 		},
 	}
 
@@ -49,7 +58,7 @@ func TestScaleDownOldReplicaSets(t *testing.T) {
 		var expected []runtime.Object
 
 		for n, size := range test.oldRSSizes {
-			rs := newReplicaSet(test.d, fmt.Sprintf("%s-%d", test.d.Name, n), size)
+			rs := newReplicaSet(test.d, fmt.Sprintf("%s-%d", test.d.Name, n), size, tenant)
 			oldRSs = append(oldRSs, rs)
 
 			rsCopy := rs.DeepCopy()
@@ -83,6 +92,14 @@ func TestScaleDownOldReplicaSets(t *testing.T) {
 }
 
 func TestOldPodsRunning(t *testing.T) {
+	testOldPodsRunning(t, metav1.TenantDefault)
+}
+
+func TestOldPodsRunningWithMultiTenancy(t *testing.T) {
+	testOldPodsRunning(t, "test-te")
+}
+
+func testOldPodsRunning(t *testing.T, tenant string) {
 	tests := []struct {
 		name string
 
@@ -98,23 +115,23 @@ func TestOldPodsRunning(t *testing.T) {
 		},
 		{
 			name:              "old RSs with running pods",
-			oldRSs:            []*apps.ReplicaSet{rsWithUID("some-uid"), rsWithUID("other-uid")},
+			oldRSs:            []*apps.ReplicaSet{rsWithUID("some-uid", tenant), rsWithUID("other-uid", tenant)},
 			podMap:            podMapWithUIDs([]string{"some-uid", "other-uid"}),
 			hasOldPodsRunning: true,
 		},
 		{
 			name:              "old RSs without pods but with non-zero status replicas",
-			oldRSs:            []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 1, nil)},
+			oldRSs:            []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 1, nil, tenant)},
 			hasOldPodsRunning: true,
 		},
 		{
 			name:              "old RSs without pods or non-zero status replicas",
-			oldRSs:            []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil)},
+			oldRSs:            []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil, tenant)},
 			hasOldPodsRunning: false,
 		},
 		{
 			name:   "old RSs with zero status replicas but pods in terminal state are present",
-			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil)},
+			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil, tenant)},
 			podMap: map[types.UID]*v1.PodList{
 				"uid-1": {
 					Items: []v1.Pod{
@@ -135,7 +152,7 @@ func TestOldPodsRunning(t *testing.T) {
 		},
 		{
 			name:   "old RSs with zero status replicas but pod in unknown phase present",
-			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil)},
+			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil, tenant)},
 			podMap: map[types.UID]*v1.PodList{
 				"uid-1": {
 					Items: []v1.Pod{
@@ -151,7 +168,7 @@ func TestOldPodsRunning(t *testing.T) {
 		},
 		{
 			name:   "old RSs with zero status replicas with pending pod present",
-			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil)},
+			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil, tenant)},
 			podMap: map[types.UID]*v1.PodList{
 				"uid-1": {
 					Items: []v1.Pod{
@@ -167,7 +184,7 @@ func TestOldPodsRunning(t *testing.T) {
 		},
 		{
 			name:   "old RSs with zero status replicas with running pod present",
-			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil)},
+			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil, tenant)},
 			podMap: map[types.UID]*v1.PodList{
 				"uid-1": {
 					Items: []v1.Pod{
@@ -183,7 +200,7 @@ func TestOldPodsRunning(t *testing.T) {
 		},
 		{
 			name:   "old RSs with zero status replicas but pods in terminal state and pending are present",
-			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil)},
+			oldRSs: []*apps.ReplicaSet{newRSWithStatus("rs-1", 0, 0, nil, tenant)},
 			podMap: map[types.UID]*v1.PodList{
 				"uid-1": {
 					Items: []v1.Pod{
@@ -225,9 +242,9 @@ func TestOldPodsRunning(t *testing.T) {
 	}
 }
 
-func rsWithUID(uid string) *apps.ReplicaSet {
-	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"})
-	rs := newReplicaSet(d, fmt.Sprintf("foo-%s", uid), 0)
+func rsWithUID(uid string, tenant string) *apps.ReplicaSet {
+	d := newDeployment("foo", 1, nil, nil, nil, map[string]string{"foo": "bar"}, tenant)
+	rs := newReplicaSet(d, fmt.Sprintf("foo-%s", uid), 0, tenant)
 	rs.UID = types.UID(uid)
 	return rs
 }
