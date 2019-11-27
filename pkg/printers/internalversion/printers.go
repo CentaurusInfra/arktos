@@ -76,6 +76,16 @@ const (
 // AddHandlers adds print handlers for default Kubernetes types dealing with internal versions.
 // TODO: handle errors from Handler
 func AddHandlers(h printers.PrintHandler) {
+	actionColumnDefinitions := []metav1beta1.TableColumnDefinition{
+		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "Node", Type: "string", Priority: 1, Description: apiv1.PodSpec{}.SwaggerDoc()["nodeName"]},
+		{Name: "PodName", Type: "string", Description: "The pod for which this action was created."},
+		{Name: "Complete", Type: "string", Description: "Completion status of this action."},
+		{Name: "Error", Type: "string", Description: "Error message, if action result is an error."},
+	}
+	h.TableHandler(actionColumnDefinitions, printActionList)
+	h.TableHandler(actionColumnDefinitions, printAction)
+
 	podColumnDefinitions := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "HashKey", Type: "integer", Description: metav1.ObjectMeta{}.SwaggerDoc()["hashKey"]},
@@ -564,6 +574,41 @@ var (
 	podSuccessConditions = []metav1.TableRowCondition{{Type: metav1.RowCompleted, Status: metav1.ConditionTrue, Reason: string(api.PodSucceeded), Message: "The pod has completed successfully."}}
 	podFailedConditions  = []metav1.TableRowCondition{{Type: metav1.RowCompleted, Status: metav1.ConditionTrue, Reason: string(api.PodFailed), Message: "The pod failed."}}
 )
+
+func printActionList(actionList *api.ActionList, options printers.PrintOptions) ([]metav1.TableRow, error) {
+	rows := make([]metav1.TableRow, 0, len(actionList.Items))
+	for i := range actionList.Items {
+		r, err := printAction(&actionList.Items[i], options)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, r...)
+	}
+	return rows, nil
+}
+
+func printAction(action *api.Action, options printers.PrintOptions) ([]metav1.TableRow, error) {
+	row := metav1.TableRow{
+		Object: runtime.RawExtension{Object: action},
+	}
+
+	podName := ""
+	if action.Spec.PodAction != nil {
+		podName = action.Spec.PodAction.PodName
+	}
+
+	complete := "No"
+	if action.Status.Complete {
+		complete = "Yes"
+	}
+
+	row.Cells = append(row.Cells, action.Name, action.Spec.NodeName, podName, complete)
+	if options.Wide {
+		row.Cells = append(row.Cells, action.Status.Error)
+	}
+
+	return []metav1beta1.TableRow{row}, nil
+}
 
 func printPodList(podList *api.PodList, options printers.PrintOptions) ([]metav1.TableRow, error) {
 	rows := make([]metav1.TableRow, 0, len(podList.Items))
