@@ -269,6 +269,10 @@ const (
 	KubeAPIServer = "kube-apiserver"
 	// KubeControllerManager defines variable used internally when referring to kube-controller-manager component
 	KubeControllerManager = "kube-controller-manager"
+
+	// WorkloadControllerManager defines variable used internally when referring to workload-controller-manager component
+	WorkloadControllerManager = "workload-controller-manager"
+
 	// KubeScheduler defines variable used internally when referring to kube-scheduler component
 	KubeScheduler = "kube-scheduler"
 	// KubeProxy defines variable used internally when referring to kube-proxy component
