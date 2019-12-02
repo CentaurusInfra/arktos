@@ -80,7 +80,7 @@ func waitForDeploymentCompleteMaybeCheckRolling(c clientset.Interface, d *apps.D
 
 	err := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		var err error
-		deployment, err = c.AppsV1().Deployments(d.Namespace).Get(d.Name, metav1.GetOptions{})
+		deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).Get(d.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -169,12 +169,16 @@ func WaitForDeploymentComplete(c clientset.Interface, d *apps.Deployment, logf L
 // WaitForDeploymentRevisionAndImage waits for the deployment's and its new RS's revision and container image to match the given revision and image.
 // Note that deployment revision and its new RS revision should be updated shortly, so we only wait for 1 minute here to fail early.
 func WaitForDeploymentRevisionAndImage(c clientset.Interface, ns, deploymentName string, revision, image string, logf LogfFn, pollInterval, pollTimeout time.Duration) error {
+	return WaitForDeploymentRevisionAndImageWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, revision, image, logf, pollInterval, pollTimeout)
+}
+
+func WaitForDeploymentRevisionAndImageWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, revision, image string, logf LogfFn, pollInterval, pollTimeout time.Duration) error {
 	var deployment *apps.Deployment
 	var newRS *apps.ReplicaSet
 	var reason string
 	err := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		var err error
-		deployment, err = c.AppsV1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+		deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns, tenant).Get(deploymentName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -204,8 +208,12 @@ func WaitForDeploymentRevisionAndImage(c clientset.Interface, ns, deploymentName
 }
 
 // CheckDeploymentRevisionAndImage checks if the input deployment's and its new replica set's revision and image are as expected.
-func CheckDeploymentRevisionAndImage(c clientset.Interface, ns, deploymentName, revision, image string) error {
-	deployment, err := c.AppsV1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+func CheckDeploymentRevisionAndImage(c clientset.Interface, namespace, deploymentName, revision, image string) error {
+	return CheckDeploymentRevisionAndImageWithMultiTenancy(c, metav1.TenantDefault, namespace, deploymentName, revision, image)
+}
+
+func CheckDeploymentRevisionAndImageWithMultiTenancy(c clientset.Interface, tenant, namespace, deploymentName, revision, image string) error {
+	deployment, err := c.AppsV1().DeploymentsWithMultiTenancy(namespace, tenant).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to get deployment %s during revision check: %v", deploymentName, err)
 	}
@@ -255,16 +263,20 @@ func containsImage(containers []v1.Container, imageName string) bool {
 type UpdateDeploymentFunc func(d *apps.Deployment)
 
 func UpdateDeploymentWithRetries(c clientset.Interface, namespace, name string, applyUpdate UpdateDeploymentFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.Deployment, error) {
+	return UpdateDeploymentWithRetriesWithMultiTenancy(c, metav1.TenantDefault, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)
+}
+
+func UpdateDeploymentWithRetriesWithMultiTenancy(c clientset.Interface, tenant, namespace, name string, applyUpdate UpdateDeploymentFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.Deployment, error) {
 	var deployment *apps.Deployment
 	var updateErr error
 	pollErr := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		var err error
-		if deployment, err = c.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{}); err != nil {
+		if deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{}); err != nil {
 			return false, err
 		}
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(deployment)
-		if deployment, err = c.AppsV1().Deployments(namespace).Update(deployment); err == nil {
+		if deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(namespace, tenant).Update(deployment); err == nil {
 			logf("Updating deployment %s", name)
 			return true, nil
 		}
@@ -278,15 +290,23 @@ func UpdateDeploymentWithRetries(c clientset.Interface, namespace, name string, 
 }
 
 func WaitForObservedDeployment(c clientset.Interface, ns, deploymentName string, desiredGeneration int64) error {
+	return WaitForObservedDeploymentWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, desiredGeneration)
+}
+
+func WaitForObservedDeploymentWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, desiredGeneration int64) error {
 	return deploymentutil.WaitForObservedDeployment(func() (*apps.Deployment, error) {
-		return c.AppsV1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+		return c.AppsV1().DeploymentsWithMultiTenancy(ns, tenant).Get(deploymentName, metav1.GetOptions{})
 	}, desiredGeneration, 2*time.Second, 1*time.Minute)
 }
 
 // WaitForDeploymentRollbackCleared waits for given deployment either started rolling back or doesn't need to rollback.
 func WaitForDeploymentRollbackCleared(c clientset.Interface, ns, deploymentName string, pollInterval, pollTimeout time.Duration) error {
+	return WaitForDeploymentRollbackClearedWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, pollInterval, pollTimeout)
+}
+
+func WaitForDeploymentRollbackClearedWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, pollInterval, pollTimeout time.Duration) error {
 	err := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		deployment, err := c.AppsV1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+		deployment, err := c.AppsV1().DeploymentsWithMultiTenancy(ns, tenant).Get(deploymentName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -304,9 +324,13 @@ func WaitForDeploymentRollbackCleared(c clientset.Interface, ns, deploymentName 
 
 // WaitForDeploymentUpdatedReplicasGTE waits for given deployment to be observed by the controller and has at least a number of updatedReplicas
 func WaitForDeploymentUpdatedReplicasGTE(c clientset.Interface, ns, deploymentName string, minUpdatedReplicas int32, desiredGeneration int64, pollInterval, pollTimeout time.Duration) error {
+	return WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, minUpdatedReplicas, desiredGeneration, pollInterval, pollTimeout)
+}
+
+func WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, minUpdatedReplicas int32, desiredGeneration int64, pollInterval, pollTimeout time.Duration) error {
 	var deployment *apps.Deployment
 	err := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		d, err := c.AppsV1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+		d, err := c.AppsV1().DeploymentsWithMultiTenancy(ns, tenant).Get(deploymentName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -320,9 +344,13 @@ func WaitForDeploymentUpdatedReplicasGTE(c clientset.Interface, ns, deploymentNa
 }
 
 func WaitForDeploymentWithCondition(c clientset.Interface, ns, deploymentName, reason string, condType apps.DeploymentConditionType, logf LogfFn, pollInterval, pollTimeout time.Duration) error {
+	return WaitForDeploymentWithConditionWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, reason, condType, logf, pollInterval, pollTimeout)
+}
+
+func WaitForDeploymentWithConditionWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName, reason string, condType apps.DeploymentConditionType, logf LogfFn, pollInterval, pollTimeout time.Duration) error {
 	var deployment *apps.Deployment
 	pollErr := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		d, err := c.AppsV1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+		d, err := c.AppsV1().DeploymentsWithMultiTenancy(ns, tenant).Get(deploymentName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

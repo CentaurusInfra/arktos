@@ -35,18 +35,42 @@ const (
 
 // CreateTestingNamespace creates a namespace for testing.
 func CreateTestingNamespace(baseName string, apiserver *httptest.Server, t *testing.T) *v1.Namespace {
+	return CreateTestingNamespaceWithMultiTenancy(baseName, apiserver, t, metav1.TenantDefault)
+}
+
+// DeleteTestingNamespace is currently a no-op function.
+func DeleteTestingNamespace(ns *v1.Namespace, apiserver *httptest.Server, t *testing.T) {
+	// TODO: Remove all resources from a given namespace once we implement CreateTestingNamespace.
+}
+
+// CreateTestingTenant creates a tenant for testing.
+func CreateTestingTenant(baseName string, apiserver *httptest.Server, t *testing.T) *v1.Tenant {
+	// TODO: Create a tenant with a given basename.
+	// Currently we neither create the tenant nor delete all of its contents at the end.
+	// But as long as tests are not using the same tenants, this should work fine.
+	return &v1.Tenant{
+		ObjectMeta: metav1.ObjectMeta{
+			// TODO: Once we start creating tenants, switch to GenerateName.
+			Name: baseName,
+		},
+	}
+}
+
+// CreateTestingNamespace creates a namespace that supports multi-tenancy for testing.
+func CreateTestingNamespaceWithMultiTenancy(baseName string, apiserver *httptest.Server, t *testing.T, tenant string) *v1.Namespace {
 	// TODO: Create a namespace with a given basename.
 	// Currently we neither create the namespace nor delete all of its contents at the end.
 	// But as long as tests are not using the same namespaces, this should work fine.
 	return &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			// TODO: Once we start creating namespaces, switch to GenerateName.
-			Name: baseName,
+			Name:   baseName,
+			Tenant: tenant,
 		},
 	}
 }
 
-// DeleteTestingNamespace is currently a no-op function.
-func DeleteTestingNamespace(ns *v1.Namespace, apiserver *httptest.Server, t *testing.T) {
-	// TODO: Remove all resources from a given namespace once we implement CreateTestingNamespace.
+// DeleteTestingTenant is currently a no-op function.
+func DeleteTestingTenant(tenant *v1.Tenant, apiserver *httptest.Server, t *testing.T) {
+	// TODO: Remove all resources from a given tenant once we implement CreateTestingTenant.
 }
