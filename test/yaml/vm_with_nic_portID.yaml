@@ -4,8 +4,10 @@ metadata:
   name: vm-with-nic-portid
 spec:
   virtualMachine:
+    keyPairName: "foobar"
     name: vm
-    image: download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img.img
+    image: download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img
+    imagePullPolicy: IfNotPresent
     resources:
       limits:
         cpu: "1"
@@ -15,4 +17,4 @@ spec:
         memory: "1Gi"
   vpc: demo
   nics:
-    - portId: 04fe371d-fddf-43c4-9419-b7d9cd4a2197
+    - portId: 08367a19-9f3e-4da8-825d-9ca398f07e09

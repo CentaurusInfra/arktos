@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+
+# Copyright 2019 The Kubernetes Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+die() { echo "$*" 1>&2 ; exit 1; }
+
+
+setup_cni_conf() {
+    echo "setting up cni conf file..."
+
+    local conf_target_file=$1
+    local conf_source_file=$2
+    [ "${conf_target_file}" == "" ] && die "expected cni target conf file; invalid parameter"
+    [ "${conf_source_file}" == "" ] && die "expected cni source conf file; invalid parameter"
+
+    if [ -s ${conf_target_file} ]; then
+      echo "${conf_target_file} already exists; keep it."
+      return
+    fi
+
+    echo "copying ${conf_source_file} to ${conf_target_file}..."
+    local cni_conf_dir=$(dirname ${conf_target_file})
+    local backup_dir="$(dirname ${cni_conf_dir})/$(basename ${cni_conf_dir})_"$(date -d "today" +"%Y%m%d%H%M")
+    test -d ${cni_conf_dir} && sudo mv ${cni_conf_dir} ${backup_dir}
+    sudo mkdir -p ${cni_conf_dir}
+    sudo cp ${conf_source_file} ${conf_target_file}
+    echo "copied ${conf_source_file} to ${conf_target_file}"
+}
+
+
+install_cni_bridge() {
+    echo "Ensuring minimum cni plugin installation..."
+
+    if (test -x ${cni_bin_dir}/bridge && test -x ${cni_bin_dir}/host-local && test -x ${cni_bin_dir}/loopback); then
+        echo "found bridge, host-local, loopback"
+    else
+        echo "installing cni plugin binaries"
+        local cniplugin_release_url="https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz"
+        sudo mkdir -p ${cni_bin_dir}
+        wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${cni_bin_dir} -xzv
+    fi
+
+    local cni_conf_source=$(dirname "$BASH_SOURCE[0]}")/testdata/cni-conf/bridge.conf
+    setup_cni_conf  "${cni_conf_dir}/bridge.conf" ${cni_conf_source}
+
+    echo "done with bridge cni plugin installation"
+}
+
+
+build_alktron() {
+    local ALKTRON_DIR=$1
+    [ "${ALKTRON_DIR}" == "" ] && die "expected alktron repo folder; invalid parameter"
+
+    local ALKTRON_BIN=${ALKTRON_DIR}/alktron/alktron
+    if [ ! -d ${ALKTRON_DIR} ]; then
+        echo "cniplugins folder not exists; please run git clone https://github.com/futurewei-cloud/cniplugins.git ${ALKTRON_DIR}" 1>&2
+        exit 1
+    fi
+
+    if [ ! -x ${ALKTRON_BIN} ]; then
+        echo "building alktron binary..."
+        pushd ${ALKTRON_DIR}/alktron >/dev/null && go build . || die "error: failed to build alktron"
+        echo "alktron built successfully"
+        popd > /dev/null
+    fi
+}
+
+install_cni_alktron() {
+    echo "installing alktron cni plugin..."
+    if [ ! -x ${cni_bin_dir}/alktron ]; then
+        local ALKTRON_DIR=$(dirname "$BASH_SOURCE[0]}")/../../cniplugins
+        build_alktron ${ALKTRON_DIR}
+        sudo mkdir -p ${cni_bin_dir}
+        sudo cp ${ALKTRON_DIR}/alktron/alktron ${cni_bin_dir}
+        echo "alktron copied to ${cni_bin_dir}"
+    fi
+
+    echo "setting up neutron connection info..."
+    local NEUTRON_CONF_JSON=/etc/alktron/neutron.json
+    if [ ! -f ${NEUTRON_CONF_JSON} ]; then
+      sudo mkdir -p /etc/alktron
+      local os_username=${OS_USERNAME:-admin}
+      local os_password=${OS_PASSWORD:-secret}
+      local os_keystoneurl=${KEYSTONE_AUTH_URI:-http://127.0.0.1/identity}
+      local os_hostname=${OS_HOSTNAME:-${HOSTNAME}}
+      sudo bash -c "cat <<'EOF' > ${NEUTRON_CONF_JSON}
+{
+  \"user\": \"${os_username}\",
+  \"password\": \"${os_password}\",
+  \"identity_url\":\"${os_keystoneurl}\",
+  \"host\":\"${os_hostname}\",
+}
+EOF"
+    fi
+
+    local cni_conf_source=$(dirname "$BASH_SOURCE[0]}")/testdata/cni-conf/alktron.conf
+    setup_cni_conf "/etc/cni/net.d/alktron.conf" ${cni_conf_source}
+
+    echo "done with alktron cni plugin installation"
+}
+
+install_loopback_cni() {
+    if [ ! -x ${cni_bin_dir}/loopback ]; then
+        echo "installing loopback cni binary..."
+        local cniplugin_release_url="https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz"
+        wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${cni_bin_dir} -xzv ./loopback
+    fi
+}
+
+
+ensure_devstack() {
+    systemctl is-active system-devstack.slice --quiet service || die "devstack not running. Please make sure it properly installed and in actibe state"
+}
+
+
+install_alkaid_containerd() {
+    local CONTAINERD_DIR=$(dirname "$BASH_SOURCE[0]}")/../../alkaid-containerd
+    [ -d ${CONTAINERD_DIR} ] || die "alkaid-containerd repo not found. please clone futurewei-cloud/alkaid-containerd branch wip-pod-annotation-to-cni-args side by side with alkaid"
+    if [ ! -x ${CONTAINERD_DIR}/bin/containerd ]; then
+        echo "building alkdaid containerd..."
+        pushd ${CONTAINERD_DIR} > /dev/null
+        docker run --rm -e GOPATH=/go -v ${PWD}:/go/src/github.com/containerd/containerd -w /go/src/github.com/containerd/containerd golang:1.12 sh -c "apt update; apt install -y libbtrfs-dev libseccomp-dev; make bin/containerd"
+        popd > /dev/null
+        echo "...built"
+    fi
+
+    echo "make sure alkiad containerd in power"
+    if [ ! "$(${CONTAINERD_DIR}/bin/containerd --version)" == "$(containerd --version)" ]; then
+        echo "stopping containerd shortly to replace the binary..."
+        local containerd_path=$(which containerd)
+        sudo systemctl stop containerd
+        local containerd_back_path=$(dirname ${containerd_path})/containerd_alkaid_backup
+        sudo mv ${containerd_path} ${containerd_back_path}
+        sudo cp ${CONTAINERD_DIR}/bin/containerd ${containerd_path}
+        sudo systemctl start containerd
+        echo "warning: original containerd binary is saved to ${containerd_path})/containerd_alkaid_backup"
+        echo "...done"
+    fi
+}
+
+
+CNIPLUGIN=${CNIPLUGIN:-"bridge"}
+cni_conf_dir=${CNI_CONF_DIR:-"/etc/cni/net.d"}
+cni_bin_dir=${CNI_BIN_DIR:-"/opt/cni/bin"}
+
+
+if [ "${CNIPLUGIN}" == "bridge" ]; then
+    echo "cni plugin is bridge; alkaid will use bridge to provision pod network"
+    install_cni_bridge
+elif [ "${CNIPLUGIN}" == "alktron" ]; then
+    ensure_devstack
+    install_alkaid_containerd
+    sudo systemctl stop libvirtd > /dev/null || true
+    echo "cni plug is alktron; alkaid will use alktron \(neutron plugin\) to provision pod network"
+    install_cni_alktron
+    install_loopback_cni
+else
+    echo "cni plugin is ${CNIPLUGIN}; alkaid onebox cannot use it out of box." 1>&2
+    echo "suggest to use bridge cni plugin."
+    echo "if you really want to use this plugin, you need to config cni plugin by yourself."
+    exit 1
+fi
+

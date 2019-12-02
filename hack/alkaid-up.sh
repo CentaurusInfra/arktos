@@ -24,6 +24,9 @@ export VIRTLET_SOCK_PATH="/run/virtlet.sock"
 # This is required by virtlet deamonset installation
 export ALLOW_PRIVILEGED=true
 
+# onebox has option to choose cni plugin: bridge(default), alktron(neutron integration)
+CNIPLUGIN=${CNIPLUGIN:-"bridge"}
+
 # This command builds and runs a local kubernetes cluster.
 # You may need to run this as root to allow kubelet to open docker's socket,
 # and to write the test CA in /var/run/kubernetes.
@@ -202,59 +205,8 @@ else
   sudo systemctl stop apparmor
 fi
 
-function install_cni {
-  echo "Ensuring minimum cni plugin installation..."
-  local cni_bin_dir="/opt/cni/bin/"
-  if [[ -n "${CNI_BIN_DIR}" ]]; then
-    cni_bin_dir="${CNI_BIN_DIR}"
-  fi
-
-  if (test -x ${cni_bin_dir}/bridge && test -x ${cni_bin_dir}/host-local && test -x ${cni_bin_dir}/loopback); then
-    echo "found bridge, host-local, loopback"
-  else
-    echo "installing cni plugin binaries"
-    local cniplugin_release_url="https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz"
-    sudo mkdir -p ${cni_bin_dir}
-    wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${cni_bin_dir} -xzv
-  fi
-
-  local cni_conf_dir="/etc/cni/net.d/"
-  if [[ -n "${CNI_CONF_DIR}" ]]; then
-    cni_conf_dir="${CNI_CONF_DIR}"
-  fi
-  local cni_conf_file="${cni_conf_dir}/alkaid_onebox.conf"
-  if (test -r ${cni_conf_file}); then
-    echo "found cni config file"
-  else
-    echo "generating cni conf file..."
-    local backup_dir="$(dirname ${cni_conf_dir})/$(basename ${cni_conf_dir})_"$(date -d "today" +"%Y%m%d%H%M")
-    if [[ -d "${cni_conf_dir}" ]]; then
-      sudo mv ${cni_conf_dir} ${backup_dir}
-    fi
-    sudo mkdir -p ${cni_conf_dir}
-    sudo bash -c "cat <<'EOF' > ${cni_conf_file}
-{
-  \"cniVersion\": \"0.3.1\",
-  \"name\": \"containerd-net\",
-  \"type\": \"bridge\",
-  \"bridge\": \"cni0\",
-  \"isGateway\": true,
-  \"ipMasq\": true,
-  \"ipam\": {
-    \"type\": \"host-local\",
-    \"subnet\": \"10.88.0.0/16\",
-    \"routes\": [
-      { \"dst\": \"0.0.0.0/0\" }
-    ]
-  }
-}
-EOF"
-  fi
-
-  echo "Done with cni plugin installation"
-}
-
-install_cni
+# install cni plugin based on env var CNIPLUGIN (bridge, alktron)
+source ${KUBE_ROOT}/hack/alkaid-cni.rc
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
 kube::util::ensure-gnu-sed
