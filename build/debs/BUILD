@@ -88,6 +88,7 @@ genrule(
     "cloud-controller-manager",
     "kube-apiserver",
     "kube-controller-manager",
+    "workload-controller-manager",
     "kube-proxy",
     "kube-scheduler",
 ]] for arch in SERVER_PLATFORMS["linux"]]
@@ -155,6 +156,14 @@ genrule(
 [k8s_deb(
     name = "cloud-controller-manager",
     description = "Kubernetes Cloud Controller Manager",
+    goarch = arch,
+    tags = ["manual"],
+    version_file = "//build:os_package_version",
+) for arch in SERVER_PLATFORMS["linux"]]
+
+[k8s_deb(
+    name = "workload-controller-manager",
+    description = "CloudFabric Workload Controller Manager",
     goarch = arch,
     tags = ["manual"],
     version_file = "//build:os_package_version",
