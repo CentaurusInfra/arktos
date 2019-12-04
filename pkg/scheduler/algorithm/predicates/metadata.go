@@ -483,8 +483,10 @@ func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[s
 		return nil, nil, err
 	}
 	antiAffinityTerms := GetPodAntiAffinityTerms(affinity.PodAntiAffinity)
-
-	ctx, cancel := context.WithCancel(context.Background())
+	antiAffinityProperties, err := getAffinityTermProperties(pod, antiAffinityTerms)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	processNode := func(i int) {
 		nodeInfo := nodeInfoMap[allNodeNames[i]]
@@ -506,15 +508,9 @@ func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[s
 				}
 			}
 			// Check anti-affinity properties.
-			for _, term := range antiAffinityTerms {
-				namespaces := priorityutil.GetNamespacesFromPodAffinityTerm(pod, &term)
-				selector, err := metav1.LabelSelectorAsSelector(term.LabelSelector)
-				if err != nil {
-					catchError(err)
-					cancel()
-					return
-				}
-				if priorityutil.PodMatchesTermsNamespaceAndSelector(existingPod, namespaces, selector) {
+			for i, term := range antiAffinityTerms {
+				p := antiAffinityProperties[i]
+				if priorityutil.PodMatchesTermsNamespaceAndSelector(existingPod, p.namespaces, p.selector) {
 					if topologyValue, ok := node.Labels[term.TopologyKey]; ok {
 						pair := topologyPair{key: term.TopologyKey, value: topologyValue}
 						nodeTopologyPairsAntiAffinityPodsMaps[pair]++
@@ -530,7 +526,8 @@ func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[s
 	klog.V(6).Infof("DEBUG: should not see this log in our current perf runs. Number of nodes: %v", len(allNodeNames))
 	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
 	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
-	workqueue.ParallelizeUntil(ctx, 16, len(allNodeNames), processNode)
+	workqueue.ParallelizeUntil(context.Background(), 16, len(allNodeNames), processNode)
+
 	return topologyPairsAffinityPodsMaps, topologyPairsAntiAffinityPodsMaps, firstError
 }
 
