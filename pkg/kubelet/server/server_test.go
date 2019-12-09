@@ -571,10 +571,17 @@ func TestServeLogs(t *testing.T) {
 }
 
 func TestServeRunInContainer(t *testing.T) {
+	testServeRunInContainer(t, metav1.TenantDefault)
+}
+
+func TestServeRunInContainerWithMultiTenancy(t *testing.T) {
+	testServeRunInContainer(t, "qux")
+}
+
+func testServeRunInContainer(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
@@ -594,7 +601,14 @@ func TestServeRunInContainer(t *testing.T) {
 		return []byte(output), nil
 	}
 
-	resp, err := http.Post(fw.testHTTPServer.URL+"/run/"+podTenant+"/"+podNamespace+"/"+podName+"/"+expectedContainerName+"?cmd=ls%20-a", "", nil)
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/run/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?cmd=ls%20-a"
+	} else {
+		url = fw.testHTTPServer.URL + "/run/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?cmd=ls%20-a"
+	}
+
+	resp, err := http.Post(url, "", nil)
 
 	if err != nil {
 		t.Fatalf("Got error POSTing: %v", err)
@@ -613,10 +627,17 @@ func TestServeRunInContainer(t *testing.T) {
 }
 
 func TestServeRunInContainerWithUID(t *testing.T) {
+	testServeRunInContainerWithUID(t, metav1.TenantDefault)
+}
+
+func TestServeRunInContainerWithUIDWithMultiTenancy(t *testing.T) {
+	testServeRunInContainerWithUID(t, "qux")
+}
+
+func testServeRunInContainerWithUID(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
@@ -639,7 +660,14 @@ func TestServeRunInContainerWithUID(t *testing.T) {
 		return []byte(output), nil
 	}
 
-	resp, err := http.Post(fw.testHTTPServer.URL+"/run/"+podTenant+"/"+podNamespace+"/"+podName+"/"+testUID+"/"+expectedContainerName+"?cmd=ls%20-a", "", nil)
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/run/" + podNamespace + "/" + podName + "/" + testUID + "/" + expectedContainerName + "?cmd=ls%20-a"
+	} else {
+		url = fw.testHTTPServer.URL + "/run/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + testUID + "/" + expectedContainerName + "?cmd=ls%20-a"
+	}
+
+	resp, err := http.Post(url, "", nil)
 
 	if err != nil {
 		t.Fatalf("Got error POSTing: %v", err)
@@ -1019,19 +1047,34 @@ func setGetContainerLogsFunc(fw *serverTestFramework, t *testing.T, expectedPodN
 	}
 }
 
-// TODO: I really want to be a table driven test
+// TODO: I really want to be a table driven testfunc
 func TestContainerLogs(t *testing.T) {
+	testContainerLogs(t, metav1.TenantDefault)
+}
+
+func TestContainerLogsWithMultiTenancy(t *testing.T) {
+	testContainerLogs(t, "qux")
+}
+
+func testContainerLogs(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
 	expectedContainerName := "baz"
 	setPodByNameFunc(fw, podTenant, podNamespace, podName, expectedContainerName)
 	setGetContainerLogsFunc(fw, t, expectedPodName, expectedContainerName, &v1.PodLogOptions{}, output)
-	resp, err := http.Get(fw.testHTTPServer.URL + "/containerLogs/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName)
+
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/containerLogs/" + podNamespace + "/" + podName + "/" + expectedContainerName
+	} else {
+		url = fw.testHTTPServer.URL + "/containerLogs/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName
+	}
+
+	resp, err := http.Get(url)
 	if err != nil {
 		t.Errorf("Got error GETing: %v", err)
 	}
@@ -1048,10 +1091,17 @@ func TestContainerLogs(t *testing.T) {
 }
 
 func TestContainerLogsWithTail(t *testing.T) {
+	testContainerLogsWithTail(t, metav1.TenantDefault)
+}
+
+func TestContainerLogsWithTailWithMultiTenancy(t *testing.T) {
+	testContainerLogsWithTail(t, "qux")
+}
+
+func testContainerLogsWithTail(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
@@ -1059,7 +1109,15 @@ func TestContainerLogsWithTail(t *testing.T) {
 	expectedTail := int64(5)
 	setPodByNameFunc(fw, podTenant, podNamespace, podName, expectedContainerName)
 	setGetContainerLogsFunc(fw, t, expectedPodName, expectedContainerName, &v1.PodLogOptions{TailLines: &expectedTail}, output)
-	resp, err := http.Get(fw.testHTTPServer.URL + "/containerLogs/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tailLines=5")
+
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/containerLogs/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tailLines=5"
+	} else {
+		url = fw.testHTTPServer.URL + "/containerLogs/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tailLines=5"
+	}
+
+	resp, err := http.Get(url)
 	if err != nil {
 		t.Errorf("Got error GETing: %v", err)
 	}
@@ -1076,10 +1134,17 @@ func TestContainerLogsWithTail(t *testing.T) {
 }
 
 func TestContainerLogsWithLegacyTail(t *testing.T) {
+	testContainerLogsWithLegacyTail(t, metav1.TenantDefault)
+}
+
+func TestContainerLogsWithLegacyTailWithMultiTenancy(t *testing.T) {
+	testContainerLogsWithLegacyTail(t, "qux")
+}
+
+func testContainerLogsWithLegacyTail(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
@@ -1087,7 +1152,15 @@ func TestContainerLogsWithLegacyTail(t *testing.T) {
 	expectedTail := int64(5)
 	setPodByNameFunc(fw, podTenant, podNamespace, podName, expectedContainerName)
 	setGetContainerLogsFunc(fw, t, expectedPodName, expectedContainerName, &v1.PodLogOptions{TailLines: &expectedTail}, output)
-	resp, err := http.Get(fw.testHTTPServer.URL + "/containerLogs/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=5")
+
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/containerLogs/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=5"
+	} else {
+		url = fw.testHTTPServer.URL + "/containerLogs/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=5"
+	}
+
+	resp, err := http.Get(url)
 	if err != nil {
 		t.Errorf("Got error GETing: %v", err)
 	}
@@ -1102,19 +1175,32 @@ func TestContainerLogsWithLegacyTail(t *testing.T) {
 		t.Errorf("Expected: '%v', got: '%v'", output, result)
 	}
 }
-
 func TestContainerLogsWithTailAll(t *testing.T) {
+	testContainerLogsWithTailAll(t, metav1.TenantDefault)
+}
+
+func TestContainerLogsWithTailAllWithMultiTenancy(t *testing.T) {
+	testContainerLogsWithTailAll(t, "qux")
+}
+
+func testContainerLogsWithTailAll(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
 	expectedContainerName := "baz"
 	setPodByNameFunc(fw, podTenant, podNamespace, podName, expectedContainerName)
 	setGetContainerLogsFunc(fw, t, expectedPodName, expectedContainerName, &v1.PodLogOptions{}, output)
-	resp, err := http.Get(fw.testHTTPServer.URL + "/containerLogs/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=all")
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/containerLogs/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=all"
+	} else {
+		url = fw.testHTTPServer.URL + "/containerLogs/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=all"
+	}
+
+	resp, err := http.Get(url)
 	if err != nil {
 		t.Errorf("Got error GETing: %v", err)
 	}
@@ -1131,17 +1217,31 @@ func TestContainerLogsWithTailAll(t *testing.T) {
 }
 
 func TestContainerLogsWithInvalidTail(t *testing.T) {
+	testContainerLogsWithInvalidTail(t, metav1.TenantDefault)
+}
+
+func TestContainerLogsWithInvalidTailWithMultiTenancy(t *testing.T) {
+	testContainerLogsWithInvalidTail(t, "qux")
+}
+
+func testContainerLogsWithInvalidTail(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
 	expectedContainerName := "baz"
 	setPodByNameFunc(fw, podTenant, podNamespace, podName, expectedContainerName)
 	setGetContainerLogsFunc(fw, t, expectedPodName, expectedContainerName, &v1.PodLogOptions{}, output)
-	resp, err := http.Get(fw.testHTTPServer.URL + "/containerLogs/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=-1")
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/containerLogs/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=-1"
+	} else {
+		url = fw.testHTTPServer.URL + "/containerLogs/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?tail=-1"
+	}
+
+	resp, err := http.Get(url)
 	if err != nil {
 		t.Errorf("Got error GETing: %v", err)
 	}
@@ -1152,17 +1252,32 @@ func TestContainerLogsWithInvalidTail(t *testing.T) {
 }
 
 func TestContainerLogsWithFollow(t *testing.T) {
+	testContainerLogsWithFollow(t, metav1.TenantDefault)
+}
+
+func TestContainerLogsWithFollowWithMultiTenancy(t *testing.T) {
+	testContainerLogsWithFollow(t, "qux")
+}
+
+func testContainerLogsWithFollow(t *testing.T, podTenant string) {
 	fw := newServerTest()
 	defer fw.testHTTPServer.Close()
 	output := "foo bar"
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedPodName := getPodName(podName, podNamespace, podTenant)
 	expectedContainerName := "baz"
 	setPodByNameFunc(fw, podTenant, podNamespace, podName, expectedContainerName)
 	setGetContainerLogsFunc(fw, t, expectedPodName, expectedContainerName, &v1.PodLogOptions{Follow: true}, output)
-	resp, err := http.Get(fw.testHTTPServer.URL + "/containerLogs/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?follow=1")
+
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/containerLogs/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?follow=1"
+	} else {
+		url = fw.testHTTPServer.URL + "/containerLogs/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?follow=1"
+	}
+
+	resp, err := http.Get(url)
 	if err != nil {
 		t.Errorf("Got error GETing: %v", err)
 	}
@@ -1179,18 +1294,30 @@ func TestContainerLogsWithFollow(t *testing.T) {
 }
 
 func TestServeExecInContainerIdleTimeout(t *testing.T) {
+	testServeExecInContainerIdleTimeout(t, metav1.TenantDefault)
+}
+
+func TestServeExecInContainerIdleTimeoutWithMultiTenancy(t *testing.T) {
+	testServeExecInContainerIdleTimeout(t, "qux")
+}
+
+func testServeExecInContainerIdleTimeout(t *testing.T, podTenant string) {
 	ss, err := newTestStreamingServer(100 * time.Millisecond)
 	require.NoError(t, err)
 	defer ss.testHTTPServer.Close()
 	fw := newServerTestWithDebug(true, false, ss)
 	defer fw.testHTTPServer.Close()
 
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 	expectedContainerName := "baz"
 
-	url := fw.testHTTPServer.URL + "/exec/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?c=ls&c=-a&" + api.ExecStdinParam + "=1"
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/exec/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?c=ls&c=-a&" + api.ExecStdinParam + "=1"
+	} else {
+		url = fw.testHTTPServer.URL + "/exec/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?c=ls&c=-a&" + api.ExecStdinParam + "=1"
+	}
 
 	upgradeRoundTripper := spdy.NewSpdyRoundTripper(nil, true, true)
 	c := &http.Client{Transport: upgradeRoundTripper}
@@ -1216,7 +1343,7 @@ func TestServeExecInContainerIdleTimeout(t *testing.T) {
 	<-conn.CloseChan()
 }
 
-func testExecAttach(t *testing.T, verb string) {
+func testExecAttach(t *testing.T, verb string, podTenant string) {
 	tests := map[string]struct {
 		stdin              bool
 		stdout             bool
@@ -1247,7 +1374,6 @@ func testExecAttach(t *testing.T, verb string) {
 			defer fw.testHTTPServer.Close()
 			fmt.Println(desc)
 
-			podTenant := "qux"
 			podNamespace := "other"
 			podName := "foo"
 			expectedPodName := getPodName(podName, podNamespace, podTenant)
@@ -1327,10 +1453,19 @@ func testExecAttach(t *testing.T, verb string) {
 
 			var url string
 			if test.uid {
-				url = fw.testHTTPServer.URL + "/" + verb + "/" + podTenant + "/" + podNamespace + "/" + podName + "/" + testUID + "/" + expectedContainerName + "?ignore=1"
+				if podTenant == metav1.TenantDefault {
+					url = fw.testHTTPServer.URL + "/" + verb + "/" + podNamespace + "/" + podName + "/" + testUID + "/" + expectedContainerName + "?ignore=1"
+				} else {
+					url = fw.testHTTPServer.URL + "/" + verb + "/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + testUID + "/" + expectedContainerName + "?ignore=1"
+				}
 			} else {
-				url = fw.testHTTPServer.URL + "/" + verb + "/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?ignore=1"
+				if podTenant == metav1.TenantDefault {
+					url = fw.testHTTPServer.URL + "/" + verb + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?ignore=1"
+				} else {
+					url = fw.testHTTPServer.URL + "/" + verb + "/tenants/" + podTenant + "/" + podNamespace + "/" + podName + "/" + expectedContainerName + "?ignore=1"
+				}
 			}
+
 			if verb == "exec" {
 				url += "&command=ls&command=-a"
 			}
@@ -1437,25 +1572,45 @@ func testExecAttach(t *testing.T, verb string) {
 }
 
 func TestServeExecInContainer(t *testing.T) {
-	testExecAttach(t, "exec")
+	testExecAttach(t, "exec", metav1.TenantDefault)
+}
+
+func TestServeExecInContainerWithMultiTenancy(t *testing.T) {
+	testExecAttach(t, "exec", "qux")
 }
 
 func TestServeAttachContainer(t *testing.T) {
-	testExecAttach(t, "attach")
+	testExecAttach(t, "attach", metav1.TenantDefault)
+}
+
+func TestServeAttachContainerWithMultiTenancy(t *testing.T) {
+	testExecAttach(t, "attach", "qux")
 }
 
 func TestServePortForwardIdleTimeout(t *testing.T) {
+	testServePortForwardIdleTimeout(t, metav1.TenantDefault)
+}
+
+func TestServePortForwardIdleTimeoutWithMultiTenancy(t *testing.T) {
+	testServePortForwardIdleTimeout(t, "qux")
+}
+
+func testServePortForwardIdleTimeout(t *testing.T, podTenant string) {
 	ss, err := newTestStreamingServer(100 * time.Millisecond)
 	require.NoError(t, err)
 	defer ss.testHTTPServer.Close()
 	fw := newServerTestWithDebug(true, false, ss)
 	defer fw.testHTTPServer.Close()
 
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 
-	url := fw.testHTTPServer.URL + "/portForward/" + podTenant + "/" + podNamespace + "/" + podName
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fw.testHTTPServer.URL + "/portForward/" + podNamespace + "/" + podName
+	} else {
+		url = fw.testHTTPServer.URL + "/portForward/tenants/" + podTenant + "/" + podNamespace + "/" + podName
+	}
 
 	upgradeRoundTripper := spdy.NewRoundTripper(nil, true, true)
 	c := &http.Client{Transport: upgradeRoundTripper}
@@ -1479,6 +1634,14 @@ func TestServePortForwardIdleTimeout(t *testing.T) {
 }
 
 func TestServePortForward(t *testing.T) {
+	testServePortForward(t, metav1.TenantDefault)
+}
+
+func TestServePortForwardWithMultiTenancy(t *testing.T) {
+	testServePortForward(t, "qux")
+}
+
+func testServePortForward(t *testing.T, podTenant string) {
 	tests := map[string]struct {
 		port          string
 		uid           bool
@@ -1500,7 +1663,6 @@ func TestServePortForward(t *testing.T) {
 		"normal port with redirect":     {port: "8000", redirect: true, shouldError: false},
 	}
 
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 
@@ -1549,9 +1711,17 @@ func TestServePortForward(t *testing.T) {
 
 			var url string
 			if test.uid {
-				url = fmt.Sprintf("%s/portForward/%s/%s/%s/%s", fw.testHTTPServer.URL, podTenant, podNamespace, podName, testUID)
+				if podTenant == metav1.TenantDefault {
+					url = fmt.Sprintf("%s/portForward/%s/%s/%s", fw.testHTTPServer.URL, podNamespace, podName, testUID)
+				} else {
+					url = fmt.Sprintf("%s/portForward/tenants/%s/%s/%s/%s", fw.testHTTPServer.URL, podTenant, podNamespace, podName, testUID)
+				}
 			} else {
-				url = fmt.Sprintf("%s/portForward/%s/%s/%s", fw.testHTTPServer.URL, podTenant, podNamespace, podName)
+				if podTenant == metav1.TenantDefault {
+					url = fmt.Sprintf("%s/portForward/%s/%s", fw.testHTTPServer.URL, podNamespace, podName)
+				} else {
+					url = fmt.Sprintf("%s/portForward/tenants/%s/%s/%s", fw.testHTTPServer.URL, podTenant, podNamespace, podName)
+				}
 			}
 
 			var (

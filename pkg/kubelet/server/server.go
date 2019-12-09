@@ -347,16 +347,30 @@ func (s *Server) InstallDefaultHandlers(enableCAdvisorJSONEndpoints bool) {
 const pprofBasePath = "/debug/pprof/"
 
 // InstallDebuggingHandlers registers the HTTP request patterns that serve logs or run commands/containers
+
+// two sets of APIs are supported.
+// 1. the APIs in the form of /{podNamespace}/..., which are backward-compatible with components where multi-tenancy changes yet to be done
+// 2. the APIs in the form of /tenants/{podTenant}/..., which support multi-tenancy
+
+// TODO: when the multi-tenancy changes are done in every component, do the following:
+// 1. remove the first set APIs
+// 2. change the second set of APIs to the form of /{podTenant}/...
 func (s *Server) InstallDebuggingHandlers(criHandler http.Handler) {
 	klog.Infof("Adding debug handlers to kubelet server.")
 
 	ws := new(restful.WebService)
 	ws.
 		Path("/run")
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}/{containerName}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}/{containerName}").
 		To(s.getRun).
 		Operation("getRun"))
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}/{containerName}").
+		To(s.getRun).
+		Operation("getRun"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}/{containerName}").
+		To(s.getRun).
+		Operation("getRun"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
 		To(s.getRun).
 		Operation("getRun"))
 	s.restfulCont.Add(ws)
@@ -364,16 +378,28 @@ func (s *Server) InstallDebuggingHandlers(criHandler http.Handler) {
 	ws = new(restful.WebService)
 	ws.
 		Path("/exec")
-	ws.Route(ws.GET("/{podTenant}/{podNamespace}/{podID}/{containerName}").
+	ws.Route(ws.GET("/{podNamespace}/{podID}/{containerName}").
 		To(s.getExec).
 		Operation("getExec"))
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}/{containerName}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}/{containerName}").
 		To(s.getExec).
 		Operation("getExec"))
-	ws.Route(ws.GET("/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
+	ws.Route(ws.GET("/{podNamespace}/{podID}/{uid}/{containerName}").
 		To(s.getExec).
 		Operation("getExec"))
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}/{containerName}").
+		To(s.getExec).
+		Operation("getExec"))
+	ws.Route(ws.GET("/tenants/{podTenant}/{podNamespace}/{podID}/{containerName}").
+		To(s.getExec).
+		Operation("getExec"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}/{containerName}").
+		To(s.getExec).
+		Operation("getExec"))
+	ws.Route(ws.GET("/tenants/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
+		To(s.getExec).
+		Operation("getExec"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
 		To(s.getExec).
 		Operation("getExec"))
 	s.restfulCont.Add(ws)
@@ -381,16 +407,28 @@ func (s *Server) InstallDebuggingHandlers(criHandler http.Handler) {
 	ws = new(restful.WebService)
 	ws.
 		Path("/attach")
-	ws.Route(ws.GET("/{podTenant}/{podNamespace}/{podID}/{containerName}").
+	ws.Route(ws.GET("/{podNamespace}/{podID}/{containerName}").
 		To(s.getAttach).
 		Operation("getAttach"))
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}/{containerName}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}/{containerName}").
 		To(s.getAttach).
 		Operation("getAttach"))
-	ws.Route(ws.GET("/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
+	ws.Route(ws.GET("/{podNamespace}/{podID}/{uid}/{containerName}").
 		To(s.getAttach).
 		Operation("getAttach"))
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}/{containerName}").
+		To(s.getAttach).
+		Operation("getAttach"))
+	ws.Route(ws.GET("/tenants/{podTenant}/{podNamespace}/{podID}/{containerName}").
+		To(s.getAttach).
+		Operation("getAttach"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}/{containerName}").
+		To(s.getAttach).
+		Operation("getAttach"))
+	ws.Route(ws.GET("/tenants/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
+		To(s.getAttach).
+		Operation("getAttach"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}/{uid}/{containerName}").
 		To(s.getAttach).
 		Operation("getAttach"))
 	s.restfulCont.Add(ws)
@@ -398,16 +436,28 @@ func (s *Server) InstallDebuggingHandlers(criHandler http.Handler) {
 	ws = new(restful.WebService)
 	ws.
 		Path("/portForward")
-	ws.Route(ws.GET("/{podTenant}/{podNamespace}/{podID}").
+	ws.Route(ws.GET("/{podNamespace}/{podID}").
 		To(s.getPortForward).
 		Operation("getPortForward"))
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}").
 		To(s.getPortForward).
 		Operation("getPortForward"))
-	ws.Route(ws.GET("/{podTenant}/{podNamespace}/{podID}/{uid}").
+	ws.Route(ws.GET("/{podNamespace}/{podID}/{uid}").
 		To(s.getPortForward).
 		Operation("getPortForward"))
-	ws.Route(ws.POST("/{podTenant}/{podNamespace}/{podID}/{uid}").
+	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}").
+		To(s.getPortForward).
+		Operation("getPortForward"))
+	ws.Route(ws.GET("/tenants/{podTenant}/{podNamespace}/{podID}").
+		To(s.getPortForward).
+		Operation("getPortForward"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}").
+		To(s.getPortForward).
+		Operation("getPortForward"))
+	ws.Route(ws.GET("/tenants/{podTenant}/{podNamespace}/{podID}/{uid}").
+		To(s.getPortForward).
+		Operation("getPortForward"))
+	ws.Route(ws.POST("/tenants/{podTenant}/{podNamespace}/{podID}/{uid}").
 		To(s.getPortForward).
 		Operation("getPortForward"))
 	s.restfulCont.Add(ws)
@@ -427,7 +477,10 @@ func (s *Server) InstallDebuggingHandlers(criHandler http.Handler) {
 	ws = new(restful.WebService)
 	ws.
 		Path("/containerLogs")
-	ws.Route(ws.GET("/{podTenant}/{podNamespace}/{podID}/{containerName}").
+	ws.Route(ws.GET("/{podNamespace}/{podID}/{containerName}").
+		To(s.getContainerLogs).
+		Operation("getContainerLogs"))
+	ws.Route(ws.GET("/tenants/{podTenant}/{podNamespace}/{podID}/{containerName}").
 		To(s.getContainerLogs).
 		Operation("getContainerLogs"))
 	s.restfulCont.Add(ws)
@@ -506,7 +559,7 @@ func (s *Server) syncLoopHealthCheck(req *http.Request) error {
 
 // getContainerLogs handles containerLogs request against the Kubelet
 func (s *Server) getContainerLogs(request *restful.Request, response *restful.Response) {
-	podTenant := request.PathParameter("podTenant")
+	podTenant := getPodTenant(request)
 	podNamespace := request.PathParameter("podNamespace")
 	podID := request.PathParameter("podID")
 	containerName := request.PathParameter("containerName")
@@ -661,7 +714,7 @@ type execRequestParams struct {
 
 func getExecRequestParams(req *restful.Request) execRequestParams {
 	return execRequestParams{
-		podTenant:     req.PathParameter("podTenant"),
+		podTenant:     getPodTenant(req),
 		podNamespace:  req.PathParameter("podNamespace"),
 		podName:       req.PathParameter("podID"),
 		podUID:        types.UID(req.PathParameter("uid")),
@@ -679,11 +732,20 @@ type portForwardRequestParams struct {
 
 func getPortForwardRequestParams(req *restful.Request) portForwardRequestParams {
 	return portForwardRequestParams{
-		podTenant:    req.PathParameter("podTenant"),
+		podTenant:    getPodTenant(req),
 		podNamespace: req.PathParameter("podNamespace"),
 		podName:      req.PathParameter("podID"),
 		podUID:       types.UID(req.PathParameter("uid")),
 	}
+}
+
+func getPodTenant(req *restful.Request) string {
+	podTenant := req.PathParameter("podTenant")
+	if len(podTenant) == 0 {
+		podTenant = metav1.TenantDefault
+	}
+
+	return podTenant
 }
 
 type responder struct {

@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/websocket"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/kubelet/server/portforward"
 )
@@ -38,6 +39,14 @@ const (
 )
 
 func TestServeWSPortForward(t *testing.T) {
+	testServeWSPortForward(t, metav1.TenantDefault)
+}
+
+func TestServeWSPortForwardWithMultiTenancy(t *testing.T) {
+	testServeWSPortForward(t, "qux")
+}
+
+func testServeWSPortForward(t *testing.T, podTenant string) {
 	tests := map[string]struct {
 		port          string
 		uid           bool
@@ -57,7 +66,6 @@ func TestServeWSPortForward(t *testing.T) {
 		"normal port with uid":          {port: "8000", uid: true, shouldError: false},
 	}
 
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 
@@ -106,9 +114,17 @@ func TestServeWSPortForward(t *testing.T) {
 
 			var url string
 			if test.uid {
-				url = fmt.Sprintf("ws://%s/portForward/%s/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName, testUID, test.port)
+				if podTenant == metav1.TenantDefault {
+					url = fmt.Sprintf("ws://%s/portForward/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podNamespace, podName, testUID, test.port)
+				} else {
+					url = fmt.Sprintf("ws://%s/portForward/tenants/%s/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName, testUID, test.port)
+				}
 			} else {
-				url = fmt.Sprintf("ws://%s/portForward/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName, test.port)
+				if podTenant == metav1.TenantDefault {
+					url = fmt.Sprintf("ws://%s/portForward/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podNamespace, podName, test.port)
+				} else {
+					url = fmt.Sprintf("ws://%s/portForward/tenants/%s/%s/%s?port=%s", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName, test.port)
+				}
 			}
 
 			ws, err := websocket.Dial(url, "", "http://127.0.0.1/")
@@ -152,9 +168,16 @@ func TestServeWSPortForward(t *testing.T) {
 }
 
 func TestServeWSMultiplePortForward(t *testing.T) {
+	testServeWSMultiplePortForward(t, metav1.TenantDefault)
+}
+
+func TestServeWSMultiplePortForwardWithMultiTenancy(t *testing.T) {
+	testServeWSMultiplePortForward(t, "qux")
+}
+
+func testServeWSMultiplePortForward(t *testing.T, podTenant string) {
 	portsText := []string{"7000,8000", "9000"}
 	ports := []uint16{7000, 8000, 9000}
-	podTenant := "qux"
 	podNamespace := "other"
 	podName := "foo"
 
@@ -195,7 +218,12 @@ func TestServeWSMultiplePortForward(t *testing.T) {
 		return nil
 	}
 
-	url := fmt.Sprintf("ws://%s/portForward/%s/%s/%s?", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName)
+	var url string
+	if podTenant == metav1.TenantDefault {
+		url = fmt.Sprintf("ws://%s/portForward/%s/%s?", fw.testHTTPServer.Listener.Addr().String(), podNamespace, podName)
+	} else {
+		url = fmt.Sprintf("ws://%s/portForward/tenants/%s/%s/%s?", fw.testHTTPServer.Listener.Addr().String(), podTenant, podNamespace, podName)
+	}
 	for _, port := range portsText {
 		url = url + fmt.Sprintf("port=%s&", port)
 	}
