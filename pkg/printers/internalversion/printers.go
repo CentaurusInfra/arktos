@@ -624,7 +624,13 @@ func printPodList(podList *api.PodList, options printers.PrintOptions) ([]metav1
 
 func printPod(pod *api.Pod, options printers.PrintOptions) ([]metav1.TableRow, error) {
 	restarts := 0
-	totalContainers := len(pod.Spec.Containers)
+	totalContainers := 0
+	isVmPod := pod.Spec.VirtualMachine != nil
+	if isVmPod {
+		totalContainers = 1;
+	} else {
+		totalContainers = len(pod.Spec.Containers)
+	}
 	readyContainers := 0
 
 	reason := string(pod.Status.Phase)
@@ -674,23 +680,31 @@ func printPod(pod *api.Pod, options printers.PrintOptions) ([]metav1.TableRow, e
 	if !initializing {
 		restarts = 0
 		hasRunning := false
-		for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
-			container := pod.Status.ContainerStatuses[i]
-
-			restarts += int(container.RestartCount)
-			if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
-				reason = container.State.Waiting.Reason
-			} else if container.State.Terminated != nil && container.State.Terminated.Reason != "" {
-				reason = container.State.Terminated.Reason
-			} else if container.State.Terminated != nil && container.State.Terminated.Reason == "" {
-				if container.State.Terminated.Signal != 0 {
-					reason = fmt.Sprintf("Signal:%d", container.State.Terminated.Signal)
-				} else {
-					reason = fmt.Sprintf("ExitCode:%d", container.State.Terminated.ExitCode)
-				}
-			} else if container.Ready && container.State.Running != nil {
+		if isVmPod {
+			restarts += int(pod.Status.VirtualMachineStatus.RestartCount)
+			if pod.Status.Phase == api.PodRunning {
 				hasRunning = true
 				readyContainers++
+			}
+		} else {
+			for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
+				container := pod.Status.ContainerStatuses[i]
+
+				restarts += int(container.RestartCount)
+				if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
+					reason = container.State.Waiting.Reason
+				} else if container.State.Terminated != nil && container.State.Terminated.Reason != "" {
+					reason = container.State.Terminated.Reason
+				} else if container.State.Terminated != nil && container.State.Terminated.Reason == "" {
+					if container.State.Terminated.Signal != 0 {
+						reason = fmt.Sprintf("Signal:%d", container.State.Terminated.Signal)
+					} else {
+						reason = fmt.Sprintf("ExitCode:%d", container.State.Terminated.ExitCode)
+					}
+				} else if container.Ready && container.State.Running != nil {
+					hasRunning = true
+					readyContainers++
+				}
 			}
 		}
 
