@@ -500,7 +500,7 @@ func streamLocation(
 	loc := &url.URL{
 		Scheme:   nodeInfo.Scheme,
 		Host:     net.JoinHostPort(nodeInfo.Hostname, nodeInfo.Port),
-		Path:     fmt.Sprintf("/%s/%s/%s/%s", path, pod.Namespace, pod.Name, container),
+		Path:     fmt.Sprintf("/%s/%s/%s/%s/%s", path, pod.Tenant, pod.Namespace, pod.Name, container),
 		RawQuery: params.Encode(),
 	}
 	return loc, nodeInfo.Transport, nil
