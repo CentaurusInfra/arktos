@@ -2370,6 +2370,9 @@ type VirtualMachine struct {
 	// +patchStrategy=merge
 	// +optional
 	VolumeDevices []VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,13,rep,name=volumeDevices"`
+	// cloud-init user data script
+	// +optional
+	CloudInitUserDataScript string `json:"cloudInitUserDataScript,omitempty" protobuf:"bytes,14,opt,name=cloudInitUserDataScript"`
 }
 
 // Handler defines a specific action that should be taken

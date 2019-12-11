@@ -214,8 +214,8 @@ func parseConfig(configFileName string) map[string][]string {
 		if size >= 2 {
 			key := strings.TrimSpace(strs[0])
 			m[key] = make([]string, 2)
-			m[key][0] = strings.TrimSpace(strs[1]);
-			m[key][1] = strings.TrimSpace(strs[2]);
+			m[key][0] = strings.TrimSpace(strs[1])
+			m[key][1] = strings.TrimSpace(strs[2])
 		}
 	}
 
@@ -238,7 +238,7 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 		opts = append(opts, clientv3.WithPrefix())
 	}
 
-        klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
+	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
 	m := parseConfig("apiserver.config")
 
 	if val, ok := m[wc.key]; ok {
