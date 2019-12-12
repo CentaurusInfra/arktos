@@ -418,6 +418,7 @@ func TestPortForwardLocation(t *testing.T) {
 		{
 			in: &api.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    "te",
 					Namespace: "ns",
 					Name:      "pod1",
 				},
@@ -427,11 +428,12 @@ func TestPortForwardLocation(t *testing.T) {
 			},
 			info:        &client.ConnectionInfo{},
 			opts:        &api.PodPortForwardOptions{},
-			expectedURL: &url.URL{Host: ":", Path: "/portForward/ns/pod1"},
+			expectedURL: &url.URL{Host: ":", Path: "/portForward/te/ns/pod1"},
 		},
 		{
 			in: &api.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    "te",
 					Namespace: "ns",
 					Name:      "pod1",
 				},
@@ -441,7 +443,7 @@ func TestPortForwardLocation(t *testing.T) {
 			},
 			info:        &client.ConnectionInfo{},
 			opts:        &api.PodPortForwardOptions{Ports: []int32{80}},
-			expectedURL: &url.URL{Host: ":", Path: "/portForward/ns/pod1", RawQuery: "port=80"},
+			expectedURL: &url.URL{Host: ":", Path: "/portForward/te/ns/pod1", RawQuery: "port=80"},
 		},
 	}
 	for _, tc := range tcs {
