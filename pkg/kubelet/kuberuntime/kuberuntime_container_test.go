@@ -62,7 +62,7 @@ func TestRemoveContainer(t *testing.T) {
 	err = m.removeContainer(containerID)
 	assert.NoError(t, err)
 	// Verify container log is removed
-	expectedContainerLogPath := filepath.Join(podLogsRootDirectory, "tenants_test-te_new_bar_12345678", "foo", "0.log")
+	expectedContainerLogPath := filepath.Join(podLogsRootDirectory, "test-te_new_bar_12345678", "foo", "0.log")
 	expectedContainerLogSymlink := legacyLogSymlink(containerID, "foo", "bar", "new", "test-te")
 	assert.Equal(t, fakeOS.Removes, []string{expectedContainerLogPath, expectedContainerLogSymlink})
 	// Verify container is removed
