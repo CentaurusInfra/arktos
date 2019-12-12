@@ -1649,6 +1649,32 @@ func TestPrintPod(t *testing.T) {
 			},
 			[]metav1beta1.TableRow{{Cells: []interface{}{"test6", int64(0), "1/2", "Running", int64(6), "<unknown>"}}},
 		},
+		{
+			// Test pod has 2 containers, one is running and the other is completed.
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "test7"},
+				Spec:       api.PodSpec{VirtualMachine: &api.VirtualMachine{Name: "testVM", PowerSpec: api.VmPowerSpecRunning}},
+				Status: api.PodStatus{
+					Phase:  "Running",
+					Reason: "",
+					VirtualMachineStatus: &api.VirtualMachineStatus{State: api.VmActive, PowerState: api.Running},
+				},
+			},
+			[]metav1beta1.TableRow{{Cells: []interface{}{"test7", int64(0), "1/1", "Running", int64(0), "<unknown>"}}},
+		},
+		{
+			// Test pod has 2 containers, one is running and the other is completed.
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "test8"},
+				Spec:       api.PodSpec{VirtualMachine: &api.VirtualMachine{Name: "testVM", PowerSpec: api.VmPowerSpecShutdown}},
+				Status: api.PodStatus{
+					Phase:  "Pending",
+					Reason: "",
+					VirtualMachineStatus: &api.VirtualMachineStatus{State: api.VmStopped, PowerState: api.Shutdown},
+				},
+			},
+			[]metav1beta1.TableRow{{Cells: []interface{}{"test8", int64(0), "0/1", "Pending", int64(0), "<unknown>"}}},
+		},
 	}
 
 	for i, test := range tests {
