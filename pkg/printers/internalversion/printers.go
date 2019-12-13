@@ -627,7 +627,7 @@ func printPod(pod *api.Pod, options printers.PrintOptions) ([]metav1.TableRow, e
 	totalContainers := 0
 	isVmPod := pod.Spec.VirtualMachine != nil
 	if isVmPod {
-		totalContainers = 1;
+		totalContainers = 1
 	} else {
 		totalContainers = len(pod.Spec.Containers)
 	}

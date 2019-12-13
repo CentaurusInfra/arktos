@@ -14,4 +14,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package vmpod// import "k8s.io/kubernetes/pkg/controller/vmpod"
+package vmpod // import "k8s.io/kubernetes/pkg/controller/vmpod"

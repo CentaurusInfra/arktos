@@ -118,7 +118,6 @@ status:
   - name: "64"
     portID: "65"
     reason: "66"
-    state: ']鴍'
   nominatedNodeName: "29"
   phase: ƗǸƢ6/ʕV
   podIP: "31"
@@ -127,9 +126,10 @@ status:
   virtualMachineStatus:
     image: "63"
     imageId: "62"
-    lastTerminationState: -1579157235
+    lastTerminationState: '''üA謥ǣ偐圠=l畣潁谯耨'
     name: "60"
-    powerState: 6ĴC浔Ű壝ž(-譵ņ錕?øē
-    restartCount: 1944931763
-    state: 712024464
+    powerState: ƺ魋Ď儇击3ƆìQ
+    ready: true
+    restartCount: -7470234
+    state: AO6
     virtualMachineId: "61"

@@ -26,9 +26,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/component-base/logs"
+	"k8s.io/kubernetes/cmd/workload-controller-manager/app"
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
-	"k8s.io/kubernetes/cmd/workload-controller-manager/app"
 
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
 	clientset "k8s.io/client-go/kubernetes"
@@ -85,7 +85,6 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
 
 	c := &controllerManagerConfig.Config{
 		Client:                  client,

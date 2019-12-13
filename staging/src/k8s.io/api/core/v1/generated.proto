@@ -5001,10 +5001,10 @@ message VirtualMachineStatus {
 
   // state of the virtual machine
   // +optional
-  optional int32 state = 5;
+  optional string state = 5;
 
   // +optional
-  optional int32 lastTerminationState = 6;
+  optional string lastTerminationState = 6;
 
   // +optional
   optional string powerState = 7;

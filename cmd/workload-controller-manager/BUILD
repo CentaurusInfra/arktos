@@ -8,11 +8,16 @@ go_library(
     deps = [
         "//cmd/workload-controller-manager/app:go_default_library",
         "//cmd/workload-controller-manager/app/config:go_default_library",
+        "//pkg/client/metrics/prometheus:go_default_library",
+        "//pkg/master/ports:go_default_library",
+        "//pkg/version/prometheus:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/server/options:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
         "//staging/src/k8s.io/client-go/tools/clientcmd:go_default_library",
         "//staging/src/k8s.io/component-base/logs:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
     ],
 )
 

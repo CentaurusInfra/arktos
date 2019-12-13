@@ -32,7 +32,7 @@ import (
 )
 
 type VMPodController struct {
-	kubeClient clientset.Interface
+	kubeClient      clientset.Interface
 	podLister       corelisters.PodLister
 	podListerSynced cache.InformerSynced
 }
@@ -42,7 +42,7 @@ func NewVMPod(kubeClient clientset.Interface, podInformer coreinformers.PodInfor
 		metrics.RegisterMetricAndTrackRateLimiterUsage("vm_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 	vmc := &VMPodController{
-		kubeClient:             kubeClient,
+		kubeClient: kubeClient,
 	}
 
 	vmc.podLister = podInformer.Lister()
@@ -59,10 +59,10 @@ func (vmc *VMPodController) updatePod(old, cur interface{}) {
 	newPod := cur.(*v1.Pod)
 	oldPod := old.(*v1.Pod)
 
-	klog.V(3).Infof("in vm controller, pod %v is updated", newPod.Name);
+	klog.V(3).Infof("in vm controller, pod %v is updated", newPod.Name)
 
 	if !(oldPod.Status.Phase == v1.PodNoSchedule &&
-	newPod.Spec.VirtualMachine != nil && newPod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning) {
+		newPod.Spec.VirtualMachine != nil && newPod.Spec.VirtualMachine.PowerSpec == v1.VmPowerSpecRunning) {
 		return
 	}
 

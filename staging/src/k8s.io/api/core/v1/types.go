@@ -2510,21 +2510,20 @@ type ContainerStatus struct {
 	ContainerID string `json:"containerID,omitempty" protobuf:"bytes,8,opt,name=containerID"`
 }
 
-type VmState int32
+type VmState string
 
-// VM state represent stable VM state that is presented to users.
 const (
-	VmActive           VmState = 1 << iota
-	VmPaused                   //VmState = 2
-	VmSuspended                //VmState = 4
-	VmStopped                  //VmState = 8
-	VmRescued                  //VmState = 16
-	VmResized                  //VmState = 32
-	VmSoftDeleted              //VmState = 64
-	VmDeleted                  //VmState = 128
-	VmError                    //VmState = 256
-	VmShelved                  //VmState =512
-	VmShelvedOffloaded         //VmState = 1024
+	VmActive           VmState = "active"
+	VmPaused           VmState = "paused"
+	VmSuspended        VmState = "suspended"
+	VmStopped          VmState = "stopped"
+	VmRescued          VmState = "rescued"
+	VmResized          VmState = "resized"
+	VmSoftDeleted      VmState = "softdeleted"
+	VmDeleted          VmState = "deleted"
+	VmError            VmState = "error"
+	VmShelved          VmState = "shelved"
+	VmShelvedOffloaded VmState = "shelvedoffloaded"
 )
 
 type VmPowerState string

@@ -140,6 +140,7 @@ filegroup(
         "//pkg/controller/ttl:all-srcs",
         "//pkg/controller/ttlafterfinished:all-srcs",
         "//pkg/controller/util/node:all-srcs",
+        "//pkg/controller/vmpod:all-srcs",
         "//pkg/controller/volume/attachdetach:all-srcs",
         "//pkg/controller/volume/events:all-srcs",
         "//pkg/controller/volume/expand:all-srcs",
