@@ -55,19 +55,27 @@ func TestFinalized(t *testing.T) {
 }
 
 func TestFinalizeNamespaceFunc(t *testing.T) {
+	testFinalizeNamespaceFunc(t, metav1.TenantDefault)
+}
+
+func TestFinalizeNamespaceFuncWithMultiTenancy(t *testing.T) {
+	testFinalizeNamespaceFunc(t, metav1.TenantDefault)
+}
+
+func testFinalizeNamespaceFunc(t *testing.T, tenant string) {
 	mockClient := &fake.Clientset{}
 	testNamespace := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "test",
 			ResourceVersion: "1",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 		},
 		Spec: v1.NamespaceSpec{
 			Finalizers: []v1.FinalizerName{"kubernetes", "other"},
 		},
 	}
 	d := namespacedResourcesDeleter{
-		nsClient:       mockClient.CoreV1().Namespaces(),
+		nsGetter:       mockClient.CoreV1(),
 		finalizerToken: v1.FinalizerKubernetes,
 	}
 	d.finalizeNamespace(testNamespace)
@@ -87,7 +95,7 @@ func TestFinalizeNamespaceFunc(t *testing.T) {
 	}
 }
 
-func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersions) {
+func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersions, tenant string) {
 	now := metav1.Now()
 	namespaceName := "test"
 	testNamespacePendingFinalize := &v1.Namespace{
@@ -95,7 +103,7 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 			Name:              namespaceName,
 			ResourceVersion:   "1",
 			DeletionTimestamp: &now,
-			Tenant:            metav1.TenantDefault,
+			Tenant:            tenant,
 		},
 		Spec: v1.NamespaceSpec{
 			Finalizers: []v1.FinalizerName{"kubernetes"},
@@ -109,7 +117,7 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 			Name:              namespaceName,
 			ResourceVersion:   "1",
 			DeletionTimestamp: &now,
-			Tenant:            metav1.TenantDefault,
+			Tenant:            tenant,
 		},
 		Spec: v1.NamespaceSpec{},
 		Status: v1.NamespaceStatus{
@@ -122,14 +130,29 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 	resources := testResources()
 	groupVersionResources, _ := discovery.GroupVersionResources(resources)
 	for groupVersionResource := range groupVersionResources {
-		urlPath := path.Join([]string{
-			dynamic.LegacyAPIPathResolverFunc(schema.GroupVersionKind{Group: groupVersionResource.Group, Version: groupVersionResource.Version}),
-			groupVersionResource.Group,
-			groupVersionResource.Version,
-			"namespaces",
-			namespaceName,
-			groupVersionResource.Resource,
-		}...)
+		var urlPath string
+		if tenant == metav1.TenantDefault {
+			urlPath = path.Join([]string{
+				dynamic.LegacyAPIPathResolverFunc(schema.GroupVersionKind{Group: groupVersionResource.Group, Version: groupVersionResource.Version}),
+				groupVersionResource.Group,
+				groupVersionResource.Version,
+				"namespaces",
+				namespaceName,
+				groupVersionResource.Resource,
+			}...)
+		} else {
+			urlPath = path.Join([]string{
+				dynamic.LegacyAPIPathResolverFunc(schema.GroupVersionKind{Group: groupVersionResource.Group, Version: groupVersionResource.Version}),
+				groupVersionResource.Group,
+				groupVersionResource.Version,
+				"tenants",
+				tenant,
+				"namespaces",
+				namespaceName,
+				groupVersionResource.Resource,
+			}...)
+		}
+
 		dynamicClientActionSet.Insert((&fakeAction{method: "GET", path: urlPath}).String())
 		dynamicClientActionSet.Insert((&fakeAction{method: "DELETE", path: urlPath}).String())
 	}
@@ -183,8 +206,8 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 		fn := func() ([]*metav1.APIResourceList, error) {
 			return resources, nil
 		}
-		d := NewNamespacedResourcesDeleter(mockClient.CoreV1().Namespaces(), dynamicClient, mockClient.CoreV1(), fn, v1.FinalizerKubernetes, true)
-		if err := d.Delete(testInput.testNamespace.Name); err != nil {
+		d := NewNamespacedResourcesDeleter(mockClient.CoreV1(), dynamicClient, mockClient.CoreV1(), fn, v1.FinalizerKubernetes, true)
+		if err := d.Delete(testInput.testNamespace.Name, testInput.testNamespace.Tenant); err != nil {
 			t.Errorf("scenario %s - Unexpected error when synching namespace %v", scenario, err)
 		}
 
@@ -222,7 +245,7 @@ func TestRetryOnConflictError(t *testing.T) {
 	}
 	namespace := &v1.Namespace{}
 	d := namespacedResourcesDeleter{
-		nsClient: mockClient.CoreV1().Namespaces(),
+		nsGetter: mockClient.CoreV1(),
 	}
 	_, err := d.retryOnConflictError(namespace, retryOnce)
 	if err != nil {
@@ -234,20 +257,35 @@ func TestRetryOnConflictError(t *testing.T) {
 }
 
 func TestSyncNamespaceThatIsTerminatingNonExperimental(t *testing.T) {
-	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{})
+	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{}, metav1.TenantDefault)
+}
+
+func TestSyncNamespaceThatIsTerminatingNonExperimentalWithMultiTenancy(t *testing.T) {
+	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{}, "test-te")
 }
 
 func TestSyncNamespaceThatIsTerminatingV1(t *testing.T) {
-	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{Versions: []string{"apps/v1"}})
+	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{Versions: []string{"apps/v1"}}, metav1.TenantDefault)
 }
 
+func TestSyncNamespaceThatIsTerminatingV1WithMultiTenancy(t *testing.T) {
+	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{Versions: []string{"apps/v1"}}, "test-te")
+}
 func TestSyncNamespaceThatIsActive(t *testing.T) {
+	testSyncNamespaceThatIsActive(t, metav1.TenantDefault)
+}
+
+func TestSyncNamespaceThatIsActiveWithMultiTenancy(t *testing.T) {
+	testSyncNamespaceThatIsActive(t, "test-te")
+}
+
+func testSyncNamespaceThatIsActive(t *testing.T, tenant string) {
 	mockClient := &fake.Clientset{}
 	testNamespace := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "test",
 			ResourceVersion: "1",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 		},
 		Spec: v1.NamespaceSpec{
 			Finalizers: []v1.FinalizerName{"kubernetes"},
@@ -259,9 +297,9 @@ func TestSyncNamespaceThatIsActive(t *testing.T) {
 	fn := func() ([]*metav1.APIResourceList, error) {
 		return testResources(), nil
 	}
-	d := NewNamespacedResourcesDeleter(mockClient.CoreV1().Namespaces(), nil, mockClient.CoreV1(),
+	d := NewNamespacedResourcesDeleter(mockClient.CoreV1(), nil, mockClient.CoreV1(),
 		fn, v1.FinalizerKubernetes, true)
-	err := d.Delete(testNamespace.Name)
+	err := d.Delete(testNamespace.Name, testNamespace.Tenant)
 	if err != nil {
 		t.Errorf("Unexpected error when synching namespace %v", err)
 	}

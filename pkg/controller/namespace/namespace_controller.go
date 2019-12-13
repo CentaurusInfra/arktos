@@ -72,7 +72,7 @@ func NewNamespaceController(
 	// create the controller so we can inject the enqueue function
 	namespaceController := &NamespaceController{
 		queue:                      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "namespace"),
-		namespacedResourcesDeleter: deletion.NewNamespacedResourcesDeleter(kubeClient.CoreV1().Namespaces(), dynamicClient, kubeClient.CoreV1(), discoverResourcesFn, finalizerToken, true),
+		namespacedResourcesDeleter: deletion.NewNamespacedResourcesDeleter(kubeClient.CoreV1(), dynamicClient, kubeClient.CoreV1(), discoverResourcesFn, finalizerToken, true),
 	}
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
@@ -166,7 +166,12 @@ func (nm *NamespaceController) syncNamespaceFromKey(key string) (err error) {
 		klog.V(4).Infof("Finished syncing namespace %q (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, err := nm.lister.Get(key)
+	tenant, nsName, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
+	_, err = nm.lister.NamespacesWithMultiTenancy(tenant).Get(nsName)
 	if errors.IsNotFound(err) {
 		klog.Infof("Namespace has been deleted %v", key)
 		return nil
@@ -175,7 +180,7 @@ func (nm *NamespaceController) syncNamespaceFromKey(key string) (err error) {
 		utilruntime.HandleError(fmt.Errorf("Unable to retrieve namespace %v from store: %v", key, err))
 		return err
 	}
-	return nm.namespacedResourcesDeleter.Delete(namespace.Name)
+	return nm.namespacedResourcesDeleter.Delete(nsName, tenant)
 }
 
 // Run starts observing the system with the specified number of workers.
