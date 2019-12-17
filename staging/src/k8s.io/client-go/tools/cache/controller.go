@@ -18,6 +18,7 @@ package cache
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"sync"
 	"time"
 
@@ -83,7 +84,7 @@ type controller struct {
 
 type Controller interface {
 	Run(stopCh <-chan struct{})
-	RunWithReset(stopCh <-chan struct{}, resetCh chan interface{})
+	RunWithReset(stopCh <-chan struct{}, resetCh <-chan interface{})
 	HasSynced() bool
 	LastSyncResourceVersion() string
 }
@@ -101,17 +102,38 @@ func New(c *Config) Controller {
 // It's an error to call Run more than once.
 // Run blocks; call via go.
 func (c *controller) Run(stopCh <-chan struct{}) {
+	c.RunWithReset(stopCh, nil)
+}
+
+// RunWithReset begins processing items, and will continue until a value is sent down stopCh.
+// It's an error to call Run more than once.
+// Run blocks; call via go.
+func (c *controller) RunWithReset(stopCh <-chan struct{}, resetCh <-chan interface{}) {
+	klog.Infof("start controller run with reset %v. %v", resetCh, c.config.ObjectType.GetObjectKind())
+
 	defer utilruntime.HandleCrash()
 	go func() {
 		<-stopCh
 		c.config.Queue.Close()
 	}()
-	r := NewReflector(
-		c.config.ListerWatcher,
-		c.config.ObjectType,
-		c.config.Queue,
-		c.config.FullResyncPeriod,
-	)
+
+	var r *Reflector
+	if resetCh != nil {
+		r = NewReflectorWithReset(
+			c.config.ListerWatcher,
+			c.config.ObjectType,
+			c.config.Queue,
+			c.config.FullResyncPeriod,
+			resetCh,
+		)
+	} else {
+		r = NewReflector(
+			c.config.ListerWatcher,
+			c.config.ObjectType,
+			c.config.Queue,
+			c.config.FullResyncPeriod,
+		)
+	}
 	r.ShouldResync = c.config.ShouldResync
 	r.clock = c.clock
 
@@ -124,57 +146,6 @@ func (c *controller) Run(stopCh <-chan struct{}) {
 
 	wg.StartWithChannel(stopCh, r.Run)
 
-	wait.Until(c.processLoop, time.Second, stopCh)
-}
-
-// RunWithReset begins processing items, and will continue until a value is sent down stopCh.
-// It's an error to call Run more than once.
-// Run blocks; call via go.
-func (c *controller) RunWithReset(stopCh <-chan struct{}, resetCh chan interface{}) {
-	defer utilruntime.HandleCrash()
-	go func() {
-		<-stopCh
-		c.config.Queue.Close()
-	}()
-
-	r := NewReflector(
-		c.config.ListerWatcher,
-		c.config.ObjectType,
-		c.config.Queue,
-		c.config.FullResyncPeriod,
-	)
-	r.ShouldResync = c.config.ShouldResync
-	r.clock = c.clock
-
-	c.reflectorMutex.Lock()
-	c.reflector = r
-	c.reflectorMutex.Unlock()
-
-	go func() {
-		wait.Until(func() {
-			select {
-			case signal := <-resetCh:
-				bounds, ok := signal.([]int64)
-				if ok {
-					c.config.ListerWatcher.Update(createHashkeyListOptions(bounds[0], bounds[1]))
-					r = NewReflector(
-						c.config.ListerWatcher,
-						c.config.ObjectType,
-						c.config.Queue,
-						c.config.FullResyncPeriod,
-					)
-					r.ShouldResync = c.config.ShouldResync
-					c.reflectorMutex.Lock()
-					c.reflector = r
-					c.reflectorMutex.Unlock()
-				}
-			default:
-				if err := r.ListAndWatch(stopCh); err != nil {
-					utilruntime.HandleError(err)
-				}
-			}
-		}, r.period, stopCh)
-	}()
 	wait.Until(c.processLoop, time.Second, stopCh)
 }
 

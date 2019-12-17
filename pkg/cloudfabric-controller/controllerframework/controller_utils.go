@@ -28,7 +28,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -772,4 +774,30 @@ func WaitForCacheSync(controllerType string, stopCh <-chan struct{}, cacheSyncs 
 
 	klog.Infof("Caches are synced for %s controller", controllerType)
 	return true
+}
+
+// The following are test util. Put here so that can be used in other packages' tests
+
+var alwaysReady = func() bool { return true }
+var notifyTimes int
+
+func mockNotifyHander(controllerInstance *v1.ControllerInstance) {
+	notifyTimes++
+	return
+}
+func mockCheckInstanceHander() {
+	return
+}
+
+func CreateTestControllerInstanceManager(stopCh chan struct{}, updateCh chan string) (*ControllerInstanceManager, informers.SharedInformerFactory) {
+	client := fake.NewSimpleClientset()
+	informers := informers.NewSharedInformerFactory(client, 0)
+
+	cim := NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, updateCh)
+	go cim.Run(stopCh)
+
+	cim.controllerListerSynced = alwaysReady
+	cim.notifyHandler = mockNotifyHander
+	checkInstanceHandler = mockCheckInstanceHander
+	return GetControllerInstanceManager(), informers
 }

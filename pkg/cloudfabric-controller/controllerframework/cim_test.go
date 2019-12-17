@@ -20,26 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
 	"testing"
 )
-
-var alwaysReady = func() bool { return true }
-var notifyTimes int
-
-func createControllerInstanceManager(stopCh chan struct{}, updateCh chan string) (*ControllerInstanceManager, informers.SharedInformerFactory) {
-	client := fake.NewSimpleClientset()
-	informers := informers.NewSharedInformerFactory(client, 0)
-
-	cim := NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, updateCh)
-	go cim.Run(stopCh)
-
-	cim.controllerListerSynced = alwaysReady
-	cim.notifyHandler = mockNotifyHander
-	checkInstanceHandler = mockCheckInstanceHander
-	return GetControllerInstanceManager(), informers
-}
 
 func newControllerInstance(controllerType string, controllerKey int64, workloadNum int32, isLocked bool) *v1.ControllerInstance {
 	controllerInstance := &v1.ControllerInstance{
@@ -55,15 +37,6 @@ func newControllerInstance(controllerType string, controllerKey int64, workloadN
 	controllerInstance.Name = generateControllerName()
 
 	return controllerInstance
-}
-
-func mockNotifyHander(controllerInstance *v1.ControllerInstance) {
-	notifyTimes++
-	return
-}
-
-func mockCheckInstanceHander() {
-	return
 }
 
 func testAddEvent(t *testing.T, cim *ControllerInstanceManager, notifyTimes int) (*v1.ControllerInstance, string, map[string]v1.ControllerInstance) {
@@ -94,7 +67,7 @@ func TestSyncControllerInstances_Nil(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	assert.True(t, cim.isControllerListInitialized, "Expect controller list is initialized")
 
 	// invalid controller type
@@ -110,7 +83,7 @@ func TestControllerInstancesAddAndUpdateEventHandler(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
 	// add event
@@ -145,7 +118,7 @@ func TestControllerInstanceDeleteEventHandler(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
 	// add event
@@ -167,7 +140,7 @@ func TestDeletedControllerInstanceSentToAddEventHandler(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
 	// add event
@@ -191,7 +164,7 @@ func TestDeleteControllerInstanceDoesNotExist(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
 	controllerInstance1 := newControllerInstance("bar", 10000, 999, false)
@@ -209,7 +182,7 @@ func TestAddMultipleControllerInstancesForSameControllerType(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
 	// add event
@@ -238,7 +211,7 @@ func TestUpdateHandlerWithOldEvents(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
 	// add event
@@ -273,7 +246,7 @@ func TestErrorHandlingInListControllerInstances(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 
-	cim, _ := createControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
 	notifyTimes = 0
 
 	_, controllerType, _ := testAddEvent(t, cim, 1)

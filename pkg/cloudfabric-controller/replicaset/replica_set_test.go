@@ -19,6 +19,7 @@ package replicaset
 import (
 	"errors"
 	"fmt"
+	"k8s.io/klog"
 	"math/rand"
 	"net/http/httptest"
 	"net/url"
@@ -56,24 +57,21 @@ import (
 
 func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh chan struct{}, burstReplicas int) (*ReplicaSetController, informers.SharedInformerFactory) {
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
-	updateChan := make(chan string)
+	updateCh := make(chan string)
 	resetCh := make(chan interface{})
 
 	cim := controller.GetControllerInstanceManager()
 	if cim == nil {
-		cim = controller.NewControllerInstanceManager(
-			informers.Core().V1().ControllerInstances(),
-			client,
-			updateChan)
+		cim, _ = controller.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
 	}
-	go cim.Run(stopCh)
 
 	ret := NewReplicaSetController(
 		informers.Apps().V1().ReplicaSets(),
 		informers.Core().V1().Pods(),
 		client,
 		burstReplicas,
-		updateChan,
+		updateCh,
 		resetCh,
 	)
 
@@ -291,7 +289,24 @@ func skipHttpFunc(verb string, url url.URL) bool {
 	return true
 }
 
+func mockCreateControllerInstance(c *controller.ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
+	fakeControllerInstance := &v1.ControllerInstance{
+		ObjectMeta:     metav1.ObjectMeta{Name: c.GetControllerName()},
+		ControllerType: c.GetControllerType(),
+		ControllerKey:  c.GetControllerKey(),
+		WorkloadNum:    0,
+		IsLocked:       false,
+	}
+	return fakeControllerInstance, nil
+}
+
 func TestSyncReplicaSetDormancy(t *testing.T) {
+	oldHandler := controller.CreateControllerInstanceHandler
+	controller.CreateControllerInstanceHandler = mockCreateControllerInstance
+	defer func() {
+		controller.CreateControllerInstanceHandler = oldHandler
+	}()
+
 	// Setup a test server so we can lie about the current state of pods
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:    200,
@@ -426,7 +441,18 @@ func TestPodControllerLookup(t *testing.T) {
 	}
 }
 
+func mockResetHander(c *controller.ControllerBase, newLowerBound, newUpperbound int64) {
+	klog.Infof("Mocked sent reset message to channel")
+	return
+}
+
 func TestWatchControllers(t *testing.T) {
+	oldHandler := controller.ResetFilterHandler
+	controller.ResetFilterHandler = mockResetHander
+	defer func() {
+		controller.ResetFilterHandler = oldHandler
+	}()
+
 	fakeWatch := watch.NewFake()
 	client := fake.NewSimpleClientset()
 	client.PrependWatchReactor("replicasets", core.DefaultWatchReactor(fakeWatch, nil))
@@ -436,6 +462,13 @@ func TestWatchControllers(t *testing.T) {
 	defer close(stopCh)
 	defer close(updateCh)
 	defer close(resetCh)
+
+	cim := controller.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controller.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	manager := NewReplicaSetController(
 		informers.Apps().V1().ReplicaSets(),

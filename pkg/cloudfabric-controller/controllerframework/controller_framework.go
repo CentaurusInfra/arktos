@@ -19,12 +19,14 @@ package controllerframework
 import (
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -42,6 +44,9 @@ const (
 
 	controllerInstanceNamePrefix string = "ci"
 )
+
+var ResetFilterHandler = resetFilter
+var CreateControllerInstanceHandler = createControllerInstance
 
 type controllerInstanceLocal struct {
 	instanceName  string
@@ -69,10 +74,9 @@ type ControllerBase struct {
 	client                                   clientset.Interface
 	controllerInstanceUpdateByControllerType chan string
 	mux                                      sync.Mutex
-	unlockControllerInstanceHander           func(local controllerInstanceLocal) error
+	unlockControllerInstanceHandler          func(local controllerInstanceLocal) error
+	createControllerInstanceHandler          func(v1.ControllerInstance) (*v1.ControllerInstance, error)
 	ResetCh                                  chan interface{}
-
-	resetFilterHandler func(newLowerBound, newUpperbound int64)
 }
 
 var (
@@ -114,8 +118,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 
 	controller.controllerKey = controller.generateKey()
 	controller.controllerName = generateControllerName()
-	controller.unlockControllerInstanceHander = controller.unlockControllerInstance
-	controller.resetFilterHandler = controller.resetFilter
+	controller.unlockControllerInstanceHandler = controller.unlockControllerInstance
 
 	// First controller instance. No need to wait for others
 	if len(controller.sortedControllerInstancesLocal) == 0 {
@@ -205,6 +208,10 @@ func (c *ControllerBase) GetControllerType() string {
 	return c.controllerType
 }
 
+func (c *ControllerBase) GetControllerKey() int64 {
+	return c.controllerKey
+}
+
 func (c *ControllerBase) IsControllerActive() bool {
 	return c.state == ControllerStateActive
 }
@@ -226,9 +233,12 @@ func (c *ControllerBase) IsInRange(key int64) bool {
 }
 
 // Here we assume filter already being reset
-func (c *ControllerBase) DoneProcessingCurrentWorkloads() {
+func (c *ControllerBase) IsDoneProcessingCurrentWorkloads() (bool, int) {
 	klog.Infof("Current controller %s instance %s state %s", c.controllerType, c.controllerName, c.state)
 
+	if c.countOfProcessingWorkItem > 0 {
+		return false, c.countOfProcessingWorkItem
+	}
 	if c.state == ControllerStateWait {
 		c.state = ControllerStateActive
 	}
@@ -236,6 +246,8 @@ func (c *ControllerBase) DoneProcessingCurrentWorkloads() {
 	if c.state == ControllerStateActive {
 		c.tryUnlockControllerInstance(c.sortedControllerInstancesLocal, c.curPos)
 	}
+
+	return true, 0
 }
 
 func (c *ControllerBase) generateKey() int64 {
@@ -302,8 +314,10 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 			}
 
 			if isSelfRangeUpdated {
-				c.resetFilterHandler(newLowerBound, newUpperbound)
+				ResetFilterHandler(c, newLowerBound, newUpperbound)
 			}
+
+			c.IsDoneProcessingCurrentWorkloads()
 		}()
 	}
 
@@ -311,12 +325,17 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 		var currentControllerInstance controllerInstanceLocal
 		if c.curPos < 0 {
 			currentControllerInstance = sortedNewControllerInstancesLocal[newPos]
+			isSelfRangeUpdated = true
 		} else {
 			currentControllerInstance = c.sortedControllerInstancesLocal[c.curPos]
 
 			if currentControllerInstance.lowerboundKey != newLowerBound || currentControllerInstance.controllerKey != newUpperbound {
 				isSelfRangeUpdated = true
 			}
+		}
+
+		if isSelfRangeUpdated {
+			klog.Infof("Self range updated %d, %d", newLowerBound, newUpperbound)
 		}
 
 		message := fmt.Sprintf("Controller %s instance %s", c.controllerType, c.controllerName)
@@ -384,6 +403,7 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 		if isLowerBoundIncreased || isUpperBoundLowered {
 			c.state = ControllerStateWait
 			// wait for finishing current processing items that belongs to excluded range
+			klog.Infof("Controller %s instance %s status wait", c.controllerType, c.controllerName)
 			return
 		}
 
@@ -401,18 +421,11 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 	return
 }
 
-func (c *ControllerBase) resetFilter(newLowerBound, newUpperbound int64) {
-	go func() {
-		klog.Infof("The new range %+v is going to send. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
-		c.ResetCh <- []int64{newLowerBound, newUpperbound}
-	}()
-}
-
 func (c *ControllerBase) tryUnlockControllerInstance(sortedControllerInstances []controllerInstanceLocal, pos int) {
 	klog.Infof("entering trying unlock controller instance. pos %v. current controller %s", pos, c.controllerName)
 	if pos >= 1 && sortedControllerInstances[pos-1].isLocked {
 		klog.Infof("Trying to unlock controller %s on position %d", sortedControllerInstances[pos-1].instanceName, pos-1)
-		err := c.unlockControllerInstanceHander(sortedControllerInstances[pos-1])
+		err := c.unlockControllerInstanceHandler(sortedControllerInstances[pos-1])
 		klog.Infof("Done unlocking controller %s on position %d. err %v", sortedControllerInstances[pos-1].instanceName, pos-1, err)
 		if err != nil {
 			// TODO - add retry logic
@@ -532,15 +545,16 @@ func (c *ControllerBase) registControllerInstance() error {
 		klog.Errorf("Trying to register new %s controller instance with id %v already existed in controller instance list", c.controllerType, c.controllerName)
 		return errors.NewBadRequest(fmt.Sprintf("Controllerinstances name %s already existed", c.controllerName))
 	} else {
-		c.controllerInstanceMap[c.controllerName] = controllerInstance
-
 		// Write to registry
-		_, err := c.client.CoreV1().ControllerInstances().Create(&controllerInstance)
+		newControllerInstance, err := CreateControllerInstanceHandler(c, controllerInstance)
+
 		if err != nil {
 			klog.Errorf("Error register controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
 			// TODO
 			return err
 		}
+
+		c.controllerInstanceMap[c.controllerName] = *newControllerInstance
 
 		// Check controllers updates
 		c.updateCachedControllerInstances(c.controllerInstanceMap)
@@ -559,13 +573,18 @@ func (c *ControllerBase) ReportHealth() {
 	controllerInstance.WorkloadNum = c.sortedControllerInstancesLocal[c.curPos].workloadNum
 	controllerInstance.IsLocked = c.state == ControllerStateLocked
 	controllerInstance.ControllerKey = c.controllerKey
-	controllerInstance.ResourceVersion = ""
 
 	// Write to registry
-	_, err := c.client.CoreV1().ControllerInstances().Update(controllerInstance)
+	newControllerInstance, err := c.client.CoreV1().ControllerInstances().Update(controllerInstance)
 	if err != nil {
-		klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
-		//TODO
+		errorMessage := err.Error()
+		if strings.Contains(errorMessage, genericregistry.OptimisticLockErrorMsg) && strings.Contains(errorMessage, "Operation cannot be fulfilled") {
+			klog.Infof("Skip reporting health this time as registry was updated. old ResourceVersion %s", controllerInstance.ResourceVersion)
+		} else {
+			klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
+		}
+	} else {
+		c.controllerInstanceMap[c.controllerName] = *newControllerInstance
 	}
 }
 
@@ -593,4 +612,16 @@ func listControllerInstancesByType(controllerType string) (map[string]v1.Control
 		controllerInstanceMap[controllerInstance.Name] = controllerInstance
 	}
 	return controllerInstanceMap, nil
+}
+
+func resetFilter(c *ControllerBase, newLowerBound, newUpperbound int64) {
+	go func() {
+		klog.Infof("The new range %+v is going to send. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
+		c.ResetCh <- []int64{newLowerBound, newUpperbound}
+		klog.Infof("The new range %+v has been sent. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
+	}()
+}
+
+func createControllerInstance(c *ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
+	return c.client.CoreV1().ControllerInstances().Create(&controllerInstance)
 }

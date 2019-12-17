@@ -248,6 +248,7 @@ func (rsc *ReplicaSetController) resolveControllerRef(namespace string, controll
 func (rsc *ReplicaSetController) updateRS(old, cur interface{}) {
 	oldRS := old.(*apps.ReplicaSet)
 	curRS := cur.(*apps.ReplicaSet)
+	//klog.Infof("updateRS. old RS %+v, new RS %+v", oldRS, curRS)
 
 	// You might imagine that we only really need to enqueue the
 	// replica set when Spec changes, but it is safer to sync any
@@ -426,6 +427,7 @@ func (rsc *ReplicaSetController) deletePod(obj interface{}) {
 // obj could be an *apps.ReplicaSet, or a DeletionFinalStateUnknown marker item.
 func (rsc *ReplicaSetController) enqueueReplicaSet(obj interface{}) {
 	key, err := controller.KeyFunc(obj)
+	//klog.Infof("Replicaset enqueue. KEY %s. OBJ %+v", key, obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
@@ -452,10 +454,8 @@ func (rsc *ReplicaSetController) worker() {
 
 func (rsc *ReplicaSetController) processNextWorkItem() bool {
 	if !rsc.IsControllerActive() {
-		countOfProcessingWorkItem := rsc.GetCountOfProcessingWorkItem()
-		if countOfProcessingWorkItem == 0 {
-			rsc.DoneProcessingCurrentWorkloads()
-		} else {
+		isDone, countOfProcessingWorkItem := rsc.IsDoneProcessingCurrentWorkloads()
+		if !isDone {
 			klog.Infof("Controller is not active, worker idle .... count of work items = %d", countOfProcessingWorkItem)
 			// TODO : compare key version and controller locked status version
 			time.Sleep(1 * time.Second)
@@ -479,6 +479,7 @@ func (rsc *ReplicaSetController) processNextWorkItem() bool {
 	rsc.DoneProcessingWorkItem()
 	if err == nil {
 		rsc.queue.Forget(key)
+		//klog.Infof("Removed key %s from queue", workloadKey)
 		return true
 	}
 	utilruntime.HandleError(fmt.Errorf("Sync %q failed with %v", key, err))
@@ -594,6 +595,7 @@ func (rsc *ReplicaSetController) manageReplicas(filteredPods []*v1.Pod, rs *apps
 // meaning it did not expect to see any more of its pods created or deleted. This function is not meant to be
 // invoked concurrently with the same key.
 func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
+	//klog.Infof("Entering syncReplicaSet. key %s", key)
 
 	startTime := time.Now()
 	defer func() {
