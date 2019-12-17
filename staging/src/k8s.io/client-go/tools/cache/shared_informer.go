@@ -222,7 +222,7 @@ type dummyController struct {
 func (v *dummyController) Run(stopCh <-chan struct{}) {
 }
 
-func (v *dummyController) RunWithReset(stopCh <-chan struct{}, resetCh chan interface{}) {
+func (v *dummyController) RunWithReset(stopCh <-chan struct{}, resetCh <-chan interface{}) {
 }
 
 func (v *dummyController) HasSynced() bool {
@@ -287,7 +287,13 @@ func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
 		defer s.startedLock.Unlock()
 		s.stopped = true // Don't want any new listeners
 	}()
-	s.controller.RunWithReset(stopCh, s.resetCh)
+	if s.resetCh != nil {
+		klog.Infof("start informer with reset channel. %v", s.objectType)
+		s.controller.RunWithReset(stopCh, s.resetCh)
+	} else {
+		klog.Infof("start informer without reset channel. %v", s.objectType)
+		s.controller.Run(stopCh)
+	}
 }
 
 func (s *sharedIndexInformer) HasSynced() bool {

@@ -72,6 +72,13 @@ type Reflector struct {
 	// WatchListPageSize is the requested chunk size of initial and resync watch lists.
 	// Defaults to pager.PageSize.
 	WatchListPageSize int64
+
+	//ResetCh is the channel for incoming bounds changes
+	resetCh <-chan interface{}
+
+	//bounds is an array to save hashkey lower and upper bounds. The lower bound is
+	// inclusive while the upper bound is exclusive
+	bounds []int64
 }
 
 var (
@@ -98,6 +105,19 @@ func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyn
 	return NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
 }
 
+// NewReflectorWithReset creates a new Reflector object which will keep the given store up to
+// date with the server's contents for the given resource. Reflector promises to
+// only put things in the store that have the type of expectedType, unless expectedType
+// is nil. If resyncPeriod is non-zero, then lists will be executed after every
+// resyncPeriod, so that you can use reflectors to periodically process everything as
+// well as incrementally processing the things that change. Also,  it introduces a  reset
+// chan for any incoming bound changes
+func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, resetCh <-chan interface{}) *Reflector {
+	r := NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
+	r.resetCh = resetCh
+	return r
+}
+
 // NewNamedReflector same as NewReflector, but with a specified name for logging
 func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration) *Reflector {
 	r := &Reflector{
@@ -108,7 +128,9 @@ func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, 
 		period:        time.Second,
 		resyncPeriod:  resyncPeriod,
 		clock:         &clock.RealClock{},
+		bounds:        []int64{-1, -1},
 	}
+	klog.Infof("New named reflector with bounds %s %+v", r.expectedType, r.bounds)
 	return r
 }
 
@@ -121,8 +143,21 @@ var internalPackages = []string{"client-go/tools/cache/"}
 func (r *Reflector) Run(stopCh <-chan struct{}) {
 	klog.V(3).Infof("Starting reflector %v (%s) from %s", r.expectedType, r.resyncPeriod, r.name)
 	wait.Until(func() {
-		if err := r.ListAndWatch(stopCh); err != nil {
-			utilruntime.HandleError(err)
+		if r.resetCh == nil {
+			if err := r.ListAndWatch(stopCh); err != nil {
+				utilruntime.HandleError(err)
+			}
+		} else {
+			for {
+				if err := r.ListAndWatch(stopCh); err != nil {
+					if err == errorResetRequested {
+						klog.Infof("Reset message received, redo ListAndWatch with resetCh")
+						continue
+					}
+					utilruntime.HandleError(err)
+					break
+				}
+			}
 		}
 	}, r.period, stopCh)
 }
@@ -137,6 +172,8 @@ var (
 	// Used to indicate that watching stopped because of a signal from the stop
 	// channel passed in from a client of the reflector.
 	errorStopRequested = errors.New("Stop requested")
+
+	errorResetRequested = errors.New("Reset requested")
 )
 
 // resyncChan returns a channel which will receive something when a resync is
@@ -157,7 +194,7 @@ func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 // and then use the resource version to watch.
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
-	klog.V(3).Infof("Listing and watching %v from %s", r.expectedType, r.name)
+	klog.V(3).Infof("ListAndWatch %v from %s. ResetCh %v", r.expectedType, r.name, r.resetCh)
 	var resourceVersion string
 
 	// Explicitly set "0" as resource version - it's fine for the List()
@@ -165,6 +202,32 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
 	options := metav1.ListOptions{ResourceVersion: "0"}
 
+	if r.resetCh != nil {
+		if r.isInitBounds() {
+			select {
+			case <-stopCh:
+				return nil
+			case signal, ok := <-r.resetCh:
+				if !ok {
+					klog.Infof("resetCh ok false")
+					return nil
+				}
+				r.setBounds(signal)
+			}
+		} else {
+			select {
+			case <-stopCh:
+				return nil
+			default:
+				klog.Infof("ListAndWatchWithReset default fall through. bounds %+v", r.bounds)
+			}
+		}
+
+		// Pick up any bound changes
+		options = appendFieldSelector(options, createHashkeyListOptions(r.bounds[0], r.bounds[1]))
+	}
+
+	// LIST
 	if err := func() error {
 		initTrace := trace.New("Reflector " + r.name + " ListAndWatch")
 		defer initTrace.LogIfLong(10 * time.Second)
@@ -190,6 +253,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			list, err = pager.List(context.Background(), options)
 			close(listCh)
 		}()
+
 		select {
 		case <-stopCh:
 			return nil
@@ -223,6 +287,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		return err
 	}
 
+	// RESYNC
 	resyncerrc := make(chan error, 1)
 	cancelCh := make(chan struct{})
 	defer close(cancelCh)
@@ -251,6 +316,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		}
 	}()
 
+	// WATCH
 	for {
 		// give the stopCh a chance to stop the loop, even in case of continue statements further down on errors
 		select {
@@ -272,6 +338,9 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			AllowWatchBookmarks: false,
 		}
 
+		if r.resetCh != nil {
+			options = appendFieldSelector(options, createHashkeyListOptions(r.bounds[0], r.bounds[1]))
+		}
 		w, err := r.listerWatcher.Watch(options)
 		if err != nil {
 			switch err {
@@ -298,6 +367,15 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		}
 
 		if err := r.watchHandler(w, &resourceVersion, resyncerrc, stopCh); err != nil {
+			if err == errorResetRequested {
+				select {
+					case cancelCh <- struct{}{}:
+						klog.Infof("Sent message to Resync cancelCh.")
+					default:
+						klog.Infof("Resync cancelCh was closed.")
+				}
+				return err
+			}
 			if err != errorStopRequested {
 				switch {
 				case apierrs.IsResourceExpired(err):
@@ -334,6 +412,15 @@ loop:
 		select {
 		case <-stopCh:
 			return errorStopRequested
+		case signal, ok := <-r.resetCh:
+			klog.Infof("Got restart message. signal %v", signal)
+			if !ok {
+				klog.Infof("resetCh ok false")
+				return errorResetRequested
+			}
+			r.setBounds(signal)
+
+			return errorResetRequested
 		case err := <-errc:
 			return err
 		case event, ok := <-w.ResultChan():
@@ -407,4 +494,27 @@ func (r *Reflector) setLastSyncResourceVersion(v string) {
 
 func (r *Reflector) ListerWatcher() ListerWatcher {
 	return r.listerWatcher
+}
+
+func appendFieldSelector(target metav1.ListOptions, fieldSelector metav1.ListOptions) metav1.ListOptions {
+	if len(target.FieldSelector) == 0 {
+		target.FieldSelector = fieldSelector.FieldSelector
+	} else {
+		target.FieldSelector = target.FieldSelector + "," + fieldSelector.FieldSelector
+	}
+	return target
+}
+
+func (r *Reflector) setBounds(signal interface{}) {
+	newBounds, _ := signal.([]int64)
+	r.bounds = newBounds
+	klog.Infof("Got reset channel info. bounds %d, %d", r.bounds[0], r.bounds[1])
+}
+
+func (r *Reflector) isInitBounds() bool {
+	if r.bounds[0] == -1 && r.bounds[1] == -1 {
+		return true
+	} else {
+		return false
+	}
 }

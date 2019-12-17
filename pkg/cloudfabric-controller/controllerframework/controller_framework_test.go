@@ -29,7 +29,7 @@ import (
 	"k8s.io/klog"
 )
 
-func mockResetHander(newLowerBound, newUpperbound int64) {
+func mockResetHander(c *ControllerBase, newLowerBound, newUpperbound int64) {
 	klog.Infof("Mocked sent reset message to channel")
 	return
 }
@@ -38,13 +38,13 @@ func createControllerInstanceBaseAndCIM(t *testing.T, client clientset.Interface
 	updateCh chan string, resetCh chan interface{}) (*ControllerBase, *ControllerInstanceManager) {
 
 	if cim == nil {
-		cim, _ = createControllerInstanceManager(stopCh, updateCh)
+		cim, _ = CreateTestControllerInstanceManager(stopCh, updateCh)
 		go cim.Run(stopCh)
 	}
 
+	ResetFilterHandler = mockResetHander
 	newControllerInstance1, err := NewControllerBase(controllerType, client, updateCh, resetCh)
-	newControllerInstance1.unlockControllerInstanceHander = mockUnlockcontrollerInstanceHandler
-	newControllerInstance1.resetFilterHandler = mockResetHander
+	newControllerInstance1.unlockControllerInstanceHandler = mockUnlockcontrollerInstanceHandler
 	cim.addControllerInstance(convertControllerBaseToControllerInstance(newControllerInstance1))
 
 	assert.Nil(t, err)
@@ -407,7 +407,7 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(updatedControllerInstancelist))
 	controllerInstanceBaseFoo1.updateCachedControllerInstances(updatedControllerInstancelist)
-	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait)
+	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait || controllerInstanceBaseFoo1.state == ControllerStateActive)
 	assert.Equal(t, 1, controllerInstanceBaseFoo1.curPos)
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBaseFoo1.controllerKey)
 	assert.Equal(t, controllerInstanceBaseFoo2.controllerKey, controllerInstanceBaseFoo1.sortedControllerInstancesLocal[controllerInstanceBaseFoo1.curPos].lowerboundKey)
@@ -420,7 +420,7 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 
 	// 1st controller instance done processing current workload
 	unlockedControllerInstanceName = ""
-	controllerInstanceBaseFoo1.DoneProcessingCurrentWorkloads()
+	controllerInstanceBaseFoo1.IsDoneProcessingCurrentWorkloads()
 	assert.True(t, controllerInstanceBaseFoo1.IsControllerActive())
 	updatedControllerInstancelist, err = listControllerInstancesByType(controllerType1)
 	assert.Nil(t, err)
@@ -464,7 +464,7 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(updatedControllerInstancelist))
 	controllerInstanceBaseFoo2.updateCachedControllerInstances(updatedControllerInstancelist)
-	assert.True(t, controllerInstanceBaseFoo2.state == ControllerStateWait)
+	assert.True(t, controllerInstanceBaseFoo2.state == ControllerStateWait || controllerInstanceBaseFoo2.state == ControllerStateActive)
 	assert.Equal(t, 1, controllerInstanceBaseFoo2.curPos)
 	assertControllerKeyCoversEntireRange(t, controllerInstanceBaseFoo2.sortedControllerInstancesLocal)
 	assert.True(t, controllerInstanceBaseFoo2.sortedControllerInstancesLocal[0].isLocked)
@@ -473,7 +473,7 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 
 	// 2nd controller instance done processing current workload
 	unlockedControllerInstanceName = ""
-	controllerInstanceBaseFoo2.DoneProcessingCurrentWorkloads()
+	controllerInstanceBaseFoo2.IsDoneProcessingCurrentWorkloads()
 	assert.True(t, controllerInstanceBaseFoo2.IsControllerActive())
 	updatedControllerInstancelist, err = listControllerInstancesByType(controllerType1)
 	assert.Nil(t, err)
@@ -634,7 +634,7 @@ func TestControllerInstanceLifeCycle3(t *testing.T) {
 	updatedControllerInstancelist, err := listControllerInstancesByType(controllerType1)
 	assert.Nil(t, err)
 	controllerInstanceBaseFoo1.updateCachedControllerInstances(updatedControllerInstancelist)
-	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait)
+	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait || controllerInstanceBaseFoo1.state == ControllerStateActive)
 
 	// create instance C
 	stopCh3 := make(chan struct{})
@@ -656,7 +656,7 @@ func TestControllerInstanceLifeCycle3(t *testing.T) {
 	updatedControllerInstancelist, err = listControllerInstancesByType(controllerType1)
 	assert.Nil(t, err)
 	controllerInstanceBaseFoo1.updateCachedControllerInstances(updatedControllerInstancelist)
-	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait)
+	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait || controllerInstanceBaseFoo1.state == ControllerStateActive)
 
 	// instance B died
 	controllerInstanceFoo2 := convertControllerBaseToControllerInstance(controllerInstanceBaseFoo2)
@@ -677,12 +677,12 @@ func TestControllerInstanceLifeCycle3(t *testing.T) {
 	assert.Equal(t, 2, len(controllerInstanceBaseFoo1.sortedControllerInstancesLocal))
 	assert.True(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal[0].isLocked)
 	assert.False(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal[1].isLocked)
-	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait)
+	assert.True(t, controllerInstanceBaseFoo1.state == ControllerStateWait || controllerInstanceBaseFoo1.state == ControllerStateActive)
 	assertControllerKeyCoversEntireRange(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal)
 
 	// instance A done processing current workload
 	unlockedControllerInstanceName = ""
-	controllerInstanceBaseFoo1.DoneProcessingCurrentWorkloads()
+	controllerInstanceBaseFoo1.IsDoneProcessingCurrentWorkloads()
 	assert.True(t, controllerInstanceBaseFoo1.IsControllerActive())
 	updatedControllerInstancelist, err = listControllerInstancesByType(controllerType1)
 	assert.Nil(t, err)
