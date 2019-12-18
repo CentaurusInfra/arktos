@@ -56,8 +56,15 @@ func fakeAttachablePodFn(pod *corev1.Pod) polymorphichelpers.AttachablePodForObj
 		return pod, nil
 	}
 }
-
 func TestPodAndContainerAttach(t *testing.T) {
+	testPodAndContainerAttach(t, metav1.TenantDefault)
+}
+
+func TestPodAndContainerAttachWithMultiTenancy(t *testing.T) {
+	testPodAndContainerAttach(t, "test-te")
+}
+
+func testPodAndContainerAttach(t *testing.T, tenant string) {
 	tests := []struct {
 		name                  string
 		args                  []string
@@ -84,7 +91,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 			args:                  []string{"foo"},
 			expectedPodName:       "foo",
 			expectedContainerName: "bar",
-			obj:                   attachPod(),
+			obj:                   attachPod(tenant),
 		},
 		{
 			name:                  "container in flag",
@@ -92,7 +99,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 			args:                  []string{"foo"},
 			expectedPodName:       "foo",
 			expectedContainerName: "bar",
-			obj:                   attachPod(),
+			obj:                   attachPod(tenant),
 		},
 		{
 			name:                  "init container in flag",
@@ -100,7 +107,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 			args:                  []string{"foo"},
 			expectedPodName:       "foo",
 			expectedContainerName: "initfoo",
-			obj:                   attachPod(),
+			obj:                   attachPod(tenant),
 		},
 		{
 			name:            "non-existing container",
@@ -108,7 +115,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 			args:            []string{"foo"},
 			expectedPodName: "foo",
 			expectError:     "container not found",
-			obj:             attachPod(),
+			obj:             attachPod(tenant),
 		},
 		{
 			name:                  "no container, no flags, pods and name",
@@ -116,7 +123,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 			args:                  []string{"pods", "foo"},
 			expectedPodName:       "foo",
 			expectedContainerName: "bar",
-			obj:                   attachPod(),
+			obj:                   attachPod(tenant),
 		},
 		{
 			name:                  "invalid get pod timeout value",
@@ -124,7 +131,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 			args:                  []string{"pod/foo"},
 			expectedPodName:       "foo",
 			expectedContainerName: "bar",
-			obj:                   attachPod(),
+			obj:                   attachPod(tenant),
 			expectError:           "must be higher than zero",
 		},
 	}
@@ -143,7 +150,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 			}
 
 			pod, err := test.options.findAttachablePod(&corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "test", Tenant: tenant},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
@@ -163,7 +170,7 @@ func TestPodAndContainerAttach(t *testing.T) {
 				t.Errorf("unexpected pod name: expected %q, got %q", test.expectedContainerName, pod.Name)
 			}
 
-			container, err := test.options.containerToAttachTo(attachPod())
+			container, err := test.options.containerToAttachTo(attachPod(tenant))
 			if err != nil {
 				if !strings.Contains(err.Error(), test.expectError) {
 					t.Errorf("unexpected error: expected %q, got %q", err, test.expectError)
@@ -185,8 +192,15 @@ func TestPodAndContainerAttach(t *testing.T) {
 		})
 	}
 }
-
 func TestAttach(t *testing.T) {
+	testAttach(t, metav1.TenantDefault)
+}
+
+func TestAttachWithMultiTenancy(t *testing.T) {
+	testAttach(t, "test-te")
+}
+
+func testAttach(t *testing.T, tenant string) {
 	version := "v1"
 	tests := []struct {
 		name, version, podPath, fetchPodPath, attachPath, container string
@@ -197,19 +211,19 @@ func TestAttach(t *testing.T) {
 		{
 			name:         "pod attach",
 			version:      version,
-			podPath:      "/api/" + version + "/namespaces/test/pods/foo",
-			fetchPodPath: "/namespaces/test/pods/foo",
-			attachPath:   "/api/" + version + "/namespaces/test/pods/foo/attach",
-			pod:          attachPod(),
+			podPath:      "/api/" + version + podFetchPath(tenant),
+			fetchPodPath: podFetchPath(tenant),
+			attachPath:   "/api/" + version + podFetchPath(tenant) + "/attach",
+			pod:          attachPod(tenant),
 			container:    "bar",
 		},
 		{
 			name:            "pod attach error",
 			version:         version,
-			podPath:         "/api/" + version + "/namespaces/test/pods/foo",
-			fetchPodPath:    "/namespaces/test/pods/foo",
-			attachPath:      "/api/" + version + "/namespaces/test/pods/foo/attach",
-			pod:             attachPod(),
+			podPath:         "/api/" + version + podFetchPath(tenant),
+			fetchPodPath:    podFetchPath(tenant),
+			attachPath:      "/api/" + version + podFetchPath(tenant) + "/attach",
+			pod:             attachPod(tenant),
 			remoteAttachErr: true,
 			container:       "bar",
 			exepctedErr:     "attach error",
@@ -217,17 +231,17 @@ func TestAttach(t *testing.T) {
 		{
 			name:         "container not found error",
 			version:      version,
-			podPath:      "/api/" + version + "/namespaces/test/pods/foo",
-			fetchPodPath: "/namespaces/test/pods/foo",
-			attachPath:   "/api/" + version + "/namespaces/test/pods/foo/attach",
-			pod:          attachPod(),
+			podPath:      "/api/" + version + podFetchPath(tenant),
+			fetchPodPath: podFetchPath(tenant),
+			attachPath:   "/api/" + version + podFetchPath(tenant) + "/attach",
+			pod:          attachPod(tenant),
 			container:    "foo",
 			exepctedErr:  "cannot attach to the container: container not found (foo)",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", tenant)
 			defer tf.Cleanup()
 
 			codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
@@ -266,6 +280,7 @@ func TestAttach(t *testing.T) {
 			}
 
 			options.restClientGetter = tf
+			options.Tenant = tenant
 			options.Namespace = "test"
 			options.Resources = []string{"foo"}
 			options.Builder = tf.NewBuilder
@@ -308,6 +323,14 @@ func TestAttach(t *testing.T) {
 }
 
 func TestAttachWarnings(t *testing.T) {
+	testAttachWarnings(t, metav1.TenantDefault)
+}
+
+func TestAttachWarningsWithMultiTenancy(t *testing.T) {
+	testAttachWarnings(t, "test-te")
+}
+
+func testAttachWarnings(t *testing.T, tenant string) {
 	version := "v1"
 	tests := []struct {
 		name, container, version, podPath, fetchPodPath, expectedErr string
@@ -317,9 +340,9 @@ func TestAttachWarnings(t *testing.T) {
 		{
 			name:         "fallback tty if not supported",
 			version:      version,
-			podPath:      "/api/" + version + "/namespaces/test/pods/foo",
-			fetchPodPath: "/namespaces/test/pods/foo",
-			pod:          attachPod(),
+			podPath:      "/api/" + version + podFetchPath(tenant),
+			fetchPodPath: podFetchPath(tenant),
+			pod:          attachPod(tenant),
 			stdin:        true,
 			tty:          true,
 			expectedErr:  "Unable to use a TTY - container bar did not allocate one",
@@ -327,7 +350,7 @@ func TestAttachWarnings(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", tenant)
 			defer tf.Cleanup()
 
 			streams, _, _, bufErr := genericclioptions.NewTestIOStreams()
@@ -367,6 +390,7 @@ func TestAttachWarnings(t *testing.T) {
 			}
 
 			options.restClientGetter = tf
+			options.Tenant = tenant
 			options.Namespace = "test"
 			options.Resources = []string{"foo"}
 			options.Builder = tf.NewBuilder
@@ -398,9 +422,9 @@ func TestAttachWarnings(t *testing.T) {
 	}
 }
 
-func attachPod() *corev1.Pod {
+func attachPod(tenant string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", Tenant: tenant, ResourceVersion: "10"},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyAlways,
 			DNSPolicy:     corev1.DNSClusterFirst,
@@ -418,5 +442,13 @@ func attachPod() *corev1.Pod {
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 		},
+	}
+}
+
+func podFetchPath(tenant string) string {
+	if tenant == metav1.TenantDefault {
+		return "/namespaces/test/pods/foo"
+	} else {
+		return "/tenants/" + tenant + "/namespaces/test/pods/foo"
 	}
 }

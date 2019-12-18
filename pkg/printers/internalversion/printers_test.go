@@ -1655,8 +1655,8 @@ func TestPrintPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "test7"},
 				Spec:       api.PodSpec{VirtualMachine: &api.VirtualMachine{Name: "testVM", PowerSpec: api.VmPowerSpecRunning}},
 				Status: api.PodStatus{
-					Phase:  "Running",
-					Reason: "",
+					Phase:                "Running",
+					Reason:               "",
 					VirtualMachineStatus: &api.VirtualMachineStatus{State: api.VmActive, PowerState: api.Running},
 				},
 			},
@@ -1668,8 +1668,8 @@ func TestPrintPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "test8"},
 				Spec:       api.PodSpec{VirtualMachine: &api.VirtualMachine{Name: "testVM", PowerSpec: api.VmPowerSpecShutdown}},
 				Status: api.PodStatus{
-					Phase:  "Pending",
-					Reason: "",
+					Phase:                "Pending",
+					Reason:               "",
 					VirtualMachineStatus: &api.VirtualMachineStatus{State: api.VmStopped, PowerState: api.Shutdown},
 				},
 			},

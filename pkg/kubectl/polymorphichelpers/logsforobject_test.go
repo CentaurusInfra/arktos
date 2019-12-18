@@ -39,6 +39,14 @@ var (
 )
 
 func TestLogsForObject(t *testing.T) {
+	testLogsForObject(t, metav1.TenantDefault)
+}
+
+func TestLogsForObjectWithMultiTenancy(t *testing.T) {
+	testLogsForObject(t, metav1.TenantDefault)
+}
+
+func testLogsForObject(t *testing.T, tenant string) {
 	tests := []struct {
 		name          string
 		obj           runtime.Object
@@ -50,17 +58,17 @@ func TestLogsForObject(t *testing.T) {
 		{
 			name: "pod logs",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 			},
-			pods: []runtime.Object{testPod()},
+			pods: []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
-				getLogsAction("test", nil),
+				getLogsAction(tenant, "test", nil),
 			},
 		},
 		{
 			name: "pod logs: all containers",
 			obj: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{
 						{Name: "initc1"},
@@ -74,12 +82,12 @@ func TestLogsForObject(t *testing.T) {
 			},
 			opts:          &corev1.PodLogOptions{},
 			allContainers: true,
-			pods:          []runtime.Object{testPod()},
+			pods:          []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
-				getLogsAction("test", &corev1.PodLogOptions{Container: "initc1"}),
-				getLogsAction("test", &corev1.PodLogOptions{Container: "initc2"}),
-				getLogsAction("test", &corev1.PodLogOptions{Container: "c1"}),
-				getLogsAction("test", &corev1.PodLogOptions{Container: "c2"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "initc1"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "initc2"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "c1"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "c2"}),
 			},
 		},
 		{
@@ -87,7 +95,7 @@ func TestLogsForObject(t *testing.T) {
 			obj: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{
 								{Name: "initc1"},
@@ -101,9 +109,9 @@ func TestLogsForObject(t *testing.T) {
 					},
 				},
 			},
-			pods: []runtime.Object{testPod()},
+			pods: []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
-				getLogsAction("test", nil),
+				getLogsAction(tenant, "test", nil),
 			},
 		},
 		{
@@ -111,7 +119,7 @@ func TestLogsForObject(t *testing.T) {
 			obj: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+						ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{
 								{Name: "initc1"},
@@ -127,82 +135,82 @@ func TestLogsForObject(t *testing.T) {
 			},
 			opts:          &corev1.PodLogOptions{},
 			allContainers: true,
-			pods:          []runtime.Object{testPod()},
+			pods:          []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
-				getLogsAction("test", &corev1.PodLogOptions{Container: "initc1"}),
-				getLogsAction("test", &corev1.PodLogOptions{Container: "initc2"}),
-				getLogsAction("test", &corev1.PodLogOptions{Container: "c1"}),
-				getLogsAction("test", &corev1.PodLogOptions{Container: "c2"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "initc1"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "initc2"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "c1"}),
+				getLogsAction(tenant, "test", &corev1.PodLogOptions{Container: "c2"}),
 			},
 		},
 		{
 			name: "replication controller logs",
 			obj: &corev1.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 				Spec: corev1.ReplicationControllerSpec{
 					Selector: map[string]string{"foo": "bar"},
 				},
 			},
-			pods: []runtime.Object{testPod()},
+			pods: []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
 				testclient.NewListAction(podsResource, podsKind, "test", metav1.ListOptions{LabelSelector: "foo=bar"}),
-				getLogsAction("test", nil),
+				getLogsAction(tenant, "test", nil),
 			},
 		},
 		{
 			name: "replica set logs",
 			obj: &extensionsv1beta1.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 				Spec: extensionsv1beta1.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
 			},
-			pods: []runtime.Object{testPod()},
+			pods: []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
 				testclient.NewListAction(podsResource, podsKind, "test", metav1.ListOptions{LabelSelector: "foo=bar"}),
-				getLogsAction("test", nil),
+				getLogsAction(tenant, "test", nil),
 			},
 		},
 		{
 			name: "deployment logs",
 			obj: &extensionsv1beta1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 				Spec: extensionsv1beta1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
 			},
-			pods: []runtime.Object{testPod()},
+			pods: []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
 				testclient.NewListAction(podsResource, podsKind, "test", metav1.ListOptions{LabelSelector: "foo=bar"}),
-				getLogsAction("test", nil),
+				getLogsAction(tenant, "test", nil),
 			},
 		},
 		{
 			name: "job logs",
 			obj: &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 				Spec: batchv1.JobSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
 			},
-			pods: []runtime.Object{testPod()},
+			pods: []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
 				testclient.NewListAction(podsResource, podsKind, "test", metav1.ListOptions{LabelSelector: "foo=bar"}),
-				getLogsAction("test", nil),
+				getLogsAction(tenant, "test", nil),
 			},
 		},
 		{
 			name: "stateful set logs",
 			obj: &appsv1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: metav1.TenantDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "hello", Namespace: "test", Tenant: tenant},
 				Spec: appsv1.StatefulSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				},
 			},
-			pods: []runtime.Object{testPod()},
+			pods: []runtime.Object{testPod(tenant)},
 			actions: []testclient.Action{
 				testclient.NewListAction(podsResource, podsKind, "test", metav1.ListOptions{LabelSelector: "foo=bar"}),
-				getLogsAction("test", nil),
+				getLogsAction(tenant, "test", nil),
 			},
 		},
 	}
@@ -230,12 +238,12 @@ func TestLogsForObject(t *testing.T) {
 	}
 }
 
-func testPod() runtime.Object {
+func testPod(tenant string) runtime.Object {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "test",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    tenant,
 			Labels:    map[string]string{"foo": "bar"},
 		},
 		Spec: corev1.PodSpec{
@@ -249,11 +257,11 @@ func testPod() runtime.Object {
 	}
 }
 
-func getLogsAction(namespace string, opts *corev1.PodLogOptions) testclient.Action {
+func getLogsAction(tenant, namespace string, opts *corev1.PodLogOptions) testclient.Action {
 	action := testclient.GenericActionImpl{}
 	action.Verb = "get"
 	action.Namespace = namespace
-	action.Tenant = metav1.TenantDefault
+	action.Tenant = tenant
 	action.Resource = podsResource
 	action.Subresource = "log"
 	action.Value = opts

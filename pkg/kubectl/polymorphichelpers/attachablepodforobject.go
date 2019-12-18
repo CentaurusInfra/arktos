@@ -44,11 +44,11 @@ func attachablePodForObject(restClientGetter genericclioptions.RESTClientGetter,
 		return nil, err
 	}
 
-	namespace, selector, err := SelectorsForObject(object)
+	tenant, namespace, selector, err := SelectorsForObject(object)
 	if err != nil {
 		return nil, fmt.Errorf("cannot attach to %T: %v", object, err)
 	}
 	sortBy := func(pods []*corev1.Pod) sort.Interface { return sort.Reverse(podutils.ActivePods(pods)) }
-	pod, _, err := GetFirstPod(clientset, namespace, selector.String(), timeout, sortBy)
+	pod, _, err := GetFirstPod(clientset, tenant, namespace, selector.String(), timeout, sortBy)
 	return pod, err
 }

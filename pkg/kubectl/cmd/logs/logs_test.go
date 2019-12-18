@@ -37,6 +37,14 @@ import (
 )
 
 func TestLog(t *testing.T) {
+	testLog(t, metav1.TenantDefault)
+}
+
+func TestLogWithMultiTenancy(t *testing.T) {
+	testLog(t, "test-te")
+}
+
+func testLog(t *testing.T, tenant string) {
 	tests := []struct {
 		name                  string
 		opts                  func(genericclioptions.IOStreams) *LogsOptions
@@ -204,14 +212,15 @@ func TestLog(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", tenant)
 			defer tf.Cleanup()
 
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
 			opts := test.opts(streams)
+			opts.Tenant = tenant
 			opts.Namespace = "test"
-			opts.Object = testPod()
+			opts.Object = testPod(tenant)
 			opts.Options = &corev1.PodLogOptions{}
 			err := opts.RunLogs()
 
@@ -235,9 +244,9 @@ func TestLog(t *testing.T) {
 	}
 }
 
-func testPod() *corev1.Pod {
+func testPod(tenant string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", Tenant: tenant, ResourceVersion: "10"},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyAlways,
 			DNSPolicy:     corev1.DNSClusterFirst,
