@@ -70,10 +70,15 @@ func applyDefaults(pod *api.Pod, source string, isFile bool, nodeName types.Node
 	}
 	klog.V(5).Infof("Using namespace %q for pod %q from %s", pod.Namespace, pod.Name, source)
 
+	if pod.Tenant == "" {
+		pod.Tenant = metav1.TenantDefault
+	}
+	klog.V(5).Infof("Using tenant %q for pod %q from %s", pod.Tenant, pod.Name, source)
+
 	// Set the Host field to indicate this pod is scheduled on the current node.
 	pod.Spec.NodeName = string(nodeName)
 
-	pod.ObjectMeta.SelfLink = getSelfLink(pod.Name, pod.Namespace)
+	pod.ObjectMeta.SelfLink = getSelfLink(pod.Name, pod.Namespace, pod.Tenant)
 
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
@@ -95,12 +100,15 @@ func applyDefaults(pod *api.Pod, source string, isFile bool, nodeName types.Node
 	return nil
 }
 
-func getSelfLink(name, namespace string) string {
+func getSelfLink(name, namespace, tenant string) string {
 	var selfLink string
+	if len(tenant) == 0 {
+		tenant = metav1.TenantDefault
+	}
 	if len(namespace) == 0 {
 		namespace = metav1.NamespaceDefault
 	}
-	selfLink = fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", namespace, name)
+	selfLink = fmt.Sprintf("/api/v1/tenants/%s/namespaces/%s/pods/%s", tenant, namespace, name)
 	return selfLink
 }
 

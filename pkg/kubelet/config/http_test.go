@@ -126,6 +126,14 @@ func TestExtractInvalidPods(t *testing.T) {
 }
 
 func TestExtractPodsFromHTTP(t *testing.T) {
+	testExtractPodsFromHTTP(t, metav1.TenantDefault)
+}
+
+func TestExtractPodsFromHTTPWithMultiTenancy(t *testing.T) {
+	testExtractPodsFromHTTP(t, "test-te")
+}
+
+func testExtractPodsFromHTTP(t *testing.T, tenant string) {
 	nodeName := "different-value"
 
 	grace := int64(30)
@@ -146,6 +154,7 @@ func TestExtractPodsFromHTTP(t *testing.T) {
 					Name:      "foo",
 					UID:       "111",
 					Namespace: "mynamespace",
+					Tenant:    tenant,
 				},
 				Spec: v1.PodSpec{
 					NodeName:        string(nodeName),
@@ -164,8 +173,9 @@ func TestExtractPodsFromHTTP(t *testing.T) {
 						UID:         "111",
 						Name:        "foo" + "-" + nodeName,
 						Namespace:   "mynamespace",
+						Tenant:      tenant,
 						Annotations: map[string]string{kubetypes.ConfigHashAnnotationKey: "111"},
-						SelfLink:    getSelfLink("foo-"+nodeName, "mynamespace"),
+						SelfLink:    getSelfLink("foo-"+nodeName, "mynamespace", tenant),
 					},
 					Spec: v1.PodSpec{
 						NodeName:                      nodeName,
@@ -199,8 +209,9 @@ func TestExtractPodsFromHTTP(t *testing.T) {
 				Items: []v1.Pod{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-							UID:  "111",
+							Name:   "foo",
+							UID:    "111",
+							Tenant: tenant,
 						},
 						Spec: v1.PodSpec{
 							NodeName:        nodeName,
@@ -214,8 +225,9 @@ func TestExtractPodsFromHTTP(t *testing.T) {
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bar",
-							UID:  "222",
+							Name:   "bar",
+							UID:    "222",
+							Tenant: tenant,
 						},
 						Spec: v1.PodSpec{
 							NodeName:        nodeName,
@@ -236,8 +248,9 @@ func TestExtractPodsFromHTTP(t *testing.T) {
 						UID:         "111",
 						Name:        "foo" + "-" + nodeName,
 						Namespace:   "default",
+						Tenant:      tenant,
 						Annotations: map[string]string{kubetypes.ConfigHashAnnotationKey: "111"},
-						SelfLink:    getSelfLink("foo-"+nodeName, metav1.NamespaceDefault),
+						SelfLink:    getSelfLink("foo-"+nodeName, metav1.NamespaceDefault, tenant),
 					},
 					Spec: v1.PodSpec{
 						NodeName:                      nodeName,
@@ -265,8 +278,9 @@ func TestExtractPodsFromHTTP(t *testing.T) {
 						UID:         "222",
 						Name:        "bar" + "-" + nodeName,
 						Namespace:   "default",
+						Tenant:      tenant,
 						Annotations: map[string]string{kubetypes.ConfigHashAnnotationKey: "222"},
-						SelfLink:    getSelfLink("bar-"+nodeName, metav1.NamespaceDefault),
+						SelfLink:    getSelfLink("bar-"+nodeName, metav1.NamespaceDefault, tenant),
 					},
 					Spec: v1.PodSpec{
 						NodeName:                      nodeName,
@@ -333,6 +347,14 @@ func TestExtractPodsFromHTTP(t *testing.T) {
 }
 
 func TestURLWithHeader(t *testing.T) {
+	testURLWithHeader(t, metav1.TenantDefault)
+}
+
+func TestURLWithHeaderWithMultiTenancy(t *testing.T) {
+	testURLWithHeader(t, "test-te")
+}
+
+func testURLWithHeader(t *testing.T, tenant string) {
 	pod := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -342,6 +364,7 @@ func TestURLWithHeader(t *testing.T) {
 			Name:      "foo",
 			UID:       "111",
 			Namespace: "mynamespace",
+			Tenant:    tenant,
 		},
 		Spec: v1.PodSpec{
 			NodeName:   "localhost",

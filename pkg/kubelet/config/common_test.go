@@ -36,6 +36,14 @@ import (
 func noDefault(*core.Pod) error { return nil }
 
 func TestDecodeSinglePod(t *testing.T) {
+	testDecodeSinglePod(t, metav1.TenantDefault)
+}
+
+func TestDecodeSinglePodWithMultiTenancy(t *testing.T) {
+	testDecodeSinglePod(t, "test-te")
+}
+
+func testDecodeSinglePod(t *testing.T, tenant string) {
 	grace := int64(30)
 	enableServiceLinks := v1.DefaultEnableServiceLinks
 	pod := &v1.Pod{
@@ -46,6 +54,7 @@ func TestDecodeSinglePod(t *testing.T) {
 			Name:      "test",
 			UID:       "12345",
 			Namespace: "mynamespace",
+			Tenant:    tenant,
 		},
 		Spec: v1.PodSpec{
 			RestartPolicy:                 v1.RestartPolicyAlways,
@@ -100,6 +109,14 @@ func TestDecodeSinglePod(t *testing.T) {
 }
 
 func TestDecodePodList(t *testing.T) {
+	testDecodePodList(t, metav1.TenantDefault)
+}
+
+func TestDecodePodListWithMultiTenancy(t *testing.T) {
+	testDecodePodList(t, "test-te")
+}
+
+func testDecodePodList(t *testing.T, tenant string) {
 	grace := int64(30)
 	enableServiceLinks := v1.DefaultEnableServiceLinks
 	pod := &v1.Pod{
@@ -110,6 +127,7 @@ func TestDecodePodList(t *testing.T) {
 			Name:      "test",
 			UID:       "12345",
 			Namespace: "mynamespace",
+			Tenant:    tenant,
 		},
 		Spec: v1.PodSpec{
 			RestartPolicy:                 v1.RestartPolicyAlways,
@@ -175,23 +193,40 @@ func TestGetSelfLink(t *testing.T) {
 		desc             string
 		name             string
 		namespace        string
+		tenant           string
 		expectedSelfLink string
 	}{
 		{
-			desc:             "No namespace specified",
+			desc:             "No namespace/tenant specified",
 			name:             "foo",
 			namespace:        "",
-			expectedSelfLink: "/api/v1/namespaces/default/pods/foo",
+			tenant:           "",
+			expectedSelfLink: "/api/v1/tenants/default/namespaces/default/pods/foo",
 		},
 		{
-			desc:             "Namespace specified",
+			desc:             "tenant specified, No namespace specified",
+			name:             "foo",
+			namespace:        "",
+			tenant:           "bar",
+			expectedSelfLink: "/api/v1/tenants/bar/namespaces/default/pods/foo",
+		},
+		{
+			desc:             "No tenant specified, namespace specified",
 			name:             "foo",
 			namespace:        "bar",
-			expectedSelfLink: "/api/v1/namespaces/bar/pods/foo",
+			tenant:           "",
+			expectedSelfLink: "/api/v1/tenants/default/namespaces/bar/pods/foo",
+		},
+		{
+			desc:             "Namespace and tenant specified",
+			name:             "foo",
+			namespace:        "bar",
+			tenant:           "qux",
+			expectedSelfLink: "/api/v1/tenants/qux/namespaces/bar/pods/foo",
 		},
 	}
 	for _, testCase := range testCases {
-		selfLink := getSelfLink(testCase.name, testCase.namespace)
+		selfLink := getSelfLink(testCase.name, testCase.namespace, testCase.tenant)
 		if testCase.expectedSelfLink != selfLink {
 			t.Errorf("%s: getSelfLink error, expected: %s, got: %s", testCase.desc, testCase.expectedSelfLink, selfLink)
 		}
