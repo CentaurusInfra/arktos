@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+VIRTLET_METADATA_DIR=${VIRTLET_METADATA_DIR:-"/var/lib/virtlet"}
+VIRTLET_LOG_DIR=${VIRTLET_LOG_DIR:-"/var/log/virtlet"}
+
 APPARMOR_ENABLED=${APPARMOR_ENABLED:-""}
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
@@ -439,6 +442,18 @@ cleanup()
   if [[ "${PRESERVE_ETCD}" == "false" ]]; then
     [[ -n "${ETCD_DIR-}" ]] && kube::etcd::clean_etcd_dir
   fi
+
+  # Delete virtlet metadata and log directory
+  if [[ -e "${VIRTLET_METADATA_DIR}" ]]; then
+        echo "Cleanup runtime metadata folder"
+        rm -f -r "${VIRTLET_METADATA_DIR}"
+  fi
+
+  if [[ -e "${VIRTLET_LOG_DIR}" ]]; then
+       echo "Cleanup runtime log folder"
+       rm -f -r "${VIRTLET_LOG_DIR}"
+  fi
+
   exit 0
 }
 
