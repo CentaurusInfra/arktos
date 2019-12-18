@@ -51,8 +51,15 @@ func (f *fakeRemoteExecutor) Execute(method string, url *url.URL, config *restcl
 	f.url = url
 	return f.execErr
 }
-
 func TestPodAndContainer(t *testing.T) {
+	testPodAndContainer(t, metav1.TenantDefault)
+}
+
+func TestPodAndContainerWithMultiTenancy(t *testing.T) {
+	testPodAndContainer(t, "test-te")
+}
+
+func testPodAndContainer(t *testing.T, tenant string) {
 	tests := []struct {
 		args              []string
 		argsLenAtDash     int
@@ -75,14 +82,14 @@ func TestPodAndContainer(t *testing.T) {
 			argsLenAtDash: -1,
 			expectError:   true,
 			name:          "no cmd",
-			obj:           execPod(),
+			obj:           execPod(tenant),
 		},
 		{
 			p:             &ExecOptions{StreamOptions: StreamOptions{ContainerName: "bar"}},
 			argsLenAtDash: -1,
 			expectError:   true,
 			name:          "no cmd, w/ container",
-			obj:           execPod(),
+			obj:           execPod(tenant),
 		},
 		{
 			p:             &ExecOptions{},
@@ -90,7 +97,7 @@ func TestPodAndContainer(t *testing.T) {
 			argsLenAtDash: 0,
 			expectError:   true,
 			name:          "no pod, pod name is behind dash",
-			obj:           execPod(),
+			obj:           execPod(tenant),
 		},
 		{
 			p:             &ExecOptions{},
@@ -98,7 +105,7 @@ func TestPodAndContainer(t *testing.T) {
 			argsLenAtDash: -1,
 			expectError:   true,
 			name:          "no cmd, w/o flags",
-			obj:           execPod(),
+			obj:           execPod(tenant),
 		},
 		{
 			p:             &ExecOptions{},
@@ -107,7 +114,7 @@ func TestPodAndContainer(t *testing.T) {
 			expectedPod:   "foo",
 			expectedArgs:  []string{"cmd"},
 			name:          "cmd, w/o flags",
-			obj:           execPod(),
+			obj:           execPod(tenant),
 		},
 		{
 			p:             &ExecOptions{},
@@ -116,7 +123,7 @@ func TestPodAndContainer(t *testing.T) {
 			expectedPod:   "foo",
 			expectedArgs:  []string{"cmd"},
 			name:          "cmd, cmd is behind dash",
-			obj:           execPod(),
+			obj:           execPod(tenant),
 		},
 		{
 			p:                 &ExecOptions{StreamOptions: StreamOptions{ContainerName: "bar"}},
@@ -126,13 +133,13 @@ func TestPodAndContainer(t *testing.T) {
 			expectedContainer: "bar",
 			expectedArgs:      []string{"cmd"},
 			name:              "cmd, container in flag",
-			obj:               execPod(),
+			obj:               execPod(tenant),
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var err error
-			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", tenant)
 			defer tf.Cleanup()
 
 			ns := scheme.Codecs
@@ -175,6 +182,14 @@ func TestPodAndContainer(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
+	testExec(t, metav1.TenantDefault)
+}
+
+func TestExecWithMultiTenancy(t *testing.T) {
+	testExec(t, "test-te")
+}
+
+func testExec(t *testing.T, tenant string) {
 	version := "v1"
 	tests := []struct {
 		name, version, podPath, fetchPodPath, execPath string
@@ -184,24 +199,24 @@ func TestExec(t *testing.T) {
 		{
 			name:         "pod exec",
 			version:      version,
-			podPath:      "/api/" + version + "/namespaces/test/pods/foo",
-			fetchPodPath: "/namespaces/test/pods/foo",
-			execPath:     "/api/" + version + "/namespaces/test/pods/foo/exec",
-			pod:          execPod(),
+			podPath:      "/api/" + version + podFetchPath(tenant),
+			fetchPodPath: podFetchPath(tenant),
+			execPath:     "/api/" + version + podFetchPath(tenant) + "/exec",
+			pod:          execPod(tenant),
 		},
 		{
 			name:         "pod exec error",
 			version:      version,
-			podPath:      "/api/" + version + "/namespaces/test/pods/foo",
-			fetchPodPath: "/namespaces/test/pods/foo",
-			execPath:     "/api/" + version + "/namespaces/test/pods/foo/exec",
-			pod:          execPod(),
+			podPath:      "/api/" + version + podFetchPath(tenant),
+			fetchPodPath: podFetchPath(tenant),
+			execPath:     "/api/" + version + podFetchPath(tenant) + "/exec",
+			pod:          execPod(tenant),
 			execErr:      true,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", tenant)
 			defer tf.Cleanup()
 
 			codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
@@ -269,9 +284,9 @@ func TestExec(t *testing.T) {
 	}
 }
 
-func execPod() *corev1.Pod {
+func execPod(tenant string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", Tenant: tenant, ResourceVersion: "10"},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyAlways,
 			DNSPolicy:     corev1.DNSClusterFirst,
@@ -284,6 +299,14 @@ func execPod() *corev1.Pod {
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 		},
+	}
+}
+
+func podFetchPath(tenant string) string {
+	if tenant == metav1.TenantDefault {
+		return "/namespaces/test/pods/foo"
+	} else {
+		return "/tenants/" + tenant + "/namespaces/test/pods/foo"
 	}
 }
 

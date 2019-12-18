@@ -68,8 +68,16 @@ func TestUpdateOnNonExistentFile(t *testing.T) {
 }
 
 func TestReadPodsFromFileExistAlready(t *testing.T) {
+	testReadPodsFromFileExistAlready(t, metav1.TenantDefault)
+}
+
+func TestReadPodsFromFileExistAlreadyWithMultiTenancy(t *testing.T) {
+	testReadPodsFromFileExistAlready(t, "test-te")
+}
+
+func testReadPodsFromFileExistAlready(t *testing.T, tenant string) {
 	hostname := types.NodeName("random-test-hostname")
-	var testCases = getTestCases(hostname)
+	var testCases = getTestCases(hostname, tenant)
 
 	for _, testCase := range testCases {
 		func() {
@@ -118,14 +126,30 @@ var (
 )
 
 func TestWatchFileAdded(t *testing.T) {
+	testWatchFileAdded(t, metav1.TenantDefault)
+}
+
+func TestWatchFileAddedWithMultiTenancy(t *testing.T) {
+	testWatchFileAdded(t, "test-te")
+}
+
+func testWatchFileAdded(t *testing.T, tenant string) {
 	for _, testCase := range testCases {
-		watchFileAdded(testCase.watchDir, testCase.symlink, t)
+		watchFileAdded(testCase.watchDir, testCase.symlink, t, tenant)
 	}
 }
 
 func TestWatchFileChanged(t *testing.T) {
+	testWatchFileChanged(t, metav1.TenantDefault)
+}
+
+func TestWatchFileChangedWithMultiTenancy(t *testing.T) {
+	testWatchFileChanged(t, "test-te")
+}
+
+func testWatchFileChanged(t *testing.T, tenant string) {
 	for _, testCase := range testCases {
-		watchFileChanged(testCase.watchDir, testCase.symlink, t)
+		watchFileChanged(testCase.watchDir, testCase.symlink, t, tenant)
 	}
 }
 
@@ -137,7 +161,7 @@ type testCase struct {
 	expected   kubetypes.PodUpdate
 }
 
-func getTestCases(hostname types.NodeName) []*testCase {
+func getTestCases(hostname types.NodeName, tenant string) []*testCase {
 	grace := int64(30)
 	enableServiceLinks := v1.DefaultEnableServiceLinks
 	return []*testCase{
@@ -153,6 +177,7 @@ func getTestCases(hostname types.NodeName) []*testCase {
 					Name:      "test",
 					UID:       "12345",
 					Namespace: "mynamespace",
+					Tenant:    tenant,
 				},
 				Spec: v1.PodSpec{
 					Containers:      []v1.Container{{Name: "image", Image: "test/image", SecurityContext: securitycontext.ValidSecurityContextWithContainerDefaults()}},
@@ -168,8 +193,9 @@ func getTestCases(hostname types.NodeName) []*testCase {
 					Name:        "test-" + string(hostname),
 					UID:         "12345",
 					Namespace:   "mynamespace",
+					Tenant:      tenant,
 					Annotations: map[string]string{kubetypes.ConfigHashAnnotationKey: "12345"},
-					SelfLink:    getSelfLink("test-"+string(hostname), "mynamespace"),
+					SelfLink:    getSelfLink("test-"+string(hostname), "mynamespace", tenant),
 				},
 				Spec: v1.PodSpec{
 					NodeName:                      string(hostname),
@@ -229,9 +255,9 @@ func createSymbolicLink(link, target, name string, t *testing.T) string {
 	return linkName
 }
 
-func watchFileAdded(watchDir bool, symlink bool, t *testing.T) {
+func watchFileAdded(watchDir bool, symlink bool, t *testing.T, tenant string) {
 	hostname := types.NodeName("random-test-hostname")
-	var testCases = getTestCases(hostname)
+	var testCases = getTestCases(hostname, tenant)
 
 	fileNamePre := "test_pod_manifest"
 	for index, testCase := range testCases {
@@ -282,9 +308,9 @@ func watchFileAdded(watchDir bool, symlink bool, t *testing.T) {
 	}
 }
 
-func watchFileChanged(watchDir bool, symlink bool, t *testing.T) {
+func watchFileChanged(watchDir bool, symlink bool, t *testing.T, tenant string) {
 	hostname := types.NodeName("random-test-hostname")
-	var testCases = getTestCases(hostname)
+	var testCases = getTestCases(hostname, tenant)
 
 	fileNamePre := "test_pod_manifest"
 	for index, testCase := range testCases {

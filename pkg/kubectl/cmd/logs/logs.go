@@ -115,6 +115,7 @@ type LogsOptions struct {
 	LogsForObject    polymorphichelpers.LogsForObjectFunc
 
 	genericclioptions.IOStreams
+	Tenant string
 }
 
 func NewLogsOptions(streams genericclioptions.IOStreams, allContainers bool) *LogsOptions {
@@ -221,6 +222,10 @@ func (o *LogsOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []str
 		return cmdutil.UsageErrorf(cmd, "%s", logsUsageErrStr)
 	}
 	var err error
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
@@ -244,6 +249,7 @@ func (o *LogsOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []str
 	if o.Object == nil {
 		builder := f.NewBuilder().
 			WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+			TenantParam(o.Tenant).DefaultTenant().
 			NamespaceParam(o.Namespace).DefaultNamespace().
 			SingleResourceType()
 		if o.ResourceArg != "" {

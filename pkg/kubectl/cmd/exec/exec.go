@@ -140,6 +140,7 @@ type StreamOptions struct {
 	// for testing
 	overrideStreams func() (io.ReadCloser, io.Writer, io.Writer)
 	isTerminalIn    func(t term.TTY) bool
+	Tenant          string
 }
 
 // ExecOptions declare the arguments accepted by the Exec command
@@ -176,6 +177,11 @@ func (p *ExecOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, argsIn []s
 	var err error
 
 	p.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
+	if err != nil {
+		return err
+	}
+
+	p.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
 	if err != nil {
 		return err
 	}
@@ -285,13 +291,14 @@ func (p *ExecOptions) Run() error {
 	// since there are any other command run this function by providing Podname with PodsGetter
 	// and without resource builder, eg: `kubectl cp`.
 	if len(p.PodName) != 0 {
-		p.Pod, err = p.PodClient.Pods(p.Namespace).Get(p.PodName, metav1.GetOptions{})
+		p.Pod, err = p.PodClient.PodsWithMultiTenancy(p.Namespace, p.Tenant).Get(p.PodName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 	} else {
 		builder := p.Builder().
 			WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+			TenantParam(p.Tenant).DefaultTenant().
 			NamespaceParam(p.Namespace).DefaultNamespace().ResourceNames("pods", p.ResourceName)
 
 		obj, err := builder.Do().Object()
@@ -345,6 +352,7 @@ func (p *ExecOptions) Run() error {
 		req := restClient.Post().
 			Resource("pods").
 			Name(pod.Name).
+			Tenant(pod.Tenant).
 			Namespace(pod.Namespace).
 			SubResource("exec")
 		req.VersionedParams(&corev1.PodExecOptions{

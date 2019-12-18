@@ -47,7 +47,7 @@ func (f *fakePortForwarder) ForwardPorts(method string, url *url.URL, opts PortF
 	return f.pfErr
 }
 
-func testPortForward(t *testing.T, flags map[string]string, args []string) {
+func testPortForward(t *testing.T, flags map[string]string, args []string, tenant string) {
 	version := "v1"
 
 	tests := []struct {
@@ -58,22 +58,22 @@ func testPortForward(t *testing.T, flags map[string]string, args []string) {
 	}{
 		{
 			name:    "pod portforward",
-			podPath: "/api/" + version + "/namespaces/test/pods/foo",
-			pfPath:  "/api/" + version + "/namespaces/test/pods/foo/portforward",
-			pod:     execPod(),
+			podPath: "/api/" + version + execPodPath(tenant),
+			pfPath:  "/api/" + version + execPodPath(tenant) + "/portforward",
+			pod:     execPod(tenant),
 		},
 		{
 			name:    "pod portforward error",
-			podPath: "/api/" + version + "/namespaces/test/pods/foo",
-			pfPath:  "/api/" + version + "/namespaces/test/pods/foo/portforward",
-			pod:     execPod(),
+			podPath: "/api/" + version + execPodPath(tenant),
+			pfPath:  "/api/" + version + execPodPath(tenant) + "/portforward",
+			pod:     execPod(tenant),
 			pfErr:   true,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var err error
-			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", tenant)
 			defer tf.Cleanup()
 
 			codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
@@ -139,7 +139,11 @@ func testPortForward(t *testing.T, flags map[string]string, args []string) {
 }
 
 func TestPortForward(t *testing.T) {
-	testPortForward(t, nil, []string{"foo", ":5000", ":1000"})
+	testPortForward(t, nil, []string{"foo", ":5000", ":1000"}, metav1.TenantDefault)
+}
+
+func TestPortForwardWithMultiTenancy(t *testing.T) {
+	testPortForward(t, nil, []string{"foo", ":5000", ":1000"}, "test-te")
 }
 
 func TestTranslateServicePortToTargetPort(t *testing.T) {
@@ -580,9 +584,9 @@ func TestTranslateServicePortToTargetPort(t *testing.T) {
 	}
 }
 
-func execPod() *corev1.Pod {
+func execPod(tenant string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test", Tenant: tenant, ResourceVersion: "10"},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyAlways,
 			DNSPolicy:     corev1.DNSClusterFirst,
@@ -595,6 +599,14 @@ func execPod() *corev1.Pod {
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 		},
+	}
+}
+
+func execPodPath(tenant string) string {
+	if tenant == metav1.TenantDefault {
+		return "/namespaces/test/pods/foo"
+	} else {
+		return "/tenants/" + tenant + "/namespaces/test/pods/foo"
 	}
 }
 

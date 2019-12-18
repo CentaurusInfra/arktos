@@ -36,12 +36,12 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 )
 
-// GetFirstPod returns a pod matching the namespace and label selector
+// GetFirstPod returns a pod matching the tenant/namespace and label selector
 // and the number of all pods that match the label selector.
-func GetFirstPod(client coreclient.PodsGetter, namespace string, selector string, timeout time.Duration, sortBy func([]*corev1.Pod) sort.Interface) (*corev1.Pod, int, error) {
+func GetFirstPod(client coreclient.PodsGetter, tenant, namespace string, selector string, timeout time.Duration, sortBy func([]*corev1.Pod) sort.Interface) (*corev1.Pod, int, error) {
 	options := metav1.ListOptions{LabelSelector: selector}
 
-	podList, err := client.Pods(namespace).List(options)
+	podList, err := client.PodsWithMultiTenancy(namespace, tenant).List(options)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -57,7 +57,7 @@ func GetFirstPod(client coreclient.PodsGetter, namespace string, selector string
 
 	// Watch until we observe a pod
 	options.ResourceVersion = podList.ResourceVersion
-	w, err := client.Pods(namespace).Watch(options)
+	w, err := client.PodsWithMultiTenancy(namespace, tenant).Watch(options)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -81,111 +81,127 @@ func GetFirstPod(client coreclient.PodsGetter, namespace string, selector string
 }
 
 // SelectorsForObject returns the pod label selector for a given object
-func SelectorsForObject(object runtime.Object) (namespace string, selector labels.Selector, err error) {
+func SelectorsForObject(object runtime.Object) (tenant, namespace string, selector labels.Selector, err error) {
 	switch t := object.(type) {
 	case *extensionsv1beta1.ReplicaSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1.ReplicaSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1beta2.ReplicaSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 
 	case *corev1.ReplicationController:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector = labels.SelectorFromSet(t.Spec.Selector)
 
 	case *appsv1.StatefulSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1beta1.StatefulSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1beta2.StatefulSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 
 	case *extensionsv1beta1.DaemonSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1.DaemonSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1beta2.DaemonSet:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 
 	case *extensionsv1beta1.Deployment:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1.Deployment:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1beta1.Deployment:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 	case *appsv1beta2.Deployment:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 
 	case *batchv1.Job:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid label selector: %v", err)
+			return "", "", nil, fmt.Errorf("invalid label selector: %v", err)
 		}
 
 	case *corev1.Service:
+		tenant = t.Tenant
 		namespace = t.Namespace
 		if t.Spec.Selector == nil || len(t.Spec.Selector) == 0 {
-			return "", nil, fmt.Errorf("invalid service '%s': Service is defined without a selector", t.Name)
+			return "", "", nil, fmt.Errorf("invalid service '%s': Service is defined without a selector", t.Name)
 		}
 		selector = labels.SelectorFromSet(t.Spec.Selector)
 
 	default:
-		return "", nil, fmt.Errorf("selector for %T not implemented", object)
+		return "", "", nil, fmt.Errorf("selector for %T not implemented", object)
 	}
 
-	return namespace, selector, nil
+	return tenant, namespace, selector, nil
 }

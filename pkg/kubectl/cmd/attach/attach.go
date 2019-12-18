@@ -134,6 +134,7 @@ func DefaultAttachFunc(o *AttachOptions, containerToAttach *corev1.Container, ra
 			Resource("pods").
 			Name(o.Pod.Name).
 			Namespace(o.Pod.Namespace).
+			Tenant(o.Pod.Tenant).
 			SubResource("attach")
 		req.VersionedParams(&corev1.PodAttachOptions{
 			Container: containerToAttach.Name,
@@ -168,6 +169,12 @@ func (*DefaultRemoteAttach) Attach(method string, url *url.URL, config *restclie
 // Complete verifies command line arguments and loads data from the command environment
 func (o *AttachOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	var err error
+
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
@@ -225,7 +232,8 @@ func (o *AttachOptions) Run() error {
 	if o.Pod == nil {
 		b := o.Builder().
 			WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
-			NamespaceParam(o.Namespace).DefaultNamespace()
+			NamespaceParam(o.Namespace).DefaultNamespace().
+			TenantParam(o.Tenant).DefaultTenant()
 
 		switch len(o.Resources) {
 		case 1:
@@ -327,7 +335,7 @@ func (o *AttachOptions) containerToAttachTo(pod *corev1.Pod) (*corev1.Container,
 
 	if o.EnableSuggestedCmdUsage {
 		fmt.Fprintf(o.ErrOut, "Defaulting container name to %s.\n", pod.Spec.Containers[0].Name)
-		fmt.Fprintf(o.ErrOut, "Use '%s describe pod/%s -n %s' to see all of the containers in this pod.\n", o.ParentCommandName, o.PodName, o.Namespace)
+		fmt.Fprintf(o.ErrOut, "Use '%s describe pod/%s --namespace %s --tenant %s' to see all of the containers in this pod.\n", o.ParentCommandName, o.PodName, o.Namespace, o.Tenant)
 	}
 
 	klog.V(4).Infof("defaulting container name to %s", pod.Spec.Containers[0].Name)

@@ -55,6 +55,7 @@ type PortForwardOptions struct {
 	PortForwarder portForwarder
 	StopChannel   chan struct{}
 	ReadyChannel  chan struct{}
+	Tenant        string
 }
 
 var (
@@ -228,6 +229,11 @@ func (o *PortForwardOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, arg
 		return cmdutil.UsageErrorf(cmd, "TYPE/NAME and list of ports are required for port-forward")
 	}
 
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
@@ -236,7 +242,8 @@ func (o *PortForwardOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, arg
 	builder := f.NewBuilder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		ContinueOnError().
-		NamespaceParam(o.Namespace).DefaultNamespace()
+		NamespaceParam(o.Namespace).DefaultNamespace().
+		TenantParam(o.Tenant).DefaultTenant()
 
 	getPodTimeout, err := cmdutil.GetPodRunningTimeoutFlag(cmd)
 	if err != nil {
@@ -311,7 +318,7 @@ func (o PortForwardOptions) Validate() error {
 
 // RunPortForward implements all the necessary functionality for port-forward cmd.
 func (o PortForwardOptions) RunPortForward() error {
-	pod, err := o.PodClient.Pods(o.Namespace).Get(o.PodName, metav1.GetOptions{})
+	pod, err := o.PodClient.PodsWithMultiTenancy(o.Namespace, o.Tenant).Get(o.PodName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -333,6 +340,7 @@ func (o PortForwardOptions) RunPortForward() error {
 
 	req := o.RESTClient.Post().
 		Resource("pods").
+		Tenant(o.Tenant).
 		Namespace(o.Namespace).
 		Name(pod.Name).
 		SubResource("portforward")

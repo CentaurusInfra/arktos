@@ -33,6 +33,14 @@ import (
 )
 
 func TestGetFirstPod(t *testing.T) {
+	testGetFirstPod(t, metav1.TenantDefault)
+}
+
+func TestGetFirstPodWithMultiTenancy(t *testing.T) {
+	testGetFirstPod(t, "test-te")
+}
+
+func testGetFirstPod(t *testing.T, tenant string) {
 	labelSet := map[string]string{"test": "selector"}
 	tests := []struct {
 		name string
@@ -47,13 +55,13 @@ func TestGetFirstPod(t *testing.T) {
 	}{
 		{
 			name:    "kubectl logs - two ready pods",
-			podList: newPodList(2, -1, -1, labelSet),
+			podList: newPodList(2, -1, -1, labelSet, tenant),
 			sortBy:  func(pods []*corev1.Pod) sort.Interface { return podutils.ByLogging(pods) },
 			expected: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-1",
 					Namespace:         metav1.NamespaceDefault,
-					Tenant:            metav1.TenantDefault,
+					Tenant:            tenant,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -70,13 +78,13 @@ func TestGetFirstPod(t *testing.T) {
 		},
 		{
 			name:    "kubectl logs - one unhealthy, one healthy",
-			podList: newPodList(2, -1, 1, labelSet),
+			podList: newPodList(2, -1, 1, labelSet, tenant),
 			sortBy:  func(pods []*corev1.Pod) sort.Interface { return podutils.ByLogging(pods) },
 			expected: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-2",
 					Namespace:         metav1.NamespaceDefault,
-					Tenant:            metav1.TenantDefault,
+					Tenant:            tenant,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 1, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -94,13 +102,13 @@ func TestGetFirstPod(t *testing.T) {
 		},
 		{
 			name:    "kubectl attach - two ready pods",
-			podList: newPodList(2, -1, -1, labelSet),
+			podList: newPodList(2, -1, -1, labelSet, tenant),
 			sortBy:  func(pods []*corev1.Pod) sort.Interface { return sort.Reverse(podutils.ActivePods(pods)) },
 			expected: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-1",
 					Namespace:         metav1.NamespaceDefault,
-					Tenant:            metav1.TenantDefault,
+					Tenant:            tenant,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -117,7 +125,7 @@ func TestGetFirstPod(t *testing.T) {
 		},
 		{
 			name:    "kubectl attach - wait for ready pod",
-			podList: newPodList(1, 1, -1, labelSet),
+			podList: newPodList(1, 1, -1, labelSet, tenant),
 			watching: []watch.Event{
 				{
 					Type: watch.Modified,
@@ -125,7 +133,7 @@ func TestGetFirstPod(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:              "pod-1",
 							Namespace:         metav1.NamespaceDefault,
-							Tenant:            metav1.TenantDefault,
+							Tenant:            tenant,
 							CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 							Labels:            map[string]string{"test": "selector"},
 						},
@@ -145,7 +153,7 @@ func TestGetFirstPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod-1",
 					Namespace:         metav1.NamespaceDefault,
-					Tenant:            metav1.TenantDefault,
+					Tenant:            tenant,
 					CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, 0, 0, time.UTC),
 					Labels:            map[string]string{"test": "selector"},
 				},
@@ -179,7 +187,7 @@ func TestGetFirstPod(t *testing.T) {
 		}
 		selector := labels.Set(labelSet).AsSelector()
 
-		pod, numPods, err := GetFirstPod(fake.CoreV1(), metav1.NamespaceDefault, selector.String(), 1*time.Minute, test.sortBy)
+		pod, numPods, err := GetFirstPod(fake.CoreV1(), tenant, metav1.NamespaceDefault, selector.String(), 1*time.Minute, test.sortBy)
 		pod.Spec.SecurityContext = nil
 		if !test.expectedErr && err != nil {
 			t.Errorf("%s: unexpected error: %v", test.name, err)
@@ -199,14 +207,14 @@ func TestGetFirstPod(t *testing.T) {
 	}
 }
 
-func newPodList(count, isUnready, isUnhealthy int, labels map[string]string) *corev1.PodList {
+func newPodList(count, isUnready, isUnhealthy int, labels map[string]string, tenant string) *corev1.PodList {
 	pods := []corev1.Pod{}
 	for i := 0; i < count; i++ {
 		newPod := corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:              fmt.Sprintf("pod-%d", i+1),
 				Namespace:         metav1.NamespaceDefault,
-				Tenant:            metav1.TenantDefault,
+				Tenant:            tenant,
 				CreationTimestamp: metav1.Date(2016, time.April, 1, 1, 0, i, 0, time.UTC),
 				Labels:            labels,
 			},

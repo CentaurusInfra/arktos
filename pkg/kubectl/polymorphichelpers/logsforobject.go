@@ -67,7 +67,7 @@ func logsForObjectWithClient(clientset corev1client.CoreV1Interface, object, opt
 	case *corev1.Pod:
 		// if allContainers is true, then we're going to locate all containers and then iterate through them. At that point, "allContainers" is false
 		if !allContainers {
-			return []rest.ResponseWrapper{clientset.Pods(t.Namespace).GetLogs(t.Name, opts)}, nil
+			return []rest.ResponseWrapper{clientset.PodsWithMultiTenancy(t.Namespace, t.Tenant).GetLogs(t.Name, opts)}, nil
 		}
 
 		ret := []rest.ResponseWrapper{}
@@ -93,13 +93,13 @@ func logsForObjectWithClient(clientset corev1client.CoreV1Interface, object, opt
 		return ret, nil
 	}
 
-	namespace, selector, err := SelectorsForObject(object)
+	tenant, namespace, selector, err := SelectorsForObject(object)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get the logs from %T: %v", object, err)
 	}
 
 	sortBy := func(pods []*corev1.Pod) sort.Interface { return podutils.ByLogging(pods) }
-	pod, numPods, err := GetFirstPod(clientset, namespace, selector.String(), timeout, sortBy)
+	pod, numPods, err := GetFirstPod(clientset, tenant, namespace, selector.String(), timeout, sortBy)
 	if err != nil {
 		return nil, err
 	}
