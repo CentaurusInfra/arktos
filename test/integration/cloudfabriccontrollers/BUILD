@@ -29,6 +29,7 @@ go_test(
         "//staging/src/k8s.io/client-go/util/retry:go_default_library",
         "//test/integration/framework:go_default_library",
         "//test/utils:go_default_library",
+        "//vendor/github.com/grafov/bcast:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
     ],
 )
