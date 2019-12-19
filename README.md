@@ -1,84 +1,76 @@
-# Alkaid -- Kubernetes
+# Alkaid
 
-[![GoDoc Widget]][GoDoc] [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/569/badge)](https://bestpractices.coreinfrastructure.org/projects/569)
+<br/>
 
-<img src="https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png" width="100">
 
-----
+## What Alkaid is
 
-Kubernetes is an open source system for managing [containerized applications]
-across multiple hosts; providing basic mechanisms for deployment, maintenance,
-and scaling of applications.
+Alkaid is an open source cluster management system designed for large scale clouds. It is evolved from the open source [Kubernetes](https://github.com/kubernetes/kubernetesh) v1.15 codebase with some fundamental improvements. 
 
-Kubernetes builds upon a decade and a half of experience at Google running
-production workloads at scale using a system called [Borg],
-combined with best-of-breed ideas and practices from the community.
-
-Kubernetes is hosted by the Cloud Native Computing Foundation ([CNCF]).
-If you are a company that wants to help shape the evolution of
-technologies that are container-packaged, dynamically-scheduled
-and microservices-oriented, consider joining the CNCF.
-For details about who's involved and how Kubernetes plays a role,
-read the CNCF [announcement].
+Alkaid aims to be an open source solution to address key challenges of large scale clouds, including system scalability, resource efficiency, multitenancy, cross-AZ resiliency, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
 
 ----
 
-## To start using Kubernetes
+## Key Features of Alkaid
 
-See our documentation on [kubernetes.io].
 
-Try our [interactive tutorial].
+### Large Scalability
 
-Take a free course on [Scalable Microservices with Kubernetes].
+Alkaid achieves a scalable architecture by partitioning and replicating system components, including API Server, storage, controllers and data plane. The eventual goal of Alkaid is to support 100K nodes with a single cross-AZ control plane.
 
-## To start developing Kubernetes
+### Multitenancy
 
-The [community repository] hosts all information about
-building Kubernetes from source, how to contribute code
-and documentation, who to contact about what, etc.
+Alkaid implements a hard multi-tenancy model to meet the strict isolation requirement highly desired by a typical public cloud environment. Tenant is a built-in object in the system, and some flexible multi-tenancy models can also be supported with customized resource authorization rules.
 
-If you want to build Kubernetes right away there are two options:
+### Native VM Support
 
-##### You have a working [Go environment].
+In addition to container orchestration, Alkaid implements a built-in support for VMs. In Alkaid a pod can contain either containers or a VM. They are scheduled the same way and launched by node agent using different runtime servers. VMs and containers are both the first-class citizens in Alkaid.
+
+
+### More Planned Features
+
+More features are planned but not started yet, including intelligent scheduling, in-place resource update, QoS enforcement, etc.
+
+
+## Build Alkaid
+
+
+To build Alkaid, you just need to clone the repo and run "make":
+
+##### Note: you need to have a working [Go environment](https://golang.org/doc/install).
 
 ```
-go get -d k8s.io/kubernetes
-cd $GOPATH/src/k8s.io/kubernetes
+mkdir -p $GOPATH/src/github.com
+cd $GOPATH/src/github.com
+git clone https://github.com/futurewei-cloud/alkaid
+cd alkaid
 make
 ```
 
-##### You have a working [Docker environment].
+## Run Alkaid
+
+To run a single-node Alkaid cluster in your local development box:
 
 ```
-git clone https://github.com/kubernetes/kubernetes
-cd kubernetes
-make quick-release
+cd $GOPATH/src/github.com/alkaid
+hack/alkaid-up.sh
 ```
 
-For the full story, head over to the [developer's documentation].
+After the Alkaid cluster is up, you can access the cluster with [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) tool just like what you do with a Kubernetes cluster. For example:
 
-## Support
+```
+cd $GOPATH/src/github.com/alkaid
+cluster/kubectl.sh get nodes
+```
 
-If you need support, start with the [troubleshooting guide],
-and work your way through the process that we've outlined.
+For more complicated cluster setups, an automated deployment tool is not available yet. Some manually work is required before the tool is ready. You need to manually setup more worker nodes and register them to a same master server.   
 
-That said, if you have questions, reach out to us
-[one way or another][communication].
+## Documents and Support
 
-[announcement]: https://cncf.io/news/announcement/2015/07/new-cloud-native-computing-foundation-drive-alignment-among-container
-[Borg]: https://research.google.com/pubs/pub43438.html
-[CNCF]: https://www.cncf.io/about
-[communication]: https://git.k8s.io/community/communication
-[community repository]: https://git.k8s.io/community
-[containerized applications]: https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
-[developer's documentation]: https://git.k8s.io/community/contributors/devel#readme
-[Docker environment]: https://docs.docker.com/engine
-[Go environment]: https://golang.org/doc/install
-[GoDoc]: https://godoc.org/k8s.io/kubernetes
-[GoDoc Widget]: https://godoc.org/k8s.io/kubernetes?status.svg
-[interactive tutorial]: https://kubernetes.io/docs/tutorials/kubernetes-basics
-[kubernetes.io]: https://kubernetes.io
-[Scalable Microservices with Kubernetes]: https://www.udacity.com/course/scalable-microservices-with-kubernetes--ud615
-[troubleshooting guide]: https://kubernetes.io/docs/tasks/debug-application-cluster/troubleshooting/
+The [design document folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/design-proposals) contains the detailed design of already implemented features, and also some thoughts for planned features.
 
-[![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/README.md?pixel)]()
+The [user guide folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/user-guide) provides information about these features from users' perspective.
+
+To report a problem, please [create an issue](https://github.com/futurewei-cloud/alkaid/issues) in the project repo. 
+
+To ask a question, you can either chat with project members in the [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137), post in the [email group](https://groups.google.com/forum/#!forum/alkaid-user), or [create an issue](https://github.com/futurewei-cloud/alkaid/issues) of question type in the repo.
