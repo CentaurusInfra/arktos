@@ -34,6 +34,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	apps "k8s.io/api/apps/v1"
@@ -110,7 +111,7 @@ type ReplicaSetController struct {
 }
 
 // NewReplicaSetController configures a replica set controller with the specified event recorder
-func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int, updateControllerChan chan string, resetCh chan interface{}) *ReplicaSetController {
+func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int, updateControllerChan chan string, resetChGroup *bcast.Group) *ReplicaSetController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
@@ -124,19 +125,19 @@ func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInf
 			Recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "replicaset-controller"}),
 		},
 		updateControllerChan,
-		resetCh,
+		resetChGroup,
 	)
 }
 
 // NewBaseController is the implementation of NewReplicaSetController with additional injected
 // parameters so that it can also serve as the implementation of NewReplicationController.
 func NewBaseController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int,
-	gvk schema.GroupVersionKind, metricOwnerName, queueName string, podControl controller.PodControlInterface, updateControllerChan chan string, resetCh chan interface{}) *ReplicaSetController {
+	gvk schema.GroupVersionKind, metricOwnerName, queueName string, podControl controller.PodControlInterface, updateControllerChan chan string, resetChGroup *bcast.Group) *ReplicaSetController {
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage(metricOwnerName, kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 
-	baseController, err := controller.NewControllerBase("ReplicaSet", kubeClient, updateControllerChan, resetCh)
+	baseController, err := controller.NewControllerBase("ReplicaSet", kubeClient, updateControllerChan, resetChGroup)
 	if err != nil {
 		return nil
 	}

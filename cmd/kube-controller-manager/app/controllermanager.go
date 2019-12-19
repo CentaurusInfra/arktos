@@ -382,7 +382,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["daemonset"] = startDaemonSetController
 	controllers["job"] = startJobController
 	controllers["deployment"] = startDeploymentController
-	controllers["replicaset"] = startReplicaSetController
+	//controllers["replicaset"] = startReplicaSetController
 	controllers["horizontalpodautoscaling"] = startHPAController
 	controllers["disruption"] = startDisruptionController
 	controllers["statefulset"] = startStatefulSetController

@@ -255,6 +255,7 @@ filegroup(
         "//vendor/github.com/googleapis/gnostic/extensions:all-srcs",
         "//vendor/github.com/gophercloud/gophercloud:all-srcs",
         "//vendor/github.com/gorilla/websocket:all-srcs",
+        "//vendor/github.com/grafov/bcast:all-srcs",
         "//vendor/github.com/gregjones/httpcache:all-srcs",
         "//vendor/github.com/grpc-ecosystem/go-grpc-middleware:all-srcs",
         "//vendor/github.com/grpc-ecosystem/go-grpc-prometheus:all-srcs",

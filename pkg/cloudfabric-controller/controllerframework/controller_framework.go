@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/grafov/bcast"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,14 +77,14 @@ type ControllerBase struct {
 	mux                                      sync.Mutex
 	unlockControllerInstanceHandler          func(local controllerInstanceLocal) error
 	createControllerInstanceHandler          func(v1.ControllerInstance) (*v1.ControllerInstance, error)
-	ResetCh                                  chan interface{}
+	ResetCh                                  *bcast.Group
 }
 
 var (
 	KeyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
-func NewControllerBase(controllerType string, client clientset.Interface, updateChan chan string, resetCh chan interface{}) (*ControllerBase, error) {
+func NewControllerBase(controllerType string, client clientset.Interface, updateChan chan string, resetCh *bcast.Group) (*ControllerBase, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
@@ -617,7 +618,7 @@ func listControllerInstancesByType(controllerType string) (map[string]v1.Control
 func resetFilter(c *ControllerBase, newLowerBound, newUpperbound int64) {
 	go func() {
 		klog.Infof("The new range %+v is going to send. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
-		c.ResetCh <- []int64{newLowerBound, newUpperbound}
+		c.ResetCh.Send([]int64{newLowerBound, newUpperbound})
 		klog.Infof("The new range %+v has been sent. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
 	}()
 }
