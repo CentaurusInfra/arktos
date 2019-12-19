@@ -136,6 +136,9 @@ KUBE_CONTROLLERS="${KUBE_CONTROLLERS:-"*"}"
 # Audit policy
 AUDIT_POLICY_FILE=${AUDIT_POLICY_FILE:-""}
 
+# Kube-apiserver instance number
+APISERVER_NUMBER=${APISERVER_NUMBER:-"3"}
+
 # sanity check for OpenStack provider
 if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
     if [ "${CLOUD_CONFIG}" == "" ]; then
@@ -413,8 +416,16 @@ cleanup()
   # fi
 
   # Check if the API server is still running
-  [[ -n "${APISERVER_PID-}" ]] && mapfile -t APISERVER_PIDS < <(pgrep -P "${APISERVER_PID}" ; ps -o pid= -p "${APISERVER_PID}")
-  [[ -n "${APISERVER_PIDS-}" ]] && sudo kill "${APISERVER_PIDS[@]}" 2>/dev/null
+
+  echo "Killing the following apiserver running processes"
+  for APISERVER_PID_ITEM in "${APISERVER_PID_ARRAY[@]}" 
+  do
+      [[ -n "${APISERVER_PID_ITEM-}" ]] && mapfile -t APISERVER_PIDS < <(pgrep -P "${APISERVER_PID_ITEM}" ; ps -o pid= -p "${APISERVER_PID_ITEM}")
+      [[ -n "${APISERVER_PIDS-}" ]] && sudo kill "${APISERVER_PIDS[@]}" 2>/dev/null
+      echo "${APISERVER_PID_ITEM} has been killed"
+  done
+  #[[ -n "${APISERVER_PID-}" ]] && mapfile -t APISERVER_PIDS < <(pgrep -P "${APISERVER_PID}" ; ps -o pid= -p "${APISERVER_PID}")
+  #[[ -n "${APISERVER_PIDS-}" ]] && sudo kill "${APISERVER_PIDS[@]}" 2>/dev/null
 
   # Check if the controller-manager is still running
   [[ -n "${CTLRMGR_PID-}" ]] && mapfile -t CTLRMGR_PIDS < <(pgrep -P "${CTLRMGR_PID}" ; ps -o pid= -p "${CTLRMGR_PID}")
@@ -570,6 +581,13 @@ function generate_kubelet_certs {
 }
 
 function start_apiserver {
+    # Increment ports to enable running muliple kube-apiserver simultaneously
+    secureport="$(($1 + ${API_SECURE_PORT}))"
+    insecureport="$(($1 + ${API_PORT}))"
+
+    # Increment logs to enable each kube-apiserver have own log files
+    apiserverlog="kube-apiserver$1.log"
+    apiserverauditlog="kube-apiserver-audit$1.log"
     security_admission=""
     if [[ -n "${DENY_SECURITY_CONTEXT_ADMISSION}" ]]; then
       security_admission=",SecurityContextDeny"
@@ -630,17 +648,17 @@ function start_apiserver {
     fi
 
     if [[ -n "${AUDIT_POLICY_FILE}" ]]; then
-      cat <<EOF > /tmp/kube-audit-policy-file
+      cat <<EOF > /tmp/kube-audit-policy-file$i
 # Log all requests at the Metadata level.
 apiVersion: audit.k8s.io/v1
 kind: Policy
 rules:
 - level: Metadata
 EOF
-      AUDIT_POLICY_FILE="/tmp/kube-audit-policy-file"
+      AUDIT_POLICY_FILE="/tmp/kube-audit-policy-file$i"
     fi
 
-    APISERVER_LOG=${LOG_DIR}/kube-apiserver.log
+    APISERVER_LOG=${LOG_DIR}/$apiserverlog
     ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-apiserver "${authorizer_arg}" "${priv_arg}" ${runtime_config} \
       ${cloud_config_arg} \
       "${advertise_address}" \
@@ -648,7 +666,7 @@ EOF
       --v="${LOG_LEVEL}" \
       --vmodule="${LOG_SPEC}" \
       --audit-policy-file="${AUDIT_POLICY_FILE}" \
-      --audit-log-path="${LOG_DIR}/kube-apiserver-audit.log" \
+      --audit-log-path="${LOG_DIR}/$apiserverauditlog" \
       --cert-dir="${CERT_DIR}" \
       --client-ca-file="${CERT_DIR}/client-ca.crt" \
       --kubelet-client-certificate="${CERT_DIR}/client-kube-apiserver.crt" \
@@ -659,11 +677,11 @@ EOF
       --disable-admission-plugins="${DISABLE_ADMISSION_PLUGINS}" \
       --admission-control-config-file="${ADMISSION_CONTROL_CONFIG_FILE}" \
       --bind-address="${API_BIND_ADDR}" \
-      --secure-port="${API_SECURE_PORT}" \
+      --secure-port=$secureport \
       --tls-cert-file="${CERT_DIR}/serving-kube-apiserver.crt" \
       --tls-private-key-file="${CERT_DIR}/serving-kube-apiserver.key" \
       --insecure-bind-address="${API_HOST_IP}" \
-      --insecure-port="${API_PORT}" \
+      --insecure-port=$insecureport \
       --storage-backend="${STORAGE_BACKEND}" \
       --storage-media-type="${STORAGE_MEDIA_TYPE}" \
       --etcd-servers="http://${ETCD_HOST}:${ETCD_PORT}" \
@@ -679,24 +697,27 @@ EOF
       --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
       --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
     APISERVER_PID=$!
-
+    APISERVER_PID_ARRAY+=($APISERVER_PID)
     # Wait for kube-apiserver to come up before launching the rest of the components.
     echo "Waiting for apiserver to come up"
-    kube::util::wait_for_url "https://${API_HOST_IP}:${API_SECURE_PORT}/healthz" "apiserver: " 1 "${WAIT_FOR_URL_API_SERVER}" "${MAX_TIME_FOR_URL_API_SERVER}" \
+    kube::util::wait_for_url "https://${API_HOST_IP}:$secureport/healthz" "apiserver: " 1 "${WAIT_FOR_URL_API_SERVER}" "${MAX_TIME_FOR_URL_API_SERVER}" \
         || { echo "check apiserver logs: ${APISERVER_LOG}" ; exit 1 ; }
 
     # Create kubeconfigs for all components, using client certs
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" admin
+    # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" admin
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" "admin$1"
     ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" controller
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" scheduler
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" workload-controller
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
 
     if [[ -z "${AUTH_ARGS}" ]]; then
         AUTH_ARGS="--client-key=${CERT_DIR}/client-admin.key --client-certificate=${CERT_DIR}/client-admin.crt"
     fi
 
     # Grant apiserver permission to speak to the kubelet
+    # TODO kubelet can talk to mutilple apiservers. However, it needs to implement after code changes
     ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" create clusterrolebinding kube-apiserver-kubelet-admin --clusterrole=system:kubelet-api-admin --user=kube-apiserver
 
     ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin.kubeconfig" "${CERT_DIR}/admin-kube-aggregator.kubeconfig"
@@ -1038,6 +1059,9 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   cat <<EOF
 
   export KUBECONFIG=${CERT_DIR}/admin.kubeconfig
+Or
+  export KUBECONFIG=${CERT_DIR}/adminN(N=0,1,...).kubeconfig
+
   cluster/kubectl.sh
 
 Alternatively, you can write to the default kubeconfig:
@@ -1118,7 +1142,11 @@ echo "Starting services now!"
 if [[ "${START_MODE}" != "kubeletonly" ]]; then
   start_etcd
   set_service_accounts
-  start_apiserver
+  echo "Starting ${APISERVER_NUMBER} kube-apiserver instances. If you want to make changes to the kube-apiserver nubmer, please run export APISERVER_SERVER=n(n=1,2,...). "
+  APISERVER_PID_ARRAY=()
+  for ((i = 0 ; i <= $((APISERVER_NUMBER - 1)) ; i++)); do
+    start_apiserver $i
+  done
 
   echo "Applying workload controller manager cluster roles and role bindings now!"
   # If there are other resources ready to sync thru workload-controller-mananger, please add them to the following clusterrole file

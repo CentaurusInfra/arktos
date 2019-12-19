@@ -4,6 +4,6 @@ metadata:
   namespace: kube-system
   name: workload-controller-manager-role
 rules:
-- apiGroups: ["", "apps"]
-  resources: ["controllerinstances","events",  "replicasets", "replicasets/status", "pods"]
+- apiGroups: ["", "apps", "kube-system"]
+  resources: ["controllerinstances", "events",  "replicasets", "replicasets/status", "pods", "deployments", "deployments/status"]
   verbs: ["*"]
