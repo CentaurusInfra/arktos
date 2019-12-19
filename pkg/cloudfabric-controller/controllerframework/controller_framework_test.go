@@ -17,6 +17,7 @@ limitations under the License.
 package controllerframework
 
 import (
+	"github.com/grafov/bcast"
 	"math"
 	"testing"
 
@@ -35,7 +36,7 @@ func mockResetHander(c *ControllerBase, newLowerBound, newUpperbound int64) {
 }
 
 func createControllerInstanceBaseAndCIM(t *testing.T, client clientset.Interface, cim *ControllerInstanceManager, controllerType string, stopCh chan struct{},
-	updateCh chan string, resetCh chan interface{}) (*ControllerBase, *ControllerInstanceManager) {
+	updateCh chan string, resetCh *bcast.Group) (*ControllerBase, *ControllerInstanceManager) {
 
 	if cim == nil {
 		cim, _ = CreateTestControllerInstanceManager(stopCh, updateCh)
@@ -94,10 +95,11 @@ func TestGenerateKey(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, "foo", stopCh, updateCh, resetCh)
 
@@ -122,10 +124,11 @@ func TestConsolidateControllerInstances_Sort(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	// 2nd controller instance will share same workload space with 1st one
 	controllerType := "foo"
@@ -183,10 +186,11 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	controllerType := "foo"
 	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
@@ -309,10 +313,11 @@ func TestGetMaxInterval(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	controllerType := "foo"
 	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
@@ -376,10 +381,11 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	// 1st controller instance
 	controllerType1 := "foo"
@@ -388,10 +394,11 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	// 2nd controller instance
 	stopCh2 := make(chan struct{})
 	updateCh2 := make(chan string)
-	resetCh2 := make(chan interface{})
+	resetCh2 := bcast.NewGroup()
+	go resetCh2.Broadcast(0)
 	defer close(stopCh2)
 	defer close(updateCh2)
-	defer close(resetCh2)
+	defer resetCh2.Close()
 
 	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)
@@ -447,10 +454,11 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 	// start 3rd controller instance
 	stopCh3 := make(chan struct{})
 	updateCh3 := make(chan string)
-	resetCh3 := make(chan interface{})
+	resetCh3 := bcast.NewGroup()
+	go resetCh3.Broadcast(0)
 	defer close(stopCh3)
 	defer close(updateCh3)
-	defer close(resetCh3)
+	defer resetCh3.Close()
 
 	controllerInstanceBaseFoo3, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh3, updateCh3, resetCh3)
 	assert.NotNil(t, controllerInstanceBaseFoo3)
@@ -559,10 +567,11 @@ func TestControllerInstanceLifeCycle2(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	// create instance A
 	controllerType1 := "foo"
@@ -572,10 +581,11 @@ func TestControllerInstanceLifeCycle2(t *testing.T) {
 	// create instance B
 	stopCh2 := make(chan struct{})
 	updateCh2 := make(chan string)
-	resetCh2 := make(chan interface{})
+	resetCh2 := bcast.NewGroup()
+	go resetCh2.Broadcast(0)
 	defer close(stopCh2)
 	defer close(updateCh2)
-	defer close(resetCh2)
+	defer resetCh2.Close()
 
 	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)
@@ -605,10 +615,11 @@ func TestControllerInstanceLifeCycle3(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	// create instance A
 	controllerType1 := "foo"
@@ -618,10 +629,11 @@ func TestControllerInstanceLifeCycle3(t *testing.T) {
 	// create instance B
 	stopCh2 := make(chan struct{})
 	updateCh2 := make(chan string)
-	resetCh2 := make(chan interface{})
+	resetCh2 := bcast.NewGroup()
+	go resetCh2.Broadcast(0)
 	defer close(stopCh2)
 	defer close(updateCh2)
-	defer close(resetCh2)
+	defer resetCh2.Close()
 
 	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)
@@ -639,10 +651,11 @@ func TestControllerInstanceLifeCycle3(t *testing.T) {
 	// create instance C
 	stopCh3 := make(chan struct{})
 	updateCh3 := make(chan string)
-	resetCh3 := make(chan interface{})
+	resetCh3 := bcast.NewGroup()
+	go resetCh3.Broadcast(0)
 	defer close(stopCh3)
 	defer close(updateCh3)
-	defer close(resetCh3)
+	defer resetCh3.Close()
 
 	controllerInstanceBaseFoo3, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh3, updateCh3, resetCh3)
 	assert.NotNil(t, controllerInstanceBaseFoo3)
@@ -725,10 +738,11 @@ func TestSetWorkloadNum(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	controllerType := "foo"
 	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)

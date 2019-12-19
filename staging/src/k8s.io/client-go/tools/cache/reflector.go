@@ -29,6 +29,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/grafov/bcast"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,7 +75,10 @@ type Reflector struct {
 	WatchListPageSize int64
 
 	//ResetCh is the channel for incoming bounds changes
-	resetCh <-chan interface{}
+	resetCh *bcast.Member
+
+	//ownerKind is the owner's object kind
+	ownerKind string
 
 	//bounds is an array to save hashkey lower and upper bounds. The lower bound is
 	// inclusive while the upper bound is exclusive
@@ -112,9 +116,10 @@ func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyn
 // resyncPeriod, so that you can use reflectors to periodically process everything as
 // well as incrementally processing the things that change. Also,  it introduces a  reset
 // chan for any incoming bound changes
-func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, resetCh <-chan interface{}) *Reflector {
+func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, resetCh *bcast.Member, ownerKind string) *Reflector {
 	r := NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
 	r.resetCh = resetCh
+	r.ownerKind = ownerKind
 	return r
 }
 
@@ -207,9 +212,9 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			select {
 			case <-stopCh:
 				return nil
-			case signal, ok := <-r.resetCh:
+			case signal, ok := <-r.resetCh.Read:
 				if !ok {
-					klog.Infof("resetCh ok false")
+					klog.Error("resetCh channel closed")
 					return nil
 				}
 				r.setBounds(signal)
@@ -224,7 +229,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		}
 
 		// Pick up any bound changes
-		options = appendFieldSelector(options, createHashkeyListOptions(r.bounds[0], r.bounds[1]))
+		options = appendFieldSelector(options, r.createHashkeyListOptions())
 	}
 
 	// LIST
@@ -339,7 +344,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		}
 
 		if r.resetCh != nil {
-			options = appendFieldSelector(options, createHashkeyListOptions(r.bounds[0], r.bounds[1]))
+			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
 		w, err := r.listerWatcher.Watch(options)
 		if err != nil {
@@ -369,10 +374,10 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		if err := r.watchHandler(w, &resourceVersion, resyncerrc, stopCh); err != nil {
 			if err == errorResetRequested {
 				select {
-					case cancelCh <- struct{}{}:
-						klog.Infof("Sent message to Resync cancelCh.")
-					default:
-						klog.Infof("Resync cancelCh was closed.")
+				case cancelCh <- struct{}{}:
+					klog.Infof("Sent message to Resync cancelCh.")
+				default:
+					klog.Infof("Resync cancelCh was closed.")
 				}
 				return err
 			}
@@ -409,64 +414,49 @@ func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, err
 
 loop:
 	for {
-		select {
-		case <-stopCh:
-			return errorStopRequested
-		case signal, ok := <-r.resetCh:
-			klog.Infof("Got restart message. signal %v", signal)
-			if !ok {
-				klog.Infof("resetCh ok false")
-				return errorResetRequested
-			}
-			r.setBounds(signal)
+		if r.resetCh != nil {
+			select {
+			case <-stopCh:
+				return errorStopRequested
+			case signal, ok := <-r.resetCh.Read:
+				klog.Infof("Got restart message. signal %v", signal)
+				if !ok {
+					klog.Error("resetCh channel closed")
+					return errors.New("Reset channel closed")
+				}
+				r.setBounds(signal)
 
-			return errorResetRequested
-		case err := <-errc:
-			return err
-		case event, ok := <-w.ResultChan():
-			if !ok {
-				break loop
-			}
-			if event.Type == watch.Error {
-				return apierrs.FromObject(event.Object)
-			}
-			if e, a := r.expectedType, reflect.TypeOf(event.Object); e != nil && e != a {
-				utilruntime.HandleError(fmt.Errorf("%s: expected type %v, but watch event object had type %v", r.name, e, a))
-				continue
-			}
-			meta, err := meta.Accessor(event.Object)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("%s: unable to understand watch event %#v", r.name, event))
-				continue
-			}
-			newResourceVersion := meta.GetResourceVersion()
-			switch event.Type {
-			case watch.Added:
-				err := r.store.Add(event.Object)
-				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("%s: unable to add watch event object (%#v) to store: %v", r.name, event.Object, err))
+				return errorResetRequested
+			case err := <-errc:
+				return err
+			case event, ok := <-w.ResultChan():
+				if !ok {
+					break loop
 				}
-			case watch.Modified:
-				err := r.store.Update(event.Object)
+
+				var err error
+				err, eventCount = r.watchHandlerHelper(event, resourceVersion, eventCount)
 				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("%s: unable to update watch event object (%#v) to store: %v", r.name, event.Object, err))
+					return err
 				}
-			case watch.Deleted:
-				// TODO: Will any consumers need access to the "last known
-				// state", which is passed in event.Object? If so, may need
-				// to change this.
-				err := r.store.Delete(event.Object)
-				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("%s: unable to delete watch event object (%#v) from store: %v", r.name, event.Object, err))
-				}
-			case watch.Bookmark:
-				// A `Bookmark` means watch has synced here, just update the resourceVersion
-			default:
-				utilruntime.HandleError(fmt.Errorf("%s: unable to understand watch event %#v", r.name, event))
 			}
-			*resourceVersion = newResourceVersion
-			r.setLastSyncResourceVersion(newResourceVersion)
-			eventCount++
+		} else {
+			select {
+			case <-stopCh:
+				return errorStopRequested
+			case err := <-errc:
+				return err
+			case event, ok := <-w.ResultChan():
+				if !ok {
+					break loop
+				}
+
+				var err error
+				err, eventCount = r.watchHandlerHelper(event, resourceVersion, eventCount)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -476,6 +466,50 @@ loop:
 	}
 	klog.V(4).Infof("%s: Watch close - %v total %v items received", r.name, r.expectedType, eventCount)
 	return nil
+}
+
+func (r *Reflector) watchHandlerHelper(event watch.Event, resourceVersion *string, eventCount int) (error, int) {
+	if event.Type == watch.Error {
+		return apierrs.FromObject(event.Object), eventCount
+	}
+	if e, a := r.expectedType, reflect.TypeOf(event.Object); e != nil && e != a {
+		utilruntime.HandleError(fmt.Errorf("%s: expected type %v, but watch event object had type %v", r.name, e, a))
+		return nil, eventCount
+	}
+	meta, err := meta.Accessor(event.Object)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("%s: unable to understand watch event %#v", r.name, event))
+		return nil, eventCount
+	}
+	newResourceVersion := meta.GetResourceVersion()
+	switch event.Type {
+	case watch.Added:
+		err := r.store.Add(event.Object)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("%s: unable to add watch event object (%#v) to store: %v", r.name, event.Object, err))
+		}
+	case watch.Modified:
+		err := r.store.Update(event.Object)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("%s: unable to update watch event object (%#v) to store: %v", r.name, event.Object, err))
+		}
+	case watch.Deleted:
+		// TODO: Will any consumers need access to the "last known
+		// state", which is passed in event.Object? If so, may need
+		// to change this.
+		err := r.store.Delete(event.Object)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("%s: unable to delete watch event object (%#v) from store: %v", r.name, event.Object, err))
+		}
+	case watch.Bookmark:
+		// A `Bookmark` means watch has synced here, just update the resourceVersion
+	default:
+		utilruntime.HandleError(fmt.Errorf("%s: unable to understand watch event %#v", r.name, event))
+	}
+	*resourceVersion = newResourceVersion
+	r.setLastSyncResourceVersion(newResourceVersion)
+	eventCount++
+	return nil, eventCount
 }
 
 // LastSyncResourceVersion is the resource version observed when last sync with the underlying store
@@ -507,8 +541,8 @@ func appendFieldSelector(target metav1.ListOptions, fieldSelector metav1.ListOpt
 
 func (r *Reflector) setBounds(signal interface{}) {
 	newBounds, _ := signal.([]int64)
+	klog.Infof("Got reset channel info. Old bounds %d, %d. New bounds %d, %d", r.bounds[0], r.bounds[1], newBounds[0], newBounds[1])
 	r.bounds = newBounds
-	klog.Infof("Got reset channel info. bounds %d, %d", r.bounds[0], r.bounds[1])
 }
 
 func (r *Reflector) isInitBounds() bool {
@@ -516,5 +550,22 @@ func (r *Reflector) isInitBounds() bool {
 		return true
 	} else {
 		return false
+	}
+}
+
+func (r *Reflector) createHashkeyListOptions() metav1.ListOptions {
+	operator := "gt"
+	if r.bounds[0] == 0 {
+		operator = "gte"
+	}
+
+	if r.ownerKind != "" {
+		return metav1.ListOptions{
+			FieldSelector: fmt.Sprintf("metadata.ownerReferences.hashkey.%s=%s:%v,metadata.ownerReferences.hashkey.%s=lte:%+v", r.ownerKind, operator, r.bounds[0], r.ownerKind, r.bounds[1]),
+		}
+	} else {
+		return metav1.ListOptions{
+			FieldSelector: fmt.Sprintf("metadata.hashkey=%s:%v,metadata.hashkey=lte:%+v", operator, r.bounds[0], r.bounds[1]),
+		}
 	}
 }

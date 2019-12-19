@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -121,7 +122,7 @@ type SharedIndexInformer interface {
 	// AddIndexers add indexers to the informer before it starts.
 	AddIndexers(indexers Indexers) error
 	GetIndexer() Indexer
-	SetResetCh(chan interface{})
+	SetResetCh(member *bcast.Member, ownerKind string)
 }
 
 // NewSharedInformer creates a new instance for the listwatcher.
@@ -207,7 +208,8 @@ type sharedIndexInformer struct {
 	// can safely join the shared informer.
 	blockDeltas sync.Mutex
 
-	resetCh chan interface{}
+	resetCh   *bcast.Member
+	ownerKind string
 }
 
 // dummyController hides the fact that a SharedInformer is different from a dedicated one
@@ -222,7 +224,7 @@ type dummyController struct {
 func (v *dummyController) Run(stopCh <-chan struct{}) {
 }
 
-func (v *dummyController) RunWithReset(stopCh <-chan struct{}, resetCh <-chan interface{}) {
+func (v *dummyController) RunWithReset(stopCh <-chan struct{}, resetCh *bcast.Member, ownerKind string) {
 }
 
 func (v *dummyController) HasSynced() bool {
@@ -289,7 +291,7 @@ func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
 	}()
 	if s.resetCh != nil {
 		klog.Infof("start informer with reset channel. %v", s.objectType)
-		s.controller.RunWithReset(stopCh, s.resetCh)
+		s.controller.RunWithReset(stopCh, s.resetCh, s.ownerKind)
 	} else {
 		klog.Infof("start informer without reset channel. %v", s.objectType)
 		s.controller.Run(stopCh)
@@ -335,11 +337,12 @@ func (s *sharedIndexInformer) AddIndexers(indexers Indexers) error {
 	return s.indexer.AddIndexers(indexers)
 }
 
-func (s *sharedIndexInformer) SetResetCh(resetCh chan interface{}) {
+func (s *sharedIndexInformer) SetResetCh(resetCh *bcast.Member, ownerKind string) {
 	s.startedLock.Lock()
 	defer s.startedLock.Unlock()
 
 	s.resetCh = resetCh
+	s.ownerKind = ownerKind
 }
 
 func (s *sharedIndexInformer) GetController() Controller {

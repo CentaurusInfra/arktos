@@ -19,6 +19,7 @@ package replicaset
 import (
 	"errors"
 	"fmt"
+	"github.com/grafov/bcast"
 	"k8s.io/klog"
 	"math/rand"
 	"net/http/httptest"
@@ -58,7 +59,8 @@ import (
 func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh chan struct{}, burstReplicas int) (*ReplicaSetController, informers.SharedInformerFactory) {
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	updateCh := make(chan string)
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 
 	cim := controller.GetControllerInstanceManager()
 	if cim == nil {
@@ -457,11 +459,12 @@ func TestWatchControllers(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	client.PrependWatchReactor("replicasets", core.DefaultWatchReactor(fakeWatch, nil))
 	stopCh := make(chan struct{})
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 	updateCh := make(chan string)
 	defer close(stopCh)
 	defer close(updateCh)
-	defer close(resetCh)
+	defer resetCh.Close()
 
 	cim := controller.GetControllerInstanceManager()
 	if cim == nil {

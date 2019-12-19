@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server"
@@ -66,7 +67,7 @@ type ControllerContext struct {
 	Stop <-chan struct{}
 
 	// Reset is the reset channel for informer filter
-	Reset chan interface{}
+	ResetChGroup *bcast.Group
 
 	// InformersStarted is closed after all of the controllers have been initialized and are running.  After this point it is safe,
 	// for an individual controller to start the shared informers. Before it is closed, they should not.
@@ -113,6 +114,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	ctx := context.TODO()
 
 	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, ctx.Done())
+	go controllerContext.ResetChGroup.Broadcast(0)
 
 	if err != nil {
 		klog.Fatalf("error building controller context: %v", err)
@@ -175,6 +177,7 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 		Stop:                                     stop,
 		InformersStarted:                         make(chan struct{}),
 		ControllerInstanceUpdateByControllerType: make(chan string),
+		ResetChGroup:                             bcast.NewGroup(),
 	}
 
 	return ctx, nil
@@ -215,9 +218,12 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 		return nil, false, nil
 	}
 	rsInformer := ctx.InformerFactory.Apps().V1().ReplicaSets()
-	ctx.Reset = make(chan interface{})
-	rsInformer.Informer().SetResetCh(ctx.Reset)
+	rsResetCh := ctx.ResetChGroup.Join()
+	rsInformer.Informer().SetResetCh(rsResetCh, "")
+
 	podInformer := ctx.InformerFactory.Core().V1().Pods()
+	podResetCh := ctx.ResetChGroup.Join()
+	podInformer.Informer().SetResetCh(podResetCh, "ReplicaSet")
 
 	go replicaset.NewReplicaSetController(
 		rsInformer,
@@ -225,7 +231,7 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
 		replicaset.BurstReplicas,
 		ctx.ControllerInstanceUpdateByControllerType,
-		ctx.Reset,
+		ctx.ResetChGroup,
 	).Run(workerNum, ctx.Stop)
 	return nil, true, nil
 }

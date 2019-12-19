@@ -18,6 +18,7 @@ package cloudfabriccontrollers
 
 import (
 	"fmt"
+	"github.com/grafov/bcast"
 	"net/http/httptest"
 	"reflect"
 	"strings"
@@ -137,7 +138,8 @@ func rmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.Cont
 	resyncPeriod := 12 * time.Hour
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "rs-informers")), resyncPeriod)
 	var updateCh chan string
-	resetCh := make(chan interface{})
+	resetCh := bcast.NewGroup()
+	go resetCh.Broadcast(0)
 
 	// controller instance manager set up
 	cim := controller.GetControllerInstanceManager()
