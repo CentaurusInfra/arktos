@@ -137,7 +137,7 @@ KUBE_CONTROLLERS="${KUBE_CONTROLLERS:-"*"}"
 AUDIT_POLICY_FILE=${AUDIT_POLICY_FILE:-""}
 
 # Kube-apiserver instance number
-APISERVER_NUMBER=${APISERVER_NUMBER:-"3"}
+APISERVER_NUMBER=${APISERVER_NUMBER:-"1"}
 
 # sanity check for OpenStack provider
 if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
@@ -1144,7 +1144,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   set_service_accounts
   echo "Starting ${APISERVER_NUMBER} kube-apiserver instances. If you want to make changes to the kube-apiserver nubmer, please run export APISERVER_SERVER=n(n=1,2,...). "
   APISERVER_PID_ARRAY=()
-  for ((i = 0 ; i <= $((APISERVER_NUMBER - 1)) ; i++)); do
+  for ((i = $((APISERVER_NUMBER - 1)) ; i >= 0 ; i--)); do
     start_apiserver $i
   done
 
