@@ -72,6 +72,11 @@ func (kl *Kubelet) DoPodAction(action *v1.Action, pod *v1.Pod) {
 		if err = kl.DoRebootVM(pod); err == nil {
 			klog.V(4).Infof("Performed reboot action for Pod %s", action.Spec.PodAction.PodName)
 			podActionStatus.RebootStatus = &v1.RebootStatus{RebootSuccessful: true}
+
+			// update the restart counter in pod.Status.VirtualMachineStatus
+			newStatus := pod.Status.DeepCopy()
+			newStatus.VirtualMachineStatus.RestartCount++
+			kl.statusManager.SetPodStatus(pod, *newStatus)
 		}
 	case string(v1.SnapshotOp):
 		// Take snapshot of (VM) Pod
