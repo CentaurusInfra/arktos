@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllerframework
+package controller
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"

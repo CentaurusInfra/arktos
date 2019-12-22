@@ -25,15 +25,24 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCalculateStatus(t *testing.T) {
+	testCalculateStatus(t, metav1.TenantDefault)
+}
+
+func TestCalculateStatusWithMultiTenancy(t *testing.T) {
+	testCalculateStatus(t, "test-te")
+}
+
+func testCalculateStatus(t *testing.T, tenant string) {
 	labelMap := map[string]string{"name": "foo"}
 	fullLabelMap := map[string]string{"name": "foo", "type": "production"}
-	notFullyLabelledRS := newReplicaSet(1, labelMap)
+	notFullyLabelledRS := newReplicaSet(1, labelMap, tenant)
 	// Set replica num to 2 for status condition testing (diff < 0, diff > 0)
-	fullyLabelledRS := newReplicaSet(2, fullLabelMap)
-	longMinReadySecondsRS := newReplicaSet(1, fullLabelMap)
+	fullyLabelledRS := newReplicaSet(2, fullLabelMap, tenant)
+	longMinReadySecondsRS := newReplicaSet(1, fullLabelMap, tenant)
 	longMinReadySecondsRS.Spec.MinReadySeconds = 3600
 
 	rsStatusTests := []struct {
@@ -147,9 +156,17 @@ func TestCalculateStatus(t *testing.T) {
 }
 
 func TestCalculateStatusConditions(t *testing.T) {
+	testCalculateStatusConditions(t, metav1.TenantDefault)
+}
+
+func TestCalculateStatusConditionsWithMultiTenancy(t *testing.T) {
+	testCalculateStatusConditions(t, "test-te")
+}
+
+func testCalculateStatusConditions(t *testing.T, tenant string) {
 	labelMap := map[string]string{"name": "foo"}
-	rs := newReplicaSet(2, labelMap)
-	replicaFailureRS := newReplicaSet(10, labelMap)
+	rs := newReplicaSet(2, labelMap, tenant)
+	replicaFailureRS := newReplicaSet(10, labelMap, tenant)
 	replicaFailureRS.Status.Conditions = []apps.ReplicaSetCondition{
 		{
 			Type:   apps.ReplicaSetReplicaFailure,
