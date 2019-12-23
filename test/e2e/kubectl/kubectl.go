@@ -169,7 +169,7 @@ var _ = SIGDescribe("Kubectl alpha client", func() {
 		var cjName string
 
 		ginkgo.BeforeEach(func() {
-			nsFlag = fmt.Sprintf("--namespace=%v", ns)
+			nsFlag = fmt.Sprintf("--namespace=%v, --tenant=%v", ns, tenant)
 			cjName = "e2e-test-echo-cronjob-alpha"
 		})
 
@@ -219,10 +219,11 @@ var _ = SIGDescribe("Kubectl client", func() {
 		clusterState().ForEach(podFunc)
 	}
 	var c clientset.Interface
-	var ns string
+	var ns, tenant string
 	ginkgo.BeforeEach(func() {
 		c = f.ClientSet
 		ns = f.Namespace.Name
+		tenant = f.Namespace.Tenant
 	})
 
 	// Customized Wait  / ForEach wrapper for this test.  These demonstrate the
