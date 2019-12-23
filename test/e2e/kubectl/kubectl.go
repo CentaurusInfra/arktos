@@ -157,10 +157,11 @@ var _ = SIGDescribe("Kubectl alpha client", func() {
 	f := framework.NewDefaultFramework("kubectl")
 
 	var c clientset.Interface
-	var ns string
+	var ns, tenant string
 	ginkgo.BeforeEach(func() {
 		c = f.ClientSet
 		ns = f.Namespace.Name
+		tenant = f.Namespace.Tenant
 	})
 
 	framework.KubeDescribe("Kubectl run CronJob", func() {
@@ -535,7 +536,7 @@ var _ = SIGDescribe("Kubectl client", func() {
 				ExecOrDie()
 
 			g := func(pods []*v1.Pod) sort.Interface { return sort.Reverse(controller.ActivePods(pods)) }
-			runTestPod, _, err := polymorphichelpers.GetFirstPod(f.ClientSet.CoreV1(), ns, "run=run-test", 1*time.Minute, g)
+			runTestPod, _, err := polymorphichelpers.GetFirstPod(f.ClientSet.CoreV1(), tenant, ns, "run=run-test", 1*time.Minute, g)
 			gomega.Expect(err).To(gomega.BeNil())
 			// NOTE: we cannot guarantee our output showed up in the container logs before stdin was closed, so we have
 			// to loop test.
@@ -566,7 +567,7 @@ var _ = SIGDescribe("Kubectl client", func() {
 				ExecOrDie()
 			gomega.Expect(runOutput).ToNot(gomega.ContainSubstring("stdin closed"))
 			g = func(pods []*v1.Pod) sort.Interface { return sort.Reverse(controller.ActivePods(pods)) }
-			runTestPod, _, err = polymorphichelpers.GetFirstPod(f.ClientSet.CoreV1(), ns, "run=run-test-3", 1*time.Minute, g)
+			runTestPod, _, err = polymorphichelpers.GetFirstPod(f.ClientSet.CoreV1(), tenant, ns, "run=run-test-3", 1*time.Minute, g)
 			gomega.Expect(err).To(gomega.BeNil())
 			if !e2epod.CheckPodsRunningReady(c, ns, []string{runTestPod.Name}, time.Minute) {
 				framework.Failf("Pod %q of Job %q should still be running", runTestPod.Name, "run-test-3")
