@@ -4982,6 +4982,10 @@ message VirtualMachine {
   // +patchStrategy=merge
   // +optional
   repeated VolumeDevice volumeDevices = 13;
+
+  // cloud-init user data script
+  // +optional
+  optional string cloudInitUserDataScript = 14;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance

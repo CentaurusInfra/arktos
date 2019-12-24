@@ -2168,6 +2168,9 @@ type VirtualMachine struct {
 	PowerSpec VmPowerSpec
 	// +optional
 	VolumeDevices []VolumeDevice
+	// cloud-init user data script
+	// +optional
+	CloudInitUserDataScript string
 }
 
 // Handler defines a specific action that should be taken
