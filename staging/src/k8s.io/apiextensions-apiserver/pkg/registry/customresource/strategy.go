@@ -54,14 +54,16 @@ type customResourceStrategy struct {
 	tenantScoped    bool
 }
 
-func NewStrategy(typer runtime.ObjectTyper, namespaceScoped bool, kind schema.GroupVersionKind, schemaValidator, statusSchemaValidator *validate.SchemaValidator, schemas map[string]*structuralschema.Structural, status *apiextensions.CustomResourceSubresourceStatus, scale *apiextensions.CustomResourceSubresourceScale) customResourceStrategy {
+func NewStrategy(typer runtime.ObjectTyper, tenantScoped, namespaceScoped bool, kind schema.GroupVersionKind, schemaValidator, statusSchemaValidator *validate.SchemaValidator, schemas map[string]*structuralschema.Structural, status *apiextensions.CustomResourceSubresourceStatus, scale *apiextensions.CustomResourceSubresourceScale) customResourceStrategy {
 	return customResourceStrategy{
 		ObjectTyper:     typer,
 		NameGenerator:   names.SimpleNameGenerator,
+		tenantScoped:    tenantScoped,
 		namespaceScoped: namespaceScoped,
 		status:          status,
 		scale:           scale,
 		validator: customResourceValidator{
+			tenantScoped:          tenantScoped,
 			namespaceScoped:       namespaceScoped,
 			kind:                  kind,
 			schemaValidator:       schemaValidator,
@@ -76,7 +78,7 @@ func (a customResourceStrategy) NamespaceScoped() bool {
 }
 
 func (a customResourceStrategy) TenantScoped() bool {
-	return a.tenantScoped || a.namespaceScoped
+	return a.tenantScoped
 }
 
 // PrepareForCreate clears the status of a CustomResource before creation.
@@ -186,16 +188,24 @@ func (a customResourceStrategy) GetAttrs(obj runtime.Object) (labels.Set, fields
 	if err != nil {
 		return nil, nil, err
 	}
-	return labels.Set(accessor.GetLabels()), objectMetaFieldsSet(accessor, a.namespaceScoped), nil
+	return labels.Set(accessor.GetLabels()), objectMetaFieldsSet(accessor, a.namespaceScoped, a.tenantScoped), nil
 }
 
 // objectMetaFieldsSet returns a fields that represent the ObjectMeta.
-func objectMetaFieldsSet(objectMeta metav1.Object, namespaceScoped bool) fields.Set {
+func objectMetaFieldsSet(objectMeta metav1.Object, namespaceScoped, tenantScoped bool) fields.Set {
 	if namespaceScoped {
 		return fields.Set{
 			"metadata.name":      objectMeta.GetName(),
 			"metadata.namespace": objectMeta.GetNamespace(),
+			"metadata.tenant":    objectMeta.GetTenant(),
 			"metadata.hashkey":   strconv.FormatInt(objectMeta.GetHashKey(), 10),
+		}
+	}
+	if tenantScoped {
+		return fields.Set{
+			"metadata.name":    objectMeta.GetName(),
+			"metadata.tenant":  objectMeta.GetTenant(),
+			"metadata.hashkey": strconv.FormatInt(objectMeta.GetHashKey(), 10),
 		}
 	}
 	return fields.Set{

@@ -136,7 +136,7 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("group"), spec.Group, "should be a domain with at least one dot"))
 	}
 
-	allErrs = append(allErrs, validateEnumStrings(fldPath.Child("scope"), string(spec.Scope), []string{string(apiextensions.ClusterScoped), string(apiextensions.NamespaceScoped)}, true)...)
+	allErrs = append(allErrs, validateEnumStrings(fldPath.Child("scope"), string(spec.Scope), []string{string(apiextensions.ClusterScoped), string(apiextensions.TenantScoped), string(apiextensions.NamespaceScoped)}, true)...)
 
 	mustBeStructural := false
 	if spec.PreserveUnknownFields == nil || *spec.PreserveUnknownFields == false {

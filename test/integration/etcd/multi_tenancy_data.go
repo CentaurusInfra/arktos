@@ -480,12 +480,18 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 		// k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
 		gvr("apiextensions.k8s.io", "v1beta1", "customresourcedefinitions"): {
 			Stub:             `{"metadata": {"name": "openshiftwebconsoleconfigs.webconsole.operator.openshift.io"},"spec": {"scope": "Cluster","group": "webconsole.operator.openshift.io","version": "v1alpha1","names": {"kind": "OpenShiftWebConsoleConfig","plural": "openshiftwebconsoleconfigs","singular": "openshiftwebconsoleconfig"}}}`,
-			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/" + tenant + "/" + "openshiftwebconsoleconfigs.webconsole.operator.openshift.io",
+			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/" + "openshiftwebconsoleconfigs.webconsole.operator.openshift.io",
+		},
+		//tenant-scope CRD
+		gvr("apiextensions.k8s.io", "v1beta1", "customresourcedefinitions"): {
+			Stub:             `{"metadata": {"name": "gryffindors.hogwarts.io"},"spec": {"scope": "Tenant","group": "hogwarts.io","version": "v1alpha1","names": {"kind": "gryffindor","plural": "gryffindors","singular": "gryffindor"}}}`,
+			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/gryffindors.hogwarts.io",
 		},
 		gvr("cr.bar.com", "v1", "foos"): {
 			Stub:             `{"kind": "Foo", "apiVersion": "cr.bar.com/v1", "metadata": {"name": "cr1foo"}, "color": "blue"}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper
 			ExpectedEtcdPath: "/registry/cr.bar.com/foos/" + tenant + "/" + namespace + "/cr1foo",
 		},
+
 		gvr("custom.fancy.com", "v2", "pants"): {
 			Stub:             `{"kind": "Pant", "apiVersion": "custom.fancy.com/v2", "metadata": {"name": "cr2pant"}, "isFancy": true}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper
 			ExpectedEtcdPath: "/registry/custom.fancy.com/pants/cr2pant",
@@ -498,6 +504,10 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			Stub:             `{"kind": "Panda", "apiVersion": "awesome.bears.com/v3", "metadata": {"name": "cr4panda"}, "spec":{"replicas": 300}}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper
 			ExpectedEtcdPath: "/registry/awesome.bears.com/pandas/cr4panda",
 			ExpectedGVK:      gvkP("awesome.bears.com", "v1", "Panda"),
+		},
+		gvr("dreamwalk.com", "v1", "moons"): {
+			Stub:             `{"kind": "moon", "apiVersion": "dreamwalk.com/v1", "metadata": {"name": "redmoon"}, "color": "blue"}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper
+			ExpectedEtcdPath: "/registry/dreamwalk.com/moons/" + tenant + "/redmoon",
 		},
 		gvr("random.numbers.com", "v1", "integers"): {
 			Stub:             `{"kind": "Integer", "apiVersion": "random.numbers.com/v1", "metadata": {"name": "fortytwo"}, "value": 42, "garbage": "oiujnasdf"}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper

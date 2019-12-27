@@ -33,7 +33,6 @@ import (
 // A group's client should implement this interface.
 type CustomResourceDefinitionsGetter interface {
 	CustomResourceDefinitions() CustomResourceDefinitionInterface
-	CustomResourceDefinitionsWithMultiTenancy(tenant string) CustomResourceDefinitionInterface
 }
 
 // CustomResourceDefinitionInterface has methods to work with CustomResourceDefinition resources.
@@ -53,18 +52,12 @@ type CustomResourceDefinitionInterface interface {
 // customResourceDefinitions implements CustomResourceDefinitionInterface
 type customResourceDefinitions struct {
 	client rest.Interface
-	te     string
 }
 
 // newCustomResourceDefinitions returns a CustomResourceDefinitions
 func newCustomResourceDefinitions(c *ApiextensionsClient) *customResourceDefinitions {
-	return newCustomResourceDefinitionsWithMultiTenancy(c, "default")
-}
-
-func newCustomResourceDefinitionsWithMultiTenancy(c *ApiextensionsClient, tenant string) *customResourceDefinitions {
 	return &customResourceDefinitions{
 		client: c.RESTClient(),
-		te:     tenant,
 	}
 }
 
@@ -72,7 +65,6 @@ func newCustomResourceDefinitionsWithMultiTenancy(c *ApiextensionsClient, tenant
 func (c *customResourceDefinitions) Get(name string, options v1.GetOptions) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -90,7 +82,6 @@ func (c *customResourceDefinitions) List(opts v1.ListOptions) (result *apiextens
 	}
 	result = &apiextensions.CustomResourceDefinitionList{}
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -108,7 +99,6 @@ func (c *customResourceDefinitions) Watch(opts v1.ListOptions) (watch.Interface,
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -119,7 +109,6 @@ func (c *customResourceDefinitions) Watch(opts v1.ListOptions) (watch.Interface,
 func (c *customResourceDefinitions) Create(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 	err = c.client.Post().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		Body(customResourceDefinition).
 		Do().
@@ -132,7 +121,6 @@ func (c *customResourceDefinitions) Create(customResourceDefinition *apiextensio
 func (c *customResourceDefinitions) Update(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 	err = c.client.Put().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).
 		Body(customResourceDefinition).
@@ -148,7 +136,6 @@ func (c *customResourceDefinitions) Update(customResourceDefinition *apiextensio
 func (c *customResourceDefinitions) UpdateStatus(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 	err = c.client.Put().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).
 		SubResource("status").
@@ -162,7 +149,6 @@ func (c *customResourceDefinitions) UpdateStatus(customResourceDefinition *apiex
 // Delete takes name of the customResourceDefinition and deletes it. Returns an error if one occurs.
 func (c *customResourceDefinitions) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		Name(name).
 		Body(options).
@@ -177,7 +163,6 @@ func (c *customResourceDefinitions) DeleteCollection(options *v1.DeleteOptions, 
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -190,7 +175,6 @@ func (c *customResourceDefinitions) DeleteCollection(options *v1.DeleteOptions, 
 func (c *customResourceDefinitions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
 		Resource("customresourcedefinitions").
 		SubResource(subresources...).
 		Name(name).

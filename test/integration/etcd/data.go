@@ -498,6 +498,11 @@ func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionRes
 			ExpectedEtcdPath: "/registry/awesome.bears.com/pandas/cr4panda",
 			ExpectedGVK:      gvkP("awesome.bears.com", "v1", "Panda"),
 		},
+		gvr("dreamwalk.com", "v1", "moons"): {
+			Stub:             `{"kind": "moon", "apiVersion": "dreamwalk.com/v1", "metadata": {"name": "redmoon"}, "color": "blue"}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper
+			ExpectedEtcdPath: "/registry/dreamwalk.com/moons/redmoon",
+		},
+
 		gvr("random.numbers.com", "v1", "integers"): {
 			Stub:             `{"kind": "Integer", "apiVersion": "random.numbers.com/v1", "metadata": {"name": "fortytwo"}, "value": 42, "garbage": "oiujnasdf"}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper
 			ExpectedEtcdPath: "/registry/random.numbers.com/integers/fortytwo",
@@ -579,6 +584,21 @@ func GetCustomResourceDefinitionData() []*apiextensionsv1beta1.CustomResourceDef
 				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
 					Plural: "foos",
 					Kind:   "Foo",
+				},
+			},
+		},
+		// Tenant-Scoped with legacy version field
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "moons.dreamwalk.com",
+			},
+			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+				Group:   "dreamwalk.com",
+				Version: "v1",
+				Scope:   apiextensionsv1beta1.TenantScoped,
+				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+					Plural: "moons",
+					Kind:   "moon",
 				},
 			},
 		},

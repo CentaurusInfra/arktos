@@ -98,6 +98,7 @@ func newStorage(t *testing.T) (customresource.CustomResourceStorage, *etcdtestin
 		customresource.NewStrategy(
 			typer,
 			true,
+			true,
 			kind,
 			nil,
 			nil,

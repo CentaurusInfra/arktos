@@ -35,11 +35,7 @@ type ApiextensionsV1beta1Client struct {
 }
 
 func (c *ApiextensionsV1beta1Client) CustomResourceDefinitions() CustomResourceDefinitionInterface {
-	return newCustomResourceDefinitionsWithMultiTenancy(c, "default")
-}
-
-func (c *ApiextensionsV1beta1Client) CustomResourceDefinitionsWithMultiTenancy(tenant string) CustomResourceDefinitionInterface {
-	return newCustomResourceDefinitionsWithMultiTenancy(c, tenant)
+	return newCustomResourceDefinitions(c)
 }
 
 // NewForConfig creates a new ApiextensionsV1beta1Client for the given config.

@@ -40,6 +40,7 @@ type customResourceValidator struct {
 	kind                  schema.GroupVersionKind
 	schemaValidator       *validate.SchemaValidator
 	statusSchemaValidator *validate.SchemaValidator
+	tenantScoped          bool
 }
 
 func (a customResourceValidator) Validate(ctx context.Context, obj runtime.Object, scale *apiextensions.CustomResourceSubresourceScale) field.ErrorList {

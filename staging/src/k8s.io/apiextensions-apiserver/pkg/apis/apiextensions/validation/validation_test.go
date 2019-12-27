@@ -2377,6 +2377,51 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 			},
 			enabledFeatures: []featuregate.Feature{features.CustomResourceDefaulting},
 		},
+		{
+			name: "tenant-scoped CRD",
+			resource: &apiextensions.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com"},
+				Spec: apiextensions.CustomResourceDefinitionSpec{
+					Group: "group.com",
+					Scope: apiextensions.ResourceScope("Tenant"),
+					Names: apiextensions.CustomResourceDefinitionNames{
+						Plural:   "plural",
+						Singular: "singular",
+						Kind:     "Plural",
+						ListKind: "PluralList",
+					},
+					Versions: []apiextensions.CustomResourceDefinitionVersion{
+						{
+							Name:    "version",
+							Served:  true,
+							Storage: true,
+						},
+						{
+							Name:    "version2",
+							Served:  true,
+							Storage: false,
+						},
+					},
+					Conversion: &apiextensions.CustomResourceConversion{
+						Strategy: apiextensions.ConversionStrategyType("Webhook"),
+						WebhookClientConfig: &apiextensions.WebhookClientConfig{
+							URL: strPtr("https://example.com/webhook"),
+						},
+						ConversionReviewVersions: []string{"invalid-version", "v1beta1"},
+					},
+					Validation: &apiextensions.CustomResourceValidation{
+						OpenAPIV3Schema: &apiextensions.JSONSchemaProps{
+							Type: "object",
+						},
+					},
+					PreserveUnknownFields: pointer.BoolPtr(false),
+				},
+				Status: apiextensions.CustomResourceDefinitionStatus{
+					StoredVersions: []string{"version"},
+				},
+			},
+			errors: []validationMatch{},
+		},
 	}
 
 	for _, tc := range tests {

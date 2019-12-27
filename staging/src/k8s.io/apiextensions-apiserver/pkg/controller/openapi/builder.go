@@ -96,11 +96,23 @@ func BuildSwagger(crd *apiextensions.CustomResourceDefinition, version string) (
 
 	routes := make([]*restful.RouteBuilder, 0)
 	root := fmt.Sprintf("/apis/%s/%s/%s", b.group, b.version, b.plural)
-	if b.namespaced {
+	if b.namespaced && b.tenanted {
 		routes = append(routes, b.buildRoute(root, "", "GET", "list", sampleList).
-			Operation("list"+b.kind+"ForAllNamespaces"))
-		root = fmt.Sprintf("/apis/%s/%s/namespaces/{namespace}/%s", b.group, b.version, b.plural)
+			Operation("list"+b.kind+"ForAllNamespacesAllTenants"))
+
+		root = fmt.Sprintf("/apis/%s/%s/tenants/{tenant}/%s", b.group, b.version, b.plural)
+		routes = append(routes, b.buildRoute(root, "", "GET", "list", sampleList).
+			Operation("list"+b.kind+"ForAllNamespacesUnderOneTenatn"))
+
+		root = fmt.Sprintf("/apis/%s/%s/tenants/{tenant}/namespaces/{namespace}/%s", b.group, b.version, b.plural)
 	}
+
+	if !b.namespaced && b.tenanted {
+		routes = append(routes, b.buildRoute(root, "", "GET", "list", sampleList).
+			Operation("list"+b.kind+"ForAllTenants"))
+		root = fmt.Sprintf("/apis/%s/%s/tenants/{tenant}/%s", b.group, b.version, b.plural)
+	}
+
 	routes = append(routes, b.buildRoute(root, "", "GET", "list", sampleList))
 	routes = append(routes, b.buildRoute(root, "", "POST", "create", sample).Reads(sample))
 	routes = append(routes, b.buildRoute(root, "", "DELETE", "deletecollection", status))
@@ -168,6 +180,7 @@ type builder struct {
 	plural   string
 
 	namespaced bool
+	tenanted   bool
 }
 
 // subresource is a handy method to get subresource name. Valid inputs are:
@@ -230,16 +243,19 @@ func (b *builder) descriptionFor(path, verb string) string {
 //     verb can be one of: list, read, replace, patch, create, delete, deletecollection;
 //     sample is the sample Go type for response type.
 func (b *builder) buildRoute(root, path, action, verb string, sample interface{}) *restful.RouteBuilder {
-	var namespaced string
+	var scope string
 	if b.namespaced {
-		namespaced = "Namespaced"
+		scope = "Namespaced"
+	}
+	if !b.namespaced && b.tenanted {
+		scope = "Tenanted"
 	}
 	route := b.ws.Method(action).
 		Path(root+path).
 		To(func(req *restful.Request, res *restful.Response) {}).
 		Doc(b.descriptionFor(path, verb)).
 		Param(b.ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-		Operation(verb+namespaced+b.kind+strings.Title(subresource(path))).
+		Operation(verb+scope+b.kind+strings.Title(subresource(path))).
 		Metadata(endpoints.ROUTE_META_GVK, metav1.GroupVersionKind{
 			Group:   b.group,
 			Version: b.version,
@@ -456,6 +472,12 @@ func newBuilder(crd *apiextensions.CustomResourceDefinition, version string, sch
 	}
 	if crd.Spec.Scope == apiextensions.NamespaceScoped {
 		b.namespaced = true
+		b.tenanted = true
+	}
+
+	if crd.Spec.Scope == apiextensions.TenantScoped {
+		b.namespaced = false
+		b.tenanted = true
 	}
 
 	// Pre-build schema with Kubernetes native properties
