@@ -680,7 +680,7 @@ func printPod(pod *api.Pod, options printers.PrintOptions) ([]metav1.TableRow, e
 	if !initializing {
 		restarts = 0
 		hasRunning := false
-		if isVmPod {
+		if isVmPod && pod.Status.VirtualMachineStatus != nil {
 			restarts += int(pod.Status.VirtualMachineStatus.RestartCount)
 			if pod.Status.Phase == api.PodRunning {
 				hasRunning = true

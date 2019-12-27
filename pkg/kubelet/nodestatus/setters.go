@@ -525,6 +525,111 @@ func ReadyCondition(
 	}
 }
 
+// RuntimeServiceCondition returns a Setter that update the v1.RuntimeServiceState condition array on the node
+// the conditions defined in v1.types as:
+// ContainerRuntimeReady NodeConditionType = "Ready"
+// VMRuntimeReady NodeConditionType = "Ready"
+func RuntimeServiceCondition(nowFunc func() time.Time, // typically Kubelet.clock.Now
+	runtimeServiceStateFunc func() (map[string]map[string]bool, error),
+	recordEventFunc func(eventType, event string), // typically Kubelet.recordNodeStatusEvent
+) Setter {
+	return func(node *v1.Node) error {
+		currentTime := metav1.NewTime(nowFunc())
+		var containerRuntimeCondition *v1.NodeCondition
+		var vmRuntimeCondition *v1.NodeCondition
+
+		// Check if node runtime ready condition already exists and if it does, just pick it up for update.
+		for i := range node.Status.Conditions {
+			if node.Status.Conditions[i].Type == v1.NodeContainerRuntimeReady {
+				containerRuntimeCondition = &node.Status.Conditions[i]
+			}
+			if node.Status.Conditions[i].Type == v1.NodeVmRuntimeReady {
+				vmRuntimeCondition = &node.Status.Conditions[i]
+			}
+		}
+
+		newContainerCondition := false
+		newVmCondition := false
+
+		// If the NodeMemoryPressure condition doesn't exist, create one
+		if vmRuntimeCondition == nil {
+			vmRuntimeCondition = &v1.NodeCondition{
+				Type:   v1.NodeVmRuntimeReady,
+				Status: v1.ConditionUnknown,
+			}
+			newVmCondition = true
+		}
+
+		if containerRuntimeCondition == nil {
+			containerRuntimeCondition = &v1.NodeCondition{
+				Type:   v1.NodeContainerRuntimeReady,
+				Status: v1.ConditionUnknown,
+			}
+			newContainerCondition = true
+		}
+
+		// Update the heartbeat time
+		containerRuntimeCondition.LastHeartbeatTime = currentTime
+		vmRuntimeCondition.LastHeartbeatTime = currentTime
+
+		runtimeStatuses, err := runtimeServiceStateFunc()
+		if err != nil {
+			return err
+		}
+
+		klog.Infof("runtime service status map: %v", runtimeStatuses)
+
+		// get the runtime status by workload types
+		for workloadType, runtimeServicesStatus := range runtimeStatuses {
+			klog.Infof("runtime service [%s] map: [%v]", workloadType, runtimeServicesStatus)
+			switch {
+			case workloadType == "container":
+				containerRuntimeCondition = getCurrentRuntimeReadiness(containerRuntimeCondition, workloadType, runtimeServicesStatus,
+					recordEventFunc, currentTime)
+
+			case workloadType == "vm":
+				vmRuntimeCondition = getCurrentRuntimeReadiness(vmRuntimeCondition, workloadType, runtimeServicesStatus,
+					recordEventFunc, currentTime)
+			}
+		}
+
+		if newVmCondition {
+			vmRuntimeCondition.LastTransitionTime = currentTime
+			node.Status.Conditions = append(node.Status.Conditions, *vmRuntimeCondition)
+		}
+		if newContainerCondition {
+			containerRuntimeCondition.LastTransitionTime = currentTime
+			node.Status.Conditions = append(node.Status.Conditions, *containerRuntimeCondition)
+		}
+		return nil
+	}
+}
+
+func getCurrentRuntimeReadiness(runtimeCondition *v1.NodeCondition, workloadType string,
+	runtimeServiceStatus map[string]bool, recordEventFunc func(eventType, event string),
+	currentTime metav1.Time) *v1.NodeCondition {
+	statusSet := false
+	for _, status := range runtimeServiceStatus {
+		if status == true {
+			runtimeCondition.Status = v1.ConditionTrue
+			runtimeCondition.Reason = fmt.Sprintf("At least one %s runtime is ready", workloadType)
+			recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is ready", runtimeCondition.Type))
+			statusSet = true
+			break
+		}
+	}
+
+	if statusSet != true {
+		runtimeCondition.Status = v1.ConditionFalse
+		runtimeCondition.Reason = fmt.Sprintf("None of %s runtime is ready", workloadType)
+		recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is not ready", runtimeCondition.Type))
+	}
+
+	runtimeCondition.LastTransitionTime = currentTime
+
+	return runtimeCondition
+}
+
 // MemoryPressureCondition returns a Setter that updates the v1.NodeMemoryPressure condition on the node.
 func MemoryPressureCondition(nowFunc func() time.Time, // typically Kubelet.clock.Now
 	pressureFunc func() bool, // typically Kubelet.evictionManager.IsUnderMemoryPressure

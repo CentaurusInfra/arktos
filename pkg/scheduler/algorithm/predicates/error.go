@@ -78,6 +78,8 @@ var (
 	// ErrFakePredicate is used for test only. The fake predicates returning false also returns error
 	// as ErrFakePredicate.
 	ErrFakePredicate = newPredicateFailureError("FakePredicateError", "Nodes failed the fake predicate")
+	// Runtime service is not ready
+	ErrNodeRuntimeNotReady = newPredicateFailureError("NodeRuntimeNotReady", "node runtime is not ready")
 )
 
 // InsufficientResourceError is an error type that indicates what kind of resource limit is

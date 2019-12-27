@@ -4434,6 +4434,9 @@ const (
 	NodePIDPressure NodeConditionType = "PIDPressure"
 	// NodeNetworkUnavailable means that network for the node is not correctly configured.
 	NodeNetworkUnavailable NodeConditionType = "NetworkUnavailable"
+	// registered runtime readiness for each workload type
+	NodeContainerRuntimeReady NodeConditionType = "ContainerRuntimeReady"
+	NodeVmRuntimeReady        NodeConditionType = "VmRuntimeReady"
 )
 
 // NodeCondition contains condition information for a node.

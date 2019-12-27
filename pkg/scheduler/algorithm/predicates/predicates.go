@@ -104,6 +104,8 @@ const (
 	CheckNodeDiskPressurePred = "CheckNodeDiskPressure"
 	// CheckNodePIDPressurePred defines the name of predicate CheckNodePIDPressure.
 	CheckNodePIDPressurePred = "CheckNodePIDPressure"
+	// CheckNodeRuntimeReadinessPred defines the name of predicate CheckNodeRuntimeReadiness
+	CheckNodeRuntimeReadinessPred = "CheckNodeRuntimeReadiness"
 
 	// DefaultMaxGCEPDVolumes defines the maximum number of PD Volumes for GCE
 	// GCE instances can have up to 16 PD volumes attached.
@@ -140,7 +142,7 @@ const (
 // The order is based on the restrictiveness & complexity of predicates.
 // Design doc: https://github.com/kubernetes/community/blob/master/contributors/design-proposals/scheduling/predicates-ordering.md
 var (
-	predicatesOrdering = []string{CheckNodeConditionPred, CheckNodeUnschedulablePred,
+	predicatesOrdering = []string{CheckNodeRuntimeReadinessPred, CheckNodeConditionPred, CheckNodeUnschedulablePred,
 		GeneralPred, HostNamePred, PodFitsHostPortsPred,
 		MatchNodeSelectorPred, PodFitsResourcesPred, NoDiskConflictPred,
 		PodToleratesNodeTaintsPred, PodToleratesNodeNoExecuteTaintsPred, CheckNodeLabelPresencePred,
@@ -1603,6 +1605,32 @@ func CheckNodePIDPressurePredicate(pod *v1.Pod, meta PredicateMetadata, nodeInfo
 		return false, []PredicateFailureReason{ErrNodeUnderPIDPressure}, nil
 	}
 	return true, nil, nil
+}
+
+// CheckNodeRuntimeReadiness checks if the desired runtime service is ready on a node
+// Return ture IIF the desired node condition exists, AND the condition is TRUE
+func CheckNodeRuntimeReadinessPredicate(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
+	if nodeInfo == nil || nodeInfo.Node() == nil {
+		return false, []PredicateFailureReason{ErrNodeUnknownCondition}, nil
+	}
+	node := nodeInfo.Node()
+
+	var podRequestedRuntimeReady v1.NodeConditionType
+
+	if pod.Spec.VirtualMachine == nil {
+		podRequestedRuntimeReady = v1.NodeContainerRuntimeReady
+	} else {
+		podRequestedRuntimeReady = v1.NodeVmRuntimeReady
+	}
+
+	for _, cond := range node.Status.Conditions {
+		if cond.Type == podRequestedRuntimeReady && cond.Status == v1.ConditionTrue {
+			klog.V(5).Infof("Found ready node runtime condition for pod [%s], condition [%v]", pod.Name, cond)
+			return true, nil, nil
+		}
+	}
+
+	return false, []PredicateFailureReason{ErrNodeRuntimeNotReady}, nil
 }
 
 // CheckNodeConditionPredicate checks if a pod can be scheduled on a node reporting

@@ -146,7 +146,7 @@ type VmDeviceManagerService interface {
 // TODO: move this interface to a separated packet for general purpose for VM and container workload types
 // Interfaces for kubeGenericRuntimeManager
 type RuntimeManager interface {
-	// Ge all runtime services supported on the node
+	// Get all runtime services supported on the node
 	GetAllRuntimeServices() ([]internalapi.RuntimeService, error)
 
 	// Get all image services supported on the node
@@ -169,6 +169,9 @@ type RuntimeManager interface {
 
 	// Get the typed version from the runtime service
 	GetTypedVersion(service internalapi.RuntimeService) (*runtimeapi.VersionResponse, error)
+
+	// Get all runtime service readiness status, by workloadType at outer map and by runtimeName at inner map
+	GetAllRuntimeStatus() (map[string]map[string]bool, error)
 }
 
 // StreamingRuntime is the interface implemented by runtimes that handle the serving of the

@@ -360,19 +360,30 @@ func DoTestPodScheduling(ns *v1.Namespace, t *testing.T, cs clientset.Interface)
 	// non-namespaced objects (Nodes).
 	defer cs.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
 
-	goodCondition := v1.NodeCondition{
-		Type:              v1.NodeReady,
-		Status:            v1.ConditionTrue,
-		Reason:            fmt.Sprintf("schedulable condition"),
-		LastHeartbeatTime: metav1.Time{Time: time.Now()},
+	goodCondition := []v1.NodeCondition{
+		{
+			Type:              v1.NodeReady,
+			Status:            v1.ConditionTrue,
+			Reason:            fmt.Sprintf("schedulable condition"),
+			LastHeartbeatTime: metav1.Time{Time: time.Now()},
+		},
+		{
+			Type:   v1.NodeVmRuntimeReady,
+			Status: v1.ConditionTrue,
+		},
+		{
+			Type:   v1.NodeContainerRuntimeReady,
+			Status: v1.ConditionTrue,
+		},
 	}
+
 	node := &v1.Node{
 		Spec: v1.NodeSpec{Unschedulable: false},
 		Status: v1.NodeStatus{
 			Capacity: v1.ResourceList{
 				v1.ResourcePods: *resource.NewQuantity(32, resource.DecimalSI),
 			},
-			Conditions: []v1.NodeCondition{goodCondition},
+			Conditions: goodCondition,
 		},
 	}
 

@@ -70,3 +70,7 @@ func (m *FakeRuntimeManager) GetRuntimeServiceByPodID(podId kubetypes.UID) (inte
 func (m *FakeRuntimeManager) RuntimeStatus(runtimeService internalapi.RuntimeService) (*RuntimeStatus, error) {
 	return nil, nil
 }
+
+func (m *FakeRuntimeManager) GetAllRuntimeStatus() (map[string]map[string]bool, error) {
+	return nil, nil
+}

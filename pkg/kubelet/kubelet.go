@@ -2231,6 +2231,9 @@ func (kl *Kubelet) updateRuntimeUp() {
 
 	aRuntimeIsUp := false
 	for _, runtime := range runtimeServices {
+		// todo: partial runtime handling
+		//       check if the runtime service is primary and only check primary runtime status for node up
+		//
 		s1, err := runtime.Status()
 		if err != nil {
 			klog.Errorf("Container runtime sanity check failed: %v", err)
