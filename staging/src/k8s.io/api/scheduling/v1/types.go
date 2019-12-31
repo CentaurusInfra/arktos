@@ -23,6 +23,7 @@ import (
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PriorityClass defines mapping from a priority class name to the priority
