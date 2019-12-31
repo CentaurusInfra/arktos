@@ -1116,6 +1116,14 @@ func makeNode(index int) *v1.Node {
 					Reason:            fmt.Sprintf("schedulable condition"),
 					LastHeartbeatTime: metav1.Time{Time: time.Now()},
 				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
 			},
 		},
 	}

@@ -369,6 +369,16 @@ func initNode(name string, res *v1.ResourceList, images []v1.ContainerImage) *v1
 		Status: v1.NodeStatus{
 			Capacity: *res,
 			Images:   images,
+			Conditions: []v1.NodeCondition{
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+			},
 		},
 	}
 	return n

@@ -48,9 +48,8 @@ func (strategy) NamespaceScoped() bool {
 	return false
 }
 
-// TenantScoped if true as each tenant has its own CRD.
 func (strategy) TenantScoped() bool {
-	return true
+	return false
 }
 
 // PrepareForCreate clears the status of a CustomResourceDefinition before creation.
@@ -139,9 +138,8 @@ func (statusStrategy) NamespaceScoped() bool {
 	return false
 }
 
-// TenantScoped if true as each tenant has its own CRD.
 func (statusStrategy) TenantScoped() bool {
-	return true
+	return false
 }
 
 func (statusStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {

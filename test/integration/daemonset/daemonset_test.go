@@ -285,7 +285,11 @@ func newNode(name string, label map[string]string) *v1.Node {
 			Namespace: metav1.NamespaceNone,
 		},
 		Status: v1.NodeStatus{
-			Conditions:  []v1.NodeCondition{{Type: v1.NodeReady, Status: v1.ConditionTrue}},
+			Conditions: []v1.NodeCondition{
+				{Type: v1.NodeReady, Status: v1.ConditionTrue},
+				{Type: v1.NodeContainerRuntimeReady, Status: v1.ConditionTrue},
+				{Type: v1.NodeVmRuntimeReady, Status: v1.ConditionTrue},
+			},
 			Allocatable: v1.ResourceList{v1.ResourcePods: resource.MustParse("100")},
 		},
 	}
@@ -688,6 +692,8 @@ func TestNotReadyNodeDaemonDoesLaunchPod(t *testing.T) {
 		node := newNode("single-node", nil)
 		node.Status.Conditions = []v1.NodeCondition{
 			{Type: v1.NodeReady, Status: v1.ConditionFalse},
+			{Type: v1.NodeContainerRuntimeReady, Status: v1.ConditionTrue},
+			{Type: v1.NodeVmRuntimeReady, Status: v1.ConditionTrue},
 		}
 		_, err = nodeClient.Create(node)
 		if err != nil {
@@ -1037,6 +1043,8 @@ func TestUnschedulableNodeDaemonDoesLaunchPod(t *testing.T) {
 			nodeNU.Status.Conditions = []v1.NodeCondition{
 				{Type: v1.NodeReady, Status: v1.ConditionFalse},
 				{Type: v1.NodeNetworkUnavailable, Status: v1.ConditionTrue},
+				{Type: v1.NodeContainerRuntimeReady, Status: v1.ConditionTrue},
+				{Type: v1.NodeVmRuntimeReady, Status: v1.ConditionTrue},
 			}
 			nodeNU.Spec.Taints = []v1.Taint{
 				{

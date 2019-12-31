@@ -98,6 +98,7 @@ func (m *CRConverterFactory) NewConverter(crd *apiextensions.CustomResourceDefin
 		validVersions: validVersions,
 		clusterScoped: crd.Spec.Scope == apiextensions.ClusterScoped,
 		converter:     converter,
+		tenantScoped:  crd.Spec.Scope == apiextensions.TenantScoped,
 	}
 	return &safeConverterWrapper{unsafe}, unsafe, nil
 }
@@ -117,6 +118,7 @@ type crConverter struct {
 	converter     crConverterInterface
 	validVersions map[schema.GroupVersion]bool
 	clusterScoped bool
+	tenantScoped  bool
 }
 
 func (c *crConverter) ConvertFieldLabel(gvk schema.GroupVersionKind, label, value string) (string, string, error) {
@@ -124,7 +126,9 @@ func (c *crConverter) ConvertFieldLabel(gvk schema.GroupVersionKind, label, valu
 	switch {
 	case label == "metadata.name" || label == "metadata.hashkey":
 		return label, value, nil
-	case !c.clusterScoped && label == "metadata.namespace":
+	case !c.clusterScoped && !c.tenantScoped && label == "metadata.namespace":
+		return label, value, nil
+	case !c.clusterScoped && label == "metadata.tenant":
 		return label, value, nil
 	default:
 		if strings.HasPrefix(label, "metadata.ownerReferences.") {

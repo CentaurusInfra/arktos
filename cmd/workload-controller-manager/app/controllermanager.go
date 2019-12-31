@@ -19,6 +19,7 @@ package app
 import (
 	"context"
 	"fmt"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"net/http"
 	"time"
 
@@ -33,7 +34,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/klog"
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 
 	"k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
 
@@ -241,7 +242,7 @@ func startControllerInstanceManager(ctx ControllerContext) (bool, error) {
 		return false, nil
 	}
 
-	go controller.NewControllerInstanceManager(
+	go controllerframework.NewControllerInstanceManager(
 		ctx.InformerFactory.Core().V1().ControllerInstances(),
 		ctx.ClientBuilder.ClientOrDie("controller-instance-manager"),
 		ctx.ControllerInstanceUpdateByControllerType).Run(ctx.Stop)

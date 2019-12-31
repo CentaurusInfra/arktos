@@ -12,6 +12,7 @@ go_library(
     deps = [
         "//cmd/workload-controller-manager/app/config:go_default_library",
         "//pkg/api/legacyscheme:go_default_library",
+        "//pkg/cloudfabric-controller:go_default_library",
         "//pkg/cloudfabric-controller/controllerframework:go_default_library",
         "//pkg/cloudfabric-controller/replicaset:go_default_library",
         "//pkg/util/configz:go_default_library",

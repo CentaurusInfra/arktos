@@ -41,7 +41,7 @@ type CustomResourceDefinitionSpec struct {
 	Version string
 	// Names are the names used to describe this custom resource
 	Names CustomResourceDefinitionNames
-	// Scope indicates whether this resource is cluster or namespace scoped.  Default is namespaced
+	// Scope indicates whether this resource is cluster, tenant or namespace scoped.  Default is namespaced
 	Scope ResourceScope
 	// Validation describes the validation methods for CustomResources
 	// Optional, the global validation schema for all versions.
@@ -245,6 +245,7 @@ type ResourceScope string
 
 const (
 	ClusterScoped   ResourceScope = "Cluster"
+	TenantScoped    ResourceScope = "Tenant"
 	NamespaceScoped ResourceScope = "Namespaced"
 )
 
@@ -333,6 +334,7 @@ const CustomResourceCleanupFinalizer = "customresourcecleanup.apiextensions.k8s.
 
 // +genclient
 // +genclient:nonNamespaced
+// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CustomResourceDefinition represents a resource that should be exposed on the API server.  Its name MUST be in the format

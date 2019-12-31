@@ -235,6 +235,18 @@ func TestUpdateNewNodeStatus(t *testing.T) {
 				Status: v1.NodeStatus{
 					Conditions: []v1.NodeCondition{
 						{
+							Type:               v1.NodeVmRuntimeReady,
+							Status:             v1.ConditionUnknown,
+							LastHeartbeatTime:  metav1.Time{},
+							LastTransitionTime: metav1.Time{},
+						},
+						{
+							Type:               v1.NodeContainerRuntimeReady,
+							Status:             v1.ConditionUnknown,
+							LastHeartbeatTime:  metav1.Time{},
+							LastTransitionTime: metav1.Time{},
+						},
+						{
 							Type:               v1.NodeMemoryPressure,
 							Status:             v1.ConditionFalse,
 							Reason:             "KubeletHasSufficientMemory",
@@ -353,6 +365,18 @@ func TestUpdateExistingNodeStatus(t *testing.T) {
 		Status: v1.NodeStatus{
 			Conditions: []v1.NodeCondition{
 				{
+					Type:               v1.NodeVmRuntimeReady,
+					Status:             v1.ConditionTrue,
+					LastHeartbeatTime:  metav1.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+					LastTransitionTime: metav1.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					Type:               v1.NodeContainerRuntimeReady,
+					Status:             v1.ConditionFalse,
+					LastHeartbeatTime:  metav1.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+					LastTransitionTime: metav1.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
 					Type:               v1.NodeMemoryPressure,
 					Status:             v1.ConditionFalse,
 					Reason:             "KubeletHasSufficientMemory",
@@ -412,6 +436,18 @@ func TestUpdateExistingNodeStatus(t *testing.T) {
 		Spec:       v1.NodeSpec{},
 		Status: v1.NodeStatus{
 			Conditions: []v1.NodeCondition{
+				{
+					Type:               v1.NodeVmRuntimeReady,
+					Status:             v1.ConditionTrue,
+					LastHeartbeatTime:  metav1.Time{},
+					LastTransitionTime: metav1.Time{},
+				},
+				{
+					Type:               v1.NodeContainerRuntimeReady,
+					Status:             v1.ConditionFalse,
+					LastHeartbeatTime:  metav1.Time{},
+					LastTransitionTime: metav1.Time{},
+				},
 				{
 					Type:               v1.NodeMemoryPressure,
 					Status:             v1.ConditionFalse,
@@ -617,6 +653,18 @@ func TestUpdateNodeStatusWithRuntimeStateError(t *testing.T) {
 		Spec:       v1.NodeSpec{},
 		Status: v1.NodeStatus{
 			Conditions: []v1.NodeCondition{
+				{
+					Type:               v1.NodeVmRuntimeReady,
+					Status:             v1.ConditionUnknown,
+					LastHeartbeatTime:  metav1.Time{},
+					LastTransitionTime: metav1.Time{},
+				},
+				{
+					Type:               v1.NodeContainerRuntimeReady,
+					Status:             v1.ConditionUnknown,
+					LastHeartbeatTime:  metav1.Time{},
+					LastTransitionTime: metav1.Time{},
+				},
 				{
 					Type:               v1.NodeMemoryPressure,
 					Status:             v1.ConditionFalse,
@@ -848,6 +896,18 @@ func TestUpdateNodeStatusWithLease(t *testing.T) {
 		Spec:       v1.NodeSpec{},
 		Status: v1.NodeStatus{
 			Conditions: []v1.NodeCondition{
+				{
+					Type:               v1.NodeVmRuntimeReady,
+					Status:             v1.ConditionUnknown,
+					LastHeartbeatTime:  now,
+					LastTransitionTime: now,
+				},
+				{
+					Type:               v1.NodeContainerRuntimeReady,
+					Status:             v1.ConditionUnknown,
+					LastHeartbeatTime:  now,
+					LastTransitionTime: now,
+				},
 				{
 					Type:               v1.NodeMemoryPressure,
 					Status:             v1.ConditionFalse,

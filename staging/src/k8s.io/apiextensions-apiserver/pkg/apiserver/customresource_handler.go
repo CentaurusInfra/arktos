@@ -605,6 +605,9 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 			schema.GroupVersionKind{Group: crd.Spec.Group, Version: v.Name, Kind: crd.Status.AcceptedNames.ListKind},
 			customresource.NewStrategy(
 				typer,
+				// TenantScoped == true if the scope is "Namespaced" or "Tenant"
+				crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
+				// NamespaceScoped == true if the scope is "Namespaced"
 				crd.Spec.Scope == apiextensions.NamespaceScoped,
 				kind,
 				validator,
@@ -627,14 +630,18 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 		)
 
 		selfLinkPrefix := ""
-		switch crd.Spec.Scope {
-		case apiextensions.ClusterScoped:
+		// Namer will have different log to generate the self link whether the scope is cluster-scoped or not
+		if crd.Spec.Scope == apiextensions.ClusterScoped {
 			selfLinkPrefix = "/" + path.Join("apis", crd.Spec.Group, v.Name) + "/" + crd.Status.AcceptedNames.Plural + "/"
-		case apiextensions.NamespaceScoped:
-			selfLinkPrefix = "/" + path.Join("apis", crd.Spec.Group, v.Name, "namespaces") + "/"
+		} else {
+			selfLinkPrefix = "/" + path.Join("apis", crd.Spec.Group, v.Name) + "/"
 		}
 
 		clusterScoped := crd.Spec.Scope == apiextensions.ClusterScoped
+		// Note the tenantScoped here takes a different meaning from TenantScoped() in trategy.go.
+		// Here tenantScoped simply mean whether the scope is "Tenant",
+		// while in strategy.go TenantScoped() is true if the scope is "Namespaced" or "Tenant"
+		tenantScoped := crd.Spec.Scope == apiextensions.TenantScoped
 
 		// CRDs explicitly do not support protobuf, but some objects returned by the API server do
 		negotiatedSerializer := unstructuredNegotiatedSerializer{
@@ -657,6 +664,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 			Namer: handlers.ContextBasedNaming{
 				SelfLinker:         meta.NewAccessor(),
 				ClusterScoped:      clusterScoped,
+				TenantScoped:       tenantScoped,
 				SelfLinkPathPrefix: selfLinkPrefix,
 			},
 			Serializer:          negotiatedSerializer,
@@ -704,6 +712,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 		scaleScope.Namer = handlers.ContextBasedNaming{
 			SelfLinker:         meta.NewAccessor(),
 			ClusterScoped:      clusterScoped,
+			TenantScoped:       tenantScoped,
 			SelfLinkPathPrefix: selfLinkPrefix,
 			SelfLinkPathSuffix: "/scale",
 		}
@@ -723,6 +732,7 @@ func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResource
 		statusScope.Namer = handlers.ContextBasedNaming{
 			SelfLinker:         meta.NewAccessor(),
 			ClusterScoped:      clusterScoped,
+			TenantScoped:       tenantScoped,
 			SelfLinkPathPrefix: selfLinkPrefix,
 			SelfLinkPathSuffix: "/status",
 		}

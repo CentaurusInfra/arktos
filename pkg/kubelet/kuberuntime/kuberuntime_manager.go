@@ -26,7 +26,7 @@ import (
 
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"go.uber.org/multierr"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
@@ -523,20 +523,40 @@ func (m *kubeGenericRuntimeManager) RuntimeAPIVersion(service internalapi.Runtim
 	return newRuntimeVersion(typedVersion.RuntimeApiVersion)
 }
 
-// AllRuntimeStatus is a helper function that returns all runtime status as a map with the runtime name + version as the key
-// it is used in kubelet to determine runtime readniness, both networking and compute of the runtime service
-func (m *kubeGenericRuntimeManager) AllRuntimeStatus() (map[string]*kubecontainer.RuntimeStatus, error) {
+// AllRuntimeStatus is a helper function that returns all runtime status as a map for each workload types
+// map[runtimeName]bool
+// it is used in kubelet to determine runtime readiness, both networking and compute of the runtime service
+func (m *kubeGenericRuntimeManager) GetAllRuntimeStatus() (map[string]map[string]bool, error) {
 
-	statuses := make(map[string]*kubecontainer.RuntimeStatus)
+	statuses := make(map[string]map[string]bool)
+	vmServices := make(map[string]bool)
+	containerServices := make(map[string]bool)
 
 	for runtimeName, runtimeService := range m.runtimeServices {
+		workloadType := runtimeService.workloadType
+		runtimeReady := true
+
 		status, err := runtimeService.serviceApi.Status()
-		if err != nil {
-			return nil, err
+		if err != nil || status == nil {
+			runtimeReady = false
 		}
 
-		statuses[runtimeName] = toKubeRuntimeStatus(status)
+		for _, c := range status.GetConditions() {
+			if c.Status != true {
+				runtimeReady = false
+				break
+			}
+		}
+
+		if workloadType == "vm" {
+			vmServices[runtimeName] = runtimeReady
+		} else {
+			containerServices[runtimeName] = runtimeReady
+		}
 	}
+
+	statuses["vm"] = vmServices
+	statuses["container"] = containerServices
 
 	return statuses, nil
 }

@@ -110,6 +110,7 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				]
 			}`,
 			expectedPredicates: sets.NewString(
+				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"PredicateOne",
 				"PredicateTwo",
@@ -125,6 +126,7 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"apiVersion" : "v1"
 			}`,
 			expectedPredicates: sets.NewString(
+				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
 				"CheckNodeMemoryPressure",
@@ -159,6 +161,7 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"priorities" : []
 			}`,
 			expectedPredicates: sets.NewString(
+				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 			),
 			expectedPrioritizers: sets.NewString(),
@@ -176,6 +179,7 @@ priorities:
   weight: 5
 `,
 			expectedPredicates: sets.NewString(
+				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"PredicateOne",
 				"PredicateTwo",
@@ -190,6 +194,7 @@ priorities:
 kind: Policy
 `,
 			expectedPredicates: sets.NewString(
+				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
 				"CheckNodeMemoryPressure",
@@ -223,6 +228,7 @@ predicates: []
 priorities: []
 `,
 			expectedPredicates: sets.NewString(
+				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 			),
 			expectedPrioritizers: sets.NewString(),
@@ -347,6 +353,7 @@ func TestSchedulerCreationFromNonExistentConfigMap(t *testing.T) {
 	}
 }
 
+// TODO: Add more test cases for paritial runtime readiness
 func TestUnschedulableNodes(t *testing.T) {
 	context := initTest(t, "unschedulable-nodes")
 	defer cleanupTest(t, context)
@@ -356,12 +363,23 @@ func TestUnschedulableNodes(t *testing.T) {
 	// non-namespaced objects (Nodes).
 	defer context.clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
 
-	goodCondition := v1.NodeCondition{
-		Type:              v1.NodeReady,
-		Status:            v1.ConditionTrue,
-		Reason:            fmt.Sprintf("schedulable condition"),
-		LastHeartbeatTime: metav1.Time{Time: time.Now()},
+	goodCondition := []v1.NodeCondition{
+		{
+			Type:              v1.NodeReady,
+			Status:            v1.ConditionTrue,
+			Reason:            fmt.Sprintf("schedulable condition"),
+			LastHeartbeatTime: metav1.Time{Time: time.Now()},
+		},
+		{
+			Type:   v1.NodeVmRuntimeReady,
+			Status: v1.ConditionTrue,
+		},
+		{
+			Type:   v1.NodeContainerRuntimeReady,
+			Status: v1.ConditionTrue,
+		},
 	}
+
 	badCondition := v1.NodeCondition{
 		Type:              v1.NodeReady,
 		Status:            v1.ConditionUnknown,
@@ -377,7 +395,7 @@ func TestUnschedulableNodes(t *testing.T) {
 			Capacity: v1.ResourceList{
 				v1.ResourcePods: *resource.NewQuantity(32, resource.DecimalSI),
 			},
-			Conditions: []v1.NodeCondition{goodCondition},
+			Conditions: goodCondition,
 		},
 	}
 	nodeKey, err := cache.MetaNamespaceKeyFunc(node)
@@ -450,7 +468,7 @@ func TestUnschedulableNodes(t *testing.T) {
 					Capacity: v1.ResourceList{
 						v1.ResourcePods: *resource.NewQuantity(32, resource.DecimalSI),
 					},
-					Conditions: []v1.NodeCondition{goodCondition},
+					Conditions: goodCondition,
 				}
 				if _, err = c.CoreV1().Nodes().UpdateStatus(n); err != nil {
 					t.Fatalf("Failed to update node with healthy status condition: %v", err)
@@ -548,6 +566,16 @@ func TestMultiScheduler(t *testing.T) {
 		Status: v1.NodeStatus{
 			Capacity: v1.ResourceList{
 				v1.ResourcePods: *resource.NewQuantity(32, resource.DecimalSI),
+			},
+			Conditions: []v1.NodeCondition{
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
 			},
 		},
 	}

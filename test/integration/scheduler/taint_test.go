@@ -196,6 +196,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 					Type:   v1.NodeReady,
 					Status: v1.ConditionFalse,
 				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
 			},
 			expectedTaints: []v1.Taint{
 				{
@@ -229,6 +237,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 			nodeConditions: []v1.NodeCondition{
 				{
 					Type:   v1.NodeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
 					Status: v1.ConditionTrue,
 				},
 			},
@@ -267,6 +283,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 				},
 				{
 					Type:   v1.NodeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
 					Status: v1.ConditionTrue,
 				},
 			},
@@ -314,6 +338,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 					Type:   v1.NodeReady,
 					Status: v1.ConditionTrue,
 				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
 			},
 			expectedTaints: []v1.Taint{
 				{
@@ -358,6 +390,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 					Type:   v1.NodeReady,
 					Status: v1.ConditionTrue,
 				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
 			},
 			expectedTaints: []v1.Taint{
 				{
@@ -397,6 +437,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 				{
 					Type:   v1.NodeReady,
 					Status: v1.ConditionFalse,
+				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
 				},
 			},
 			expectedTaints: []v1.Taint{
@@ -450,6 +498,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 					Type:   v1.NodeReady,
 					Status: v1.ConditionTrue,
 				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
 			},
 			expectedTaints: []v1.Taint{
 				{
@@ -494,6 +550,14 @@ func TestTaintNodeByCondition(t *testing.T) {
 				},
 				{
 					Type:   v1.NodeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeVmRuntimeReady,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type:   v1.NodeContainerRuntimeReady,
 					Status: v1.ConditionTrue,
 				},
 			},

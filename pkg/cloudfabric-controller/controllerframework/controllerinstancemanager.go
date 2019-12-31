@@ -18,6 +18,7 @@ package controllerframework
 
 import (
 	"fmt"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"strconv"
 
 	v1 "k8s.io/api/core/v1"
@@ -235,7 +236,7 @@ func (cim *ControllerInstanceManager) Run(stopCh <-chan struct{}) {
 	klog.Infof("Starting controller instance manager. CIM %v", cim.instanceId)
 	defer klog.Infof("Shutting down controller instance manager %v", cim.instanceId)
 
-	if !WaitForCacheSync("Controller Instance Manager", stopCh, cim.controllerListerSynced) {
+	if !controller.WaitForCacheSync("Controller Instance Manager", stopCh, cim.controllerListerSynced) {
 		klog.Infof("Controller instances NOT synced %v. CIM %v", cim.controllerListerSynced, cim.instanceId)
 		return
 	}

@@ -134,6 +134,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			Name:               crd.Status.AcceptedNames.Plural,
 			SingularName:       crd.Status.AcceptedNames.Singular,
 			Namespaced:         crd.Spec.Scope == apiextensions.NamespaceScoped,
+			Tenanted:           crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 			Kind:               crd.Status.AcceptedNames.Kind,
 			Verbs:              verbs,
 			ShortNames:         crd.Status.AcceptedNames.ShortNames,
@@ -149,6 +150,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			apiResourcesForDiscovery = append(apiResourcesForDiscovery, metav1.APIResource{
 				Name:       crd.Status.AcceptedNames.Plural + "/status",
 				Namespaced: crd.Spec.Scope == apiextensions.NamespaceScoped,
+				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Kind:       crd.Status.AcceptedNames.Kind,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
 			})
@@ -161,6 +163,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 				Kind:       "Scale",
 				Name:       crd.Status.AcceptedNames.Plural + "/scale",
 				Namespaced: crd.Spec.Scope == apiextensions.NamespaceScoped,
+				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
 			})
 		}

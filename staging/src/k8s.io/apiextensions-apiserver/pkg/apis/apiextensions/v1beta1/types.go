@@ -44,7 +44,7 @@ type CustomResourceDefinitionSpec struct {
 	Version string `json:"version,omitempty" protobuf:"bytes,2,opt,name=version"`
 	// Names are the names used to describe this custom resource
 	Names CustomResourceDefinitionNames `json:"names" protobuf:"bytes,3,opt,name=names"`
-	// Scope indicates whether this resource is cluster or namespace scoped.  Default is namespaced
+	// Scope indicates whether this resource is cluster, tenant or namespace scoped.  Default is namespaced
 	Scope ResourceScope `json:"scope" protobuf:"bytes,4,opt,name=scope,casttype=ResourceScope"`
 	// Validation describes the validation methods for CustomResources
 	// Optional, the global validation schema for all versions.
@@ -260,6 +260,7 @@ type ResourceScope string
 
 const (
 	ClusterScoped   ResourceScope = "Cluster"
+	TenantScoped    ResourceScope = "Tenant"
 	NamespaceScoped ResourceScope = "Namespaced"
 )
 
@@ -347,6 +348,7 @@ type CustomResourceDefinitionStatus struct {
 const CustomResourceCleanupFinalizer = "customresourcecleanup.apiextensions.k8s.io"
 
 // +genclient
+// +genclient:nonTenanted
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

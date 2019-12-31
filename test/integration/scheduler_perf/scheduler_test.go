@@ -59,6 +59,8 @@ var (
 			Phase: v1.NodeRunning,
 			Conditions: []v1.NodeCondition{
 				{Type: v1.NodeReady, Status: v1.ConditionTrue},
+				{Type: v1.NodeVmRuntimeReady, Status: v1.ConditionTrue},
+				{Type: v1.NodeContainerRuntimeReady, Status: v1.ConditionTrue},
 			},
 		},
 	}

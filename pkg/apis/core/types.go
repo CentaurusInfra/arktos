@@ -2168,6 +2168,9 @@ type VirtualMachine struct {
 	PowerSpec VmPowerSpec
 	// +optional
 	VolumeDevices []VolumeDevice
+	// cloud-init user data script
+	// +optional
+	CloudInitUserDataScript string
 }
 
 // Handler defines a specific action that should be taken
@@ -3949,6 +3952,9 @@ const (
 	NodeDiskPressure NodeConditionType = "DiskPressure"
 	// NodeNetworkUnavailable means that network for the node is not correctly configured.
 	NodeNetworkUnavailable NodeConditionType = "NetworkUnavailable"
+	// registered runtime readiness for each workload type
+	NodeContainerRuntimeReady NodeConditionType = "ContainerRuntimeReady"
+	NodeVmRuntimeReady        NodeConditionType = "VmRuntimeReady"
 )
 
 type NodeCondition struct {

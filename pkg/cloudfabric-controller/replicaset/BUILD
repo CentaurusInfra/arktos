@@ -16,6 +16,7 @@ go_library(
     importpath = "k8s.io/kubernetes/pkg/cloudfabric-controller/replicaset",
     deps = [
         "//pkg/api/v1/pod:go_default_library",
+        "//pkg/cloudfabric-controller:go_default_library",
         "//pkg/cloudfabric-controller/controllerframework:go_default_library",
         "//pkg/util/metrics:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
@@ -52,6 +53,7 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
+        "//pkg/cloudfabric-controller:go_default_library",
         "//pkg/cloudfabric-controller/controllerframework:go_default_library",
         "//pkg/cloudfabric-controller/testutil:go_default_library",
         "//pkg/securitycontext:go_default_library",

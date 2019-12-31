@@ -942,6 +942,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  "kind": "Policy",
 		  "apiVersion": "v1",
 		  "predicates": [
+            {"name": "CheckNodeRuntimeReadiness"},
 			{"name": "MatchNodeSelector"},
 			{"name": "PodFitsResources"},
 			{"name": "PodFitsHostPorts"},
@@ -1001,6 +1002,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		}`,
 			ExpectedPolicy: schedulerapi.Policy{
 				Predicates: []schedulerapi.PredicatePolicy{
+					{Name: "CheckNodeRuntimeReadiness"},
 					{Name: "MatchNodeSelector"},
 					{Name: "PodFitsResources"},
 					{Name: "PodFitsHostPorts"},

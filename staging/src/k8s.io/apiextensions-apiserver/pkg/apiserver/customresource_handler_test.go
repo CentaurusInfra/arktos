@@ -28,6 +28,7 @@ func TestConvertFieldLabel(t *testing.T) {
 	tests := []struct {
 		name          string
 		clusterScoped bool
+		tenantScoped  bool
 		label         string
 		expectError   bool
 	}{
@@ -35,6 +36,12 @@ func TestConvertFieldLabel(t *testing.T) {
 			name:          "cluster scoped - name is ok",
 			clusterScoped: true,
 			label:         "metadata.name",
+		},
+		{
+			name:          "tenant scoped - tenant is not ok",
+			clusterScoped: true,
+			label:         "metadata.tenant",
+			expectError:   true,
 		},
 		{
 			name:          "cluster scoped - namespace is not ok",
@@ -49,12 +56,37 @@ func TestConvertFieldLabel(t *testing.T) {
 			expectError:   true,
 		},
 		{
+			name:         "tenant scoped - name is ok",
+			tenantScoped: true,
+			label:        "metadata.name",
+		},
+		{
+			name:         "tenant scoped - tenant is ok",
+			tenantScoped: true,
+			label:        "metadata.tenant",
+		},
+		{
+			name:         "tenant scoped - namespace is not ok",
+			tenantScoped: true,
+			label:        "metadata.namespace",
+			expectError:  true,
+		},
+		{
+			name:        "tenant scoped - other field is not ok",
+			label:       "some.other.field",
+			expectError: true,
+		},
+		{
 			name:  "namespace scoped - name is ok",
 			label: "metadata.name",
 		},
 		{
 			name:  "namespace scoped - namespace is ok",
 			label: "metadata.namespace",
+		},
+		{
+			name:  "namespace scoped - tenant is ok",
+			label: "metadata.tenant",
 		},
 		{
 			name:        "namespace scoped - other field is not ok",
@@ -74,11 +106,15 @@ func TestConvertFieldLabel(t *testing.T) {
 				},
 			}
 
-			if test.clusterScoped {
+			switch {
+			case test.clusterScoped:
 				crd.Spec.Scope = apiextensions.ClusterScoped
-			} else {
+			case test.tenantScoped:
+				crd.Spec.Scope = apiextensions.TenantScoped
+			default:
 				crd.Spec.Scope = apiextensions.NamespaceScoped
 			}
+
 			f, err := conversion.NewCRConverterFactory(nil, nil)
 			if err != nil {
 				t.Fatal(err)

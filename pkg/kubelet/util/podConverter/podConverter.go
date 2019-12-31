@@ -95,6 +95,9 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 		}
 		cpod.Annotations[cloudInitUserDataKeyName] = string(userData)
 	}
+	if pod.Spec.VirtualMachine.CloudInitUserDataScript != "" {
+		cpod.Annotations[cloudInitUserDataScriptKeyName] = pod.Spec.VirtualMachine.CloudInitUserDataScript
+	}
 
 	if pod.Spec.VPC != stringEmpty {
 		cpod.Annotations[VPCKeyName] = pod.Spec.VPC
@@ -119,6 +122,8 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 			ImagePullPolicy: pod.Spec.VirtualMachine.ImagePullPolicy,
 			VolumeMounts:    pod.Spec.VirtualMachine.VolumeMounts,
 			VolumeDevices:   pod.Spec.VirtualMachine.VolumeDevices,
+			TTY:             true,
+			Stdin:           true,
 		},
 	}
 
