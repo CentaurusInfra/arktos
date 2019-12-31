@@ -85,7 +85,7 @@ KUBECTL=${KUBECTL:-"${KUBE_ROOT}/cluster/kubectl.sh"}
 WAIT_FOR_URL_API_SERVER=${WAIT_FOR_URL_API_SERVER:-60}
 MAX_TIME_FOR_URL_API_SERVER=${MAX_TIME_FOR_URL_API_SERVER:-1}
 ENABLE_DAEMON=${ENABLE_DAEMON:-false}
-HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"127.0.0.1"}
+HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"$(hostname)"}
 EXTERNAL_CLOUD_PROVIDER=${EXTERNAL_CLOUD_PROVIDER:-false}
 EXTERNAL_CLOUD_PROVIDER_BINARY=${EXTERNAL_CLOUD_PROVIDER_BINARY:-""}
 CLOUD_PROVIDER=${CLOUD_PROVIDER:-""}
@@ -277,12 +277,12 @@ API_PORT=${API_PORT:-8080}
 API_SECURE_PORT=${API_SECURE_PORT:-6443}
 
 # WARNING: For DNS to work on most setups you should export API_HOST as the docker0 ip address,
-API_HOST=${API_HOST:-localhost}
-API_HOST_IP=${API_HOST_IP:-"127.0.0.1"}
+API_HOST=${API_HOST:-"$(hostname)"}
+API_HOST_IP=${API_HOST_IP:-"0.0.0.0"}
 ADVERTISE_ADDRESS=${ADVERTISE_ADDRESS:-""}
 NODE_PORT_RANGE=${NODE_PORT_RANGE:-""}
 API_BIND_ADDR=${API_BIND_ADDR:-"0.0.0.0"}
-EXTERNAL_HOSTNAME=${EXTERNAL_HOSTNAME:-localhost}
+EXTERNAL_HOSTNAME=${EXTERNAL_HOSTNAME:-"$(hostname)"}
 
 KUBELET_HOST=${KUBELET_HOST:-"127.0.0.1"}
 # By default only allow CORS for requests on localhost
@@ -562,7 +562,7 @@ function generate_certs {
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-apiserver kube-apiserver
 
     # Create matching certificates for kube-aggregator
-    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-aggregator api.kube-public.svc "localhost" "${API_HOST_IP}"
+    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-aggregator api.kube-public.svc "${API_HOST}" "${API_HOST_IP}"
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header-ca auth-proxy system:auth-proxy
 
     # TODO remove masters and add rolebinding
@@ -1201,7 +1201,7 @@ echo ""
 
 while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
 
-cluster/kubectl.sh label node 127.0.0.1 extraRuntime=virtlet
+cluster/kubectl.sh label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
 cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file hack/runtime/images.yaml
 
@@ -1221,7 +1221,7 @@ if [[ "${ENABLE_DAEMON}" = false ]]; then
 fi
 
 if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
-  cluster/kubectl.sh config set-cluster local --server=https://localhost:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
+  cluster/kubectl.sh config set-cluster local --server=https://${API_HOST_IP}:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
   cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
   cluster/kubectl.sh config set-context local --cluster=local --user=myself
   cluster/kubectl.sh config use-context local
