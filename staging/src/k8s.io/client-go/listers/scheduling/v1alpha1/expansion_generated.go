@@ -21,7 +21,3 @@ package v1alpha1
 // PriorityClassListerExpansion allows custom methods to be added to
 // PriorityClassLister.
 type PriorityClassListerExpansion interface{}
-
-// PriorityClassTenantListerExpansion allows custom methods to be added to
-// PriorityClassTenantLister.
-type PriorityClassTenantListerExpansion interface{}

@@ -35,11 +35,7 @@ type SchedulingV1Client struct {
 }
 
 func (c *SchedulingV1Client) PriorityClasses() PriorityClassInterface {
-	return newPriorityClassesWithMultiTenancy(c, "default")
-}
-
-func (c *SchedulingV1Client) PriorityClassesWithMultiTenancy(tenant string) PriorityClassInterface {
-	return newPriorityClassesWithMultiTenancy(c, tenant)
+	return newPriorityClasses(c)
 }
 
 // NewForConfig creates a new SchedulingV1Client for the given config.

@@ -47,5 +47,5 @@ func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace s
 
 // PriorityClasses returns a PriorityClassInformer.
 func (v *version) PriorityClasses() PriorityClassInformer {
-	return &priorityClassInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
+	return &priorityClassInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
