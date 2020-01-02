@@ -754,7 +754,6 @@ function construct-linux-kubelet-flags {
     flags+=" --bootstrap-kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
     flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
   fi
-  # Temporarily remove Network plugin flags to enable kubelet start static pods on GCE
   if [[ -n "${NETWORK_PROVIDER:-}" || -n "${NETWORK_POLICY_PROVIDER:-}" ]]; then
     flags+=" --cni-bin-dir=/home/kubernetes/bin"
     if [[ "${NETWORK_POLICY_PROVIDER:-}" == "calico" || "${ENABLE_NETD:-}" == "true" ]]; then
@@ -3501,7 +3500,6 @@ function test-setup() {
   else
     "${KUBE_ROOT}/cluster/kube-up.sh"
   fi
-  echo -e "${color_yellow}after run cluster/kube-up.sh in test-setup of cluster/gce/util.sh!${color_norm}"
   # Open up port 80 & 8080 so common containers on minions can be reached
   # TODO(roberthbailey): Remove this once we are no longer relying on hostPorts.
   local start=`date +%s`
@@ -3520,7 +3518,7 @@ function test-setup() {
     fi
     sleep 5
   done
-  echo -e "${color_yellow}after run firewall-rules create for ${NODE_TAG}-http-alt in test-setup of cluster/gce/util.sh!${color_norm}"
+
   # Open up the NodePort range
   # TODO(justinsb): Move to main setup, if we decide whether we want to do this by default.
   start=`date +%s`

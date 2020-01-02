@@ -17,6 +17,9 @@
 export KUBERNETES_PROVIDER="kubemark"
 export KUBE_CONFIG_FILE="config-default.sh"
 
+##export correct CLUSTER_NAME to ensure e2e run in correct cluster
+export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}"
+export CLUSTER_NAME="${CLUSTER_NAME:-${KUBE_GCE_INSTANCE_PREFIX}}-kubemark"
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/../..
 
 # We need an absolute path to KUBE_ROOT

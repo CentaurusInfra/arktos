@@ -41,6 +41,10 @@ NODE_LOCAL_SSDS=${NODE_LOCAL_SSDS:-0}
 NODE_LABELS="${KUBE_NODE_LABELS:-}"
 WINDOWS_NODE_LABELS="${WINDOWS_NODE_LABELS:-}"
 
+# KUBE_CREATE_NODES can be used to avoid creating nodes, while master will be sized for NUM_NODES nodes.
+# Firewalls and node templates are still created.
+KUBE_CREATE_NODES="${KUBE_CREATE_NODES:-true}"
+
 # An extension to local SSDs allowing users to specify block/fs and SCSI/NVMe devices
 # Format of this variable will be "#,scsi/nvme,block/fs" you can specify multiple
 # configurations by separating them by a semi-colon ex. "2,scsi,fs;1,nvme,block"
@@ -116,11 +120,12 @@ if [[ "${CREATE_CUSTOM_NETWORK}" == true ]]; then
 fi
 INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-kubernetes}"
 CLUSTER_NAME="${CLUSTER_NAME:-${INSTANCE_PREFIX}}"
-MASTER_NAME="${INSTANCE_PREFIX}-master"
-AGGREGATOR_MASTER_NAME="${INSTANCE_PREFIX}-aggregator"
+##change to use CLUSTER-NAME to ensure kubemark can get correct master name when start or run e2e
+MASTER_NAME="${CLUSTER_NAME}-master"
+AGGREGATOR_MASTER_NAME="${CLUSTER_NAME}-aggregator"
 INITIAL_ETCD_CLUSTER="${MASTER_NAME}"
-MASTER_TAG="${INSTANCE_PREFIX}-master"
-NODE_TAG="${INSTANCE_PREFIX}-minion"
+MASTER_TAG="${CLUSTER_NAME}-master"
+NODE_TAG="${CLUSTER_NAME}-minion"
 
 CLUSTER_IP_RANGE="${CLUSTER_IP_RANGE:-$(get-cluster-ip-range)}"
 MASTER_IP_RANGE="${MASTER_IP_RANGE:-10.246.0.0/24}"
