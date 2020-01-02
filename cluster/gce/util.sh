@@ -754,7 +754,7 @@ function construct-linux-kubelet-flags {
     flags+=" --bootstrap-kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
     flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
   fi
-  # Network plugin
+  # Temporarily remove Network plugin flags to enable kubelet start static pods on GCE
   if [[ -n "${NETWORK_PROVIDER:-}" || -n "${NETWORK_POLICY_PROVIDER:-}" ]]; then
     flags+=" --cni-bin-dir=/home/kubernetes/bin"
     if [[ "${NETWORK_POLICY_PROVIDER:-}" == "calico" || "${ENABLE_NETD:-}" == "true" ]]; then
@@ -767,7 +767,7 @@ function construct-linux-kubelet-flags {
       fi
     else
       # Otherwise use the configured value.
-      flags+=" --network-plugin=${NETWORK_PROVIDER}"
+      flags+=" --network-plugin="
 
     fi
   fi
@@ -2138,9 +2138,11 @@ function kube-up() {
     create-master
     create-nodes-firewall
     create-nodes-template
-    # Windows nodes take longer to boot and setup so create them first.
-    create-windows-nodes
-    create-linux-nodes
+    if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
+      # Windows nodes take longer to boot and setup so create them first.
+      create-windows-nodes
+      create-linux-nodes
+    fi
     check-cluster
   fi
 }
@@ -3488,6 +3490,7 @@ function test-build-release() {
 #   Variables from config.sh
 function test-setup() {
   # Detect the project into $PROJECT if it isn't set
+  echo -e "${color_yellow}Start for test-setup in cluster/gce/util.sh!${color_norm}"
   detect-project
 
   if [[ ${MULTIZONE:-} == "true" && -n ${E2E_ZONES:-} ]]; then
@@ -3498,7 +3501,7 @@ function test-setup() {
   else
     "${KUBE_ROOT}/cluster/kube-up.sh"
   fi
-
+  echo -e "${color_yellow}after run cluster/kube-up.sh in test-setup of cluster/gce/util.sh!${color_norm}"
   # Open up port 80 & 8080 so common containers on minions can be reached
   # TODO(roberthbailey): Remove this once we are no longer relying on hostPorts.
   local start=`date +%s`
@@ -3507,17 +3510,17 @@ function test-setup() {
     --target-tags "${NODE_TAG}" \
     --allow tcp:80,tcp:8080 \
     --network "${NETWORK}" \
-    "${NODE_TAG}-${INSTANCE_PREFIX}-http-alt" 2> /dev/null || true
+    "${NODE_TAG}-http-alt" 2> /dev/null || true
   # As there is no simple way to wait longer for this operation we need to manually
   # wait some additional time (20 minutes altogether).
-  while ! gcloud compute firewall-rules describe --project "${NETWORK_PROJECT}" "${NODE_TAG}-${INSTANCE_PREFIX}-http-alt" 2> /dev/null; do
+  while ! gcloud compute firewall-rules describe --project "${NETWORK_PROJECT}" "${NODE_TAG}-http-alt" 2> /dev/null; do
     if [[ $(($start + 1200)) -lt `date +%s` ]]; then
-      echo -e "${color_red}Failed to create firewall ${NODE_TAG}-${INSTANCE_PREFIX}-http-alt in ${NETWORK_PROJECT}" >&2
+      echo -e "${color_red}Failed to create firewall ${NODE_TAG}-http-alt in ${NETWORK_PROJECT}" >&2
       exit 1
     fi
     sleep 5
   done
-
+  echo -e "${color_yellow}after run firewall-rules create for ${NODE_TAG}-http-alt in test-setup of cluster/gce/util.sh!${color_norm}"
   # Open up the NodePort range
   # TODO(justinsb): Move to main setup, if we decide whether we want to do this by default.
   start=`date +%s`
@@ -3526,12 +3529,12 @@ function test-setup() {
     --target-tags "${NODE_TAG}" \
     --allow tcp:30000-32767,udp:30000-32767 \
     --network "${NETWORK}" \
-    "${NODE_TAG}-${INSTANCE_PREFIX}-nodeports" 2> /dev/null || true
+    "${NODE_TAG}-nodeports" 2> /dev/null || true
   # As there is no simple way to wait longer for this operation we need to manually
   # wait some additional time (20 minutes altogether).
-  while ! gcloud compute firewall-rules describe --project "${NETWORK_PROJECT}" "${NODE_TAG}-${INSTANCE_PREFIX}-nodeports" 2> /dev/null; do
+  while ! gcloud compute firewall-rules describe --project "${NETWORK_PROJECT}" "${NODE_TAG}-nodeports" 2> /dev/null; do
     if [[ $(($start + 1200)) -lt `date +%s` ]]; then
-      echo -e "${color_red}Failed to create firewall ${NODE_TAG}-${INSTANCE_PREFIX}-nodeports in ${PROJECT}" >&2
+      echo -e "${color_red}Failed to create firewall ${NODE_TAG}-nodeports in ${PROJECT}" >&2
       exit 1
     fi
     sleep 5
