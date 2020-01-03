@@ -19,6 +19,7 @@ package fields
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -677,9 +678,9 @@ func ParseAndTransformSelector(selector string, fn TransformFunc) (Selector, err
 // TransformFunc transforms selectors.
 type TransformFunc func(field, value string) (newField, newValue string, err error)
 
-// splitTerms returns the comma-separated terms contained in the given fieldSelector.
+// splitTermsAndSort returns the comma-separated terms contained in the given fieldSelector.
 // Backslash-escaped commas are treated as data instead of delimiters, and are included in the returned terms, with the leading backslash preserved.
-func splitTerms(fieldSelector string) [][]string {
+func splitTermsAndSort(fieldSelector string) [][]string {
 	if len(fieldSelector) == 0 {
 		return nil
 	}
@@ -700,16 +701,17 @@ func splitTerms(fieldSelector string) [][]string {
 	}
 
 	orTerms = append(orTerms, fieldSelector[startIndex:])
+	sort.StringSlice(orTerms).Sort()
 
 	terms := make([][]string, 0, 1)
 	for _, andTerm := range orTerms {
-		ts := splitAndTerms(andTerm)
+		ts := splitAndTermsAndSort(andTerm)
 		terms = append(terms, ts)
 	}
 	return terms
 }
 
-func splitAndTerms(fieldSelector string) []string {
+func splitAndTermsAndSort(fieldSelector string) []string {
 	if len(fieldSelector) == 0 {
 		return nil
 	}
@@ -730,6 +732,7 @@ func splitAndTerms(fieldSelector string) []string {
 	}
 
 	terms = append(terms, fieldSelector[startIndex:])
+	sort.StringSlice(terms).Sort()
 
 	return terms
 }
@@ -765,7 +768,8 @@ func splitTerm(term string) (lhs, op, rhs string, ok bool) {
 }
 
 func parseSelector(selector string, fn TransformFunc) (Selector, error) {
-	parts := splitTerms(selector)
+	parts := splitTermsAndSort(selector)
+
 	var items []Selector
 	for _, part := range parts {
 		if len(part) == 0 {

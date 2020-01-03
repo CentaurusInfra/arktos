@@ -115,6 +115,9 @@ var (
 		lt(<), lte(<=), gt(>), and gte(>=)
 		kubectl get pods --field-selector metadata.hashkey=lte:10,metadata.hashkey=gt:-10
 
+        # List all pods with either hashkey equals a or b.
+		kubectl get pods --field-selector metadata.hashkey=a\;metadata.hashkey=b
+
 		# List a single replication controller with specified NAME in ps output format.
 		kubectl get replicationcontroller web
 

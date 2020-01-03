@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestSplitTerms(t *testing.T) {
+func TestSplitTermsAndSort(t *testing.T) {
 	testcases := map[string][][]string{
 		// Simple selectors
 		`a`:                                                   {{`a`}},
@@ -38,27 +38,27 @@ func TestSplitTerms(t *testing.T) {
 
 		// Empty terms
 		``:     nil,
-		`a=a,`: {{`a=a`, ``}},
-		`a=a;`: {{`a=a`}, nil},
+		`a=a,`: {{``, `a=a`}},
+		`a=a;`: {nil, {`a=a`}},
 		`,a=a`: {{``, `a=a`}},
 		`;a=a`: {nil, {`a=a`}},
 
 		// Escaped values
-		`k=\,,k2=v2`:   {{`k=\,`, `k2=v2`}},     // escaped comma in value
-		`k=\\,k2=v2`:   {{`k=\\`, `k2=v2`}},     // escaped backslash, unescaped comma
-		`k=\\\,,k2=v2`: {{`k=\\\,`, `k2=v2`}},   // escaped backslash and comma
-		`k=\;;k2=v2`:   {{`k=\;`}, {`k2=v2`}},   // escaped comma in value
-		`k=\\;k2=v2`:   {{`k=\\`}, {`k2=v2`}},   // escaped backslash, unescaped comma
-		`k=\\\;;k2=v2`: {{`k=\\\;`}, {`k2=v2`}}, // escaped backslash and comma
+		`k=\,,k2=v2`:   {{`k2=v2`, `k=\,`}},     // escaped comma in value
+		`k=\\,k2=v2`:   {{`k2=v2`, `k=\\`}},     // escaped backslash, unescaped comma
+		`k=\\\,,k2=v2`: {{`k2=v2`, `k=\\\,`}},   // escaped backslash and comma
+		`k=\;;k2=v2`:   {{`k2=v2`}, {`k=\;`}},   // escaped comma in value
+		`k=\\;k2=v2`:   {{`k2=v2`}, {`k=\\`}},   // escaped backslash, unescaped comma
+		`k=\\\;;k2=v2`: {{`k2=v2`}, {`k=\\\;`}}, // escaped backslash and comma
 		`k=\a\b\`:      {{`k=\a\b\`}},           // non-escape sequences
 		`k=\`:          {{`k=\`}},               // orphan backslash
 
 		// Multi-byte
-		`함=수,목=록`: {{`함=수`, `목=록`}},
+		`함=수,목=록`: {{`목=록`, `함=수`}},
 	}
 
 	for selector, expectedTerms := range testcases {
-		if terms := splitTerms(selector); !reflect.DeepEqual(terms, expectedTerms) {
+		if terms := splitTermsAndSort(selector); !reflect.DeepEqual(terms, expectedTerms) {
 			t.Errorf("splitSelectors(`%s`): Expected\n%#v\ngot\n%#v", selector, expectedTerms, terms)
 		}
 	}
@@ -192,7 +192,7 @@ func TestDeterministicParse(t *testing.T) {
 	if err != nil || err2 != nil {
 		t.Errorf("Unexpected parse error")
 	}
-	if s1.String() == s2.String() {
+	if s1.String() != s2.String() {
 		t.Errorf("Non-deterministic parse")
 	}
 
@@ -201,7 +201,7 @@ func TestDeterministicParse(t *testing.T) {
 	if err != nil || err2 != nil {
 		t.Errorf("Unexpected parse error")
 	}
-	if s1.String() == s2.String() {
+	if s1.String() != s2.String() {
 		t.Errorf("Non-deterministic parse")
 	}
 }
@@ -409,7 +409,7 @@ func TestTransform(t *testing.T) {
 			name:      "no-op transform orTerm & andTerm",
 			selector:  "x=y,a=b;c=d",
 			transform: func(field, value string) (string, string, error) { return field, value, nil },
-			result:    "x=y,a=b;c=d",
+			result:    "c=d;a=b,x=y",
 			isEmpty:   false,
 		},
 		{
