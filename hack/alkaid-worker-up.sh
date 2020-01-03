@@ -22,5 +22,23 @@ die() { echo "$*" 1>&2 ; exit 1; }
 HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"$(hostname)"}
 CLUSTER_DNS=${CLUSTER_DNS:-"10.0.0.10"}
 
-sudo ./hyperkube kubelet --v=3 --container-runtime=remote --hostname-override=${HOSTNAME_OVERRIDE} --address=${KUBELET_IP} --kubeconfig=${KUBELET_KUBECONFIG} --feature-gates=AllAlpha=false --cpu-cfs-quota=true --enable-controller-attach-detach=true --cgroups-per-qos=true --cgroup-driver= --cgroup-root= --cluster-dns=${CLUSTER_DNS} --cluster-domain=cluster.local --container-runtime-endpoint="containerRuntime,container,/run/containerd/containerd.sock;vmRuntime,vm,/run/virtlet.sock" --runtime-request-timeout=2m --port=10250
+sudo ./hyperkube kubelet \
+--v=3 \
+--container-runtime=remote \
+--hostname-override=${HOSTNAME_OVERRIDE} \
+--address=${KUBELET_IP} \
+--kubeconfig=${KUBELET_KUBECONFIG} \
+--authorization-mode=Webhook \
+--authentication-token-webhook \
+--client-ca-file=./client-ca.crt \
+--feature-gates=AllAlpha=false \
+--cpu-cfs-quota=true \
+--enable-controller-attach-detach=true \
+--cgroups-per-qos=true \
+--cgroup-driver= --cgroup-root= \
+--cluster-dns=${CLUSTER_DNS} \
+--cluster-domain=cluster.local \
+--container-runtime-endpoint="containerRuntime,container,/run/containerd/containerd.sock;vmRuntime,vm,/run/virtlet.sock" \
+--runtime-request-timeout=2m \
+--port=10250
 
