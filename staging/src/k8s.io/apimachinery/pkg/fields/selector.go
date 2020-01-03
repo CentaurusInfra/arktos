@@ -19,7 +19,6 @@ package fields
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -73,7 +72,7 @@ func Nothing() Selector {
 
 // Everything returns a selector that matches all fields.
 func Everything() Selector {
-	return andTerm{}
+	return orTerm{}
 }
 
 type hasTerm struct {
@@ -475,6 +474,90 @@ func (t andTerm) DeepCopySelector() Selector {
 	return andTerm(out)
 }
 
+type orTerm []Selector
+
+func (t orTerm) Matches(ls Fields) bool {
+	if len(t) == 0 {
+		return true
+	}
+
+	for _, q := range t {
+		if q.Matches(ls) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t orTerm) Empty() bool {
+	if t == nil {
+		return true
+	}
+	if len([]Selector(t)) == 0 {
+		return true
+	}
+	for i := range t {
+		if !t[i].Empty() {
+			return false
+		}
+	}
+	return true
+}
+
+func (t orTerm) RequiresExactMatch(field string) (string, bool) {
+	if t == nil || len([]Selector(t)) == 0 {
+		return "", false
+	}
+	for i := range t {
+		if value, found := t[i].RequiresExactMatch(field); found {
+			return value, found
+		}
+	}
+	return "", false
+}
+
+func (t orTerm) Transform(fn TransformFunc) (Selector, error) {
+	next := make([]Selector, 0, len([]Selector(t)))
+	for _, s := range []Selector(t) {
+		n, err := s.Transform(fn)
+		if err != nil {
+			return nil, err
+		}
+		if !n.Empty() {
+			next = append(next, n)
+		}
+	}
+	return orTerm(next), nil
+}
+
+func (t orTerm) Requirements() Requirements {
+	reqs := make([]Requirement, 0, len(t))
+	for _, s := range []Selector(t) {
+		rs := s.Requirements()
+		reqs = append(reqs, rs...)
+	}
+	return reqs
+}
+
+func (t orTerm) String() string {
+	var terms []string
+	for _, q := range t {
+		terms = append(terms, q.String())
+	}
+	return strings.Join(terms, ";")
+}
+
+func (t orTerm) DeepCopySelector() Selector {
+	if t == nil {
+		return nil
+	}
+	out := make([]Selector, len(t))
+	for i := range t {
+		out[i] = t[i].DeepCopySelector()
+	}
+	return orTerm(out)
+}
+
 // SelectorFromSet returns a Selector which will match exactly the given Set. A
 // nil Set is considered equivalent to Everything().
 func SelectorFromSet(ls Set) Selector {
@@ -497,6 +580,7 @@ var valueEscaper = strings.NewReplacer(
 	`\`, `\\`,
 	// then escape , and = characters to allow unambiguous parsing of the value in a fieldSelector
 	`,`, `\,`,
+	`;`, `\;`,
 	`=`, `\=`,
 )
 
@@ -536,7 +620,7 @@ func UnescapeValue(s string) (string, error) {
 	for _, c := range s {
 		if inSlash {
 			switch c {
-			case '\\', ',', '=':
+			case '\\', ',', '=', ';':
 				// omit the \ for recognized escape sequences
 				v.WriteRune(c)
 			default:
@@ -550,7 +634,7 @@ func UnescapeValue(s string) (string, error) {
 		switch c {
 		case '\\':
 			inSlash = true
-		case ',', '=':
+		case ',', ';', '=':
 			// unescaped , and = characters are not allowed in field selector values
 			return "", UnescapedRune{r: c}
 		default:
@@ -595,7 +679,37 @@ type TransformFunc func(field, value string) (newField, newValue string, err err
 
 // splitTerms returns the comma-separated terms contained in the given fieldSelector.
 // Backslash-escaped commas are treated as data instead of delimiters, and are included in the returned terms, with the leading backslash preserved.
-func splitTerms(fieldSelector string) []string {
+func splitTerms(fieldSelector string) [][]string {
+	if len(fieldSelector) == 0 {
+		return nil
+	}
+
+	orTerms := make([]string, 0, 1)
+	startIndex := 0
+	inSlash := false
+	for i, c := range fieldSelector {
+		switch {
+		case inSlash:
+			inSlash = false
+		case c == '\\':
+			inSlash = true
+		case c == ';':
+			orTerms = append(orTerms, fieldSelector[startIndex:i])
+			startIndex = i + 1
+		}
+	}
+
+	orTerms = append(orTerms, fieldSelector[startIndex:])
+
+	terms := make([][]string, 0, 1)
+	for _, andTerm := range orTerms {
+		ts := splitAndTerms(andTerm)
+		terms = append(terms, ts)
+	}
+	return terms
+}
+
+func splitAndTerms(fieldSelector string) []string {
 	if len(fieldSelector) == 0 {
 		return nil
 	}
@@ -652,7 +766,25 @@ func splitTerm(term string) (lhs, op, rhs string, ok bool) {
 
 func parseSelector(selector string, fn TransformFunc) (Selector, error) {
 	parts := splitTerms(selector)
-	sort.StringSlice(parts).Sort()
+	var items []Selector
+	for _, part := range parts {
+		if len(part) == 0 {
+			continue
+		}
+		selector, err := parseAndSelector(part, fn)
+		if err != nil {
+			return nil, fmt.Errorf("invalid selector: '%s'; can't understand '%v'", selector, part)
+		}
+		items = append(items, selector)
+	}
+
+	if len(items) == 1 {
+		return items[0].Transform(fn)
+	}
+	return orTerm(items).Transform(fn)
+}
+
+func parseAndSelector(parts []string, fn TransformFunc) (Selector, error) {
 	var items []Selector
 	for _, part := range parts {
 		if part == "" {
@@ -660,7 +792,7 @@ func parseSelector(selector string, fn TransformFunc) (Selector, error) {
 		}
 		lhs, op, rhs, ok := splitTerm(part)
 		if !ok {
-			return nil, fmt.Errorf("invalid selector: '%s'; can't understand '%s'", selector, part)
+			return nil, fmt.Errorf("invalid selector: '%v'; can't understand '%s'", parts, part)
 		}
 		unescapedRHS, err := UnescapeValue(rhs)
 		if err != nil {
@@ -682,7 +814,7 @@ func parseSelector(selector string, fn TransformFunc) (Selector, error) {
 		case greaterThanEqualOperator:
 			items = append(items, &greaterEqualTerm{field: lhs, value: unescapedRHS})
 		default:
-			return nil, fmt.Errorf("invalid selector: '%s'; can't understand '%s'", selector, part)
+			return nil, fmt.Errorf("invalid selector: '%v'; can't understand '%s'", parts, part)
 		}
 	}
 	if len(items) == 1 {

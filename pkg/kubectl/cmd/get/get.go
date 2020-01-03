@@ -108,9 +108,12 @@ var (
 		# List all pods in ps output format with more information (such as node name).
 		kubectl get pods -o wide
 
+		# Get pod with hashkey
+		kubectl get pods --field-selector metadata.hashKey=<hashkey>
+
 		# List all pods with their hash keys ranging from a to b(a,b). There are four options:
 		lt(<), lte(<=), gt(>), and gte(>=)
-		kubectl get pods --selector hashKey='{lt:b,gt:a}'
+		kubectl get pods --field-selector metadata.hashkey=lte:10,metadata.hashkey=gt:-10
 
 		# List a single replication controller with specified NAME in ps output format.
 		kubectl get replicationcontroller web

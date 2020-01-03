@@ -22,29 +22,39 @@ import (
 )
 
 func TestSplitTerms(t *testing.T) {
-	testcases := map[string][]string{
+	testcases := map[string][][]string{
 		// Simple selectors
-		`a`:                            {`a`},
-		`a=avalue`:                     {`a=avalue`},
-		`a=avalue,b=bvalue`:            {`a=avalue`, `b=bvalue`},
-		`a=avalue,b==bvalue,c!=cvalue`: {`a=avalue`, `b==bvalue`, `c!=cvalue`},
-		`a=gt:avalue,b==lt:bvalue`:     {`a=gt:avalue`, `b==lt:bvalue`},
-		`a=gte:avalue,b==lte:bvalue`:   {`a=gte:avalue`, `b==lte:bvalue`},
+		`a`:                                                   {{`a`}},
+		`a=avalue`:                                            {{`a=avalue`}},
+		`a=avalue,b=bvalue`:                                   {{`a=avalue`, `b=bvalue`}},
+		`a=avalue,b==bvalue,c!=cvalue`:                        {{`a=avalue`, `b==bvalue`, `c!=cvalue`}},
+		`a=gt:avalue,b==lt:bvalue`:                            {{`a=gt:avalue`, `b==lt:bvalue`}},
+		`a=gte:avalue,b==lte:bvalue`:                          {{`a=gte:avalue`, `b==lte:bvalue`}},
+		`a=gte:avalue;b==lte:bvalue`:                          {{`a=gte:avalue`}, {`b==lte:bvalue`}},
+		`a=gt:avalue;b==lt:bvalue;c==lt:cvalue`:               {{`a=gt:avalue`}, {`b==lt:bvalue`}, {`c==lt:cvalue`}},
+		`a=gte:avalue;b==lte:bvalue,c==lt:cvalue`:             {{`a=gte:avalue`}, {`b==lte:bvalue`, `c==lt:cvalue`}},
+		`a=gte:avalue,b==lte:bvalue;c==lt:cvalue`:             {{`a=gte:avalue`, `b==lte:bvalue`}, {`c==lt:cvalue`}},
+		`a=gte:avalue,b==lte:bvalue;c==lt:cvalue,d=gt:dvalue`: {{`a=gte:avalue`, `b==lte:bvalue`}, {`c==lt:cvalue`, `d=gt:dvalue`}},
 
 		// Empty terms
 		``:     nil,
-		`a=a,`: {`a=a`, ``},
-		`,a=a`: {``, `a=a`},
+		`a=a,`: {{`a=a`, ``}},
+		`a=a;`: {{`a=a`}, nil},
+		`,a=a`: {{``, `a=a`}},
+		`;a=a`: {nil, {`a=a`}},
 
 		// Escaped values
-		`k=\,,k2=v2`:   {`k=\,`, `k2=v2`},   // escaped comma in value
-		`k=\\,k2=v2`:   {`k=\\`, `k2=v2`},   // escaped backslash, unescaped comma
-		`k=\\\,,k2=v2`: {`k=\\\,`, `k2=v2`}, // escaped backslash and comma
-		`k=\a\b\`:      {`k=\a\b\`},         // non-escape sequences
-		`k=\`:          {`k=\`},             // orphan backslash
+		`k=\,,k2=v2`:   {{`k=\,`, `k2=v2`}},     // escaped comma in value
+		`k=\\,k2=v2`:   {{`k=\\`, `k2=v2`}},     // escaped backslash, unescaped comma
+		`k=\\\,,k2=v2`: {{`k=\\\,`, `k2=v2`}},   // escaped backslash and comma
+		`k=\;;k2=v2`:   {{`k=\;`}, {`k2=v2`}},   // escaped comma in value
+		`k=\\;k2=v2`:   {{`k=\\`}, {`k2=v2`}},   // escaped backslash, unescaped comma
+		`k=\\\;;k2=v2`: {{`k=\\\;`}, {`k2=v2`}}, // escaped backslash and comma
+		`k=\a\b\`:      {{`k=\a\b\`}},           // non-escape sequences
+		`k=\`:          {{`k=\`}},               // orphan backslash
 
 		// Multi-byte
-		`함=수,목=록`: {`함=수`, `목=록`},
+		`함=수,목=록`: {{`함=수`, `목=록`}},
 	}
 
 	for selector, expectedTerms := range testcases {
@@ -76,8 +86,10 @@ func TestSplitTerm(t *testing.T) {
 
 		// Escaped values
 		`k=\,`:          {lhs: `k`, op: `=`, rhs: `\,`, ok: true},
+		`k=\;`:          {lhs: `k`, op: `=`, rhs: `\;`, ok: true},
 		`k=\=`:          {lhs: `k`, op: `=`, rhs: `\=`, ok: true},
 		`k=\\\a\b\=\,\`: {lhs: `k`, op: `=`, rhs: `\\\a\b\=\,\`, ok: true},
+		`k=\\\a\b\=\;\`: {lhs: `k`, op: `=`, rhs: `\\\a\b\=\;\`, ok: true},
 
 		// Multi-byte
 		`함=수`: {lhs: `함`, op: `=`, rhs: `수`, ok: true},
@@ -103,8 +115,10 @@ func TestEscapeValue(t *testing.T) {
 		`a`:     `a`,
 		`=`:     `\=`,
 		`,`:     `\,`,
+		`;`:     `\;`,
 		`\`:     `\\`,
 		`\=\,\`: `\\\=\\\,\\`,
+		`\=\;\`: `\\\=\\\;\\`,
 	}
 
 	for unescapedValue, escapedValue := range testcases {
@@ -139,8 +153,11 @@ func TestEscapeValue(t *testing.T) {
 func TestSelectorParse(t *testing.T) {
 	testGoodStrings := []string{
 		"x=a,y=b,z=c",
+		"x=a;y=b;z=c",
+		"x=a,y=b;z=c",
 		"",
 		"x!=a,y=b",
+		"x!=a;y=b",
 		`x=a||y\=b`,
 		`x=a\=\=b`,
 	}
@@ -175,7 +192,16 @@ func TestDeterministicParse(t *testing.T) {
 	if err != nil || err2 != nil {
 		t.Errorf("Unexpected parse error")
 	}
-	if s1.String() != s2.String() {
+	if s1.String() == s2.String() {
+		t.Errorf("Non-deterministic parse")
+	}
+
+	s1, err = ParseSelector("x=a;a=x")
+	s2, err2 = ParseSelector("a=x;x=a")
+	if err != nil || err2 != nil {
+		t.Errorf("Unexpected parse error")
+	}
+	if s1.String() == s2.String() {
 		t.Errorf("Non-deterministic parse")
 	}
 }
@@ -287,6 +313,9 @@ func TestSetIsEmpty(t *testing.T) {
 	if !(andTerm(nil)).Empty() {
 		t.Errorf("Nil andTerm should be empty")
 	}
+	if !(orTerm(nil)).Empty() {
+		t.Errorf("Nil orTerm should be empty")
+	}
 	if (&hasTerm{}).Empty() {
 		t.Errorf("hasTerm should not be empty")
 	}
@@ -296,8 +325,17 @@ func TestSetIsEmpty(t *testing.T) {
 	if !(andTerm{andTerm{}}).Empty() {
 		t.Errorf("Nested andTerm should be empty")
 	}
+	if !(orTerm{orTerm{}}).Empty() {
+		t.Errorf("Nested orTerm should be empty")
+	}
+	if !(orTerm{andTerm{}}).Empty() {
+		t.Errorf("Nested or/andTerm should be empty")
+	}
 	if (andTerm{&hasTerm{"a", "b"}}).Empty() {
 		t.Errorf("Nested andTerm should not be empty")
+	}
+	if (orTerm{&hasTerm{"a", "b"}}).Empty() {
+		t.Errorf("Nested orTerm should not be empty")
 	}
 }
 
@@ -320,6 +358,12 @@ func TestRequiresExactMatch(t *testing.T) {
 		"nested andTerm":            {andTerm{andTerm{}}, "test", "", false},
 		"nested andTerm matches":    {andTerm{&hasTerm{"test", "b"}}, "test", "b", true},
 		"andTerm with non-match":    {andTerm{&hasTerm{}, &hasTerm{"test", "b"}}, "test", "b", true},
+		"nil orTerm":                {orTerm(nil), "test", "", false},
+		"empty orTerm":              {orTerm{}, "test", "", false},
+		"nested orTerm":             {orTerm{orTerm{}}, "test", "", false},
+		"nested orTerm matches":     {orTerm{&hasTerm{"test", "b"}}, "test", "b", true},
+		"orTerm with non-match":     {orTerm{&hasTerm{}, &hasTerm{"test", "b"}}, "test", "b", true},
+		"nested or/andTerm":         {orTerm{andTerm{}}, "test", "", false},
 	}
 	for k, v := range testCases {
 		value, found := v.S.RequiresExactMatch(v.Label)
@@ -348,14 +392,28 @@ func TestTransform(t *testing.T) {
 			isEmpty:   true,
 		},
 		{
-			name:      "no-op transform",
+			name:      "no-op transform andTerm",
 			selector:  "a=b,c=d",
 			transform: func(field, value string) (string, string, error) { return field, value, nil },
 			result:    "a=b,c=d",
 			isEmpty:   false,
 		},
 		{
-			name:     "transform one field",
+			name:      "no-op transform orTerm",
+			selector:  "a=b;c=d",
+			transform: func(field, value string) (string, string, error) { return field, value, nil },
+			result:    "a=b;c=d",
+			isEmpty:   false,
+		},
+		{
+			name:      "no-op transform orTerm & andTerm",
+			selector:  "x=y,a=b;c=d",
+			transform: func(field, value string) (string, string, error) { return field, value, nil },
+			result:    "x=y,a=b;c=d",
+			isEmpty:   false,
+		},
+		{
+			name:     "transform one field andTerm",
 			selector: "a=b,c=d",
 			transform: func(field, value string) (string, string, error) {
 				if field == "a" {
@@ -367,6 +425,18 @@ func TestTransform(t *testing.T) {
 			isEmpty: false,
 		},
 		{
+			name:     "transform one field orTerm",
+			selector: "a=b;c=d",
+			transform: func(field, value string) (string, string, error) {
+				if field == "a" {
+					return "e", "f", nil
+				}
+				return field, value, nil
+			},
+			result:  "e=f;c=d",
+			isEmpty: false,
+		},
+		{
 			name:      "remove field to make empty",
 			selector:  "a=b",
 			transform: func(field, value string) (string, string, error) { return "", "", nil },
@@ -374,7 +444,7 @@ func TestTransform(t *testing.T) {
 			isEmpty:   true,
 		},
 		{
-			name:     "remove only one field",
+			name:     "remove only one field andTerm",
 			selector: "a=b,c=d,e=f",
 			transform: func(field, value string) (string, string, error) {
 				if field == "c" {
@@ -383,6 +453,18 @@ func TestTransform(t *testing.T) {
 				return field, value, nil
 			},
 			result:  "a=b,e=f",
+			isEmpty: false,
+		},
+		{
+			name:     "remove only one field orTerm",
+			selector: "a=b;c=d;e=f",
+			transform: func(field, value string) (string, string, error) {
+				if field == "c" {
+					return "", "", nil
+				}
+				return field, value, nil
+			},
+			result:  "a=b;e=f",
 			isEmpty: false,
 		},
 	}
