@@ -16,6 +16,7 @@ following files are required to copy over from master to worker node:
 _output/local/bin/linux/amd64/hyperkube
 /var/run/kubernetes/kubelet.kubeconfig
 /var/run/kubernetes/kube-proxy.kubeconfig
+/var/run/kubernetes/client-ca.crt
 /tmp/kube-proxy.yaml
 
 

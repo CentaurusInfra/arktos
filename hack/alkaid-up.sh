@@ -876,7 +876,7 @@ function start_kubelet {
       "--container-runtime=${CONTAINER_RUNTIME}"
       "--hostname-override=${HOSTNAME_OVERRIDE}"
       "${cloud_config_arg[@]}"
-      "--address=${KUBELET_HOST}"
+      "--address=0.0.0.0"
       --kubeconfig "${CERT_DIR}"/kubelet.kubeconfig
       "--feature-gates=${FEATURE_GATES}"
       "--cpu-cfs-quota=${CPU_CFS_QUOTA}"
