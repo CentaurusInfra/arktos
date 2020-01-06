@@ -29,11 +29,8 @@ type FakeSchedulingV1 struct {
 }
 
 func (c *FakeSchedulingV1) PriorityClasses() v1.PriorityClassInterface {
-	return &FakePriorityClasses{c, "default"}
-}
 
-func (c *FakeSchedulingV1) PriorityClassesWithMultiTenancy(tenant string) v1.PriorityClassInterface {
-	return &FakePriorityClasses{c, tenant}
+	return &FakePriorityClasses{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

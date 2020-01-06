@@ -29,8 +29,8 @@ func TestPriorityClassStrategy(t *testing.T) {
 	if Strategy.NamespaceScoped() {
 		t.Errorf("PriorityClass must not be namespace scoped")
 	}
-	if !Strategy.TenantScoped() {
-		t.Errorf("PriorityClass must be tenant scoped")
+	if Strategy.TenantScoped() {
+		t.Errorf("PriorityClass must not be tenant scoped")
 	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("PriorityClass should not allow create on update")

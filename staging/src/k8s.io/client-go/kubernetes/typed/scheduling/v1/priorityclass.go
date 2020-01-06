@@ -33,7 +33,6 @@ import (
 // A group's client should implement this interface.
 type PriorityClassesGetter interface {
 	PriorityClasses() PriorityClassInterface
-	PriorityClassesWithMultiTenancy(tenant string) PriorityClassInterface
 }
 
 // PriorityClassInterface has methods to work with PriorityClass resources.
@@ -52,18 +51,12 @@ type PriorityClassInterface interface {
 // priorityClasses implements PriorityClassInterface
 type priorityClasses struct {
 	client rest.Interface
-	te     string
 }
 
 // newPriorityClasses returns a PriorityClasses
 func newPriorityClasses(c *SchedulingV1Client) *priorityClasses {
-	return newPriorityClassesWithMultiTenancy(c, "default")
-}
-
-func newPriorityClassesWithMultiTenancy(c *SchedulingV1Client, tenant string) *priorityClasses {
 	return &priorityClasses{
 		client: c.RESTClient(),
-		te:     tenant,
 	}
 }
 
@@ -71,7 +64,6 @@ func newPriorityClassesWithMultiTenancy(c *SchedulingV1Client, tenant string) *p
 func (c *priorityClasses) Get(name string, options metav1.GetOptions) (result *v1.PriorityClass, err error) {
 	result = &v1.PriorityClass{}
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("priorityclasses").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -89,7 +81,6 @@ func (c *priorityClasses) List(opts metav1.ListOptions) (result *v1.PriorityClas
 	}
 	result = &v1.PriorityClassList{}
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("priorityclasses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,7 +98,6 @@ func (c *priorityClasses) Watch(opts metav1.ListOptions) (watch.Interface, error
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Tenant(c.te).
 		Resource("priorityclasses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -118,7 +108,6 @@ func (c *priorityClasses) Watch(opts metav1.ListOptions) (watch.Interface, error
 func (c *priorityClasses) Create(priorityClass *v1.PriorityClass) (result *v1.PriorityClass, err error) {
 	result = &v1.PriorityClass{}
 	err = c.client.Post().
-		Tenant(c.te).
 		Resource("priorityclasses").
 		Body(priorityClass).
 		Do().
@@ -131,7 +120,6 @@ func (c *priorityClasses) Create(priorityClass *v1.PriorityClass) (result *v1.Pr
 func (c *priorityClasses) Update(priorityClass *v1.PriorityClass) (result *v1.PriorityClass, err error) {
 	result = &v1.PriorityClass{}
 	err = c.client.Put().
-		Tenant(c.te).
 		Resource("priorityclasses").
 		Name(priorityClass.Name).
 		Body(priorityClass).
@@ -144,7 +132,6 @@ func (c *priorityClasses) Update(priorityClass *v1.PriorityClass) (result *v1.Pr
 // Delete takes name of the priorityClass and deletes it. Returns an error if one occurs.
 func (c *priorityClasses) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("priorityclasses").
 		Name(name).
 		Body(options).
@@ -159,7 +146,6 @@ func (c *priorityClasses) DeleteCollection(options *metav1.DeleteOptions, listOp
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("priorityclasses").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -172,7 +158,6 @@ func (c *priorityClasses) DeleteCollection(options *metav1.DeleteOptions, listOp
 func (c *priorityClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PriorityClass, err error) {
 	result = &v1.PriorityClass{}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
 		Resource("priorityclasses").
 		SubResource(subresources...).
 		Name(name).

@@ -32,8 +32,6 @@ import (
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
-var tenant = "test-te"
-
 func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, scheduling.GroupName)
 	restOptions := generic.RESTOptions{
@@ -49,7 +47,6 @@ func validNewPriorityClass() *scheduling.PriorityClass {
 	return &scheduling.PriorityClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "foo",
-			Tenant: tenant,
 		},
 		Value:         100,
 		GlobalDefault: false,
@@ -61,14 +58,13 @@ func TestCreate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).TenantScope()
+	test := genericregistrytest.New(t, storage.Store).ClusterScope()
 	test.TestCreate(
 		validNewPriorityClass(),
 		// invalid cases
 		&scheduling.PriorityClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "*badName",
-				Tenant: tenant,
 			},
 			Value:         100,
 			GlobalDefault: true,
@@ -81,7 +77,7 @@ func TestUpdate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).TenantScope()
+	test := genericregistrytest.New(t, storage.Store).ClusterScope()
 	test.TestUpdate(
 		// valid
 		validNewPriorityClass(),
@@ -107,7 +103,7 @@ func TestDelete(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).TenantScope()
+	test := genericregistrytest.New(t, storage.Store).ClusterScope()
 	test.TestDelete(validNewPriorityClass())
 }
 
@@ -116,8 +112,8 @@ func TestDeleteSystemPriorityClass(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	key := tenant + "/" + "test/system-node-critical"
-	ctx := genericapirequest.WithTenant(genericapirequest.NewContext(), tenant)
+	key := "test/system-node-critical"
+	ctx := genericapirequest.NewContext()
 	pc := scheduling.SystemPriorityClasses()[0]
 	if err := storage.Store.Storage.Create(ctx, key, pc, nil, 0, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -131,7 +127,7 @@ func TestGet(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).TenantScope()
+	test := genericregistrytest.New(t, storage.Store).ClusterScope()
 	test.TestGet(validNewPriorityClass())
 }
 
@@ -139,7 +135,7 @@ func TestList(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).TenantScope()
+	test := genericregistrytest.New(t, storage.Store).ClusterScope()
 	test.TestList(validNewPriorityClass())
 }
 
@@ -147,7 +143,7 @@ func TestWatch(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	defer storage.Store.DestroyFunc()
-	test := genericregistrytest.New(t, storage.Store).TenantScope()
+	test := genericregistrytest.New(t, storage.Store).ClusterScope()
 	test.TestWatch(
 		validNewPriorityClass(),
 		// matching labels
