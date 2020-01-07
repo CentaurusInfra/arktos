@@ -252,23 +252,23 @@ Following are the list of resources belonging to each scope. Those highlighted w
   10. CSIDriver
   11. CSINode
   12. RuntimeClass
+  13. PriorityClass
+  14. CustomResourceDefinition. Note the definition is cluster-scoped, but the custom resources defined can take the scope of namespace, tenant or cluster.
 
 #### Tenant-scope resources:
   1.	Namespace
   2.	PersistentVolume
-  3.	CustomResourceDefinition
-  4.	TokenReview
-  5.	CertificateSigningRequest
-  6.	PodSecurityPolicy
-  7.	PriorityClass
-  8.	VolumeAttachment
-  9.	SelfSubjectAccessReview
-  10.	SelfSubjectRulesReview
-  11.	SubjectAccessReview
-  12. AuditSink
-  13.	*TenantRoleBinding. It is similar to the existing ClusterRoleBinding/RoleBining in K8S, but working on a tenant level.
-  14.	*TenantRole. It is similar to the existing ClusterRole/Role in K8S, but working on a tenant level.
-  15.	*TenantResourceQuota. It is similar to the existing namespace-scoped ResourceQuota in K8s, yet it is tenant-scoped.
+  3.	TokenReview
+  4.	CertificateSigningRequest
+  5.	PodSecurityPolicy
+  6.	VolumeAttachment
+  7.	SelfSubjectAccessReview
+  8.	SelfSubjectRulesReview
+  9.	SubjectAccessReview
+  10. AuditSink
+  11.	*TenantRoleBinding. It is similar to the existing ClusterRoleBinding/RoleBining in K8S, but working on a tenant level.
+  12.	*TenantRole. It is similar to the existing ClusterRole/Role in K8S, but working on a tenant level.
+  13.	*TenantResourceQuota. It is similar to the existing namespace-scoped ResourceQuota in K8s, yet it is tenant-scoped.
 
 #### Namespace-Scoped resources:
 
