@@ -70,6 +70,9 @@ EVICTION_HARD=${EVICTION_HARD:-"memory.available<100Mi,nodefs.available<10%,node
 EVICTION_SOFT=${EVICTION_SOFT:-""}
 EVICTION_PRESSURE_TRANSITION_PERIOD=${EVICTION_PRESSURE_TRANSITION_PERIOD:-"1m"}
 
+# ensures all places of cert/node naming related to hostname are lower-cased for consistency
+lohostname=$(hostname | tr '[:upper:]' '[:lower:]')
+
 # This script uses docker0 (or whatever container bridge docker is currently using)
 # and we don't know the IP of the DNS pod to pass in as --cluster-dns.
 # To set this up by hand, set this flag and change DNS_SERVER_IP.
@@ -85,7 +88,7 @@ KUBECTL=${KUBECTL:-"${KUBE_ROOT}/cluster/kubectl.sh"}
 WAIT_FOR_URL_API_SERVER=${WAIT_FOR_URL_API_SERVER:-60}
 MAX_TIME_FOR_URL_API_SERVER=${MAX_TIME_FOR_URL_API_SERVER:-1}
 ENABLE_DAEMON=${ENABLE_DAEMON:-false}
-HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"$(hostname)"}
+HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"${lohostname}"}
 EXTERNAL_CLOUD_PROVIDER=${EXTERNAL_CLOUD_PROVIDER:-false}
 EXTERNAL_CLOUD_PROVIDER_BINARY=${EXTERNAL_CLOUD_PROVIDER_BINARY:-""}
 CLOUD_PROVIDER=${CLOUD_PROVIDER:-""}
@@ -277,12 +280,12 @@ API_PORT=${API_PORT:-8080}
 API_SECURE_PORT=${API_SECURE_PORT:-6443}
 
 # WARNING: For DNS to work on most setups you should export API_HOST as the docker0 ip address,
-API_HOST=${API_HOST:-"$(hostname)"}
+API_HOST=${API_HOST:-"${lohostname}"}
 API_HOST_IP=${API_HOST_IP:-"0.0.0.0"}
 ADVERTISE_ADDRESS=${ADVERTISE_ADDRESS:-""}
 NODE_PORT_RANGE=${NODE_PORT_RANGE:-""}
 API_BIND_ADDR=${API_BIND_ADDR:-"0.0.0.0"}
-EXTERNAL_HOSTNAME=${EXTERNAL_HOSTNAME:-"$(hostname)"}
+EXTERNAL_HOSTNAME=${EXTERNAL_HOSTNAME:-"${lohostname}"}
 
 KUBELET_HOST=${KUBELET_HOST:-"127.0.0.1"}
 # By default only allow CORS for requests on localhost
