@@ -74,6 +74,7 @@ func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST, *Rollbac
 	store := &genericregistry.Store{
 		NewFunc:                  func() runtime.Object { return &apps.Deployment{} },
 		NewListFunc:              func() runtime.Object { return &apps.DeploymentList{} },
+		PredicateFunc:            deployment.MatchDeployment,
 		DefaultQualifiedResource: apps.Resource("deployments"),
 
 		CreateStrategy: deployment.Strategy,

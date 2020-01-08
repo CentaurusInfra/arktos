@@ -18,17 +18,21 @@ package deployment
 
 import (
 	"context"
-
+	"fmt"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+	fields "k8s.io/apimachinery/pkg/fields"
+	labels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+	generic "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
+	apistorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/api/pod"
@@ -98,6 +102,32 @@ func (deploymentStrategy) Canonicalize(obj runtime.Object) {
 func (deploymentStrategy) AllowCreateOnUpdate() bool {
 	return false
 }
+
+// DeploymentToSelectableFields returns a field set that represents the object.
+func DeploymentToSelectableFields(ad *apps.Deployment) fields.Set {
+	return generic.ObjectMetaFieldsSet(&ad.ObjectMeta, true)
+}
+
+// GetAttrs returns labels and fields of a given object for filtering purposes.
+func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
+	ad, ok := obj.(*apps.Deployment)
+	if !ok {
+		return nil, nil, fmt.Errorf("given object is not a Deployment.")
+	}
+	return labels.Set(ad.ObjectMeta.Labels), DeploymentToSelectableFields(ad), nil
+}
+
+// MatchDeployment is the filter used by the generic etcd backend to route
+// watch events from etcd to clients of the apiserver only interested in specific
+// labels/fields.
+func MatchDeployment(label labels.Selector, field fields.Selector) apistorage.SelectionPredicate {
+	return apistorage.SelectionPredicate{
+		Label:    label,
+		Field:    field,
+		GetAttrs: GetAttrs,
+	}
+}
+
 
 // PrepareForUpdate clears fields that are not allowed to be set by end users on update.
 func (deploymentStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
