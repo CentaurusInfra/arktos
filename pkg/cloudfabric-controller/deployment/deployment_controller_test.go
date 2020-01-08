@@ -17,6 +17,8 @@ limitations under the License.
 package deployment
 
 import (
+	"github.com/grafov/bcast"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"strconv"
 	"testing"
 
@@ -43,9 +45,9 @@ import (
 	_ "k8s.io/kubernetes/pkg/apis/rbac/install"
 	_ "k8s.io/kubernetes/pkg/apis/settings/install"
 	_ "k8s.io/kubernetes/pkg/apis/storage/install"
-	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/controller/deployment/util"
-	"k8s.io/kubernetes/pkg/controller/testutil"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/testutil"
 )
 
 var (
@@ -75,6 +77,14 @@ func newRSWithStatus(name string, specReplicas, statusReplicas int, selector map
 		Replicas: int32(statusReplicas),
 	}
 	return rs
+}
+
+func newControllerInstance(controllerType, tenant string) *v1.ControllerInstance {
+	ci := v1.ControllerInstance{
+		ControllerType: controllerType,
+	}
+
+	return &ci
 }
 
 func newDeployment(name string, replicas int, revisionHistoryLimit *int32, maxSurge, maxUnavailable *intstr.IntOrString, selector map[string]string, tenant string) *apps.Deployment {
@@ -175,6 +185,10 @@ func (f *fixture) expectCreateRSAction(rs *apps.ReplicaSet) {
 	f.actions = append(f.actions, core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Resource: "replicasets"}, rs.Namespace, rs, rs.Tenant))
 }
 
+func (f *fixture) expectCreateControllerInstanceAction(ci *v1.ControllerInstance) {
+	f.actions = append(f.actions, core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Resource: "controllerinstances"}, ci.Namespace, ci, ci.Tenant))
+}
+
 func newFixture(t *testing.T) *fixture {
 	f := &fixture{}
 	f.t = t
@@ -185,7 +199,22 @@ func newFixture(t *testing.T) *fixture {
 func (f *fixture) newController() (*DeploymentController, informers.SharedInformerFactory, error) {
 	f.client = fake.NewSimpleClientset(f.objects...)
 	informers := informers.NewSharedInformerFactory(f.client, controller.NoResyncPeriodFunc())
-	c, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), f.client)
+
+	updateCh := make(chan string)
+	defer close(updateCh)
+	resetCh := bcast.NewGroup()
+	defer resetCh.Close()
+	go resetCh.Broadcast(0)
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
+	c, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), f.client, updateCh, resetCh)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -285,6 +314,9 @@ func testSyncDeploymentCreatesReplicaSet(t *testing.T, tenant string) {
 
 	rs := newReplicaSet(d, "deploymentrs-4186632231", 1, tenant)
 
+	ci := newControllerInstance("Deployment", tenant)
+	f.expectCreateControllerInstanceAction(ci)
+
 	f.expectCreateRSAction(rs)
 	f.expectUpdateDeploymentStatusAction(d)
 	f.expectUpdateDeploymentStatusAction(d)
@@ -308,6 +340,9 @@ func testSyncDeploymentDontDoAnythingDuringDeletion(t *testing.T, tenant string)
 	d.DeletionTimestamp = &now
 	f.dLister = append(f.dLister, d)
 	f.objects = append(f.objects, d)
+
+	ci := newControllerInstance("Deployment", tenant)
+	f.expectCreateControllerInstanceAction(ci)
 
 	f.expectUpdateDeploymentStatusAction(d)
 	f.run(testutil.GetKey(d, t))
@@ -339,6 +374,9 @@ func testSyncDeploymentDeletionRace(t *testing.T, tenant string) {
 	f.objects = append(f.objects, rs)
 	f.rsLister = append(f.rsLister, rs)
 
+	ci := newControllerInstance("Deployment", tenant)
+	f.expectCreateControllerInstanceAction(ci)
+
 	// Expect to only recheck DeletionTimestamp.
 	f.expectGetDeploymentAction(d)
 	// Sync should fail and requeue to let cache catch up.
@@ -362,6 +400,9 @@ func testDontSyncDeploymentsWithEmptyPodSelector(t *testing.T, tenant string) {
 	d.Spec.Selector = &metav1.LabelSelector{}
 	f.dLister = append(f.dLister, d)
 	f.objects = append(f.objects, d)
+
+	ci := newControllerInstance("Deployment", tenant)
+	f.expectCreateControllerInstanceAction(ci)
 
 	// Normally there should be a status update to sync observedGeneration but the fake
 	// deployment has no generation set so there is no action happpening here.
@@ -396,6 +437,9 @@ func testReentrantRollback(t *testing.T, tenant string) {
 
 	f.rsLister = append(f.rsLister, rs1, rs2)
 	f.objects = append(f.objects, d, rs1, rs2)
+
+	ci := newControllerInstance("Deployment", tenant)
+	f.expectCreateControllerInstanceAction(ci)
 
 	// Rollback is done here
 	f.expectUpdateDeploymentAction(d)

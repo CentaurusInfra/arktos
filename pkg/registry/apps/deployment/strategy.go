@@ -128,7 +128,6 @@ func MatchDeployment(label labels.Selector, field fields.Selector) apistorage.Se
 	}
 }
 
-
 // PrepareForUpdate clears fields that are not allowed to be set by end users on update.
 func (deploymentStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
 	newDeployment := obj.(*apps.Deployment)

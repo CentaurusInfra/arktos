@@ -17,6 +17,8 @@ limitations under the License.
 package deployment
 
 import (
+	"github.com/grafov/bcast"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"math"
 	"testing"
 	"time"
@@ -28,8 +30,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	testclient "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/controller"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
+	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 )
 
 func intOrStrP(val int) *intstr.IntOrString {
@@ -275,14 +277,40 @@ func testScale(t *testing.T, tenant string) {
 		},
 	}
 
+	oldHandler := controllerframework.CreateControllerInstanceHandler
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
+	defer func() {
+		controllerframework.CreateControllerInstanceHandler = oldHandler
+	}()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_ = olderTimestamp
 			t.Log(test.name)
 			fake := fake.Clientset{}
+
+			resetCh := bcast.NewGroup()
+			defer resetCh.Close()
+			go resetCh.Broadcast(0)
+
+			baseController, err := controllerframework.NewControllerBase("Deployment", &fake, updateCh, resetCh)
+			if err != nil {
+				t.Errorf("%s: unexpected error: %v", test.name, err)
+			}
+
 			dc := &DeploymentController{
-				client:        &fake,
-				eventRecorder: &record.FakeRecorder{},
+				ControllerBase: baseController,
+				eventRecorder:  &record.FakeRecorder{},
 			}
 
 			if test.newRS != nil {
@@ -422,13 +450,34 @@ func testDeploymentController_cleanupDeployment(t *testing.T, tenant string) {
 		},
 	}
 
+	oldHandler := controllerframework.CreateControllerInstanceHandler
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
+	defer func() {
+		controllerframework.CreateControllerInstanceHandler = oldHandler
+	}()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	for i := range tests {
 		test := tests[i]
 		t.Logf("scenario %d", i)
 
 		fake := &fake.Clientset{}
 		informers := informers.NewSharedInformerFactory(fake, controller.NoResyncPeriodFunc())
-		controller, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), fake)
+
+		resetCh := bcast.NewGroup()
+		defer resetCh.Close()
+		go resetCh.Broadcast(0)
+
+		controller, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), fake, updateCh, resetCh)
 		if err != nil {
 			t.Fatalf("error creating Deployment controller: %v", err)
 		}

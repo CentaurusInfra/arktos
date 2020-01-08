@@ -315,17 +315,6 @@ func skipHttpFunc(verb string, url url.URL) bool {
 	return true
 }
 
-func mockCreateControllerInstance(c *controllerframework.ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
-	fakeControllerInstance := &v1.ControllerInstance{
-		ObjectMeta:     metav1.ObjectMeta{Name: c.GetControllerName()},
-		ControllerType: c.GetControllerType(),
-		ControllerKey:  c.GetControllerKey(),
-		WorkloadNum:    0,
-		IsLocked:       false,
-	}
-	return fakeControllerInstance, nil
-}
-
 func TestSyncReplicaSetDormancy(t *testing.T) {
 	testSyncReplicaSetDormancy(t, metav1.TenantDefault)
 }
@@ -336,7 +325,7 @@ func TestSyncReplicaSetDormancyWithMultiTenancy(t *testing.T) {
 
 func testSyncReplicaSetDormancy(t *testing.T, tenant string) {
 	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = mockCreateControllerInstance
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
 	defer func() {
 		controllerframework.CreateControllerInstanceHandler = oldHandler
 	}()

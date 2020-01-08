@@ -21,7 +21,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -83,7 +82,7 @@ type controller struct {
 
 type Controller interface {
 	Run(stopCh <-chan struct{})
-	RunWithReset(stopCh <-chan struct{}, resetCh *bcast.Member, ownerKind string)
+	RunWithReset(stopCh <-chan struct{}, filterBounds []filterBound)
 	HasSynced() bool
 	LastSyncResourceVersion() string
 }
@@ -101,14 +100,14 @@ func New(c *Config) Controller {
 // It's an error to call Run more than once.
 // Run blocks; call via go.
 func (c *controller) Run(stopCh <-chan struct{}) {
-	c.RunWithReset(stopCh, nil, "")
+	c.RunWithReset(stopCh, nil)
 }
 
 // RunWithReset begins processing items, and will continue until a value is sent down stopCh.
 // It's an error to call Run more than once.
 // Run blocks; call via go.
-func (c *controller) RunWithReset(stopCh <-chan struct{}, resetCh *bcast.Member, ownerKind string) {
-	klog.Infof("start controller run with reset %v. %v", resetCh, c.config.ObjectType.GetObjectKind())
+func (c *controller) RunWithReset(stopCh <-chan struct{}, filterBounds []filterBound) {
+	klog.V(4).Infof("start controller run with reset %+v. %v", filterBounds, c.config.ObjectType.GetObjectKind())
 
 	defer utilruntime.HandleCrash()
 	go func() {
@@ -117,14 +116,13 @@ func (c *controller) RunWithReset(stopCh <-chan struct{}, resetCh *bcast.Member,
 	}()
 
 	var r *Reflector
-	if resetCh != nil {
+	if len(filterBounds) > 0 {
 		r = NewReflectorWithReset(
 			c.config.ListerWatcher,
 			c.config.ObjectType,
 			c.config.Queue,
 			c.config.FullResyncPeriod,
-			resetCh,
-			ownerKind,
+			filterBounds,
 		)
 	} else {
 		r = NewReflector(

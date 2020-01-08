@@ -17,6 +17,8 @@ limitations under the License.
 package deployment
 
 import (
+	"github.com/grafov/bcast"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"testing"
 
 	apps "k8s.io/api/apps/v1"
@@ -86,6 +88,22 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 		},
 	}
 
+	oldHandler := controllerframework.CreateControllerInstanceHandler
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
+	defer func() {
+		controllerframework.CreateControllerInstanceHandler = oldHandler
+	}()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	for i := range tests {
 		test := tests[i]
 		t.Logf("executing scenario %d", i)
@@ -95,9 +113,15 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 		maxUnavailable := intstr.FromInt(0)
 		deployment := newDeployment("foo", test.deploymentReplicas, nil, &test.maxSurge, &maxUnavailable, map[string]string{"foo": "bar"}, tenant)
 		fake := fake.Clientset{}
+
+		resetCh := bcast.NewGroup()
+		defer resetCh.Close()
+		go resetCh.Broadcast(0)
+
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fake, updateCh, resetCh)
 		controller := &DeploymentController{
-			client:        &fake,
-			eventRecorder: &record.FakeRecorder{},
+			ControllerBase: baseController,
+			eventRecorder:  &record.FakeRecorder{},
 		}
 		scaled, err := controller.reconcileNewReplicaSet(allRSs, newRS, deployment)
 		if err != nil {
@@ -194,6 +218,23 @@ func testDeploymentController_reconcileOldReplicaSets(t *testing.T, tenant strin
 			scaleExpected:      false,
 		},
 	}
+
+	oldHandler := controllerframework.CreateControllerInstanceHandler
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
+	defer func() {
+		controllerframework.CreateControllerInstanceHandler = oldHandler
+	}()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	for i := range tests {
 		test := tests[i]
 		t.Logf("executing scenario %d", i)
@@ -209,9 +250,16 @@ func testDeploymentController_reconcileOldReplicaSets(t *testing.T, tenant strin
 		maxSurge := intstr.FromInt(0)
 		deployment := newDeployment("foo", test.deploymentReplicas, nil, &maxSurge, &test.maxUnavailable, newSelector, tenant)
 		fakeClientset := fake.Clientset{}
+
+		resetCh := bcast.NewGroup()
+		defer resetCh.Close()
+		go resetCh.Broadcast(0)
+
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, updateCh, resetCh)
+
 		controller := &DeploymentController{
-			client:        &fakeClientset,
-			eventRecorder: &record.FakeRecorder{},
+			ControllerBase: baseController,
+			eventRecorder:  &record.FakeRecorder{},
 		}
 
 		scaled, err := controller.reconcileOldReplicaSets(allRSs, oldRSs, newRS, deployment)
@@ -276,6 +324,22 @@ func testDeploymentController_cleanupUnhealthyReplicas(t *testing.T, tenant stri
 		},
 	}
 
+	oldHandler := controllerframework.CreateControllerInstanceHandler
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
+	defer func() {
+		controllerframework.CreateControllerInstanceHandler = oldHandler
+	}()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	for i, test := range tests {
 		t.Logf("executing scenario %d", i)
 		oldRS := rs("foo-v2", test.oldReplicas, nil, noTimestamp, tenant)
@@ -286,9 +350,15 @@ func testDeploymentController_cleanupUnhealthyReplicas(t *testing.T, tenant stri
 		deployment := newDeployment("foo", 10, nil, &maxSurge, &maxUnavailable, nil, tenant)
 		fakeClientset := fake.Clientset{}
 
+		resetCh := bcast.NewGroup()
+		defer resetCh.Close()
+		go resetCh.Broadcast(0)
+
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, updateCh, resetCh)
+
 		controller := &DeploymentController{
-			client:        &fakeClientset,
-			eventRecorder: &record.FakeRecorder{},
+			ControllerBase: baseController,
+			eventRecorder:  &record.FakeRecorder{},
 		}
 		_, cleanupCount, err := controller.cleanupUnhealthyReplicas(oldRSs, deployment, int32(test.maxCleanupCount))
 		if err != nil {
@@ -358,6 +428,22 @@ func testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing
 		},
 	}
 
+	oldHandler := controllerframework.CreateControllerInstanceHandler
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
+	defer func() {
+		controllerframework.CreateControllerInstanceHandler = oldHandler
+	}()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	for i := range tests {
 		test := tests[i]
 		t.Logf("executing scenario %d", i)
@@ -368,9 +454,16 @@ func testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing
 		maxSurge := intstr.FromInt(0)
 		deployment := newDeployment("foo", test.deploymentReplicas, nil, &maxSurge, &test.maxUnavailable, map[string]string{"foo": "bar"}, tenant)
 		fakeClientset := fake.Clientset{}
+
+		resetCh := bcast.NewGroup()
+		defer resetCh.Close()
+		go resetCh.Broadcast(0)
+
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, updateCh, resetCh)
+
 		controller := &DeploymentController{
-			client:        &fakeClientset,
-			eventRecorder: &record.FakeRecorder{},
+			ControllerBase: baseController,
+			eventRecorder:  &record.FakeRecorder{},
 		}
 		scaled, err := controller.scaleDownOldReplicaSetsForRollingUpdate(allRSs, oldRSs, deployment)
 		if err != nil {

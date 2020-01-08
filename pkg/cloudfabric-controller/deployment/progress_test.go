@@ -17,6 +17,8 @@ limitations under the License.
 package deployment
 
 import (
+	"github.com/grafov/bcast"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"math"
 	"testing"
 	"time"
@@ -26,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 )
 
 func newDeploymentStatus(replicas, updatedReplicas, availableReplicas int32) apps.DeploymentStatus {
@@ -327,18 +329,41 @@ func testSyncRolloutStatus(t *testing.T, tenant string) {
 		},
 	}
 
+	oldHandler := controllerframework.CreateControllerInstanceHandler
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
+	defer func() {
+		controllerframework.CreateControllerInstanceHandler = oldHandler
+	}()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fake := fake.Clientset{}
+
+			resetCh := bcast.NewGroup()
+			defer resetCh.Close()
+			go resetCh.Broadcast(0)
+
+			baseController, err := controllerframework.NewControllerBase("Deployment", &fake, updateCh, resetCh)
+
 			dc := &DeploymentController{
-				client: &fake,
+				ControllerBase: baseController,
 			}
 
 			if test.newRS != nil {
 				test.allRSs = append(test.allRSs, test.newRS)
 			}
 
-			err := dc.syncRolloutStatus(test.allRSs, test.newRS, test.d)
+			err = dc.syncRolloutStatus(test.allRSs, test.newRS, test.d)
 			if err != nil {
 				t.Error(err)
 			}

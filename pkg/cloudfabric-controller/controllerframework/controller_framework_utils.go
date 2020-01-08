@@ -18,6 +18,7 @@ package controllerframework
 
 import (
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"sort"
@@ -76,4 +77,15 @@ func CreateTestControllerInstanceManager(stopCh chan struct{}, updateCh chan str
 	cim.notifyHandler = mockNotifyHander
 	checkInstanceHandler = mockCheckInstanceHander
 	return GetControllerInstanceManager(), informers
+}
+
+func MockCreateControllerInstance(c *ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
+	fakeControllerInstance := &v1.ControllerInstance{
+		ObjectMeta:     metav1.ObjectMeta{Name: c.GetControllerName()},
+		ControllerType: c.GetControllerType(),
+		ControllerKey:  c.GetControllerKey(),
+		WorkloadNum:    0,
+		IsLocked:       false,
+	}
+	return fakeControllerInstance, nil
 }

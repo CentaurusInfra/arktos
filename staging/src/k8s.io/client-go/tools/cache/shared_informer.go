@@ -122,7 +122,7 @@ type SharedIndexInformer interface {
 	// AddIndexers add indexers to the informer before it starts.
 	AddIndexers(indexers Indexers) error
 	GetIndexer() Indexer
-	SetResetCh(member *bcast.Member, ownerKind string)
+	AddResetCh(member *bcast.Member, sourceName string, ownerKind string)
 }
 
 // NewSharedInformer creates a new instance for the listwatcher.
@@ -143,6 +143,7 @@ func NewSharedIndexInformer(lw ListerWatcher, objType runtime.Object, defaultEve
 		defaultEventHandlerResyncPeriod: defaultEventHandlerResyncPeriod,
 		cacheMutationDetector:           NewCacheMutationDetector(fmt.Sprintf("%T", objType)),
 		clock:                           realClock,
+		filterBounds:                    make([]filterBound, 0),
 	}
 	return sharedIndexInformer
 }
@@ -157,6 +158,12 @@ const (
 	// initialBufferSize is the initial number of event notifications that can be buffered.
 	initialBufferSize = 1024
 )
+
+type FilterBound struct {
+	OwnerName  string
+	LowerBound int64
+	UpperBound int64
+}
 
 // WaitForCacheSync waits for caches to populate.  It returns true if it was successful, false
 // if the controller should shutdown
@@ -208,8 +215,8 @@ type sharedIndexInformer struct {
 	// can safely join the shared informer.
 	blockDeltas sync.Mutex
 
-	resetCh   *bcast.Member
-	ownerKind string
+	// filterBounds are a list of list/watch filtering bounds
+	filterBounds []filterBound
 }
 
 // dummyController hides the fact that a SharedInformer is different from a dedicated one
@@ -224,7 +231,7 @@ type dummyController struct {
 func (v *dummyController) Run(stopCh <-chan struct{}) {
 }
 
-func (v *dummyController) RunWithReset(stopCh <-chan struct{}, resetCh *bcast.Member, ownerKind string) {
+func (v *dummyController) RunWithReset(stopCh <-chan struct{}, filterBounds []filterBound) {
 }
 
 func (v *dummyController) HasSynced() bool {
@@ -289,11 +296,11 @@ func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
 		defer s.startedLock.Unlock()
 		s.stopped = true // Don't want any new listeners
 	}()
-	if s.resetCh != nil {
-		klog.Infof("start informer with reset channel. %v", s.objectType)
-		s.controller.RunWithReset(stopCh, s.resetCh, s.ownerKind)
+	if len(s.filterBounds) > 0 {
+		klog.V(4).Infof("start informer with reset channel. %v", s.objectType)
+		s.controller.RunWithReset(stopCh, s.filterBounds)
 	} else {
-		klog.Infof("start informer without reset channel. %v", s.objectType)
+		klog.V(4).Infof("start informer without reset channel. %v", s.objectType)
 		s.controller.Run(stopCh)
 	}
 }
@@ -337,12 +344,16 @@ func (s *sharedIndexInformer) AddIndexers(indexers Indexers) error {
 	return s.indexer.AddIndexers(indexers)
 }
 
-func (s *sharedIndexInformer) SetResetCh(resetCh *bcast.Member, ownerKind string) {
+func (s *sharedIndexInformer) AddResetCh(resetCh *bcast.Member, sourceName string, ownerKind string) {
 	s.startedLock.Lock()
 	defer s.startedLock.Unlock()
 
-	s.resetCh = resetCh
-	s.ownerKind = ownerKind
+	filterBound := filterBound{
+		resetCh:    resetCh,
+		sourceName: sourceName,
+		ownerKind:  ownerKind,
+	}
+	s.filterBounds = append(s.filterBounds, filterBound)
 }
 
 func (s *sharedIndexInformer) GetController() Controller {

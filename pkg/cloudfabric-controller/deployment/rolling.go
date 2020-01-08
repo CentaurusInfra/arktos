@@ -22,8 +22,8 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog"
+	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 	"k8s.io/kubernetes/pkg/controller"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/utils/integer"
 )
 

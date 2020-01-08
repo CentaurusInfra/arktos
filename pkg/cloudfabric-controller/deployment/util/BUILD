@@ -9,7 +9,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = ["deployment_util.go"],
-    importpath = "k8s.io/kubernetes/pkg/controller/deployment/util",
+    importpath = "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util",
     deps = [
         "//pkg/controller:go_default_library",
         "//pkg/util/labels:go_default_library",

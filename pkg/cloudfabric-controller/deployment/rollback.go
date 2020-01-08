@@ -25,7 +25,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 )
 
 // rollback the deployment to the specified revision. In any case cleanup the rollback spec.
@@ -113,7 +113,7 @@ func (dc *DeploymentController) emitRollbackNormalEvent(d *apps.Deployment, mess
 func (dc *DeploymentController) updateDeploymentAndClearRollbackTo(d *apps.Deployment) error {
 	klog.V(4).Infof("Cleans up rollbackTo of deployment %q", d.Name)
 	setRollbackTo(d, nil)
-	_, err := dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).Update(d)
+	_, err := dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).Update(d)
 	return err
 }
 

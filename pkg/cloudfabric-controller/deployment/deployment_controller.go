@@ -22,6 +22,9 @@ package deployment
 
 import (
 	"fmt"
+	"github.com/grafov/bcast"
+	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"reflect"
 	"time"
 
@@ -45,8 +48,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 	"k8s.io/kubernetes/pkg/util/metrics"
 )
 
@@ -65,9 +68,10 @@ var controllerKind = apps.SchemeGroupVersion.WithKind("Deployment")
 // DeploymentController is responsible for synchronizing Deployment objects stored
 // in the system with actual running replica sets and pods.
 type DeploymentController struct {
+	*controllerframework.ControllerBase
+
 	// rsControl is used for adopting/releasing replica sets.
 	rsControl     controller.RSControlInterface
-	client        clientset.Interface
 	eventRecorder record.EventRecorder
 
 	// To allow injection of syncDeployment for testing.
@@ -97,7 +101,7 @@ type DeploymentController struct {
 }
 
 // NewDeploymentController creates a new DeploymentController.
-func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, client clientset.Interface) (*DeploymentController, error) {
+func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, client clientset.Interface, updateControllerCh chan string, resetChGroup *bcast.Group) (*DeploymentController, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
@@ -107,10 +111,16 @@ func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInfor
 			return nil, err
 		}
 	}
+
+	baseController, err := controllerframework.NewControllerBase("Deployment", client, updateControllerCh, resetChGroup)
+	if err != nil {
+		return nil, err
+	}
+
 	dc := &DeploymentController{
-		client:        client,
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "deployment-controller"}),
-		queue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "deployment"),
+		ControllerBase: baseController,
+		eventRecorder:  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "deployment-controller"}),
+		queue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "deployment"),
 	}
 	dc.rsControl = controller.RealRSControl{
 		KubeClient: client,
@@ -149,16 +159,22 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer dc.queue.ShutDown()
 
-	klog.Infof("Starting deployment controller")
-	defer klog.Infof("Shutting down deployment controller")
+	klog.Infof("Starting %s controller", dc.GetControllerType())
+	defer klog.Infof("Shutting down %s controller", dc.GetControllerType())
 
-	if !controller.WaitForCacheSync("deployment", stopCh, dc.dListerSynced, dc.rsListerSynced, dc.podListerSynced) {
+	if !controller.WaitForCacheSync(dc.GetControllerType(), stopCh, dc.dListerSynced, dc.rsListerSynced, dc.podListerSynced) {
 		return
 	}
 
 	for i := 0; i < workers; i++ {
 		go wait.Until(dc.worker, time.Second, stopCh)
 	}
+
+	go dc.WatchInstanceUpdate(stopCh)
+
+	go wait.Until(dc.ReportHealth, time.Minute, stopCh)
+
+	klog.Infof("All work started for controller %s instance %s", dc.GetControllerType(), dc.GetControllerName())
 
 	<-stopCh
 }
@@ -356,7 +372,7 @@ func (dc *DeploymentController) deletePod(obj interface{}) {
 	klog.V(4).Infof("Pod %s deleted.", pod.Name)
 	if d := dc.getDeploymentForPod(pod); d != nil && d.Spec.Strategy.Type == apps.RecreateDeploymentStrategyType {
 		// Sync if this Deployment now has no more Pods.
-		rsList, err := util.ListReplicaSets(d, util.RsListFromClient(dc.client.AppsV1()))
+		rsList, err := util.ListReplicaSets(d, util.RsListFromClient(dc.GetClient().AppsV1()))
 		if err != nil {
 			return
 		}
@@ -462,13 +478,30 @@ func (dc *DeploymentController) worker() {
 }
 
 func (dc *DeploymentController) processNextWorkItem() bool {
+	if !dc.IsControllerActive() {
+		isDone, countOfProcessingWorkItem := dc.IsDoneProcessingCurrentWorkloads()
+		if !isDone {
+			klog.Infof("Controller is not active, worker idle .... count of work items = %d", countOfProcessingWorkItem)
+			// TODO : compare key version and controller locked status version
+			time.Sleep(1 * time.Second)
+			return true
+		}
+	}
+
 	key, quit := dc.queue.Get()
 	if quit {
 		return false
 	}
-	defer dc.queue.Done(key)
+	defer func() {
+		dc.queue.Done(key)
+		dc.SetWorkloadNum(dc.queue.Len())
+	}()
 
-	err := dc.syncHandler(key.(string))
+	workloadKey := key.(string)
+
+	dc.AddProcessingWorkItem()
+	err := dc.syncHandler(workloadKey)
+	dc.DoneProcessingWorkItem()
 	dc.handleErr(err, key)
 
 	return true
@@ -508,7 +541,7 @@ func (dc *DeploymentController) getReplicaSetsForDeployment(d *apps.Deployment) 
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing ReplicaSets (see #42639).
 	canAdoptFunc := controller.RecheckDeletionTimestamp(func() (metav1.Object, error) {
-		fresh, err := dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).Get(d.Name, metav1.GetOptions{})
+		fresh, err := dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).Get(d.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -572,7 +605,20 @@ func (dc *DeploymentController) syncDeployment(key string) error {
 	if errors.IsNotFound(err) {
 		klog.V(2).Infof("Deployment %v has been deleted", key)
 		return nil
+	} else {
+		// backwards compatible: if no hashkey, calculate and filter
+		if deployment.HashKey == 0 {
+			hashKey := fuzzer.GetHashOfUUID(deployment.UID)
+			if hashKey != deployment.HashKey {
+				deployment.HashKey = hashKey
+				klog.Infof("Deployment %s/%s/%s was not initialized with hash key uuid %s, caculated as %v", deployment.Tenant, deployment.Namespace, deployment.Name, deployment.UID, deployment.HashKey)
+			}
+			if !dc.IsInRange(deployment.HashKey) {
+				return nil
+			}
+		}
 	}
+
 	if err != nil {
 		return err
 	}
@@ -586,7 +632,7 @@ func (dc *DeploymentController) syncDeployment(key string) error {
 		dc.eventRecorder.Eventf(d, v1.EventTypeWarning, "SelectingAll", "This deployment is selecting all pods. A non-empty selector is required.")
 		if d.Status.ObservedGeneration < d.Generation {
 			d.Status.ObservedGeneration = d.Generation
-			dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
+			dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
 		}
 		return nil
 	}

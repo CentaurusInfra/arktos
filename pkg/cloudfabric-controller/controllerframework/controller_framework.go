@@ -77,7 +77,7 @@ type ControllerBase struct {
 	mux                                      sync.Mutex
 	unlockControllerInstanceHandler          func(local controllerInstanceLocal) error
 	createControllerInstanceHandler          func(v1.ControllerInstance) (*v1.ControllerInstance, error)
-	ResetCh                                  *bcast.Group
+	ResetChGrp                               *bcast.Group
 }
 
 var (
@@ -114,7 +114,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 		curPos:                                   -1,
 		controllerInstanceUpdateByControllerType: updateChan,
 		countOfProcessingWorkItem:                0,
-		ResetCh:                                  resetCh,
+		ResetChGrp:                               resetCh,
 	}
 
 	controller.controllerKey = controller.generateKey()
@@ -617,9 +617,15 @@ func listControllerInstancesByType(controllerType string) (map[string]v1.Control
 
 func resetFilter(c *ControllerBase, newLowerBound, newUpperbound int64) {
 	go func() {
-		klog.Infof("The new range %+v is going to send. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
-		c.ResetCh.Send([]int64{newLowerBound, newUpperbound})
-		klog.Infof("The new range %+v has been sent. obj %v", []int64{newLowerBound, newUpperbound}, c.controllerName)
+		klog.Infof("%s: The new range %+v is going to send. obj %v", c.controllerType, []int64{newLowerBound, newUpperbound}, c.controllerName)
+		resetMessage := cache.FilterBound{
+			OwnerName:  c.controllerType + "_Controller",
+			LowerBound: newLowerBound,
+			UpperBound: newUpperbound,
+		}
+
+		c.ResetChGrp.Send(resetMessage)
+		klog.Infof("%s: The new range %+v has been sent. resetMessage %+v", c.controllerType, []int64{newLowerBound, newUpperbound}, resetMessage)
 	}()
 }
 

@@ -20,8 +20,8 @@ import (
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 )
 
 // rolloutRecreate implements the logic for recreating a replica set.

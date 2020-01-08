@@ -18,6 +18,8 @@ package deployment
 
 import (
 	"fmt"
+	"github.com/grafov/bcast"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"testing"
 
 	apps "k8s.io/api/apps/v1"
@@ -28,7 +30,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
 )
 
 func TestScaleDownOldReplicaSets(t *testing.T) {
@@ -48,6 +50,16 @@ func testScaleDownOldReplicaSets(t *testing.T, tenant string) {
 			oldRSSizes: []int{3},
 			d:          newDeployment("foo", 3, nil, nil, nil, map[string]string{"foo": "bar"}, tenant),
 		},
+	}
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	updateCh := make(chan string)
+	defer close(updateCh)
+	cim := controllerframework.GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		go cim.Run(stopCh)
 	}
 
 	for i := range tests {
@@ -74,7 +86,12 @@ func testScaleDownOldReplicaSets(t *testing.T, tenant string) {
 
 		kc := fake.NewSimpleClientset(expected...)
 		informers := informers.NewSharedInformerFactory(kc, controller.NoResyncPeriodFunc())
-		c, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), kc)
+
+		resetCh := bcast.NewGroup()
+		defer resetCh.Close()
+		go resetCh.Broadcast(0)
+
+		c, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), kc, updateCh, resetCh)
 		if err != nil {
 			t.Fatalf("error creating Deployment controller: %v", err)
 		}

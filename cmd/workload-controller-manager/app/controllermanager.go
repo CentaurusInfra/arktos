@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment"
 	"net/http"
 	"time"
 
@@ -67,8 +68,8 @@ type ControllerContext struct {
 	// Stop is the stop channel
 	Stop <-chan struct{}
 
-	// Reset is the reset channel for informer filter
-	ResetChGroup *bcast.Group
+	// ResetChGroups are the reset channels for informer filters
+	ResetChGroups []*bcast.Group
 
 	// InformersStarted is closed after all of the controllers have been initialized and are running.  After this point it is safe,
 	// for an individual controller to start the shared informers. Before it is closed, they should not.
@@ -115,7 +116,6 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	ctx := context.TODO()
 
 	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, ctx.Done())
-	go controllerContext.ResetChGroup.Broadcast(0)
 
 	if err != nil {
 		klog.Fatalf("error building controller context: %v", err)
@@ -125,6 +125,10 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	replicatSetWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("replicaset")
 	if isOK {
 		startReplicaSetController(controllerContext, replicatSetWorkerNumber)
+	}
+	deploymentWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("deployment")
+	if isOK {
+		startDeploymentController(controllerContext, deploymentWorkerNumber)
 	}
 
 	controllerContext.InformerFactory.Start(controllerContext.Stop)
@@ -178,7 +182,7 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 		Stop:                                     stop,
 		InformersStarted:                         make(chan struct{}),
 		ControllerInstanceUpdateByControllerType: make(chan string),
-		ResetChGroup:                             bcast.NewGroup(),
+		ResetChGroups:                            make([]*bcast.Group, 0),
 	}
 
 	return ctx, nil
@@ -218,13 +222,18 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}] {
 		return nil, false, nil
 	}
+
+	rsResetChGrp := bcast.NewGroup()
+	ctx.ResetChGroups = append(ctx.ResetChGroups, rsResetChGrp)
+	go rsResetChGrp.Broadcast(0)
+
 	rsInformer := ctx.InformerFactory.Apps().V1().ReplicaSets()
-	rsResetCh := ctx.ResetChGroup.Join()
-	rsInformer.Informer().SetResetCh(rsResetCh, "")
+	rsResetCh := rsResetChGrp.Join()
+	rsInformer.Informer().AddResetCh(rsResetCh, "ReplicaSet_Controller", "")
 
 	podInformer := ctx.InformerFactory.Core().V1().Pods()
-	podResetCh := ctx.ResetChGroup.Join()
-	podInformer.Informer().SetResetCh(podResetCh, "ReplicaSet")
+	podResetCh := rsResetChGrp.Join()
+	podInformer.Informer().AddResetCh(podResetCh, "ReplicaSet_Controller", "ReplicaSet")
 
 	go replicaset.NewReplicaSetController(
 		rsInformer,
@@ -232,8 +241,44 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
 		replicaset.BurstReplicas,
 		ctx.ControllerInstanceUpdateByControllerType,
-		ctx.ResetChGroup,
+		rsResetChGrp,
 	).Run(workerNum, ctx.Stop)
+	return nil, true, nil
+}
+
+func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handler, bool, error) {
+	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}] {
+		return nil, false, nil
+	}
+
+	dResetChGrp := bcast.NewGroup()
+	ctx.ResetChGroups = append(ctx.ResetChGroups, dResetChGrp)
+	go dResetChGrp.Broadcast(0)
+
+	deploymentInformer := ctx.InformerFactory.Apps().V1().Deployments()
+	deploymentResetCh := dResetChGrp.Join()
+	deploymentInformer.Informer().AddResetCh(deploymentResetCh, "Deployment_Controller", "")
+
+	rsInformer := ctx.InformerFactory.Apps().V1().ReplicaSets()
+	rsResetCh := dResetChGrp.Join()
+	rsInformer.Informer().AddResetCh(rsResetCh, "Deployment_Controller", "Deployment")
+
+	podInformer := ctx.InformerFactory.Core().V1().Pods()
+	podResetCh := dResetChGrp.Join()
+	podInformer.Informer().AddResetCh(podResetCh, "Deployment_Controller", "Deployment")
+
+	dc, err := deployment.NewDeploymentController(
+		deploymentInformer,
+		rsInformer,
+		podInformer,
+		ctx.ClientBuilder.ClientOrDie("deployment-controller"),
+		ctx.ControllerInstanceUpdateByControllerType,
+		dResetChGrp,
+	)
+	if err != nil {
+		return nil, true, fmt.Errorf("error creating Deployment controller: %v", err)
+	}
+	go dc.Run(workerNum, ctx.Stop)
 	return nil, true, nil
 }
 

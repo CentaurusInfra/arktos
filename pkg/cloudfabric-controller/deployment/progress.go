@@ -25,7 +25,7 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 )
 
 // syncRolloutStatus updates the status of a deployment during a rollout. There are
@@ -112,7 +112,7 @@ func (dc *DeploymentController) syncRolloutStatus(allRSs []*apps.ReplicaSet, new
 
 	newDeployment := d
 	newDeployment.Status = newStatus
-	_, err := dc.client.AppsV1().DeploymentsWithMultiTenancy(newDeployment.Namespace, newDeployment.Tenant).UpdateStatus(newDeployment)
+	_, err := dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(newDeployment.Namespace, newDeployment.Tenant).UpdateStatus(newDeployment)
 	return err
 }
 

@@ -27,8 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/controller"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
+	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 )
 
@@ -97,7 +97,7 @@ func (dc *DeploymentController) checkPausedConditions(d *apps.Deployment) error 
 	}
 
 	var err error
-	d, err = dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
+	d, err = dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
 	return err
 }
 
@@ -154,7 +154,7 @@ func (dc *DeploymentController) getNewReplicaSet(d *apps.Deployment, rsList, old
 		minReadySecondsNeedsUpdate := rsCopy.Spec.MinReadySeconds != d.Spec.MinReadySeconds
 		if annotationsUpdated || minReadySecondsNeedsUpdate {
 			rsCopy.Spec.MinReadySeconds = d.Spec.MinReadySeconds
-			return dc.client.AppsV1().ReplicaSetsWithMultiTenancy(rsCopy.ObjectMeta.Namespace, rsCopy.ObjectMeta.Tenant).Update(rsCopy)
+			return dc.GetClient().AppsV1().ReplicaSetsWithMultiTenancy(rsCopy.ObjectMeta.Namespace, rsCopy.ObjectMeta.Tenant).Update(rsCopy)
 		}
 
 		// Should use the revision in existingNewRS's annotation, since it set by before
@@ -172,7 +172,7 @@ func (dc *DeploymentController) getNewReplicaSet(d *apps.Deployment, rsList, old
 
 		if needsUpdate {
 			var err error
-			if d, err = dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d); err != nil {
+			if d, err = dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d); err != nil {
 				return nil, err
 			}
 		}
@@ -220,7 +220,7 @@ func (dc *DeploymentController) getNewReplicaSet(d *apps.Deployment, rsList, old
 	// hash collisions. If there is any other error, we need to report it in the status of
 	// the Deployment.
 	alreadyExists := false
-	createdRS, err := dc.client.AppsV1().ReplicaSetsWithMultiTenancy(d.Namespace, d.Tenant).Create(&newRS)
+	createdRS, err := dc.GetClient().AppsV1().ReplicaSetsWithMultiTenancy(d.Namespace, d.Tenant).Create(&newRS)
 	switch {
 	// We may end up hitting this due to a slow cache or a fast resync of the Deployment.
 	case errors.IsAlreadyExists(err):
@@ -252,7 +252,7 @@ func (dc *DeploymentController) getNewReplicaSet(d *apps.Deployment, rsList, old
 		*d.Status.CollisionCount++
 		// Update the collisionCount for the Deployment and let it requeue by returning the original
 		// error.
-		_, dErr := dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
+		_, dErr := dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
 		if dErr == nil {
 			klog.V(2).Infof("Found a hash collision for deployment %q - bumping collisionCount (%d->%d) to resolve it", d.Name, preCollisionCount, *d.Status.CollisionCount)
 		}
@@ -265,7 +265,7 @@ func (dc *DeploymentController) getNewReplicaSet(d *apps.Deployment, rsList, old
 			// We don't really care about this error at this point, since we have a bigger issue to report.
 			// TODO: Identify which errors are permanent and switch DeploymentIsFailed to take into account
 			// these reasons as well. Related issue: https://github.com/kubernetes/kubernetes/issues/18568
-			_, _ = dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
+			_, _ = dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
 		}
 		dc.eventRecorder.Eventf(d, v1.EventTypeWarning, deploymentutil.FailedRSCreateReason, msg)
 		return nil, err
@@ -282,7 +282,7 @@ func (dc *DeploymentController) getNewReplicaSet(d *apps.Deployment, rsList, old
 		needsUpdate = true
 	}
 	if needsUpdate {
-		_, err = dc.client.AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
+		_, err = dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(d.Namespace, d.Tenant).UpdateStatus(d)
 	}
 	return createdRS, err
 }
@@ -417,7 +417,7 @@ func (dc *DeploymentController) scaleReplicaSet(rs *apps.ReplicaSet, newScale in
 		rsCopy := rs.DeepCopy()
 		*(rsCopy.Spec.Replicas) = newScale
 		deploymentutil.SetReplicasAnnotations(rsCopy, *(deployment.Spec.Replicas), *(deployment.Spec.Replicas)+deploymentutil.MaxSurge(*deployment))
-		rs, err = dc.client.AppsV1().ReplicaSetsWithMultiTenancy(rsCopy.Namespace, rsCopy.Tenant).Update(rsCopy)
+		rs, err = dc.GetClient().AppsV1().ReplicaSetsWithMultiTenancy(rsCopy.Namespace, rsCopy.Tenant).Update(rsCopy)
 		if err == nil && sizeNeedsUpdate {
 			scaled = true
 			dc.eventRecorder.Eventf(deployment, v1.EventTypeNormal, "ScalingReplicaSet", "Scaled %s replica set %s to %d", scalingOperation, rs.Name, newScale)
@@ -455,7 +455,7 @@ func (dc *DeploymentController) cleanupDeployment(oldRSs []*apps.ReplicaSet, dep
 			continue
 		}
 		klog.V(4).Infof("Trying to cleanup replica set %q for deployment %q", rs.Name, deployment.Name)
-		if err := dc.client.AppsV1().ReplicaSetsWithMultiTenancy(rs.Namespace, rs.Tenant).Delete(rs.Name, nil); err != nil && !errors.IsNotFound(err) {
+		if err := dc.GetClient().AppsV1().ReplicaSetsWithMultiTenancy(rs.Namespace, rs.Tenant).Delete(rs.Name, nil); err != nil && !errors.IsNotFound(err) {
 			// Return error instead of aggregating and continuing DELETEs on the theory
 			// that we may be overloading the api server.
 			return err
@@ -475,7 +475,7 @@ func (dc *DeploymentController) syncDeploymentStatus(allRSs []*apps.ReplicaSet, 
 
 	newDeployment := d
 	newDeployment.Status = newStatus
-	_, err := dc.client.AppsV1().DeploymentsWithMultiTenancy(newDeployment.Namespace, newDeployment.Tenant).UpdateStatus(newDeployment)
+	_, err := dc.GetClient().AppsV1().DeploymentsWithMultiTenancy(newDeployment.Namespace, newDeployment.Tenant).UpdateStatus(newDeployment)
 	return err
 }
 
