@@ -170,6 +170,12 @@ type NamespaceScopedStrategy interface {
 	NamespaceScoped() bool
 }
 
+// TenantScopedStrategy has a method to tell if the object must be in a tenant.
+type TenantScopedStrategy interface {
+	// TenantScoped returns if the object must be in a tenant.
+	TenantScoped() bool
+}
+
 // AdmissionToValidateObjectFunc converts validating admission to a rest validate object func
 func AdmissionToValidateObjectFunc(admit admission.Interface, staticAttributes admission.Attributes, o admission.ObjectInterfaces) ValidateObjectFunc {
 	validatingAdmission, ok := admit.(admission.ValidationInterface)
@@ -181,6 +187,7 @@ func AdmissionToValidateObjectFunc(admit admission.Interface, staticAttributes a
 			obj,
 			staticAttributes.GetOldObject(),
 			staticAttributes.GetKind(),
+			staticAttributes.GetTenant(),
 			staticAttributes.GetNamespace(),
 			staticAttributes.GetName(),
 			staticAttributes.GetResource(),
@@ -194,12 +201,5 @@ func AdmissionToValidateObjectFunc(admit admission.Interface, staticAttributes a
 			return nil
 		}
 		return validatingAdmission.Validate(finalAttributes, o)
-	}
-}
-
-// TODO: multi-tenancy validation
-func AdmissionToValidateObjectFuncWithMultiTenancy(admit admission.Interface, staticAttributes admission.Attributes, o admission.ObjectInterfaces) ValidateObjectFunc {
-	return func(obj runtime.Object) error {
-		return nil
 	}
 }

@@ -65,6 +65,9 @@ type Attributes interface {
 
 	// GetReinvocationContext tracks the admission request information relevant to the re-invocation policy.
 	GetReinvocationContext() ReinvocationContext
+
+	// GetTenant is the tenant associated with the request (if any)
+	GetTenant() string
 }
 
 // ObjectInterfaces is an interface used by AdmissionController to get object interfaces

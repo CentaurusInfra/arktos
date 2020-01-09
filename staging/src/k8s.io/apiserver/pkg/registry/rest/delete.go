@@ -159,6 +159,7 @@ func AdmissionToValidateObjectDeleteFunc(admit admission.Interface, staticAttrib
 			// Deep copy the object to avoid accidentally changing the object.
 			old.DeepCopyObject(),
 			staticAttributes.GetKind(),
+			staticAttributes.GetTenant(),
 			staticAttributes.GetNamespace(),
 			staticAttributes.GetName(),
 			staticAttributes.GetResource(),
@@ -178,13 +179,6 @@ func AdmissionToValidateObjectDeleteFunc(admit admission.Interface, staticAttrib
 				return err
 			}
 		}
-		return nil
-	}
-}
-
-// TODO: multi-tenancy admission check
-func AdmissionToValidateObjectDeleteFuncWithMultiTenancy(admit admission.Interface, staticAttributes admission.Attributes, objInterfaces admission.ObjectInterfaces) ValidateObjectFunc {
-	return func(old runtime.Object) error {
 		return nil
 	}
 }
