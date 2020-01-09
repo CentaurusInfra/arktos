@@ -126,6 +126,7 @@ func TestAdmit(t *testing.T) {
 				obj,                  // new object
 				obj.DeepCopyObject(), // old object, copy to be sure it's not modified
 				schema.GroupVersionKind{},
+				"default",
 				test.namespace,
 				"foo",
 				test.resource,

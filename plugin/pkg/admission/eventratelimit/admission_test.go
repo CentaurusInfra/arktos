@@ -42,6 +42,7 @@ func attributesForRequest(rq request) admission.Attributes {
 		rq.event,
 		nil,
 		api.Kind(rq.kind).WithVersion("version"),
+		rq.tenant,
 		rq.namespace,
 		"name",
 		api.Resource("resource").WithVersion("version"),
@@ -54,6 +55,7 @@ func attributesForRequest(rq request) admission.Attributes {
 
 type request struct {
 	kind      string
+	tenant    string
 	namespace string
 	username  string
 	event     *api.Event

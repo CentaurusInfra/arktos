@@ -720,9 +720,7 @@ func TestPatchWithAdmissionRejection(t *testing.T) {
 	testPatchWithAdmissionRejection(t, tenant)
 }
 
-// temporarily suspend multi-tenancy admission as it is a Phase-II work item
-// TODO: re-enable this test when multi-tenancy admission is ready
-func _TestPatchWithAdmissionRejectionWithMultiTenancy(t *testing.T) {
+func TestPatchWithAdmissionRejectionWithMultiTenancy(t *testing.T) {
 	tenant := "baz"
 	testPatchWithAdmissionRejection(t, tenant)
 }
@@ -796,9 +794,7 @@ func TestPatchWithVersionConflictThenAdmissionFailure(t *testing.T) {
 	testPatchWithVersionConflictThenAdmissionFailure(t, tenant)
 }
 
-// temporarily suspend multi-tenancy admission as it is a Phase-II work item
-// TODO: re-enable this test when multi-tenancy admission is ready
-func _TestPatchWithVersionConflictThenAdmissionFailureWithMultiTenancy(t *testing.T) {
+func TestPatchWithVersionConflictThenAdmissionFailureWithMultiTenancy(t *testing.T) {
 	tenant := "baz"
 	testPatchWithVersionConflictThenAdmissionFailure(t, tenant)
 }

@@ -204,6 +204,7 @@ func TestAdmission(t *testing.T) {
 			claim, // new object
 			nil,   // old object
 			api.Kind("PersistentVolumeClaim").WithVersion("version"),
+			claim.Tenant,
 			claim.Namespace,
 			claim.Name,
 			api.Resource("persistentvolumeclaims").WithVersion("version"),

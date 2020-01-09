@@ -29,10 +29,18 @@ import (
 // TestAdmission verifies all create requests for pods result in every container's image pull policy
 // set to Always
 func TestAdmission(t *testing.T) {
+	testAdmission(t, metav1.TenantDefault)
+}
+
+func TestAdmissionWithMultiTenancy(t *testing.T) {
+	testAdmission(t, "test-te")
+}
+
+func testAdmission(t *testing.T, tenant string) {
 	namespace := "test"
 	handler := admissiontesting.WithReinvocationTesting(t, &AlwaysPullImages{})
 	pod := api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: namespace, Tenant: tenant},
 		Spec: api.PodSpec{
 			InitContainers: []api.Container{
 				{Name: "init1", Image: "image"},
@@ -48,7 +56,7 @@ func TestAdmission(t *testing.T) {
 			},
 		},
 	}
-	err := handler.Admit(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"), pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+	err := handler.Admit(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"), pod.Tenant, pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 	if err != nil {
 		t.Errorf("Unexpected error returned from admission handler")
 	}
@@ -65,10 +73,18 @@ func TestAdmission(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	testValidate(t, metav1.TenantDefault)
+}
+
+func TestValidateWithMultiTenancy(t *testing.T) {
+	testValidate(t, "test-te")
+}
+
+func testValidate(t *testing.T, tenant string) {
 	namespace := "test"
 	handler := &AlwaysPullImages{}
 	pod := api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: namespace, Tenant: tenant},
 		Spec: api.PodSpec{
 			InitContainers: []api.Container{
 				{Name: "init1", Image: "image"},
@@ -85,7 +101,7 @@ func TestValidate(t *testing.T) {
 		},
 	}
 	expectedError := `pods "123" is forbidden: spec.initContainers[0].imagePullPolicy: Unsupported value: "": supported values: "Always"`
-	err := handler.Validate(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"), pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+	err := handler.Validate(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"), pod.Tenant, pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 	if err == nil {
 		t.Fatal("missing expected error")
 	}
@@ -97,10 +113,18 @@ func TestValidate(t *testing.T) {
 // TestOtherResources ensures that this admission controller is a no-op for other resources,
 // subresources, and non-pods.
 func TestOtherResources(t *testing.T) {
+	testOtherResources(t, metav1.TenantDefault)
+}
+
+func TestOtherResourcesWithMultiTenancy(t *testing.T) {
+	testOtherResources(t, "test-te")
+}
+
+func testOtherResources(t *testing.T, tenant string) {
 	namespace := "testnamespace"
 	name := "testname"
 	pod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Tenant: tenant},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{Name: "ctr2", Image: "image", ImagePullPolicy: api.PullNever},
@@ -140,7 +164,7 @@ func TestOtherResources(t *testing.T) {
 	for _, tc := range tests {
 		handler := admissiontesting.WithReinvocationTesting(t, &AlwaysPullImages{})
 
-		err := handler.Admit(admission.NewAttributesRecord(tc.object, nil, api.Kind(tc.kind).WithVersion("version"), namespace, name, api.Resource(tc.resource).WithVersion("version"), tc.subresource, admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+		err := handler.Admit(admission.NewAttributesRecord(tc.object, nil, api.Kind(tc.kind).WithVersion("version"), tenant, namespace, name, api.Resource(tc.resource).WithVersion("version"), tc.subresource, admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 
 		if tc.expectError {
 			if err == nil {

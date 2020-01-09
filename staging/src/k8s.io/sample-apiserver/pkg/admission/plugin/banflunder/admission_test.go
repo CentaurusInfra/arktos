@@ -131,6 +131,7 @@ func TestBanflunderAdmissionPlugin(t *testing.T) {
 				&scenario.admissionInput,
 				nil,
 				scenario.admissionInputKind,
+				scenario.admissionInput.ObjectMeta.Tenant,
 				scenario.admissionInput.ObjectMeta.Namespace,
 				"",
 				scenario.admissionInputResource,

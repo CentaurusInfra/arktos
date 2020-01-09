@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	webhooktesting "k8s.io/apiserver/pkg/admission/plugin/webhook/testing"
 )
 
@@ -51,7 +52,7 @@ func TestValidate(t *testing.T) {
 		}
 
 		ns := "webhook-test"
-		client, informer := webhooktesting.NewFakeValidatingDataSource(ns, tt.Webhooks, stopCh)
+		client, informer := webhooktesting.NewFakeValidatingDataSource(metav1.TenantDefault, ns, tt.Webhooks, stopCh)
 
 		wh.SetAuthenticationInfoResolverWrapper(webhooktesting.Wrapper(webhooktesting.NewAuthenticationInfoResolver(new(int32))))
 		wh.SetServiceResolver(webhooktesting.NewServiceResolver(*serverURL))
@@ -66,7 +67,7 @@ func TestValidate(t *testing.T) {
 			continue
 		}
 
-		attr := webhooktesting.NewAttribute(ns, nil, tt.IsDryRun)
+		attr := webhooktesting.NewAttribute(metav1.TenantDefault, ns, nil, tt.IsDryRun)
 		err = wh.Validate(attr, objectInterfaces)
 		if tt.ExpectAllow != (err == nil) {
 			t.Errorf("%s: expected allowed=%v, but got err=%v", tt.Name, tt.ExpectAllow, err)
@@ -116,7 +117,7 @@ func TestValidateCachedClient(t *testing.T) {
 
 	for _, tt := range webhooktesting.NewCachedClientTestcases(serverURL) {
 		ns := "webhook-test"
-		client, informer := webhooktesting.NewFakeValidatingDataSource(ns, tt.Webhooks, stopCh)
+		client, informer := webhooktesting.NewFakeValidatingDataSource(metav1.TenantDefault, ns, tt.Webhooks, stopCh)
 
 		// override the webhook source. The client cache will stay the same.
 		cacheMisses := new(int32)
@@ -132,7 +133,7 @@ func TestValidateCachedClient(t *testing.T) {
 			continue
 		}
 
-		err = wh.Validate(webhooktesting.NewAttribute(ns, nil, false), objectInterfaces)
+		err = wh.Validate(webhooktesting.NewAttribute(metav1.TenantDefault, ns, nil, false), objectInterfaces)
 		if tt.ExpectAllow != (err == nil) {
 			t.Errorf("%s: expected allowed=%v, but got err=%v", tt.Name, tt.ExpectAllow, err)
 		}
