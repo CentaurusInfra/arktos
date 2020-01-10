@@ -77,7 +77,7 @@ type ControllerContext struct {
 
 	// ControllerInstanceUpdateByControllerType is the controller type that has controller instance updates. This is to notify controller instance
 	// that it has a peer update and trigger hash ring updates if necessary.
-	ControllerInstanceUpdateByControllerType chan string
+	ControllerInstanceUpdateChGrp *bcast.Group
 }
 
 var resyncPeriod = time.Duration(60 * time.Second)
@@ -181,7 +181,7 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 		AvailableResources:                       availableResources,
 		Stop:                                     stop,
 		InformersStarted:                         make(chan struct{}),
-		ControllerInstanceUpdateByControllerType: make(chan string),
+		ControllerInstanceUpdateChGrp:            bcast.NewGroup(),
 		ResetChGroups:                            make([]*bcast.Group, 0),
 	}
 
@@ -235,12 +235,14 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 	podResetCh := rsResetChGrp.Join()
 	podInformer.Informer().AddResetCh(podResetCh, "ReplicaSet_Controller", "ReplicaSet")
 
+	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
+
 	go replicaset.NewReplicaSetController(
 		rsInformer,
 		podInformer,
 		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
 		replicaset.BurstReplicas,
-		ctx.ControllerInstanceUpdateByControllerType,
+		cimChangeCh,
 		rsResetChGrp,
 	).Run(workerNum, ctx.Stop)
 	return nil, true, nil
@@ -267,12 +269,14 @@ func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handl
 	podResetCh := dResetChGrp.Join()
 	podInformer.Informer().AddResetCh(podResetCh, "Deployment_Controller", "Deployment")
 
+	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
+
 	dc, err := deployment.NewDeploymentController(
 		deploymentInformer,
 		rsInformer,
 		podInformer,
 		ctx.ClientBuilder.ClientOrDie("deployment-controller"),
-		ctx.ControllerInstanceUpdateByControllerType,
+		cimChangeCh,
 		dResetChGrp,
 	)
 	if err != nil {
@@ -287,10 +291,12 @@ func startControllerInstanceManager(ctx ControllerContext) (bool, error) {
 		return false, nil
 	}
 
+	go ctx.ControllerInstanceUpdateChGrp.Broadcast(0)
+
 	go controllerframework.NewControllerInstanceManager(
 		ctx.InformerFactory.Core().V1().ControllerInstances(),
 		ctx.ClientBuilder.ClientOrDie("controller-instance-manager"),
-		ctx.ControllerInstanceUpdateByControllerType).Run(ctx.Stop)
+		ctx.ControllerInstanceUpdateChGrp).Run(ctx.Stop)
 
 	return true, nil
 }

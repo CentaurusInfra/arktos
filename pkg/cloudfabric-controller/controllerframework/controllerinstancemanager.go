@@ -18,6 +18,7 @@ package controllerframework
 
 import (
 	"fmt"
+	"github.com/grafov/bcast"
 	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"strconv"
 
@@ -50,8 +51,8 @@ type ControllerInstanceManager struct {
 
 	recorder record.EventRecorder
 
-	kubeClient                   clientset.Interface
-	controllerInstanceChangeChan chan string
+	kubeClient     clientset.Interface
+	cimUpdateChGrp *bcast.Group
 
 	mux           sync.Mutex
 	notifyHandler func(controllerInstance *v1.ControllerInstance)
@@ -70,7 +71,7 @@ func checkInstanceExistence() {
 	}
 }
 
-func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInformer, kubeClient clientset.Interface, instanceChangeNotifyChan chan string) *ControllerInstanceManager {
+func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInformer, kubeClient clientset.Interface, cimUpdateChGrp *bcast.Group) *ControllerInstanceManager {
 	checkInstanceHandler()
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -86,9 +87,9 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 		kubeClient: kubeClient,
 		recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "controller-instance-manager"}),
 
-		currentControllers:           make(map[string](map[string]v1.ControllerInstance)),
-		isControllerListInitialized:  false,
-		controllerInstanceChangeChan: instanceChangeNotifyChan,
+		currentControllers:          make(map[string](map[string]v1.ControllerInstance)),
+		isControllerListInitialized: false,
+		cimUpdateChGrp:              cimUpdateChGrp,
 	}
 
 	coInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -170,7 +171,7 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 		}
 	}
 
-	klog.Infof("Received event for UPDATE controller instance %v", curControllerInstance.Name)
+	klog.V(4).Infof("Received event for UPDATE controller instance %v", curControllerInstance.Name)
 
 	if curControllerInstance.Name != oldControllerInstance.Name {
 		klog.Fatalf("Unexpected controller instance Name changed from %v to %v. CIM %v", oldControllerInstance.Name, curControllerInstance.Name, cim.instanceId)
@@ -184,10 +185,10 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 	}
 
 	cim.mux.Lock()
-	klog.Infof("mux acquired updateControllerInstance. CIM %v", cim.instanceId)
+	klog.V(4).Infof("mux acquired updateControllerInstance. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux released updateControllerInstance. CIM %v", cim.instanceId)
+		klog.V(4).Infof("mux released updateControllerInstance. CIM %v", cim.instanceId)
 	}()
 
 	cim.currentControllers[oldControllerInstance.ControllerType][oldControllerInstance.Name] = *curControllerInstance
@@ -244,8 +245,8 @@ func (cim *ControllerInstanceManager) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (cim *ControllerInstanceManager) GetUpdateCh() chan string {
-	return cim.controllerInstanceChangeChan
+func (cim *ControllerInstanceManager) GetUpdateChGrp() *bcast.Group {
+	return cim.cimUpdateChGrp
 }
 
 func (cim *ControllerInstanceManager) ListControllerInstances(controllerType string) (map[string]v1.ControllerInstance, error) {
@@ -288,6 +289,6 @@ func (cim *ControllerInstanceManager) syncControllerInstances() error {
 
 func (cim *ControllerInstanceManager) notifyControllerInstanceChanges(controllerInstance *v1.ControllerInstance) {
 	go func() {
-		cim.controllerInstanceChangeChan <- controllerInstance.ControllerType
+		cim.cimUpdateChGrp.Send(controllerInstance.ControllerType)
 	}()
 }

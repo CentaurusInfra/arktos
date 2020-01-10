@@ -17,7 +17,6 @@ limitations under the License.
 package deployment
 
 import (
-	"github.com/grafov/bcast"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"strconv"
 	"testing"
@@ -200,21 +199,11 @@ func (f *fixture) newController() (*DeploymentController, informers.SharedInform
 	f.client = fake.NewSimpleClientset(f.objects...)
 	informers := informers.NewSharedInformerFactory(f.client, controller.NoResyncPeriodFunc())
 
-	updateCh := make(chan string)
-	defer close(updateCh)
-	resetCh := bcast.NewGroup()
-	defer resetCh.Close()
-	go resetCh.Broadcast(0)
-
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	cim := controllerframework.GetControllerInstanceManager()
-	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
-	}
+	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
 
-	c, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), f.client, updateCh, resetCh)
+	c, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), f.client, cimUpdateCh, informersResetChGrp)
 	if err != nil {
 		return nil, nil, err
 	}

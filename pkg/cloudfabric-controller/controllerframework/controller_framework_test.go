@@ -17,14 +17,13 @@ limitations under the License.
 package controllerframework
 
 import (
-	"github.com/grafov/bcast"
+	"k8s.io/client-go/informers"
 	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/klog"
@@ -35,16 +34,13 @@ func mockResetHander(c *ControllerBase, newLowerBound, newUpperbound int64) {
 	return
 }
 
-func createControllerInstanceBaseAndCIM(t *testing.T, client clientset.Interface, cim *ControllerInstanceManager, controllerType string, stopCh chan struct{},
-	updateCh chan string, resetCh *bcast.Group) (*ControllerBase, *ControllerInstanceManager) {
-
+func createControllerInstanceBaseAndCIM(t *testing.T, client clientset.Interface, cim *ControllerInstanceManager, controllerType string, stopCh chan struct{}) (*ControllerBase, *ControllerInstanceManager) {
 	if cim == nil {
-		cim, _ = CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
+		cim, _ = CreateTestControllerInstanceManager(stopCh)
 	}
 
 	ResetFilterHandler = mockResetHander
-	newControllerInstance1, err := NewControllerBase(controllerType, client, updateCh, resetCh)
+	newControllerInstance1, err := NewControllerBase(controllerType, client, nil, nil)
 	newControllerInstance1.unlockControllerInstanceHandler = mockUnlockcontrollerInstanceHandler
 	cim.addControllerInstance(convertControllerBaseToControllerInstance(newControllerInstance1))
 
@@ -84,8 +80,8 @@ func TestGetControllerInstanceManager(t *testing.T) {
 
 	client := fake.NewSimpleClientset()
 	informers := informers.NewSharedInformerFactory(client, 0)
-	updateCh := make(chan string)
-	cim = NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, updateCh)
+
+	cim = NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, nil)
 	assert.NotNil(t, cim)
 
 	checkInstanceHandler = mockCheckInstanceHander
@@ -94,14 +90,9 @@ func TestGetControllerInstanceManager(t *testing.T) {
 func TestGenerateKey(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
-	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, "foo", stopCh, updateCh, resetCh)
+	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, "foo", stopCh)
 
 	// 1st controller instance for a type needs to cover all workload
 	assert.Equal(t, 0, controllerInstanceBase.curPos)
@@ -111,7 +102,7 @@ func TestGenerateKey(t *testing.T) {
 	assert.False(t, controllerInstanceBase.sortedControllerInstancesLocal[0].isLocked)
 
 	// 1st controller instance for a different type needs to cover all workload
-	controllerInstanceBase2, _ := createControllerInstanceBaseAndCIM(t, client, cim, "bar", stopCh, updateCh, resetCh)
+	controllerInstanceBase2, _ := createControllerInstanceBaseAndCIM(t, client, cim, "bar", stopCh)
 	assert.NotNil(t, controllerInstanceBase2)
 	assert.Equal(t, 0, controllerInstanceBase2.curPos)
 	assert.Equal(t, 1, len(controllerInstanceBase2.sortedControllerInstancesLocal))
@@ -123,16 +114,11 @@ func TestGenerateKey(t *testing.T) {
 func TestConsolidateControllerInstances_Sort(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	// 2nd controller instance will share same workload space with 1st one
 	controllerType := "foo"
-	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
+	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
 	assert.True(t, controllerInstanceBase.IsControllerActive())
 
 	hashKey1 := int64(10000)
@@ -185,15 +171,10 @@ func TestConsolidateControllerInstances_Sort(t *testing.T) {
 func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	controllerType := "foo"
-	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
+	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
 	assert.True(t, controllerInstanceBase.IsControllerActive())
 
 	// current controller instance A has range [0, maxInt64]
@@ -312,15 +293,10 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 func TestGetMaxInterval(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	controllerType := "foo"
-	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
+	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
 	assert.True(t, controllerInstanceBase.IsControllerActive())
 
 	// Single controller instance, max interval always (0, maxInt64)
@@ -380,27 +356,17 @@ func TestGetMaxInterval(t *testing.T) {
 func TestControllerInstanceLifeCycle(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	// 1st controller instance
 	controllerType1 := "foo"
-	controllerInstanceBaseFoo1, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType1, stopCh, updateCh, resetCh)
+	controllerInstanceBaseFoo1, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType1, stopCh)
 
 	// 2nd controller instance
 	stopCh2 := make(chan struct{})
-	updateCh2 := make(chan string)
-	resetCh2 := bcast.NewGroup()
-	go resetCh2.Broadcast(0)
 	defer close(stopCh2)
-	defer close(updateCh2)
-	defer resetCh2.Close()
 
-	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
+	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)
 	assert.Equal(t, controllerType1, controllerInstanceBaseFoo2.GetControllerType())
 	assert.True(t, controllerInstanceBaseFoo1.controllerKey > controllerInstanceBaseFoo2.controllerKey)
@@ -453,14 +419,9 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 
 	// start 3rd controller instance
 	stopCh3 := make(chan struct{})
-	updateCh3 := make(chan string)
-	resetCh3 := bcast.NewGroup()
-	go resetCh3.Broadcast(0)
 	defer close(stopCh3)
-	defer close(updateCh3)
-	defer resetCh3.Close()
 
-	controllerInstanceBaseFoo3, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh3, updateCh3, resetCh3)
+	controllerInstanceBaseFoo3, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh3)
 	assert.NotNil(t, controllerInstanceBaseFoo3)
 	assert.Equal(t, controllerType1, controllerInstanceBaseFoo3.GetControllerType())
 	assert.True(t, controllerInstanceBaseFoo3.controllerKey < controllerInstanceBaseFoo1.controllerKey)
@@ -566,28 +527,18 @@ func TestControllerInstanceLifeCycle(t *testing.T) {
 func TestControllerInstanceLifeCycle2(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	// create instance A
 	controllerType1 := "foo"
-	controllerInstanceBaseFoo1, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType1, stopCh, updateCh, resetCh)
+	controllerInstanceBaseFoo1, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType1, stopCh)
 	assertControllerKeyCoversEntireRange(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal)
 
 	// create instance B
 	stopCh2 := make(chan struct{})
-	updateCh2 := make(chan string)
-	resetCh2 := bcast.NewGroup()
-	go resetCh2.Broadcast(0)
 	defer close(stopCh2)
-	defer close(updateCh2)
-	defer resetCh2.Close()
 
-	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
+	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)
 	assert.Equal(t, controllerType1, controllerInstanceBaseFoo2.GetControllerType())
 	assert.False(t, controllerInstanceBaseFoo2.IsControllerActive())
@@ -614,28 +565,18 @@ func TestControllerInstanceLifeCycle2(t *testing.T) {
 func TestControllerInstanceLifeCycle3(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	// create instance A
 	controllerType1 := "foo"
-	controllerInstanceBaseFoo1, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType1, stopCh, updateCh, resetCh)
+	controllerInstanceBaseFoo1, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType1, stopCh)
 	assertControllerKeyCoversEntireRange(t, controllerInstanceBaseFoo1.sortedControllerInstancesLocal)
 
 	// create instance B
 	stopCh2 := make(chan struct{})
-	updateCh2 := make(chan string)
-	resetCh2 := bcast.NewGroup()
-	go resetCh2.Broadcast(0)
 	defer close(stopCh2)
-	defer close(updateCh2)
-	defer resetCh2.Close()
 
-	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2, updateCh2, resetCh2)
+	controllerInstanceBaseFoo2, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh2)
 	assert.NotNil(t, controllerInstanceBaseFoo2)
 	assert.Equal(t, controllerType1, controllerInstanceBaseFoo2.GetControllerType())
 	assert.False(t, controllerInstanceBaseFoo2.IsControllerActive())
@@ -650,14 +591,9 @@ func TestControllerInstanceLifeCycle3(t *testing.T) {
 
 	// create instance C
 	stopCh3 := make(chan struct{})
-	updateCh3 := make(chan string)
-	resetCh3 := bcast.NewGroup()
-	go resetCh3.Broadcast(0)
 	defer close(stopCh3)
-	defer close(updateCh3)
-	defer resetCh3.Close()
 
-	controllerInstanceBaseFoo3, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh3, updateCh3, resetCh3)
+	controllerInstanceBaseFoo3, _ := createControllerInstanceBaseAndCIM(t, client, cim, controllerType1, stopCh3)
 	assert.NotNil(t, controllerInstanceBaseFoo3)
 	assert.Equal(t, controllerType1, controllerInstanceBaseFoo3.GetControllerType())
 	assert.True(t, controllerInstanceBaseFoo3.controllerKey < controllerInstanceBaseFoo1.controllerKey)
@@ -737,15 +673,10 @@ func assertControllerKeyCoversEntireRange(t *testing.T, sortedControllerInstance
 func TestSetWorkloadNum(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	controllerType := "foo"
-	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh, updateCh, resetCh)
+	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
 	assert.True(t, controllerInstanceBase.IsControllerActive())
 
 	assert.Equal(t, int32(0), controllerInstanceBase.sortedControllerInstancesLocal[0].workloadNum)

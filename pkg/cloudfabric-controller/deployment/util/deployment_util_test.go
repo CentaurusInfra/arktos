@@ -36,7 +36,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
 )
 
 func addListRSReactor(fakeClient *fake.Clientset, obj runtime.Object) *fake.Clientset {

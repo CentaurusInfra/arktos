@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller"
 	hashutil "k8s.io/kubernetes/pkg/util/hash"
 )
 

@@ -72,19 +72,19 @@ type ControllerBase struct {
 
 	curPos int
 
-	client                                   clientset.Interface
-	controllerInstanceUpdateByControllerType chan string
-	mux                                      sync.Mutex
-	unlockControllerInstanceHandler          func(local controllerInstanceLocal) error
-	createControllerInstanceHandler          func(v1.ControllerInstance) (*v1.ControllerInstance, error)
-	ResetChGrp                               *bcast.Group
+	client                          clientset.Interface
+	controllerInstanceUpdateCh      *bcast.Member
+	mux                             sync.Mutex
+	unlockControllerInstanceHandler func(local controllerInstanceLocal) error
+	createControllerInstanceHandler func(v1.ControllerInstance) (*v1.ControllerInstance, error)
+	InformerResetChGrp              *bcast.Group
 }
 
 var (
 	KeyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
-func NewControllerBase(controllerType string, client clientset.Interface, updateChan chan string, resetCh *bcast.Group) (*ControllerBase, error) {
+func NewControllerBase(controllerType string, client clientset.Interface, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) (*ControllerBase, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
@@ -109,12 +109,12 @@ func NewControllerBase(controllerType string, client clientset.Interface, update
 		client:         client,
 		controllerType: controllerType,
 		//state:                                    ControllerStateInit,
-		controllerInstanceMap:                    controllerInstanceMap,
-		sortedControllerInstancesLocal:           sortedControllerInstances,
-		curPos:                                   -1,
-		controllerInstanceUpdateByControllerType: updateChan,
-		countOfProcessingWorkItem:                0,
-		ResetChGrp:                               resetCh,
+		controllerInstanceMap:          controllerInstanceMap,
+		sortedControllerInstancesLocal: sortedControllerInstances,
+		curPos:                         -1,
+		controllerInstanceUpdateCh:     cimUpdateCh,
+		countOfProcessingWorkItem:      0,
+		InformerResetChGrp:             informerResetChGrp,
 	}
 
 	controller.controllerKey = controller.generateKey()
@@ -182,7 +182,7 @@ func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 		select {
 		case stopSign <- stopCh:
 			break
-		case updatedType, ok := <-c.controllerInstanceUpdateByControllerType:
+		case updatedType, ok := <-c.controllerInstanceUpdateCh.Read:
 			if !ok {
 				klog.Errorf("Unexpected controller instance update message")
 				return
@@ -192,7 +192,7 @@ func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 				continue
 			}
 
-			klog.Infof("Start updating controller instance %s", c.controllerType)
+			klog.V(4).Infof("Start updating controller instance %s", c.controllerType)
 			controllerInstances, err := listControllerInstancesByType(c.controllerType)
 			if err != nil {
 				// TODO - add retry
@@ -200,7 +200,7 @@ func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 				continue
 			}
 			c.updateCachedControllerInstances(controllerInstances)
-			klog.Infof("Done updating controller instance %s", c.controllerType)
+			klog.V(4).Infof("Done updating controller instance %s", c.controllerType)
 		}
 	}
 }
@@ -288,10 +288,10 @@ func (c *ControllerBase) getMaxInterval() (int64, int64) {
 
 func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMap map[string]v1.ControllerInstance) {
 	c.mux.Lock()
-	klog.Infof("Controller %s instance %s mux accquired", c.controllerType, c.controllerName)
+	klog.V(4).Infof("Controller %s instance %s mux accquired", c.controllerType, c.controllerName)
 	defer func() {
 		c.mux.Unlock()
-		klog.Infof("Controller %s instance %s mux released", c.controllerType, c.controllerName)
+		klog.V(4).Infof("Controller %s instance %s mux released", c.controllerType, c.controllerName)
 	}()
 
 	sortedNewControllerInstancesLocal := SortControllerInstancesByKeyAndConvertToLocal(newControllerInstanceMap)
@@ -423,11 +423,11 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 }
 
 func (c *ControllerBase) tryUnlockControllerInstance(sortedControllerInstances []controllerInstanceLocal, pos int) {
-	klog.Infof("entering trying unlock controller instance. pos %v. current controller %s", pos, c.controllerName)
+	klog.V(4).Infof("entering trying unlock controller instance. pos %v. current controller %s", pos, c.controllerName)
 	if pos >= 1 && sortedControllerInstances[pos-1].isLocked {
-		klog.Infof("Trying to unlock controller %s on position %d", sortedControllerInstances[pos-1].instanceName, pos-1)
+		klog.V(4).Infof("Trying to unlock controller %s on position %d", sortedControllerInstances[pos-1].instanceName, pos-1)
 		err := c.unlockControllerInstanceHandler(sortedControllerInstances[pos-1])
-		klog.Infof("Done unlocking controller %s on position %d. err %v", sortedControllerInstances[pos-1].instanceName, pos-1, err)
+		klog.V(4).Infof("Done unlocking controller %s on position %d. err %v", sortedControllerInstances[pos-1].instanceName, pos-1, err)
 		if err != nil {
 			// TODO - add retry logic
 			klog.Fatalf("Unable to unlock controller %s instance %s. panic for now.", c.controllerType, sortedControllerInstances[pos-1].instanceName)
@@ -568,12 +568,12 @@ func (c *ControllerBase) registControllerInstance() error {
 //     1. Update workload # so that workload can be more evenly distributed
 //     2. Renew TTL for current controller instance
 func (c *ControllerBase) ReportHealth() {
-	klog.Infof("Controller %s instance %s report health", c.controllerType, c.controllerName)
 	oldControllerInstance := c.controllerInstanceMap[c.controllerName]
 	controllerInstance := oldControllerInstance.DeepCopy()
 	controllerInstance.WorkloadNum = c.sortedControllerInstancesLocal[c.curPos].workloadNum
 	controllerInstance.IsLocked = c.state == ControllerStateLocked
 	controllerInstance.ControllerKey = c.controllerKey
+	klog.V(3).Infof("Controller %s instance %s report health. Version %s", c.controllerType, c.controllerName, controllerInstance.ResourceVersion)
 
 	// Write to registry
 	newControllerInstance, err := c.client.CoreV1().ControllerInstances().Update(controllerInstance)
@@ -624,7 +624,7 @@ func resetFilter(c *ControllerBase, newLowerBound, newUpperbound int64) {
 			UpperBound: newUpperbound,
 		}
 
-		c.ResetChGrp.Send(resetMessage)
+		c.InformerResetChGrp.Send(resetMessage)
 		klog.Infof("%s: The new range %+v has been sent. resetMessage %+v", c.controllerType, []int64{newLowerBound, newUpperbound}, resetMessage)
 	}()
 }

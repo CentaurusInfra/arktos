@@ -11,7 +11,7 @@ go_library(
     srcs = ["deployment_util.go"],
     importpath = "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util",
     deps = [
-        "//pkg/controller:go_default_library",
+        "//pkg/cloudfabric-controller:go_default_library",
         "//pkg/util/labels:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
@@ -36,7 +36,7 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/controller:go_default_library",
+        "//pkg/cloudfabric-controller:go_default_library",
         "//pkg/util/hash:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",

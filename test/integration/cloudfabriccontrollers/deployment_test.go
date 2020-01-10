@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 	"k8s.io/kubernetes/test/integration/framework"
 	"k8s.io/utils/pointer"
 )

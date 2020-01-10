@@ -96,13 +96,7 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	updateCh := make(chan string)
-	defer close(updateCh)
-	cim := controllerframework.GetControllerInstanceManager()
-	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
-	}
+	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
 
 	for i := range tests {
 		test := tests[i]
@@ -118,7 +112,7 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 		defer resetCh.Close()
 		go resetCh.Broadcast(0)
 
-		baseController, err := controllerframework.NewControllerBase("Deployment", &fake, updateCh, resetCh)
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fake, cimUpdateCh, informersResetChGrp)
 		controller := &DeploymentController{
 			ControllerBase: baseController,
 			eventRecorder:  &record.FakeRecorder{},
@@ -227,13 +221,7 @@ func testDeploymentController_reconcileOldReplicaSets(t *testing.T, tenant strin
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	updateCh := make(chan string)
-	defer close(updateCh)
-	cim := controllerframework.GetControllerInstanceManager()
-	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
-	}
+	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
 
 	for i := range tests {
 		test := tests[i]
@@ -255,7 +243,7 @@ func testDeploymentController_reconcileOldReplicaSets(t *testing.T, tenant strin
 		defer resetCh.Close()
 		go resetCh.Broadcast(0)
 
-		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, updateCh, resetCh)
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, cimUpdateCh, informersResetChGrp)
 
 		controller := &DeploymentController{
 			ControllerBase: baseController,
@@ -332,13 +320,7 @@ func testDeploymentController_cleanupUnhealthyReplicas(t *testing.T, tenant stri
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	updateCh := make(chan string)
-	defer close(updateCh)
-	cim := controllerframework.GetControllerInstanceManager()
-	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
-	}
+	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
 
 	for i, test := range tests {
 		t.Logf("executing scenario %d", i)
@@ -354,7 +336,7 @@ func testDeploymentController_cleanupUnhealthyReplicas(t *testing.T, tenant stri
 		defer resetCh.Close()
 		go resetCh.Broadcast(0)
 
-		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, updateCh, resetCh)
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, cimUpdateCh, informersResetChGrp)
 
 		controller := &DeploymentController{
 			ControllerBase: baseController,
@@ -436,13 +418,7 @@ func testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	updateCh := make(chan string)
-	defer close(updateCh)
-	cim := controllerframework.GetControllerInstanceManager()
-	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
-	}
+	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
 
 	for i := range tests {
 		test := tests[i]
@@ -459,7 +435,7 @@ func testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing
 		defer resetCh.Close()
 		go resetCh.Broadcast(0)
 
-		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, updateCh, resetCh)
+		baseController, err := controllerframework.NewControllerBase("Deployment", &fakeClientset, cimUpdateCh, informersResetChGrp)
 
 		controller := &DeploymentController{
 			ControllerBase: baseController,

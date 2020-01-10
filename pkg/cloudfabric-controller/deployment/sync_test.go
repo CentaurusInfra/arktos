@@ -285,13 +285,7 @@ func testScale(t *testing.T, tenant string) {
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	updateCh := make(chan string)
-	defer close(updateCh)
-	cim := controllerframework.GetControllerInstanceManager()
-	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
-	}
+	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -303,7 +297,7 @@ func testScale(t *testing.T, tenant string) {
 			defer resetCh.Close()
 			go resetCh.Broadcast(0)
 
-			baseController, err := controllerframework.NewControllerBase("Deployment", &fake, updateCh, resetCh)
+			baseController, err := controllerframework.NewControllerBase("Deployment", &fake, cimUpdateCh, informersResetChGrp)
 			if err != nil {
 				t.Errorf("%s: unexpected error: %v", test.name, err)
 			}
@@ -458,13 +452,7 @@ func testDeploymentController_cleanupDeployment(t *testing.T, tenant string) {
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	updateCh := make(chan string)
-	defer close(updateCh)
-	cim := controllerframework.GetControllerInstanceManager()
-	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
-		go cim.Run(stopCh)
-	}
+	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
 
 	for i := range tests {
 		test := tests[i]
@@ -477,7 +465,7 @@ func testDeploymentController_cleanupDeployment(t *testing.T, tenant string) {
 		defer resetCh.Close()
 		go resetCh.Broadcast(0)
 
-		controller, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), fake, updateCh, resetCh)
+		controller, err := NewDeploymentController(informers.Apps().V1().Deployments(), informers.Apps().V1().ReplicaSets(), informers.Core().V1().Pods(), fake, cimUpdateCh, informersResetChGrp)
 		if err != nil {
 			t.Fatalf("error creating Deployment controller: %v", err)
 		}

@@ -101,7 +101,7 @@ type DeploymentController struct {
 }
 
 // NewDeploymentController creates a new DeploymentController.
-func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, client clientset.Interface, updateControllerCh chan string, resetChGroup *bcast.Group) (*DeploymentController, error) {
+func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, client clientset.Interface, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) (*DeploymentController, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
@@ -112,7 +112,7 @@ func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInfor
 		}
 	}
 
-	baseController, err := controllerframework.NewControllerBase("Deployment", client, updateControllerCh, resetChGroup)
+	baseController, err := controllerframework.NewControllerBase("Deployment", client, cimUpdateCh, informerResetChGrp)
 	if err != nil {
 		return nil, err
 	}

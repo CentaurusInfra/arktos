@@ -73,6 +73,7 @@ go_test(
         "//pkg/apis/settings/install:go_default_library",
         "//pkg/apis/storage/install:go_default_library",
         "//pkg/cloudfabric-controller:go_default_library",
+        "//pkg/cloudfabric-controller/controllerframework:go_default_library",
         "//pkg/cloudfabric-controller/deployment/util:go_default_library",
         "//pkg/cloudfabric-controller/testutil:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
@@ -89,6 +90,7 @@ go_test(
         "//staging/src/k8s.io/client-go/testing:go_default_library",
         "//staging/src/k8s.io/client-go/tools/record:go_default_library",
         "//staging/src/k8s.io/client-go/util/workqueue:go_default_library",
+        "//vendor/github.com/grafov/bcast:go_default_library",
     ],
 )
 

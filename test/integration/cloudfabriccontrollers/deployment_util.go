@@ -18,6 +18,7 @@ package cloudfabriccontrollers
 
 import (
 	"fmt"
+	"github.com/grafov/bcast"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -33,9 +34,10 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/pkg/controller/deployment"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
-	"k8s.io/kubernetes/pkg/controller/replicaset"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment"
+	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/replicaset"
 	"k8s.io/kubernetes/test/integration/framework"
 	testutil "k8s.io/kubernetes/test/utils"
 )
@@ -157,20 +159,63 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	resyncPeriod := 12 * time.Hour
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-informers")), resyncPeriod)
 
+	var ciUpdateCh chan string
+	// controller instance manager set up
+	cim := controller.GetControllerInstanceManager()
+	if cim == nil {
+		ciUpdateCh = make(chan string)
+		cim = controller.NewControllerInstanceManager(
+			informers.Core().V1().ControllerInstances(),
+			clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "controller-instance-manager")),
+			ciUpdateCh,
+		)
+	} else {
+		ciUpdateCh = cim.GetUpdateCh()
+	}
+
+	dResetChGrp := bcast.NewGroup()
+	go dResetChGrp.Broadcast(0)
+
+	deploymentInformer := informers.Apps().V1().Deployments()
+	deploymentResetCh := dResetChGrp.Join()
+	deploymentInformer.Informer().AddResetCh(deploymentResetCh, "Deployment_Controller", "")
+
+	rsInformer := informers.Apps().V1().ReplicaSets()
+	rsResetCh := dResetChGrp.Join()
+	rsInformer.Informer().AddResetCh(rsResetCh, "Deployment_Controller", "Deployment")
+
+	podInformer := informers.Core().V1().Pods()
+	podResetCh := dResetChGrp.Join()
+	podInformer.Informer().AddResetCh(podResetCh, "Deployment_Controller", "Deployment")
+
 	dc, err := deployment.NewDeploymentController(
-		informers.Apps().V1().Deployments(),
-		informers.Apps().V1().ReplicaSets(),
-		informers.Core().V1().Pods(),
+		deploymentInformer,
+		rsInformer,
+		podInformer,
 		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-controller")),
+		ciUpdateCh,
+		dResetChGrp,
 	)
 	if err != nil {
 		t.Fatalf("error creating Deployment controller: %v", err)
 	}
+
+	rsResetChGrp := bcast.NewGroup()
+	go rsResetChGrp.Broadcast(0)
+
+	rsResetCh2 := rsResetChGrp.Join()
+	rsInformer.Informer().AddResetCh(rsResetCh2, "ReplicaSet_Controller", "")
+
+	podResetCh2 := rsResetChGrp.Join()
+	podInformer.Informer().AddResetCh(podResetCh2, "ReplicaSet_Controller", "ReplicaSet")
+
 	rm := replicaset.NewReplicaSetController(
-		informers.Apps().V1().ReplicaSets(),
-		informers.Core().V1().Pods(),
+		rsInformer,
+		podInformer,
 		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "replicaset-controller")),
 		replicaset.BurstReplicas,
+		ciUpdateCh,
+		rsResetChGrp,
 	)
 	return s, closeFn, rm, dc, informers, clientSet
 }
