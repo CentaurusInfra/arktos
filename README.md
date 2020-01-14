@@ -37,7 +37,7 @@ More features are planned but not started yet, including intelligent scheduling,
 
 To build Alkaid, you just need to clone the repo and run "make":
 
-##### Note: you need to have a working [Go environment](https://golang.org/doc/install).
+##### Note: you need to have a working [Go 1.12 environment](https://golang.org/doc/install). Go 1.13 is not supported yet.
 
 ```
 mkdir -p $GOPATH/src/github.com
@@ -67,10 +67,10 @@ For more complicated cluster setups, an automated deployment tool is not availab
 
 ## Documents and Support
 
-The [design document folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/design-proposals) contains the detailed design of already implemented features, and also some thoughts for planned features.
+The [design document folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/design-proposals/) contains the detailed design of already implemented features, and also some thoughts for planned features.
 
-The [user guide folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/user-guide) provides information about these features from users' perspective.
+The [user guide folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/user-guide/) provides information about these features from users' perspective.
 
 To report a problem, please [create an issue](https://github.com/futurewei-cloud/alkaid/issues) in the project repo. 
 
-To ask a question, you can either chat with project members in the [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137), post in the [email group](https://groups.google.com/forum/#!forum/alkaid-user), or [create an issue](https://github.com/futurewei-cloud/alkaid/issues) of question type in the repo.
+To ask a question, you can either chat with project members in the [slack channels](http://alkaidworkspace.slack.com/), post in the [email group](https://groups.google.com/forum/#!forum/alkaid-user), or [create an issue](https://github.com/futurewei-cloud/alkaid/issues) of question type in the repo.
