@@ -53,6 +53,8 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/features:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/storage/names:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/feature:go_default_library",
+        "//vendor/github.com/google/uuid:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
     ],
 )
 

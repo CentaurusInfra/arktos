@@ -18,18 +18,31 @@ package rest
 
 import (
 	"context"
+	uid "github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/klog"
 )
 
 // FillObjectMetaSystemFields populates fields that are managed by the system on ObjectMeta.
 func FillObjectMetaSystemFields(meta metav1.Object) {
 	meta.SetCreationTimestamp(metav1.Now())
-	uid := uuid.NewUUID()
-	meta.SetUID(uid)
+	uidStr := string(meta.GetUID())
+	if len(uidStr) == 0 {
+		uid := uuid.NewUUID()
+		meta.SetUID(uid)
+	} else {
+		_, err := uid.Parse(uidStr)
+		if err != nil {
+			uid := uuid.NewUUID()
+			meta.SetUID(uid)
+			klog.Infof("Got invalid uuid [%s]. Assign a new one [%v]", uidStr, uid)
+		}
+	}
+	uid := meta.GetUID()
 	meta.SetHashKey(fuzzer.GetHashOfUUID(uid))
 	meta.SetSelfLink("")
 }
