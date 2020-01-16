@@ -112,6 +112,23 @@ for k,v in yaml.load(sys.stdin).iteritems():
   )
 }
 
+function download-controller-config {
+  local -r dest="$1"
+  echo "Downloading controller config file, if it exists"
+  # Fetch kubelet config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_controller_config="/tmp/controllerconfig.json"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_controller_config}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/controllerconfig; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_controller_config} ${dest}
+    fi
+  )
+}
+
 function validate-hash {
   local -r file="$1"
   local -r expected="$2"
@@ -378,6 +395,7 @@ function load-docker-images {
     try-load-docker-image "${img_dir}/kube-apiserver.tar"
     try-load-docker-image "${img_dir}/kube-controller-manager.tar"
     try-load-docker-image "${img_dir}/kube-scheduler.tar"
+    try-load-docker-image "${img_dir}/workload-controller-manager.tar"
   else
     try-load-docker-image "${img_dir}/kube-proxy.tar"
   fi
@@ -414,6 +432,7 @@ function install-kube-binary-config {
       cp "${src_dir}/kube-apiserver.tar" "${dst_dir}"
       cp "${src_dir}/kube-controller-manager.tar" "${dst_dir}"
       cp "${src_dir}/kube-scheduler.tar" "${dst_dir}"
+      cp "${src_dir}/workload-controller-manager.tar" "${dst_dir}"
       cp -r "${KUBE_HOME}/kubernetes/addons" "${dst_dir}"
     fi
     load-docker-images
@@ -471,6 +490,7 @@ download-kube-env
 source "${KUBE_HOME}/kube-env"
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
+download-controller-config "${KUBE_HOME}/controllerconfig.json"
 
 # master certs
 if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then

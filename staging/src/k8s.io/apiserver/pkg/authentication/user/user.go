@@ -77,7 +77,8 @@ const (
 	APIServerUser = "system:apiserver"
 
 	// core kubernetes process identities
-	KubeProxy             = "system:kube-proxy"
-	KubeControllerManager = "system:kube-controller-manager"
-	KubeScheduler         = "system:kube-scheduler"
+	KubeProxy                 = "system:kube-proxy"
+	KubeControllerManager     = "system:kube-controller-manager"
+	WorkloadControllerManager = "system:workload-controller-manager"
+	KubeScheduler             = "system:kube-scheduler"
 )

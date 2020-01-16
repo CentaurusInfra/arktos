@@ -423,6 +423,27 @@ func ClusterRoles() []rbacv1.ClusterRole {
 			},
 		},
 		{
+			// a role to use for bootstrapping the workload-controller-manager so it can create the shared informers
+			// service accounts, and secrets that we need to create separate identities for other controllers
+			ObjectMeta: metav1.ObjectMeta{Name: "system:workload-controller-manager"},
+			Rules: []rbacv1.PolicyRule{
+				eventsRule(),
+				//add workload-controller-manager to closter role and rus clusteradmin permission for now.
+				/*				rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("endpoints", "secrets", "serviceaccounts", "controllerinstances", "events",  "replicasets", "replicasets/status", "pods", "deployments", "deployments/status").RuleOrDie(),
+								rbacv1helpers.NewRule("delete").Groups(legacyGroup).Resources("secrets", "controllerinstances").RuleOrDie(),
+								rbacv1helpers.NewRule("get").Groups(legacyGroup).Resources("endpoints", "namespaces", "secrets", "serviceaccounts", "configmaps", "controllerinstances", "events",  "replicasets", "replicasets/status", "pods", "deployments", "deployments/status").RuleOrDie(),
+								rbacv1helpers.NewRule("update").Groups(legacyGroup).Resources("endpoints", "secrets", "serviceaccounts", "controllerinstances", "events",  "replicasets", "replicasets/status", "pods", "deployments", "deployments/status").RuleOrDie(),
+								// Needed to check API access.  These creates are non-mutating
+								rbacv1helpers.NewRule("create").Groups(authenticationGroup).Resources("tokenreviews").RuleOrDie(),
+								rbacv1helpers.NewRule("create").Groups(authorizationGroup).Resources("subjectaccessreviews").RuleOrDie(),
+								// Needed for all shared informers
+								rbacv1helpers.NewRule("list", "watch").Groups("*").Resources("*").RuleOrDie(),
+								rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("serviceaccounts/token").RuleOrDie(),
+				*/
+				rbacv1helpers.NewRule("*").Groups("*").Resources("*").RuleOrDie(),
+			},
+		},
+		{
 			// a role to use for the kube-scheduler
 			ObjectMeta: metav1.ObjectMeta{Name: "system:kube-scheduler"},
 			Rules: []rbacv1.PolicyRule{
@@ -537,6 +558,7 @@ func ClusterRoleBindings() []rbacv1.ClusterRoleBinding {
 		rbacv1helpers.NewClusterBinding("system:public-info-viewer").Groups(user.AllAuthenticated, user.AllUnauthenticated).BindingOrDie(),
 		rbacv1helpers.NewClusterBinding("system:node-proxier").Users(user.KubeProxy).BindingOrDie(),
 		rbacv1helpers.NewClusterBinding("system:kube-controller-manager").Users(user.KubeControllerManager).BindingOrDie(),
+		rbacv1helpers.NewClusterBinding("system:workload-controller-manager").Users(user.WorkloadControllerManager).BindingOrDie(),
 		rbacv1helpers.NewClusterBinding("system:kube-dns").SAs("kube-system", "kube-dns").BindingOrDie(),
 		rbacv1helpers.NewClusterBinding("system:kube-scheduler").Users(user.KubeScheduler).BindingOrDie(),
 		rbacv1helpers.NewClusterBinding("system:volume-scheduler").Users(user.KubeScheduler).BindingOrDie(),

@@ -82,6 +82,7 @@ function replicate-master-instance() {
   get-metadata "${existing_master_zone}" "${existing_master_name}" gci-docker-version > "${KUBE_TEMP}/gci-docker-version.txt"
   get-metadata "${existing_master_zone}" "${existing_master_name}" kube-master-certs > "${KUBE_TEMP}/kube-master-certs.yaml"
   get-metadata "${existing_master_zone}" "${existing_master_name}" cluster-location > "${KUBE_TEMP}/cluster-location.txt"
+  get-metadata "${existing_master_zone}" "${existing_master_name}" controllerconfig > "${KUBE_TEMP}/controllerconfig.json"
 
   create-master-instance-internal "${REPLICA_NAME}"
 }
@@ -116,6 +117,7 @@ function create-master-instance-internal() {
     "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
     "${address:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
 
+  echo -e "${color_yellow}KUBE_TEMP: ${KUBE_TEMP}; KUBE_ROOT: ${KUBE_ROOT} {color_norm}" >&2
   local metadata="kube-env=${KUBE_TEMP}/master-kube-env.yaml"
   metadata="${metadata},kubelet-config=${KUBE_TEMP}/master-kubelet-config.yaml"
   metadata="${metadata},user-data=${KUBE_ROOT}/cluster/gce/gci/master.yaml"
@@ -127,7 +129,9 @@ function create-master-instance-internal() {
   metadata="${metadata},gci-docker-version=${KUBE_TEMP}/gci-docker-version.txt"
   metadata="${metadata},kube-master-certs=${KUBE_TEMP}/kube-master-certs.yaml"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
+  metadata="${metadata},controllerconfig=${KUBE_TEMP}/controllerconfig.json"
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
+  echo -e "${color_yellow} metadata=${metadata} {color_norm}" >&2
 
   local disk="name=${master_name}-pd"
   disk="${disk},device-name=master-pd"

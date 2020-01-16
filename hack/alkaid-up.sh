@@ -1150,12 +1150,12 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   for ((i = $((APISERVER_NUMBER - 1)) ; i >= 0 ; i--)); do
     start_apiserver $i
   done
-
-  echo "Applying workload controller manager cluster roles and role bindings now!"
+  #remove workload controller manager cluster role and rolebinding applying per this already be added to bootstrappolicy
+  
   # If there are other resources ready to sync thru workload-controller-mananger, please add them to the following clusterrole file
-  cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrole.yaml
+  #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrole.yaml
 
-  cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
+  #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
 
   start_controller_manager
   start_workload_controller_manager

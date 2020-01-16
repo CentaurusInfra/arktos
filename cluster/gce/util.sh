@@ -563,6 +563,29 @@ ${ZONE}
 EOF
 }
 
+# copy controller config into a temporary file.
+# Assumed vars
+function write-controller-config {
+  if [[ -f ${KUBE_ROOT}/cmd/workload-controller-manager/config/controllerconfig.json ]]; then
+    cp "${KUBE_ROOT}/cmd/workload-controller-manager/config/controllerconfig.json" "${KUBE_TEMP}/controllerconfig.json"
+  else
+    cat <<EOF >${KUBE_TEMP}/controllerconfig.json
+{
+    "controllers": [
+        {
+            "type":    "node",
+            "workers":     5
+        },
+        {
+            "type":    "replicaset",
+            "workers":    10
+        }
+    ]
+}
+EOF
+fi
+}
+
 # Writes the cluster name into a temporary file.
 # Assumed vars
 #   CLUSTER_NAME
@@ -2133,6 +2156,8 @@ function kube-up() {
     create-cloud-nat-router
     write-cluster-location
     write-cluster-name
+    write-controller-config
+    echo -e "${color_yellow} write-controller-config ${color_norm}" >&2
     create-autoscaler-config
     create-master
     create-nodes-firewall
@@ -3489,7 +3514,6 @@ function test-build-release() {
 #   Variables from config.sh
 function test-setup() {
   # Detect the project into $PROJECT if it isn't set
-  echo -e "${color_yellow}Start for test-setup in cluster/gce/util.sh!${color_norm}"
   detect-project
 
   if [[ ${MULTIZONE:-} == "true" && -n ${E2E_ZONES:-} ]]; then
