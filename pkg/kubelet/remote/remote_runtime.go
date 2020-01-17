@@ -28,6 +28,7 @@ import (
 
 	internalapi "k8s.io/cri-api/pkg/apis"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 	"k8s.io/kubernetes/pkg/kubelet/util/logreduction"
 	utilexec "k8s.io/utils/exec"
@@ -181,6 +182,15 @@ func (r *RemoteRuntimeService) ListPodSandbox(filter *runtimeapi.PodSandboxFilte
 	if err != nil {
 		klog.Errorf("ListPodSandbox with filter %+v from runtime service failed: %v", filter, err)
 		return nil, err
+	}
+
+	// remote runtime may not have the tenant in the metadata set, we set it here
+	if len(resp.Items) > 0 {
+		for _, item := range resp.Items {
+			if item.Metadata.Tenant == "" {
+				item.Metadata.Tenant = types.GetPodTenant(item.Labels)
+			}
+		}
 	}
 
 	return resp.Items, nil
