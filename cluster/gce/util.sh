@@ -2157,7 +2157,6 @@ function kube-up() {
     write-cluster-location
     write-cluster-name
     write-controller-config
-    echo -e "${color_yellow} write-controller-config ${color_norm}" >&2
     create-autoscaler-config
     create-master
     create-nodes-firewall

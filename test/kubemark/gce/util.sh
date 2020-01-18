@@ -77,7 +77,6 @@ function create-kubemark-master {
     "${KUBE_ROOT}/hack/e2e-internal/e2e-up.sh"
     if [[ "${KUBEMARK_HA_MASTER:-}" == "true" && -n "${KUBEMARK_MASTER_ADDITIONAL_ZONES:-}" ]]; then
         for KUBE_GCE_ZONE in ${KUBEMARK_MASTER_ADDITIONAL_ZONES}; do
-          echo -e "${color_yellow}running hack/e2e-internal/e2e-grow-cluster.sh${color_norm}"
           KUBE_GCE_ZONE="${KUBE_GCE_ZONE}" KUBE_REPLICATE_EXISTING_MASTER=true \
             "${KUBE_ROOT}/hack/e2e-internal/e2e-grow-cluster.sh"
         done

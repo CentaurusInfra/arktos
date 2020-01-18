@@ -117,7 +117,6 @@ function create-master-instance-internal() {
     "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
     "${address:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
 
-  echo -e "${color_yellow}KUBE_TEMP: ${KUBE_TEMP}; KUBE_ROOT: ${KUBE_ROOT} {color_norm}" >&2
   local metadata="kube-env=${KUBE_TEMP}/master-kube-env.yaml"
   metadata="${metadata},kubelet-config=${KUBE_TEMP}/master-kubelet-config.yaml"
   metadata="${metadata},user-data=${KUBE_ROOT}/cluster/gce/gci/master.yaml"
@@ -131,7 +130,6 @@ function create-master-instance-internal() {
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
   metadata="${metadata},controllerconfig=${KUBE_TEMP}/controllerconfig.json"
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
-  echo -e "${color_yellow} metadata=${metadata} {color_norm}" >&2
 
   local disk="name=${master_name}-pd"
   disk="${disk},device-name=master-pd"

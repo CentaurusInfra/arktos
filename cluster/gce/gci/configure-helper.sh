@@ -2126,27 +2126,21 @@ function start-kube-controller-manager {
 #   DOCKER_REGISTRY
 function start-workload-controller-manager {
   mkdir -p /etc/srv/kubernetes/workload-controller-manager
-  echo "Start workload controller-manager" >> /home/kubernetes/kubernetes-configlog.txt
+  echo "Start workload controller-manager"
   create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN}
-  echo "done to create kube config" >> /home/kubernetes/kubernetes-configlog.txt
-  echo "copy controllerconfig to /etc/srv/kubernetes/workload-controller-manager" >> /home/kubernetes/kubernetes-configlog.txt
   if [[ -f "${KUBE_HOME}/controllerconfig.json" ]]; then
     cp ${KUBE_HOME}/controllerconfig.json /etc/srv/kubernetes/workload-controller-manager/
   fi
-#  create-workloadcontrollerconfig "workload-controller-manager" ${NODE_WORKERS_NUM} ${REPLICASET_WORKERS_NUM}
-  echo "done to create workloadcontrollerconfig" >> /home/kubernetes/kubernetes-configlog.txt
   prepare-log-file /var/log/workload-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=2"}"
   params+=" --controllerconfig=/etc/srv/kubernetes/workload-controller-manager/controllerconfig.json"
   params+=" --kubeconfig=/etc/srv/kubernetes/workload-controller-manager/kubeconfig"
   
-  echo "${params}" >> /home/kubernetes/kubernetes-configlog.txt
   # Disable using HPA metrics REST clients if metrics-server isn't enabled,
   # or if we want to explicitly disable it by setting HPA_USE_REST_CLIENT.
 
   local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/workload-controller-manager.docker_tag)
-  echo "${kube_rc_docker_tag}" >> /home/kubernetes/kubernetes-configlog.txt
   local container_env=""
   if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
     container_env="\"env\":[{\"name\": \"KUBE_CACHE_MUTATION_DETECTOR\", \"value\": \"${ENABLE_CACHE_MUTATION_DETECTOR}\"}],"
@@ -2169,7 +2163,6 @@ function start-workload-controller-manager {
   sed -i -e "s@{{cpurequest}}@${WORKLOAD_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
 
   cp "${src_file}" /etc/kubernetes/manifests
-  echo "Done to start workload controller-manager" >> /home/kubernetes/kubernetes-configlog.txt
 }
 
 # Starts kubernetes scheduler.

@@ -30,6 +30,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
+	"k8s.io/kubernetes/pkg/features"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/dockershim"
@@ -62,6 +64,7 @@ type hollowNodeConfig struct {
 	UseRealProxier       bool
 	ProxierSyncPeriod    time.Duration
 	ProxierMinSyncPeriod time.Duration
+	NodeLabels           map[string]string
 }
 
 const (
@@ -84,6 +87,8 @@ func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.UseRealProxier, "use-real-proxier", true, "Set to true if you want to use real proxier inside hollow-proxy.")
 	fs.DurationVar(&c.ProxierSyncPeriod, "proxier-sync-period", 30*time.Second, "Period that proxy rules are refreshed in hollow-proxy.")
 	fs.DurationVar(&c.ProxierMinSyncPeriod, "proxier-min-sync-period", 0, "Minimum period that proxy rules are refreshed in hollow-proxy.")
+    bindableNodeLabels := cliflag.ConfigurationMap(c.NodeLabels)
+ 	fs.Var(&bindableNodeLabels, "node-labels", "Additional node labels")
 }
 
 func (c *hollowNodeConfig) createClientConfigFromFile() (*restclient.Config, error) {
@@ -99,6 +104,17 @@ func (c *hollowNodeConfig) createClientConfigFromFile() (*restclient.Config, err
 	config.QPS = 10
 	config.Burst = 20
 	return config, nil
+}
+
+func (c *hollowNodeConfig) createHollowKubeletOptions() *kubemark.HollowKubletOptions {
+	return &kubemark.HollowKubletOptions{
+		NodeName:            c.NodeName,
+		KubeletPort:         c.KubeletPort,
+		KubeletReadOnlyPort: c.KubeletReadOnlyPort,
+		MaxPods:             maxPods,
+		PodsPerCore:         podsPerCore,
+		NodeLabels:          c.NodeLabels,
+	}
 }
 
 func main() {
@@ -123,7 +139,9 @@ func main() {
 
 // newControllerManagerCommand creates a *cobra.Command object with default parameters
 func newHollowNodeCommand() *cobra.Command {
-	s := &hollowNodeConfig{}
+	s := &hollowNodeConfig{
+		NodeLabels: make(map[string]string),
+	}
 
 	cmd := &cobra.Command{
 		Use:  "kubemark",
@@ -155,6 +173,23 @@ func run(config *hollowNodeConfig) {
 	}
 
 	if config.Morph == "kubelet" {
+		f, c := kubemark.GetHollowKubeletConfig(config.createHollowKubeletOptions())
+
+		heartbeatClientConfig := *clientConfig
+		heartbeatClientConfig.Timeout = c.NodeStatusUpdateFrequency.Duration
+		// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
+		if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
+			leaseTimeout := time.Duration(c.NodeLeaseDurationSeconds) * time.Second
+			if heartbeatClientConfig.Timeout > leaseTimeout {
+				heartbeatClientConfig.Timeout = leaseTimeout
+			}
+		}
+		heartbeatClientConfig.QPS = float32(-1)
+		heartbeatClient, err := clientset.NewForConfig(&heartbeatClientConfig)
+		if err != nil {
+			klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
+		}
+
 		cadvisorInterface := &cadvisortest.Fake{
 			NodeName: config.NodeName,
 		}
@@ -167,15 +202,12 @@ func run(config *hollowNodeConfig) {
 		}
 
 		hollowKubelet := kubemark.NewHollowKubelet(
-			config.NodeName,
+			f, c,
 			client,
+			heartbeatClient,
 			cadvisorInterface,
 			fakeDockerClientConfig,
-			config.KubeletPort,
-			config.KubeletReadOnlyPort,
 			containerManager,
-			maxPods,
-			podsPerCore,
 		)
 		hollowKubelet.Run()
 	}
