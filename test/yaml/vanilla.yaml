@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8s-vanilla-pod
+  labels:
+    app: vanilla
+spec:
+  containers:
+  - name: vanilla-container
+    image: busybox
+    command: ['sh', '-c', 'echo Hello Alkaid! && sleep 3600']
