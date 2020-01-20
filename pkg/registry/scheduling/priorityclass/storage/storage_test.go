@@ -46,7 +46,7 @@ func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 func validNewPriorityClass() *scheduling.PriorityClass {
 	return &scheduling.PriorityClass{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "foo",
+			Name: "foo",
 		},
 		Value:         100,
 		GlobalDefault: false,
@@ -64,7 +64,7 @@ func TestCreate(t *testing.T) {
 		// invalid cases
 		&scheduling.PriorityClass{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   "*badName",
+				Name: "*badName",
 			},
 			Value:         100,
 			GlobalDefault: true,

@@ -652,6 +652,7 @@ func createFakeScaleClient(resource string, resourceName string, replicas int, e
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      action.GetName(),
 				Namespace: action.GetNamespace(),
+				Tenant:    action.GetTenant(),
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: newReplicas,
@@ -673,6 +674,7 @@ func createFakeScaleClient(resource string, resourceName string, replicas int, e
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      obj.Name,
 				Namespace: action.GetNamespace(),
+				Tenant:    action.GetTenant(),
 			},
 			Spec: autoscalingv1.ScaleSpec{
 				Replicas: newReplicas,

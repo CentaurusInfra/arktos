@@ -59,7 +59,7 @@ func (a customResourceValidator) Validate(ctx context.Context, obj runtime.Objec
 
 	var allErrs field.ErrorList
 
-	allErrs = append(allErrs, validation.ValidateObjectMetaAccessor(accessor, a.namespaceScoped, validation.NameIsDNSSubdomain, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, validation.ValidateObjectMetaAccessor(accessor, a.tenantScoped, a.namespaceScoped, validation.NameIsDNSSubdomain, field.NewPath("metadata"))...)
 	if err = apiservervalidation.ValidateCustomResource(u.UnstructuredContent(), a.schemaValidator); err != nil {
 		allErrs = append(allErrs, field.Invalid(field.NewPath(""), u.UnstructuredContent(), err.Error()))
 	}

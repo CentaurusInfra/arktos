@@ -34,7 +34,6 @@ func TestStrategy_Scope(t *testing.T) {
 		t.Error("ControllerRevision strategy must be tenant scoped")
 	}
 }
-
 func TestStrategy_AllowCreateOnUpdate(t *testing.T) {
 	if Strategy.AllowCreateOnUpdate() {
 		t.Error("ControllerRevision should not be created on update")
@@ -44,13 +43,13 @@ func TestStrategy_AllowCreateOnUpdate(t *testing.T) {
 func TestStrategy_Validate(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	var (
-		valid       = newControllerRevision("validname", "validns", newObject(), 0)
-		badRevision = newControllerRevision("validname", "validns", newObject(), -1)
-		emptyName   = newControllerRevision("", "validns", newObject(), 0)
-		invalidName = newControllerRevision("NoUppercaseOrSpecialCharsLike=Equals", "validns", newObject(), 0)
-		emptyNs     = newControllerRevision("validname", "", newObject(), 100)
-		invalidNs   = newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", newObject(), 100)
-		nilData     = newControllerRevision("validname", "validns", nil, 0)
+		valid       = newControllerRevision("validname", "validns", "validte", newObject(), 0)
+		badRevision = newControllerRevision("validname", "validns", "validte", newObject(), -1)
+		emptyName   = newControllerRevision("", "validns", "validte", newObject(), 0)
+		invalidName = newControllerRevision("NoUppercaseOrSpecialCharsLike=Equals", "validns", "validte", newObject(), 0)
+		emptyNs     = newControllerRevision("validname", "", "validns", newObject(), 100)
+		invalidNs   = newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", "validns", newObject(), 100)
+		nilData     = newControllerRevision("validname", "validns", "validte", nil, 0)
 	)
 
 	tests := map[string]struct {
@@ -80,15 +79,15 @@ func TestStrategy_Validate(t *testing.T) {
 func TestStrategy_ValidateUpdate(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	var (
-		valid       = newControllerRevision("validname", "validns", newObject(), 0)
-		changedData = newControllerRevision("validname", "validns",
+		valid       = newControllerRevision("validname", "validns", "validte", newObject(), 0)
+		changedData = newControllerRevision("validname", "validns", "validte",
 			func() runtime.Object {
 				modified := newObject()
 				ss := modified.(*apps.StatefulSet)
 				ss.Name = "cde"
 				return modified
 			}(), 0)
-		changedRevision = newControllerRevision("validname", "validns", newObject(), 1)
+		changedRevision = newControllerRevision("validname", "validns", "validte", newObject(), 1)
 	)
 
 	cases := []struct {
@@ -128,11 +127,12 @@ func TestStrategy_ValidateUpdate(t *testing.T) {
 	}
 }
 
-func newControllerRevision(name, namespace string, data runtime.Object, revision int64) *apps.ControllerRevision {
+func newControllerRevision(name, namespace, tenant string, data runtime.Object, revision int64) *apps.ControllerRevision {
 	return &apps.ControllerRevision{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       namespace,
+			Tenant:          tenant,
 			ResourceVersion: "1",
 			Labels:          map[string]string{"foo": "bar"},
 		},
@@ -143,7 +143,7 @@ func newControllerRevision(name, namespace string, data runtime.Object, revision
 
 func newObject() runtime.Object {
 	return &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: "validte"},
 		Spec: apps.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 			Template: api.PodTemplateSpec{

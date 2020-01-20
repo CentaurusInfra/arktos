@@ -258,7 +258,7 @@ func TestScaleUpdate(t *testing.T) {
 	}
 	replicas := int32(12)
 	update := autoscaling.Scale{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Tenant: tenant},
 		Spec: autoscaling.ScaleSpec{
 			Replicas: replicas,
 		},

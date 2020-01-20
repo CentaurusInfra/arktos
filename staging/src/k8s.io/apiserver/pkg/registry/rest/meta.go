@@ -62,9 +62,16 @@ func ValidNamespace(ctx context.Context, resource metav1.Object) bool {
 // the resource.  If the resource has no tenant, it is set to the value in
 // the context.
 func ValidTenant(ctx context.Context, resource metav1.Object) bool {
-	te, ok := genericapirequest.TenantFrom(ctx)
-	if len(resource.GetTenant()) == 0 {
-		resource.SetTenant(te)
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+
+	// When we are here, we know that the resource need a valid tenant value. 
+	// If the tenant value is empty, we set it to "default".
+	if tenant == "" {
+		tenant = metav1.TenantDefault
 	}
-	return te == resource.GetTenant() && ok
+
+	if len(resource.GetTenant()) == 0 {
+		resource.SetTenant(tenant)
+	}
+	return tenant == resource.GetTenant() && ok
 }

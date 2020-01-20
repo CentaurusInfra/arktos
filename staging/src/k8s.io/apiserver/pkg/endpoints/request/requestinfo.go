@@ -204,10 +204,8 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 			requestInfo.Tenant = currentParts[1]
 			currentParts = currentParts[2:]
 		} else {
-			// the tenant will be "" if
-			// 1. the tenants/tenant_name does not exist
-			// 2. the url ends in "tenants/tenant_name" , "tenants/tenant_name/status" or "tenant/tenant_name/finalzie",
-			// the tenant value is set to "" as it is operation on the tenant resource itself, which is cluster-scoped.
+			// the Tenant is set to "" if it is not given. The tenant value may be resolved to "default" if the resource is tenant-scoped
+			// or namespace-scoped. But we just set it to "" here as we don't know the scope of the resource here.
 			requestInfo.Tenant = metav1.TenantNone
 		}
 	}
@@ -221,20 +219,6 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 			// move currentParts to include it as a resource in its own right
 			if len(currentParts) > 2 && !namespaceSubresources.Has(currentParts[2]) {
 				currentParts = currentParts[2:]
-			}
-
-			// if a specific namespace is given, the tenant is resolved to "default"
-			if requestInfo.Tenant == metav1.TenantNone {
-				requestInfo.Tenant = metav1.TenantDefault
-			}
-		} else {
-			if requestInfo.Tenant == metav1.TenantNone {
-				// if url is like "/api/v1/namespaces", tenant is resolved to TenantAll for "get" operation and "default" for other non-read operations
-				if req.Method == "GET" {
-					requestInfo.Tenant = metav1.TenantAll
-				} else {
-					requestInfo.Tenant = metav1.TenantDefault
-				}
 			}
 		}
 	} else {

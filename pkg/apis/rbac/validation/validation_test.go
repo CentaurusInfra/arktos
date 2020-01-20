@@ -24,6 +24,8 @@ import (
 	"k8s.io/kubernetes/pkg/apis/rbac"
 )
 
+var testTenant = "test-te"
+
 func TestValidateClusterRoleBinding(t *testing.T) {
 	errs := ValidateClusterRoleBinding(
 		&rbac.ClusterRoleBinding{
@@ -142,7 +144,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 func TestValidateRoleBinding(t *testing.T) {
 	errs := ValidateRoleBinding(
 		&rbac.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "master"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "master"},
 			RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 			Subjects: []rbac.Subject{
 				{Name: "validsaname", APIGroup: "", Kind: rbac.ServiceAccountKind},
@@ -162,7 +164,7 @@ func TestValidateRoleBinding(t *testing.T) {
 	}{
 		"bad group": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: "rbac.GroupName", Kind: "ClusterRole", Name: "valid"},
 			},
 			T: field.ErrorTypeNotSupported,
@@ -170,7 +172,7 @@ func TestValidateRoleBinding(t *testing.T) {
 		},
 		"bad kind": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Type", Name: "valid"},
 			},
 			T: field.ErrorTypeNotSupported,
@@ -178,7 +180,7 @@ func TestValidateRoleBinding(t *testing.T) {
 		},
 		"zero-length namespace": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 			},
 			T: field.ErrorTypeRequired,
@@ -186,7 +188,7 @@ func TestValidateRoleBinding(t *testing.T) {
 		},
 		"zero-length name": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 			},
 			T: field.ErrorTypeRequired,
@@ -194,7 +196,7 @@ func TestValidateRoleBinding(t *testing.T) {
 		},
 		"bad role": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role"},
 			},
 			T: field.ErrorTypeRequired,
@@ -202,7 +204,7 @@ func TestValidateRoleBinding(t *testing.T) {
 		},
 		"bad subject kind": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "master"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "master"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 				Subjects:   []rbac.Subject{{Name: "subject"}},
 			},
@@ -211,7 +213,7 @@ func TestValidateRoleBinding(t *testing.T) {
 		},
 		"bad subject name": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "master"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "master"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 				Subjects:   []rbac.Subject{{Name: "subject:bad", Kind: rbac.ServiceAccountKind}},
 			},
@@ -220,7 +222,7 @@ func TestValidateRoleBinding(t *testing.T) {
 		},
 		"missing subject name": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "master"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "master"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 				Subjects:   []rbac.Subject{{Kind: rbac.ServiceAccountKind}},
 			},
@@ -247,13 +249,13 @@ func TestValidateRoleBinding(t *testing.T) {
 
 func TestValidateRoleBindingUpdate(t *testing.T) {
 	old := &rbac.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "master", ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "master", ResourceVersion: "1"},
 		RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 	}
 
 	errs := ValidateRoleBindingUpdate(
 		&rbac.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "master", ResourceVersion: "1"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "master", ResourceVersion: "1"},
 			RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 		},
 		old,
@@ -269,7 +271,7 @@ func TestValidateRoleBindingUpdate(t *testing.T) {
 	}{
 		"changedRef": {
 			A: rbac.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "master", ResourceVersion: "1"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: metav1.NamespaceDefault, Name: "master", ResourceVersion: "1"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "changed"},
 			},
 			T: field.ErrorTypeInvalid,
@@ -354,7 +356,7 @@ func (v ValidateClusterRoleTest) test(t *testing.T) {
 func TestValidateRoleZeroLengthNamespace(t *testing.T) {
 	ValidateRoleTest{
 		role: rbac.Role{
-			ObjectMeta: metav1.ObjectMeta{Name: "default"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "default"},
 		},
 		wantErr: true,
 		errType: field.ErrorTypeRequired,
@@ -362,10 +364,21 @@ func TestValidateRoleZeroLengthNamespace(t *testing.T) {
 	}.test(t)
 }
 
+func TestValidateRoleZeroLengthTenant(t *testing.T) {
+	ValidateRoleTest{
+		role: rbac.Role{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "default"},
+		},
+		wantErr: true,
+		errType: field.ErrorTypeRequired,
+		field:   "metadata.tenant",
+	}.test(t)
+}
+
 func TestValidateRoleZeroLengthName(t *testing.T) {
 	ValidateRoleTest{
 		role: rbac.Role{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "default"},
 		},
 		wantErr: true,
 		errType: field.ErrorTypeRequired,
@@ -377,6 +390,7 @@ func TestValidateRoleValidRole(t *testing.T) {
 	ValidateRoleTest{
 		role: rbac.Role{
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:    testTenant,
 				Namespace: "default",
 				Name:      "default",
 			},
@@ -417,6 +431,7 @@ func TestValidateRoleNamespacedNonResourceURL(t *testing.T) {
 	ValidateRoleTest{
 		role: rbac.Role{
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:    testTenant,
 				Namespace: "default",
 				Name:      "default",
 			},
@@ -459,6 +474,7 @@ func TestValidateRoleMixedNonResourceAndResource(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "default",
 				Namespace: "default",
+				Tenant:    testTenant,
 			},
 			Rules: []rbac.PolicyRule{
 				{
@@ -481,6 +497,7 @@ func TestValidateRoleValidResource(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "default",
 				Namespace: "default",
+				Tenant:    testTenant,
 			},
 			Rules: []rbac.PolicyRule{
 				{
@@ -500,6 +517,7 @@ func TestValidateRoleNoAPIGroup(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "default",
 				Namespace: "default",
+				Tenant:    testTenant,
 			},
 			Rules: []rbac.PolicyRule{
 				{
@@ -520,6 +538,7 @@ func TestValidateRoleNoResources(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "default",
 				Namespace: "default",
+				Tenant:    testTenant,
 			},
 			Rules: []rbac.PolicyRule{
 				{

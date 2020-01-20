@@ -28,7 +28,7 @@ import (
 
 // ValidateAuditSink validates the AuditSinks
 func ValidateAuditSink(as *auditregistration.AuditSink) field.ErrorList {
-	allErrs := genericvalidation.ValidateObjectMeta(&as.ObjectMeta, false, genericvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
+	allErrs := genericvalidation.ValidateObjectMeta(&as.ObjectMeta, true, false, genericvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateAuditSinkSpec(as.Spec, field.NewPath("spec"))...)
 	return allErrs
 }

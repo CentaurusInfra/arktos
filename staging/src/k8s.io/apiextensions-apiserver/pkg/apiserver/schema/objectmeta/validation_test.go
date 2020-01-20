@@ -49,13 +49,15 @@ func TestValidateEmbeddedResource(t *testing.T) {
 			"kind":       "Foo",
 			"metadata": map[string]interface{}{
 				"namespace": "kube-system",
+				"tenant":    "system",
 			},
 		}},
 		{name: "no namespace", object: map[string]interface{}{
 			"apiVersion": "foo/v1",
 			"kind":       "Foo",
 			"metadata": map[string]interface{}{
-				"name": "foo",
+				"name":   "foo",
+				"tenant": "system",
 			},
 		}},
 		{name: "invalid", object: map[string]interface{}{
@@ -64,6 +66,7 @@ func TestValidateEmbeddedResource(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"name":      "..",
 				"namespace": "$$$",
+				"tenant":    "***",
 				"labels": map[string]interface{}{
 					"#": "#",
 				},
@@ -74,6 +77,7 @@ func TestValidateEmbeddedResource(t *testing.T) {
 		}, errors: []validationMatch{
 			invalid("metadata", "name"),
 			invalid("metadata", "namespace"),
+			invalid("metadata", "tenant"),
 			invalid("metadata", "labels"),      // key
 			invalid("metadata", "labels"),      // value
 			invalid("metadata", "annotations"), // key

@@ -29,6 +29,8 @@ import (
 	_ "k8s.io/kubernetes/pkg/api/testapi"
 )
 
+var testTenant = "test-te"
+
 func TestControllerStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !Strategy.NamespaceScoped() {
@@ -55,7 +57,7 @@ func TestControllerStrategy(t *testing.T) {
 		},
 	}
 	rc := &api.ReplicationController{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 		Spec: api.ReplicationControllerSpec{
 			Selector: validSelector,
 			Template: &validPodTemplate.Template,
@@ -116,7 +118,7 @@ func TestControllerStatusStrategy(t *testing.T) {
 		},
 	}
 	oldController := &api.ReplicationController{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "10", Tenant: testTenant},
 		Spec: api.ReplicationControllerSpec{
 			Replicas: 3,
 			Selector: validSelector,
@@ -128,7 +130,7 @@ func TestControllerStatusStrategy(t *testing.T) {
 		},
 	}
 	newController := &api.ReplicationController{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "9"},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "9", Tenant: testTenant},
 		Spec: api.ReplicationControllerSpec{
 			Replicas: 1,
 			Selector: validSelector,
@@ -177,7 +179,7 @@ func TestValidateUpdate(t *testing.T) {
 		},
 	}
 	oldController := &api.ReplicationController{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: api.NamespaceDefault, ResourceVersion: "10", Annotations: make(map[string]string)},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: api.NamespaceDefault, Tenant: testTenant, ResourceVersion: "10", Annotations: make(map[string]string)},
 		Spec: api.ReplicationControllerSpec{
 			Replicas: 3,
 			Selector: validSelector,

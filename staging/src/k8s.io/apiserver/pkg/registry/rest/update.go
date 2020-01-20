@@ -76,7 +76,7 @@ func validateCommonFields(obj, old runtime.Object, strategy RESTUpdateStrategy) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get old object metadata: %v", err)
 	}
-	allErrs = append(allErrs, genericvalidation.ValidateObjectMetaAccessor(objectMeta, strategy.NamespaceScoped(), path.ValidatePathSegmentName, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, genericvalidation.ValidateObjectMetaAccessor(objectMeta, strategy.TenantScoped(), strategy.NamespaceScoped(), path.ValidatePathSegmentName, field.NewPath("metadata"))...)
 	allErrs = append(allErrs, genericvalidation.ValidateObjectMetaAccessorUpdate(objectMeta, oldObjectMeta, field.NewPath("metadata"))...)
 
 	return allErrs, nil
@@ -98,6 +98,7 @@ func BeforeUpdate(strategy RESTUpdateStrategy, ctx context.Context, obj, old run
 	} else if len(objectMeta.GetNamespace()) > 0 {
 		objectMeta.SetNamespace(metav1.NamespaceNone)
 	}
+
 	if strategy.TenantScoped() {
 		if !ValidTenant(ctx, objectMeta) {
 			return errors.NewBadRequest("the tenant of the provided object does not match the tenant sent on the request")

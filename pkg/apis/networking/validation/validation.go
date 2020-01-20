@@ -134,7 +134,7 @@ func ValidateNetworkPolicySpec(spec *networking.NetworkPolicySpec, fldPath *fiel
 
 // ValidateNetworkPolicy validates a networkpolicy.
 func ValidateNetworkPolicy(np *networking.NetworkPolicy) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&np.ObjectMeta, true, ValidateNetworkPolicyName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&np.ObjectMeta, true, true, ValidateNetworkPolicyName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateNetworkPolicySpec(&np.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
@@ -176,7 +176,7 @@ func ValidateIPBlock(ipb *networking.IPBlock, fldPath *field.Path) field.ErrorLi
 
 // ValidateIngress tests if required fields in the Ingress are set.
 func ValidateIngress(ingress *networking.Ingress) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&ingress.ObjectMeta, true, ValidateIngressName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&ingress.ObjectMeta, true, true, ValidateIngressName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateIngressSpec(&ingress.Spec, field.NewPath("spec"))...)
 	return allErrs
 }

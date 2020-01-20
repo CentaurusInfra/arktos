@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -43,6 +43,7 @@ const (
 	dnsLabelErrMsg          = "a DNS-1123 label must consist of"
 	dnsSubdomainLabelErrMsg = "a DNS-1123 subdomain"
 	envVarNameErrMsg        = "a valid environment variable name must consist of"
+	testTenant              = "test-te"
 )
 
 func newHostPathType(pathType string) *core.HostPathType {
@@ -51,10 +52,14 @@ func newHostPathType(pathType string) *core.HostPathType {
 	return hostPathType
 }
 
-func testVolume(name string, namespace string, spec core.PersistentVolumeSpec) *core.PersistentVolume {
+func testVolume(name string, namespace string, tenant string, spec core.PersistentVolumeSpec) *core.PersistentVolume {
 	objMeta := metav1.ObjectMeta{Name: name}
 	if namespace != "" {
 		objMeta.Namespace = namespace
+	}
+
+	if tenant != "" {
+		objMeta.Tenant = tenant
 	}
 
 	return &core.PersistentVolume{
@@ -72,7 +77,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 	}{
 		"good-volume": {
 			isExpectedFailure: false,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -87,7 +92,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"good-volume-with-capacity-unit": {
 			isExpectedFailure: false,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10Gi"),
 				},
@@ -102,7 +107,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"good-volume-without-capacity-unit": {
 			isExpectedFailure: false,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10"),
 				},
@@ -117,7 +122,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"good-volume-with-storage-class": {
 			isExpectedFailure: false,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -133,7 +138,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"good-volume-with-retain-policy": {
 			isExpectedFailure: false,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -149,7 +154,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"good-volume-with-volume-mode": {
 			isExpectedFailure: false,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -165,7 +170,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"invalid-accessmode": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -180,7 +185,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"invalid-reclaimpolicy": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -196,7 +201,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"invalid-volume-mode": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -212,7 +217,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"unexpected-namespace": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "unexpected-namespace", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "unexpected-namespace", "", core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -227,7 +232,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"missing-volume-source": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -236,7 +241,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"bad-name": {
 			isExpectedFailure: true,
-			volume: testVolume("123*Bad(Name", "unexpected-namespace", core.PersistentVolumeSpec{
+			volume: testVolume("123*Bad(Name", "unexpected-namespace", "", core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -251,7 +256,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"missing-name": {
 			isExpectedFailure: true,
-			volume: testVolume("", "", core.PersistentVolumeSpec{
+			volume: testVolume("", testTenant, "", core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -266,7 +271,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"missing-capacity": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				AccessModes: []core.PersistentVolumeAccessMode{core.ReadWriteOnce},
 				PersistentVolumeSource: core.PersistentVolumeSource{
 					HostPath: &core.HostPathVolumeSource{
@@ -278,7 +283,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"bad-volume-zero-capacity": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("0"),
 				},
@@ -293,7 +298,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"missing-accessmodes": {
 			isExpectedFailure: true,
-			volume: testVolume("goodname", "missing-accessmodes", core.PersistentVolumeSpec{
+			volume: testVolume("goodname", "missing-accessmodes", "missing-accessmodes", core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -307,7 +312,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"too-many-sources": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("5G"),
 				},
@@ -322,7 +327,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"host mount of / with recycle reclaim policy": {
 			isExpectedFailure: true,
-			volume: testVolume("bad-recycle-do-not-want", "", core.PersistentVolumeSpec{
+			volume: testVolume("bad-recycle-do-not-want", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -338,7 +343,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"host mount of / with recycle reclaim policy 2": {
 			isExpectedFailure: true,
-			volume: testVolume("bad-recycle-do-not-want", "", core.PersistentVolumeSpec{
+			volume: testVolume("bad-recycle-do-not-want", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -354,7 +359,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"invalid-storage-class-name": {
 			isExpectedFailure: true,
-			volume: testVolume("invalid-storage-class-name", "", core.PersistentVolumeSpec{
+			volume: testVolume("invalid-storage-class-name", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -370,7 +375,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 		},
 		"bad-hostpath-volume-backsteps": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "", core.PersistentVolumeSpec{
+			volume: testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 				Capacity: core.ResourceList{
 					core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
 				},
@@ -568,7 +573,7 @@ func TestValidatePersistentVolumeSpec(t *testing.T) {
 }
 
 func TestValidatePersistentVolumeSourceUpdate(t *testing.T) {
-	validVolume := testVolume("foo", "", core.PersistentVolumeSpec{
+	validVolume := testVolume("foo", "", testTenant, core.PersistentVolumeSpec{
 		Capacity: core.ResourceList{
 			core.ResourceName(core.ResourceStorage): resource.MustParse("1G"),
 		},
@@ -597,7 +602,7 @@ func TestValidatePersistentVolumeSourceUpdate(t *testing.T) {
 		},
 	}
 
-	validCSIVolume := testVolume("csi-volume", "", core.PersistentVolumeSpec{
+	validCSIVolume := testVolume("csi-volume", "", testTenant, core.PersistentVolumeSpec{
 		Capacity: core.ResourceList{
 			core.ResourceName(core.ResourceStorage): resource.MustParse("1G"),
 		},
@@ -698,31 +703,32 @@ func TestValidateLocalVolumes(t *testing.T) {
 			volume: testVolume(
 				"invalid-local-volume-nil-annotations",
 				"",
+				"",
 				testLocalVolume("/foo", nil)),
 		},
 		"valid local volume": {
 			isExpectedFailure: false,
-			volume: testVolume("valid-local-volume", "",
+			volume: testVolume("valid-local-volume", "", testTenant,
 				testLocalVolume("/foo", simpleVolumeNodeAffinity("foo", "bar"))),
 		},
 		"invalid local volume no node affinity": {
 			isExpectedFailure: true,
-			volume: testVolume("invalid-local-volume-no-node-affinity", "",
+			volume: testVolume("invalid-local-volume-no-node-affinity", "", testTenant,
 				testLocalVolume("/foo", nil)),
 		},
 		"invalid local volume empty path": {
 			isExpectedFailure: true,
-			volume: testVolume("invalid-local-volume-empty-path", "",
+			volume: testVolume("invalid-local-volume-empty-path", "", testTenant,
 				testLocalVolume("", simpleVolumeNodeAffinity("foo", "bar"))),
 		},
 		"invalid-local-volume-backsteps": {
 			isExpectedFailure: true,
-			volume: testVolume("foo", "",
+			volume: testVolume("foo", "", testTenant,
 				testLocalVolume("/foo/..", simpleVolumeNodeAffinity("foo", "bar"))),
 		},
 		"valid-local-volume-relative-path": {
 			isExpectedFailure: false,
-			volume: testVolume("foo", "",
+			volume: testVolume("foo", "", testTenant,
 				testLocalVolume("foo", simpleVolumeNodeAffinity("foo", "bar"))),
 		},
 	}
@@ -739,7 +745,7 @@ func TestValidateLocalVolumes(t *testing.T) {
 }
 
 func testVolumeWithNodeAffinity(affinity *core.VolumeNodeAffinity) *core.PersistentVolume {
-	return testVolume("test-affinity-volume", "",
+	return testVolume("test-affinity-volume", "", testTenant,
 		core.PersistentVolumeSpec{
 			Capacity: core.ResourceList{
 				core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
@@ -817,25 +823,25 @@ func TestValidateVolumeNodeAffinityUpdate(t *testing.T) {
 	}
 }
 
-func testVolumeClaim(name string, namespace string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
+func testVolumeClaim(name string, namespace string, tenant string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
 	return &core.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Tenant: tenant},
 		Spec:       spec,
 	}
 }
 
 func testVolumeClaimWithStatus(
-	name, namespace string,
+	name, namespace, tenant string,
 	spec core.PersistentVolumeClaimSpec,
 	status core.PersistentVolumeClaimStatus) *core.PersistentVolumeClaim {
 	return &core.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Tenant: tenant},
 		Spec:       spec,
 		Status:     status,
 	}
 }
 
-func testVolumeClaimStorageClass(name string, namespace string, annval string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
+func testVolumeClaimStorageClass(name string, namespace string, tenant string, annval string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
 	annotations := map[string]string{
 		v1.BetaStorageClassAnnotation: annval,
 	}
@@ -845,12 +851,13 @@ func testVolumeClaimStorageClass(name string, namespace string, annval string, s
 			Name:        name,
 			Namespace:   namespace,
 			Annotations: annotations,
+			Tenant:      tenant,
 		},
 		Spec: spec,
 	}
 }
 
-func testVolumeClaimAnnotation(name string, namespace string, ann string, annval string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
+func testVolumeClaimAnnotation(name string, namespace string, tenant string, ann string, annval string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
 	annotations := map[string]string{
 		ann: annval,
 	}
@@ -860,17 +867,19 @@ func testVolumeClaimAnnotation(name string, namespace string, ann string, annval
 			Name:        name,
 			Namespace:   namespace,
 			Annotations: annotations,
+			Tenant:      tenant,
 		},
 		Spec: spec,
 	}
 }
 
-func testVolumeClaimStorageClassInSpec(name, namespace, scName string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
+func testVolumeClaimStorageClassInSpec(name, namespace, tenant, scName string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
 	spec.StorageClassName = &scName
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		Spec: spec,
 	}
@@ -920,12 +929,13 @@ func TestAlphaVolumeSnapshotDataSource(t *testing.T) {
 	}
 }
 
-func testVolumeClaimStorageClassInAnnotationAndSpec(name, namespace, scNameInAnn, scName string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
+func testVolumeClaimStorageClassInAnnotationAndSpec(name, namespace, tenant, scNameInAnn, scName string, spec core.PersistentVolumeClaimSpec) *core.PersistentVolumeClaim {
 	spec.StorageClassName = &scName
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
+			Tenant:      tenant,
 			Annotations: map[string]string{v1.BetaStorageClassAnnotation: scNameInAnn},
 		},
 		Spec: spec,
@@ -943,7 +953,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 	}{
 		"good-claim": {
 			isExpectedFailure: false,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
@@ -967,7 +977,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"invalid-claim-zero-capacity": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
@@ -990,7 +1000,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"invalid-label-selector": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
@@ -1013,7 +1023,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"invalid-accessmode": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				AccessModes: []core.PersistentVolumeAccessMode{"fakemode"},
 				Resources: core.ResourceRequirements{
 					Requests: core.ResourceList{
@@ -1024,7 +1034,21 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"missing-namespace": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "", testTenant, core.PersistentVolumeClaimSpec{
+				AccessModes: []core.PersistentVolumeAccessMode{
+					core.ReadWriteOnce,
+					core.ReadOnlyMany,
+				},
+				Resources: core.ResourceRequirements{
+					Requests: core.ResourceList{
+						core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
+					},
+				},
+			}),
+		},
+		"missing-tenant": {
+			isExpectedFailure: true,
+			claim: testVolumeClaim("foo", "validns", "", core.PersistentVolumeClaimSpec{
 				AccessModes: []core.PersistentVolumeAccessMode{
 					core.ReadWriteOnce,
 					core.ReadOnlyMany,
@@ -1038,7 +1062,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"no-access-modes": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				Resources: core.ResourceRequirements{
 					Requests: core.ResourceList{
 						core.ResourceName(core.ResourceStorage): resource.MustParse("10G"),
@@ -1048,7 +1072,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"no-resource-requests": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				AccessModes: []core.PersistentVolumeAccessMode{
 					core.ReadWriteOnce,
 				},
@@ -1056,7 +1080,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"invalid-resource-requests": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				AccessModes: []core.PersistentVolumeAccessMode{
 					core.ReadWriteOnce,
 				},
@@ -1069,7 +1093,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"negative-storage-request": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
@@ -1091,7 +1115,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"zero-storage-request": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
@@ -1113,7 +1137,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"invalid-storage-class-name": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
@@ -1136,7 +1160,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 		},
 		"invalid-volume-mode": {
 			isExpectedFailure: true,
-			claim: testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+			claim: testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 				AccessModes: []core.PersistentVolumeAccessMode{
 					core.ReadWriteOnce,
 					core.ReadOnlyMany,
@@ -1243,7 +1267,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 	block := core.PersistentVolumeBlock
 	file := core.PersistentVolumeFilesystem
 
-	validClaim := testVolumeClaimWithStatus("foo", "ns", core.PersistentVolumeClaimSpec{
+	validClaim := testVolumeClaimWithStatus("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -1257,7 +1281,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		Phase: core.ClaimBound,
 	})
 
-	validClaimStorageClass := testVolumeClaimStorageClass("foo", "ns", "fast", core.PersistentVolumeClaimSpec{
+	validClaimStorageClass := testVolumeClaimStorageClass("foo", "ns", "te", "fast", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadOnlyMany,
 		},
@@ -1267,7 +1291,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 			},
 		},
 	})
-	validClaimAnnotation := testVolumeClaimAnnotation("foo", "ns", "description", "foo-description", core.PersistentVolumeClaimSpec{
+	validClaimAnnotation := testVolumeClaimAnnotation("foo", "ns", "te", "description", "foo-description", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadOnlyMany,
 		},
@@ -1277,7 +1301,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 			},
 		},
 	})
-	validUpdateClaim := testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+	validUpdateClaim := testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -1289,7 +1313,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	invalidUpdateClaimResources := testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+	invalidUpdateClaimResources := testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -1301,7 +1325,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	invalidUpdateClaimAccessModes := testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+	invalidUpdateClaimAccessModes := testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 		},
@@ -1312,7 +1336,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	validClaimVolumeModeFile := testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+	validClaimVolumeModeFile := testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 		},
@@ -1324,7 +1348,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	validClaimVolumeModeBlock := testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+	validClaimVolumeModeBlock := testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 		},
@@ -1336,7 +1360,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	invalidClaimVolumeModeNil := testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+	invalidClaimVolumeModeNil := testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 		},
@@ -1348,7 +1372,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	invalidUpdateClaimStorageClass := testVolumeClaimStorageClass("foo", "ns", "fast2", core.PersistentVolumeClaimSpec{
+	invalidUpdateClaimStorageClass := testVolumeClaimStorageClass("foo", "ns", "te", "fast2", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadOnlyMany,
 		},
@@ -1359,7 +1383,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	validUpdateClaimMutableAnnotation := testVolumeClaimAnnotation("foo", "ns", "description", "updated-or-added-foo-description", core.PersistentVolumeClaimSpec{
+	validUpdateClaimMutableAnnotation := testVolumeClaimAnnotation("foo", "ns", "te", "description", "updated-or-added-foo-description", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadOnlyMany,
 		},
@@ -1370,7 +1394,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	validAddClaimAnnotation := testVolumeClaimAnnotation("foo", "ns", "description", "updated-or-added-foo-description", core.PersistentVolumeClaimSpec{
+	validAddClaimAnnotation := testVolumeClaimAnnotation("foo", "ns", "te", "description", "updated-or-added-foo-description", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -1382,7 +1406,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 		VolumeName: "volume",
 	})
-	validSizeUpdate := testVolumeClaimWithStatus("foo", "ns", core.PersistentVolumeClaimSpec{
+	validSizeUpdate := testVolumeClaimWithStatus("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -1396,7 +1420,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		Phase: core.ClaimBound,
 	})
 
-	invalidSizeUpdate := testVolumeClaimWithStatus("foo", "ns", core.PersistentVolumeClaimSpec{
+	invalidSizeUpdate := testVolumeClaimWithStatus("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -1410,7 +1434,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		Phase: core.ClaimBound,
 	})
 
-	unboundSizeUpdate := testVolumeClaimWithStatus("foo", "ns", core.PersistentVolumeClaimSpec{
+	unboundSizeUpdate := testVolumeClaimWithStatus("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -1424,7 +1448,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		Phase: core.ClaimPending,
 	})
 
-	validClaimStorageClassInSpec := testVolumeClaimStorageClassInSpec("foo", "ns", "fast", core.PersistentVolumeClaimSpec{
+	validClaimStorageClassInSpec := testVolumeClaimStorageClassInSpec("foo", "ns", "te", "fast", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadOnlyMany,
 		},
@@ -1435,7 +1459,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		},
 	})
 
-	invalidClaimStorageClassInSpec := testVolumeClaimStorageClassInSpec("foo", "ns", "fast2", core.PersistentVolumeClaimSpec{
+	invalidClaimStorageClassInSpec := testVolumeClaimStorageClassInSpec("foo", "ns", "te", "fast2", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadOnlyMany,
 		},
@@ -1447,7 +1471,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 	})
 
 	validClaimStorageClassInAnnotationAndSpec := testVolumeClaimStorageClassInAnnotationAndSpec(
-		"foo", "ns", "fast", "fast", core.PersistentVolumeClaimSpec{
+		"foo", "ns", "te", "fast", "fast", core.PersistentVolumeClaimSpec{
 			AccessModes: []core.PersistentVolumeAccessMode{
 				core.ReadOnlyMany,
 			},
@@ -1459,7 +1483,7 @@ func TestValidatePersistentVolumeClaimUpdate(t *testing.T) {
 		})
 
 	invalidClaimStorageClassInAnnotationAndSpec := testVolumeClaimStorageClassInAnnotationAndSpec(
-		"foo", "ns", "fast2", "fast", core.PersistentVolumeClaimSpec{
+		"foo", "ns", "te", "fast2", "fast", core.PersistentVolumeClaimSpec{
 			AccessModes: []core.PersistentVolumeAccessMode{
 				core.ReadOnlyMany,
 			},
@@ -3916,7 +3940,7 @@ func TestValidateVolumes(t *testing.T) {
 func TestHugePagesIsolation(t *testing.T) {
 	successCases := []core.Pod{
 		{ // Basic fields.
-			ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				Containers: []core.Container{
 					{
@@ -3942,7 +3966,7 @@ func TestHugePagesIsolation(t *testing.T) {
 	}
 	failureCases := []core.Pod{
 		{ // Basic fields.
-			ObjectMeta: metav1.ObjectMeta{Name: "hugepages-requireCpuOrMemory", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "hugepages-requireCpuOrMemory", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				Containers: []core.Container{
 					{
@@ -3962,7 +3986,7 @@ func TestHugePagesIsolation(t *testing.T) {
 			},
 		},
 		{ // Basic fields.
-			ObjectMeta: metav1.ObjectMeta{Name: "hugepages-shared", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "hugepages-shared", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				Containers: []core.Container{
 					{
@@ -3986,7 +4010,7 @@ func TestHugePagesIsolation(t *testing.T) {
 			},
 		},
 		{ // Basic fields.
-			ObjectMeta: metav1.ObjectMeta{Name: "hugepages-multiple", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "hugepages-multiple", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				Containers: []core.Container{
 					{
@@ -4098,6 +4122,7 @@ func createTestVolModePVC(vmode *core.PersistentVolumeMode) *core.PersistentVolu
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
+			Tenant:    testTenant,
 		},
 		Spec: core.PersistentVolumeClaimSpec{
 			Resources: core.ResourceRequirements{
@@ -4120,6 +4145,7 @@ func createTestVolModePV(vmode *core.PersistentVolumeMode) *core.PersistentVolum
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "",
+			Tenant:    testTenant,
 		},
 		Spec: core.PersistentVolumeSpec{
 			Capacity: core.ResourceList{
@@ -4212,6 +4238,7 @@ func TestValidateResourceQuotaWithAlphaLocalStorageCapacityIsolation(t *testing.
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "abc",
 			Namespace: "foo",
+			Tenant:    "bar",
 		},
 		Spec: spec,
 	}
@@ -6759,7 +6786,7 @@ func TestValidatePod(t *testing.T) {
 
 	successCases := []core.Pod{
 		{ // Basic fields.
-			ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				Volumes:       []core.Volume{{Name: "vol", VolumeSource: core.VolumeSource{EmptyDir: &core.EmptyDirVolumeSource{}}}},
 				Containers:    []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
@@ -6768,7 +6795,7 @@ func TestValidatePod(t *testing.T) {
 			},
 		},
 		{ // Just about everything.
-			ObjectMeta: metav1.ObjectMeta{Name: "abc.123.do-re-mi", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc.123.do-re-mi", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				Volumes: []core.Volume{
 					{Name: "vol", VolumeSource: core.VolumeSource{EmptyDir: &core.EmptyDirVolumeSource{}}},
@@ -6786,6 +6813,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: validPodSpec(
 				// TODO: Uncomment and move this block and move inside NodeAffinity once
@@ -6846,6 +6874,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: validPodSpec(
 				// TODO: Uncomment and move this block and move inside NodeAffinity once
@@ -6887,6 +6916,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				// TODO: Uncomment and move this block into Annotations map once
 				// RequiredDuringSchedulingRequiredDuringExecution is implemented
 				//		"requiredDuringSchedulingRequiredDuringExecution": [{
@@ -6943,6 +6973,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				// TODO: Uncomment and move this block into Annotations map once
 				// RequiredDuringSchedulingRequiredDuringExecution is implemented
 				//		"requiredDuringSchedulingRequiredDuringExecution": [{
@@ -6997,6 +7028,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "foo", Operator: "Exists", Value: "", Effect: "NoExecute", TolerationSeconds: &[]int64{60}[0]}}),
 		},
@@ -7004,6 +7036,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "foo", Operator: "Equal", Value: "bar", Effect: "NoExecute", TolerationSeconds: &[]int64{60}[0]}}),
 		},
@@ -7011,6 +7044,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "foo", Operator: "Equal", Value: "bar", Effect: "NoSchedule"}}),
 		},
@@ -7018,6 +7052,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: validPodSpec(nil),
 		},
@@ -7025,6 +7060,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Operator: "Exists", Effect: "NoSchedule"}}),
 		},
@@ -7032,6 +7068,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "foo", Value: "bar", Effect: "NoSchedule"}}),
 		},
@@ -7039,6 +7076,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "foo", Operator: "Equal", Value: "bar"}}),
 		},
@@ -7046,6 +7084,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-forgiveness-invalid",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "node.kubernetes.io/not-ready", Operator: "Exists", Effect: "NoExecute", TolerationSeconds: &[]int64{-2}[0]}}),
 		},
@@ -7053,6 +7092,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					core.SeccompPodAnnotationKey: core.SeccompProfileRuntimeDefault,
 				},
@@ -7063,6 +7103,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					core.SeccompPodAnnotationKey: core.DeprecatedSeccompProfileDockerDefault,
 				},
@@ -7073,6 +7114,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					core.SeccompPodAnnotationKey: "unconfined",
 				},
@@ -7083,6 +7125,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					core.SeccompPodAnnotationKey: "localhost/foo",
 				},
@@ -7093,6 +7136,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					core.SeccompContainerAnnotationKeyPrefix + "foo": "localhost/foo",
 				},
@@ -7103,6 +7147,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					apparmor.ContainerAnnotationKeyPrefix + "ctr": apparmor.ProfileRuntimeDefault,
 				},
@@ -7113,6 +7158,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					apparmor.ContainerAnnotationKeyPrefix + "init-ctr": apparmor.ProfileRuntimeDefault,
 				},
@@ -7128,6 +7174,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 				Annotations: map[string]string{
 					apparmor.ContainerAnnotationKeyPrefix + "ctr": apparmor.ProfileNamePrefix + "foo",
 				},
@@ -7138,6 +7185,7 @@ func TestValidatePod(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
+				Tenant:    "te",
 			},
 			Spec: core.PodSpec{
 				Containers:    []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
@@ -7162,7 +7210,7 @@ func TestValidatePod(t *testing.T) {
 			},
 		},
 		{ // valid extended resources for init container
-			ObjectMeta: metav1.ObjectMeta{Name: "valid-extended", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "valid-extended", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				InitContainers: []core.Container{
 					{
@@ -7186,7 +7234,7 @@ func TestValidatePod(t *testing.T) {
 			},
 		},
 		{ // valid extended resources for regular container
-			ObjectMeta: metav1.ObjectMeta{Name: "valid-extended", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "valid-extended", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				InitContainers: []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
 				Containers: []core.Container{
@@ -7210,7 +7258,7 @@ func TestValidatePod(t *testing.T) {
 			},
 		},
 		{ // valid serviceaccount token projected volume with serviceaccount name specified
-			ObjectMeta: metav1.ObjectMeta{Name: "valid-extended", Namespace: "ns"},
+			ObjectMeta: metav1.ObjectMeta{Name: "valid-extended", Namespace: "ns", Tenant: "te"},
 			Spec: core.PodSpec{
 				ServiceAccountName: "some-service-account",
 				Containers:         []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
@@ -7250,7 +7298,7 @@ func TestValidatePod(t *testing.T) {
 		"bad name": {
 			expectedError: "metadata.name",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					RestartPolicy: core.RestartPolicyAlways,
 					DNSPolicy:     core.DNSClusterFirst,
@@ -7261,7 +7309,7 @@ func TestValidatePod(t *testing.T) {
 		"image whitespace": {
 			expectedError: "spec.containers[0].image",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					RestartPolicy: core.RestartPolicyAlways,
 					DNSPolicy:     core.DNSClusterFirst,
@@ -7272,7 +7320,7 @@ func TestValidatePod(t *testing.T) {
 		"image leading and trailing whitespace": {
 			expectedError: "spec.containers[0].image",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					RestartPolicy: core.RestartPolicyAlways,
 					DNSPolicy:     core.DNSClusterFirst,
@@ -7294,7 +7342,7 @@ func TestValidatePod(t *testing.T) {
 		"bad spec": {
 			expectedError: "spec.containers[0].name",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{{}},
 				},
@@ -7306,6 +7354,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "abc",
 					Namespace: "ns",
+					Tenant:    "te",
 					Labels: map[string]string{
 						"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 					},
@@ -7323,6 +7372,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					NodeAffinity: &core.NodeAffinity{
@@ -7347,6 +7397,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					NodeAffinity: &core.NodeAffinity{
@@ -7372,6 +7423,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					NodeAffinity: &core.NodeAffinity{
@@ -7398,6 +7450,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					NodeAffinity: &core.NodeAffinity{
@@ -7423,6 +7476,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					NodeAffinity: &core.NodeAffinity{
@@ -7449,6 +7503,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					NodeAffinity: &core.NodeAffinity{
@@ -7476,6 +7531,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					NodeAffinity: &core.NodeAffinity{
@@ -7492,6 +7548,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					PodAffinity: &core.PodAffinity{
@@ -7523,6 +7580,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					PodAntiAffinity: &core.PodAntiAffinity{
@@ -7548,12 +7606,13 @@ func TestValidatePod(t *testing.T) {
 				}),
 			},
 		},
-		"invalid name space in preferredDuringSchedulingIgnoredDuringExecution in podaffinity annotations, name space shouldbe valid": {
+		"invalid namespace in preferredDuringSchedulingIgnoredDuringExecution in podaffinity annotations, namespace should be valid": {
 			expectedError: "spec.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.namespace",
 			spec: core.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					PodAffinity: &core.PodAffinity{
@@ -7569,7 +7628,7 @@ func TestValidatePod(t *testing.T) {
 											},
 										},
 									},
-									Namespaces:  []string{"INVALID_NAMESPACE"},
+									Namespaces:  []string{"te/INVALID_NAMESPACE"},
 									TopologyKey: "region",
 								},
 							},
@@ -7584,6 +7643,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					PodAffinity: &core.PodAffinity{
@@ -7611,6 +7671,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					PodAntiAffinity: &core.PodAntiAffinity{
@@ -7638,6 +7699,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					PodAffinity: &core.PodAffinity{
@@ -7668,6 +7730,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: validPodSpec(&core.Affinity{
 					PodAntiAffinity: &core.PodAntiAffinity{
@@ -7698,6 +7761,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "nospecialchars^=@", Operator: "Equal", Value: "bar", Effect: "NoSchedule"}}),
 			},
@@ -7708,6 +7772,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "foo", Operator: "In", Value: "bar", Effect: "NoSchedule"}}),
 			},
@@ -7718,6 +7783,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "foo", Operator: "Exists", Value: "bar", Effect: "NoSchedule"}}),
 			},
@@ -7729,6 +7795,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Operator: "Equal", Value: "bar", Effect: "NoSchedule"}}),
 			},
@@ -7739,6 +7806,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "pod-forgiveness-invalid",
 					Namespace: "ns",
+					Tenant:    "te",
 				},
 				Spec: extendPodSpecwithTolerations(validPodSpec(nil), []core.Toleration{{Key: "node.kubernetes.io/not-ready", Operator: "Exists", Effect: "NoSchedule", TolerationSeconds: &[]int64{20}[0]}}),
 			},
@@ -7749,6 +7817,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						core.SeccompPodAnnotationKey: "foo",
 					},
@@ -7762,6 +7831,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						core.SeccompContainerAnnotationKeyPrefix + "foo": "foo",
 					},
@@ -7775,6 +7845,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						core.SeccompContainerAnnotationKeyPrefix: "foo",
 					},
@@ -7788,6 +7859,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						core.SeccompContainerAnnotationKeyPrefix + "foo": "",
 					},
@@ -7801,6 +7873,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						core.SeccompPodAnnotationKey: "localhost//foo",
 					},
@@ -7814,6 +7887,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						core.SeccompPodAnnotationKey: "localhost/../foo",
 					},
@@ -7827,6 +7901,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						apparmor.ContainerAnnotationKeyPrefix + "ctr":      apparmor.ProfileRuntimeDefault,
 						apparmor.ContainerAnnotationKeyPrefix + "init-ctr": apparmor.ProfileRuntimeDefault,
@@ -7847,6 +7922,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						apparmor.ContainerAnnotationKeyPrefix + "ctr": "bad-name",
 					},
@@ -7860,6 +7936,7 @@ func TestValidatePod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "123",
 					Namespace: "ns",
+					Tenant:    "te",
 					Annotations: map[string]string{
 						apparmor.ContainerAnnotationKeyPrefix + "ctr": "runtime/foo",
 					},
@@ -7870,7 +7947,7 @@ func TestValidatePod(t *testing.T) {
 		"invalid extended resource name in container request": {
 			expectedError: "must be a standard resource for containers",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -7895,7 +7972,7 @@ func TestValidatePod(t *testing.T) {
 		"invalid extended resource requirement: request must be == limit": {
 			expectedError: "must be equal to example.com/a",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -7920,7 +7997,7 @@ func TestValidatePod(t *testing.T) {
 		"invalid extended resource requirement without limit": {
 			expectedError: "Limit must be set",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -7942,7 +8019,7 @@ func TestValidatePod(t *testing.T) {
 		"invalid fractional extended resource in container request": {
 			expectedError: "must be an integer",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -7964,7 +8041,7 @@ func TestValidatePod(t *testing.T) {
 		"invalid fractional extended resource in init container request": {
 			expectedError: "must be an integer",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					InitContainers: []core.Container{
 						{
@@ -7987,7 +8064,7 @@ func TestValidatePod(t *testing.T) {
 		"invalid fractional extended resource in container limit": {
 			expectedError: "must be an integer",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -8012,7 +8089,7 @@ func TestValidatePod(t *testing.T) {
 		"invalid fractional extended resource in init container limit": {
 			expectedError: "must be an integer",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					InitContainers: []core.Container{
 						{
@@ -8038,7 +8115,8 @@ func TestValidatePod(t *testing.T) {
 		"mirror-pod present without nodeName": {
 			expectedError: "mirror",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Annotations: map[string]string{core.MirrorPodAnnotationKey: ""}},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns",
+					Tenant: "te", Annotations: map[string]string{core.MirrorPodAnnotationKey: ""}},
 				Spec: core.PodSpec{
 					Containers:    []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
 					RestartPolicy: core.RestartPolicyAlways,
@@ -8049,7 +8127,8 @@ func TestValidatePod(t *testing.T) {
 		"mirror-pod populated without nodeName": {
 			expectedError: "mirror",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Annotations: map[string]string{core.MirrorPodAnnotationKey: "foo"}},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns",
+					Tenant: "te", Annotations: map[string]string{core.MirrorPodAnnotationKey: "foo"}},
 				Spec: core.PodSpec{
 					Containers:    []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
 					RestartPolicy: core.RestartPolicyAlways,
@@ -8060,7 +8139,7 @@ func TestValidatePod(t *testing.T) {
 		"serviceaccount token projected volume with no serviceaccount name specified": {
 			expectedError: "must not be specified when serviceAccountName is not set",
 			spec: core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: "123", Namespace: "ns", Tenant: "te"},
 				Spec: core.PodSpec{
 					Containers:    []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
 					RestartPolicy: core.RestartPolicyAlways,
@@ -9064,6 +9143,7 @@ func makeValidService() core.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "valid",
 			Namespace:       "valid",
+			Tenant:          "valid",
 			Labels:          map[string]string{},
 			Annotations:     map[string]string{},
 			ResourceVersion: "1",
@@ -9955,7 +10035,7 @@ func TestValidateReplicationControllerStatusUpdate(t *testing.T) {
 	successCases := []rcUpdateTest{
 		{
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
@@ -9965,7 +10045,7 @@ func TestValidateReplicationControllerStatusUpdate(t *testing.T) {
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: 3,
 					Selector: validSelector,
@@ -9987,7 +10067,7 @@ func TestValidateReplicationControllerStatusUpdate(t *testing.T) {
 	errorCases := map[string]rcUpdateTest{
 		"negative replicas": {
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
@@ -9997,7 +10077,7 @@ func TestValidateReplicationControllerStatusUpdate(t *testing.T) {
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: 2,
 					Selector: validSelector,
@@ -10063,14 +10143,14 @@ func TestValidateReplicationControllerUpdate(t *testing.T) {
 	successCases := []rcUpdateTest{
 		{
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: 3,
 					Selector: validSelector,
@@ -10080,14 +10160,14 @@ func TestValidateReplicationControllerUpdate(t *testing.T) {
 		},
 		{
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: 1,
 					Selector: validSelector,
@@ -10106,14 +10186,14 @@ func TestValidateReplicationControllerUpdate(t *testing.T) {
 	errorCases := map[string]rcUpdateTest{
 		"more than one read/write": {
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: 2,
 					Selector: validSelector,
@@ -10123,14 +10203,14 @@ func TestValidateReplicationControllerUpdate(t *testing.T) {
 		},
 		"invalid selector": {
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: 2,
 					Selector: invalidSelector,
@@ -10140,14 +10220,14 @@ func TestValidateReplicationControllerUpdate(t *testing.T) {
 		},
 		"invalid pod": {
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: 2,
 					Selector: validSelector,
@@ -10157,14 +10237,14 @@ func TestValidateReplicationControllerUpdate(t *testing.T) {
 		},
 		"negative replicas": {
 			old: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Selector: validSelector,
 					Template: &validPodTemplate.Template,
 				},
 			},
 			update: core.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: core.ReplicationControllerSpec{
 					Replicas: -1,
 					Selector: validSelector,
@@ -10221,21 +10301,21 @@ func TestValidateReplicationController(t *testing.T) {
 	}
 	successCases := []core.ReplicationController{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Selector: validSelector,
 				Template: &validPodTemplate.Template,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Selector: validSelector,
 				Template: &validPodTemplate.Template,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Replicas: 1,
 				Selector: validSelector,
@@ -10251,7 +10331,7 @@ func TestValidateReplicationController(t *testing.T) {
 
 	errorCases := map[string]core.ReplicationController{
 		"zero-length ID": {
-			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Selector: validSelector,
 				Template: &validPodTemplate.Template,
@@ -10265,20 +10345,20 @@ func TestValidateReplicationController(t *testing.T) {
 			},
 		},
 		"empty selector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Template: &validPodTemplate.Template,
 			},
 		},
 		"selector_doesnt_match": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Selector: map[string]string{"foo": "bar"},
 				Template: &validPodTemplate.Template,
 			},
 		},
 		"invalid manifest": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Selector: validSelector,
 			},
@@ -10292,7 +10372,7 @@ func TestValidateReplicationController(t *testing.T) {
 			},
 		},
 		"negative_replicas": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: core.ReplicationControllerSpec{
 				Replicas: -1,
 				Selector: validSelector,
@@ -10385,6 +10465,7 @@ func TestValidateReplicationController(t *testing.T) {
 			if !strings.HasPrefix(field, "spec.template.") &&
 				field != "metadata.name" &&
 				field != "metadata.namespace" &&
+				field != "metadata.tenant" &&
 				field != "spec.selector" &&
 				field != "spec.template" &&
 				field != "GCEPersistentDisk.ReadOnly" &&
@@ -11603,7 +11684,7 @@ func TestValidateLimitRangeForLocalStorage(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		limitRange := &core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: testCase.name, Namespace: "foo"}, Spec: testCase.spec}
+		limitRange := &core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: testCase.name, Namespace: "foo", Tenant: "bar"}, Spec: testCase.spec}
 		if errs := ValidateLimitRange(limitRange); len(errs) != 0 {
 			t.Errorf("Case %v, unexpected error: %v", testCase.name, errs)
 		}
@@ -11711,7 +11792,7 @@ func TestValidateLimitRange(t *testing.T) {
 	}
 
 	for _, successCase := range successCases {
-		limitRange := &core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: successCase.name, Namespace: "foo"}, Spec: successCase.spec}
+		limitRange := &core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: successCase.name, Namespace: "foo", Tenant: "bar"}, Spec: successCase.spec}
 		if errs := ValidateLimitRange(limitRange); len(errs) != 0 {
 			t.Errorf("Case %v, unexpected error: %v", successCase.name, errs)
 		}
@@ -11722,23 +11803,23 @@ func TestValidateLimitRange(t *testing.T) {
 		D string
 	}{
 		"zero-length-name": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: "foo"}, Spec: core.LimitRangeSpec{}},
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{}},
 			"name or generateName is required",
 		},
 		"zero-length-namespace": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: ""}, Spec: core.LimitRangeSpec{}},
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "", Tenant: "bar"}, Spec: core.LimitRangeSpec{}},
 			"",
 		},
 		"invalid-name": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "^Invalid", Namespace: "foo"}, Spec: core.LimitRangeSpec{}},
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "^Invalid", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{}},
 			dnsSubdomainLabelErrMsg,
 		},
 		"invalid-namespace": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "^Invalid"}, Spec: core.LimitRangeSpec{}},
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "^Invalid", Tenant: "bar"}, Spec: core.LimitRangeSpec{}},
 			dnsLabelErrMsg,
 		},
 		"duplicate-limit-type": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type: core.LimitTypePod,
@@ -11754,7 +11835,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"",
 		},
 		"default-limit-type-pod": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:    core.LimitTypePod,
@@ -11767,7 +11848,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"may not be specified when `type` is 'Pod'",
 		},
 		"default-request-limit-type-pod": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:           core.LimitTypePod,
@@ -11780,7 +11861,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"may not be specified when `type` is 'Pod'",
 		},
 		"min value 100m is greater than max value 10m": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type: core.LimitTypePod,
@@ -11792,7 +11873,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"min value 100m is greater than max value 10m",
 		},
 		"invalid spec default outside range": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:    core.LimitTypeContainer,
@@ -11805,7 +11886,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"default value 2 is greater than max value 1",
 		},
 		"invalid spec default request outside range": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:           core.LimitTypeContainer,
@@ -11818,7 +11899,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"default request value 2 is greater than max value 1",
 		},
 		"invalid spec default request more than default": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:           core.LimitTypeContainer,
@@ -11832,7 +11913,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"default request value 800m is greater than default limit value 500m",
 		},
 		"invalid spec maxLimitRequestRatio less than 1": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:                 core.LimitTypePod,
@@ -11843,7 +11924,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"ratio 800m is less than 1",
 		},
 		"invalid spec maxLimitRequestRatio greater than max/min": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:                 core.LimitTypeContainer,
@@ -11856,7 +11937,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"ratio 10 is greater than max/min = 4.000000",
 		},
 		"invalid non standard limit type": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type:                 "foo",
@@ -11871,7 +11952,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"must be a standard limit type or fully qualified",
 		},
 		"min and max values missing, one required": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type: core.LimitTypePersistentVolumeClaim,
@@ -11881,7 +11962,7 @@ func TestValidateLimitRange(t *testing.T) {
 			"either minimum or maximum storage value is required, but neither was provided",
 		},
 		"invalid min greater than max": {
-			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: core.LimitRangeSpec{
+			core.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: core.LimitRangeSpec{
 				Limits: []core.LimitRangeItem{
 					{
 						Type: core.LimitTypePersistentVolumeClaim,
@@ -11910,7 +11991,7 @@ func TestValidateLimitRange(t *testing.T) {
 }
 
 func TestValidatePersistentVolumeClaimStatusUpdate(t *testing.T) {
-	validClaim := testVolumeClaim("foo", "ns", core.PersistentVolumeClaimSpec{
+	validClaim := testVolumeClaim("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -11921,7 +12002,7 @@ func TestValidatePersistentVolumeClaimStatusUpdate(t *testing.T) {
 			},
 		},
 	})
-	validConditionUpdate := testVolumeClaimWithStatus("foo", "ns", core.PersistentVolumeClaimSpec{
+	validConditionUpdate := testVolumeClaimWithStatus("foo", "ns", "te", core.PersistentVolumeClaimSpec{
 		AccessModes: []core.PersistentVolumeAccessMode{
 			core.ReadWriteOnce,
 			core.ReadOnlyMany,
@@ -12060,7 +12141,7 @@ func TestValidateResourceQuota(t *testing.T) {
 		},
 	}
 
-	invalidTerminatingScopePairsSpec := core.ResourceQuotaSpec{
+	invalidTenantrminatingScopePairsSpec := core.ResourceQuotaSpec{
 		Hard: core.ResourceList{
 			core.ResourceCPU: resource.MustParse("100"),
 		},
@@ -12086,6 +12167,7 @@ func TestValidateResourceQuota(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc",
 				Namespace: "foo",
+				Tenant:    "bar",
 			},
 			Spec: spec,
 		},
@@ -12093,6 +12175,7 @@ func TestValidateResourceQuota(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc",
 				Namespace: "foo",
+				Tenant:    "bar",
 			},
 			Spec: fractionalComputeSpec,
 		},
@@ -12100,6 +12183,7 @@ func TestValidateResourceQuota(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc",
 				Namespace: "foo",
+				Tenant:    "bar",
 			},
 			Spec: terminatingSpec,
 		},
@@ -12107,6 +12191,7 @@ func TestValidateResourceQuota(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc",
 				Namespace: "foo",
+				Tenant:    "bar",
 			},
 			Spec: nonTerminatingSpec,
 		},
@@ -12114,6 +12199,7 @@ func TestValidateResourceQuota(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc",
 				Namespace: "foo",
+				Tenant:    "bar",
 			},
 			Spec: bestEffortSpec,
 		},
@@ -12121,6 +12207,7 @@ func TestValidateResourceQuota(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc",
 				Namespace: "foo",
+				Tenant:    "bar",
 			},
 			Spec: scopeSelectorSpec,
 		},
@@ -12128,6 +12215,7 @@ func TestValidateResourceQuota(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc",
 				Namespace: "foo",
+				Tenant:    "bar",
 			},
 			Spec: nonBestEffortSpec,
 		},
@@ -12143,43 +12231,47 @@ func TestValidateResourceQuota(t *testing.T) {
 		D string
 	}{
 		"zero-length Name": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: "foo"}, Spec: spec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: "foo", Tenant: "bar"}, Spec: spec},
 			"name or generateName is required",
 		},
 		"zero-length Namespace": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: ""}, Spec: spec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "", Tenant: "bar"}, Spec: spec},
+			"",
+		},
+		"zero-length Tenant": {
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: "foo", Tenant: ""}, Spec: spec},
 			"",
 		},
 		"invalid Name": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "^Invalid", Namespace: "foo"}, Spec: spec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "^Invalid", Namespace: "foo", Tenant: "bar"}, Spec: spec},
 			dnsSubdomainLabelErrMsg,
 		},
 		"invalid Namespace": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "^Invalid"}, Spec: spec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "^Invalid", Tenant: "bar"}, Spec: spec},
 			dnsLabelErrMsg,
 		},
 		"negative-limits": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: negativeSpec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: negativeSpec},
 			isNegativeErrorMsg,
 		},
 		"fractional-api-resource": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: fractionalPodSpec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: fractionalPodSpec},
 			isNotIntegerErrorMsg,
 		},
 		"invalid-quota-resource": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: invalidQuotaResourceSpec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: invalidQuotaResourceSpec},
 			isInvalidQuotaResource,
 		},
 		"invalid-quota-terminating-pair": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: invalidTerminatingScopePairsSpec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: invalidTenantrminatingScopePairsSpec},
 			"conflicting scopes",
 		},
 		"invalid-quota-besteffort-pair": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: invalidBestEffortScopePairsSpec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: invalidBestEffortScopePairsSpec},
 			"conflicting scopes",
 		},
 		"invalid-quota-scope-name": {
-			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: invalidScopeNameSpec},
+			core.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo", Tenant: "bar"}, Spec: invalidScopeNameSpec},
 			"unsupported scope",
 		},
 	}
@@ -12201,10 +12293,10 @@ func TestValidateNamespace(t *testing.T) {
 	invalidLabels := map[string]string{"NoUppercaseOrSpecialCharsLike=Equals": "b"}
 	successCases := []core.Namespace{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Labels: validLabels},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Labels: validLabels, Tenant: "te"},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123"},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Tenant: "te"},
 			Spec: core.NamespaceSpec{
 				Finalizers: []core.FinalizerName{"example.com/something", "example.com/other"},
 			},
@@ -12220,15 +12312,15 @@ func TestValidateNamespace(t *testing.T) {
 		D string
 	}{
 		"zero-length name": {
-			core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ""}},
+			core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "", Tenant: "te"}},
 			"",
 		},
 		"defined-namespace": {
-			core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: "makesnosense"}},
+			core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: "makesnosense", Tenant: "te"}},
 			"",
 		},
 		"invalid-labels": {
-			core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "abc", Labels: invalidLabels}},
+			core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "abc", Labels: invalidLabels, Tenant: "te"}},
 			"",
 		},
 	}
@@ -12466,7 +12558,7 @@ func TestValidateSecret(t *testing.T) {
 	// Opaque secret validation
 	validSecret := func() core.Secret {
 		return core.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Data: map[string][]byte{
 				"data-1": []byte("bar"),
 			},
@@ -12478,6 +12570,8 @@ func TestValidateSecret(t *testing.T) {
 		invalidName   = validSecret()
 		emptyNs       = validSecret()
 		invalidNs     = validSecret()
+		emptyTenant   = validSecret()
+		invalidTenant = validSecret()
 		overMaxSize   = validSecret()
 		invalidKey    = validSecret()
 		leadingDotKey = validSecret()
@@ -12489,6 +12583,8 @@ func TestValidateSecret(t *testing.T) {
 	invalidName.Name = "NoUppercaseOrSpecialCharsLike=Equals"
 	emptyNs.Namespace = ""
 	invalidNs.Namespace = "NoUppercaseOrSpecialCharsLike=Equals"
+	emptyTenant.Tenant = ""
+	invalidTenant.Tenant = "NoUppercaseOrSpecialCharsLike=Equals"
 	overMaxSize.Data = map[string][]byte{
 		"over": make([]byte, core.MaxSecretSize+1),
 	}
@@ -12503,6 +12599,7 @@ func TestValidateSecret(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "bar",
+				Tenant:    "lol",
 				Annotations: map[string]string{
 					core.ServiceAccountNameKey: "foo",
 				},
@@ -12527,15 +12624,17 @@ func TestValidateSecret(t *testing.T) {
 		secret core.Secret
 		valid  bool
 	}{
-		"valid":                                     {validSecret(), true},
-		"empty name":                                {emptyName, false},
-		"invalid name":                              {invalidName, false},
-		"empty namespace":                           {emptyNs, false},
-		"invalid namespace":                         {invalidNs, false},
-		"over max size":                             {overMaxSize, false},
-		"invalid key":                               {invalidKey, false},
-		"valid service-account-token secret":        {validServiceAccountTokenSecret(), true},
-		"empty service-account-token annotation":    {emptyTokenAnnotation, false},
+		"valid":                                  {validSecret(), true},
+		"empty name":                             {emptyName, false},
+		"invalid name":                           {invalidName, false},
+		"empty namespace":                        {emptyNs, false},
+		"invalid namespace":                      {invalidNs, false},
+		"empty tenant":                           {emptyTenant, false},
+		"invalid tenant":                         {invalidTenant, false},
+		"over max size":                          {overMaxSize, false},
+		"invalid key":                            {invalidKey, false},
+		"valid service-account-token secret":     {validServiceAccountTokenSecret(), true},
+		"empty service-account-token annotation": {emptyTokenAnnotation, false},
 		"missing service-account-token annotation":  {missingTokenAnnotation, false},
 		"missing service-account-token annotations": {missingTokenAnnotations, false},
 		"leading dot key":                           {leadingDotKey, true},
@@ -12557,7 +12656,7 @@ func TestValidateSecret(t *testing.T) {
 func TestValidateDockerConfigSecret(t *testing.T) {
 	validDockerSecret := func() core.Secret {
 		return core.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Type:       core.SecretTypeDockercfg,
 			Data: map[string][]byte{
 				core.DockerConfigKey: []byte(`{"https://index.docker.io/v1/": {"auth": "Y2x1ZWRyb29sZXIwMDAxOnBhc3N3b3Jk","email": "fake@example.com"}}`),
@@ -12566,7 +12665,7 @@ func TestValidateDockerConfigSecret(t *testing.T) {
 	}
 	validDockerSecret2 := func() core.Secret {
 		return core.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "foo", Tenant: "lol"},
 			Type:       core.SecretTypeDockerConfigJson,
 			Data: map[string][]byte{
 				core.DockerConfigJsonKey: []byte(`{"auths":{"https://index.docker.io/v1/": {"auth": "Y2x1ZWRyb29sZXIwMDAxOnBhc3N3b3Jk","email": "fake@example.com"}}}`),
@@ -12618,7 +12717,7 @@ func TestValidateDockerConfigSecret(t *testing.T) {
 func TestValidateBasicAuthSecret(t *testing.T) {
 	validBasicAuthSecret := func() core.Secret {
 		return core.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "foo", Tenant: "lol"},
 			Type:       core.SecretTypeBasicAuth,
 			Data: map[string][]byte{
 				core.BasicAuthUsernameKey: []byte("username"),
@@ -12656,7 +12755,7 @@ func TestValidateBasicAuthSecret(t *testing.T) {
 func TestValidateSSHAuthSecret(t *testing.T) {
 	validSSHAuthSecret := func() core.Secret {
 		return core.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "foo", Tenant: "lol"},
 			Type:       core.SecretTypeSSHAuth,
 			Data: map[string][]byte{
 				core.SSHAuthPrivateKey: []byte("foo-bar-baz"),
@@ -12690,7 +12789,7 @@ func TestValidateSSHAuthSecret(t *testing.T) {
 func TestValidateEndpoints(t *testing.T) {
 	successCases := map[string]core.Endpoints{
 		"simple endpoint": {
-			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 			Subsets: []core.EndpointSubset{
 				{
 					Addresses: []core.EndpointAddress{{IP: "10.10.1.1"}, {IP: "10.10.2.2"}},
@@ -12703,10 +12802,10 @@ func TestValidateEndpoints(t *testing.T) {
 			},
 		},
 		"empty subsets": {
-			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 		},
 		"no name required for singleton port": {
-			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 			Subsets: []core.EndpointSubset{
 				{
 					Addresses: []core.EndpointAddress{{IP: "10.10.1.1"}},
@@ -12715,7 +12814,7 @@ func TestValidateEndpoints(t *testing.T) {
 			},
 		},
 		"empty ports": {
-			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 			Subsets: []core.EndpointSubset{
 				{
 					Addresses: []core.EndpointAddress{{IP: "10.10.3.3"}},
@@ -12735,27 +12834,36 @@ func TestValidateEndpoints(t *testing.T) {
 		errorType   field.ErrorType
 		errorDetail string
 	}{
+		"missing tenant": {
+			endpoints: core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"}},
+			errorType: "FieldValueRequired",
+		},
 		"missing namespace": {
-			endpoints: core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "mysvc"}},
+			endpoints: core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Tenant: "tenant"}},
 			errorType: "FieldValueRequired",
 		},
 		"missing name": {
-			endpoints: core.Endpoints{ObjectMeta: metav1.ObjectMeta{Namespace: "namespace"}},
+			endpoints: core.Endpoints{ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Tenant: "tenant"}},
 			errorType: "FieldValueRequired",
 		},
+		"invalid tenant": {
+			endpoints:   core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "no@#invalid.;chars\"allowed"}},
+			errorType:   "FieldValueInvalid",
+			errorDetail: dnsLabelErrMsg,
+		},
 		"invalid namespace": {
-			endpoints:   core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "no@#invalid.;chars\"allowed"}},
+			endpoints:   core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "no@#invalid.;chars\"allowed", Tenant: "tenant"}},
 			errorType:   "FieldValueInvalid",
 			errorDetail: dnsLabelErrMsg,
 		},
 		"invalid name": {
-			endpoints:   core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "-_Invliad^&Characters", Namespace: "namespace"}},
+			endpoints:   core.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "-_Invliad^&Characters", Namespace: "namespace", Tenant: "tenant"}},
 			errorType:   "FieldValueInvalid",
 			errorDetail: dnsSubdomainLabelErrMsg,
 		},
 		"empty addresses": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Ports: []core.EndpointPort{{Name: "a", Port: 93, Protocol: "TCP"}},
@@ -12766,7 +12874,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"invalid IP": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "[2001:0db8:85a3:0042:1000:8a2e:0370:7334]"}},
@@ -12779,7 +12887,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Multiple ports, one without name": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "10.10.1.1"}},
@@ -12791,7 +12899,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Invalid port number": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "10.10.1.1"}},
@@ -12804,7 +12912,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Invalid protocol": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "10.10.1.1"}},
@@ -12816,7 +12924,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Address missing IP": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{}},
@@ -12829,7 +12937,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Port missing number": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "10.10.1.1"}},
@@ -12842,7 +12950,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Port missing protocol": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "10.10.1.1"}},
@@ -12854,7 +12962,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Address is loopback": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "127.0.0.1"}},
@@ -12867,7 +12975,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Address is link-local": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "169.254.169.254"}},
@@ -12880,7 +12988,7 @@ func TestValidateEndpoints(t *testing.T) {
 		},
 		"Address is link-local multicast": {
 			endpoints: core.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: "mysvc", Namespace: "namespace", Tenant: "tenant"},
 				Subsets: []core.EndpointSubset{
 					{
 						Addresses: []core.EndpointAddress{{IP: "224.0.0.1"}},
@@ -12903,7 +13011,7 @@ func TestValidateEndpoints(t *testing.T) {
 func TestValidateTLSSecret(t *testing.T) {
 	successCases := map[string]core.Secret{
 		"empty certificate chain": {
-			ObjectMeta: metav1.ObjectMeta{Name: "tls-cert", Namespace: "namespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: "tls-cert", Namespace: "namespace", Tenant: "tenant"},
 			Data: map[string][]byte{
 				core.TLSCertKey:       []byte("public key"),
 				core.TLSPrivateKeyKey: []byte("private key"),
@@ -13085,11 +13193,12 @@ func TestValidPodLogOptions(t *testing.T) {
 }
 
 func TestValidateConfigMap(t *testing.T) {
-	newConfigMap := func(name, namespace string, data map[string]string, binaryData map[string][]byte) core.ConfigMap {
+	newConfigMap := func(name, namespace, tenant string, data map[string]string, binaryData map[string][]byte) core.ConfigMap {
 		return core.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Data:       data,
 			BinaryData: binaryData,
@@ -13097,27 +13206,29 @@ func TestValidateConfigMap(t *testing.T) {
 	}
 
 	var (
-		validConfigMap = newConfigMap("validname", "validns", map[string]string{"key": "value"}, map[string][]byte{"bin": []byte("value")})
-		maxKeyLength   = newConfigMap("validname", "validns", map[string]string{strings.Repeat("a", 253): "value"}, nil)
+		validConfigMap = newConfigMap("validname", "validns", testTenant, map[string]string{"key": "value"}, map[string][]byte{"bin": []byte("value")})
+		maxKeyLength   = newConfigMap("validname", "validns", testTenant, map[string]string{strings.Repeat("a", 253): "value"}, nil)
 
-		emptyName               = newConfigMap("", "validns", nil, nil)
-		invalidName             = newConfigMap("NoUppercaseOrSpecialCharsLike=Equals", "validns", nil, nil)
-		emptyNs                 = newConfigMap("validname", "", nil, nil)
-		invalidNs               = newConfigMap("validname", "NoUppercaseOrSpecialCharsLike=Equals", nil, nil)
-		invalidKey              = newConfigMap("validname", "validns", map[string]string{"a*b": "value"}, nil)
-		leadingDotKey           = newConfigMap("validname", "validns", map[string]string{".ab": "value"}, nil)
-		dotKey                  = newConfigMap("validname", "validns", map[string]string{".": "value"}, nil)
-		doubleDotKey            = newConfigMap("validname", "validns", map[string]string{"..": "value"}, nil)
-		overMaxKeyLength        = newConfigMap("validname", "validns", map[string]string{strings.Repeat("a", 254): "value"}, nil)
-		overMaxSize             = newConfigMap("validname", "validns", map[string]string{"key": strings.Repeat("a", v1.MaxSecretSize+1)}, nil)
-		duplicatedKey           = newConfigMap("validname", "validns", map[string]string{"key": "value1"}, map[string][]byte{"key": []byte("value2")})
-		binDataInvalidKey       = newConfigMap("validname", "validns", nil, map[string][]byte{"a*b": []byte("value")})
-		binDataLeadingDotKey    = newConfigMap("validname", "validns", nil, map[string][]byte{".ab": []byte("value")})
-		binDataDotKey           = newConfigMap("validname", "validns", nil, map[string][]byte{".": []byte("value")})
-		binDataDoubleDotKey     = newConfigMap("validname", "validns", nil, map[string][]byte{"..": []byte("value")})
-		binDataOverMaxKeyLength = newConfigMap("validname", "validns", nil, map[string][]byte{strings.Repeat("a", 254): []byte("value")})
-		binDataOverMaxSize      = newConfigMap("validname", "validns", nil, map[string][]byte{"bin": bytes.Repeat([]byte("a"), v1.MaxSecretSize+1)})
-		binNonUtf8Value         = newConfigMap("validname", "validns", nil, map[string][]byte{"key": {0, 0xFE, 0, 0xFF}})
+		emptyName               = newConfigMap("", "validns", testTenant, nil, nil)
+		invalidName             = newConfigMap("NoUppercaseOrSpecialCharsLike=Equals", "validns", testTenant, nil, nil)
+		emptyNs                 = newConfigMap("validname", "", testTenant, nil, nil)
+		emptyTenant             = newConfigMap("validname", "validns", "", nil, nil)
+		invalidNs               = newConfigMap("validname", "NoUppercaseOrSpecialCharsLike=Equals", testTenant, nil, nil)
+		invalidTenant           = newConfigMap("validname", "validns", "NoUppercaseOrSpecialCharsLike=Equals", nil, nil)
+		invalidKey              = newConfigMap("validname", "validns", testTenant, map[string]string{"a*b": "value"}, nil)
+		leadingDotKey           = newConfigMap("validname", "validns", testTenant, map[string]string{".ab": "value"}, nil)
+		dotKey                  = newConfigMap("validname", "validns", testTenant, map[string]string{".": "value"}, nil)
+		doubleDotKey            = newConfigMap("validname", "validns", testTenant, map[string]string{"..": "value"}, nil)
+		overMaxKeyLength        = newConfigMap("validname", "validns", testTenant, map[string]string{strings.Repeat("a", 254): "value"}, nil)
+		overMaxSize             = newConfigMap("validname", "validns", testTenant, map[string]string{"key": strings.Repeat("a", v1.MaxSecretSize+1)}, nil)
+		duplicatedKey           = newConfigMap("validname", "validns", testTenant, map[string]string{"key": "value1"}, map[string][]byte{"key": []byte("value2")})
+		binDataInvalidKey       = newConfigMap("validname", "validns", testTenant, nil, map[string][]byte{"a*b": []byte("value")})
+		binDataLeadingDotKey    = newConfigMap("validname", "validns", testTenant, nil, map[string][]byte{".ab": []byte("value")})
+		binDataDotKey           = newConfigMap("validname", "validns", testTenant, nil, map[string][]byte{".": []byte("value")})
+		binDataDoubleDotKey     = newConfigMap("validname", "validns", testTenant, nil, map[string][]byte{"..": []byte("value")})
+		binDataOverMaxKeyLength = newConfigMap("validname", "validns", testTenant, nil, map[string][]byte{strings.Repeat("a", 254): []byte("value")})
+		binDataOverMaxSize      = newConfigMap("validname", "validns", testTenant, nil, map[string][]byte{"bin": bytes.Repeat([]byte("a"), v1.MaxSecretSize+1)})
+		binNonUtf8Value         = newConfigMap("validname", "validns", testTenant, nil, map[string][]byte{"key": {0, 0xFE, 0, 0xFF}})
 	)
 
 	tests := map[string]struct {
@@ -13131,7 +13242,9 @@ func TestValidateConfigMap(t *testing.T) {
 		"invalid name":                    {invalidName, false},
 		"invalid key":                     {invalidKey, false},
 		"empty namespace":                 {emptyNs, false},
+		"empty tenant":                    {emptyTenant, false},
 		"invalid namespace":               {invalidNs, false},
+		"invalid Tenant":                  {invalidTenant, false},
 		"dot key":                         {dotKey, false},
 		"double dot key":                  {doubleDotKey, false},
 		"over max key length":             {overMaxKeyLength, false},
@@ -13158,11 +13271,12 @@ func TestValidateConfigMap(t *testing.T) {
 }
 
 func TestValidateConfigMapUpdate(t *testing.T) {
-	newConfigMap := func(version, name, namespace string, data map[string]string) core.ConfigMap {
+	newConfigMap := func(version, name, namespace, tenant string, data map[string]string) core.ConfigMap {
 		return core.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            name,
 				Namespace:       namespace,
+				Tenant:          tenant,
 				ResourceVersion: version,
 			},
 			Data: data,
@@ -13170,8 +13284,8 @@ func TestValidateConfigMapUpdate(t *testing.T) {
 	}
 
 	var (
-		validConfigMap = newConfigMap("1", "validname", "validns", map[string]string{"key": "value"})
-		noVersion      = newConfigMap("", "validname", "validns", map[string]string{"key": "value"})
+		validConfigMap = newConfigMap("1", "validname", "validns", testTenant, map[string]string{"key": "value"})
+		noVersion      = newConfigMap("", "validname", "validns", testTenant, map[string]string{"key": "value"})
 	)
 
 	cases := []struct {
@@ -13209,6 +13323,7 @@ func TestValidateHasLabel(t *testing.T) {
 	successCase := metav1.ObjectMeta{
 		Name:      "123",
 		Namespace: "ns",
+		Tenant:    "te",
 		Labels: map[string]string{
 			"other": "blah",
 			"foo":   "bar",
@@ -13221,6 +13336,7 @@ func TestValidateHasLabel(t *testing.T) {
 	missingCase := metav1.ObjectMeta{
 		Name:      "123",
 		Namespace: "ns",
+		Tenant:    "te",
 		Labels: map[string]string{
 			"other": "blah",
 		},
@@ -13232,6 +13348,7 @@ func TestValidateHasLabel(t *testing.T) {
 	wrongValueCase := metav1.ObjectMeta{
 		Name:      "123",
 		Namespace: "ns",
+		Tenant:    "te",
 		Labels: map[string]string{
 			"other": "blah",
 			"foo":   "notbar",
@@ -13351,6 +13468,7 @@ func newNodeNameEndpoint(nodeName string) *core.Endpoints {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          "bar",
 			ResourceVersion: "1",
 		},
 		Subsets: []core.EndpointSubset{

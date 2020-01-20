@@ -24,7 +24,7 @@ import (
 
 // ValidateRuntimeClass validates the RuntimeClass
 func ValidateRuntimeClass(rc *node.RuntimeClass) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&rc.ObjectMeta, false, apivalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&rc.ObjectMeta, false, false, apivalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
 
 	for _, msg := range apivalidation.NameIsDNSLabel(rc.Handler, false) {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("handler"), rc.Handler, msg))

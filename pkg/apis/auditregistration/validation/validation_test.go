@@ -27,6 +27,8 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 )
 
+var testTenant = "test-te"
+
 func TestValidateAuditSink(t *testing.T) {
 	testQPS := int64(10)
 	testURL := "http://localhost"
@@ -39,7 +41,8 @@ func TestValidateAuditSink(t *testing.T) {
 			name: "should pass full config",
 			conf: auditregistration.AuditSink{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "myconf",
+					Name:   "myconf",
+					Tenant: testTenant,
 				},
 				Spec: auditregistration.AuditSinkSpec{
 					Policy: auditregistration.Policy{
@@ -64,7 +67,8 @@ func TestValidateAuditSink(t *testing.T) {
 			name: "should fail no policy",
 			conf: auditregistration.AuditSink{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "myconf",
+					Name:   "myconf",
+					Tenant: testTenant,
 				},
 				Spec: auditregistration.AuditSinkSpec{
 					Webhook: auditregistration.Webhook{
@@ -80,7 +84,8 @@ func TestValidateAuditSink(t *testing.T) {
 			name: "should fail no webhook",
 			conf: auditregistration.AuditSink{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "myconf",
+					Name:   "myconf",
+					Tenant: testTenant,
 				},
 				Spec: auditregistration.AuditSinkSpec{
 					Policy: auditregistration.Policy{

@@ -27,12 +27,15 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 )
 
+var testTenant = "test-te"
+
 func TestValidateScale(t *testing.T) {
 	successCases := []autoscaling.Scale{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "frontend",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.ScaleSpec{
 				Replicas: 1,
@@ -42,6 +45,7 @@ func TestValidateScale(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "frontend",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.ScaleSpec{
 				Replicas: 10,
@@ -51,6 +55,7 @@ func TestValidateScale(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "frontend",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.ScaleSpec{
 				Replicas: 0,
@@ -73,6 +78,7 @@ func TestValidateScale(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "frontend",
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 				},
 				Spec: autoscaling.ScaleSpec{
 					Replicas: -1,
@@ -101,6 +107,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myautoscaler",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -127,6 +134,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myautoscaler",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -141,6 +149,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myautoscaler",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -167,6 +176,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myautoscaler",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -195,6 +205,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myautoscaler",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -227,6 +238,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myautoscaler",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -256,6 +268,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myautoscaler",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: autoscaling.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: autoscaling.CrossVersionObjectReference{
@@ -294,7 +307,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 	}{
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -317,7 +330,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Kind: "..", Name: "myrc"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -340,7 +353,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -363,7 +376,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Kind: "ReplicationController", Name: ".."},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -389,6 +402,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "myautoscaler",
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 				},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{},
@@ -403,6 +417,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "myautoscaler",
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 				},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{},
@@ -417,6 +432,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "myautoscaler",
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 				},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
@@ -441,7 +457,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -463,7 +479,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -486,7 +502,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -508,7 +524,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -531,7 +547,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -555,7 +571,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -583,7 +599,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -611,7 +627,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -637,7 +653,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -662,7 +678,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -689,7 +705,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -714,7 +730,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -740,7 +756,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -766,7 +782,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -793,7 +809,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -819,7 +835,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -844,7 +860,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -866,7 +882,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -880,7 +896,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -896,7 +912,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 		},
 		{
 			horizontalPodAutoscaler: autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),
@@ -984,7 +1000,7 @@ func TestValidateHorizontalPodAutoscaler(t *testing.T) {
 			spec.Type = incorrectType
 
 			errs := ValidateHorizontalPodAutoscaler(&autoscaling.HorizontalPodAutoscaler{
-				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "myautoscaler", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					ScaleTargetRef: autoscaling.CrossVersionObjectReference{Name: "myrc", Kind: "ReplicationController"},
 					MinReplicas:    utilpointer.Int32Ptr(1),

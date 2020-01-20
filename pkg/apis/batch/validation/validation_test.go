@@ -29,6 +29,8 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 )
 
+var testTenant = "test-te"
+
 func getValidManualSelector() *metav1.LabelSelector {
 	return &metav1.LabelSelector{
 		MatchLabels: map[string]string{"a": "b"},
@@ -78,6 +80,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -90,6 +93,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -110,6 +114,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -122,6 +127,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -134,6 +140,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -146,6 +153,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -156,6 +164,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -177,6 +186,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -198,6 +208,7 @@ func TestValidateJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "myjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.JobSpec{
@@ -225,6 +236,7 @@ func TestValidateJob(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "myjob",
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 					UID:       types.UID("1a2b3c"),
 				},
 				Spec: batch.JobSpec{
@@ -261,7 +273,7 @@ func TestValidateJobUpdateStatus(t *testing.T) {
 	successCases := []testcase{
 		{
 			old: batch.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Status: batch.JobStatus{
 					Active:    1,
 					Succeeded: 2,
@@ -269,7 +281,7 @@ func TestValidateJobUpdateStatus(t *testing.T) {
 				},
 			},
 			update: batch.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Status: batch.JobStatus{
 					Active:    1,
 					Succeeded: 1,
@@ -338,6 +350,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -354,6 +367,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -389,6 +403,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -405,6 +420,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -421,6 +437,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -438,6 +455,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -455,6 +473,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -472,6 +491,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -487,6 +507,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -504,6 +525,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -522,6 +544,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -539,6 +562,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -556,6 +580,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "10000000002000000000300000000040000000005000000000123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -572,6 +597,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -589,6 +615,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{
@@ -613,6 +640,7 @@ func TestValidateCronJob(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mycronjob",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				UID:       types.UID("1a2b3c"),
 			},
 			Spec: batch.CronJobSpec{

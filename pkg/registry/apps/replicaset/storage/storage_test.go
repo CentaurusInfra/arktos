@@ -322,6 +322,7 @@ func TestScaleUpdate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    tenant,
 		},
 		Spec: autoscaling.ScaleSpec{
 			Replicas: int32(replicas),

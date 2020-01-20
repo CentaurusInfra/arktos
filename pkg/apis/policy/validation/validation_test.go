@@ -127,6 +127,7 @@ func TestValidatePodSecurityPolicy(t *testing.T) {
 		return &policy.PodSecurityPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "foo",
+				Tenant:      "bar",
 				Annotations: map[string]string{},
 			},
 			Spec: policy.PodSecurityPolicySpec{
@@ -631,7 +632,7 @@ func TestValidatePodSecurityPolicy(t *testing.T) {
 func TestValidatePSPVolumes(t *testing.T) {
 	validPSP := func() *policy.PodSecurityPolicy {
 		return &policy.PodSecurityPolicy{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: "bar"},
 			Spec: policy.PodSecurityPolicySpec{
 				SELinux: policy.SELinuxStrategyOptions{
 					Rule: policy.SELinuxStrategyRunAsAny,

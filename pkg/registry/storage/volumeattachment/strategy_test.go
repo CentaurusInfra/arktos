@@ -32,10 +32,13 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 )
 
+var testTenant = "test-te"
+
 func getValidVolumeAttachment(name string) *storage.VolumeAttachment {
 	return &storage.VolumeAttachment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:   name,
+			Tenant: testTenant,
 		},
 		Spec: storage.VolumeAttachmentSpec{
 			Attacher: "valid-attacher",
@@ -292,7 +295,8 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 			"invalid PV name",
 			&storage.VolumeAttachment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo",
+					Name:   "foo",
+					Tenant: testTenant,
 				},
 				Spec: storage.VolumeAttachmentSpec{
 					Attacher: "valid-attacher",
@@ -309,7 +313,8 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 			"invalid attacher name",
 			&storage.VolumeAttachment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo",
+					Name:   "foo",
+					Tenant: testTenant,
 				},
 				Spec: storage.VolumeAttachmentSpec{
 					Attacher: "invalid!@#$%^&*()",
@@ -326,7 +331,8 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 			"invalid volume attachment",
 			&storage.VolumeAttachment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo",
+					Name:   "foo",
+					Tenant: testTenant,
 				},
 				Spec: storage.VolumeAttachmentSpec{
 					Attacher: "invalid!@#$%^&*()",

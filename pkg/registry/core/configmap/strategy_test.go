@@ -24,6 +24,8 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
+var testTenant = "test-te"
+
 func TestConfigMapStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !Strategy.NamespaceScoped() {
@@ -40,6 +42,7 @@ func TestConfigMapStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "valid-config-data",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 		},
 		Data: map[string]string{
 			"foo": "bar",
@@ -57,6 +60,7 @@ func TestConfigMapStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "valid-config-data-2",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          testTenant,
 			ResourceVersion: "4",
 		},
 		Data: map[string]string{

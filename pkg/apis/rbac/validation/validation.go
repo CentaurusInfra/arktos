@@ -35,7 +35,7 @@ func ValidateRBACName(name string, prefix bool) []string {
 
 func ValidateRole(role *rbac.Role) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validation.ValidateObjectMeta(&role.ObjectMeta, true, ValidateRBACName, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, validation.ValidateObjectMeta(&role.ObjectMeta, true, true, ValidateRBACName, field.NewPath("metadata"))...)
 
 	for i, rule := range role.Rules {
 		if err := ValidatePolicyRule(rule, true, field.NewPath("rules").Index(i)); err != nil {
@@ -57,7 +57,7 @@ func ValidateRoleUpdate(role *rbac.Role, oldRole *rbac.Role) field.ErrorList {
 
 func ValidateClusterRole(role *rbac.ClusterRole) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validation.ValidateObjectMeta(&role.ObjectMeta, false, ValidateRBACName, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, validation.ValidateObjectMeta(&role.ObjectMeta, false, false, ValidateRBACName, field.NewPath("metadata"))...)
 
 	for i, rule := range role.Rules {
 		if err := ValidatePolicyRule(rule, false, field.NewPath("rules").Index(i)); err != nil {
@@ -121,7 +121,7 @@ func ValidatePolicyRule(rule rbac.PolicyRule, isNamespaced bool, fldPath *field.
 
 func ValidateRoleBinding(roleBinding *rbac.RoleBinding) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validation.ValidateObjectMeta(&roleBinding.ObjectMeta, true, ValidateRBACName, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, validation.ValidateObjectMeta(&roleBinding.ObjectMeta, true, true, ValidateRBACName, field.NewPath("metadata"))...)
 
 	// TODO allow multiple API groups.  For now, restrict to one, but I can envision other experimental roles in other groups taking
 	// advantage of the binding infrastructure
@@ -165,7 +165,7 @@ func ValidateRoleBindingUpdate(roleBinding *rbac.RoleBinding, oldRoleBinding *rb
 
 func ValidateClusterRoleBinding(roleBinding *rbac.ClusterRoleBinding) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validation.ValidateObjectMeta(&roleBinding.ObjectMeta, false, ValidateRBACName, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, validation.ValidateObjectMeta(&roleBinding.ObjectMeta, false, false, ValidateRBACName, field.NewPath("metadata"))...)
 
 	// TODO allow multiple API groups.  For now, restrict to one, but I can envision other experimental roles in other groups taking
 	// advantage of the binding infrastructure

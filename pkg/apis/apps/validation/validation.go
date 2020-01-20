@@ -135,7 +135,7 @@ func ValidateStatefulSetSpec(spec *apps.StatefulSetSpec, fldPath *field.Path) fi
 
 // ValidateStatefulSet validates a StatefulSet.
 func ValidateStatefulSet(statefulSet *apps.StatefulSet) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&statefulSet.ObjectMeta, true, ValidateStatefulSetName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&statefulSet.ObjectMeta, true, true, ValidateStatefulSetName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateStatefulSetSpec(&statefulSet.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
@@ -220,7 +220,7 @@ var ValidateControllerRevisionName = apimachineryvalidation.NameIsDNSSubdomain
 func ValidateControllerRevision(revision *apps.ControllerRevision) field.ErrorList {
 	errs := field.ErrorList{}
 
-	errs = append(errs, apivalidation.ValidateObjectMeta(&revision.ObjectMeta, true, ValidateControllerRevisionName, field.NewPath("metadata"))...)
+	errs = append(errs, apivalidation.ValidateObjectMeta(&revision.ObjectMeta, true, true, ValidateControllerRevisionName, field.NewPath("metadata"))...)
 	if revision.Data == nil {
 		errs = append(errs, field.Required(field.NewPath("data"), "data is mandatory"))
 	}
@@ -242,7 +242,7 @@ func ValidateControllerRevisionUpdate(newHistory, oldHistory *apps.ControllerRev
 
 // ValidateDaemonSet tests if required fields in the DaemonSet are set.
 func ValidateDaemonSet(ds *apps.DaemonSet) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&ds.ObjectMeta, true, ValidateDaemonSetName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&ds.ObjectMeta, true, true, ValidateDaemonSetName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateDaemonSetSpec(&ds.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
@@ -551,7 +551,7 @@ func ValidateDeploymentStatusUpdate(update, old *apps.Deployment) field.ErrorLis
 }
 
 func ValidateDeployment(obj *apps.Deployment) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&obj.ObjectMeta, true, ValidateDeploymentName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&obj.ObjectMeta, true, true, ValidateDeploymentName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateDeploymentSpec(&obj.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
@@ -573,7 +573,7 @@ var ValidateReplicaSetName = apimachineryvalidation.NameIsDNSSubdomain
 
 // ValidateReplicaSet tests if required fields in the ReplicaSet are set.
 func ValidateReplicaSet(rs *apps.ReplicaSet) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&rs.ObjectMeta, true, ValidateReplicaSetName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&rs.ObjectMeta, true, true, ValidateReplicaSetName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateReplicaSetSpec(&rs.Spec, field.NewPath("spec"))...)
 	return allErrs
 }

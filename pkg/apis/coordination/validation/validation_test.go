@@ -29,10 +29,11 @@ func TestValidateLease(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "invalidName++",
 			Namespace: "==invalid_Namespace==",
+			Tenant:    "==invalid_Tenant==",
 		},
 	}
 	errs := ValidateLease(lease)
-	if len(errs) != 2 {
+	if len(errs) != 3 {
 		t.Errorf("unexpected list of errors: %#v", errs.ToAggregate().Error())
 	}
 }
@@ -60,6 +61,7 @@ func TestValidateLeaseSpecUpdate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "holder",
 			Namespace: "holder-namespace",
+			Tenant:    "holder-tenant",
 		},
 		Spec: coordination.LeaseSpec{
 			HolderIdentity:       &holder,
@@ -74,6 +76,7 @@ func TestValidateLeaseSpecUpdate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "holder",
 			Namespace: "holder-namespace",
+			Tenant:    "holder-tenant",
 		},
 		Spec: coordination.LeaseSpec{
 			HolderIdentity:       &oldHolder,

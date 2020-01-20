@@ -40,7 +40,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 
 	successCases := []networking.NetworkPolicy{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -49,7 +49,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -63,7 +63,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -97,7 +97,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -116,7 +116,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -135,7 +135,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -157,7 +157,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -188,7 +188,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -208,7 +208,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -229,7 +229,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -250,7 +250,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -296,7 +296,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 	invalidSelector := map[string]string{"NoUppercaseOrSpecialCharsLike=Equals": "b"}
 	errorCases := map[string]networking.NetworkPolicy{
 		"namespaceSelector and ipBlock": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -319,7 +319,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"podSelector and ipBlock": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -342,7 +342,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"missing from and to type": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -360,7 +360,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid spec.podSelector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: invalidSelector,
@@ -379,7 +379,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid ingress.ports.protocol": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Ingress: []networking.NetworkPolicyIngressRule{
@@ -395,7 +395,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid ingress.ports.port (int)": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Ingress: []networking.NetworkPolicyIngressRule{
@@ -411,7 +411,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid ingress.ports.port (str)": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Ingress: []networking.NetworkPolicyIngressRule{
@@ -427,7 +427,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid ingress.from.podSelector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Ingress: []networking.NetworkPolicyIngressRule{
@@ -444,7 +444,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid egress.to.podSelector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Egress: []networking.NetworkPolicyEgressRule{
@@ -461,7 +461,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid egress.ports.protocol": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Egress: []networking.NetworkPolicyEgressRule{
@@ -477,7 +477,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid egress.ports.port (int)": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Egress: []networking.NetworkPolicyEgressRule{
@@ -493,7 +493,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid egress.ports.port (str)": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Egress: []networking.NetworkPolicyEgressRule{
@@ -509,7 +509,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid ingress.from.namespaceSelector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Ingress: []networking.NetworkPolicyIngressRule{
@@ -526,7 +526,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"missing cidr field": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{},
 				Ingress: []networking.NetworkPolicyIngressRule{
@@ -543,7 +543,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid cidr format": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -563,7 +563,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"except field is an empty string": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -583,7 +583,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"except IP is outside of CIDR range": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -603,7 +603,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"invalid policyTypes": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -624,7 +624,7 @@ func TestValidateNetworkPolicy(t *testing.T) {
 			},
 		},
 		"too many policyTypes": {
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 			Spec: networking.NetworkPolicySpec{
 				PodSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"a": "b"},
@@ -662,7 +662,7 @@ func TestValidateNetworkPolicyUpdate(t *testing.T) {
 	successCases := map[string]npUpdateTest{
 		"no change": {
 			old: networking.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 				Spec: networking.NetworkPolicySpec{
 					PodSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"a": "b"},
@@ -671,7 +671,7 @@ func TestValidateNetworkPolicyUpdate(t *testing.T) {
 				},
 			},
 			update: networking.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 				Spec: networking.NetworkPolicySpec{
 					PodSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"a": "b"},
@@ -682,14 +682,14 @@ func TestValidateNetworkPolicyUpdate(t *testing.T) {
 		},
 		"change spec": {
 			old: networking.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 				Spec: networking.NetworkPolicySpec{
 					PodSelector: metav1.LabelSelector{},
 					Ingress:     []networking.NetworkPolicyIngressRule{},
 				},
 			},
 			update: networking.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 				Spec: networking.NetworkPolicySpec{
 					PodSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"a": "b"},
@@ -711,14 +711,14 @@ func TestValidateNetworkPolicyUpdate(t *testing.T) {
 	errorCases := map[string]npUpdateTest{
 		"change name": {
 			old: networking.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: "lol"},
 				Spec: networking.NetworkPolicySpec{
 					PodSelector: metav1.LabelSelector{},
 					Ingress:     []networking.NetworkPolicyIngressRule{},
 				},
 			},
 			update: networking.NetworkPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "bar", Tenant: "lol"},
 				Spec: networking.NetworkPolicySpec{
 					PodSelector: metav1.LabelSelector{},
 					Ingress:     []networking.NetworkPolicyIngressRule{},
@@ -747,6 +747,7 @@ func TestValidateIngress(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    "bar",
 			},
 			Spec: networking.IngressSpec{
 				Backend: &networking.IngressBackend{
@@ -851,6 +852,7 @@ func TestValidateIngressTLS(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    "bar",
 			},
 			Spec: networking.IngressSpec{
 				Backend: &networking.IngressBackend{
@@ -921,6 +923,7 @@ func TestValidateIngressStatusUpdate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "foo",
 				Namespace:       metav1.NamespaceDefault,
+				Tenant:          "test-te",
 				ResourceVersion: "9",
 			},
 			Spec: networking.IngressSpec{

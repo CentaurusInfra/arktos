@@ -55,7 +55,7 @@ func ValidatePodPresetSpec(spec *settings.PodPresetSpec, fldPath *field.Path) fi
 
 // ValidatePodPreset validates a PodPreset.
 func ValidatePodPreset(pip *settings.PodPreset) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&pip.ObjectMeta, true, ValidatePodPresetName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&pip.ObjectMeta, true, true, ValidatePodPresetName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidatePodPresetSpec(&pip.Spec, field.NewPath("spec"))...)
 	return allErrs
 }

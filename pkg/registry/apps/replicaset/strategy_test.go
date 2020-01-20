@@ -33,6 +33,7 @@ const (
 	fakeImage      = "fakeimage"
 	replicasetName = "test-replicaset"
 	namespace      = "test-namespace"
+	tenant         = "test-tenant"
 )
 
 func TestReplicaSetStrategy(t *testing.T) {
@@ -61,7 +62,7 @@ func TestReplicaSetStrategy(t *testing.T) {
 		},
 	}
 	rs := &apps.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: tenant},
 		Spec: apps.ReplicaSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: validSelector},
 			Template: validPodTemplate.Template,
@@ -122,7 +123,7 @@ func TestReplicaSetStatusStrategy(t *testing.T) {
 		},
 	}
 	oldRS := &apps.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "10", Tenant: tenant},
 		Spec: apps.ReplicaSetSpec{
 			Replicas: 3,
 			Selector: &metav1.LabelSelector{MatchLabels: validSelector},
@@ -134,7 +135,7 @@ func TestReplicaSetStatusStrategy(t *testing.T) {
 		},
 	}
 	newRS := &apps.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "9"},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "9", Tenant: tenant},
 		Spec: apps.ReplicaSetSpec{
 			Replicas: 1,
 			Selector: &metav1.LabelSelector{MatchLabels: validSelector},
@@ -214,6 +215,7 @@ func newReplicaSetWithSelectorLabels(selectorLabels map[string]string) *apps.Rep
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            replicasetName,
 			Namespace:       namespace,
+			Tenant:          tenant,
 			ResourceVersion: "1",
 		},
 		Spec: apps.ReplicaSetSpec{

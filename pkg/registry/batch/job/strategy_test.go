@@ -33,6 +33,8 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 )
 
+var testTenant = "test-te"
+
 func newBool(a bool) *bool {
 	return &a
 }
@@ -71,6 +73,7 @@ func TestJobStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myjob",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 		},
 		Spec: batch.JobSpec{
 			Selector:                validSelector,
@@ -178,6 +181,7 @@ func TestJobStrategyWithGeneration(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myjob2",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 			UID:       theUID,
 		},
 		Spec: batch.JobSpec{
@@ -242,6 +246,7 @@ func TestJobStatusStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "myjob",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          testTenant,
 			ResourceVersion: "10",
 		},
 		Spec: batch.JobSpec{
@@ -257,6 +262,7 @@ func TestJobStatusStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "myjob",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          testTenant,
 			ResourceVersion: "9",
 		},
 		Spec: batch.JobSpec{

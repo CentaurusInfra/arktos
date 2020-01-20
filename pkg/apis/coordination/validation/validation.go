@@ -24,7 +24,7 @@ import (
 
 // ValidateLease validates a Lease.
 func ValidateLease(lease *coordination.Lease) field.ErrorList {
-	allErrs := validation.ValidateObjectMeta(&lease.ObjectMeta, true, validation.NameIsDNSSubdomain, field.NewPath("metadata"))
+	allErrs := validation.ValidateObjectMeta(&lease.ObjectMeta, true, true, validation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateLeaseSpec(&lease.Spec, field.NewPath("spec"))...)
 	return allErrs
 }

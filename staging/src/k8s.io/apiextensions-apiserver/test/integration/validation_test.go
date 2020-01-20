@@ -46,8 +46,8 @@ func TestForProperValidationErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ns := "not-the-default"
-	noxuResourceClient := newNamespacedCustomResourceClient(ns, dynamicClient, noxuDefinition)
+	te, ns := "not-the-default-te", "not-the-default-ns"
+	noxuResourceClient := newNamespacedCustomResourceClient(te, ns, dynamicClient, noxuDefinition)
 
 	tests := []struct {
 		name          string
@@ -57,7 +57,7 @@ func TestForProperValidationErrors(t *testing.T) {
 		{
 			name: "bad version",
 			instanceFn: func() *unstructured.Unstructured {
-				instance := fixtures.NewVersionedNoxuInstance(ns, "foo", "v2")
+				instance := fixtures.NewVersionedNoxuInstance(te, ns, "foo", "v2")
 				return instance
 			},
 			expectedError: "the API version in the data (mygroup.example.com/v2) does not match the expected API version (mygroup.example.com/v1beta1)",
@@ -65,7 +65,7 @@ func TestForProperValidationErrors(t *testing.T) {
 		{
 			name: "bad kind",
 			instanceFn: func() *unstructured.Unstructured {
-				instance := fixtures.NewNoxuInstance(ns, "foo")
+				instance := fixtures.NewNoxuInstance(te, ns, "foo")
 				instance.Object["kind"] = "SomethingElse"
 				return instance
 			},
@@ -234,9 +234,9 @@ func TestCustomResourceValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		ns := "not-the-default"
+		te, ns := "not-the-default-te", "not-the-default-ns"
 		for _, v := range noxuDefinition.Spec.Versions {
-			noxuResourceClient := newNamespacedCustomResourceVersionedClient(ns, dynamicClient, noxuDefinition, v.Name)
+			noxuResourceClient := newNamespacedCustomResourceVersionedClient(te, ns, dynamicClient, noxuDefinition, v.Name)
 			instanceToCreate := newNoxuValidationInstance(ns, "foo")
 			instanceToCreate.Object["apiVersion"] = fmt.Sprintf("%s/%s", noxuDefinition.Spec.Group, v.Name)
 			_, err = instantiateVersionedCustomResource(t, instanceToCreate, noxuResourceClient, noxuDefinition, v.Name)
@@ -265,9 +265,9 @@ func TestCustomResourceUpdateValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		ns := "not-the-default"
+		te, ns := "not-the-default-te", "not-the-default-ns"
 		for _, v := range noxuDefinition.Spec.Versions {
-			noxuResourceClient := newNamespacedCustomResourceVersionedClient(ns, dynamicClient, noxuDefinition, v.Name)
+			noxuResourceClient := newNamespacedCustomResourceVersionedClient(te, ns, dynamicClient, noxuDefinition, v.Name)
 			instanceToCreate := newNoxuValidationInstance(ns, "foo")
 			instanceToCreate.Object["apiVersion"] = fmt.Sprintf("%s/%s", noxuDefinition.Spec.Group, v.Name)
 			_, err = instantiateVersionedCustomResource(t, instanceToCreate, noxuResourceClient, noxuDefinition, v.Name)
@@ -318,7 +318,7 @@ func TestCustomResourceValidationErrors(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		ns := "not-the-default"
+		te, ns := "not-the-default-te", "not-the-default-ns"
 
 		tests := []struct {
 			name          string
@@ -369,7 +369,8 @@ func TestCustomResourceValidationErrors(t *testing.T) {
 						"apiVersion": "mygroup.example.com/v1beta1",
 						"kind":       "WishIHadChosenNoxu",
 						"metadata": map[string]interface{}{
-							"namespace": "not-the-default",
+							"tenant":    "not-the-default-te",
+							"namespace": "not-the-default-ns",
 							"name":      "foo",
 						},
 						"gamma": "bar",
@@ -383,7 +384,7 @@ func TestCustomResourceValidationErrors(t *testing.T) {
 
 		for _, tc := range tests {
 			for _, v := range noxuDefinition.Spec.Versions {
-				noxuResourceClient := newNamespacedCustomResourceVersionedClient(ns, dynamicClient, noxuDefinition, v.Name)
+				noxuResourceClient := newNamespacedCustomResourceVersionedClient(te, ns, dynamicClient, noxuDefinition, v.Name)
 				instanceToCreate := tc.instanceFn()
 				instanceToCreate.Object["apiVersion"] = fmt.Sprintf("%s/%s", noxuDefinition.Spec.Group, v.Name)
 				_, err := noxuResourceClient.Create(instanceToCreate, metav1.CreateOptions{})
@@ -428,8 +429,8 @@ func TestCRValidationOnCRDUpdate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ns := "not-the-default"
-			noxuResourceClient := newNamespacedCustomResourceVersionedClient(ns, dynamicClient, noxuDefinition, v.Name)
+			te, ns := "not-the-default-te", "not-the-default-ns"
+			noxuResourceClient := newNamespacedCustomResourceVersionedClient(te, ns, dynamicClient, noxuDefinition, v.Name)
 			instanceToCreate := newNoxuValidationInstance(ns, "foo")
 			instanceToCreate.Object["apiVersion"] = fmt.Sprintf("%s/%s", noxuDefinition.Spec.Group, v.Name)
 

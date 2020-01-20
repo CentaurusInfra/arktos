@@ -312,8 +312,8 @@ func ValidateImmutableAnnotation(newVal string, oldVal string, annotation string
 // been performed.
 // It doesn't return an error for rootscoped resources with namespace, because namespace should already be cleared before.
 // TODO: Remove calls to this method scattered in validations of specific resources, e.g., ValidatePodUpdate.
-func ValidateObjectMeta(meta *metav1.ObjectMeta, requiresNamespace bool, nameFn ValidateNameFunc, fldPath *field.Path) field.ErrorList {
-	allErrs := apimachineryvalidation.ValidateObjectMeta(meta, requiresNamespace, apimachineryvalidation.ValidateNameFunc(nameFn), fldPath)
+func ValidateObjectMeta(meta *metav1.ObjectMeta, requiresTenant bool, requiresNamespace bool, nameFn ValidateNameFunc, fldPath *field.Path) field.ErrorList {
+	allErrs := apimachineryvalidation.ValidateObjectMeta(meta, requiresTenant, requiresNamespace, apimachineryvalidation.ValidateNameFunc(nameFn), fldPath)
 	// run additional checks for the finalizer name
 	for i := range meta.Finalizers {
 		allErrs = append(allErrs, validateKubeFinalizerName(string(meta.Finalizers[i]), fldPath.Child("finalizers").Index(i))...)
@@ -1829,7 +1829,7 @@ func ValidatePersistentVolumeSpec(pvSpec *core.PersistentVolumeSpec, pvName stri
 
 func ValidatePersistentVolume(pv *core.PersistentVolume) field.ErrorList {
 	metaPath := field.NewPath("metadata")
-	allErrs := ValidateObjectMeta(&pv.ObjectMeta, false, ValidatePersistentVolumeName, metaPath)
+	allErrs := ValidateObjectMeta(&pv.ObjectMeta, true, false, ValidatePersistentVolumeName, metaPath)
 	allErrs = append(allErrs, ValidatePersistentVolumeSpec(&pv.Spec, pv.ObjectMeta.Name, false, field.NewPath("spec"))...)
 	return allErrs
 }
@@ -1873,7 +1873,7 @@ func ValidatePersistentVolumeStatusUpdate(newPv, oldPv *core.PersistentVolume) f
 
 // ValidatePersistentVolumeClaim validates a PersistentVolumeClaim
 func ValidatePersistentVolumeClaim(pvc *core.PersistentVolumeClaim) field.ErrorList {
-	allErrs := ValidateObjectMeta(&pvc.ObjectMeta, true, ValidatePersistentVolumeName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&pvc.ObjectMeta, true, true, ValidatePersistentVolumeName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidatePersistentVolumeClaimSpec(&pvc.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
@@ -3075,7 +3075,7 @@ func validateVirtualMachine(
 // ValidatePod tests if required fields in the pod are set.
 func ValidatePod(pod *core.Pod) field.ErrorList {
 	fldPath := field.NewPath("metadata")
-	allErrs := ValidateObjectMeta(&pod.ObjectMeta, true, ValidatePodName, fldPath)
+	allErrs := ValidateObjectMeta(&pod.ObjectMeta, true, true, ValidatePodName, fldPath)
 	allErrs = append(allErrs, ValidatePodSpecificAnnotations(pod.ObjectMeta.Annotations, &pod.Spec, fldPath.Child("annotations"))...)
 	allErrs = append(allErrs, ValidatePodSpec(&pod.Spec, field.NewPath("spec"))...)
 
@@ -3210,13 +3210,13 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 
 // TODO - ValidateControllerInstance tests that the specified controller instance fields has valid data
 func ValidateControllerInstance(controllerInstance *core.ControllerInstance) field.ErrorList {
-	allErrs := ValidateObjectMeta(&controllerInstance.ObjectMeta, false, ValidateControllerTypeName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&controllerInstance.ObjectMeta, false, false, ValidateControllerTypeName, field.NewPath("metadata"))
 	return allErrs
 }
 
 // TODO - ValidateControllerInstanceUpdate tests make sure a controller instance update can be applied.
 func ValidateControllerInstanceUpdate(newControllerInstance *core.ControllerInstance, oldControllerInstance *core.ControllerInstance) field.ErrorList {
-	allErrs := ValidateObjectMeta(&newControllerInstance.ObjectMeta, false, ValidateControllerTypeName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&newControllerInstance.ObjectMeta, false, false, ValidateControllerTypeName, field.NewPath("metadata"))
 	if newControllerInstance.UID != oldControllerInstance.UID {
 		klog.Infof("Intended to update controller instance id. Not allowed. new instance id [%v], old instance id [%v]", newControllerInstance.UID, oldControllerInstance.UID)
 		uidDiff := diff.ObjectDiff(newControllerInstance.UID, oldControllerInstance.UID)
@@ -3869,7 +3869,7 @@ func ValidatePodBinding(binding *core.Binding) field.ErrorList {
 
 // ValidatePodTemplate tests if required fields in the pod template are set.
 func ValidatePodTemplate(pod *core.PodTemplate) field.ErrorList {
-	allErrs := ValidateObjectMeta(&pod.ObjectMeta, true, ValidatePodName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&pod.ObjectMeta, true, true, ValidatePodName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidatePodTemplateSpec(&pod.Template, field.NewPath("template"))...)
 	return allErrs
 }
@@ -3888,7 +3888,7 @@ var supportedServiceType = sets.NewString(string(core.ServiceTypeClusterIP), str
 
 // ValidateService tests if required fields/annotations of a Service are valid.
 func ValidateService(service *core.Service) field.ErrorList {
-	allErrs := ValidateObjectMeta(&service.ObjectMeta, true, ValidateServiceName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&service.ObjectMeta, true, true, ValidateServiceName, field.NewPath("metadata"))
 
 	specPath := field.NewPath("spec")
 	isHeadlessService := service.Spec.ClusterIP == core.ClusterIPNone
@@ -4167,7 +4167,7 @@ func ValidateServiceStatusUpdate(service, oldService *core.Service) field.ErrorL
 
 // ValidateReplicationController tests if required fields in the replication controller are set.
 func ValidateReplicationController(controller *core.ReplicationController) field.ErrorList {
-	allErrs := ValidateObjectMeta(&controller.ObjectMeta, true, ValidateReplicationControllerName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&controller.ObjectMeta, true, true, ValidateReplicationControllerName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateReplicationControllerSpec(&controller.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
@@ -4350,7 +4350,7 @@ func ValidateNodeSpecificAnnotations(annotations map[string]string, fldPath *fie
 // ValidateNode tests if required fields in the node are set.
 func ValidateNode(node *core.Node) field.ErrorList {
 	fldPath := field.NewPath("metadata")
-	allErrs := ValidateObjectMeta(&node.ObjectMeta, false, ValidateNodeName, fldPath)
+	allErrs := ValidateObjectMeta(&node.ObjectMeta, false, false, ValidateNodeName, fldPath)
 	allErrs = append(allErrs, ValidateNodeSpecificAnnotations(node.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
 	if len(node.Spec.Taints) > 0 {
 		allErrs = append(allErrs, validateNodeTaints(node.Spec.Taints, fldPath.Child("taints"))...)
@@ -4665,7 +4665,7 @@ func validateLimitRangeResourceName(limitType core.LimitType, value string, fldP
 
 // ValidateLimitRange tests if required fields in the LimitRange are set.
 func ValidateLimitRange(limitRange *core.LimitRange) field.ErrorList {
-	allErrs := ValidateObjectMeta(&limitRange.ObjectMeta, true, ValidateLimitRangeName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&limitRange.ObjectMeta, true, true, ValidateLimitRangeName, field.NewPath("metadata"))
 
 	// ensure resource names are properly qualified per docs/design/resources.md
 	limitTypeSet := map[core.LimitType]bool{}
@@ -4794,7 +4794,7 @@ func ValidateLimitRange(limitRange *core.LimitRange) field.ErrorList {
 
 // ValidateServiceAccount tests if required fields in the ServiceAccount are set.
 func ValidateServiceAccount(serviceAccount *core.ServiceAccount) field.ErrorList {
-	allErrs := ValidateObjectMeta(&serviceAccount.ObjectMeta, true, ValidateServiceAccountName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&serviceAccount.ObjectMeta, true, true, ValidateServiceAccountName, field.NewPath("metadata"))
 	return allErrs
 }
 
@@ -4807,7 +4807,7 @@ func ValidateServiceAccountUpdate(newServiceAccount, oldServiceAccount *core.Ser
 
 // ValidateSecret tests if required fields in the Secret are set.
 func ValidateSecret(secret *core.Secret) field.ErrorList {
-	allErrs := ValidateObjectMeta(&secret.ObjectMeta, true, ValidateSecretName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&secret.ObjectMeta, true, true, ValidateSecretName, field.NewPath("metadata"))
 
 	dataPath := field.NewPath("data")
 	totalSize := 0
@@ -4905,7 +4905,7 @@ var ValidateConfigMapName = apimachineryvalidation.NameIsDNSSubdomain
 // ValidateConfigMap tests whether required fields in the ConfigMap are set.
 func ValidateConfigMap(cfg *core.ConfigMap) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, ValidateObjectMeta(&cfg.ObjectMeta, true, ValidateConfigMapName, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, ValidateObjectMeta(&cfg.ObjectMeta, true, true, ValidateConfigMapName, field.NewPath("metadata"))...)
 
 	totalSize := 0
 
@@ -5113,7 +5113,7 @@ func validateScopeSelector(resourceQuotaSpec *core.ResourceQuotaSpec, fld *field
 
 // ValidateResourceQuota tests if required fields in the ResourceQuota are set.
 func ValidateResourceQuota(resourceQuota *core.ResourceQuota) field.ErrorList {
-	allErrs := ValidateObjectMeta(&resourceQuota.ObjectMeta, true, ValidateResourceQuotaName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&resourceQuota.ObjectMeta, true, true, ValidateResourceQuotaName, field.NewPath("metadata"))
 
 	allErrs = append(allErrs, ValidateResourceQuotaSpec(&resourceQuota.Spec, field.NewPath("spec"))...)
 	allErrs = append(allErrs, ValidateResourceQuotaStatus(&resourceQuota.Status, field.NewPath("status"))...)
@@ -5216,7 +5216,7 @@ func ValidateResourceQuotaStatusUpdate(newResourceQuota, oldResourceQuota *core.
 
 // ValidateTenant tests if required fields are set.
 func ValidateTenant(tenant *core.Tenant) field.ErrorList {
-	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, ValidateTenantName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, false, ValidateTenantName, field.NewPath("metadata"))
 	for i := range tenant.Spec.Finalizers {
 		allErrs = append(allErrs, validateFinalizerName(string(tenant.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
 	}
@@ -5265,7 +5265,7 @@ func ValidateTenantFinalizeUpdate(newTenant, oldTenant *core.Tenant) field.Error
 
 // ValidateNamespace tests if required fields are set.
 func ValidateNamespace(namespace *core.Namespace) field.ErrorList {
-	allErrs := ValidateObjectMeta(&namespace.ObjectMeta, false, ValidateNamespaceName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&namespace.ObjectMeta, true, false, ValidateNamespaceName, field.NewPath("metadata"))
 	for i := range namespace.Spec.Finalizers {
 		allErrs = append(allErrs, validateFinalizerName(string(namespace.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
 	}
@@ -5333,7 +5333,7 @@ func ValidateNamespaceFinalizeUpdate(newNamespace, oldNamespace *core.Namespace)
 
 // ValidateEndpoints tests if required fields are set.
 func ValidateEndpoints(endpoints *core.Endpoints) field.ErrorList {
-	allErrs := ValidateObjectMeta(&endpoints.ObjectMeta, true, ValidateEndpointsName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&endpoints.ObjectMeta, true, true, ValidateEndpointsName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateEndpointsSpecificAnnotations(endpoints.Annotations, field.NewPath("annotations"))...)
 	allErrs = append(allErrs, validateEndpointSubsets(endpoints.Subsets, field.NewPath("subsets"))...)
 	return allErrs

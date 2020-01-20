@@ -46,8 +46,9 @@ func ValidateCertificateRequestName(name string, prefix bool) []string {
 }
 
 func ValidateCertificateSigningRequest(csr *certificates.CertificateSigningRequest) field.ErrorList {
+	isTenanted := true
 	isNamespaced := false
-	allErrs := apivalidation.ValidateObjectMeta(&csr.ObjectMeta, isNamespaced, ValidateCertificateRequestName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&csr.ObjectMeta, isTenanted, isNamespaced, ValidateCertificateRequestName, field.NewPath("metadata"))
 	err := validateCSR(csr)
 
 	specPath := field.NewPath("spec")

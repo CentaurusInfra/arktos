@@ -26,6 +26,8 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
+var testTenant = "test-te"
+
 func TestStatefulSetStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !Strategy.NamespaceScoped() {
@@ -52,7 +54,7 @@ func TestStatefulSetStrategy(t *testing.T) {
 		},
 	}
 	ps := &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 		Spec: apps.StatefulSetSpec{
 			PodManagementPolicy: apps.OrderedReadyPodManagement,
 			Selector:            &metav1.LabelSelector{MatchLabels: validSelector},
@@ -73,7 +75,7 @@ func TestStatefulSetStrategy(t *testing.T) {
 
 	// Just Spec.Replicas is allowed to change
 	validPs := &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: ps.Name, Namespace: ps.Namespace, ResourceVersion: "1", Generation: 1},
+		ObjectMeta: metav1.ObjectMeta{Name: ps.Name, Namespace: ps.Namespace, Tenant: ps.Tenant, ResourceVersion: "1", Generation: 1},
 		Spec: apps.StatefulSetSpec{
 			PodManagementPolicy: apps.OrderedReadyPodManagement,
 			Selector:            ps.Spec.Selector,
@@ -175,7 +177,7 @@ func TestStatefulSetStatusStrategy(t *testing.T) {
 		},
 	}
 	oldPS := &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "10"},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant, ResourceVersion: "10"},
 		Spec: apps.StatefulSetSpec{
 			Replicas:       3,
 			Selector:       &metav1.LabelSelector{MatchLabels: validSelector},
@@ -187,7 +189,7 @@ func TestStatefulSetStatusStrategy(t *testing.T) {
 		},
 	}
 	newPS := &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, ResourceVersion: "9"},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant, ResourceVersion: "9"},
 		Spec: apps.StatefulSetSpec{
 			Replicas:       1,
 			Selector:       &metav1.LabelSelector{MatchLabels: validSelector},

@@ -38,6 +38,7 @@ func TestValidateObjectMetaCustomName(t *testing.T) {
 	errs := ValidateObjectMeta(
 		&metav1.ObjectMeta{Name: "test", GenerateName: "foo"},
 		false,
+		false,
 		func(s string, prefix bool) []string {
 			if s == "test" {
 				return nil
@@ -56,7 +57,8 @@ func TestValidateObjectMetaCustomName(t *testing.T) {
 // Ensure namespace names follow dns label format
 func TestValidateObjectMetaNamespaces(t *testing.T) {
 	errs := ValidateObjectMeta(
-		&metav1.ObjectMeta{Name: "test", Namespace: "foo.bar"},
+		&metav1.ObjectMeta{Name: "test", Namespace: "foo.bar", Tenant: "test-te"},
+		true,
 		true,
 		func(s string, prefix bool) []string {
 			return nil
@@ -75,8 +77,47 @@ func TestValidateObjectMetaNamespaces(t *testing.T) {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	errs = ValidateObjectMeta(
-		&metav1.ObjectMeta{Name: "test", Namespace: string(b)},
+		&metav1.ObjectMeta{Name: "test", Namespace: string(b), Tenant: "test-te"},
 		true,
+		true,
+		func(s string, prefix bool) []string {
+			return nil
+		},
+		field.NewPath("field"))
+	if len(errs) != 2 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if !strings.Contains(errs[0].Error(), "Invalid value") || !strings.Contains(errs[1].Error(), "Invalid value") {
+		t.Errorf("unexpected error message: %v", errs)
+	}
+}
+
+// Ensure tenant names follow dns label format
+func TestValidateObjectMetaTenants(t *testing.T) {
+	errs := ValidateObjectMeta(
+		&metav1.ObjectMeta{Name: "test", Tenant: "foo.bar"},
+		true,
+		false,
+		func(s string, prefix bool) []string {
+			return nil
+		},
+		field.NewPath("field"))
+	if len(errs) != 1 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if !strings.Contains(errs[0].Error(), `Invalid value: "foo.bar"`) {
+		t.Errorf("unexpected error message: %v", errs)
+	}
+	maxLength := 63
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	b := make([]rune, maxLength+1)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	errs = ValidateObjectMeta(
+		&metav1.ObjectMeta{Name: "test", Tenant: string(b)},
+		true,
+		false,
 		func(s string, prefix bool) []string {
 			return nil
 		},
@@ -196,7 +237,8 @@ func TestValidateObjectMetaOwnerReferences(t *testing.T) {
 
 	for _, tc := range testCases {
 		errs := ValidateObjectMeta(
-			&metav1.ObjectMeta{Name: "test", Namespace: "test", OwnerReferences: tc.ownerReferences},
+			&metav1.ObjectMeta{Name: "test", Namespace: "test", Tenant: "test-te", OwnerReferences: tc.ownerReferences},
+			true,
 			true,
 			func(s string, prefix bool) []string {
 				return nil
@@ -288,7 +330,7 @@ func TestValidateFinalizersPreventConflictingFinalizers(t *testing.T) {
 		},
 	}
 	for name, tc := range testcases {
-		errs := ValidateObjectMeta(&tc.ObjectMeta, false, NameIsDNSSubdomain, field.NewPath("field"))
+		errs := ValidateObjectMeta(&tc.ObjectMeta, false, false, NameIsDNSSubdomain, field.NewPath("field"))
 		if len(errs) == 0 {
 			if len(tc.ExpectedErr) != 0 {
 				t.Errorf("case: %q, expected error to contain %q", name, tc.ExpectedErr)
@@ -429,6 +471,7 @@ func TestObjectMetaGenerationUpdate(t *testing.T) {
 func TestValidateObjectMetaTrimsTrailingSlash(t *testing.T) {
 	errs := ValidateObjectMeta(
 		&metav1.ObjectMeta{Name: "test", GenerateName: "foo-"},
+		false,
 		false,
 		NameIsDNSSubdomain,
 		field.NewPath("field"))

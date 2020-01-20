@@ -33,6 +33,7 @@ const (
 	fakeImage     = "fakeimage"
 	daemonsetName = "test-daemonset"
 	namespace     = "test-namespace"
+	tenant        = "test-tenant"
 )
 
 func TestDaemonsetDefaultGarbageCollectionPolicy(t *testing.T) {
@@ -165,6 +166,7 @@ func newDaemonSetWithSelectorLabels(selectorLabels map[string]string, templateGe
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            daemonsetName,
 			Namespace:       namespace,
+			Tenant:          tenant,
 			ResourceVersion: "1",
 		},
 		Spec: apps.DaemonSetSpec{

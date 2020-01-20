@@ -26,6 +26,8 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
+var testTenant = "test-te"
+
 func TestCronJobStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if !Strategy.NamespaceScoped() {
@@ -49,6 +51,7 @@ func TestCronJobStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycronjob",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 		},
 		Spec: batch.CronJobSpec{
 			Schedule:          "* * * * ?",
@@ -136,6 +139,7 @@ func TestCronJobStatusStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "mycronjob",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          testTenant,
 			ResourceVersion: "10",
 		},
 		Spec: batch.CronJobSpec{
@@ -153,6 +157,7 @@ func TestCronJobStatusStrategy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "mycronjob",
 			Namespace:       metav1.NamespaceDefault,
+			Tenant:          testTenant,
 			ResourceVersion: "9",
 		},
 		Spec: batch.CronJobSpec{

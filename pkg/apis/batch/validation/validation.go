@@ -77,7 +77,7 @@ func ValidateGeneratedSelector(obj *batch.Job) field.ErrorList {
 
 func ValidateJob(job *batch.Job) field.ErrorList {
 	// Jobs and rcs have the same name validation
-	allErrs := apivalidation.ValidateObjectMeta(&job.ObjectMeta, true, apivalidation.ValidateReplicationControllerName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&job.ObjectMeta, true, true, apivalidation.ValidateReplicationControllerName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateGeneratedSelector(job)...)
 	allErrs = append(allErrs, ValidateJobSpec(&job.Spec, field.NewPath("spec"))...)
 	return allErrs
@@ -167,7 +167,7 @@ func ValidateJobStatusUpdate(status, oldStatus batch.JobStatus) field.ErrorList 
 
 func ValidateCronJob(scheduledJob *batch.CronJob) field.ErrorList {
 	// CronJobs and rcs have the same name validation
-	allErrs := apivalidation.ValidateObjectMeta(&scheduledJob.ObjectMeta, true, apivalidation.ValidateReplicationControllerName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&scheduledJob.ObjectMeta, true, true, apivalidation.ValidateReplicationControllerName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateCronJobSpec(&scheduledJob.Spec, field.NewPath("spec"))...)
 	if len(scheduledJob.ObjectMeta.Name) > apimachineryvalidation.DNS1035LabelMaxLength-11 {
 		// The cronjob controller appends a 11-character suffix to the cronjob (`-$TIMESTAMP`) when
@@ -239,7 +239,7 @@ func validateScheduleFormat(schedule string, fldPath *field.Path) field.ErrorLis
 
 func ValidateJobTemplate(job *batch.JobTemplate) field.ErrorList {
 	// this method should be identical to ValidateJob
-	allErrs := apivalidation.ValidateObjectMeta(&job.ObjectMeta, true, apivalidation.ValidateReplicationControllerName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&job.ObjectMeta, true, true, apivalidation.ValidateReplicationControllerName, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateJobTemplateSpec(&job.Template, field.NewPath("template"))...)
 	return allErrs
 }

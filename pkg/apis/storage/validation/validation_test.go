@@ -31,6 +31,7 @@ import (
 )
 
 var (
+	testTenant          = "test-te"
 	deleteReclaimPolicy = api.PersistentVolumeReclaimDelete
 	immediateMode1      = storage.VolumeBindingImmediate
 	immediateMode2      = storage.VolumeBindingImmediate
@@ -106,6 +107,11 @@ func TestValidateStorageClass(t *testing.T) {
 	}
 
 	errorCases := map[string]storage.StorageClass{
+		"tenant is present": {
+			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Tenant: "bar"},
+			Provisioner:   "kubernetes.io/foo-provisioner",
+			ReclaimPolicy: &deleteReclaimPolicy,
+		},
 		"namespace is present": {
 			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
 			Provisioner:   "kubernetes.io/foo-provisioner",
@@ -156,7 +162,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 	empty := ""
 	migrationEnabledSuccessCases := []storage.VolumeAttachment{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -166,7 +172,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo-with-inlinespec"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo-with-inlinespec", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -176,7 +182,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo-with-status"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo-with-status", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -200,7 +206,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo-with-inlinespec-and-status"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo-with-inlinespec-and-status", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -233,7 +239,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 	migrationEnabledErrorCases := []storage.VolumeAttachment{
 		{
 			// Empty attacher name
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "",
 				NodeName: "mynode",
@@ -244,7 +250,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 		},
 		{
 			// Empty node name
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "",
@@ -255,7 +261,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 		},
 		{
 			// No volume name
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "node",
@@ -266,7 +272,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 		},
 		{
 			// Empty volume name
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "node",
@@ -277,7 +283,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 		},
 		{
 			// Too long error message
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "node",
@@ -302,7 +308,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 		},
 		{
 			// Too long metadata
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "node",
@@ -384,7 +390,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 	migrationDisabledSuccessCases := []storage.VolumeAttachment{
 		{
 			// PVName specified with migration disabled
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "node",
@@ -403,7 +409,7 @@ func TestVolumeAttachmentValidation(t *testing.T) {
 	migrationDisabledErrorCases := []storage.VolumeAttachment{
 		{
 			// InlineSpec specified with migration disabled
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "node",
@@ -428,7 +434,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 	newVolumeName := "bar"
 
 	old := storage.VolumeAttachment{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 		Spec: storage.VolumeAttachmentSpec{
 			Attacher: "myattacher",
 			Source:   storage.VolumeAttachmentSource{},
@@ -439,7 +445,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 	successCases := []storage.VolumeAttachment{
 		{
 			// no change
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source:   storage.VolumeAttachmentSource{},
@@ -448,7 +454,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 		},
 		{
 			// modify status
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source:   storage.VolumeAttachmentSource{},
@@ -498,7 +504,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 	errorCases := []storage.VolumeAttachment{
 		{
 			// change attacher
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "another-attacher",
 				Source: storage.VolumeAttachmentSource{
@@ -509,7 +515,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 		},
 		{
 			// change source volume name
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -520,7 +526,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 		},
 		{
 			// change node
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -531,7 +537,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 		},
 		{
 			// change source
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -542,7 +548,7 @@ func TestVolumeAttachmentUpdateValidation(t *testing.T) {
 		},
 		{
 			// add invalid status
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -579,7 +585,7 @@ func TestVolumeAttachmentValidationV1(t *testing.T) {
 	invalidVolumeName := "-invalid-@#$%^&*()-"
 	successCases := []storage.VolumeAttachment{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				Source: storage.VolumeAttachmentSource{
@@ -599,7 +605,7 @@ func TestVolumeAttachmentValidationV1(t *testing.T) {
 	errorCases := []storage.VolumeAttachment{
 		{
 			// Invalid attacher name
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "invalid-@#$%^&*()",
 				NodeName: "mynode",
@@ -610,7 +616,7 @@ func TestVolumeAttachmentValidationV1(t *testing.T) {
 		},
 		{
 			// Invalid PV name
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Spec: storage.VolumeAttachmentSpec{
 				Attacher: "myattacher",
 				NodeName: "mynode",

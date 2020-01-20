@@ -94,6 +94,7 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx context.Context, obj runtime.
 	} else if len(objectMeta.GetTenant()) > 0 {
 		objectMeta.SetTenant(metav1.TenantNone)
 	}
+
 	objectMeta.SetDeletionTimestamp(nil)
 	objectMeta.SetDeletionGracePeriodSeconds(nil)
 	strategy.PrepareForCreate(ctx, obj)
@@ -122,7 +123,7 @@ func BeforeCreate(strategy RESTCreateStrategy, ctx context.Context, obj runtime.
 	// Custom validation (including name validation) passed
 	// Now run common validation on object meta
 	// Do this *after* custom validation so that specific error messages are shown whenever possible
-	if errs := genericvalidation.ValidateObjectMetaAccessor(objectMeta, strategy.NamespaceScoped(), path.ValidatePathSegmentName, field.NewPath("metadata")); len(errs) > 0 {
+	if errs := genericvalidation.ValidateObjectMetaAccessor(objectMeta, strategy.TenantScoped(), strategy.NamespaceScoped(), path.ValidatePathSegmentName, field.NewPath("metadata")); len(errs) > 0 {
 		return errors.NewInvalid(kind.GroupKind(), objectMeta.GetName(), errs)
 	}
 

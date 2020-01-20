@@ -80,7 +80,7 @@ var ValidatePodSecurityPolicyName = apimachineryvalidation.NameIsDNSSubdomain
 
 func ValidatePodSecurityPolicy(psp *policy.PodSecurityPolicy) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&psp.ObjectMeta, false, ValidatePodSecurityPolicyName, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&psp.ObjectMeta, true, false, ValidatePodSecurityPolicyName, field.NewPath("metadata"))...)
 	allErrs = append(allErrs, ValidatePodSecurityPolicySpecificAnnotations(psp.Annotations, field.NewPath("metadata").Child("annotations"))...)
 	allErrs = append(allErrs, ValidatePodSecurityPolicySpec(&psp.Spec, field.NewPath("spec"))...)
 	return allErrs

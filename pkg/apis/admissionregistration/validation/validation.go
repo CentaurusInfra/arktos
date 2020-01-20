@@ -199,7 +199,7 @@ func ValidateValidatingWebhookConfiguration(e *admissionregistration.ValidatingW
 }
 
 func validateValidatingWebhookConfiguration(e *admissionregistration.ValidatingWebhookConfiguration, requireRecognizedVersion bool) field.ErrorList {
-	allErrors := genericvalidation.ValidateObjectMeta(&e.ObjectMeta, false, genericvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
+	allErrors := genericvalidation.ValidateObjectMeta(&e.ObjectMeta, false, false, genericvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	for i, hook := range e.Webhooks {
 		allErrors = append(allErrors, validateValidatingWebhook(&hook, field.NewPath("webhooks").Index(i))...)
 		allErrors = append(allErrors, validateAdmissionReviewVersions(hook.AdmissionReviewVersions, requireRecognizedVersion, field.NewPath("webhooks").Index(i).Child("admissionReviewVersions"))...)
@@ -212,7 +212,7 @@ func ValidateMutatingWebhookConfiguration(e *admissionregistration.MutatingWebho
 }
 
 func validateMutatingWebhookConfiguration(e *admissionregistration.MutatingWebhookConfiguration, requireRecognizedVersion bool) field.ErrorList {
-	allErrors := genericvalidation.ValidateObjectMeta(&e.ObjectMeta, false, genericvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
+	allErrors := genericvalidation.ValidateObjectMeta(&e.ObjectMeta, false, false, genericvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	for i, hook := range e.Webhooks {
 		allErrors = append(allErrors, validateMutatingWebhook(&hook, field.NewPath("webhooks").Index(i))...)
 		allErrors = append(allErrors, validateAdmissionReviewVersions(hook.AdmissionReviewVersions, requireRecognizedVersion, field.NewPath("webhooks").Index(i).Child("admissionReviewVersions"))...)

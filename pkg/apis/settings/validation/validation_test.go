@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/settings"
 )
@@ -41,6 +41,7 @@ func TestValidateEmptyPodPresetItems(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "hello",
 			Namespace: "sample",
+			Tenant:    "lol",
 		},
 		Spec: settings.PodPresetSpec{
 			Selector: v1.LabelSelector{
@@ -66,6 +67,7 @@ func TestValidatePodPresets(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "hello",
 			Namespace: "sample",
+			Tenant:    "lol",
 		},
 		Spec: settings.PodPresetSpec{
 			Selector: v1.LabelSelector{
@@ -106,6 +108,7 @@ func TestValidatePodPresets(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "hello",
 			Namespace: "sample",
+			Tenant:    "lol",
 		},
 		Spec: settings.PodPresetSpec{
 			Selector: v1.LabelSelector{
@@ -151,6 +154,7 @@ func TestValidatePodPresetsiVolumeMountError(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "hello",
 			Namespace: "sample",
+			Tenant:    "lol",
 		},
 		Spec: settings.PodPresetSpec{
 			Selector: v1.LabelSelector{

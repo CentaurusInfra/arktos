@@ -28,17 +28,17 @@ func TestValidatePriorityClass(t *testing.T) {
 	spcs := scheduling.SystemPriorityClasses()
 	successCases := map[string]scheduling.PriorityClass{
 		"no description": {
-			ObjectMeta: metav1.ObjectMeta{Name: "tier1", Namespace: ""},
+			ObjectMeta: metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: ""},
 			Value:      100,
 		},
 		"with description": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "tier1", Namespace: ""},
+			ObjectMeta:    metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: ""},
 			Value:         200,
 			GlobalDefault: false,
 			Description:   "Used for the highest priority pods.",
 		},
 		"system node critical": {
-			ObjectMeta:    metav1.ObjectMeta{Name: spcs[0].Name, Namespace: ""},
+			ObjectMeta:    metav1.ObjectMeta{Name: spcs[0].Name, Tenant: "", Namespace: ""},
 			Value:         spcs[0].Value,
 			GlobalDefault: spcs[0].GlobalDefault,
 			Description:   "system priority class 0",
@@ -53,20 +53,20 @@ func TestValidatePriorityClass(t *testing.T) {
 
 	errorCases := map[string]scheduling.PriorityClass{
 		"with namespace": {
-			ObjectMeta: metav1.ObjectMeta{Name: "tier1", Namespace: "foo"},
+			ObjectMeta: metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "foo"},
 			Value:      100,
 		},
 		"invalid name": {
-			ObjectMeta: metav1.ObjectMeta{Name: "tier&1", Namespace: ""},
+			ObjectMeta: metav1.ObjectMeta{Name: "tier&1", Tenant: "", Namespace: ""},
 			Value:      100,
 		},
 		"incorrect system class name": {
-			ObjectMeta:    metav1.ObjectMeta{Name: spcs[0].Name, Namespace: ""},
+			ObjectMeta:    metav1.ObjectMeta{Name: spcs[0].Name, Tenant: "", Namespace: ""},
 			Value:         0,
 			GlobalDefault: spcs[0].GlobalDefault,
 		},
 		"incorrect system class value": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "system-something", Namespace: ""},
+			ObjectMeta:    metav1.ObjectMeta{Name: "system-something", Tenant: "", Namespace: ""},
 			Value:         spcs[0].Value,
 			GlobalDefault: spcs[0].GlobalDefault,
 		},
@@ -81,26 +81,26 @@ func TestValidatePriorityClass(t *testing.T) {
 
 func TestValidatePriorityClassUpdate(t *testing.T) {
 	old := scheduling.PriorityClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "tier1", Namespace: "", ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "", ResourceVersion: "1"},
 		Value:      100,
 	}
 	successCases := map[string]scheduling.PriorityClass{
 		"no change": {
-			ObjectMeta:  metav1.ObjectMeta{Name: "tier1", Namespace: "", ResourceVersion: "2"},
+			ObjectMeta:  metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "", ResourceVersion: "2"},
 			Value:       100,
 			Description: "Used for the highest priority pods.",
 		},
 		"change description": {
-			ObjectMeta:  metav1.ObjectMeta{Name: "tier1", Namespace: "", ResourceVersion: "2"},
+			ObjectMeta:  metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "", ResourceVersion: "2"},
 			Value:       100,
 			Description: "A different description.",
 		},
 		"remove description": {
-			ObjectMeta: metav1.ObjectMeta{Name: "tier1", Namespace: "", ResourceVersion: "2"},
+			ObjectMeta: metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "", ResourceVersion: "2"},
 			Value:      100,
 		},
 		"change globalDefault": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "tier1", Namespace: "", ResourceVersion: "2"},
+			ObjectMeta:    metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "", ResourceVersion: "2"},
 			Value:         100,
 			GlobalDefault: true,
 		},
@@ -118,27 +118,27 @@ func TestValidatePriorityClassUpdate(t *testing.T) {
 	}{
 		"add namespace": {
 			P: scheduling.PriorityClass{
-				ObjectMeta: metav1.ObjectMeta{Name: "tier1", Namespace: "foo", ResourceVersion: "2"},
+				ObjectMeta: metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "foo", ResourceVersion: "2"},
 				Value:      100,
 			},
 			T: field.ErrorTypeInvalid,
 		},
 		"change name": {
 			P: scheduling.PriorityClass{
-				ObjectMeta: metav1.ObjectMeta{Name: "tier2", Namespace: "", ResourceVersion: "2"},
+				ObjectMeta: metav1.ObjectMeta{Name: "tier2", Tenant: "", Namespace: "", ResourceVersion: "2"},
 				Value:      100,
 			},
 			T: field.ErrorTypeInvalid,
 		},
 		"remove value": {
 			P: scheduling.PriorityClass{
-				ObjectMeta: metav1.ObjectMeta{Name: "tier1", Namespace: "", ResourceVersion: "2"},
+				ObjectMeta: metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "", ResourceVersion: "2"},
 			},
 			T: field.ErrorTypeForbidden,
 		},
 		"change value": {
 			P: scheduling.PriorityClass{
-				ObjectMeta: metav1.ObjectMeta{Name: "tier1", Namespace: "", ResourceVersion: "2"},
+				ObjectMeta: metav1.ObjectMeta{Name: "tier1", Tenant: "", Namespace: "", ResourceVersion: "2"},
 				Value:      101,
 			},
 			T: field.ErrorTypeForbidden,

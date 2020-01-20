@@ -47,7 +47,7 @@ const (
 
 // ValidateStorageClass validates a StorageClass.
 func ValidateStorageClass(storageClass *storage.StorageClass) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&storageClass.ObjectMeta, false, apivalidation.ValidateClassName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&storageClass.ObjectMeta, false, false, apivalidation.ValidateClassName, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateProvisioner(storageClass.Provisioner, field.NewPath("provisioner"))...)
 	allErrs = append(allErrs, validateParameters(storageClass.Parameters, field.NewPath("parameters"))...)
 	allErrs = append(allErrs, validateReclaimPolicy(storageClass.ReclaimPolicy, field.NewPath("reclaimPolicy"))...)
@@ -129,7 +129,7 @@ func validateReclaimPolicy(reclaimPolicy *api.PersistentVolumeReclaimPolicy, fld
 
 // ValidateVolumeAttachment validates a VolumeAttachment. This function is common for v1 and v1beta1 objects,
 func ValidateVolumeAttachment(volumeAttachment *storage.VolumeAttachment) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&volumeAttachment.ObjectMeta, false, apivalidation.ValidateClassName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&volumeAttachment.ObjectMeta, true, false, apivalidation.ValidateClassName, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateVolumeAttachmentSpec(&volumeAttachment.Spec, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateVolumeAttachmentStatus(&volumeAttachment.Status, field.NewPath("status"))...)
 	return allErrs
@@ -294,7 +294,7 @@ func validateAllowedTopologies(topologies []api.TopologySelectorTerm, fldPath *f
 
 // ValidateCSINode validates a CSINode.
 func ValidateCSINode(csiNode *storage.CSINode) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&csiNode.ObjectMeta, false, apivalidation.ValidateNodeName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&csiNode.ObjectMeta, false, false, apivalidation.ValidateNodeName, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateCSINodeSpec(&csiNode.Spec, field.NewPath("spec"))...)
 	return allErrs
 }

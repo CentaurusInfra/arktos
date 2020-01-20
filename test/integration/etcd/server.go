@@ -326,6 +326,9 @@ func JSONToUnstructuredWithMultiTenancy(stub, tenant, namespace string, mapping 
 
 	if mapping.Scope == meta.RESTScopeTenant {
 		ns = ""
+		if te == "" {
+			te = metav1.TenantDefault
+		}
 	}
 
 	return dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(ns, te), &unstructured.Unstructured{Object: typeMetaAdder}, nil

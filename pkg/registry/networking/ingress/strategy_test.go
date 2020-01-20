@@ -26,6 +26,8 @@ import (
 	"k8s.io/kubernetes/pkg/apis/networking"
 )
 
+var testTenant = "test-te"
+
 func newIngress() networking.Ingress {
 	defaultBackend := networking.IngressBackend{
 		ServiceName: "default-backend",
@@ -35,6 +37,7 @@ func newIngress() networking.Ingress {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 		},
 		Spec: networking.IngressSpec{
 			Backend: &networking.IngressBackend{

@@ -30,6 +30,8 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
+var testTenant = "test-te"
+
 func TestValidateStatefulSet(t *testing.T) {
 	validLabels := map[string]string{"a": "b"}
 	validPodTemplate := api.PodTemplate{
@@ -74,7 +76,7 @@ func TestValidateStatefulSet(t *testing.T) {
 
 	successCases := []apps.StatefulSet{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -83,7 +85,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -92,7 +94,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.ParallelPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -101,7 +103,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -110,7 +112,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -135,7 +137,7 @@ func TestValidateStatefulSet(t *testing.T) {
 
 	errorCases := map[string]apps.StatefulSet{
 		"zero-length ID": {
-			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -144,7 +146,16 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"missing-namespace": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123"},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Tenant: testTenant},
+			Spec: apps.StatefulSetSpec{
+				PodManagementPolicy: apps.OrderedReadyPodManagement,
+				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
+				Template:            validPodTemplate.Template,
+				UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+			},
+		},
+		"missing-tenant": {
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -153,7 +164,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"empty selector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Template:            validPodTemplate.Template,
@@ -161,7 +172,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"selector_doesnt_match": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
@@ -170,7 +181,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"invalid manifest": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -178,7 +189,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"negative_replicas": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Replicas:            -1,
@@ -190,6 +201,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Labels: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -205,6 +217,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Labels: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -219,6 +232,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Annotations: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -234,6 +248,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
@@ -255,6 +270,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
@@ -273,7 +289,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"invalid update strategy": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -283,7 +299,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"empty update strategy": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -293,7 +309,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"invalid rolling update": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -306,7 +322,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"negative parition": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: apps.OrderedReadyPodManagement,
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -319,7 +335,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"empty pod management policy": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: "",
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -329,7 +345,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"invalid pod management policy": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: "foo",
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -339,7 +355,7 @@ func TestValidateStatefulSet(t *testing.T) {
 			},
 		},
 		"set active deadline seconds": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.StatefulSetSpec{
 				PodManagementPolicy: "foo",
 				Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -363,6 +379,7 @@ func TestValidateStatefulSet(t *testing.T) {
 					!strings.HasPrefix(field, "metadata.ownerReferences.") &&
 					field != "metadata.name" &&
 					field != "metadata.namespace" &&
+					field != "metadata.tenant" &&
 					field != "metadata.hashkey" &&
 					field != "spec.selector" &&
 					field != "spec.template" &&
@@ -555,7 +572,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 	successCases := []psUpdateTest{
 		{
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -564,7 +581,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Replicas:            3,
@@ -576,7 +593,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 		{
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -585,7 +602,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -596,7 +613,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 		{
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -605,7 +622,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -629,7 +646,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 	errorCases := map[string]psUpdateTest{
 		"more than one read/write": {
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
 					Template:       validPodTemplate.Template,
@@ -637,7 +654,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Replicas:            2,
@@ -649,7 +666,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 		"empty pod creation policy": {
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
 					Template:       validPodTemplate.Template,
@@ -657,7 +674,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					Replicas:       3,
 					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
@@ -668,7 +685,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 		"invalid pod creation policy": {
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
 					Template:       validPodTemplate.Template,
@@ -676,7 +693,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.PodManagementPolicyType("Other"),
 					Replicas:            3,
@@ -688,7 +705,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 		"invalid selector": {
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
 					Template:       validPodTemplate.Template,
@@ -696,7 +713,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Replicas:            2,
@@ -708,7 +725,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 		"invalid pod": {
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels},
@@ -717,7 +734,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					Replicas:       2,
 					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
@@ -728,14 +745,14 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 		"negative replicas": {
 			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
 				},
 			},
 			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Replicas:            -1,
@@ -757,11 +774,12 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 }
 
 func TestValidateControllerRevision(t *testing.T) {
-	newControllerRevision := func(name, namespace string, data runtime.Object, revision int64) apps.ControllerRevision {
+	newControllerRevision := func(name, tenant, namespace string, data runtime.Object, revision int64) apps.ControllerRevision {
 		return apps.ControllerRevision{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
+				Tenant:    tenant,
 			},
 			Data:     data,
 			Revision: revision,
@@ -769,7 +787,7 @@ func TestValidateControllerRevision(t *testing.T) {
 	}
 
 	ss := apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 		Spec: apps.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 			Template: api.PodTemplateSpec{
@@ -785,13 +803,15 @@ func TestValidateControllerRevision(t *testing.T) {
 	}
 
 	var (
-		valid       = newControllerRevision("validname", "validns", &ss, 0)
-		badRevision = newControllerRevision("validname", "validns", &ss, -1)
-		emptyName   = newControllerRevision("", "validns", &ss, 0)
-		invalidName = newControllerRevision("NoUppercaseOrSpecialCharsLike=Equals", "validns", &ss, 0)
-		emptyNs     = newControllerRevision("validname", "", &ss, 100)
-		invalidNs   = newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", &ss, 100)
-		nilData     = newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", nil, 100)
+		valid         = newControllerRevision("validname", "validns", "validte", &ss, 0)
+		badRevision   = newControllerRevision("validname", "validns", "validte", &ss, -1)
+		emptyName     = newControllerRevision("", "validns", "validte", &ss, 0)
+		invalidName   = newControllerRevision("NoUppercaseOrSpecialCharsLike=Equals", "validns", "validte", &ss, 0)
+		emptyNs       = newControllerRevision("validname", "", "validte", &ss, 100)
+		emptyTenant   = newControllerRevision("validname", "validns", "", &ss, 100)
+		invalidNs     = newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", "validte", &ss, 100)
+		invalidTenant = newControllerRevision("validname", "validns", "NoUppercaseOrSpecialCharsLike=Equals", &ss, 100)
+		nilData       = newControllerRevision("validname", "NoUppercaseOrSpecialCharsLike=Equals", "NoUppercaseOrSpecialCharsLike=Equals", nil, 100)
 	)
 
 	tests := map[string]struct {
@@ -803,7 +823,9 @@ func TestValidateControllerRevision(t *testing.T) {
 		"empty name":        {emptyName, false},
 		"invalid name":      {invalidName, false},
 		"empty namespace":   {emptyNs, false},
+		"empty tenant ":     {emptyTenant, false},
 		"invalid namespace": {invalidNs, false},
+		"invalid Tenant":    {invalidTenant, false},
 		"nil data":          {nilData, false},
 	}
 
@@ -821,11 +843,12 @@ func TestValidateControllerRevision(t *testing.T) {
 }
 
 func TestValidateControllerRevisionUpdate(t *testing.T) {
-	newControllerRevision := func(version, name, namespace string, data runtime.Object, revision int64) apps.ControllerRevision {
+	newControllerRevision := func(version, name, namespace, tenant string, data runtime.Object, revision int64) apps.ControllerRevision {
 		return apps.ControllerRevision{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            name,
 				Namespace:       namespace,
+				Tenant:          tenant,
 				ResourceVersion: version,
 			},
 			Data:     data,
@@ -834,7 +857,7 @@ func TestValidateControllerRevisionUpdate(t *testing.T) {
 	}
 
 	ss := apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 		Spec: apps.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 			Template: api.PodTemplateSpec{
@@ -849,7 +872,7 @@ func TestValidateControllerRevisionUpdate(t *testing.T) {
 		},
 	}
 	modifiedss := apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "cdf", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "cdf", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 		Spec: apps.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 			Template: api.PodTemplateSpec{
@@ -865,10 +888,10 @@ func TestValidateControllerRevisionUpdate(t *testing.T) {
 	}
 
 	var (
-		valid           = newControllerRevision("1", "validname", "validns", &ss, 0)
-		noVersion       = newControllerRevision("", "validname", "validns", &ss, 0)
-		changedData     = newControllerRevision("1", "validname", "validns", &modifiedss, 0)
-		changedRevision = newControllerRevision("1", "validname", "validns", &ss, 1)
+		valid           = newControllerRevision("1", "validname", "validns", "validte", &ss, 0)
+		noVersion       = newControllerRevision("", "validname", "validns", "validte", &ss, 0)
+		changedData     = newControllerRevision("1", "validname", "validns", "validte", &modifiedss, 0)
+		changedRevision = newControllerRevision("1", "validname", "validns", "validte", &ss, 1)
 	)
 
 	cases := []struct {
@@ -925,7 +948,7 @@ func TestValidateDaemonSetStatusUpdate(t *testing.T) {
 	successCases := []dsUpdateTest{
 		{
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Status: apps.DaemonSetStatus{
 					CurrentNumberScheduled: 1,
 					NumberMisscheduled:     2,
@@ -937,7 +960,7 @@ func TestValidateDaemonSetStatusUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Status: apps.DaemonSetStatus{
 					CurrentNumberScheduled: 1,
 					NumberMisscheduled:     1,
@@ -1391,7 +1414,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 	successCases := map[string]dsUpdateTest{
 		"no change": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1402,7 +1425,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1415,7 +1438,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"change template and selector": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 2,
@@ -1426,7 +1449,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector2},
 					TemplateGeneration: 3,
@@ -1439,7 +1462,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"change template": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 3,
@@ -1450,7 +1473,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 4,
@@ -1463,7 +1486,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"change container image name": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1474,7 +1497,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector2},
 					TemplateGeneration: 2,
@@ -1487,7 +1510,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"change update strategy": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 4,
@@ -1498,7 +1521,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 4,
@@ -1514,7 +1537,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"unchanged templateGeneration upon semantically equal template update": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 4,
@@ -1525,7 +1548,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 4,
@@ -1558,7 +1581,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 	errorCases := map[string]dsUpdateTest{
 		"change daemon name": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1569,7 +1592,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1583,7 +1606,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"invalid selector": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1594,7 +1617,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: invalidSelector},
 					TemplateGeneration: 1,
@@ -1608,7 +1631,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"invalid pod": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1619,7 +1642,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 2,
@@ -1633,7 +1656,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"invalid read-write volume": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1644,7 +1667,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 2,
@@ -1658,7 +1681,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"invalid update strategy": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1669,7 +1692,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: 1,
@@ -1683,7 +1706,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"negative templateGeneration": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: -1,
@@ -1694,7 +1717,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
 					TemplateGeneration: -1,
@@ -1708,7 +1731,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"decreased templateGeneration": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					TemplateGeneration: 2,
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
@@ -1719,7 +1742,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					TemplateGeneration: 1,
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
@@ -1733,7 +1756,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 		},
 		"unchanged templateGeneration upon template update": {
 			old: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					TemplateGeneration: 2,
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector},
@@ -1744,7 +1767,7 @@ func TestValidateDaemonSetUpdate(t *testing.T) {
 				},
 			},
 			update: apps.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.DaemonSetSpec{
 					TemplateGeneration: 2,
 					Selector:           &metav1.LabelSelector{MatchLabels: validSelector2},
@@ -1805,7 +1828,7 @@ func TestValidateDaemonSet(t *testing.T) {
 	}
 	successCases := []apps.DaemonSet{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
 				Template: validPodTemplate.Template,
@@ -1815,7 +1838,7 @@ func TestValidateDaemonSet(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
 				Template: validPodTemplate.Template,
@@ -1833,41 +1856,48 @@ func TestValidateDaemonSet(t *testing.T) {
 
 	errorCases := map[string]apps.DaemonSet{
 		"zero-length ID": {
-			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
 				Template: validPodTemplate.Template,
 			},
 		},
 		"missing-namespace": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123"},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Tenant: testTenant},
+			Spec: apps.DaemonSetSpec{
+				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
+				Template: validPodTemplate.Template,
+			},
+		},
+		"missing-tenant": {
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
 				Template: validPodTemplate.Template,
 			},
 		},
 		"nil selector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.DaemonSetSpec{
 				Template: validPodTemplate.Template,
 			},
 		},
 		"empty selector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{},
 				Template: validPodTemplate.Template,
 			},
 		},
 		"selector_doesnt_match": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				Template: validPodTemplate.Template,
 			},
 		},
 		"invalid template": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
 			},
@@ -1876,6 +1906,7 @@ func TestValidateDaemonSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Labels: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -1889,6 +1920,7 @@ func TestValidateDaemonSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Labels: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -1901,6 +1933,7 @@ func TestValidateDaemonSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Annotations: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -1914,6 +1947,7 @@ func TestValidateDaemonSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
@@ -1933,6 +1967,7 @@ func TestValidateDaemonSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: apps.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validSelector},
@@ -1961,6 +1996,7 @@ func TestValidateDaemonSet(t *testing.T) {
 				!strings.HasPrefix(field, "metadata.ownerReferences.") &&
 				field != "metadata.name" &&
 				field != "metadata.namespace" &&
+				field != "metadata.tenant" &&
 				field != "metadata.hashkey" &&
 				field != "spec.selector" &&
 				field != "spec.template" &&
@@ -1979,6 +2015,7 @@ func validDeployment() *apps.Deployment {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "abc",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 		},
 		Spec: apps.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -1997,6 +2034,7 @@ func validDeployment() *apps.Deployment {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "abc",
 					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 					Labels: map[string]string{
 						"name": "abc",
 					},
@@ -2493,7 +2531,7 @@ func TestValidateReplicaSetStatusUpdate(t *testing.T) {
 	successCases := []rcUpdateTest{
 		{
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
@@ -2503,7 +2541,7 @@ func TestValidateReplicaSetStatusUpdate(t *testing.T) {
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: 3,
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2525,7 +2563,7 @@ func TestValidateReplicaSetStatusUpdate(t *testing.T) {
 	errorCases := map[string]rcUpdateTest{
 		"negative replicas": {
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
@@ -2535,7 +2573,7 @@ func TestValidateReplicaSetStatusUpdate(t *testing.T) {
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: 2,
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2601,14 +2639,14 @@ func TestValidateReplicaSetUpdate(t *testing.T) {
 	successCases := []rcUpdateTest{
 		{
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: 3,
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2618,14 +2656,14 @@ func TestValidateReplicaSetUpdate(t *testing.T) {
 		},
 		{
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: 1,
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2644,14 +2682,14 @@ func TestValidateReplicaSetUpdate(t *testing.T) {
 	errorCases := map[string]rcUpdateTest{
 		"more than one read/write": {
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: 2,
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2661,14 +2699,14 @@ func TestValidateReplicaSetUpdate(t *testing.T) {
 		},
 		"invalid selector": {
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: 2,
 					Selector: &metav1.LabelSelector{MatchLabels: invalidLabels},
@@ -2678,14 +2716,14 @@ func TestValidateReplicaSetUpdate(t *testing.T) {
 		},
 		"invalid pod": {
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: 2,
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2695,14 +2733,14 @@ func TestValidateReplicaSetUpdate(t *testing.T) {
 		},
 		"negative replicas": {
 			old: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 					Template: validPodTemplate.Template,
 				},
 			},
 			update: apps.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 				Spec: apps.ReplicaSetSpec{
 					Replicas: -1,
 					Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2759,21 +2797,21 @@ func TestValidateReplicaSet(t *testing.T) {
 	}
 	successCases := []apps.ReplicaSet{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 				Template: validPodTemplate.Template,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 				Template: validPodTemplate.Template,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Replicas: 1,
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2789,34 +2827,41 @@ func TestValidateReplicaSet(t *testing.T) {
 
 	errorCases := map[string]apps.ReplicaSet{
 		"zero-length ID": {
-			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 				Template: validPodTemplate.Template,
 			},
 		},
 		"missing-namespace": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc-123"},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Tenant: testTenant},
+			Spec: apps.ReplicaSetSpec{
+				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
+				Template: validPodTemplate.Template,
+			},
+		},
+		"missing-tenant": {
+			ObjectMeta: metav1.ObjectMeta{Name: "abc-123", Namespace: metav1.NamespaceDefault},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 				Template: validPodTemplate.Template,
 			},
 		},
 		"empty selector": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Template: validPodTemplate.Template,
 			},
 		},
 		"selector_doesnt_match": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 				Template: validPodTemplate.Template,
 			},
 		},
 		"invalid manifest": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
 			},
@@ -2830,7 +2875,7 @@ func TestValidateReplicaSet(t *testing.T) {
 			},
 		},
 		"negative_replicas": {
-			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
+			ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault, Tenant: testTenant},
 			Spec: apps.ReplicaSetSpec{
 				Replicas: -1,
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2840,6 +2885,7 @@ func TestValidateReplicaSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Labels: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -2853,6 +2899,7 @@ func TestValidateReplicaSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Labels: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -2865,6 +2912,7 @@ func TestValidateReplicaSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 				Annotations: map[string]string{
 					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
 				},
@@ -2878,6 +2926,7 @@ func TestValidateReplicaSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2897,6 +2946,7 @@ func TestValidateReplicaSet(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "abc-123",
 				Namespace: metav1.NamespaceDefault,
+				Tenant:    testTenant,
 			},
 			Spec: apps.ReplicaSetSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: validLabels},
@@ -2924,6 +2974,7 @@ func TestValidateReplicaSet(t *testing.T) {
 				!strings.HasPrefix(field, "metadata.ownerReferences.") &&
 				field != "metadata.name" &&
 				field != "metadata.namespace" &&
+				field != "metadata.tenant" &&
 				field != "metadata.hashkey" &&
 				field != "spec.selector" &&
 				field != "spec.template" &&
