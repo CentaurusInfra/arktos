@@ -80,6 +80,15 @@ type ControllerContext struct {
 	ControllerInstanceUpdateChGrp *bcast.Group
 }
 
+const (
+	source_DeploymentController = "Deployment_Controller"
+	source_ReplicaSetController = "ReplicaSet_Controller"
+
+	ownerKind_Empty = ""
+	ownerKind_Deployment = "Deployment"
+	ownerKind_ReplicaSet = "ReplicaSet"
+)
+
 var resyncPeriod = time.Duration(60 * time.Second)
 
 func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) error {
@@ -229,13 +238,13 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 
 	rsInformer := ctx.InformerFactory.Apps().V1().ReplicaSets()
 	rsResetCh := rsResetChGrp.Join()
-	rsInformer.Informer().AddResetCh(rsResetCh, "ReplicaSet_Controller", "")
+	rsInformer.Informer().AddResetCh(rsResetCh, source_ReplicaSetController, ownerKind_Empty)
 
 	podInformer := ctx.InformerFactory.Core().V1().Pods()
 	podResetCh := rsResetChGrp.Join() // for owner reference
-	podInformer.Informer().AddResetCh(podResetCh, "ReplicaSet_Controller", "ReplicaSet")
+	podInformer.Informer().AddResetCh(podResetCh, source_ReplicaSetController, ownerKind_ReplicaSet)
 	podResetCh2 := rsResetChGrp.Join() // for adoption
-	podInformer.Informer().AddResetCh(podResetCh2, "ReplicaSet_Controller", "")
+	podInformer.Informer().AddResetCh(podResetCh2, source_ReplicaSetController, ownerKind_Empty)
 
 	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
 
@@ -261,17 +270,18 @@ func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handl
 
 	deploymentInformer := ctx.InformerFactory.Apps().V1().Deployments()
 	deploymentResetCh := dResetChGrp.Join()
-	deploymentInformer.Informer().AddResetCh(deploymentResetCh, "Deployment_Controller", "")
+	deploymentInformer.Informer().AddResetCh(deploymentResetCh, source_DeploymentController, ownerKind_Empty)
 
 	rsInformer := ctx.InformerFactory.Apps().V1().ReplicaSets()
 	rsResetCh := dResetChGrp.Join()
-	rsInformer.Informer().AddResetCh(rsResetCh, "Deployment_Controller", "Deployment")
+
+	rsInformer.Informer().AddResetCh(rsResetCh, source_DeploymentController, ownerKind_Deployment)
 
 	podInformer := ctx.InformerFactory.Core().V1().Pods()
 	podResetCh := dResetChGrp.Join() // for owner reference
-	podInformer.Informer().AddResetCh(podResetCh, "Deployment_Controller", "Deployment")
+	podInformer.Informer().AddResetCh(podResetCh, source_DeploymentController, ownerKind_Deployment)
 	podResetCh2 := dResetChGrp.Join() // for adoption
-	podInformer.Informer().AddResetCh(podResetCh2, "Deployment_Controller", "")
+	podInformer.Informer().AddResetCh(podResetCh2, source_DeploymentController, ownerKind_Empty)
 
 	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
 

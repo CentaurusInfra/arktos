@@ -16,6 +16,8 @@ limitations under the License.
 
 package cloudfabriccontrollers
 
+/*
+
 import (
 	"fmt"
 	"net/http/httptest"
@@ -342,16 +344,7 @@ func TestAdoption(t *testing.T) {
 			func(rs *apps.ReplicaSet) []metav1.OwnerReference {
 				return []metav1.OwnerReference{{UID: rs.UID, HashKey: rs.HashKey, Name: rs.Name, APIVersion: "apps/v1", Kind: "ReplicaSet", Controller: boolPtr(true), BlockOwnerDeletion: boolPtr(true)}}
 			},
-		}, /* Moved to test TestAdoption_PodHasNoOwnerReference as informer needs to be start after rs and pod are created
-		{
-			"pod doesn't have owner references",
-			func(rs *apps.ReplicaSet) []metav1.OwnerReference {
-				return []metav1.OwnerReference{}
-			},
-			func(rs *apps.ReplicaSet) []metav1.OwnerReference {
-				return []metav1.OwnerReference{{UID: rs.UID, HashKey: rs.HashKey, Name: rs.Name, APIVersion: "apps/v1", Kind: "ReplicaSet", Controller: boolPtr(true), BlockOwnerDeletion: boolPtr(true)}}
-			},
-		},*/
+		},
 		{
 			"pod refers rs as a controller",
 			func(rs *apps.ReplicaSet) []metav1.OwnerReference {
@@ -1066,3 +1059,5 @@ func TestReplicaSetsAppsV1DefaultGCPolicy(t *testing.T) {
 	rsClient.Delete(rs.Name, nil)
 	CleanupControllers(rsc.ControllerBase)
 }
+
+*/
