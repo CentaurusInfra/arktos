@@ -19,6 +19,7 @@ package cloudfabriccontrollers
 import (
 	"fmt"
 	"github.com/grafov/bcast"
+	"k8s.io/apimachinery/pkg/types"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -39,7 +40,6 @@ import (
 	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/replicaset"
 	"k8s.io/kubernetes/test/integration/framework"
-	testutil "k8s.io/kubernetes/test/utils"
 )
 
 const (
@@ -69,7 +69,7 @@ func testLabels() map[string]string {
 }
 
 // newDeployment returns a RollingUpdate Deployment with a fake container image
-func newDeployment(name, ns string, replicas int32, tenant string) *apps.Deployment {
+func newDeployment(name, ns string, uid types.UID, hashKey int64, replicas int32, tenant string) *apps.Deployment {
 	return &apps.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -79,6 +79,8 @@ func newDeployment(name, ns string, replicas int32, tenant string) *apps.Deploym
 			Tenant:    tenant,
 			Namespace: ns,
 			Name:      name,
+			UID:       uid,
+			HashKey:   hashKey,
 		},
 		Spec: apps.DeploymentSpec{
 			Replicas: &replicas,
@@ -159,19 +161,19 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	resyncPeriod := 12 * time.Hour
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-informers")), resyncPeriod)
 
-	var ciUpdateCh chan string
 	// controller instance manager set up
 	cim := controller.GetControllerInstanceManager()
 	if cim == nil {
-		ciUpdateCh = make(chan string)
+		cimUpdateChGrp := bcast.NewGroup()
+		go cimUpdateChGrp.Broadcast(0)
+
 		cim = controller.NewControllerInstanceManager(
 			informers.Core().V1().ControllerInstances(),
 			clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "controller-instance-manager")),
-			ciUpdateCh,
+			cimUpdateChGrp,
 		)
-	} else {
-		ciUpdateCh = cim.GetUpdateCh()
 	}
+	cimUpdateCh := cim.GetUpdateChGrp().Join()
 
 	dResetChGrp := bcast.NewGroup()
 	go dResetChGrp.Broadcast(0)
@@ -187,18 +189,21 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	podInformer := informers.Core().V1().Pods()
 	podResetCh := dResetChGrp.Join()
 	podInformer.Informer().AddResetCh(podResetCh, "Deployment_Controller", "Deployment")
+	podResetCh3 := dResetChGrp.Join()
+	podInformer.Informer().AddResetCh(podResetCh3, "Deployment_Controller", "")
 
 	dc, err := deployment.NewDeploymentController(
 		deploymentInformer,
 		rsInformer,
 		podInformer,
 		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-controller")),
-		ciUpdateCh,
+		cimUpdateCh,
 		dResetChGrp,
 	)
 	if err != nil {
 		t.Fatalf("error creating Deployment controller: %v", err)
 	}
+	dc.PrintRangeAndStatus()
 
 	rsResetChGrp := bcast.NewGroup()
 	go rsResetChGrp.Broadcast(0)
@@ -208,16 +213,19 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 
 	podResetCh2 := rsResetChGrp.Join()
 	podInformer.Informer().AddResetCh(podResetCh2, "ReplicaSet_Controller", "ReplicaSet")
+	podResetCh4 := rsResetChGrp.Join()
+	podInformer.Informer().AddResetCh(podResetCh4, "ReplicaSet_Controller", "")
 
-	rm := replicaset.NewReplicaSetController(
+	rsc := replicaset.NewReplicaSetController(
 		rsInformer,
 		podInformer,
 		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "replicaset-controller")),
 		replicaset.BurstReplicas,
-		ciUpdateCh,
+		cimUpdateCh,
 		rsResetChGrp,
 	)
-	return s, closeFn, rm, dc, informers, clientSet
+	rsc.PrintRangeAndStatus()
+	return s, closeFn, rsc, dc, informers, clientSet
 }
 
 // dcSimpleSetup sets up necessities for Deployment integration test, including master, apiserver,
@@ -249,7 +257,7 @@ func addPodConditionReady(pod *v1.Pod, time metav1.Time) {
 }
 
 func (d *deploymentTester) waitForDeploymentRevisionAndImage(revision, image string) error {
-	if err := testutil.WaitForDeploymentRevisionAndImageWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, revision, image, d.t.Logf, pollInterval, pollTimeout); err != nil {
+	if err := WaitForDeploymentRevisionAndImageWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, revision, image, d.t.Logf, pollInterval, pollTimeout); err != nil {
 		return fmt.Errorf("failed to wait for Deployment revision %s: %v", d.deployment.Name, err)
 	}
 	return nil
@@ -283,10 +291,10 @@ func (d *deploymentTester) markUpdatedPodsReady(wg *sync.WaitGroup) {
 		// Otherwise, mark remaining pods as ready
 		pods, err := d.listUpdatedPods()
 		if err != nil {
-			d.t.Log(err)
+			d.t.Logf("Failed to list pod here. error %v", err)
 			return false, nil
 		}
-		d.t.Logf("%d/%d of deployment pods are created", len(pods), *d.deployment.Spec.Replicas)
+		d.t.Logf("%d/%d of deployment pods are created. deployment %s/%s/%s", len(pods), *d.deployment.Spec.Replicas, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name)
 		for i := range pods {
 			pod := pods[i]
 			if podutil.IsPodReady(&pod) {
@@ -314,14 +322,14 @@ func (d *deploymentTester) deploymentComplete() (bool, error) {
 // Waits for the deployment to complete, and check rolling update strategy isn't broken at any times.
 // Rolling update strategy should not be broken during a rolling update.
 func (d *deploymentTester) waitForDeploymentCompleteAndCheckRolling() error {
-	return testutil.WaitForDeploymentCompleteAndCheckRolling(d.c, d.deployment, d.t.Logf, pollInterval, pollTimeout)
+	return WaitForDeploymentCompleteAndCheckRolling(d.c, d.deployment, d.t.Logf, pollInterval, pollTimeout)
 }
 
 // Waits for the deployment to complete, and don't check if rolling update strategy is broken.
 // Rolling update strategy is used only during a rolling update, and can be violated in other situations,
 // such as shortly after a scaling event or the deployment is just created.
 func (d *deploymentTester) waitForDeploymentComplete() error {
-	return testutil.WaitForDeploymentComplete(d.c, d.deployment, d.t.Logf, pollInterval, pollTimeout)
+	return WaitForDeploymentComplete(d.c, d.deployment, d.t.Logf, pollInterval, pollTimeout)
 }
 
 // waitForDeploymentCompleteAndCheckRollingAndMarkPodsReady waits for the Deployment to complete
@@ -366,12 +374,12 @@ func (d *deploymentTester) waitForDeploymentCompleteAndMarkPodsReady() error {
 	return nil
 }
 
-func (d *deploymentTester) updateDeployment(applyUpdate testutil.UpdateDeploymentFunc) (*apps.Deployment, error) {
-	return testutil.UpdateDeploymentWithRetriesWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, applyUpdate, d.t.Logf, pollInterval, pollTimeout)
+func (d *deploymentTester) updateDeployment(applyUpdate UpdateDeploymentFunc) (*apps.Deployment, error) {
+	return UpdateDeploymentWithRetriesWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, applyUpdate, d.t.Logf, pollInterval, pollTimeout)
 }
 
 func (d *deploymentTester) waitForObservedDeployment(desiredGeneration int64) error {
-	if err := testutil.WaitForObservedDeploymentWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, desiredGeneration); err != nil {
+	if err := WaitForObservedDeploymentWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, desiredGeneration); err != nil {
 		return fmt.Errorf("failed waiting for ObservedGeneration of deployment %s to become %d: %v", d.deployment.Name, desiredGeneration, err)
 	}
 	return nil
@@ -411,30 +419,30 @@ func (d *deploymentTester) expectNewReplicaSet() (*apps.ReplicaSet, error) {
 	return rs, nil
 }
 
-func (d *deploymentTester) updateReplicaSet(name string, applyUpdate testutil.UpdateReplicaSetFunc) (*apps.ReplicaSet, error) {
-	return testutil.UpdateReplicaSetWithRetriesWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, name, applyUpdate, d.t.Logf, pollInterval, pollTimeout)
+func (d *deploymentTester) updateReplicaSet(name string, applyUpdate UpdateReplicaSetFunc) (*apps.ReplicaSet, error) {
+	return UpdateReplicaSetWithRetriesWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, name, applyUpdate, d.t.Logf, pollInterval, pollTimeout)
 }
 
-func (d *deploymentTester) updateReplicaSetStatus(name string, applyStatusUpdate testutil.UpdateReplicaSetFunc) (*apps.ReplicaSet, error) {
-	return testutil.UpdateReplicaSetStatusWithRetriesWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, name, applyStatusUpdate, d.t.Logf, pollInterval, pollTimeout)
+func (d *deploymentTester) updateReplicaSetStatus(name string, applyStatusUpdate UpdateReplicaSetFunc) (*apps.ReplicaSet, error) {
+	return UpdateReplicaSetStatusWithRetriesWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, name, applyStatusUpdate, d.t.Logf, pollInterval, pollTimeout)
 }
 
 // waitForDeploymentRollbackCleared waits for deployment either started rolling back or doesn't need to rollback.
 func (d *deploymentTester) waitForDeploymentRollbackCleared() error {
-	return testutil.WaitForDeploymentRollbackClearedWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, pollInterval, pollTimeout)
+	return WaitForDeploymentRollbackClearedWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, pollInterval, pollTimeout)
 }
 
 // checkDeploymentRevisionAndImage checks if the input deployment's and its new replica set's revision and image are as expected.
 func (d *deploymentTester) checkDeploymentRevisionAndImage(revision, image string) error {
-	return testutil.CheckDeploymentRevisionAndImageWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, revision, image)
+	return CheckDeploymentRevisionAndImageWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, revision, image)
 }
 
 func (d *deploymentTester) waitForDeploymentUpdatedReplicasGTE(minUpdatedReplicas int32) error {
-	return testutil.WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, minUpdatedReplicas, d.deployment.Generation, pollInterval, pollTimeout)
+	return WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, minUpdatedReplicas, d.deployment.Generation, pollInterval, pollTimeout)
 }
 
 func (d *deploymentTester) waitForDeploymentWithCondition(reason string, condType apps.DeploymentConditionType) error {
-	return testutil.WaitForDeploymentWithConditionWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, reason, condType, d.t.Logf, pollInterval, pollTimeout)
+	return WaitForDeploymentWithConditionWithMultiTenancy(d.c, d.deployment.Tenant, d.deployment.Namespace, d.deployment.Name, reason, condType, d.t.Logf, pollInterval, pollTimeout)
 }
 
 func (d *deploymentTester) listUpdatedPods() ([]v1.Pod, error) {
@@ -465,7 +473,7 @@ func (d *deploymentTester) listUpdatedPods() ([]v1.Pod, error) {
 }
 
 func (d *deploymentTester) waitRSStable(replicaset *apps.ReplicaSet) error {
-	return testutil.WaitRSStable(d.t, d.c, replicaset, pollInterval, pollTimeout)
+	return WaitRSStable(d.t, d.c, replicaset, pollInterval, pollTimeout)
 }
 
 func (d *deploymentTester) scaleDeployment(newReplicas int32) error {

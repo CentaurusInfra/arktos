@@ -65,7 +65,6 @@ func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh ch
 	cimUpdateChGrp := bcast.NewGroup()
 	cimUpdateCh := cimUpdateChGrp.Join()
 
-
 	cim := controllerframework.GetControllerInstanceManager()
 	if cim == nil {
 		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh)

@@ -174,15 +174,15 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 	*/
 
 	ctx := ControllerContext{
-		ClientBuilder:                            clientBuilder,
-		InformerFactory:                          sharedInformers,
-		GenericInformerFactory:                   controller.NewInformerFactory(sharedInformers, dynamicInformers),
-		RESTMapper:                               restMapper,
-		AvailableResources:                       availableResources,
-		Stop:                                     stop,
-		InformersStarted:                         make(chan struct{}),
-		ControllerInstanceUpdateChGrp:            bcast.NewGroup(),
-		ResetChGroups:                            make([]*bcast.Group, 0),
+		ClientBuilder:                 clientBuilder,
+		InformerFactory:               sharedInformers,
+		GenericInformerFactory:        controller.NewInformerFactory(sharedInformers, dynamicInformers),
+		RESTMapper:                    restMapper,
+		AvailableResources:            availableResources,
+		Stop:                          stop,
+		InformersStarted:              make(chan struct{}),
+		ControllerInstanceUpdateChGrp: bcast.NewGroup(),
+		ResetChGroups:                 make([]*bcast.Group, 0),
 	}
 
 	return ctx, nil
@@ -232,8 +232,10 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 	rsInformer.Informer().AddResetCh(rsResetCh, "ReplicaSet_Controller", "")
 
 	podInformer := ctx.InformerFactory.Core().V1().Pods()
-	podResetCh := rsResetChGrp.Join()
+	podResetCh := rsResetChGrp.Join() // for owner reference
 	podInformer.Informer().AddResetCh(podResetCh, "ReplicaSet_Controller", "ReplicaSet")
+	podResetCh2 := rsResetChGrp.Join() // for adoption
+	podInformer.Informer().AddResetCh(podResetCh2, "ReplicaSet_Controller", "")
 
 	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
 
@@ -266,8 +268,10 @@ func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handl
 	rsInformer.Informer().AddResetCh(rsResetCh, "Deployment_Controller", "Deployment")
 
 	podInformer := ctx.InformerFactory.Core().V1().Pods()
-	podResetCh := dResetChGrp.Join()
+	podResetCh := dResetChGrp.Join() // for owner reference
 	podInformer.Informer().AddResetCh(podResetCh, "Deployment_Controller", "Deployment")
+	podResetCh2 := dResetChGrp.Join() // for adoption
+	podInformer.Informer().AddResetCh(podResetCh2, "Deployment_Controller", "")
 
 	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
 

@@ -26,9 +26,9 @@ import (
 
 func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	// case 1. start controller manager 1
-	s, closeFn1, cim1, rm1, informers1, client1 := rmSetup(t)
+	s, closeFn1, cim1, rsc1, informers1, client1 := RmSetup(t)
 	defer closeFn1()
-	stopCh1 := runControllerAndInformers(t, cim1, rm1, informers1, 0)
+	stopCh1 := RunControllerAndInformers(t, cim1, rsc1, informers1, 0)
 	defer close(stopCh1)
 
 	// check replicaset controller status in controller manager 1
@@ -41,29 +41,29 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	assert.Equal(t, int64(math.MaxInt64), rsControllerInstance1.ControllerKey)
 	assert.NotNil(t, rsControllerInstance1.Name, "Nil controller instance name")
 	assert.False(t, rsControllerInstance1.IsLocked, "Unexpected 1st controller instance status")
-	assert.Equal(t, rm1.GetControllerType(), rsControllerInstance1.ControllerType, "Unexpected controller type")
+	assert.Equal(t, rsc1.GetControllerType(), rsControllerInstance1.ControllerType, "Unexpected controller type")
 
 	// case 2. start controller manager 2
 	time.Sleep(5 * time.Second)
-	cim2, rm2, informers2, client2 := rmSetupControllerMaster(t, s)
-	stopCh2 := runControllerAndInformers(t, cim2, rm2, informers2, 0)
+	cim2, rsc2, informers2, client2 := RmSetupControllerMaster(t, s)
+	stopCh2 := RunControllerAndInformers(t, cim2, rsc2, informers2, 0)
 	defer close(stopCh2)
 	time.Sleep(5 * time.Second)
 
 	// check replicaset controller status in controller manager 2
-	t.Logf("rm 1 instance id: %v", rm1.GetControllerName())
-	t.Logf("rm 2 instance id: %v", rm2.GetControllerName())
+	t.Logf("rm 1 instance id: %v", rsc1.GetControllerName())
+	t.Logf("rm 2 instance id: %v", rsc2.GetControllerName())
 
-	assert.NotEqual(t, rm1.GetControllerName(), rm2.GetControllerName())
+	assert.NotEqual(t, rsc1.GetControllerName(), rsc2.GetControllerName())
 	controllerInstanceList2, err := client2.CoreV1().ControllerInstances().List(metav1.ListOptions{})
 	assert.Nil(t, err)
 	assert.NotNil(t, controllerInstanceList2)
 	assert.Equal(t, 2, len(controllerInstanceList2.Items), "number of controller instance")
 	t.Logf("new rms [%#v]", controllerInstanceList2)
 
-	rsControllerInstanceRead1, err := client2.CoreV1().ControllerInstances().Get(rm1.GetControllerName(), metav1.GetOptions{})
+	rsControllerInstanceRead1, err := client2.CoreV1().ControllerInstances().Get(rsc1.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
-	rsControllerInstanceRead2, err := client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
+	rsControllerInstanceRead2, err := client2.CoreV1().ControllerInstances().Get(rsc2.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
 
 	// check controller instance updates
@@ -77,34 +77,34 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 
 	assert.False(t, rsControllerInstanceRead1.IsLocked, "Unexpected 1st controller instance status")
 	//assert.True(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2nd controller instance status")
-	assert.Equal(t, rm2.GetControllerType(), rsControllerInstanceRead2.ControllerType, "Unexpected controller type")
+	assert.Equal(t, rsc2.GetControllerType(), rsControllerInstanceRead2.ControllerType, "Unexpected controller type")
 
 	// Controller Instance 1 release workloads
-	rm1.IsDoneProcessingCurrentWorkloads()
-	rsControllerInstanceRead2, err = client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
+	rsc1.IsDoneProcessingCurrentWorkloads()
+	rsControllerInstanceRead2, err = client2.CoreV1().ControllerInstances().Get(rsc2.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
 	assert.False(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2nd controller instance status")
 
 	// case 3. start controller manager 3
-	cim3, rm3, informers3, client3 := rmSetupControllerMaster(t, s)
-	stopCh3 := runControllerAndInformers(t, cim3, rm3, informers3, 0)
+	cim3, rsc3, informers3, client3 := RmSetupControllerMaster(t, s)
+	stopCh3 := RunControllerAndInformers(t, cim3, rsc3, informers3, 0)
 	defer close(stopCh3)
 	time.Sleep(5 * time.Second)
-	t.Logf("rm 3 instance id: %v", rm3.GetControllerName())
+	t.Logf("rm 3 instance id: %v", rsc3.GetControllerName())
 
 	// check replicaset controller status in controller manager 2
-	assert.NotEqual(t, rm1.GetControllerName(), rm3.GetControllerName())
-	assert.NotEqual(t, rm2.GetControllerName(), rm3.GetControllerName())
+	assert.NotEqual(t, rsc1.GetControllerName(), rsc3.GetControllerName())
+	assert.NotEqual(t, rsc2.GetControllerName(), rsc3.GetControllerName())
 	controllerInstanceList3, err := client2.CoreV1().ControllerInstances().List(metav1.ListOptions{})
 	assert.Nil(t, err)
 	assert.NotNil(t, controllerInstanceList3)
 	assert.Equal(t, 3, len(controllerInstanceList3.Items), "number of controller instance")
 
-	rsControllerInstanceRead1, err = client3.CoreV1().ControllerInstances().Get(rm1.GetControllerName(), metav1.GetOptions{})
+	rsControllerInstanceRead1, err = client3.CoreV1().ControllerInstances().Get(rsc1.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
-	rsControllerInstanceRead2, err = client3.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
+	rsControllerInstanceRead2, err = client3.CoreV1().ControllerInstances().Get(rsc2.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
-	rsControllerInstanceRead3, err := client3.CoreV1().ControllerInstances().Get(rm3.GetControllerName(), metav1.GetOptions{})
+	rsControllerInstanceRead3, err := client3.CoreV1().ControllerInstances().Get(rsc3.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
 
 	// check controller instance updates
@@ -121,22 +121,24 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	assert.False(t, rsControllerInstanceRead1.IsLocked, "Unexpected 1st controller instance status")
 	assert.False(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2nd controller instance status")
 	//assert.True(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
-	assert.Equal(t, rm2.GetControllerType(), rsControllerInstanceRead2.ControllerType, "Unexpected controller type")
-	assert.Equal(t, rm2.GetControllerType(), rsControllerInstanceRead3.ControllerType, "Unexpected controller type")
+	assert.Equal(t, rsc2.GetControllerType(), rsControllerInstanceRead2.ControllerType, "Unexpected controller type")
+	assert.Equal(t, rsc2.GetControllerType(), rsControllerInstanceRead3.ControllerType, "Unexpected controller type")
 	t.Logf("new rms [%#v]", controllerInstanceList3)
 
 	// controller instance 2 release workloads
-	rm2.IsDoneProcessingCurrentWorkloads()
+	rsc2.IsDoneProcessingCurrentWorkloads()
 	time.Sleep(5 * time.Second)
-	rsControllerInstanceRead3, err = client3.CoreV1().ControllerInstances().Get(rm3.GetControllerName(), metav1.GetOptions{})
+	rsControllerInstanceRead3, err = client3.CoreV1().ControllerInstances().Get(rsc3.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
+
+	CleanupControllers(rsc1.ControllerBase, rsc2.ControllerBase, rsc3.ControllerBase)
 	//assert.False(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
 
 	/*
 		// case 4. 1st controller instance died - This needs to be done in unit test as integration test would be flaky
 		close(stopCh1)
 		// need to manually delete the controller instance from registry as default 5 minute timeout will cause test timeout during batch test.
-		err = client3.CoreV1().ControllerInstances().Delete(rm1.GetControllerName(), &metav1.DeleteOptions{})
+		err = client3.CoreV1().ControllerInstances().Delete(rsc1.GetControllerName(), &metav1.DeleteOptions{})
 		assert.Nil(t, err)
 
 		controllerInstanceList4, err := client2.CoreV1().ControllerInstances().List(metav1.ListOptions{})
@@ -145,10 +147,10 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 		assert.Equal(t, 2, len(controllerInstanceList4.Items))
 		t.Logf("new rms [%#v]", controllerInstanceList4)
 
-		rsControllerInstanceRead2, err = client2.CoreV1().ControllerInstances().Get(rm2.GetControllerName(), metav1.GetOptions{})
+		rsControllerInstanceRead2, err = client2.CoreV1().ControllerInstances().Get(rsc2.GetControllerName(), metav1.GetOptions{})
 		assert.Nil(t, err)
 		assert.NotNil(t, rsControllerInstanceRead2)
-		rsControllerInstanceRead3, err = client2.CoreV1().ControllerInstances().Get(rm3.GetControllerName(), metav1.GetOptions{})
+		rsControllerInstanceRead3, err = client2.CoreV1().ControllerInstances().Get(rsc3.GetControllerName(), metav1.GetOptions{})
 		assert.Nil(t, err)
 		assert.NotNil(t, rsControllerInstanceRead3)
 

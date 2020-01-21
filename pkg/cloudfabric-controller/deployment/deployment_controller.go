@@ -613,9 +613,10 @@ func (dc *DeploymentController) syncDeployment(key string) error {
 				deployment.HashKey = hashKey
 				klog.Infof("Deployment %s/%s/%s was not initialized with hash key uuid %s, caculated as %v", deployment.Tenant, deployment.Namespace, deployment.Name, deployment.UID, deployment.HashKey)
 			}
-			if !dc.IsInRange(deployment.HashKey) {
-				return nil
-			}
+		}
+		if !dc.IsInRange(deployment.HashKey) {
+			klog.Infof("Deployment %s/%s/%s hashkey %d is not in range. skipped ", deployment.Tenant, deployment.Namespace, deployment.Name, deployment.HashKey)
+			return nil
 		}
 	}
 
@@ -689,5 +690,6 @@ func (dc *DeploymentController) syncDeployment(key string) error {
 	case apps.RollingUpdateDeploymentStrategyType:
 		return dc.rolloutRolling(d, rsList)
 	}
+
 	return fmt.Errorf("unexpected deployment strategy type: %s", d.Spec.Strategy.Type)
 }

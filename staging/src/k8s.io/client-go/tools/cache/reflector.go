@@ -172,7 +172,7 @@ func (r *Reflector) Run(stopCh <-chan struct{}) {
 							return
 						case signal, ok := <-fB.resetCh.Read:
 							if !ok {
-								klog.Error("reset channel closed. expectedType %v", r.expectedType)
+								klog.Errorf("reset channel closed. expectedType %v", r.expectedType)
 								return
 							} else {
 								klog.V(4).Infof("Got reset channel message. expectedType %v, new bound [%+v]", r.expectedType, signal)
@@ -230,7 +230,7 @@ func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 // and then use the resource version to watch.
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
-	klog.V(3).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
+	klog.V(5).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
 	var resourceVersion string
 
 	// Explicitly set "0" as resource version - it's fine for the List()

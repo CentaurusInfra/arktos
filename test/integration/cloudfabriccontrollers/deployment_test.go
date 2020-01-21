@@ -30,27 +30,31 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	deploymentutil "k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
+
 	"k8s.io/kubernetes/test/integration/framework"
+
 	"k8s.io/utils/pointer"
 )
 
 func TestNewDeployment(t *testing.T) {
-	testNewDeployment(t, metav1.TenantDefault)
+	testNewDeployment(t, metav1.TenantDefault, "deployment-1")
 }
 
 func TestNewDeploymentWithMultiTenancy(t *testing.T) {
-	testNewDeployment(t, "test-te")
+	testNewDeployment(t, "test-te", "deployment-2")
 }
 
-func testNewDeployment(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+func testNewDeployment(t *testing.T, tenant string, name string) {
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
-	name := "test-new-deployment"
-	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
+
+	namespace := "test-new-deployment"
+	ns := framework.CreateTestingNamespaceWithMultiTenancy(namespace, s, t, tenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	replicas := int32(20)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	tester.deployment.Spec.MinReadySeconds = 4
 
 	tester.deployment.Annotations = map[string]string{"test": "should-copy-to-replica-set", v1.LastAppliedConfigAnnotation: "should-not-copy-to-replica-set"}
@@ -59,12 +63,13 @@ func testNewDeployment(t *testing.T, tenant string) {
 	if err != nil {
 		t.Fatalf("failed to create deployment %s: %v", tester.deployment.Name, err)
 	}
+	fmt.Printf("Deployment %s hashkey %d\n", name, tester.deployment.HashKey)
 
 	// Start informer and controllers
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the Deployment to be updated to revision 1
@@ -115,6 +120,8 @@ func testNewDeployment(t *testing.T, tenant string) {
 	if rsHash != podHash {
 		t.Errorf("found mismatching pod-template-hash value: rs hash = %s whereas pod hash = %s", rsHash, podHash)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 // Deployments should support roll out, roll back, and roll over.
@@ -122,29 +129,30 @@ func testNewDeployment(t *testing.T, tenant string) {
 // and rollback endpoint is no longer supported.
 
 func TestDeploymentRollingUpdate(t *testing.T) {
-	testDeploymentRollingUpdate(t, metav1.TenantDefault)
+	testDeploymentRollingUpdate(t, metav1.TenantDefault, "deployment-1")
 }
 
 func TestDeploymentRollingUpdateWithMultiTenancy(t *testing.T) {
-	testDeploymentRollingUpdate(t, "test-te")
+	testDeploymentRollingUpdate(t, "test-te", "deployment-2")
 }
 
-func testDeploymentRollingUpdate(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+func testDeploymentRollingUpdate(t *testing.T, tenant string, name string) {
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
-	name := "test-rolling-update-deployment"
-	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
+	namespace := "test-rolling-update-deployment"
+	ns := framework.CreateTestingNamespaceWithMultiTenancy(namespace, s, t, tenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	// Start informer and controllers
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	replicas := int32(20)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	tester.deployment.Spec.MinReadySeconds = 4
 	quarter := intstr.FromString("25%")
 	tester.deployment.Spec.Strategy.RollingUpdate = &apps.RollingUpdateDeployment{
@@ -165,6 +173,7 @@ func testDeploymentRollingUpdate(t *testing.T, tenant string) {
 	if err := tester.waitForDeploymentCompleteAndMarkPodsReady(); err != nil {
 		t.Fatal(err)
 	}
+	fmt.Printf("Deployment %s hashkey %d\n", name, tester.deployment.HashKey)
 
 	// 1. Roll out a new image.
 	image := "new-image"
@@ -240,6 +249,7 @@ func testDeploymentRollingUpdate(t *testing.T, tenant string) {
 			t.Errorf("expected old replicaset %s of deployment %s to have 0 replica, got %d", oldRS.Name, tester.deployment.Name, *oldRS.Spec.Replicas)
 		}
 	}
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 // selectors are IMMUTABLE for all API versions except apps/v1beta1 and extensions/v1beta1
@@ -258,7 +268,7 @@ func testDeploymentSelectorImmutability(t *testing.T, tenant string) {
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, int32(20), tenant)}
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, "", 0, int32(20), tenant)}
 	var err error
 	tester.deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns.Name, ns.Tenant).Create(tester.deployment)
 	if err != nil {
@@ -344,14 +354,15 @@ func TestPausedDeploymentWithMultiTenancy(t *testing.T) {
 }
 
 func testPausedDeployment(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-paused-deployment"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	replicas := int32(1)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	tester.deployment.Spec.Paused = true
 	tgps := int64(1)
 	tester.deployment.Spec.Template.Spec.TerminationGracePeriodSeconds = &tgps
@@ -366,7 +377,7 @@ func testPausedDeployment(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Verify that the paused deployment won't create new replica set.
@@ -442,6 +453,8 @@ func testPausedDeployment(t *testing.T, tenant string) {
 	if *allOldRs[0].Spec.Template.Spec.TerminationGracePeriodSeconds == newTGPS {
 		t.Errorf("TerminationGracePeriodSeconds on the replica set should be %d, got %d", tgps, newTGPS)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 func TestScalePausedDeployment(t *testing.T) {
@@ -454,14 +467,15 @@ func TestScalePausedDeploymentWithMultiTenancy(t *testing.T) {
 
 // Paused deployment can be scaled
 func testScalePausedDeployment(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-scale-paused-deployment"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	replicas := int32(1)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	tgps := int64(1)
 	tester.deployment.Spec.Template.Spec.TerminationGracePeriodSeconds = &tgps
 
@@ -475,7 +489,7 @@ func testScalePausedDeployment(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the Deployment to be updated to revision 1
@@ -533,6 +547,8 @@ func testScalePausedDeployment(t *testing.T, tenant string) {
 	if err := tester.waitForDeploymentCompleteAndMarkPodsReady(); err != nil {
 		t.Fatal(err)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 // Deployment rollout shouldn't be blocked on hash collisions
@@ -545,14 +561,15 @@ func TestDeploymentHashCollisionWithMultiTenancy(t *testing.T) {
 }
 
 func testDeploymentHashCollision(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-hash-collision-deployment"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	replicas := int32(1)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 
 	var err error
 	tester.deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns.Name, ns.Tenant).Create(tester.deployment)
@@ -564,7 +581,7 @@ func testDeploymentHashCollision(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the Deployment to be updated to revision 1
@@ -602,6 +619,8 @@ func testDeploymentHashCollision(t *testing.T, tenant string) {
 	if err := tester.waitForDeploymentRevisionAndImage("2", fakeImage); err != nil {
 		t.Fatal(err)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 // Deployment supports rollback even when there's old replica set without revision.
@@ -615,7 +634,7 @@ func TestRollbackDeploymentRSNoRevisionWithMultiTenancy(t *testing.T) {
 }
 
 func testRollbackDeploymentRSNoRevision(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-rollback-no-revision-deployment"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -634,7 +653,8 @@ func testRollbackDeploymentRSNoRevision(t *testing.T, tenant string) {
 	}
 
 	replicas := int32(1)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	oriImage := tester.deployment.Spec.Template.Spec.Containers[0].Image
 	// Set absolute rollout limits (defaults changed to percentages)
 	max := intstr.FromInt(1)
@@ -650,7 +670,7 @@ func testRollbackDeploymentRSNoRevision(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the Deployment to be updated to revision 1
@@ -728,6 +748,8 @@ func testRollbackDeploymentRSNoRevision(t *testing.T, tenant string) {
 	if err = tester.waitForDeploymentCompleteAndCheckRollingAndMarkPodsReady(); err != nil {
 		t.Fatal(err)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 func checkRSHashLabels(rs *apps.ReplicaSet) (string, error) {
@@ -780,7 +802,7 @@ func TestFailedDeploymentWithMultiTenancy(t *testing.T) {
 }
 
 func testFailedDeployment(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-failed-deployment"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -789,7 +811,8 @@ func testFailedDeployment(t *testing.T, tenant string) {
 	deploymentName := "progress-check"
 	replicas := int32(1)
 	three := int32(3)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	tester.deployment.Spec.ProgressDeadlineSeconds = &three
 	var err error
 	tester.deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns.Name, ns.Tenant).Create(tester.deployment)
@@ -801,7 +824,7 @@ func testFailedDeployment(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	if err = tester.waitForDeploymentUpdatedReplicasGTE(replicas); err != nil {
@@ -823,6 +846,8 @@ func testFailedDeployment(t *testing.T, tenant string) {
 	if err = tester.waitForDeploymentWithCondition(deploymentutil.NewRSAvailableReason, apps.DeploymentProgressing); err != nil {
 		t.Fatal(err)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 func TestOverlappingDeployments(t *testing.T) {
@@ -834,7 +859,7 @@ func TestOverlappingDeploymentsWithMultiTenancy(t *testing.T) {
 }
 
 func testOverlappingDeployments(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-overlapping-deployments"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -843,15 +868,17 @@ func testOverlappingDeployments(t *testing.T, tenant string) {
 	replicas := int32(1)
 	firstDeploymentName := "first-deployment"
 	secondDeploymentName := "second-deployment"
+	deploymentUid1, deploymentHashKey1 := GenerateUUIDInControllerRange(dc.ControllerBase)
+	deploymentUid2, deploymentHashKey2 := GenerateUUIDInControllerRange(dc.ControllerBase)
 	testers := []*deploymentTester{
-		{t: t, c: c, deployment: newDeployment(firstDeploymentName, ns.Name, replicas, tenant)},
-		{t: t, c: c, deployment: newDeployment(secondDeploymentName, ns.Name, replicas, tenant)},
+		{t: t, c: c, deployment: newDeployment(firstDeploymentName, ns.Name, deploymentUid1, deploymentHashKey1, replicas, tenant)},
+		{t: t, c: c, deployment: newDeployment(secondDeploymentName, ns.Name, deploymentUid2, deploymentHashKey2, replicas, tenant)},
 	}
 	// Start informer and controllers
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Create 2 deployments with overlapping selectors
@@ -912,6 +939,8 @@ func testOverlappingDeployments(t *testing.T, tenant string) {
 			t.Errorf("expected replicaset %q of deployment %q has %d replicas, but found %d replicas", rs.Name, firstDeploymentName, *tester.deployment.Spec.Replicas, *rs.Spec.Replicas)
 		}
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 func TestScaledRolloutDeployment(t *testing.T) {
@@ -924,7 +953,7 @@ func TestScaledRolloutDeploymentWithMultiTenancy(t *testing.T) {
 
 // Deployment should not block rollout when updating spec replica number and template at the same time.
 func testScaledRolloutDeployment(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-scaled-rollout-deployment"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -933,13 +962,14 @@ func testScaledRolloutDeployment(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Create a deployment with rolling update strategy, max surge = 3, and max unavailable = 2
 	var err error
 	replicas := int32(10)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	tester.deployment.Spec.Strategy.RollingUpdate.MaxSurge = intOrStrP(3)
 	tester.deployment.Spec.Strategy.RollingUpdate.MaxUnavailable = intOrStrP(2)
 	tester.deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns.Name, ns.Tenant).Create(tester.deployment)
@@ -1112,6 +1142,8 @@ func testScaledRolloutDeployment(t *testing.T, tenant string) {
 			t.Fatalf("unexpected desiredReplicas annotation for replicaset %q: expected %d, got %d", curRS.Name, *(tester.deployment.Spec.Replicas), desired)
 		}
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 func TestSpecReplicasChangeDeployment(t *testing.T) {
@@ -1123,7 +1155,7 @@ func TestSpecReplicasChangeDeploymentWithMultiTenancy(t *testing.T) {
 }
 
 func testSpecReplicasChangeDeployment(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-spec-replicas-change"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -1131,7 +1163,8 @@ func testSpecReplicasChangeDeployment(t *testing.T, tenant string) {
 
 	deploymentName := "deployment"
 	replicas := int32(1)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	tester.deployment.Spec.Strategy.Type = apps.RecreateDeploymentStrategyType
 	tester.deployment.Spec.Strategy.RollingUpdate = nil
 	var err error
@@ -1144,7 +1177,7 @@ func testSpecReplicasChangeDeployment(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Scale up/down deployment and verify its replicaset has matching .spec.replicas
@@ -1176,6 +1209,8 @@ func testSpecReplicasChangeDeployment(t *testing.T, tenant string) {
 	if err = tester.waitForObservedDeployment(savedGeneration); err != nil {
 		t.Fatal(err)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 func TestDeploymentAvailableCondition(t *testing.T) {
@@ -1187,7 +1222,7 @@ func TestDeploymentAvailableConditionWithMultiTenancy(t *testing.T) {
 }
 
 func testDeploymentAvailableCondition(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-deployment-available-condition"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -1195,7 +1230,8 @@ func testDeploymentAvailableCondition(t *testing.T, tenant string) {
 
 	deploymentName := "deployment"
 	replicas := int32(10)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	// Assign a high value to the deployment's minReadySeconds
 	tester.deployment.Spec.MinReadySeconds = 3600
 	// progressDeadlineSeconds must be greater than minReadySeconds
@@ -1210,7 +1246,7 @@ func testDeploymentAvailableCondition(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the deployment to be observed by the controller and has at least specified number of updated replicas
@@ -1270,6 +1306,8 @@ func testDeploymentAvailableCondition(t *testing.T, tenant string) {
 	if err = tester.checkDeploymentStatusReplicasFields(10, 10, 10, 10, 0); err != nil {
 		t.Fatal(err)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 // Wait for deployment to automatically patch incorrect ControllerRef of RS
@@ -1317,7 +1355,7 @@ func TestGeneralReplicaSetAdoptionWithMultiTenancy(t *testing.T) {
 }
 
 func testGeneralReplicaSetAdoption(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-general-replicaset-adoption"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -1325,7 +1363,8 @@ func testGeneralReplicaSetAdoption(t *testing.T, tenant string) {
 
 	deploymentName := "deployment"
 	replicas := int32(1)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	var err error
 	tester.deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns.Name, ns.Tenant).Create(tester.deployment)
 	if err != nil {
@@ -1336,7 +1375,7 @@ func testGeneralReplicaSetAdoption(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the Deployment to be updated to revision 1
@@ -1369,6 +1408,8 @@ func testGeneralReplicaSetAdoption(t *testing.T, tenant string) {
 	// the deployment should set Controller=true for the only OwnerReference
 	ownerReference = metav1.OwnerReference{UID: tester.deployment.UID, APIVersion: "apps/v1", Kind: "Deployment", Name: deploymentName, Controller: &falseVar}
 	testRSControllerRefPatch(t, tester, rs, &ownerReference, 1)
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 func testScalingUsingScaleSubresourceDeployment(t *testing.T, tester *deploymentTester, replicas int32) {
@@ -1418,7 +1459,7 @@ func TestDeploymentScaleSubresourceWithMultiTenancy(t *testing.T) {
 }
 
 func testDeploymentScaleSubresource(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-deployment-scale-subresource"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -1426,7 +1467,8 @@ func testDeploymentScaleSubresource(t *testing.T, tenant string) {
 
 	deploymentName := "deployment"
 	replicas := int32(2)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	var err error
 	tester.deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns.Name, ns.Tenant).Create(tester.deployment)
 	if err != nil {
@@ -1437,7 +1479,7 @@ func testDeploymentScaleSubresource(t *testing.T, tenant string) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the Deployment to be updated to revision 1
@@ -1454,6 +1496,8 @@ func testDeploymentScaleSubresource(t *testing.T, tenant string) {
 	testScalingUsingScaleSubresourceDeployment(t, tester, 3)
 	// Use the scale subresource to scale the deployment down to 0
 	testScalingUsingScaleSubresourceDeployment(t, tester, 0)
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }
 
 // This test verifies that the Deployment does orphan a ReplicaSet when the ReplicaSet's
@@ -1470,7 +1514,7 @@ func TestReplicaSetOrphaningAndAdoptionWhenLabelsChangeWithMultiTenancy(t *testi
 }
 
 func testReplicaSetOrphaningAndAdoptionWhenLabelsChange(t *testing.T, tenant string) {
-	s, closeFn, rm, dc, informers, c := dcSetup(t)
+	s, closeFn, rsc, dc, informers, c := dcSetup(t)
 	defer closeFn()
 	name := "test-replicaset-orphaning-and-adoption-when-labels-change"
 	ns := framework.CreateTestingNamespaceWithMultiTenancy(name, s, t, tenant)
@@ -1478,7 +1522,8 @@ func testReplicaSetOrphaningAndAdoptionWhenLabelsChange(t *testing.T, tenant str
 
 	deploymentName := "deployment"
 	replicas := int32(1)
-	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, replicas, tenant)}
+	deploymentUid, deploymentHashKey := GenerateUUIDInControllerRange(dc.ControllerBase)
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(deploymentName, ns.Name, deploymentUid, deploymentHashKey, replicas, tenant)}
 	var err error
 	tester.deployment, err = c.AppsV1().DeploymentsWithMultiTenancy(ns.Name, ns.Tenant).Create(tester.deployment)
 	if err != nil {
@@ -1489,7 +1534,7 @@ func testReplicaSetOrphaningAndAdoptionWhenLabelsChange(t *testing.T, tenant str
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
+	go rsc.Run(5, stopCh)
 	go dc.Run(5, stopCh)
 
 	// Wait for the Deployment to be updated to revision 1
@@ -1581,4 +1626,6 @@ func testReplicaSetOrphaningAndAdoptionWhenLabelsChange(t *testing.T, tenant str
 	}); err != nil {
 		t.Fatalf("failed waiting for replicaset adoption by deployment %q to complete: %v", deploymentName, err)
 	}
+
+	CleanupControllers(rsc.ControllerBase, dc.ControllerBase)
 }

@@ -621,9 +621,10 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 				rs.HashKey = hashKey
 				klog.Infof("replica set %s/%s was not initialized with hash key uuid %s, caculated as %v", rs.Namespace, rs.Name, rs.UID, rs.HashKey)
 			}
-			if !rsc.IsInRange(rs.HashKey) {
-				return nil
-			}
+		}
+		if !rsc.IsInRange(rs.HashKey) {
+			klog.Infof("RS %s/%s/%s hashkey %d not in RSC range - key %d", tenant, rs.Namespace, rs.Name, rs.HashKey, rsc.GetControllerKey())
+			return nil
 		}
 	}
 
