@@ -112,7 +112,7 @@ type ReplicaSetController struct {
 }
 
 // NewReplicaSetController configures a replica set controller with the specified event recorder
-func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int, updateControllerChan chan string, resetChGroup *bcast.Group) *ReplicaSetController {
+func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) *ReplicaSetController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
@@ -125,20 +125,20 @@ func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInf
 			KubeClient: kubeClient,
 			Recorder:   eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "replicaset-controller"}),
 		},
-		updateControllerChan,
-		resetChGroup,
+		cimUpdateCh,
+		informerResetChGrp,
 	)
 }
 
 // NewBaseController is the implementation of NewReplicaSetController with additional injected
 // parameters so that it can also serve as the implementation of NewReplicationController.
 func NewBaseController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int,
-	gvk schema.GroupVersionKind, metricOwnerName, queueName string, podControl controller.PodControlInterface, updateControllerChan chan string, resetChGroup *bcast.Group) *ReplicaSetController {
+	gvk schema.GroupVersionKind, metricOwnerName, queueName string, podControl controller.PodControlInterface, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) *ReplicaSetController {
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage(metricOwnerName, kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 
-	baseController, err := controllerframework.NewControllerBase("ReplicaSet", kubeClient, updateControllerChan, resetChGroup)
+	baseController, err := controllerframework.NewControllerBase("ReplicaSet", kubeClient, cimUpdateCh, informerResetChGrp)
 	if err != nil {
 		return nil
 	}
@@ -621,9 +621,10 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 				rs.HashKey = hashKey
 				klog.Infof("replica set %s/%s was not initialized with hash key uuid %s, caculated as %v", rs.Namespace, rs.Name, rs.UID, rs.HashKey)
 			}
-			if !rsc.IsInRange(rs.HashKey) {
-				return nil
-			}
+		}
+		if !rsc.IsInRange(rs.HashKey) {
+			klog.Infof("RS %s/%s/%s hashkey %d not in RSC range - key %d", tenant, rs.Namespace, rs.Name, rs.HashKey, rsc.GetControllerKey())
+			return nil
 		}
 	}
 

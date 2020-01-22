@@ -56,6 +56,12 @@ $ kubectl get pod --all-namespaces --field-selector metadata.hashkey=lte:-1,meta
   No resources found.
 ```
 
+#### Get pod with hashKey > 10000  or <= 100
+```  
+$ kubectl get pod --all-namespaces --field-selector metadata.hashkey=gt:10000\;metadata.hashkey=lte:100
+  No resources found.
+```
+
 #### Get pod with owner references replicaset hashkey as 0
 ```  
 $ kubectl get pod --all-namespaces --field-selector metadata.ownerReferences.hashkey.ReplicaSet=0

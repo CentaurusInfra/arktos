@@ -59,13 +59,15 @@ import (
 
 func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh chan struct{}, burstReplicas int) (*ReplicaSetController, informers.SharedInformerFactory) {
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
-	updateCh := make(chan string)
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
+
+	informersResetChGrp := bcast.NewGroup()
+
+	cimUpdateChGrp := bcast.NewGroup()
+	cimUpdateCh := cimUpdateChGrp.Join()
 
 	cim := controllerframework.GetControllerInstanceManager()
 	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh)
 		go cim.Run(stopCh)
 	}
 
@@ -74,8 +76,8 @@ func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh ch
 		informers.Core().V1().Pods(),
 		client,
 		burstReplicas,
-		updateCh,
-		resetCh,
+		cimUpdateCh,
+		informersResetChGrp,
 	)
 
 	ret.podListerSynced = alwaysReady
@@ -315,17 +317,6 @@ func skipHttpFunc(verb string, url url.URL) bool {
 	return true
 }
 
-func mockCreateControllerInstance(c *controllerframework.ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
-	fakeControllerInstance := &v1.ControllerInstance{
-		ObjectMeta:     metav1.ObjectMeta{Name: c.GetControllerName()},
-		ControllerType: c.GetControllerType(),
-		ControllerKey:  c.GetControllerKey(),
-		WorkloadNum:    0,
-		IsLocked:       false,
-	}
-	return fakeControllerInstance, nil
-}
-
 func TestSyncReplicaSetDormancy(t *testing.T) {
 	testSyncReplicaSetDormancy(t, metav1.TenantDefault)
 }
@@ -336,7 +327,7 @@ func TestSyncReplicaSetDormancyWithMultiTenancy(t *testing.T) {
 
 func testSyncReplicaSetDormancy(t *testing.T, tenant string) {
 	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = mockCreateControllerInstance
+	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
 	defer func() {
 		controllerframework.CreateControllerInstanceHandler = oldHandler
 	}()
@@ -491,16 +482,11 @@ func TestWatchControllers(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	client.PrependWatchReactor("replicasets", core.DefaultWatchReactor(fakeWatch, nil))
 	stopCh := make(chan struct{})
-	resetCh := bcast.NewGroup()
-	go resetCh.Broadcast(0)
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
-	defer resetCh.Close()
 
 	cim := controllerframework.GetControllerInstanceManager()
 	if cim == nil {
-		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh, updateCh)
+		cim, _ = controllerframework.CreateTestControllerInstanceManager(stopCh)
 		go cim.Run(stopCh)
 	}
 
@@ -510,8 +496,8 @@ func TestWatchControllers(t *testing.T) {
 		informers.Core().V1().Pods(),
 		client,
 		BurstReplicas,
-		updateCh,
-		resetCh,
+		nil,
+		nil,
 	)
 	informers.Start(stopCh)
 

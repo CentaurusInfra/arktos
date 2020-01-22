@@ -17,7 +17,9 @@ limitations under the License.
 package controllerframework
 
 import (
+	"github.com/grafov/bcast"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"sort"
@@ -65,15 +67,40 @@ func mockCheckInstanceHander() {
 	return
 }
 
-func CreateTestControllerInstanceManager(stopCh chan struct{}, updateCh chan string) (*ControllerInstanceManager, informers.SharedInformerFactory) {
+func CreateTestControllerInstanceManager(stopCh chan struct{}) (*ControllerInstanceManager, informers.SharedInformerFactory) {
 	client := fake.NewSimpleClientset()
 	informers := informers.NewSharedInformerFactory(client, 0)
 
-	cim := NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, updateCh)
+	cim := NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, nil)
 	go cim.Run(stopCh)
 
 	cim.controllerListerSynced = alwaysReady
 	cim.notifyHandler = mockNotifyHander
 	checkInstanceHandler = mockCheckInstanceHander
 	return GetControllerInstanceManager(), informers
+}
+
+func MockCreateControllerInstance(c *ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
+	fakeControllerInstance := &v1.ControllerInstance{
+		ObjectMeta:     metav1.ObjectMeta{Name: c.GetControllerName()},
+		ControllerType: c.GetControllerType(),
+		ControllerKey:  c.GetControllerKey(),
+		WorkloadNum:    0,
+		IsLocked:       false,
+	}
+	return fakeControllerInstance, nil
+}
+
+func MockCreateControllerInstanceAndResetChs(stopCh chan struct{}) (*bcast.Member, *bcast.Group) {
+	cimUpdateChGrp := bcast.NewGroup()
+	cimUpdateCh := cimUpdateChGrp.Join()
+	informersResetChGrp := bcast.NewGroup()
+
+	cim := GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = CreateTestControllerInstanceManager(stopCh)
+		go cim.Run(stopCh)
+	}
+
+	return cimUpdateCh, informersResetChGrp
 }

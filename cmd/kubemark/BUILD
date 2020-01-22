@@ -18,8 +18,8 @@ go_library(
     deps = [
         "//pkg/api/legacyscheme:go_default_library",
         "//pkg/client/metrics/prometheus:go_default_library",
-        "//pkg/kubelet/cadvisor/testing:go_default_library",
         "//pkg/features:go_default_library",
+        "//pkg/kubelet/cadvisor/testing:go_default_library",
         "//pkg/kubelet/cm:go_default_library",
         "//pkg/kubelet/dockershim:go_default_library",
         "//pkg/kubelet/dockershim/libdocker:go_default_library",

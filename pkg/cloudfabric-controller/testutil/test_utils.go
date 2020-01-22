@@ -516,10 +516,3 @@ func GetKey(obj interface{}, t *testing.T) string {
 	}
 	return key
 }
-
-func GetExistingControllerInstances() ([]types.UID, error) {
-	existingControllerInstanceIds := []types.UID{
-		types.UID("0efec118-da69-4ba7-9e23-21d49dde08e3"), types.UID("bc89af44-366d-46cd-9060-b944eb0bb48a"), types.UID("9dd9e2b7-a4e1-48d2-8ee7-fdef05761aa8")}
-
-	return existingControllerInstanceIds, nil
-}

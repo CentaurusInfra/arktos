@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/url"
 	"reflect"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -43,6 +44,21 @@ import (
 	"k8s.io/klog"
 	"k8s.io/utils/trace"
 )
+
+type filterBound struct {
+	//ResetCh is the channel for incoming bounds changes
+	resetCh *bcast.Member
+
+	//sourceName is the app name that sends the reset message
+	sourceName string
+
+	//ownerKind is the owner's object kind
+	ownerKind string
+
+	//bounds is an array to save hashkey lower and upper bounds. The lower bound is
+	// inclusive while the upper bound is exclusive
+	bounds []int64
+}
 
 // Reflector watches a specified resource and causes all changes to be reflected in the given store.
 type Reflector struct {
@@ -74,15 +90,11 @@ type Reflector struct {
 	// Defaults to pager.PageSize.
 	WatchListPageSize int64
 
-	//ResetCh is the channel for incoming bounds changes
-	resetCh *bcast.Member
+	// filterBounds are a list of list/watch filtering bounds
+	filterBounds []filterBound
 
-	//ownerKind is the owner's object kind
-	ownerKind string
-
-	//bounds is an array to save hashkey lower and upper bounds. The lower bound is
-	// inclusive while the upper bound is exclusive
-	bounds []int64
+	// aggChan is the aggregate channel of reset channels
+	aggChan chan interface{}
 }
 
 var (
@@ -116,10 +128,9 @@ func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyn
 // resyncPeriod, so that you can use reflectors to periodically process everything as
 // well as incrementally processing the things that change. Also,  it introduces a  reset
 // chan for any incoming bound changes
-func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, resetCh *bcast.Member, ownerKind string) *Reflector {
+func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, filterBounds []filterBound) *Reflector {
 	r := NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
-	r.resetCh = resetCh
-	r.ownerKind = ownerKind
+	r.filterBounds = filterBounds
 	return r
 }
 
@@ -133,9 +144,9 @@ func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, 
 		period:        time.Second,
 		resyncPeriod:  resyncPeriod,
 		clock:         &clock.RealClock{},
-		bounds:        []int64{-1, -1},
+		filterBounds:  make([]filterBound, 0),
+		aggChan:       make(chan interface{}),
 	}
-	klog.Infof("New named reflector with bounds %s %+v", r.expectedType, r.bounds)
 	return r
 }
 
@@ -148,11 +159,31 @@ var internalPackages = []string{"client-go/tools/cache/"}
 func (r *Reflector) Run(stopCh <-chan struct{}) {
 	klog.V(3).Infof("Starting reflector %v (%s) from %s", r.expectedType, r.resyncPeriod, r.name)
 	wait.Until(func() {
-		if r.resetCh == nil {
+		if len(r.filterBounds) == 0 {
 			if err := r.ListAndWatch(stopCh); err != nil {
 				utilruntime.HandleError(err)
 			}
 		} else {
+			for i, fb := range r.filterBounds {
+				go func(index int, fB filterBound) {
+					for {
+						select {
+						case <-stopCh:
+							return
+						case signal, ok := <-fB.resetCh.Read:
+							if !ok {
+								klog.Errorf("reset channel closed. expectedType %v", r.expectedType)
+								return
+							} else {
+								klog.V(4).Infof("Got reset channel message. expectedType %v, new bound [%+v]", r.expectedType, signal)
+							}
+
+							r.aggChan <- signal
+						}
+					}
+				}(i, fb)
+			}
+
 			for {
 				if err := r.ListAndWatch(stopCh); err != nil {
 					if err == errorResetRequested {
@@ -199,7 +230,7 @@ func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 // and then use the resource version to watch.
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
-	klog.V(3).Infof("ListAndWatch %v from %s. ResetCh %v", r.expectedType, r.name, r.resetCh)
+	klog.V(5).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
 	var resourceVersion string
 
 	// Explicitly set "0" as resource version - it's fine for the List()
@@ -207,24 +238,17 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
 	options := metav1.ListOptions{ResourceVersion: "0"}
 
-	if r.resetCh != nil {
-		if r.isInitBounds() {
-			select {
-			case <-stopCh:
+	if len(r.filterBounds) > 0 {
+		if r.hasInitBounds() {
+			if !r.waitForBoundInit(stopCh) {
 				return nil
-			case signal, ok := <-r.resetCh.Read:
-				if !ok {
-					klog.Error("resetCh channel closed")
-					return nil
-				}
-				r.setBounds(signal)
 			}
 		} else {
 			select {
 			case <-stopCh:
 				return nil
 			default:
-				klog.Infof("ListAndWatchWithReset default fall through. bounds %+v", r.bounds)
+				klog.Infof("ListAndWatchWithReset default fall through. bounds %+v", r.filterBounds)
 			}
 		}
 
@@ -343,7 +367,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			AllowWatchBookmarks: false,
 		}
 
-		if r.resetCh != nil {
+		if len(r.filterBounds) > 0 {
 			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
 		w, err := r.listerWatcher.Watch(options)
@@ -414,12 +438,11 @@ func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, err
 
 loop:
 	for {
-		if r.resetCh != nil {
+		if len(r.filterBounds) > 0 {
 			select {
 			case <-stopCh:
 				return errorStopRequested
-			case signal, ok := <-r.resetCh.Read:
-				klog.Infof("Got restart message. signal %v", signal)
+			case signal, ok := <-r.aggChan:
 				if !ok {
 					klog.Error("resetCh channel closed")
 					return errors.New("Reset channel closed")
@@ -540,32 +563,76 @@ func appendFieldSelector(target metav1.ListOptions, fieldSelector metav1.ListOpt
 }
 
 func (r *Reflector) setBounds(signal interface{}) {
-	newBounds, _ := signal.([]int64)
-	klog.Infof("Got reset channel info. Old bounds %d, %d. New bounds %d, %d", r.bounds[0], r.bounds[1], newBounds[0], newBounds[1])
-	r.bounds = newBounds
+	newBounds, _ := signal.(FilterBound)
+	klog.V(4).Infof("Setbound Begin. Old bounds [%+v]. New bounds [%+v]. expectedType %v", r.filterBounds, newBounds, r.expectedType)
+	isBoundReset := false
+	for i, filterBound := range r.filterBounds {
+		if filterBound.sourceName == newBounds.OwnerName {
+			r.filterBounds[i].bounds = []int64{newBounds.LowerBound, newBounds.UpperBound}
+			isBoundReset = true
+		}
+	}
+	if !isBoundReset {
+		klog.Errorf("Cannot found matching filtering bounds. Old bounds [%+v]. New bounds [%+v]", r.filterBounds, newBounds)
+	}
+	klog.V(4).Infof("Setbound DONE. New bounds [%+v]. expectedType %v", r.filterBounds, r.expectedType)
 }
 
-func (r *Reflector) isInitBounds() bool {
-	if r.bounds[0] == -1 && r.bounds[1] == -1 {
-		return true
-	} else {
-		return false
+func (r *Reflector) hasInitBounds() bool {
+	for _, filterBound := range r.filterBounds {
+		if len(filterBound.bounds) == 0 || filterBound.bounds[0] == -1 && filterBound.bounds[1] == -1 {
+			return true
+		}
+	}
+	return false
+}
+
+// return false if stopCh send message
+func (r *Reflector) waitForBoundInit(stopCh <-chan struct{}) bool {
+	for {
+		select {
+		case msg, ok := <-r.aggChan:
+			if !ok {
+				klog.Errorf("Cannot read from closed channel. expectedType %v", r.expectedType)
+				return false
+			}
+			r.setBounds(msg)
+		case <-stopCh:
+			return false
+		}
+
+		if !r.hasInitBounds() {
+			klog.V(4).Infof("Init bound succeeded. expectedType %v, Bounds: %+v", r.expectedType, r.filterBounds)
+			return true
+		} else {
+			klog.V(4).Infof("Waiting for more init bound. expectedType %v, Bounds: %+v", r.expectedType, r.filterBounds)
+		}
 	}
 }
 
+// currently do not support all range
 func (r *Reflector) createHashkeyListOptions() metav1.ListOptions {
-	operator := "gt"
-	if r.bounds[0] == 0 {
-		operator = "gte"
+	klog.V(3).Infof("createHashkeyListOptions filterBounds [%+v], expectedType %v", r.filterBounds, r.expectedType)
+	listOptions := make([]string, 0)
+	for _, filterBound := range r.filterBounds {
+		if filterBound.bounds[0] == -1 && filterBound.bounds[1] == -1 {
+			continue
+		}
+		operator := "gt"
+		if filterBound.bounds[0] == 0 {
+			operator = "gte"
+		}
+		var option string
+		if filterBound.ownerKind != "" {
+			option = fmt.Sprintf("metadata.ownerReferences.hashkey.%s=%s:%v,metadata.ownerReferences.hashkey.%s=lte:%+v", filterBound.ownerKind, operator, filterBound.bounds[0], filterBound.ownerKind, filterBound.bounds[1])
+		} else {
+			option = fmt.Sprintf("metadata.hashkey=%s:%v,metadata.hashkey=lte:%+v", operator, filterBound.bounds[0], filterBound.bounds[1])
+		}
+
+		listOptions = append(listOptions, option)
 	}
 
-	if r.ownerKind != "" {
-		return metav1.ListOptions{
-			FieldSelector: fmt.Sprintf("metadata.ownerReferences.hashkey.%s=%s:%v,metadata.ownerReferences.hashkey.%s=lte:%+v", r.ownerKind, operator, r.bounds[0], r.ownerKind, r.bounds[1]),
-		}
-	} else {
-		return metav1.ListOptions{
-			FieldSelector: fmt.Sprintf("metadata.hashkey=%s:%v,metadata.hashkey=lte:%+v", operator, r.bounds[0], r.bounds[1]),
-		}
+	return metav1.ListOptions{
+		FieldSelector: strings.Join(listOptions, ";"),
 	}
 }

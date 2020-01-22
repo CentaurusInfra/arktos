@@ -41,7 +41,7 @@ func DefaultMetaV1FieldSelectorConversion(label, value string) (string, string, 
 	case "metadata.hashkey":
 		return label, value, nil
 	default:
-		if  strings.HasPrefix(label, "metadata.ownerReferences.hashkey.") {
+		if strings.HasPrefix(label, "metadata.ownerReferences.hashkey.") {
 			return label, value, nil
 		}
 		return "", "", fmt.Errorf("%q is not a known field selector: only %q, %q, %q, %q, %q", label, "metadata.name", "metadata.namespace", "metadata.tenant", "metadata.hashkey", "metadata.ownerReferences.hashkey.*")

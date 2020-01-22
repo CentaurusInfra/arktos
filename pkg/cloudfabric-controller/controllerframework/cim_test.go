@@ -63,11 +63,9 @@ func testAddEvent(t *testing.T, cim *ControllerInstanceManager, notifyTimes int)
 
 func TestSyncControllerInstances_Nil(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	assert.True(t, cim.isControllerListInitialized, "Expect controller list is initialized")
 
 	// invalid controller type
@@ -79,11 +77,9 @@ func TestSyncControllerInstances_Nil(t *testing.T) {
 
 func TestControllerInstancesAddAndUpdateEventHandler(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	// add event
@@ -114,11 +110,9 @@ func TestControllerInstancesAddAndUpdateEventHandler(t *testing.T) {
 
 func TestControllerInstanceDeleteEventHandler(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	// add event
@@ -136,11 +130,9 @@ func TestControllerInstanceDeleteEventHandler(t *testing.T) {
 
 func TestDeletedControllerInstanceSentToAddEventHandler(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	// add event
@@ -160,11 +152,9 @@ func TestDeletedControllerInstanceSentToAddEventHandler(t *testing.T) {
 
 func TestDeleteControllerInstanceDoesNotExist(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	controllerInstance1 := newControllerInstance("bar", 10000, 999, false)
@@ -178,11 +168,9 @@ func TestDeleteControllerInstanceDoesNotExist(t *testing.T) {
 
 func TestAddMultipleControllerInstancesForSameControllerType(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	// add event
@@ -207,11 +195,9 @@ func TestAddMultipleControllerInstancesForSameControllerType(t *testing.T) {
 
 func TestUpdateHandlerWithOldEvents(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	// add event
@@ -242,11 +228,9 @@ func TestUpdateHandlerWithOldEvents(t *testing.T) {
 
 func TestErrorHandlingInListControllerInstances(t *testing.T) {
 	stopCh := make(chan struct{})
-	updateCh := make(chan string)
 	defer close(stopCh)
-	defer close(updateCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh, updateCh)
+	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	_, controllerType, _ := testAddEvent(t, cim, 1)

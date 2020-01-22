@@ -25,8 +25,8 @@ import (
 // ObjectMetaFieldsSet returns a fields that represent the ObjectMeta.
 func ObjectMetaFieldsSet(objectMeta *metav1.ObjectMeta, hasNamespaceField bool) fields.Set {
 	result := fields.Set{
-		"metadata.name":      objectMeta.Name,
-		"metadata.hashkey":   strconv.FormatInt(objectMeta.HashKey, 10),
+		"metadata.name":    objectMeta.Name,
+		"metadata.hashkey": strconv.FormatInt(objectMeta.HashKey, 10),
 	}
 	for _, ownerRef := range objectMeta.GetOwnerReferences() {
 		result["metadata.ownerReferences.hashkey."+ownerRef.Kind] = strconv.FormatInt(ownerRef.HashKey, 10)
