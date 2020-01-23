@@ -47,7 +47,7 @@ const (
 	// 1. It allows a watch-fed cache time to observe a tenant/namespace creation event
 	// 2. It allows time for a tenant/namespace creation to distribute to members of a storage cluster,
 	//    so the live lookup has a better chance of succeeding even if it isn't performed against the leader.
-	missingCacheWait = 50 * time.Millisecond
+	missingTenantNamespaceWait = 50 * time.Millisecond
 )
 
 // Register registers a plugin
@@ -81,7 +81,7 @@ var _ = initializer.WantsExternalKubeInformerFactory(&Lifecycle{})
 var _ = initializer.WantsExternalKubeClientSet(&Lifecycle{})
 
 func (l *Lifecycle) tenantLifecycleAdmit(a admission.Attributes) error {
-	if len(a.GetTenant()) == 0 || a.GetTenant() == metav1.TenantDefault {
+	if a.GetTenant() == metav1.TenantNone || a.GetTenant() == metav1.TenantDefault {
 		return nil
 	}
 
@@ -102,7 +102,7 @@ func (l *Lifecycle) tenantLifecycleAdmit(a admission.Attributes) error {
 	if !exists && a.GetOperation() == admission.Create {
 		// give the cache time to observe the tenant before rejecting a create.
 		// this helps when creating a tenant and immediately creating objects within it.
-		time.Sleep(missingCacheWait)
+		time.Sleep(missingTenantNamespaceWait)
 		tenant, err = l.tenantLister.Get(a.GetTenant())
 		switch {
 		case errors.IsNotFound(err):
@@ -171,7 +171,7 @@ func (l *Lifecycle) namespaceLifecycleAdmit(a admission.Attributes) error {
 	if !exists && a.GetOperation() == admission.Create {
 		// give the cache time to observe the namespace before rejecting a create.
 		// this helps when creating a namespace and immediately creating objects within it.
-		time.Sleep(missingCacheWait)
+		time.Sleep(missingTenantNamespaceWait)
 		namespace, err = l.namespaceLister.NamespacesWithMultiTenancy(a.GetTenant()).Get(a.GetNamespace())
 		switch {
 		case errors.IsNotFound(err):
