@@ -120,7 +120,7 @@ func testAdmission(t *testing.T, pod *corev1.Pod, handler *DenyExec, shouldAccep
 
 	// pods/exec
 	{
-		err := handler.Validate(admission.NewAttributesRecord(nil, nil, api.Kind("Pod").WithVersion("version"), "test", pod.Name, api.Resource("pods").WithVersion("version"), "exec", admission.Connect, nil, false, nil), nil)
+		err := handler.Validate(admission.NewAttributesRecord(nil, nil, api.Kind("Pod").WithVersion("version"), "test-te", "test", pod.Name, api.Resource("pods").WithVersion("version"), "exec", admission.Connect, nil, false, nil), nil)
 		if shouldAccept && err != nil {
 			t.Errorf("Unexpected error returned from admission handler: %v", err)
 		}
@@ -131,7 +131,7 @@ func testAdmission(t *testing.T, pod *corev1.Pod, handler *DenyExec, shouldAccep
 
 	// pods/attach
 	{
-		err := handler.Validate(admission.NewAttributesRecord(nil, nil, api.Kind("Pod").WithVersion("version"), "test", pod.Name, api.Resource("pods").WithVersion("version"), "attach", admission.Connect, nil, false, nil), nil)
+		err := handler.Validate(admission.NewAttributesRecord(nil, nil, api.Kind("Pod").WithVersion("version"), "test-te", "test", pod.Name, api.Resource("pods").WithVersion("version"), "attach", admission.Connect, nil, false, nil), nil)
 		if shouldAccept && err != nil {
 			t.Errorf("Unexpected error returned from admission handler: %v", err)
 		}
@@ -194,7 +194,7 @@ func TestDenyExecOnPrivileged(t *testing.T) {
 
 func validPod(name string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test"},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Tenant: "test-te"},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{Name: "ctr1", Image: "image"},

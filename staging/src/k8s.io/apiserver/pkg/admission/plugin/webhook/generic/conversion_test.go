@@ -171,7 +171,7 @@ func TestConvertVersionedAttributes(t *testing.T) {
 		return schema.GroupVersionKind{g, v, k}
 	}
 	attrs := func(obj, oldObj runtime.Object) admission.Attributes {
-		return admission.NewAttributesRecord(obj, oldObj, schema.GroupVersionKind{}, "", "", schema.GroupVersionResource{}, "", "", nil, false, nil)
+		return admission.NewAttributesRecord(obj, oldObj, schema.GroupVersionKind{}, "", "", "", schema.GroupVersionResource{}, "", "", nil, false, nil)
 	}
 	u := func(data string) *unstructured.Unstructured {
 		t.Helper()

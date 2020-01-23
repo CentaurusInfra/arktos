@@ -58,7 +58,7 @@ func TestAdmit(t *testing.T) {
 			}
 
 			ns := "webhook-test"
-			client, informer := webhooktesting.NewFakeMutatingDataSource(ns, tt.Webhooks, stopCh)
+			client, informer := webhooktesting.NewFakeMutatingDataSource(metav1.TenantDefault, ns, tt.Webhooks, stopCh)
 
 			wh.SetAuthenticationInfoResolverWrapper(webhooktesting.Wrapper(webhooktesting.NewAuthenticationInfoResolver(new(int32))))
 			wh.SetServiceResolver(webhooktesting.NewServiceResolver(*serverURL))
@@ -75,9 +75,9 @@ func TestAdmit(t *testing.T) {
 
 			var attr admission.Attributes
 			if tt.IsCRD {
-				attr = webhooktesting.NewAttributeUnstructured(ns, tt.AdditionalLabels, tt.IsDryRun)
+				attr = webhooktesting.NewAttributeUnstructured(metav1.TenantDefault, ns, tt.AdditionalLabels, tt.IsDryRun)
 			} else {
-				attr = webhooktesting.NewAttribute(ns, tt.AdditionalLabels, tt.IsDryRun)
+				attr = webhooktesting.NewAttribute(metav1.TenantDefault, ns, tt.AdditionalLabels, tt.IsDryRun)
 			}
 
 			err = wh.Admit(attr, objectInterfaces)
@@ -147,7 +147,7 @@ func TestAdmitCachedClient(t *testing.T) {
 
 	for _, tt := range webhooktesting.NewCachedClientTestcases(serverURL) {
 		ns := "webhook-test"
-		client, informer := webhooktesting.NewFakeMutatingDataSource(ns, webhooktesting.ConvertToMutatingWebhooks(tt.Webhooks), stopCh)
+		client, informer := webhooktesting.NewFakeMutatingDataSource(metav1.TenantDefault, ns, webhooktesting.ConvertToMutatingWebhooks(tt.Webhooks), stopCh)
 
 		// override the webhook source. The client cache will stay the same.
 		cacheMisses := new(int32)
@@ -163,7 +163,7 @@ func TestAdmitCachedClient(t *testing.T) {
 			continue
 		}
 
-		err = wh.Admit(webhooktesting.NewAttribute(ns, nil, false), objectInterfaces)
+		err = wh.Admit(webhooktesting.NewAttribute(metav1.TenantDefault, ns, nil, false), objectInterfaces)
 		if tt.ExpectAllow != (err == nil) {
 			t.Errorf("%s: expected allowed=%v, but got err=%v", tt.Name, tt.ExpectAllow, err)
 		}

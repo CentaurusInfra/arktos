@@ -127,15 +127,9 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 		trace.Step("About to delete object from database")
 		wasDeleted := true
 		userInfo, _ := request.UserFrom(ctx)
-		staticAdmissionAttrs := admission.NewAttributesRecord(nil, nil, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Delete, options, dryrun.IsDryRun(options.DryRun), userInfo)
-		// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
-		// TODO: enable the admission check for all resources
-		admissionDeleteFunc := rest.AdmissionToValidateObjectDeleteFuncWithMultiTenancy
-		if tenant == "" || tenant == metav1.TenantDefault {
-			admissionDeleteFunc = rest.AdmissionToValidateObjectDeleteFunc
-		}
+		staticAdmissionAttrs := admission.NewAttributesRecord(nil, nil, scope.Kind, tenant, namespace, name, scope.Resource, scope.Subresource, admission.Delete, options, dryrun.IsDryRun(options.DryRun), userInfo)
 		result, err := finishRequest(timeout, func() (runtime.Object, error) {
-			obj, deleted, err := r.Delete(ctx, name, admissionDeleteFunc(admit, staticAdmissionAttrs, scope), options)
+			obj, deleted, err := r.Delete(ctx, name, rest.AdmissionToValidateObjectDeleteFunc(admit, staticAdmissionAttrs, scope), options)
 			wasDeleted = deleted
 			return obj, err
 		})
@@ -276,15 +270,9 @@ func DeleteCollection(r rest.CollectionDeleter, checkBody bool, scope *RequestSc
 
 		admit = admission.WithAudit(admit, ae)
 		userInfo, _ := request.UserFrom(ctx)
-		staticAdmissionAttrs := admission.NewAttributesRecord(nil, nil, scope.Kind, namespace, "", scope.Resource, scope.Subresource, admission.Delete, options, dryrun.IsDryRun(options.DryRun), userInfo)
-		// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
-		// TODO: enable the admission check for all resources
-		admissionDeleteFunc := rest.AdmissionToValidateObjectDeleteFuncWithMultiTenancy
-		if tenant == "" || tenant == metav1.TenantDefault {
-			admissionDeleteFunc = rest.AdmissionToValidateObjectDeleteFunc
-		}
+		staticAdmissionAttrs := admission.NewAttributesRecord(nil, nil, scope.Kind, tenant, namespace, "", scope.Resource, scope.Subresource, admission.Delete, options, dryrun.IsDryRun(options.DryRun), userInfo)
 		result, err := finishRequest(timeout, func() (runtime.Object, error) {
-			return r.DeleteCollection(ctx, admissionDeleteFunc(admit, staticAdmissionAttrs, scope), options, &listOptions)
+			return r.DeleteCollection(ctx, rest.AdmissionToValidateObjectDeleteFunc(admit, staticAdmissionAttrs, scope), options, &listOptions)
 		})
 		if err != nil {
 			scope.err(err, w, req)

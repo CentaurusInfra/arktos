@@ -39,7 +39,7 @@ func a(group, version, resource, subresource, name string, operation admission.O
 	return admission.NewAttributesRecord(
 		nil, nil,
 		schema.GroupVersionKind{Group: group, Version: version, Kind: "k" + resource},
-		"ns", name,
+		metav1.TenantDefault, "ns", name,
 		schema.GroupVersionResource{Group: group, Version: version, Resource: resource}, subresource,
 		operation,
 		operationOptions,
@@ -52,7 +52,7 @@ func namespacedAttributes(group, version, resource, subresource, name string, op
 	return admission.NewAttributesRecord(
 		nil, nil,
 		schema.GroupVersionKind{Group: group, Version: version, Kind: "k" + resource},
-		"ns", name,
+		metav1.TenantDefault, "ns", name,
 		schema.GroupVersionResource{Group: group, Version: version, Resource: resource}, subresource,
 		operation,
 		operationOptions,
@@ -65,7 +65,7 @@ func clusterScopedAttributes(group, version, resource, subresource, name string,
 	return admission.NewAttributesRecord(
 		nil, nil,
 		schema.GroupVersionKind{Group: group, Version: version, Kind: "k" + resource},
-		"", name,
+		"", "", name,
 		schema.GroupVersionResource{Group: group, Version: version, Resource: resource}, subresource,
 		operation,
 		operationOptions,

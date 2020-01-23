@@ -281,6 +281,7 @@ func AdmissionToValidateObjectUpdateFunc(admit admission.Interface, staticAttrib
 			obj,
 			old,
 			staticAttributes.GetKind(),
+			staticAttributes.GetTenant(),
 			staticAttributes.GetNamespace(),
 			staticAttributes.GetName(),
 			staticAttributes.GetResource(),
@@ -294,12 +295,5 @@ func AdmissionToValidateObjectUpdateFunc(admit admission.Interface, staticAttrib
 			return nil
 		}
 		return validatingAdmission.Validate(finalAttributes, o)
-	}
-}
-
-// TODO: multi-tenancy admission check
-func AdmissionToValidateObjectUpdateFuncWithMultiTenancy(admit admission.Interface, staticAttributes admission.Attributes, o admission.ObjectInterfaces) ValidateObjectUpdateFunc {
-	return func(obj, old runtime.Object) error {
-		return nil
 	}
 }

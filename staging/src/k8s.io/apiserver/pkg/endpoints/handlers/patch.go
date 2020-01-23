@@ -153,6 +153,7 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			nil,
 			nil,
 			scope.Kind,
+			tenant,
 			namespace,
 			name,
 			scope.Resource,
@@ -165,6 +166,7 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			nil,
 			nil,
 			scope.Kind,
+			tenant,
 			namespace,
 			name,
 			scope.Resource,
@@ -189,15 +191,6 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			Name:            name,
 		}
 
-		// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
-		// TODO: enable the admission check for all resources
-		admissionValidateFunc := rest.AdmissionToValidateObjectFuncWithMultiTenancy
-		admissionUpdateFunc := rest.AdmissionToValidateObjectUpdateFuncWithMultiTenancy
-		if tenant == "" || tenant == metav1.TenantDefault {
-			admissionValidateFunc = rest.AdmissionToValidateObjectFunc
-			admissionUpdateFunc = rest.AdmissionToValidateObjectUpdateFunc
-		}
-
 		p := patcher{
 			namer:           scope.Namer,
 			creater:         scope.Creater,
@@ -213,8 +206,8 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 
 			hubGroupVersion: scope.HubGroupVersion,
 
-			createValidation: withAuthorization(admissionValidateFunc(admit, staticCreateAttributes, scope), scope.Authorizer, createAuthorizerAttributes),
-			updateValidation: admissionUpdateFunc(admit, staticUpdateAttributes, scope),
+			createValidation: withAuthorization(rest.AdmissionToValidateObjectFunc(admit, staticCreateAttributes, scope), scope.Authorizer, createAuthorizerAttributes),
+			updateValidation: rest.AdmissionToValidateObjectUpdateFunc(admit, staticUpdateAttributes, scope),
 			admissionCheck:   mutatingAdmission,
 
 			codec: codec,
@@ -510,7 +503,7 @@ func (p *patcher) applyPatch(_ context.Context, _, currentObject runtime.Object)
 
 func (p *patcher) admissionAttributes(ctx context.Context, updatedObject runtime.Object, currentObject runtime.Object, operation admission.Operation, operationOptions runtime.Object) admission.Attributes {
 	userInfo, _ := request.UserFrom(ctx)
-	return admission.NewAttributesRecord(updatedObject, currentObject, p.kind, p.namespace, p.name, p.resource, p.subresource, operation, operationOptions, p.dryRun, userInfo)
+	return admission.NewAttributesRecord(updatedObject, currentObject, p.kind, p.tenant, p.namespace, p.name, p.resource, p.subresource, operation, operationOptions, p.dryRun, userInfo)
 }
 
 // applyAdmission is called every time GuaranteedUpdate asks for the updated object,
@@ -531,14 +524,9 @@ func (p *patcher) applyAdmission(ctx context.Context, patchedObject runtime.Obje
 		options = patchToUpdateOptions(p.options)
 	}
 
-	// as multi-tenancy admission is to be done in Phase II, we skip the admission check for multi-tenancy resources for now.
-	// TODO: enable the admission check for all resources
-	tenant, ok := request.TenantFrom(ctx)
-	if ok && (tenant == "" || tenant == metav1.TenantDefault) {
-		if p.admissionCheck != nil && p.admissionCheck.Handles(operation) {
-			attributes := p.admissionAttributes(ctx, patchedObject, currentObject, operation, options)
-			return patchedObject, p.admissionCheck.Admit(attributes, p.objectInterfaces)
-		}
+	if p.admissionCheck != nil && p.admissionCheck.Handles(operation) {
+		attributes := p.admissionAttributes(ctx, patchedObject, currentObject, operation, options)
+		return patchedObject, p.admissionCheck.Admit(attributes, p.objectInterfaces)
 	}
 
 	return patchedObject, nil

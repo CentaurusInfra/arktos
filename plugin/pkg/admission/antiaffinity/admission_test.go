@@ -30,6 +30,7 @@ import (
 // TODO: Add test case "invalid topologyKey in requiredDuringSchedulingRequiredDuringExecution then admission fails"
 // after RequiredDuringSchedulingRequiredDuringExecution is implemented.
 func TestInterPodAffinityAdmission(t *testing.T) {
+	tenant := "test-te"
 	handler := NewInterPodAntiAffinity()
 	pod := api.Pod{
 		Spec: api.PodSpec{},
@@ -199,7 +200,7 @@ func TestInterPodAffinityAdmission(t *testing.T) {
 	}
 	for _, test := range tests {
 		pod.Spec.Affinity = test.affinity
-		err := handler.Validate(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"), "foo", "name", api.Resource("pods").WithVersion("version"), "", "ignored", nil, false, nil), nil)
+		err := handler.Validate(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"), tenant, "foo", "name", api.Resource("pods").WithVersion("version"), "", "ignored", nil, false, nil), nil)
 
 		if test.errorExpected && err == nil {
 			t.Errorf("Expected error for Anti Affinity %+v but did not get an error", test.affinity)
@@ -229,10 +230,18 @@ func TestHandles(t *testing.T) {
 // TestOtherResources ensures that this admission controller is a no-op for other resources,
 // subresources, and non-pods.
 func TestOtherResources(t *testing.T) {
+	testOtherResources(t, metav1.TenantDefault)
+}
+
+func TestOtherResourcesWithMultiTenancy(t *testing.T) {
+	testOtherResources(t, "test-te")
+}
+
+func testOtherResources(t *testing.T, tenant string) {
 	namespace := "testnamespace"
 	name := "testname"
 	pod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Tenant: tenant},
 	}
 	tests := []struct {
 		name        string
@@ -267,7 +276,7 @@ func TestOtherResources(t *testing.T) {
 	for _, tc := range tests {
 		handler := &Plugin{}
 
-		err := handler.Validate(admission.NewAttributesRecord(tc.object, nil, api.Kind(tc.kind).WithVersion("version"), namespace, name, api.Resource(tc.resource).WithVersion("version"), tc.subresource, admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+		err := handler.Validate(admission.NewAttributesRecord(tc.object, nil, api.Kind(tc.kind).WithVersion("version"), tenant, namespace, name, api.Resource(tc.resource).WithVersion("version"), tc.subresource, admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 
 		if tc.expectError {
 			if err == nil {

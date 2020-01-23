@@ -818,6 +818,7 @@ func admitPod(t *testing.T, pod *api.Pod, pip *settingsv1alpha1.PodPreset) error
 		pod,
 		nil,
 		api.Kind("Pod").WithVersion("version"),
+		"default",
 		"namespace",
 		"",
 		api.Resource("pods").WithVersion("version"),

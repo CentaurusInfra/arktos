@@ -53,11 +53,11 @@ var reinvokeNever = registrationv1beta1.NeverReinvocationPolicy
 var reinvokeIfNeeded = registrationv1beta1.IfNeededReinvocationPolicy
 
 // NewFakeValidatingDataSource returns a mock client and informer returning the given webhooks.
-func NewFakeValidatingDataSource(name string, webhooks []registrationv1beta1.ValidatingWebhook, stopCh <-chan struct{}) (clientset kubernetes.Interface, factory informers.SharedInformerFactory) {
+func NewFakeValidatingDataSource(tenant, name string, webhooks []registrationv1beta1.ValidatingWebhook, stopCh <-chan struct{}) (clientset kubernetes.Interface, factory informers.SharedInformerFactory) {
 	var objs = []runtime.Object{
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Tenant: metav1.TenantDefault,
+				Tenant: tenant,
 				Name:   name,
 				Labels: map[string]string{
 					"runlevel": "0",
@@ -79,11 +79,11 @@ func NewFakeValidatingDataSource(name string, webhooks []registrationv1beta1.Val
 }
 
 // NewFakeMutatingDataSource returns a mock client and informer returning the given webhooks.
-func NewFakeMutatingDataSource(name string, webhooks []registrationv1beta1.MutatingWebhook, stopCh <-chan struct{}) (clientset kubernetes.Interface, factory informers.SharedInformerFactory) {
+func NewFakeMutatingDataSource(tenant, name string, webhooks []registrationv1beta1.MutatingWebhook, stopCh <-chan struct{}) (clientset kubernetes.Interface, factory informers.SharedInformerFactory) {
 	var objs = []runtime.Object{
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Tenant: metav1.TenantDefault,
+				Tenant: tenant,
 				Name:   name,
 				Labels: map[string]string{
 					"runlevel": "0",
@@ -104,9 +104,10 @@ func NewFakeMutatingDataSource(name string, webhooks []registrationv1beta1.Mutat
 	return client, informerFactory
 }
 
-func newAttributesRecord(object metav1.Object, oldObject metav1.Object, kind schema.GroupVersionKind, namespace string, name string, resource string, labels map[string]string, dryRun bool) admission.Attributes {
+func newAttributesRecord(object metav1.Object, oldObject metav1.Object, kind schema.GroupVersionKind, tenant string, namespace string, name string, resource string, labels map[string]string, dryRun bool) admission.Attributes {
 	object.SetName(name)
 	object.SetNamespace(namespace)
+	object.SetTenant(tenant)
 	objectLabels := map[string]string{resource + ".name": name}
 	for k, v := range labels {
 		objectLabels[k] = v
@@ -115,6 +116,7 @@ func newAttributesRecord(object metav1.Object, oldObject metav1.Object, kind sch
 
 	oldObject.SetName(name)
 	oldObject.SetNamespace(namespace)
+	oldObject.SetTenant(tenant)
 
 	gvr := kind.GroupVersion().WithResource(resource)
 	subResource := ""
@@ -125,7 +127,7 @@ func newAttributesRecord(object metav1.Object, oldObject metav1.Object, kind sch
 	options := &metav1.UpdateOptions{}
 
 	return &FakeAttributes{
-		Attributes: admission.NewAttributesRecord(object.(runtime.Object), oldObject.(runtime.Object), kind, namespace, name, gvr, subResource, admission.Update, options, dryRun, &userInfo),
+		Attributes: admission.NewAttributesRecord(object.(runtime.Object), oldObject.(runtime.Object), kind, tenant, namespace, name, gvr, subResource, admission.Update, options, dryRun, &userInfo),
 	}
 }
 
@@ -158,7 +160,7 @@ func (f *FakeAttributes) GetAnnotations() map[string]string {
 }
 
 // NewAttribute returns static admission Attributes for testing.
-func NewAttribute(namespace string, labels map[string]string, dryRun bool) admission.Attributes {
+func NewAttribute(tenant string, namespace string, labels map[string]string, dryRun bool) admission.Attributes {
 	// Set up a test object for the call
 	object := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -170,11 +172,11 @@ func NewAttribute(namespace string, labels map[string]string, dryRun bool) admis
 	kind := corev1.SchemeGroupVersion.WithKind("Pod")
 	name := "my-pod"
 
-	return newAttributesRecord(&object, &oldObject, kind, namespace, name, "pod", labels, dryRun)
+	return newAttributesRecord(&object, &oldObject, kind, tenant, namespace, name, "pod", labels, dryRun)
 }
 
 // NewAttributeUnstructured returns static admission Attributes for testing with custom resources.
-func NewAttributeUnstructured(namespace string, labels map[string]string, dryRun bool) admission.Attributes {
+func NewAttributeUnstructured(tenant string, namespace string, labels map[string]string, dryRun bool) admission.Attributes {
 	// Set up a test object for the call
 	object := unstructured.Unstructured{}
 	object.SetKind("TestCRD")
@@ -185,7 +187,7 @@ func NewAttributeUnstructured(namespace string, labels map[string]string, dryRun
 	kind := object.GroupVersionKind()
 	name := "my-test-crd"
 
-	return newAttributesRecord(&object, &oldObject, kind, namespace, name, "crd", labels, dryRun)
+	return newAttributesRecord(&object, &oldObject, kind, tenant, namespace, name, "crd", labels, dryRun)
 }
 
 type urlConfigGenerator struct {

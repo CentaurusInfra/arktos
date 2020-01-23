@@ -46,11 +46,13 @@ type attributesRecord struct {
 	annotationsLock sync.RWMutex
 
 	reinvocationContext ReinvocationContext
+	tenant              string
 }
 
-func NewAttributesRecord(object runtime.Object, oldObject runtime.Object, kind schema.GroupVersionKind, namespace, name string, resource schema.GroupVersionResource, subresource string, operation Operation, operationOptions runtime.Object, dryRun bool, userInfo user.Info) Attributes {
+func NewAttributesRecord(object runtime.Object, oldObject runtime.Object, kind schema.GroupVersionKind, tenant, namespace, name string, resource schema.GroupVersionResource, subresource string, operation Operation, operationOptions runtime.Object, dryRun bool, userInfo user.Info) Attributes {
 	return &attributesRecord{
 		kind:                kind,
+		tenant:              tenant,
 		namespace:           namespace,
 		name:                name,
 		resource:            resource,
@@ -67,6 +69,10 @@ func NewAttributesRecord(object runtime.Object, oldObject runtime.Object, kind s
 
 func (record *attributesRecord) GetKind() schema.GroupVersionKind {
 	return record.kind
+}
+
+func (record *attributesRecord) GetTenant() string {
+	return record.tenant
 }
 
 func (record *attributesRecord) GetNamespace() string {

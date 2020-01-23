@@ -173,9 +173,9 @@ func (s *Plugin) Admit(a admission.Attributes, o admission.ObjectInterfaces) (er
 		pod.Spec.ServiceAccountName = DefaultServiceAccountName
 	}
 
-	serviceAccount, err := s.getServiceAccount(a.GetNamespace(), pod.Spec.ServiceAccountName)
+	serviceAccount, err := s.getServiceAccount(a.GetTenant(), a.GetNamespace(), pod.Spec.ServiceAccountName)
 	if err != nil {
-		return admission.NewForbidden(a, fmt.Errorf("error looking up service account %s/%s: %v", a.GetNamespace(), pod.Spec.ServiceAccountName, err))
+		return admission.NewForbidden(a, fmt.Errorf("error looking up service account %s/%s/%s: %v", a.GetTenant(), a.GetNamespace(), pod.Spec.ServiceAccountName, err))
 	}
 	if s.MountServiceAccountToken && shouldAutomount(serviceAccount, pod) {
 		if err := s.mountServiceAccountToken(serviceAccount, pod); err != nil {
@@ -229,9 +229,9 @@ func (s *Plugin) Validate(a admission.Attributes, o admission.ObjectInterfaces) 
 	}
 
 	// Ensure the referenced service account exists
-	serviceAccount, err := s.getServiceAccount(a.GetNamespace(), pod.Spec.ServiceAccountName)
+	serviceAccount, err := s.getServiceAccount(a.GetTenant(), a.GetNamespace(), pod.Spec.ServiceAccountName)
 	if err != nil {
-		return admission.NewForbidden(a, fmt.Errorf("error looking up service account %s/%s: %v", a.GetNamespace(), pod.Spec.ServiceAccountName, err))
+		return admission.NewForbidden(a, fmt.Errorf("error looking up service account %s/%s/%s: %v", a.GetTenant(), a.GetNamespace(), pod.Spec.ServiceAccountName, err))
 	}
 
 	if s.enforceMountableSecrets(serviceAccount) {
@@ -291,8 +291,8 @@ func (s *Plugin) enforceMountableSecrets(serviceAccount *corev1.ServiceAccount) 
 }
 
 // getServiceAccount returns the ServiceAccount for the given namespace and name if it exists
-func (s *Plugin) getServiceAccount(namespace string, name string) (*corev1.ServiceAccount, error) {
-	serviceAccount, err := s.serviceAccountLister.ServiceAccounts(namespace).Get(name)
+func (s *Plugin) getServiceAccount(tenant string, namespace string, name string) (*corev1.ServiceAccount, error) {
+	serviceAccount, err := s.serviceAccountLister.ServiceAccountsWithMultiTenancy(namespace, tenant).Get(name)
 	if err == nil {
 		return serviceAccount, nil
 	}
@@ -311,7 +311,7 @@ func (s *Plugin) getServiceAccount(namespace string, name string) (*corev1.Servi
 		if i != 0 {
 			time.Sleep(retryInterval)
 		}
-		serviceAccount, err := s.client.CoreV1().ServiceAccounts(namespace).Get(name, metav1.GetOptions{})
+		serviceAccount, err := s.client.CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 		if err == nil {
 			return serviceAccount, nil
 		}
@@ -350,7 +350,7 @@ func (s *Plugin) getReferencedServiceAccountToken(serviceAccount *corev1.Service
 
 // getServiceAccountTokens returns all ServiceAccountToken secrets for the given ServiceAccount
 func (s *Plugin) getServiceAccountTokens(serviceAccount *corev1.ServiceAccount) ([]*corev1.Secret, error) {
-	secrets, err := s.secretLister.Secrets(serviceAccount.Namespace).List(labels.Everything())
+	secrets, err := s.secretLister.SecretsWithMultiTenancy(serviceAccount.Namespace, serviceAccount.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +423,7 @@ func (s *Plugin) mountServiceAccountToken(serviceAccount *corev1.ServiceAccount,
 	// Find the name of a referenced ServiceAccountToken secret we can mount
 	serviceAccountToken, err := s.getReferencedServiceAccountToken(serviceAccount)
 	if err != nil {
-		return fmt.Errorf("Error looking up service account token for %s/%s: %v", serviceAccount.Namespace, serviceAccount.Name, err)
+		return fmt.Errorf("Error looking up service account token for %s/%s/%s: %v", serviceAccount.Tenant, serviceAccount.Namespace, serviceAccount.Name, err)
 	}
 	if len(serviceAccountToken) == 0 {
 		// We don't have an API token to mount, so return
