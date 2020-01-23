@@ -311,7 +311,7 @@ func (s *csrSimulator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		s.csr = csr
 
-	case req.Method == "GET" && req.URL.Path == "/apis/certificates.k8s.io/v1beta1/certificatesigningrequests" && req.URL.RawQuery == "fieldSelector=metadata.name%3Dtest-csr&limit=500&resourceVersion=0":
+	case req.Method == "GET" && req.URL.Path == "/apis/certificates.k8s.io/v1beta1/certificatesigningrequests" && req.URL.RawQuery == "fieldSelector=metadata.name%3Dtest-csr&limit=500":
 		if s.csr == nil {
 			t.Fatalf("no csr")
 		}

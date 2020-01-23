@@ -233,10 +233,11 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	klog.V(5).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
 	var resourceVersion string
 
-	// Explicitly set "0" as resource version - it's fine for the List()
+	// Explicitly set "" as resource version - it's fine for the List()
 	// to be served from cache and potentially be delayed relative to
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
-	options := metav1.ListOptions{ResourceVersion: "0"}
+	// When ResourceVersion is empty, list will get from api server cache
+	options := metav1.ListOptions{ResourceVersion: ""}
 
 	if len(r.filterBounds) > 0 {
 		if r.hasInitBounds() {
