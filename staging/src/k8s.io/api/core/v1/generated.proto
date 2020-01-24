@@ -88,19 +88,31 @@ message ActionList {
 message ActionSpec {
   optional string nodeName = 1;
 
-  optional PodAction podAction = 2;
+  optional string podName = 2;
 
-  optional NodeAction nodeAction = 3;
+  optional string podID = 3;
+
+  optional RebootAction rebootAction = 4;
+
+  optional SnapshotAction snapshotAction = 5;
+
+  optional RestoreAction restoreAction = 6;
 }
 
 message ActionStatus {
   optional bool complete = 1;
 
-  optional PodActionStatus podActionStatus = 2;
+  optional string error = 2;
 
-  optional NodeActionStatus nodeActionStatus = 3;
+  optional string podName = 3;
 
-  optional string error = 4;
+  optional string podID = 4;
+
+  optional RebootStatus rebootStatus = 5;
+
+  optional SnapshotStatus snapshotStatus = 6;
+
+  optional RestoreStatus restoreStatus = 7;
 }
 
 // Affinity is a group of affinity scheduling rules.
@@ -2048,14 +2060,6 @@ message Node {
   optional NodeStatus status = 3;
 }
 
-message NodeAction {
-  optional RebootAction rebootAction = 2;
-}
-
-message NodeActionStatus {
-  optional RebootStatus rebootStatus = 2;
-}
-
 // NodeAddress contains information for the node's address.
 message NodeAddress {
   // Node address type, one of Hostname, ExternalIP or InternalIP.
@@ -2802,30 +2806,6 @@ message Pod {
   // More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
   // +optional
   optional PodStatus status = 3;
-}
-
-message PodAction {
-  optional string podName = 1;
-
-  optional string podID = 2;
-
-  optional RebootAction rebootAction = 3;
-
-  optional SnapshotAction snapshotAction = 4;
-
-  optional RestoreAction restoreAction = 5;
-}
-
-message PodActionStatus {
-  optional string podName = 1;
-
-  optional string podID = 2;
-
-  optional RebootStatus rebootStatus = 3;
-
-  optional SnapshotStatus snapshotStatus = 4;
-
-  optional RestoreStatus restoreStatus = 5;
 }
 
 // Pod affinity is a group of inter pod affinity scheduling rules.

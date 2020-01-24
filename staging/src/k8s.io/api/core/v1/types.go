@@ -4768,41 +4768,23 @@ type RestoreStatus struct {
 	RestoreSuccessful bool `json:"restoreSuccessful,omitempty" protobuf:"varint,1,opt,name=restoreSuccessful"`
 }
 
-type PodAction struct {
-	PodName        string          `json:"podName,omitempty" protobuf:"bytes,1,opt,name=podName"`
-	PodID          string          `json:"podID,omitempty" protobuf:"bytes,2,opt,name=podID"`
-	RebootAction   *RebootAction   `json:"rebootAction,omitempty" protobuf:"bytes,3,opt,name=rebootAction"`
-	SnapshotAction *SnapshotAction `json:"snapshotAction,omitempty" protobuf:"bytes,4,opt,name=snapshotAction"`
-	RestoreAction  *RestoreAction  `json:"restoreAction,omitempty" protobuf:"bytes,5,opt,name=restoreAction"`
-}
-
-type PodActionStatus struct {
-	PodName        string          `json:"podName,omitempty" protobuf:"bytes,1,opt,name=podName"`
-	PodID          string          `json:"podID,omitempty" protobuf:"bytes,2,opt,name=podID"`
-	RebootStatus   *RebootStatus   `json:"rebootStatus,omitempty" protobuf:"bytes,3,opt,name=rebootStatus"`
-	SnapshotStatus *SnapshotStatus `json:"snapshotStatus,omitempty" protobuf:"bytes,4,opt,name=snapshotStatus"`
-	RestoreStatus  *RestoreStatus  `json:"restoreStatus,omitempty" protobuf:"bytes,5,opt,name=restoreStatus"`
-}
-
-type NodeAction struct {
-	RebootAction *RebootAction `json:"rebootAction,omitempty" protobuf:"bytes,2,opt,name=rebootAction"`
-}
-
-type NodeActionStatus struct {
-	RebootStatus *RebootStatus `json:"rebootStatus,omitempty" protobuf:"bytes,2,opt,name=rebootStatus"`
-}
-
 type ActionSpec struct {
-	NodeName   string      `json:"nodeName,omitempty" protobuf:"bytes,1,opt,name=nodeName"`
-	PodAction  *PodAction  `json:"podAction,omitempty" protobuf:"bytes,2,opt,name=podAction"`
-	NodeAction *NodeAction `json:"nodeAction,omitempty" protobuf:"bytes,3,opt,name=nodeAction"`
+	NodeName       string          `json:"nodeName,omitempty" protobuf:"bytes,1,opt,name=nodeName"`
+	PodName        string          `json:"podName,omitempty" protobuf:"bytes,2,opt,name=podName"`
+	PodID          string          `json:"podID,omitempty" protobuf:"bytes,3,opt,name=podID"`
+	RebootAction   *RebootAction   `json:"rebootAction,omitempty" protobuf:"bytes,4,opt,name=rebootAction"`
+	SnapshotAction *SnapshotAction `json:"snapshotAction,omitempty" protobuf:"bytes,5,opt,name=snapshotAction"`
+	RestoreAction  *RestoreAction  `json:"restoreAction,omitempty" protobuf:"bytes,6,opt,name=restoreAction"`
 }
 
 type ActionStatus struct {
-	Complete         bool              `json:"complete,omitempty" protobuf:"varint,1,opt,name=complete"`
-	PodActionStatus  *PodActionStatus  `json:"podActionStatus,omitempty" protobuf:"bytes,2,opt,name=podActionStatus"`
-	NodeActionStatus *NodeActionStatus `json:"nodeActionStatus,omitempty" protobuf:"bytes,3,opt,name=nodeActionStatus"`
-	Error            string            `json:"error,omitempty" protobuf:"bytes,4,opt,name=error"`
+	Complete       bool            `json:"complete,omitempty" protobuf:"varint,1,opt,name=complete"`
+	Error          string          `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
+	PodName        string          `json:"podName,omitempty" protobuf:"bytes,3,opt,name=podName"`
+	PodID          string          `json:"podID,omitempty" protobuf:"bytes,4,opt,name=podID"`
+	RebootStatus   *RebootStatus   `json:"rebootStatus,omitempty" protobuf:"bytes,5,opt,name=rebootStatus"`
+	SnapshotStatus *SnapshotStatus `json:"snapshotStatus,omitempty" protobuf:"bytes,6,opt,name=snapshotStatus"`
+	RestoreStatus  *RestoreStatus  `json:"restoreStatus,omitempty" protobuf:"bytes,7,opt,name=restoreStatus"`
 }
 
 // +genclient

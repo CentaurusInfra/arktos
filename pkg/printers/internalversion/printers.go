@@ -592,17 +592,12 @@ func printAction(action *api.Action, options printers.PrintOptions) ([]metav1.Ta
 		Object: runtime.RawExtension{Object: action},
 	}
 
-	podName := ""
-	if action.Spec.PodAction != nil {
-		podName = action.Spec.PodAction.PodName
-	}
-
 	complete := "No"
 	if action.Status.Complete {
 		complete = "Yes"
 	}
 
-	row.Cells = append(row.Cells, action.Name, action.Spec.NodeName, podName, complete)
+	row.Cells = append(row.Cells, action.Name, action.Spec.NodeName, action.Spec.PodName, complete)
 	if options.Wide {
 		row.Cells = append(row.Cells, action.Status.Error)
 	}

@@ -61,8 +61,10 @@ func (kl *Kubelet) DoRestoreVM(pod *v1.Pod, snapshotID string) error {
 func (kl *Kubelet) DoPodAction(action *v1.Action, pod *v1.Pod) {
 	var err error
 	var errStr string
-	podActionStatus := &v1.PodActionStatus{
-		PodName: action.Spec.PodAction.PodName,
+	actionStatus := v1.ActionStatus{
+		Complete: true,
+		PodName:  action.Spec.PodName,
+		Error:    errStr,
 	}
 
 	actionOp := strings.Split(action.Name, "-")[0]
@@ -70,8 +72,8 @@ func (kl *Kubelet) DoPodAction(action *v1.Action, pod *v1.Pod) {
 	case string(v1.RebootOp):
 		// Reboot (VM) Pod
 		if err = kl.DoRebootVM(pod); err == nil {
-			klog.V(4).Infof("Performed reboot action for Pod %s", action.Spec.PodAction.PodName)
-			podActionStatus.RebootStatus = &v1.RebootStatus{RebootSuccessful: true}
+			klog.V(4).Infof("Performed reboot action for Pod %s", action.Spec.PodName)
+			actionStatus.RebootStatus = &v1.RebootStatus{RebootSuccessful: true}
 
 			// update the restart counter in pod.Status.VirtualMachineStatus
 			newStatus := pod.Status.DeepCopy()
@@ -81,15 +83,15 @@ func (kl *Kubelet) DoPodAction(action *v1.Action, pod *v1.Pod) {
 	case string(v1.SnapshotOp):
 		// Take snapshot of (VM) Pod
 		var snapshotID string
-		if snapshotID, err = kl.DoSnapshotVM(pod, action.Spec.PodAction.SnapshotAction.SnapshotName); err == nil {
-			klog.V(4).Infof("Performed snapshot action for Pod %s", action.Spec.PodAction.PodName)
-			podActionStatus.SnapshotStatus = &v1.SnapshotStatus{SnapshotID: snapshotID}
+		if snapshotID, err = kl.DoSnapshotVM(pod, action.Spec.SnapshotAction.SnapshotName); err == nil {
+			klog.V(4).Infof("Performed snapshot action for Pod %s", action.Spec.PodName)
+			actionStatus.SnapshotStatus = &v1.SnapshotStatus{SnapshotID: snapshotID}
 		}
 	case string(v1.RestoreOp):
 		// Restore (VM) Pod to specified snapshot ID
-		if err = kl.DoRestoreVM(pod, action.Spec.PodAction.RestoreAction.SnapshotID); err == nil {
-			klog.V(4).Infof("Performed restore action for Pod %s", action.Spec.PodAction.PodName)
-			podActionStatus.RestoreStatus = &v1.RestoreStatus{RestoreSuccessful: true}
+		if err = kl.DoRestoreVM(pod, action.Spec.RestoreAction.SnapshotID); err == nil {
+			klog.V(4).Infof("Performed restore action for Pod %s", action.Spec.PodName)
+			actionStatus.RestoreStatus = &v1.RestoreStatus{RestoreSuccessful: true}
 		}
 	default:
 		errStr = fmt.Sprintf("Action %s is not supported", action.Name)
@@ -99,13 +101,10 @@ func (kl *Kubelet) DoPodAction(action *v1.Action, pod *v1.Pod) {
 		errStr = err.Error()
 	}
 	if errStr != "" {
-		klog.V(2).Infof("Action %s for Pod %s failed. Error: %s", action.Name, action.Spec.PodAction.PodName, errStr)
+		klog.V(2).Infof("Action %s for Pod %s failed. Error: %s", action.Name, action.Spec.PodName, errStr)
 	}
-	action.Status = v1.ActionStatus{
-		Complete:        true,
-		PodActionStatus: podActionStatus,
-		Error:           errStr,
-	}
+	actionStatus.Error = errStr
+	action.Status = actionStatus
 	if _, err := kl.kubeClient.CoreV1().Actions(action.Namespace).UpdateStatus(action); err != nil {
 		klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
 	}

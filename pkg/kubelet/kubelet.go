@@ -2061,16 +2061,14 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 			continue
 		}
 
-		pod, exist := kl.GetPodByName(action.Tenant, action.Namespace, action.Spec.PodAction.PodName)
+		pod, exist := kl.GetPodByName(action.Tenant, action.Namespace, action.Spec.PodName)
 		if !exist {
-			errStr := fmt.Sprintf("Pod %s not found", action.Spec.PodAction.PodName)
+			errStr := fmt.Sprintf("Pod %s not found", action.Spec.PodName)
 			klog.Error(errStr)
 			action.Status = v1.ActionStatus{
 				Complete: true,
-				PodActionStatus: &v1.PodActionStatus{
-					PodName: action.Spec.PodAction.PodName,
-				},
-				Error: errStr,
+				PodName:  action.Spec.PodName,
+				Error:    errStr,
 			}
 			if _, err := kl.kubeClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
 				klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)

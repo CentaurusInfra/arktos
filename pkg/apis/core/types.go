@@ -4246,7 +4246,8 @@ type RestoreStatus struct {
 	RestoreSuccessful bool
 }
 
-type PodAction struct {
+type ActionSpec struct {
+	NodeName       string
 	PodName        string
 	PodID          string
 	RebootAction   *RebootAction
@@ -4254,33 +4255,14 @@ type PodAction struct {
 	RestoreAction  *RestoreAction
 }
 
-type PodActionStatus struct {
+type ActionStatus struct {
+	Complete       bool
+	Error          string
 	PodName        string
 	PodID          string
 	RebootStatus   *RebootStatus
 	SnapshotStatus *SnapshotStatus
 	RestoreStatus  *RestoreStatus
-}
-
-type NodeAction struct {
-	RebootAction *RebootAction
-}
-
-type NodeActionStatus struct {
-	RebootStatus *RebootStatus
-}
-
-type ActionSpec struct {
-	NodeName   string
-	PodAction  *PodAction
-	NodeAction *NodeAction
-}
-
-type ActionStatus struct {
-	Complete         bool
-	PodActionStatus  *PodActionStatus
-	NodeActionStatus *NodeActionStatus
-	Error            string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

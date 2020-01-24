@@ -980,26 +980,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*v1.NodeAction)(nil), (*core.NodeAction)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1_NodeAction_To_core_NodeAction(a.(*v1.NodeAction), b.(*core.NodeAction), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.NodeAction)(nil), (*v1.NodeAction)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_NodeAction_To_v1_NodeAction(a.(*core.NodeAction), b.(*v1.NodeAction), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*v1.NodeActionStatus)(nil), (*core.NodeActionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1_NodeActionStatus_To_core_NodeActionStatus(a.(*v1.NodeActionStatus), b.(*core.NodeActionStatus), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.NodeActionStatus)(nil), (*v1.NodeActionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_NodeActionStatus_To_v1_NodeActionStatus(a.(*core.NodeActionStatus), b.(*v1.NodeActionStatus), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*v1.NodeAddress)(nil), (*core.NodeAddress)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1_NodeAddress_To_core_NodeAddress(a.(*v1.NodeAddress), b.(*core.NodeAddress), scope)
 	}); err != nil {
@@ -1297,26 +1277,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.Pod)(nil), (*v1.Pod)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_Pod_To_v1_Pod(a.(*core.Pod), b.(*v1.Pod), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*v1.PodAction)(nil), (*core.PodAction)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1_PodAction_To_core_PodAction(a.(*v1.PodAction), b.(*core.PodAction), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.PodAction)(nil), (*v1.PodAction)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_PodAction_To_v1_PodAction(a.(*core.PodAction), b.(*v1.PodAction), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*v1.PodActionStatus)(nil), (*core.PodActionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1_PodActionStatus_To_core_PodActionStatus(a.(*v1.PodActionStatus), b.(*core.PodActionStatus), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.PodActionStatus)(nil), (*v1.PodActionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_PodActionStatus_To_v1_PodActionStatus(a.(*core.PodActionStatus), b.(*v1.PodActionStatus), scope)
 	}); err != nil {
 		return err
 	}
@@ -2485,8 +2445,11 @@ func Convert_core_ActionList_To_v1_ActionList(in *core.ActionList, out *v1.Actio
 
 func autoConvert_v1_ActionSpec_To_core_ActionSpec(in *v1.ActionSpec, out *core.ActionSpec, s conversion.Scope) error {
 	out.NodeName = in.NodeName
-	out.PodAction = (*core.PodAction)(unsafe.Pointer(in.PodAction))
-	out.NodeAction = (*core.NodeAction)(unsafe.Pointer(in.NodeAction))
+	out.PodName = in.PodName
+	out.PodID = in.PodID
+	out.RebootAction = (*core.RebootAction)(unsafe.Pointer(in.RebootAction))
+	out.SnapshotAction = (*core.SnapshotAction)(unsafe.Pointer(in.SnapshotAction))
+	out.RestoreAction = (*core.RestoreAction)(unsafe.Pointer(in.RestoreAction))
 	return nil
 }
 
@@ -2497,8 +2460,11 @@ func Convert_v1_ActionSpec_To_core_ActionSpec(in *v1.ActionSpec, out *core.Actio
 
 func autoConvert_core_ActionSpec_To_v1_ActionSpec(in *core.ActionSpec, out *v1.ActionSpec, s conversion.Scope) error {
 	out.NodeName = in.NodeName
-	out.PodAction = (*v1.PodAction)(unsafe.Pointer(in.PodAction))
-	out.NodeAction = (*v1.NodeAction)(unsafe.Pointer(in.NodeAction))
+	out.PodName = in.PodName
+	out.PodID = in.PodID
+	out.RebootAction = (*v1.RebootAction)(unsafe.Pointer(in.RebootAction))
+	out.SnapshotAction = (*v1.SnapshotAction)(unsafe.Pointer(in.SnapshotAction))
+	out.RestoreAction = (*v1.RestoreAction)(unsafe.Pointer(in.RestoreAction))
 	return nil
 }
 
@@ -2509,9 +2475,12 @@ func Convert_core_ActionSpec_To_v1_ActionSpec(in *core.ActionSpec, out *v1.Actio
 
 func autoConvert_v1_ActionStatus_To_core_ActionStatus(in *v1.ActionStatus, out *core.ActionStatus, s conversion.Scope) error {
 	out.Complete = in.Complete
-	out.PodActionStatus = (*core.PodActionStatus)(unsafe.Pointer(in.PodActionStatus))
-	out.NodeActionStatus = (*core.NodeActionStatus)(unsafe.Pointer(in.NodeActionStatus))
 	out.Error = in.Error
+	out.PodName = in.PodName
+	out.PodID = in.PodID
+	out.RebootStatus = (*core.RebootStatus)(unsafe.Pointer(in.RebootStatus))
+	out.SnapshotStatus = (*core.SnapshotStatus)(unsafe.Pointer(in.SnapshotStatus))
+	out.RestoreStatus = (*core.RestoreStatus)(unsafe.Pointer(in.RestoreStatus))
 	return nil
 }
 
@@ -2522,9 +2491,12 @@ func Convert_v1_ActionStatus_To_core_ActionStatus(in *v1.ActionStatus, out *core
 
 func autoConvert_core_ActionStatus_To_v1_ActionStatus(in *core.ActionStatus, out *v1.ActionStatus, s conversion.Scope) error {
 	out.Complete = in.Complete
-	out.PodActionStatus = (*v1.PodActionStatus)(unsafe.Pointer(in.PodActionStatus))
-	out.NodeActionStatus = (*v1.NodeActionStatus)(unsafe.Pointer(in.NodeActionStatus))
 	out.Error = in.Error
+	out.PodName = in.PodName
+	out.PodID = in.PodID
+	out.RebootStatus = (*v1.RebootStatus)(unsafe.Pointer(in.RebootStatus))
+	out.SnapshotStatus = (*v1.SnapshotStatus)(unsafe.Pointer(in.SnapshotStatus))
+	out.RestoreStatus = (*v1.RestoreStatus)(unsafe.Pointer(in.RestoreStatus))
 	return nil
 }
 
@@ -4881,46 +4853,6 @@ func Convert_core_Node_To_v1_Node(in *core.Node, out *v1.Node, s conversion.Scop
 	return autoConvert_core_Node_To_v1_Node(in, out, s)
 }
 
-func autoConvert_v1_NodeAction_To_core_NodeAction(in *v1.NodeAction, out *core.NodeAction, s conversion.Scope) error {
-	out.RebootAction = (*core.RebootAction)(unsafe.Pointer(in.RebootAction))
-	return nil
-}
-
-// Convert_v1_NodeAction_To_core_NodeAction is an autogenerated conversion function.
-func Convert_v1_NodeAction_To_core_NodeAction(in *v1.NodeAction, out *core.NodeAction, s conversion.Scope) error {
-	return autoConvert_v1_NodeAction_To_core_NodeAction(in, out, s)
-}
-
-func autoConvert_core_NodeAction_To_v1_NodeAction(in *core.NodeAction, out *v1.NodeAction, s conversion.Scope) error {
-	out.RebootAction = (*v1.RebootAction)(unsafe.Pointer(in.RebootAction))
-	return nil
-}
-
-// Convert_core_NodeAction_To_v1_NodeAction is an autogenerated conversion function.
-func Convert_core_NodeAction_To_v1_NodeAction(in *core.NodeAction, out *v1.NodeAction, s conversion.Scope) error {
-	return autoConvert_core_NodeAction_To_v1_NodeAction(in, out, s)
-}
-
-func autoConvert_v1_NodeActionStatus_To_core_NodeActionStatus(in *v1.NodeActionStatus, out *core.NodeActionStatus, s conversion.Scope) error {
-	out.RebootStatus = (*core.RebootStatus)(unsafe.Pointer(in.RebootStatus))
-	return nil
-}
-
-// Convert_v1_NodeActionStatus_To_core_NodeActionStatus is an autogenerated conversion function.
-func Convert_v1_NodeActionStatus_To_core_NodeActionStatus(in *v1.NodeActionStatus, out *core.NodeActionStatus, s conversion.Scope) error {
-	return autoConvert_v1_NodeActionStatus_To_core_NodeActionStatus(in, out, s)
-}
-
-func autoConvert_core_NodeActionStatus_To_v1_NodeActionStatus(in *core.NodeActionStatus, out *v1.NodeActionStatus, s conversion.Scope) error {
-	out.RebootStatus = (*v1.RebootStatus)(unsafe.Pointer(in.RebootStatus))
-	return nil
-}
-
-// Convert_core_NodeActionStatus_To_v1_NodeActionStatus is an autogenerated conversion function.
-func Convert_core_NodeActionStatus_To_v1_NodeActionStatus(in *core.NodeActionStatus, out *v1.NodeActionStatus, s conversion.Scope) error {
-	return autoConvert_core_NodeActionStatus_To_v1_NodeActionStatus(in, out, s)
-}
-
 func autoConvert_v1_NodeAddress_To_core_NodeAddress(in *v1.NodeAddress, out *core.NodeAddress, s conversion.Scope) error {
 	out.Type = core.NodeAddressType(in.Type)
 	out.Address = in.Address
@@ -5763,62 +5695,6 @@ func autoConvert_core_Pod_To_v1_Pod(in *core.Pod, out *v1.Pod, s conversion.Scop
 		return err
 	}
 	return nil
-}
-
-func autoConvert_v1_PodAction_To_core_PodAction(in *v1.PodAction, out *core.PodAction, s conversion.Scope) error {
-	out.PodName = in.PodName
-	out.PodID = in.PodID
-	out.RebootAction = (*core.RebootAction)(unsafe.Pointer(in.RebootAction))
-	out.SnapshotAction = (*core.SnapshotAction)(unsafe.Pointer(in.SnapshotAction))
-	out.RestoreAction = (*core.RestoreAction)(unsafe.Pointer(in.RestoreAction))
-	return nil
-}
-
-// Convert_v1_PodAction_To_core_PodAction is an autogenerated conversion function.
-func Convert_v1_PodAction_To_core_PodAction(in *v1.PodAction, out *core.PodAction, s conversion.Scope) error {
-	return autoConvert_v1_PodAction_To_core_PodAction(in, out, s)
-}
-
-func autoConvert_core_PodAction_To_v1_PodAction(in *core.PodAction, out *v1.PodAction, s conversion.Scope) error {
-	out.PodName = in.PodName
-	out.PodID = in.PodID
-	out.RebootAction = (*v1.RebootAction)(unsafe.Pointer(in.RebootAction))
-	out.SnapshotAction = (*v1.SnapshotAction)(unsafe.Pointer(in.SnapshotAction))
-	out.RestoreAction = (*v1.RestoreAction)(unsafe.Pointer(in.RestoreAction))
-	return nil
-}
-
-// Convert_core_PodAction_To_v1_PodAction is an autogenerated conversion function.
-func Convert_core_PodAction_To_v1_PodAction(in *core.PodAction, out *v1.PodAction, s conversion.Scope) error {
-	return autoConvert_core_PodAction_To_v1_PodAction(in, out, s)
-}
-
-func autoConvert_v1_PodActionStatus_To_core_PodActionStatus(in *v1.PodActionStatus, out *core.PodActionStatus, s conversion.Scope) error {
-	out.PodName = in.PodName
-	out.PodID = in.PodID
-	out.RebootStatus = (*core.RebootStatus)(unsafe.Pointer(in.RebootStatus))
-	out.SnapshotStatus = (*core.SnapshotStatus)(unsafe.Pointer(in.SnapshotStatus))
-	out.RestoreStatus = (*core.RestoreStatus)(unsafe.Pointer(in.RestoreStatus))
-	return nil
-}
-
-// Convert_v1_PodActionStatus_To_core_PodActionStatus is an autogenerated conversion function.
-func Convert_v1_PodActionStatus_To_core_PodActionStatus(in *v1.PodActionStatus, out *core.PodActionStatus, s conversion.Scope) error {
-	return autoConvert_v1_PodActionStatus_To_core_PodActionStatus(in, out, s)
-}
-
-func autoConvert_core_PodActionStatus_To_v1_PodActionStatus(in *core.PodActionStatus, out *v1.PodActionStatus, s conversion.Scope) error {
-	out.PodName = in.PodName
-	out.PodID = in.PodID
-	out.RebootStatus = (*v1.RebootStatus)(unsafe.Pointer(in.RebootStatus))
-	out.SnapshotStatus = (*v1.SnapshotStatus)(unsafe.Pointer(in.SnapshotStatus))
-	out.RestoreStatus = (*v1.RestoreStatus)(unsafe.Pointer(in.RestoreStatus))
-	return nil
-}
-
-// Convert_core_PodActionStatus_To_v1_PodActionStatus is an autogenerated conversion function.
-func Convert_core_PodActionStatus_To_v1_PodActionStatus(in *core.PodActionStatus, out *v1.PodActionStatus, s conversion.Scope) error {
-	return autoConvert_core_PodActionStatus_To_v1_PodActionStatus(in, out, s)
 }
 
 func autoConvert_v1_PodAffinity_To_core_PodAffinity(in *v1.PodAffinity, out *core.PodAffinity, s conversion.Scope) error {

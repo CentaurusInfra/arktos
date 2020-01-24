@@ -238,28 +238,22 @@ func (r *ActionREST) New() runtime.Object {
 var _ = rest.Creater(&ActionREST{})
 
 func getActionSpec(pod *api.Pod, actionRequest *api.CustomAction) (actionObj *api.Action, err error) {
-	var podAction *api.PodAction
+	actionSpec := api.ActionSpec{
+		NodeName: pod.Spec.NodeName,
+		PodName:  pod.Name,
+	}
 	switch actionRequest.Operation {
 	case string(api.RebootOp):
-		podAction = &api.PodAction{
-			PodName: pod.Name,
-			RebootAction: &api.RebootAction{
-				DelayInSeconds: actionRequest.RebootParams.DelayInSeconds,
-			},
+		actionSpec.RebootAction = &api.RebootAction{
+			DelayInSeconds: actionRequest.RebootParams.DelayInSeconds,
 		}
 	case string(api.SnapshotOp):
-		podAction = &api.PodAction{
-			PodName: pod.Name,
-			SnapshotAction: &api.SnapshotAction{
-				SnapshotName: actionRequest.SnapshotParams.SnapshotName,
-			},
+		actionSpec.SnapshotAction = &api.SnapshotAction{
+			SnapshotName: actionRequest.SnapshotParams.SnapshotName,
 		}
 	case string(api.RestoreOp):
-		podAction = &api.PodAction{
-			PodName: pod.Name,
-			RestoreAction: &api.RestoreAction{
-				SnapshotID: actionRequest.RestoreParams.SnapshotID,
-			},
+		actionSpec.RestoreAction = &api.RestoreAction{
+			SnapshotID: actionRequest.RestoreParams.SnapshotID,
 		}
 	default:
 		return nil, errors.NewBadRequest(fmt.Sprintf("Unsupported operation '%s' for Pod '%s'", actionRequest.Operation, pod.Name))
@@ -274,10 +268,7 @@ func getActionSpec(pod *api.Pod, actionRequest *api.CustomAction) (actionObj *ap
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%d", actionRequest.Operation, time.Now().Unix()),
 		},
-		Spec: api.ActionSpec{
-			NodeName:  pod.Spec.NodeName,
-			PodAction: podAction,
-		},
+		Spec: actionSpec,
 	}
 	return actionObject, nil
 }

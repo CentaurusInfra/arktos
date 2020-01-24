@@ -45,45 +45,30 @@
   },
   "spec": {
     "nodeName": "25",
-    "podAction": {
-      "podName": "26",
-      "podID": "27",
-      "rebootAction": {
-        "delayInSeconds": -125651156
-      },
-      "snapshotAction": {
-        "snapshotName": "28"
-      },
-      "restoreAction": {
-        "snapshotID": "29"
-      }
+    "podName": "26",
+    "podID": "27",
+    "rebootAction": {
+      "delayInSeconds": -1978186127
     },
-    "nodeAction": {
-      "rebootAction": {
-        "delayInSeconds": -213805612
-      }
+    "snapshotAction": {
+      "snapshotName": "28"
+    },
+    "restoreAction": {
+      "snapshotID": "29"
     }
   },
   "status": {
-    "complete": true,
-    "podActionStatus": {
-      "podName": "30",
-      "podID": "31",
-      "rebootStatus": {
-        "rebootSuccessful": true
-      },
-      "snapshotStatus": {
-        "snapshotID": "32"
-      },
-      "restoreStatus": {
-        "restoreSuccessful": true
-      }
+    "error": "30",
+    "podName": "31",
+    "podID": "32",
+    "rebootStatus": {
+      "rebootSuccessful": true
     },
-    "nodeActionStatus": {
-      "rebootStatus": {
-        "rebootSuccessful": true
-      }
+    "snapshotStatus": {
+      "snapshotID": "33"
     },
-    "error": "33"
+    "restoreStatus": {
+      "restoreSuccessful": true
+    }
   }
 }

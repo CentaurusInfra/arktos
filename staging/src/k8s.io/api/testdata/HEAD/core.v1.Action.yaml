@@ -35,31 +35,22 @@ metadata:
   tenant: "4"
   uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
 spec:
-  nodeAction:
-    rebootAction:
-      delayInSeconds: -213805612
   nodeName: "25"
-  podAction:
-    podID: "27"
-    podName: "26"
-    rebootAction:
-      delayInSeconds: -125651156
-    restoreAction:
-      snapshotID: "29"
-    snapshotAction:
-      snapshotName: "28"
+  podID: "27"
+  podName: "26"
+  rebootAction:
+    delayInSeconds: -1978186127
+  restoreAction:
+    snapshotID: "29"
+  snapshotAction:
+    snapshotName: "28"
 status:
-  complete: true
-  error: "33"
-  nodeActionStatus:
-    rebootStatus:
-      rebootSuccessful: true
-  podActionStatus:
-    podID: "31"
-    podName: "30"
-    rebootStatus:
-      rebootSuccessful: true
-    restoreStatus:
-      restoreSuccessful: true
-    snapshotStatus:
-      snapshotID: "32"
+  error: "30"
+  podID: "32"
+  podName: "31"
+  rebootStatus:
+    rebootSuccessful: true
+  restoreStatus:
+    restoreSuccessful: true
+  snapshotStatus:
+    snapshotID: "33"
