@@ -85,10 +85,19 @@ type objState struct {
 
 // New returns an etcd3 implementation of storage.Interface.
 func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool) storage.Interface {
-	return newStore(c, pagingEnabled, codec, prefix, transformer)
+	return NewWithPartitionConfig(c, codec, prefix, transformer, pagingEnabled, "")
+}
+
+// New returns an etcd3 implementation of storage.Interface with partition config
+func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfig string) storage.Interface {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfig)
 }
 
 func newStore(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer) *store {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, "")
+}
+
+func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfig string) *store {
 	versioner := etcd.APIObjectVersioner{}
 	result := &store{
 		client:        c,

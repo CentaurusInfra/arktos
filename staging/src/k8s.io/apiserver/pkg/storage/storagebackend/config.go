@@ -68,6 +68,9 @@ type Config struct {
 	CompactionInterval time.Duration
 	// CountMetricPollPeriod specifies how often should count metric be updated
 	CountMetricPollPeriod time.Duration
+
+	// Config file path for storage partition
+	PartitionConfigFilepath string
 }
 
 func NewDefaultConfig(prefix string, codec runtime.Codec) *Config {

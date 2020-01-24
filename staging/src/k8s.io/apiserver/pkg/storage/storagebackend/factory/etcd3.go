@@ -199,5 +199,9 @@ func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, e
 	if transformer == nil {
 		transformer = value.IdentityTransformer
 	}
+
+	if c.PartitionConfigFilepath != "" {
+		return etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, c.PartitionConfigFilepath), destroyFunc, nil
+	}
 	return etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging), destroyFunc, nil
 }

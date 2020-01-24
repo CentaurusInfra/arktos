@@ -67,10 +67,11 @@ func TestOnlySetFatalOnDecodeError(b bool) {
 }
 
 type watcher struct {
-	client      *clientv3.Client
-	codec       runtime.Codec
-	versioner   storage.Versioner
-	transformer value.Transformer
+	client          *clientv3.Client
+	codec           runtime.Codec
+	versioner       storage.Versioner
+	transformer     value.Transformer
+	partitionConfig string
 }
 
 // watchChan implements watch.Interface.
@@ -85,14 +86,20 @@ type watchChan struct {
 	incomingEventChan chan *event
 	resultChan        chan watch.Event
 	errChan           chan error
+	partitionConfig   string
 }
 
 func newWatcher(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer) *watcher {
+	return newWatcherWithPartitionConfig(client, codec, versioner, transformer, "")
+}
+
+func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfig string) *watcher {
 	return &watcher{
-		client:      client,
-		codec:       codec,
-		versioner:   versioner,
-		transformer: transformer,
+		client:          client,
+		codec:           codec,
+		versioner:       versioner,
+		transformer:     transformer,
+		partitionConfig: partitionConfig,
 	}
 }
 
@@ -122,6 +129,7 @@ func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, re
 		incomingEventChan: make(chan *event, incomingBufSize),
 		resultChan:        make(chan watch.Event, outgoingBufSize),
 		errChan:           make(chan error, 1),
+		partitionConfig:   w.partitionConfig,
 	}
 	if pred.Empty() {
 		// The filter doesn't filter out any object.
@@ -239,7 +247,7 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 	}
 
 	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
-	m := parseConfig("apiserver.config")
+	m := parseConfig(wc.partitionConfig)
 
 	if val, ok := m[wc.key]; ok {
 		rangeStart := wc.key + val[0]

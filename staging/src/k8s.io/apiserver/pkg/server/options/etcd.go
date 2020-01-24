@@ -56,6 +56,8 @@ type EtcdOptions struct {
 	DefaultWatchCacheSize int
 	// WatchCacheSizes represents override to a given resource
 	WatchCacheSizes []string
+
+	PartitionConfigFilepath string
 }
 
 var storageTypes = sets.NewString(
@@ -175,6 +177,9 @@ func (s *EtcdOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.DurationVar(&s.StorageConfig.CountMetricPollPeriod, "etcd-count-metric-poll-period", s.StorageConfig.CountMetricPollPeriod, ""+
 		"Frequency of polling etcd for number of resources per type. 0 disables the metric collection.")
+
+	fs.StringVar(&s.StorageConfig.PartitionConfigFilepath, "partition-config", s.StorageConfig.PartitionConfigFilepath,
+		"The config file path of apiserver partition")
 }
 
 func (s *EtcdOptions) ApplyTo(c *server.Config) error {

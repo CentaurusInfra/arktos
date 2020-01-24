@@ -37,15 +37,9 @@ function apply_test_data {
 }
 
 function start_apiserver {
-
-  echo "Copying apiserver.config..."
-
-  cp "${KUBE_ROOT}/test/conf/apiserver-${APISERVER_PARTITION_TENANT}.config" "apiserver.config"
-
   echo "Running alkaid-up.sh..."
   source $(dirname "$0")/alkaid-up.sh
 }
 
 "$@"
-
 

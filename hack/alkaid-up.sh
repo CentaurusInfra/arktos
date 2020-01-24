@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+PARTITION_CONFIG_DIR=${PARTITION_CONFIG_DIR:-"/var/run/kubernetes/"}
+
 VIRTLET_METADATA_DIR=${VIRTLET_METADATA_DIR:-"/var/lib/virtlet"}
 VIRTLET_LOG_DIR=${VIRTLET_LOG_DIR:-"/var/log/virtlet"}
 
@@ -591,6 +593,16 @@ function start_apiserver {
     # Increment logs to enable each kube-apiserver have own log files
     apiserverlog="kube-apiserver$1.log"
     apiserverauditlog="kube-apiserver-audit$1.log"
+
+    # Create apiservern.config for kube-apiserver partition
+    configsuffix="$(($1 + 1))"
+    configfilepath="${PARTITION_CONFIG_DIR}apiserver${configsuffix}.config"
+    ${CONTROLPLANE_SUDO} rm -f  $configfilepath
+    echo "Creating apiserver partition config file  $configfilepath..."
+    cat << EOF | ${CONTROLPLANE_SUDO}  tee -a $configfilepath
+/registry/pods/, tenant$(($1+1)), tenant$(($1+2))
+EOF
+
     security_admission=""
     if [[ -n "${DENY_SECURITY_CONTEXT_ADMISSION}" ]]; then
       security_admission=",SecurityContextDeny"
@@ -698,6 +710,7 @@ EOF
       --requestheader-allowed-names=system:auth-proxy \
       --proxy-client-cert-file="${CERT_DIR}/client-auth-proxy.crt" \
       --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
+      --partition-config="${configfilepath}" \
       --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
     APISERVER_PID=$!
     APISERVER_PID_ARRAY+=($APISERVER_PID)
