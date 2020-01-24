@@ -1,0 +1,3 @@
+pkg/cloudfabric-controller/replicaset/replica_set.go
+pkg/cloudfabric-controller/replicaset/replica_set_test.go
+test/integration/cloudfabriccontrollers/replicaset_test.go

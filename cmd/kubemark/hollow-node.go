@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Alkaid - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -87,8 +88,8 @@ func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.UseRealProxier, "use-real-proxier", true, "Set to true if you want to use real proxier inside hollow-proxy.")
 	fs.DurationVar(&c.ProxierSyncPeriod, "proxier-sync-period", 30*time.Second, "Period that proxy rules are refreshed in hollow-proxy.")
 	fs.DurationVar(&c.ProxierMinSyncPeriod, "proxier-min-sync-period", 0, "Minimum period that proxy rules are refreshed in hollow-proxy.")
-    bindableNodeLabels := cliflag.ConfigurationMap(c.NodeLabels)
- 	fs.Var(&bindableNodeLabels, "node-labels", "Additional node labels")
+	bindableNodeLabels := cliflag.ConfigurationMap(c.NodeLabels)
+	fs.Var(&bindableNodeLabels, "node-labels", "Additional node labels")
 }
 
 func (c *hollowNodeConfig) createClientConfigFromFile() (*restclient.Config, error) {

@@ -84,7 +84,7 @@ const (
 	source_DeploymentController = "Deployment_Controller"
 	source_ReplicaSetController = "ReplicaSet_Controller"
 
-	ownerKind_Empty = ""
+	ownerKind_Empty      = ""
 	ownerKind_Deployment = "Deployment"
 	ownerKind_ReplicaSet = "ReplicaSet"
 )

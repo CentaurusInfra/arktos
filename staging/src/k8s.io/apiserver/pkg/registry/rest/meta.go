@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Alkaid - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,7 +65,7 @@ func ValidNamespace(ctx context.Context, resource metav1.Object) bool {
 func ValidTenant(ctx context.Context, resource metav1.Object) bool {
 	tenant, ok := genericapirequest.TenantFrom(ctx)
 
-	// When we are here, we know that the resource need a valid tenant value. 
+	// When we are here, we know that the resource need a valid tenant value.
 	// If the tenant value is empty, we set it to "default".
 	if tenant == "" {
 		tenant = metav1.TenantDefault

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Alkaid - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -105,7 +106,6 @@ type HollowKubletOptions struct {
 	NodeLabels          map[string]string
 }
 
-
 // Builds a KubeletConfiguration for the HollowKubelet, ensuring that the
 // usual defaults are applied for fields we do not override.
 func GetHollowKubeletConfig(opt *HollowKubletOptions) (*options.KubeletFlags, *kubeletconfig.KubeletConfiguration) {
@@ -124,7 +124,7 @@ func GetHollowKubeletConfig(opt *HollowKubletOptions) (*options.KubeletFlags, *k
 	f.MaxPerPodContainerCount = 2
 	f.RegisterNode = true
 	f.RegisterSchedulable = true
-    f.ProviderID = fmt.Sprintf("kubemark://%v", opt.NodeName)
+	f.ProviderID = fmt.Sprintf("kubemark://%v", opt.NodeName)
 	// Config struct
 	c, err := options.NewKubeletConfiguration()
 	if err != nil {
