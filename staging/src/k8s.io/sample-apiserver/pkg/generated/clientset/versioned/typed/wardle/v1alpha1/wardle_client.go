@@ -20,6 +20,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 	v1alpha1 "k8s.io/sample-apiserver/pkg/apis/wardle/v1alpha1"
 	"k8s.io/sample-apiserver/pkg/generated/clientset/versioned/scheme"
@@ -27,13 +30,14 @@ import (
 
 type WardleV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	FischersGetter
 	FlundersGetter
 }
 
 // WardleV1alpha1Client is used to interact with features provided by the wardle.k8s.io group.
 type WardleV1alpha1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *WardleV1alpha1Client) Fischers() FischerInterface {
@@ -58,7 +62,9 @@ func NewForConfig(c *rest.Config) (*WardleV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &WardleV1alpha1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &WardleV1alpha1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new WardleV1alpha1Client for the given config and
@@ -73,7 +79,8 @@ func NewForConfigOrDie(c *rest.Config) *WardleV1alpha1Client {
 
 // New creates a new WardleV1alpha1Client for the given RESTClient.
 func New(c rest.Interface) *WardleV1alpha1Client {
-	return &WardleV1alpha1Client{c}
+	clients := []rest.Interface{c}
+	return &WardleV1alpha1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -95,5 +102,26 @@ func (c *WardleV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *WardleV1alpha1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

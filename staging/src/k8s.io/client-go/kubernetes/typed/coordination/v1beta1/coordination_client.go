@@ -20,19 +20,23 @@ limitations under the License.
 package v1beta1
 
 import (
+	"time"
+
 	v1beta1 "k8s.io/api/coordination/v1beta1"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type CoordinationV1beta1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	LeasesGetter
 }
 
 // CoordinationV1beta1Client is used to interact with features provided by the coordination.k8s.io group.
 type CoordinationV1beta1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *CoordinationV1beta1Client) Leases(namespace string) LeaseInterface {
@@ -53,7 +57,9 @@ func NewForConfig(c *rest.Config) (*CoordinationV1beta1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &CoordinationV1beta1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &CoordinationV1beta1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new CoordinationV1beta1Client for the given config and
@@ -68,7 +74,8 @@ func NewForConfigOrDie(c *rest.Config) *CoordinationV1beta1Client {
 
 // New creates a new CoordinationV1beta1Client for the given RESTClient.
 func New(c rest.Interface) *CoordinationV1beta1Client {
-	return &CoordinationV1beta1Client{c}
+	clients := []rest.Interface{c}
+	return &CoordinationV1beta1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -90,5 +97,26 @@ func (c *CoordinationV1beta1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *CoordinationV1beta1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

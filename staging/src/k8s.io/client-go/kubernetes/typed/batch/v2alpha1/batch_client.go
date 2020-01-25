@@ -20,19 +20,23 @@ limitations under the License.
 package v2alpha1
 
 import (
+	"time"
+
 	v2alpha1 "k8s.io/api/batch/v2alpha1"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type BatchV2alpha1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	CronJobsGetter
 }
 
 // BatchV2alpha1Client is used to interact with features provided by the batch group.
 type BatchV2alpha1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *BatchV2alpha1Client) CronJobs(namespace string) CronJobInterface {
@@ -53,7 +57,9 @@ func NewForConfig(c *rest.Config) (*BatchV2alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &BatchV2alpha1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &BatchV2alpha1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new BatchV2alpha1Client for the given config and
@@ -68,7 +74,8 @@ func NewForConfigOrDie(c *rest.Config) *BatchV2alpha1Client {
 
 // New creates a new BatchV2alpha1Client for the given RESTClient.
 func New(c rest.Interface) *BatchV2alpha1Client {
-	return &BatchV2alpha1Client{c}
+	clients := []rest.Interface{c}
+	return &BatchV2alpha1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -90,5 +97,26 @@ func (c *BatchV2alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *BatchV2alpha1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

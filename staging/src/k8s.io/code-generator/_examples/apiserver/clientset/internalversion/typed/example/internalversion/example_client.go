@@ -20,18 +20,22 @@ limitations under the License.
 package internalversion
 
 import (
+	"time"
+
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 	"k8s.io/code-generator/_examples/apiserver/clientset/internalversion/scheme"
 )
 
 type ExampleInterface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	TestTypesGetter
 }
 
 // ExampleClient is used to interact with features provided by the example.apiserver.code-generator.k8s.io group.
 type ExampleClient struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *ExampleClient) TestTypes(namespace string) TestTypeInterface {
@@ -52,7 +56,9 @@ func NewForConfig(c *rest.Config) (*ExampleClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ExampleClient{client}, nil
+
+	clients := []rest.Interface{client}
+	return &ExampleClient{clients}, nil
 }
 
 // NewForConfigOrDie creates a new ExampleClient for the given config and
@@ -67,7 +73,8 @@ func NewForConfigOrDie(c *rest.Config) *ExampleClient {
 
 // New creates a new ExampleClient for the given RESTClient.
 func New(c rest.Interface) *ExampleClient {
-	return &ExampleClient{c}
+	clients := []rest.Interface{c}
+	return &ExampleClient{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -97,5 +104,26 @@ func (c *ExampleClient) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *ExampleClient) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

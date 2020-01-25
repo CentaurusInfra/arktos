@@ -20,19 +20,23 @@ limitations under the License.
 package v2beta2
 
 import (
+	"time"
+
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type AutoscalingV2beta2Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	HorizontalPodAutoscalersGetter
 }
 
 // AutoscalingV2beta2Client is used to interact with features provided by the autoscaling group.
 type AutoscalingV2beta2Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *AutoscalingV2beta2Client) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerInterface {
@@ -53,7 +57,9 @@ func NewForConfig(c *rest.Config) (*AutoscalingV2beta2Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AutoscalingV2beta2Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &AutoscalingV2beta2Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new AutoscalingV2beta2Client for the given config and
@@ -68,7 +74,8 @@ func NewForConfigOrDie(c *rest.Config) *AutoscalingV2beta2Client {
 
 // New creates a new AutoscalingV2beta2Client for the given RESTClient.
 func New(c rest.Interface) *AutoscalingV2beta2Client {
-	return &AutoscalingV2beta2Client{c}
+	clients := []rest.Interface{c}
+	return &AutoscalingV2beta2Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -90,5 +97,26 @@ func (c *AutoscalingV2beta2Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *AutoscalingV2beta2Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

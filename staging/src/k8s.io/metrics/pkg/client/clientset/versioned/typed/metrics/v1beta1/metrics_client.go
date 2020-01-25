@@ -20,6 +20,9 @@ limitations under the License.
 package v1beta1
 
 import (
+	"time"
+
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 	v1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"k8s.io/metrics/pkg/client/clientset/versioned/scheme"
@@ -27,13 +30,14 @@ import (
 
 type MetricsV1beta1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	NodeMetricsesGetter
 	PodMetricsesGetter
 }
 
 // MetricsV1beta1Client is used to interact with features provided by the metrics.k8s.io group.
 type MetricsV1beta1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *MetricsV1beta1Client) NodeMetricses() NodeMetricsInterface {
@@ -58,7 +62,9 @@ func NewForConfig(c *rest.Config) (*MetricsV1beta1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &MetricsV1beta1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &MetricsV1beta1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new MetricsV1beta1Client for the given config and
@@ -73,7 +79,8 @@ func NewForConfigOrDie(c *rest.Config) *MetricsV1beta1Client {
 
 // New creates a new MetricsV1beta1Client for the given RESTClient.
 func New(c rest.Interface) *MetricsV1beta1Client {
-	return &MetricsV1beta1Client{c}
+	clients := []rest.Interface{c}
+	return &MetricsV1beta1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -95,5 +102,26 @@ func (c *MetricsV1beta1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *MetricsV1beta1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

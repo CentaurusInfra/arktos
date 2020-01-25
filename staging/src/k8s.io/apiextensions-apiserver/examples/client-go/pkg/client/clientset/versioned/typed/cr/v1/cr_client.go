@@ -20,19 +20,23 @@ limitations under the License.
 package v1
 
 import (
+	"time"
+
 	v1 "k8s.io/apiextensions-apiserver/examples/client-go/pkg/apis/cr/v1"
 	"k8s.io/apiextensions-apiserver/examples/client-go/pkg/client/clientset/versioned/scheme"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 )
 
 type CrV1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	ExamplesGetter
 }
 
 // CrV1Client is used to interact with features provided by the cr.example.apiextensions.k8s.io group.
 type CrV1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *CrV1Client) Examples(namespace string) ExampleInterface {
@@ -53,7 +57,9 @@ func NewForConfig(c *rest.Config) (*CrV1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &CrV1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &CrV1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new CrV1Client for the given config and
@@ -68,7 +74,8 @@ func NewForConfigOrDie(c *rest.Config) *CrV1Client {
 
 // New creates a new CrV1Client for the given RESTClient.
 func New(c rest.Interface) *CrV1Client {
-	return &CrV1Client{c}
+	clients := []rest.Interface{c}
+	return &CrV1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -90,5 +97,26 @@ func (c *CrV1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *CrV1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

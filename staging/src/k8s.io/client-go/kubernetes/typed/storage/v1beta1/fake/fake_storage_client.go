@@ -58,3 +58,10 @@ func (c *FakeStorageV1beta1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *FakeStorageV1beta1) RESTClients() []rest.Interface {
+	var ret *rest.RESTClient
+	return []rest.Interface{ret}
+}

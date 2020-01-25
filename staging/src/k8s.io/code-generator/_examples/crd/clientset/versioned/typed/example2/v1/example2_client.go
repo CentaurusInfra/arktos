@@ -20,6 +20,9 @@ limitations under the License.
 package v1
 
 import (
+	"time"
+
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 	v1 "k8s.io/code-generator/_examples/crd/apis/example2/v1"
 	"k8s.io/code-generator/_examples/crd/clientset/versioned/scheme"
@@ -27,12 +30,13 @@ import (
 
 type SecondExampleV1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	TestTypesGetter
 }
 
 // SecondExampleV1Client is used to interact with features provided by the example.test.crd.code-generator.k8s.io group.
 type SecondExampleV1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *SecondExampleV1Client) TestTypes(namespace string) TestTypeInterface {
@@ -53,7 +57,9 @@ func NewForConfig(c *rest.Config) (*SecondExampleV1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SecondExampleV1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &SecondExampleV1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new SecondExampleV1Client for the given config and
@@ -68,7 +74,8 @@ func NewForConfigOrDie(c *rest.Config) *SecondExampleV1Client {
 
 // New creates a new SecondExampleV1Client for the given RESTClient.
 func New(c rest.Interface) *SecondExampleV1Client {
-	return &SecondExampleV1Client{c}
+	clients := []rest.Interface{c}
+	return &SecondExampleV1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -90,5 +97,26 @@ func (c *SecondExampleV1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *SecondExampleV1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

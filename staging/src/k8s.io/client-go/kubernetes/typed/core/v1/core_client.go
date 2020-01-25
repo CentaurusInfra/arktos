@@ -20,13 +20,17 @@ limitations under the License.
 package v1
 
 import (
+	"time"
+
 	v1 "k8s.io/api/core/v1"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type CoreV1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	ActionsGetter
 	ComponentStatusesGetter
 	ConfigMapsGetter
@@ -50,7 +54,7 @@ type CoreV1Interface interface {
 
 // CoreV1Client is used to interact with features provided by the  group.
 type CoreV1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *CoreV1Client) Actions(namespace string) ActionInterface {
@@ -199,7 +203,9 @@ func NewForConfig(c *rest.Config) (*CoreV1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &CoreV1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &CoreV1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new CoreV1Client for the given config and
@@ -214,7 +220,8 @@ func NewForConfigOrDie(c *rest.Config) *CoreV1Client {
 
 // New creates a new CoreV1Client for the given RESTClient.
 func New(c rest.Interface) *CoreV1Client {
-	return &CoreV1Client{c}
+	clients := []rest.Interface{c}
+	return &CoreV1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -236,5 +243,26 @@ func (c *CoreV1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *CoreV1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

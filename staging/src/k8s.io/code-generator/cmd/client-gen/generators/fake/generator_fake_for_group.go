@@ -160,7 +160,7 @@ func (c *Fake$.GroupGoName$$.Version$) RESTClient() $.RESTClientInterface|raw$ {
 var getRESTClients = `
 // RESTClients returns all RESTClient that are used to communicate
 // with all API servers by this client implementation.
-func (c *Fake$.GroupGoName$$.Version$) RESTClient() []$.RESTClientInterface|raw$ {
+func (c *Fake$.GroupGoName$$.Version$) RESTClients() []$.RESTClientInterface|raw$ {
 	var ret *$.RESTClient|raw$
 	return []rest.Interface{ret}
 }

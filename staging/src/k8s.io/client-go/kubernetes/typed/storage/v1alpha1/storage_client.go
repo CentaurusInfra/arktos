@@ -20,19 +20,23 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
 	v1alpha1 "k8s.io/api/storage/v1alpha1"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type StorageV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	VolumeAttachmentsGetter
 }
 
 // StorageV1alpha1Client is used to interact with features provided by the storage.k8s.io group.
 type StorageV1alpha1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *StorageV1alpha1Client) VolumeAttachments() VolumeAttachmentInterface {
@@ -53,7 +57,9 @@ func NewForConfig(c *rest.Config) (*StorageV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StorageV1alpha1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &StorageV1alpha1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new StorageV1alpha1Client for the given config and
@@ -68,7 +74,8 @@ func NewForConfigOrDie(c *rest.Config) *StorageV1alpha1Client {
 
 // New creates a new StorageV1alpha1Client for the given RESTClient.
 func New(c rest.Interface) *StorageV1alpha1Client {
-	return &StorageV1alpha1Client{c}
+	clients := []rest.Interface{c}
+	return &StorageV1alpha1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -90,5 +97,26 @@ func (c *StorageV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *StorageV1alpha1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }
