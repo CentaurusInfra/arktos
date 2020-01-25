@@ -111,6 +111,7 @@ func (g *genFakeForGroup) GenerateType(c *generator.Context, t *types.Type, w io
 		}
 	}
 	sw.Do(getRESTClient, m)
+	sw.Do(getRESTClients, m)
 	return sw.Error()
 }
 
@@ -155,3 +156,13 @@ func (c *Fake$.GroupGoName$$.Version$) RESTClient() $.RESTClientInterface|raw$ {
 	return ret
 }
 `
+
+var getRESTClients = `
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *Fake$.GroupGoName$$.Version$) RESTClient() []$.RESTClientInterface|raw$ {
+	var ret *$.RESTClient|raw$
+	return []rest.Interface{ret}
+}
+`
+

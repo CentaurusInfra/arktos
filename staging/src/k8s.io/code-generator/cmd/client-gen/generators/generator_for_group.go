@@ -99,6 +99,8 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 		"Version":                        namer.IC(g.version),
 		"types":                          g.types,
 		"apiPath":                        apiPath(g.group),
+		"ranSeed":                        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/rand", Name: "Seed"}),
+		"ranRange":                       c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/rand", Name: "IntnRange"}),
 		"schemaGroupVersion":             c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime/schema", Name: "GroupVersion"}),
 		"runtimeAPIVersionInternal":      c.Universe.Variable(types.Name{Package: "k8s.io/apimachinery/pkg/runtime", Name: "APIVersionInternal"}),
 		"restConfig":                     c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
@@ -144,6 +146,7 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 		sw.Do(setClientDefaultsTemplate, m)
 	}
 	sw.Do(getRESTClient, m)
+	sw.Do(getRESTClients, m)
 
 	return sw.Error()
 }
@@ -151,6 +154,7 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 var groupInterfaceTemplate = `
 type $.GroupGoName$$.Version$Interface interface {
     RESTClient() $.restRESTClientInterface|raw$
+    RESTClients() []$.restRESTClientInterface|raw$
     $range .types$ $.|publicPlural$Getter
     $end$
 }
@@ -159,7 +163,7 @@ type $.GroupGoName$$.Version$Interface interface {
 var groupClientTemplate = `
 // $.GroupGoName$$.Version$Client is used to interact with features provided by the $.groupName$ group.
 type $.GroupGoName$$.Version$Client struct {
-	restClient $.restRESTClientInterface|raw$
+	restClients []$.restRESTClientInterface|raw$
 }
 `
 
@@ -200,7 +204,9 @@ func NewForConfig(c *$.restConfig|raw$) (*$.GroupGoName$$.Version$Client, error)
 	if err != nil {
 		return nil, err
 	}
-	return &$.GroupGoName$$.Version$Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &$.GroupGoName$$.Version$Client{clients}, nil
 }
 `
 
@@ -223,14 +229,38 @@ func (c *$.GroupGoName$$.Version$Client) RESTClient() $.restRESTClientInterface|
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	$.ranSeed|raw$(time.Now().UnixNano())
+	ran := $.ranRange|raw$(0, max-1)
+	return c.restClients[ran]
+}
+`
+
+var getRESTClients = `
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *$.GroupGoName$$.Version$Client) RESTClients() []$.restRESTClientInterface|raw$ {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }
 `
 
 var newClientForRESTClientTemplate = `
 // New creates a new $.GroupGoName$$.Version$Client for the given RESTClient.
 func New(c $.restRESTClientInterface|raw$) *$.GroupGoName$$.Version$Client {
-	return &$.GroupGoName$$.Version$Client{c}
+	clients := []rest.Interface{c}
+	return &$.GroupGoName$$.Version$Client{clients}
 }
 `
 
