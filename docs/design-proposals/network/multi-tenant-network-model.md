@@ -55,8 +55,8 @@ DNS pods are infra pods by default; if a tenant really wants to, it can provide 
 ## Network Policy
 Each tenant should have its own set of network policy objects, applying to its tenant scope only.
 
-Ingress 
-Ingress makes a tenant application exposed to outside of cluster via a proxy. Ingress object is backed by NodePort typed service object.
+## Ingress
+Ingress makes a tenant application exposed to outside of cluster via a proxy. Ingress object is backed by NodePort typed service object. Ingress object should be tenant scoped; Ingress controller is infra pod.
 
 
 # Hard-isolation vs soft-isolation
