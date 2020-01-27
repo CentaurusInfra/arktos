@@ -20,18 +20,22 @@ limitations under the License.
 package internalversion
 
 import (
+	"time"
+
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 	"k8s.io/code-generator/_examples/apiserver/clientset/internalversion/scheme"
 )
 
 type SecondExampleInterface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	TestTypesGetter
 }
 
 // SecondExampleClient is used to interact with features provided by the example.test.apiserver.code-generator.k8s.io group.
 type SecondExampleClient struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *SecondExampleClient) TestTypes(namespace string) TestTypeInterface {
@@ -52,7 +56,9 @@ func NewForConfig(c *rest.Config) (*SecondExampleClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SecondExampleClient{client}, nil
+
+	clients := []rest.Interface{client}
+	return &SecondExampleClient{clients}, nil
 }
 
 // NewForConfigOrDie creates a new SecondExampleClient for the given config and
@@ -67,7 +73,8 @@ func NewForConfigOrDie(c *rest.Config) *SecondExampleClient {
 
 // New creates a new SecondExampleClient for the given RESTClient.
 func New(c rest.Interface) *SecondExampleClient {
-	return &SecondExampleClient{c}
+	clients := []rest.Interface{c}
+	return &SecondExampleClient{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -97,5 +104,26 @@ func (c *SecondExampleClient) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *SecondExampleClient) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

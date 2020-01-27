@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Alkaid - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,19 +20,23 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
 	v1alpha1 "k8s.io/api/scheduling/v1alpha1"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type SchedulingV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	PriorityClassesGetter
 }
 
 // SchedulingV1alpha1Client is used to interact with features provided by the scheduling.k8s.io group.
 type SchedulingV1alpha1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *SchedulingV1alpha1Client) PriorityClasses() PriorityClassInterface {
@@ -48,7 +53,9 @@ func NewForConfig(c *rest.Config) (*SchedulingV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SchedulingV1alpha1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &SchedulingV1alpha1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new SchedulingV1alpha1Client for the given config and
@@ -63,7 +70,8 @@ func NewForConfigOrDie(c *rest.Config) *SchedulingV1alpha1Client {
 
 // New creates a new SchedulingV1alpha1Client for the given RESTClient.
 func New(c rest.Interface) *SchedulingV1alpha1Client {
-	return &SchedulingV1alpha1Client{c}
+	clients := []rest.Interface{c}
+	return &SchedulingV1alpha1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -85,5 +93,26 @@ func (c *SchedulingV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *SchedulingV1alpha1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

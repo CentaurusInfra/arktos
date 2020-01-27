@@ -20,13 +20,17 @@ limitations under the License.
 package v1beta1
 
 import (
+	"time"
+
 	v1beta1 "k8s.io/api/apps/v1beta1"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type AppsV1beta1Interface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	ControllerRevisionsGetter
 	DeploymentsGetter
 	StatefulSetsGetter
@@ -34,7 +38,7 @@ type AppsV1beta1Interface interface {
 
 // AppsV1beta1Client is used to interact with features provided by the apps group.
 type AppsV1beta1Client struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *AppsV1beta1Client) ControllerRevisions(namespace string) ControllerRevisionInterface {
@@ -71,7 +75,9 @@ func NewForConfig(c *rest.Config) (*AppsV1beta1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AppsV1beta1Client{client}, nil
+
+	clients := []rest.Interface{client}
+	return &AppsV1beta1Client{clients}, nil
 }
 
 // NewForConfigOrDie creates a new AppsV1beta1Client for the given config and
@@ -86,7 +92,8 @@ func NewForConfigOrDie(c *rest.Config) *AppsV1beta1Client {
 
 // New creates a new AppsV1beta1Client for the given RESTClient.
 func New(c rest.Interface) *AppsV1beta1Client {
-	return &AppsV1beta1Client{c}
+	clients := []rest.Interface{c}
+	return &AppsV1beta1Client{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -108,5 +115,26 @@ func (c *AppsV1beta1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *AppsV1beta1Client) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

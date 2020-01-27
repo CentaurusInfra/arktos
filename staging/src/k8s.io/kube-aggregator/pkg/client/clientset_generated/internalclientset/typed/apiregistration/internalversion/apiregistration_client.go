@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Alkaid - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,18 +20,22 @@ limitations under the License.
 package internalversion
 
 import (
+	"time"
+
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 	"k8s.io/kube-aggregator/pkg/client/clientset_generated/internalclientset/scheme"
 )
 
 type ApiregistrationInterface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	APIServicesGetter
 }
 
 // ApiregistrationClient is used to interact with features provided by the apiregistration.k8s.io group.
 type ApiregistrationClient struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *ApiregistrationClient) APIServices() APIServiceInterface {
@@ -47,7 +52,9 @@ func NewForConfig(c *rest.Config) (*ApiregistrationClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ApiregistrationClient{client}, nil
+
+	clients := []rest.Interface{client}
+	return &ApiregistrationClient{clients}, nil
 }
 
 // NewForConfigOrDie creates a new ApiregistrationClient for the given config and
@@ -62,7 +69,8 @@ func NewForConfigOrDie(c *rest.Config) *ApiregistrationClient {
 
 // New creates a new ApiregistrationClient for the given RESTClient.
 func New(c rest.Interface) *ApiregistrationClient {
-	return &ApiregistrationClient{c}
+	clients := []rest.Interface{c}
+	return &ApiregistrationClient{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -92,5 +100,26 @@ func (c *ApiregistrationClient) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *ApiregistrationClient) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }

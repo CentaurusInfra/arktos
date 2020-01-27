@@ -61,3 +61,10 @@ func (c *FakeRbacV1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *FakeRbacV1) RESTClients() []rest.Interface {
+	var ret *rest.RESTClient
+	return []rest.Interface{ret}
+}

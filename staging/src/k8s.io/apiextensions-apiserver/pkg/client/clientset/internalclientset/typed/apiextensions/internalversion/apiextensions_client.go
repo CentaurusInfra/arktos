@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Alkaid - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,18 +20,22 @@ limitations under the License.
 package internalversion
 
 import (
+	"time"
+
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/internalclientset/scheme"
+	rand "k8s.io/apimachinery/pkg/util/rand"
 	rest "k8s.io/client-go/rest"
 )
 
 type ApiextensionsInterface interface {
 	RESTClient() rest.Interface
+	RESTClients() []rest.Interface
 	CustomResourceDefinitionsGetter
 }
 
 // ApiextensionsClient is used to interact with features provided by the apiextensions.k8s.io group.
 type ApiextensionsClient struct {
-	restClient rest.Interface
+	restClients []rest.Interface
 }
 
 func (c *ApiextensionsClient) CustomResourceDefinitions() CustomResourceDefinitionInterface {
@@ -47,7 +52,9 @@ func NewForConfig(c *rest.Config) (*ApiextensionsClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ApiextensionsClient{client}, nil
+
+	clients := []rest.Interface{client}
+	return &ApiextensionsClient{clients}, nil
 }
 
 // NewForConfigOrDie creates a new ApiextensionsClient for the given config and
@@ -62,7 +69,8 @@ func NewForConfigOrDie(c *rest.Config) *ApiextensionsClient {
 
 // New creates a new ApiextensionsClient for the given RESTClient.
 func New(c rest.Interface) *ApiextensionsClient {
-	return &ApiextensionsClient{c}
+	clients := []rest.Interface{c}
+	return &ApiextensionsClient{clients}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -92,5 +100,26 @@ func (c *ApiextensionsClient) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
-	return c.restClient
+
+	max := len(c.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return c.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return c.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (c *ApiextensionsClient) RESTClients() []rest.Interface {
+	if c == nil {
+		return nil
+	}
+
+	return c.restClients
 }
