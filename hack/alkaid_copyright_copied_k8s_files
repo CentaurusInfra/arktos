@@ -11,4 +11,3 @@ pkg/cloudfabric-controller/replicaset/doc.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils_test.go
 pkg/cloudfabric-controller/testutil/test_utils.go
-test/integration/cloudfabriccontrollers/testutil.go
