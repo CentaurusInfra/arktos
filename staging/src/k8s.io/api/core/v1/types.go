@@ -3737,6 +3737,10 @@ const (
 	// an external name that kubedns or equivalent will return as a CNAME
 	// record, with no exposing or proxying of any pods involved.
 	ServiceTypeExternalName ServiceType = "ExternalName"
+
+	// ServiceTypeExternalNeutronLB means a service will be exposed via an
+	// external Neutron load balancer.
+	ServiceTypeExternalNeutronLB ServiceType = "ExternalNeutronLB"
 )
 
 // Service External Traffic Policy Type string
