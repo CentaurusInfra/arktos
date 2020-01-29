@@ -3102,8 +3102,8 @@ function main() {
     start-kube-apiserver
     start-kube-controller-manager
     start-kube-scheduler
-    start-workload-controller-manager
     wait-till-apiserver-ready
+    start-workload-controller-manager
     start-kube-addons
     start-cluster-autoscaler
     start-lb-controller
