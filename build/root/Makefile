@@ -1,5 +1,5 @@
 # Copyright 2016 The Kubernetes Authors.
-# Copyright 2020 Authors of Alkaid - file modified.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -158,7 +158,7 @@ update:
 else
 update: generated_files
 	CALLED_FROM_MAIN_MAKEFILE=1 hack/make-rules/update.sh
-	hack/alkaid_copyright.sh $(PWD) $(OUT_DIR)
+	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
 endif
 
 define CHECK_TEST_HELP_INFO

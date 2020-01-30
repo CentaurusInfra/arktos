@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020 Authors of Alkaid.
+# Copyright 2020 Authors of Arktos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -126,9 +126,9 @@ ensure_devstack() {
 }
 
 
-install_alkaid_containerd() {
-    local CONTAINERD_DIR=$(dirname "$BASH_SOURCE[0]}")/../../alkaid-containerd
-    [ -d ${CONTAINERD_DIR} ] || die "alkaid-containerd repo not found. please clone futurewei-cloud/alkaid-containerd branch wip-pod-annotation-to-cni-args side by side with alkaid"
+install_arktos_containerd() {
+    local CONTAINERD_DIR=$(dirname "$BASH_SOURCE[0]}")/../../arktos-containerd
+    [ -d ${CONTAINERD_DIR} ] || die "arktos-containerd repo not found. please clone futurewei-cloud/arktos-containerd branch wip-pod-annotation-to-cni-args side by side with arktos"
     if [ ! -x ${CONTAINERD_DIR}/bin/containerd ]; then
         echo "building alkdaid containerd..."
         pushd ${CONTAINERD_DIR} > /dev/null
@@ -142,11 +142,11 @@ install_alkaid_containerd() {
         echo "stopping containerd shortly to replace the binary..."
         local containerd_path=$(which containerd)
         sudo systemctl stop containerd
-        local containerd_back_path=$(dirname ${containerd_path})/containerd_alkaid_backup
+        local containerd_back_path=$(dirname ${containerd_path})/containerd_arktos_backup
         sudo mv ${containerd_path} ${containerd_back_path}
         sudo cp ${CONTAINERD_DIR}/bin/containerd ${containerd_path}
         sudo systemctl start containerd
-        echo "warning: original containerd binary is saved to ${containerd_path})/containerd_alkaid_backup"
+        echo "warning: original containerd binary is saved to ${containerd_path})/containerd_arktos_backup"
         echo "...done"
     fi
 }
@@ -158,17 +158,17 @@ cni_bin_dir=${CNI_BIN_DIR:-"/opt/cni/bin"}
 
 
 if [ "${CNIPLUGIN}" == "bridge" ]; then
-    echo "cni plugin is bridge; alkaid will use bridge to provision pod network"
+    echo "cni plugin is bridge; arktos will use bridge to provision pod network"
     install_cni_bridge
 elif [ "${CNIPLUGIN}" == "alktron" ]; then
     ensure_devstack
-    install_alkaid_containerd
+    install_arktos_containerd
     sudo systemctl stop libvirtd > /dev/null || true
-    echo "cni plug is alktron; alkaid will use alktron \(neutron plugin\) to provision pod network"
+    echo "cni plug is alktron; arktos will use alktron \(neutron plugin\) to provision pod network"
     install_cni_alktron
     install_loopback_cni
 else
-    echo "cni plugin is ${CNIPLUGIN}; alkaid onebox cannot use it out of box." 1>&2
+    echo "cni plugin is ${CNIPLUGIN}; arktos onebox cannot use it out of box." 1>&2
     echo "suggest to use bridge cni plugin."
     echo "if you really want to use this plugin, you need to config cni plugin by yourself."
     exit 1

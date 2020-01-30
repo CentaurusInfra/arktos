@@ -8,4 +8,4 @@ spec:
   containers:
   - name: vanilla-container
     image: busybox
-    command: ['sh', '-c', 'echo Hello Alkaid! && sleep 3600']
+    command: ['sh', '-c', 'echo Hello Arktos! && sleep 3600']

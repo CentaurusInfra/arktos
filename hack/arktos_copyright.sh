@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Copyright 2020 Authors of Alkaid.
+# Copyright 2020 Authors of Arktos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,25 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ALKAID_COPYRIGHT_LINE_NEW_GO="Copyright 2020 Authors of Alkaid."
-ALKAID_COPYRIGHT_LINE_NEW_OTHER="# Copyright 2020 Authors of Alkaid."
-ALKAID_COPYRIGHT_LINE_MODIFIED_GO="Copyright 2020 Authors of Alkaid - file modified."
-ALKAID_COPYRIGHT_LINE_MODIFIED_OTHER="# Copyright 2020 Authors of Alkaid - file modified."
+ALKAID_COPYRIGHT_LINE_NEW_GO="Copyright 2020 Authors of Arktos."
+ALKAID_COPYRIGHT_LINE_NEW_OTHER="# Copyright 2020 Authors of Arktos."
+ALKAID_COPYRIGHT_LINE_MODIFIED_GO="Copyright 2020 Authors of Arktos - file modified."
+ALKAID_COPYRIGHT_LINE_MODIFIED_OTHER="# Copyright 2020 Authors of Arktos - file modified."
 K8S_COPYRIGHT_MATCH="The Kubernetes Authors"
-ALKAID_COPYRIGHT_MATCH="Authors of Alkaid"
+ALKAID_COPYRIGHT_MATCH="Authors of Arktos"
 
-ALKAID_REPO="https://github.com/futurewei-cloud/alkaid"
-TMPDIR="/tmp/AlkaidCopyright"
+ALKAID_REPO="https://github.com/futurewei-cloud/arktos"
+TMPDIR="/tmp/ArktosCopyright"
 HEADDIRNAME="HEAD"
 REPODIRNAME=$TMPDIR/$HEADDIRNAME
-LOGFILENAME="AlkaidCopyrightTool.log"
+LOGFILENAME="ArktosCopyrightTool.log"
 LOGDIR=$TMPDIR
 LOGFILE=$LOGDIR/$LOGFILENAME
 EXIT_ERROR=0
 
 display_usage() {
-    echo "Usage: $0 <optional-alkaid-repo-path> <optional-log-directory>"
-    echo "       If optional Alkaid repo path is provided, repo setup step will be skipped"
+    echo "Usage: $0 <optional-arktos-repo-path> <optional-log-directory>"
+    echo "       If optional Arktos repo path is provided, repo setup step will be skipped"
 }
 
 if [ ! -z $1 ]
@@ -74,9 +74,9 @@ get_added_files_list() {
     local HEAD_COMMIT=`git rev-list HEAD | head -n 1`
     git diff --name-only --diff-filter=A $DAY0_COMMIT $HEAD_COMMIT | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
-        egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS|alkaid_copyright" > $LOGDIR/added_files_git
-    grep -F -x -v -f $REPODIRNAME/hack/alkaid_copyright_copied_k8s_files $LOGDIR/added_files_git > $LOGDIR/added_files_less_copied
-    grep -F -x -v -f $REPODIRNAME/hack/alkaid_copyright_copied_modified_k8s_files $LOGDIR/added_files_less_copied > $LOGDIR/added_files
+        egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS|arktos_copyright" > $LOGDIR/added_files_git
+    grep -F -x -v -f $REPODIRNAME/hack/arktos_copyright_copied_k8s_files $LOGDIR/added_files_git > $LOGDIR/added_files_less_copied
+    grep -F -x -v -f $REPODIRNAME/hack/arktos_copyright_copied_modified_k8s_files $LOGDIR/added_files_less_copied > $LOGDIR/added_files
     popd
 }
 
@@ -87,11 +87,11 @@ get_modified_files_list() {
     git diff --name-only --diff-filter=M $DAY0_COMMIT $HEAD_COMMIT | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
         egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS" > $LOGDIR/changed_files
-    cat $REPODIRNAME/hack/alkaid_copyright_copied_modified_k8s_files >> $LOGDIR/changed_files
+    cat $REPODIRNAME/hack/arktos_copyright_copied_modified_k8s_files >> $LOGDIR/changed_files
     popd
 }
 
-replace_k8s_copyright_with_alkaid_copyright() {
+replace_k8s_copyright_with_arktos_copyright() {
     local REPOFILE=$1
     if [[ $REPOFILE = *.go ]]
     then
@@ -101,7 +101,7 @@ replace_k8s_copyright_with_alkaid_copyright() {
     fi
 }
 
-check_and_add_alkaid_copyright() {
+check_and_add_arktos_copyright() {
     local REPOFILE=$1
     set +e
     cat $REPOFILE | grep "$K8S_COPYRIGHT_MATCH" > /dev/null 2>&1
@@ -110,24 +110,24 @@ check_and_add_alkaid_copyright() {
         cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
-            echo "ERROR: Added file $REPOFILE has both K8s and Alkaid copyright." >> $LOGFILE
+            echo "ERROR: Added file $REPOFILE has both K8s and Arktos copyright." >> $LOGFILE
         else
-            echo "WARN: Added file $REPOFILE has K8s copyright and not Alkaid copyright. Replacing." >> $LOGFILE
-            replace_k8s_copyright_with_alkaid_copyright $REPOFILE
+            echo "WARN: Added file $REPOFILE has K8s copyright and not Arktos copyright. Replacing." >> $LOGFILE
+            replace_k8s_copyright_with_arktos_copyright $REPOFILE
         fi
     else
         cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
-            echo "Added file $REPOFILE has only Alkaid copyright. Skipping." >> $LOGFILE
+            echo "Added file $REPOFILE has only Arktos copyright. Skipping." >> $LOGFILE
         else
-            echo "ERROR: Added file $REPOFILE does not have either K8s or Alkaid copyright." >> $LOGFILE
+            echo "ERROR: Added file $REPOFILE does not have either K8s or Arktos copyright." >> $LOGFILE
         fi
     fi
     set -e
 }
 
-update_alkaid_copyright() {
+update_arktos_copyright() {
     local REPOFILE=$1
     if [[ $REPOFILE = *.go ]]
     then
@@ -137,7 +137,7 @@ update_alkaid_copyright() {
     fi
 }
 
-check_and_update_alkaid_copyright() {
+check_and_update_arktos_copyright() {
     local REPOFILE=$1
     set +e
     cat $REPOFILE | grep "$K8S_COPYRIGHT_MATCH" > /dev/null 2>&1
@@ -146,10 +146,10 @@ check_and_update_alkaid_copyright() {
         cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
-            echo "Modified file $REPOFILE has both K8s and Alkaid copyright. Skipping." >> $LOGFILE
+            echo "Modified file $REPOFILE has both K8s and Arktos copyright. Skipping." >> $LOGFILE
         else
-            echo "Modified file $REPOFILE has K8s copyright but not Alkaid copyright. Patching." >> $LOGFILE
-            update_alkaid_copyright $REPOFILE
+            echo "Modified file $REPOFILE has K8s copyright but not Arktos copyright. Patching." >> $LOGFILE
+            update_arktos_copyright $REPOFILE
         fi
     else
         echo "Modified file $REPOFILE does not have K8s copyright. Skipping." >> $LOGFILE
@@ -166,10 +166,10 @@ verify_copied_file_copyright() {
         cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
-            echo "WARN: Copied file $REPOFILE has both K8s and Alkaid copyright. Patching." >> $LOGFILE
+            echo "WARN: Copied file $REPOFILE has both K8s and Arktos copyright. Patching." >> $LOGFILE
             sed -i "/$ALKAID_COPYRIGHT_MATCH/d" $REPOFILE
         else
-            echo "Copied file $REPOFILE has K8s copyright but not Alkaid copyright. Skipping." >> $LOGFILE
+            echo "Copied file $REPOFILE has K8s copyright but not Arktos copyright. Skipping." >> $LOGFILE
         fi
     else
         echo "ERROR: Copied file $REPOFILE does not have K8s copyright. Please fix manually." >> $LOGFILE
@@ -179,7 +179,7 @@ verify_copied_file_copyright() {
     set -e
 }
 
-add_alkaid_copyright() {
+add_arktos_copyright() {
     echo "Inspecting copyright files, writing logs to $LOGFILE"
     rm -f $LOGFILE
     local ADDED_FILELIST=$1
@@ -189,14 +189,14 @@ add_alkaid_copyright() {
     do
         if [ ! -z $line ]
         then
-            check_and_update_alkaid_copyright $REPODIRNAME/$line
+            check_and_update_arktos_copyright $REPODIRNAME/$line
         fi
     done < $CHANGED_FILELIST
     while IFS= read -r line
     do
         if [ ! -z $line ]
         then
-            check_and_add_alkaid_copyright $REPODIRNAME/$line
+            check_and_add_arktos_copyright $REPODIRNAME/$line
         fi
     done < $ADDED_FILELIST
     while IFS= read -r line
@@ -217,6 +217,6 @@ fi
 get_added_files_list
 get_modified_files_list
 
-add_alkaid_copyright $LOGDIR/added_files $LOGDIR/changed_files $REPODIRNAME/hack/alkaid_copyright_copied_k8s_files
+add_arktos_copyright $LOGDIR/added_files $LOGDIR/changed_files $REPODIRNAME/hack/arktos_copyright_copied_k8s_files
 
 exit $EXIT_ERROR

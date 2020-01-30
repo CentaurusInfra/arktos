@@ -1,9 +1,9 @@
 
-# Multiple CRI runtime endpoint support in Alkaid node agent
+# Multiple CRI runtime endpoint support in Arktos node agent
 
 ## Motivation
-Alkaid is a unified compute platform to support both container and virtual machine workloads and to provide superior 
-resource allocation efficiency in the cluster, in addition to support large scale cluster. Therefore, the Alkaid node 
+Arktos is a unified compute platform to support both container and virtual machine workloads and to provide superior 
+resource allocation efficiency in the cluster, in addition to support large scale cluster. Therefore, the Arktos node 
 agent needs to support both virtual machine and container runtime services, not only for containerizing applications 
 that used to run on virtual machines, but also to support those workloads in a native way, which, in our opinions, should
 have the following characteristics:
@@ -17,7 +17,7 @@ have the following characteristics:
    runtime services, despite of agent rebooting situations.
 
 For more information on the design for natively support of multiple runtimes and workloads, please refer to the 
-"Multiple runtime and workload types support in Alkaid node agent" document. 
+"Multiple runtime and workload types support in Arktos node agent" document. 
 
 This spec describes the proposal for the phase 1,, to extend the current Kubernetes to support multiple runtime services by 
 extending the current GenericRuntimeManager type and runtime manager interfaces.
@@ -28,13 +28,13 @@ It allows cluster admins to provide RuntimeClasses to expose the multiple config
 the POD (workload) to specify the desired configuration to run the containers specified in the POD. It is also opened 
 the ways for dynamic scheduling logic for a POD to node with the specific runtime configurations. However the 
 runtimeClass is designed merely for containers and depends on CRI implementations and configurations. It does not fit the
-requirements for Alkaid to support virtual machine runtime service natively.
+requirements for Arktos to support virtual machine runtime service natively.
 
 Mirantis CRI Proxy, along with its CRI implementation(Virtlet) provides a way run multiple CRI implementations on 
 the node. Essentially it provides a layer between the node agent and multiple CRI implementations. By intercepting the 
 gRPC call from node agent, the CRI proxy redirect the CRI request to the desired CRI service and returns the response to 
 the node agent. It provides a decent way to run multiple CRI services at the node without change the Kubelet internal 
-logic. However, the CRI proxy has a few limits that cannot fit the Alkaid's requirements:
+logic. However, the CRI proxy has a few limits that cannot fit the Arktos's requirements:
 
 1. It is designed merely for CRI implementation, with all the internal logic in Kubelet, it will be hard support virtual 
    runtime services natively
@@ -47,7 +47,7 @@ logic. However, the CRI proxy has a few limits that cannot fit the Alkaid's requ
 1. Provide initial work to satisfy the characteristic of natively support multiple workload types, by allows multiple
    runtime endpoints configured by Cluster Admins and POD can choose desired runtime service to run
 2. Legacy cluster(Kubelet commandline) should continue to work with the code change
-3. Legacy applications(without the runtimeServiceName) should continue to work in Alkaid cluster
+3. Legacy applications(without the runtimeServiceName) should continue to work in Arktos cluster
 
 ## Proposal
 
@@ -189,12 +189,12 @@ The Kubelet changes can be categorized into a few areas:
 
    With the static runtime service registration, the node agent has to be restarted to load the new runtime service when 
    a new runtime service is installed and available on the node. This is not ideal because it introduces downtime at the 
-   node agent. (Future work) Alkaid node agent provides registration framework to allow dynamic registration of runtime 
+   node agent. (Future work) Arktos node agent provides registration framework to allow dynamic registration of runtime 
    service to avoid unnecessary downtime.
-2. Advertise the supported runtime services to Alkaid users
+2. Advertise the supported runtime services to Arktos users
 
    For the first release, this can be as simple as documentation to list the supported runtime services for container and
-   virtual machine workloads. For future releases, a configMap can be used so Alkaid users can query the supported runtime
+   virtual machine workloads. For future releases, a configMap can be used so Arktos users can query the supported runtime
    services in the cluster.
 3. Support partial runtime services readiness
       

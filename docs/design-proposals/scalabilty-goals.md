@@ -2,13 +2,13 @@
 
 _by Quinton Hoole_
 
-Based upon the original [Kubenetes SIG-Scalability Goals](https://github.com/kubernetes/community/blob/master/sig-scalability/goals.md), updated to 2019, and extended to cover Alkaid's extended goals.
+Based upon the original [Kubenetes SIG-Scalability Goals](https://github.com/kubernetes/community/blob/master/sig-scalability/goals.md), updated to 2019, and extended to cover Arktos's extended goals.
 
 **October 2019**
 
 ## Introduction
 
-What size clusters do we think that we should support with Alkaid in
+What size clusters do we think that we should support with Arktos in
 the short to medium term?  How performant do we think that the control
 system should be at scale?  What resource overhead should the control
 system reasonably consume?  This document attempts to answer these and

@@ -5,7 +5,7 @@ vnic hotplug is the ability to allow admin of VM workload able to insert (plug i
 
 If the pod is intended to hotplug nic, its has to explicitly assign name to each nic in the initial pod spec. Otherwise, the pod won't be able to patched to request nic hotplugs.
 
-In Alkaid, hotplug is only applicable to VM workloads. Hotplug should not apply to the primary nic (_note: to de decided_)
+In Arktos, hotplug is only applicable to VM workloads. Hotplug should not apply to the primary nic (_note: to de decided_)
 
 Admin expresses the intention of hotplug by adding/removing pod.spec.vnics elements.
 

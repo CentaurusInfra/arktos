@@ -1,6 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
-Copyright 2020 Authors of Alkaid - file modified.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -357,7 +357,7 @@ func buildRuntimeServicesMapFromAgentCommandArgs(remoteRuntimeEndpoints string) 
 	firstContainerType := true
 	firstVmType := true
 
-	// Alkaid node agent format. multiple runtime services.
+	// Arktos node agent format. multiple runtime services.
 	for _, endpoint := range endpoints {
 		name, workloadType, endpointUrl, err := parseEndpoint(endpoint)
 		if err != nil {

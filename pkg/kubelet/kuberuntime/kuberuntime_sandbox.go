@@ -1,6 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
-Copyright 2020 Authors of Alkaid - file modified.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,8 +109,8 @@ func (m *kubeGenericRuntimeManager) generatePodSandboxConfig(pod *v1.Pod, attemp
 		Annotations: newPodAnnotations(pod),
 	}
 
-	// Alkaid add VPC, NICs info as podspec, so add it to the SandboxConfig as annotations so the runtime service can use them
-	// TODO: if the podConverter is kept for long term in Alkaid, consider consolidate the set annotation code with it
+	// Arktos add VPC, NICs info as podspec, so add it to the SandboxConfig as annotations so the runtime service can use them
+	// TODO: if the podConverter is kept for long term in Arktos, consider consolidate the set annotation code with it
 	if podSandboxConfig.Annotations == nil {
 		podSandboxConfig.Annotations = make(map[string]string)
 	}

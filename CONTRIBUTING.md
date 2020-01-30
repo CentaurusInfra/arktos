@@ -1,6 +1,6 @@
 # Welcome
 
-Welcome to Alkaid! 
+Welcome to Arktos! 
 
 -   [Before you get started](#before-you-get-started)
     -   [Code of Conduct](#code-of-conduct)
@@ -20,19 +20,19 @@ Welcome to Alkaid!
 
 ## Code of Conduct
 
-Please make sure to read and observe our [Code of Conduct](https://github.com/futurewei-cloud/alkaid/blob/master/code-of-conduct.md).
+Please make sure to read and observe our [Code of Conduct](https://github.com/futurewei-cloud/arktos/blob/master/code-of-conduct.md).
 
 # Getting started
 
 - Fork the repository on GitHub
-- Visit [README](https://github.com/futurewei-cloud/alkaid#build-alkaid) for build instructions.
+- Visit [README](https://github.com/futurewei-cloud/arktos#build-arktos) for build instructions.
 
 
 # Your First Contribution
 
 We will help you to contribute in different areas like filing issues, developing features, fixing critical bugs and getting your work reviewed and merged.
 
-If you have questions about the development process, feel free to jump into our [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137) or join our [email group](https://groups.google.com/forum/#!forum/alkaid-user).
+If you have questions about the development process, feel free to jump into our [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137) or join our [email group](https://groups.google.com/forum/#!forum/arktos-user).
 
 ## Find something to work on
 
@@ -42,9 +42,9 @@ Here is how you get started.
 
 ### Find a good first topic
 
-There are multiple repositories ([Alkaid](https://github.com/futurewei-cloud/alkaid), [Alkaid-vm-runtime](https://github.com/futurewei-cloud/alkaid-vm-runtime), [Alkaid-cniplugins](https://github.com/futurewei-cloud/alkaid-cniplugins)) within the Alkaid organization.
+There are multiple repositories ([Arktos](https://github.com/futurewei-cloud/arktos), [Arktos-vm-runtime](https://github.com/futurewei-cloud/arktos-vm-runtime), [Arktos-cniplugins](https://github.com/futurewei-cloud/arktos-cniplugins)) within the Arktos organization.
 Each repository has beginner-friendly issues that provide a good starting point.
-For example, [Alkaid](https://github.com/futurewei-cloud/alkaid) has [help wanted](https://github.com/futurewei-cloud/alkaid/labels/help%20wanted) and [good first issue](https://github.com/futurewei-cloud/alkaid/labels/good%20first%20issue) labels for issues that should not need deep knowledge of the system. We can help new contributors who wish to work on such issues.
+For example, [Arktos](https://github.com/futurewei-cloud/arktos) has [help wanted](https://github.com/futurewei-cloud/arktos/labels/help%20wanted) and [good first issue](https://github.com/futurewei-cloud/arktos/labels/good%20first%20issue) labels for issues that should not need deep knowledge of the system. We can help new contributors who wish to work on such issues.
 
 
 ### Work on an issue
@@ -55,9 +55,9 @@ then the robot will assign the issue to you and your name will present at `Assig
 ### File an Issue
 
 While we encourage everyone to contribute code, it is also appreciated when someone reports an issue.
-Issues should be filed under the appropriate Alkaid sub-repository.
+Issues should be filed under the appropriate Arktos sub-repository.
 
-*Example:* An Alkaid issue should be opened to [Alkaid](https://github.com/futurewei-cloud/alkaid). And the same should apply to [Alkaid-vm-runtime](https://github.com/futurewei-cloud/alkaid-vm-runtime) and [Alkaid-cniplugins](https://github.com/futurewei-cloud/alkaid-cniplugins).
+*Example:* An Arktos issue should be opened to [Arktos](https://github.com/futurewei-cloud/arktos). And the same should apply to [Arktos-vm-runtime](https://github.com/futurewei-cloud/arktos-vm-runtime) and [Arktos-cniplugins](https://github.com/futurewei-cloud/arktos-cniplugins).
 
 Please follow the prompted submission guidelines while opening an issue.
 
@@ -71,13 +71,13 @@ This is a rough outline of what a contributor's workflow looks like:
 - Make commits of logical units.
 - Make sure commit messages are in the proper format (see below).
 - Push changes in a topic branch to a personal fork of the repository.
-- Submit a pull request to [Alkaid](https://github.com/futurewei-cloud/alkaid).
+- Submit a pull request to [Arktos](https://github.com/futurewei-cloud/arktos).
 - The PR must receive an approval from two team members including at least one maintainer.
 
 ## Creating Pull Requests
 
 Pull requests are often called simply "PR".
-Alkaid generally follows the standard [github pull request](https://help.github.com/articles/about-pull-requests/) process.
+Arktos generally follows the standard [github pull request](https://help.github.com/articles/about-pull-requests/) process.
 To submit a proposed change, please develop the code/fix and add new test cases.
 After that, run these local verifications before submitting pull request to predict the pass or
 fail of continuous integration.
@@ -125,17 +125,17 @@ There are multiple types of tests.
 The location of the test code varies with type, as do the specifics of the environment needed to successfully run the test:
 
 * Unit: These confirm that a particular function behaves as intended. Unit test source code can be found adjacent to the corresponding source code within a given package. These are easily run locally by any developer.
-* Integration: These tests cover interactions of package components or interactions between Alkaid components. 
+* Integration: These tests cover interactions of package components or interactions between Arktos components. 
 * End-to-end ("e2e"): These are broad tests of overall system behavior and coherence. 
 
 Continuous integration will run these tests on PRs.
 
 ## Documents and Support
 
-The [design document folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/design-proposals) contains the detailed design of already implemented features, and also some thoughts for planned features.
+The [design document folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals) contains the detailed design of already implemented features, and also some thoughts for planned features.
 
-The [user guide folder](https://github.com/futurewei-cloud/alkaid/tree/master/docs/user-guide) provides information about these features from users' perspective.
+The [user guide folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/user-guide) provides information about these features from users' perspective.
 
-To report a problem, please [create an issue](https://github.com/futurewei-cloud/alkaid/issues) in the project repo. 
+To report a problem, please [create an issue](https://github.com/futurewei-cloud/arktos/issues) in the project repo. 
 
-To ask a question, you can either chat with project members in the [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137), post in the [email group](https://groups.google.com/forum/#!forum/alkaid-user), or [create an issue](https://github.com/futurewei-cloud/alkaid/issues) of question type in the repo.
+To ask a question, you can either chat with project members in the [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137), post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/futurewei-cloud/arktos/issues) of question type in the repo.

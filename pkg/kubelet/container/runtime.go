@@ -1,6 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
-Copyright 2020 Authors of Alkaid - file modified.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -143,7 +143,7 @@ type VmDeviceManagerService interface {
 }
 
 // TODO: this interface will be needed for VM workload type as well with the return value to be generic
-//       which will be phase2 effort in Alkaid runtime
+//       which will be phase2 effort in Arktos runtime
 // TODO: move this interface to a separated packet for general purpose for VM and container workload types
 // Interfaces for kubeGenericRuntimeManager
 type RuntimeManager interface {

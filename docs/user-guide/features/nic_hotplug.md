@@ -1,8 +1,8 @@
 # Network Interface Hotplug
 
-It is not rare that admin of virtual machine (vm for short) wants to dynamically add secondary network interfaces while the instance is still running; this hotplug ability is available from various hypersisors like qemu/kvm, vmware etc. Alkaid, our platform managing vm pods as the first class citizen as well as traditional container based ones, provides the similar feature of network interface hotplug. 
+It is not rare that admin of virtual machine (vm for short) wants to dynamically add secondary network interfaces while the instance is still running; this hotplug ability is available from various hypersisors like qemu/kvm, vmware etc. Arktos, our platform managing vm pods as the first class citizen as well as traditional container based ones, provides the similar feature of network interface hotplug. 
 
-This doc describes how secondary nic is plugged into a running vm instance in Alkaid, from the perspective of end user (vm admin).
+This doc describes how secondary nic is plugged into a running vm instance in Arktos, from the perspective of end user (vm admin).
 
 ## Launching a vm pod
 VM pod is defined, in k8s way, by pod spec file. For vm pod that might have nic hotplug, there is a requirement of pod spec - nic __MUST be specified explicitly defined, and nic name MUST be present__. 
@@ -33,7 +33,7 @@ kubectl apply -f vm-nic-hotplug.yaml
 ``` 
 
 ## Specify the secondary nic to plugin
-NIC is one of the types of resources a pod has; in line of k8s spirit, pod spec keeps the desired state of resources, and Alkaid system (notably kubelet) identifies the actual state of resources, attempts to reconcile the difference between the actual and desired states. In case of nic, kubelet identifies the difference of the nic spec and nic status collected from the underlying runtime system, issues necessary commands to the runtime requesting attaching nic to specific vm instance.
+NIC is one of the types of resources a pod has; in line of k8s spirit, pod spec keeps the desired state of resources, and Arktos system (notably kubelet) identifies the actual state of resources, attempts to reconcile the difference between the actual and desired states. In case of nic, kubelet identifies the difference of the nic spec and nic status collected from the underlying runtime system, issues necessary commands to the runtime requesting attaching nic to specific vm instance.
 
 Update of pod spec is specified as patch spec, denoted as patch-nic-hoptlug.yaml
 ```yaml

@@ -1,6 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
-Copyright 2020 Authors of Alkaid - file modified.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -444,7 +444,7 @@ func TestBuildRuntimeServiceMap(t *testing.T) {
 			nil,
 		},
 		{
-			"alkaid formatted endpoints, vm and container with same endpoint",
+			"arktos formatted endpoints, vm and container with same endpoint",
 			"containerRuntime,container," + fakeRuntimeEndpoint + ";" + "vmRuntime,vm," + fakeRuntimeEndpoint,
 			map[string]*runtimeService{
 				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
@@ -457,7 +457,7 @@ func TestBuildRuntimeServiceMap(t *testing.T) {
 			nil,
 		},
 		{
-			"alkaid formatted endpoints, vm and container with different endpoints",
+			"arktos formatted endpoints, vm and container with different endpoints",
 			"containerRuntime,container," + fakeRuntimeEndpoint + ";" + "vmRuntime,vm," + fakeRuntimeEndpoint2,
 			map[string]*runtimeService{
 				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},

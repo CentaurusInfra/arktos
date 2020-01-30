@@ -1,6 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
-Copyright 2020 Authors of Alkaid - file modified.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -2214,7 +2214,7 @@ func (kl *Kubelet) LatestLoopEntryTime() time.Time {
 }
 
 // breaking change - partial node ready
-// todo[alkaid]: node needs to let scheduler know what runtime is up or not yet on this node
+// todo[arktos]: node needs to let scheduler know what runtime is up or not yet on this node
 // updateRuntimeUp calls the container runtime status callback, initializing
 // the runtime dependent modules when the container runtime first comes up,
 // and returns an error if the status check fails.  If the status check is OK,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-# Copyright 2020 Authors of Alkaid.
+# Copyright 2020 Authors of Arktos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,8 +37,8 @@ function apply_test_data {
 }
 
 function start_apiserver {
-  echo "Running alkaid-up.sh..."
-  source $(dirname "$0")/alkaid-up.sh
+  echo "Running arktos-up.sh..."
+  source $(dirname "$0")/arktos-up.sh
 }
 
 "$@"

@@ -1,5 +1,5 @@
 # the apparmor filed taken from virtlet github
-# with modification in the virtlet profile for the change to alter the /etc/resolv.conf file for alkaid
+# with modification in the virtlet profile for the change to alter the /etc/resolv.conf file for arktos
 
 # AppArmor profiles
 

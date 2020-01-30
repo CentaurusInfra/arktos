@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright 2015 The Kubernetes Authors.
-# Copyright 2020 Authors of Alkaid - file modified.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -106,10 +106,10 @@ def file_passes(filename, refs, regexs):
 
     data = data.splitlines()
 
-    # Skip Alkaid added file, remove Alkaid copyright for modified files
+    # Skip Arktos added file, remove Arktos copyright for modified files
     idx = 0
     while idx < len(data):
-        if "Authors of Alkaid" in data[idx]:
+        if "Authors of Arktos" in data[idx]:
             if idx == 0 or "The Kubernetes Authors" not in data[idx-1]:
                 return True
             del data[idx]

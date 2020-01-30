@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
-# Copyright 2020 Authors of Alkaid - file modified.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,4 +43,4 @@ if [[ ${KUBE_RUN_COPY_OUTPUT} =~ ^[yY]$ ]]; then
   kube::build::copy_output
 fi
 
-${KUBE_ROOT}/hack/alkaid_copyright.sh ${KUBE_ROOT} ${KUBE_ROOT}/_output
+${KUBE_ROOT}/hack/arktos_copyright.sh ${KUBE_ROOT} ${KUBE_ROOT}/_output

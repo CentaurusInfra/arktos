@@ -1,6 +1,6 @@
 
 
-# Multi-Tenancy in Alkaid
+# Multi-Tenancy in Arktos
 
 Qian Chen, Xiaoning Ding
 
@@ -9,7 +9,7 @@ Qian Chen, Xiaoning Ding
 
 Kubernetes provides a solution for automating deployment, scaling, and operations of application containers across clusters of hosts. However, it does not have support multi-tenancy. There is no explicit “tenant” concept in the system, and there is no resource isolation, usage isolation or performance isolation for different tenants.
 
-Alkaid is evolved from Kubernetes but designed for public cloud. For a cluster management system supporting public cloud workloads, multi-tenancy is a fundamental requirement. This design document proposes works need to be done to support multi-tenancy for Alkaid.
+Arktos is evolved from Kubernetes but designed for public cloud. For a cluster management system supporting public cloud workloads, multi-tenancy is a fundamental requirement. This design document proposes works need to be done to support multi-tenancy for Arktos.
 
 
 ## Hard Multi-Tenancy Model
@@ -30,7 +30,7 @@ Our hard multi-tenancy model is one where:
 
 ### Tenant Object
 
-A tenant is defined as a group of users/identities who have the exclusive access to its own resources in parallel to other tenants within an Alkaid system. A tenant can have one or multiple namespaces. Two namespaces can have the same name as long as they are under different tenants.
+A tenant is defined as a group of users/identities who have the exclusive access to its own resources in parallel to other tenants within an Arktos system. A tenant can have one or multiple namespaces. Two namespaces can have the same name as long as they are under different tenants.
 
 A tenant is an API resource type. A sample yaml file is as follows.
 
@@ -44,7 +44,7 @@ metadata:
 
 ### Resource Hierarchy
 
-A resource in Alkaid belongs to one and only one of the following three scopes:
+A resource in Arktos belongs to one and only one of the following three scopes:
   1.	Cluster scope
   2.	Tenant scope
   3.	Namespace scope
@@ -83,7 +83,7 @@ spec:
 ```
 
 ### API URLs
-All Alkaid API URLs start with “/apis/{api-group-name}/{version}”, just like k8s. The API URLs for the resources of different scopes are as follows:
+All Arktos API URLs start with “/apis/{api-group-name}/{version}”, just like k8s. The API URLs for the resources of different scopes are as follows:
   1. Cluster-scoped resources can be addressed by “/apis/{api-group-name}/{version}/*”. 
   2. Tenant-scoped resources are addressed by paths like “/apis/{api-group-name}/{version}/tenants/{tenant}/*”. 
   3. Namespace-scoped resources are addressed by paths like “/apis/{api-group-name}/{version}/tenants/{tenant}/namespaces/{namespace}/*”.
@@ -112,7 +112,7 @@ The key paths of the resources in backend ETCD will also vary according to their
 
 Two special tenants will be created automaticallyif they don’t exist.
 
-  1. *System*. It is the tenant for the Alkaid system itself.
+  1. *System*. It is the tenant for the Arktos system itself.
 
   2. *Default*. If the tenant of a resource type is not defined, it will be assigned to the default tenant.
 
@@ -127,7 +127,7 @@ When a tenant is created, two namespaces will be created under the tenant:
 
 ## Layered Access Control
 
-Role-based access control (RBAC) model will remain in Alkaid, yet with more layers than in K8s. 
+Role-based access control (RBAC) model will remain in Arktos, yet with more layers than in K8s. 
 In RBAC, a role contains rules that represent a set of permissions. Different scopes have different type of roles. It can be:
 1.	A Role within a namespace. A Role is used to grant access to resources within a single namespace. 
 2.	A TenantRole within a tenant scope. A TenantRole can be used to grant the same permission as a Role. But it can also be used to grant access to 
@@ -136,7 +136,7 @@ In RBAC, a role contains rules that represent a set of permissions. Different sc
     
     b.	Namespaced resources across multiple namespaces
 
-3.	A ClusterRole for the Alkaid system-wide scope. A ClusterRole can grant permissions to
+3.	A ClusterRole for the Arktos system-wide scope. A ClusterRole can grant permissions to
 
     a.	Resources within a namespace or a tenant
 
@@ -148,12 +148,12 @@ A role binding grants the permissions defined in a role to a user or a set of us
 
 ## Resource Quota Isolation
 
-In k8s, the computation resources (such as cpu and memory) are provisioned via [ResourceQuota](https://kubernetes.io/docs/concepts/policy/resource-quotas/), which is an optional namespace-scope feature. Similar quota based resource provisioning mechanism will be implemented in Alkaid. Yet the resource quota control in the tenant level is mandatory, in order to guarantee the performance and usage isolation among different tenants. 
+In k8s, the computation resources (such as cpu and memory) are provisioned via [ResourceQuota](https://kubernetes.io/docs/concepts/policy/resource-quotas/), which is an optional namespace-scope feature. Similar quota based resource provisioning mechanism will be implemented in Arktos. Yet the resource quota control in the tenant level is mandatory, in order to guarantee the performance and usage isolation among different tenants. 
 
 In more details:
 1. ResourceQuota control is mandatory in the tenant level. Namely, every tenant must have the ResourceQuota set. If the quota are not specified by the user when creating the tenant, the system will set them to the default values. 	The resource quota control in the namespace levle is still optional. A namespace can choose to specify ResourceQuota or not.
 2. A pod request will be accepted only if both the tenant and the namespace resource quota are not violated. In the case that the resource quota of the tenant is less than the sums of the quota of the namespaces, the requests are handled in a first-come-first-serve basis.
-3.	Quota control on more resource types will be supported. K8s 1.15 supports control on the resource of cpu and memory. As Alkaid will support both VMs and containers, resource control over resources like network bandwidth or the number of VMs should also be considered. Yet research on what resources need to be done is outside the scope of this doc and it will be covered by a different proposal. 
+3.	Quota control on more resource types will be supported. K8s 1.15 supports control on the resource of cpu and memory. As Arktos will support both VMs and containers, resource control over resources like network bandwidth or the number of VMs should also be considered. Yet research on what resources need to be done is outside the scope of this doc and it will be covered by a different proposal. 
 
 ## Usage and Performance Isolation
 
@@ -272,7 +272,7 @@ Following are the list of resources belonging to each scope. Those highlighted w
 
 #### Namespace-Scoped resources:
 
-The following namespace-scoped resources in k8s will continue to exist in Alkaid with similar functionalities, except that their objectMeta include the name of tenant now. 
+The following namespace-scoped resources in k8s will continue to exist in Arktos with similar functionalities, except that their objectMeta include the name of tenant now. 
   1.	PersistentVolumeClaim
   2.	Pod
   3.	PodTemplate

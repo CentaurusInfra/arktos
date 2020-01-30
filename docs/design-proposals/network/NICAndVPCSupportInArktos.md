@@ -1,29 +1,29 @@
 
 
-# NIC and VPC Support in Alkaid
+# NIC and VPC Support in Arktos
 
 Xiaoning Ding, Hongwei Chen
 
-This document describes the Network Interface Card (NIC) and Virtual Private Cloud (VPC) support in Alkaid, including motivation, pod spec changes and component changes.
+This document describes the Network Interface Card (NIC) and Virtual Private Cloud (VPC) support in Arktos, including motivation, pod spec changes and component changes.
 
 ## Motivation
 
-Alkaid is evolved from Kubernetes with the goal to support VM and container workloads in a unified way. And it's designed for public cloud only. This brings some new requirements for networking:
+Arktos is evolved from Kubernetes with the goal to support VM and container workloads in a unified way. And it's designed for public cloud only. This brings some new requirements for networking:
 
 * In Kubernetes a pod doesn't need to specify its IP and NIC configuration. It relies on the underlying container networking provider to dynamically assign IPs, usually through an IPAM plugin, and then create NICs. This is suitable for containers. However, for VMs it's common to have static IP and NIC configurations, especially for some legacy VM deployments.
 
-* Kubernetes can run with different networking solutions for different scenarios. But Alkaid is designed for public cloud only. Therefore, it's important to provide a native support for VPC networking of public cloud.
+* Kubernetes can run with different networking solutions for different scenarios. But Arktos is designed for public cloud only. Therefore, it's important to provide a native support for VPC networking of public cloud.
 
-The rest of the document explains how Alkaid supports NIC configurations on a pod, and how it interacts with VPC services to support NIC configurations.
+The rest of the document explains how Arktos supports NIC configurations on a pod, and how it interacts with VPC services to support NIC configurations.
 
 
 ## Overview
 
-As an underlying cluster management system in cloud data centers, Alkaid itself doesn't expose APIs to cloud users directly. Cloud users interact with public cloud services that are built on top of Alkaid, such as ECS or CCI services. These services then in turn call Alkaid APIs to manage workloads.
+As an underlying cluster management system in cloud data centers, Arktos itself doesn't expose APIs to cloud users directly. Cloud users interact with public cloud services that are built on top of Arktos, such as ECS or CCI services. These services then in turn call Arktos APIs to manage workloads.
 
-A workload in Alkaid is represented by a pod. An Alkaid pod can specify one or more **NICs**, and each Nic is mapped to a VPC **port** resource that is backed by a cloud VPC service. Users can associate a pod with an existing port, or let Alkaid to dynamically create and delete ports for a pod.
+A workload in Arktos is represented by a pod. An Arktos pod can specify one or more **NICs**, and each Nic is mapped to a VPC **port** resource that is backed by a cloud VPC service. Users can associate a pod with an existing port, or let Arktos to dynamically create and delete ports for a pod.
 
-A port is always attached to a certain subnet in a certain VPC, and may belong to one or more security groups. Lots of other VPC resources could impact the behavior of a VPC port as well, such as Network ACLs or Routing Rules. But the only VPC resource type that Alkaid manages is port. All other VPC resource types (such as subnets or security groups) are managed:
+A port is always attached to a certain subnet in a certain VPC, and may belong to one or more security groups. Lots of other VPC resources could impact the behavior of a VPC port as well, such as Network ACLs or Routing Rules. But the only VPC resource type that Arktos manages is port. All other VPC resource types (such as subnets or security groups) are managed:
 
 * by cloud users directly calling VPC service APIs;
 * Or by a cloud service such as ECS calling VPC service APIs.
@@ -32,12 +32,12 @@ The below diagram shows the relationship among these services:
 
 ![alt text](NICandVPC-Overview.png "Overview")
 
-Alkaid supports different VPC implementations as long as they provide an API to manage the lifecycle of port resources. For now we support two different implementations:
+Arktos supports different VPC implementations as long as they provide an API to manage the lifecycle of port resources. For now we support two different implementations:
 
 * OpenStack Neutron
-* Alkaid Networking (Alcor)
+* Arktos Networking (Alcor)
 
-Different VPC implementation has different data plane components on computing hosts, and this requires different operations to attach a workload to the network. Alkaid leverages CNI plugin mechanism to support these different operations.
+Different VPC implementation has different data plane components on computing hosts, and this requires different operations to attach a workload to the network. Arktos leverages CNI plugin mechanism to support these different operations.
 
 
 ## Pod Spec Changes
@@ -210,7 +210,7 @@ Some additional checks need to be done in an admission controller:
 
 ### Controller Manager
 
-A new Alkaid controller, network controller, will be introduced to create ports and delete ports.
+A new Arktos controller, network controller, will be introduced to create ports and delete ports.
 
 Here is what the new network controller needs to do:
 
@@ -241,7 +241,7 @@ The following changes are required:
 
 ### Neutron CNI Plugin
 
-A new CNI plugin needs to be implemented to interact with the Neutron data plane components on Alkaid hosts. 
+A new CNI plugin needs to be implemented to interact with the Neutron data plane components on Arktos hosts. 
 
 On a computing host Neutron agent has already setup required OVS bridges (br-int and br-tun) when it initializes. What the CNI plugin needs to do is initializing the per-port components and attaching/detaching it from these OVS bridges.
 
@@ -264,11 +264,11 @@ The below diagram shows the ownership of above devices:
 
 Alcor has a much-simplified data plane components on each computing host. It basically creates a veth pair for each port, attaches its eBPF program to one end of the pair, and leaves the other end of the pair to pods. The other end of the veth pair will be listed in the host namespace as a virtual interface.
 
-The current agreement between Alkaid and Alcor is:
+The current agreement between Arktos and Alcor is:
 
 * The virtual interface will follow a naming rule. For example, "veth{11-char-prefix-of-portID}".
 * Alcor agent puts the virtual interface inside of VPC specific netns. The name of VPC specific netns should be "vpc-ns{full-vpc-id}"
-* Once the virtual interface (one end of the veth pair created by Alcor agent) appears inside of the VPC netns, it means the preparation work on Alcor side has been done and the port is ready for Alkaid to use.
+* Once the virtual interface (one end of the veth pair created by Alcor agent) appears inside of the VPC netns, it means the preparation work on Alcor side has been done and the port is ready for Arktos to use.
 
 Therefore, the Alcor CNI plugin only needs to query and wait until a virtual interface with the expected name appears in the host namespace.
 

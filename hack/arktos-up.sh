@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020 Authors of Alkaid.
+# Copyright 2020 Authors of Arktos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -194,7 +194,7 @@ if [ "${APPARMOR_ENABLED}" == "true" ]; then
   fi
 
   # install runtime apparmor profiles and reload apparmor
-  echo "Intalling alkaid runtime apparmor profiles"
+  echo "Intalling arktos runtime apparmor profiles"
   APPARMOR_PROFILE_DIR=${KUBE_ROOT}/hack/runtime/apparmor
   cp ${APPARMOR_PROFILE_DIR}/libvirt-qemu /etc/apparmor.d/abstractions/
   sudo install -m 0644 ${APPARMOR_PROFILE_DIR}/libvirtd ${APPARMOR_PROFILE_DIR}/virtlet ${APPARMOR_PROFILE_DIR}/vms -t /etc/apparmor.d/
@@ -217,7 +217,7 @@ else
 fi
 
 # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-source ${KUBE_ROOT}/hack/alkaid-cni.rc
+source ${KUBE_ROOT}/hack/arktos-cni.rc
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
 kube::util::ensure-gnu-sed
@@ -1212,7 +1212,7 @@ if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
 fi
 
 echo "*******************************************"
-echo "Setup Alkaid components ..."
+echo "Setup Arktos components ..."
 echo ""
 
 while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
@@ -1226,7 +1226,7 @@ cluster/kubectl.sh create -f hack/runtime/vmruntime.yaml
 cluster/kubectl.sh get ds --namespace kube-system
 
 echo ""
-echo "Alkaid Setup done."
+echo "Arktos Setup done."
 echo "*******************************************"
 echo "Setup Kata Containers components ..."
 "${KUBE_ROOT}"/hack/install-kata.sh
