@@ -130,14 +130,14 @@ install_arktos_containerd() {
     local CONTAINERD_DIR=$(dirname "$BASH_SOURCE[0]}")/../../arktos-containerd
     [ -d ${CONTAINERD_DIR} ] || die "arktos-containerd repo not found. please clone futurewei-cloud/arktos-containerd branch wip-pod-annotation-to-cni-args side by side with arktos"
     if [ ! -x ${CONTAINERD_DIR}/bin/containerd ]; then
-        echo "building alkdaid containerd..."
+        echo "building arktos containerd..."
         pushd ${CONTAINERD_DIR} > /dev/null
         docker run --rm -e GOPATH=/go -v ${PWD}:/go/src/github.com/containerd/containerd -w /go/src/github.com/containerd/containerd golang:1.12 sh -c "apt update; apt install -y libbtrfs-dev libseccomp-dev; make bin/containerd"
         popd > /dev/null
         echo "...built"
     fi
 
-    echo "make sure alkiad containerd in power"
+    echo "make sure arktos containerd in power"
     if [ ! "$(${CONTAINERD_DIR}/bin/containerd --version)" == "$(containerd --version)" ]; then
         echo "stopping containerd shortly to replace the binary..."
         local containerd_path=$(which containerd)

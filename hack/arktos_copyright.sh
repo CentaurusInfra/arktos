@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ALKAID_COPYRIGHT_LINE_NEW_GO="Copyright 2020 Authors of Arktos."
-ALKAID_COPYRIGHT_LINE_NEW_OTHER="# Copyright 2020 Authors of Arktos."
-ALKAID_COPYRIGHT_LINE_MODIFIED_GO="Copyright 2020 Authors of Arktos - file modified."
-ALKAID_COPYRIGHT_LINE_MODIFIED_OTHER="# Copyright 2020 Authors of Arktos - file modified."
+ARKTOS_COPYRIGHT_LINE_NEW_GO="Copyright 2020 Authors of Arktos."
+ARKTOS_COPYRIGHT_LINE_NEW_OTHER="# Copyright 2020 Authors of Arktos."
+ARKTOS_COPYRIGHT_LINE_MODIFIED_GO="Copyright 2020 Authors of Arktos - file modified."
+ARKTOS_COPYRIGHT_LINE_MODIFIED_OTHER="# Copyright 2020 Authors of Arktos - file modified."
 K8S_COPYRIGHT_MATCH="The Kubernetes Authors"
-ALKAID_COPYRIGHT_MATCH="Authors of Arktos"
+ARKTOS_COPYRIGHT_MATCH="Authors of Arktos"
 
-ALKAID_REPO="https://github.com/futurewei-cloud/arktos"
+ARKTOS_REPO="https://github.com/futurewei-cloud/arktos"
 TMPDIR="/tmp/ArktosCopyright"
 HEADDIRNAME="HEAD"
 REPODIRNAME=$TMPDIR/$HEADDIRNAME
@@ -65,7 +65,7 @@ setup_repos() {
         rm -rf $TMPDIR
     fi
     mkdir -p $TMPDIR
-    clone_repo $ALKAID_REPO $REPODIRNAME
+    clone_repo $ARKTOS_REPO $REPODIRNAME
 }
 
 get_added_files_list() {
@@ -95,9 +95,9 @@ replace_k8s_copyright_with_arktos_copyright() {
     local REPOFILE=$1
     if [[ $REPOFILE = *.go ]]
     then
-        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ALKAID_COPYRIGHT_LINE_NEW_GO/" $REPOFILE
+        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_GO/" $REPOFILE
     else
-        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ALKAID_COPYRIGHT_LINE_NEW_OTHER/" $REPOFILE
+        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_OTHER/" $REPOFILE
     fi
 }
 
@@ -107,7 +107,7 @@ check_and_add_arktos_copyright() {
     cat $REPOFILE | grep "$K8S_COPYRIGHT_MATCH" > /dev/null 2>&1
     if [ $? -eq 0 ]
     then
-        cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
+        cat $REPOFILE | grep "$ARKTOS_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
             echo "ERROR: Added file $REPOFILE has both K8s and Arktos copyright." >> $LOGFILE
@@ -116,7 +116,7 @@ check_and_add_arktos_copyright() {
             replace_k8s_copyright_with_arktos_copyright $REPOFILE
         fi
     else
-        cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
+        cat $REPOFILE | grep "$ARKTOS_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
             echo "Added file $REPOFILE has only Arktos copyright. Skipping." >> $LOGFILE
@@ -131,9 +131,9 @@ update_arktos_copyright() {
     local REPOFILE=$1
     if [[ $REPOFILE = *.go ]]
     then
-        sed -i "/$K8S_COPYRIGHT_MATCH/a $ALKAID_COPYRIGHT_LINE_MODIFIED_GO" $REPOFILE
+        sed -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_GO" $REPOFILE
     else
-        sed -i "/$K8S_COPYRIGHT_MATCH/a $ALKAID_COPYRIGHT_LINE_MODIFIED_OTHER" $REPOFILE
+        sed -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_OTHER" $REPOFILE
     fi
 }
 
@@ -143,7 +143,7 @@ check_and_update_arktos_copyright() {
     cat $REPOFILE | grep "$K8S_COPYRIGHT_MATCH" > /dev/null 2>&1
     if [ $? -eq 0 ]
     then
-        cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
+        cat $REPOFILE | grep "$ARKTOS_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
             echo "Modified file $REPOFILE has both K8s and Arktos copyright. Skipping." >> $LOGFILE
@@ -163,11 +163,11 @@ verify_copied_file_copyright() {
     cat $REPOFILE | grep "$K8S_COPYRIGHT_MATCH" > /dev/null 2>&1
     if [ $? -eq 0 ]
     then
-        cat $REPOFILE | grep "$ALKAID_COPYRIGHT_MATCH" > /dev/null 2>&1
+        cat $REPOFILE | grep "$ARKTOS_COPYRIGHT_MATCH" > /dev/null 2>&1
         if [ $? -eq 0 ]
         then
             echo "WARN: Copied file $REPOFILE has both K8s and Arktos copyright. Patching." >> $LOGFILE
-            sed -i "/$ALKAID_COPYRIGHT_MATCH/d" $REPOFILE
+            sed -i "/$ARKTOS_COPYRIGHT_MATCH/d" $REPOFILE
         else
             echo "Copied file $REPOFILE has K8s copyright but not Arktos copyright. Skipping." >> $LOGFILE
         fi
