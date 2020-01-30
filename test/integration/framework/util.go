@@ -72,6 +72,6 @@ func CreateTestingNamespaceWithMultiTenancy(baseName string, apiserver *httptest
 }
 
 // DeleteTestingTenant is currently a no-op function.
-func DeleteTestingTenant(tenant *v1.Tenant, apiserver *httptest.Server, t *testing.T) {
+func DeleteTestingTenant(tenant string, apiserver *httptest.Server, t *testing.T) {
 	// TODO: Remove all resources from a given tenant once we implement CreateTestingTenant.
 }

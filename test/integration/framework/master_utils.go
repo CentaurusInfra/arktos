@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -231,14 +232,37 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 
 // NewIntegrationTestMasterConfig returns the master config appropriate for most integration tests.
 func NewIntegrationTestMasterConfig() *master.Config {
-	return NewIntegrationTestMasterConfigWithOptions(&MasterConfigOptions{})
+	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4")
+}
+
+// NewIntegrationTestMasterConfigParition returns two master config for api server partition tests.
+func NewIntegrationTestMasterConfigParition(prefix, configFilename1, configFilename2 string) (*master.Config, *master.Config) {
+	etcdOptions1 := DefaultEtcdOptions()
+	etcdOptions1.StorageConfig.Prefix = prefix
+	etcdOptions1.StorageConfig.PartitionConfigFilepath = configFilename1
+	masterConfigOptions1 := &MasterConfigOptions{EtcdOptions: etcdOptions1}
+	master1Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions1, "192.168.10.6")
+
+	etcdOptions2 := DefaultEtcdOptions()
+	etcdOptions2.StorageConfig.Prefix = prefix
+	etcdOptions2.StorageConfig.PartitionConfigFilepath = configFilename2
+	masterConfigOptions2 := &MasterConfigOptions{EtcdOptions: etcdOptions2}
+	master2Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions2, "192.168.10.8")
+
+	return master1Config, master2Config
 }
 
 // NewIntegrationTestMasterConfigWithOptions returns the master config appropriate for most integration tests
 // configured with the provided options.
 func NewIntegrationTestMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
+	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4")
+}
+
+// NewIntegrationTestMasterConfigWithOptionsAndIp returns the master config for most integration tests
+// configured with the provided options and master ip address
+func NewIntegrationTestMasterConfigWithOptionsAndIp(opts *MasterConfigOptions, masterIpAddr string) *master.Config {
 	masterConfig := NewMasterConfigWithOptions(opts)
-	masterConfig.GenericConfig.PublicAddress = net.ParseIP("192.168.10.4")
+	masterConfig.GenericConfig.PublicAddress = net.ParseIP(masterIpAddr)
 	masterConfig.ExtraConfig.APIResourceConfigSource = master.DefaultAPIResourceConfigSource()
 
 	// TODO: get rid of these tests or port them to secure serving

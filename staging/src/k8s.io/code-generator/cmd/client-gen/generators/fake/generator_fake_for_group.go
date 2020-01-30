@@ -165,4 +165,3 @@ func (c *Fake$.GroupGoName$$.Version$) RESTClients() []$.RESTClientInterface|raw
 	return []rest.Interface{ret}
 }
 `
-

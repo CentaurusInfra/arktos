@@ -68,39 +68,35 @@ func TestOnlySetFatalOnDecodeError(b bool) {
 }
 
 type watcher struct {
-	client          *clientv3.Client
-	codec           runtime.Codec
-	versioner       storage.Versioner
-	transformer     value.Transformer
-	partitionConfig string
+	client                  *clientv3.Client
+	codec                   runtime.Codec
+	versioner               storage.Versioner
+	transformer             value.Transformer
+	partitionConfigFilename string
 }
 
 // watchChan implements watch.Interface.
 type watchChan struct {
-	watcher           *watcher
-	key               string
-	initialRev        int64
-	recursive         bool
-	internalPred      storage.SelectionPredicate
-	ctx               context.Context
-	cancel            context.CancelFunc
-	incomingEventChan chan *event
-	resultChan        chan watch.Event
-	errChan           chan error
-	partitionConfig   string
+	watcher                 *watcher
+	key                     string
+	initialRev              int64
+	recursive               bool
+	internalPred            storage.SelectionPredicate
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	incomingEventChan       chan *event
+	resultChan              chan watch.Event
+	errChan                 chan error
+	partitionConfigFilename string
 }
 
-func newWatcher(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer) *watcher {
-	return newWatcherWithPartitionConfig(client, codec, versioner, transformer, "")
-}
-
-func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfig string) *watcher {
+func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfigFilename string) *watcher {
 	return &watcher{
-		client:          client,
-		codec:           codec,
-		versioner:       versioner,
-		transformer:     transformer,
-		partitionConfig: partitionConfig,
+		client:                  client,
+		codec:                   codec,
+		versioner:               versioner,
+		transformer:             transformer,
+		partitionConfigFilename: partitionConfigFilename,
 	}
 }
 
@@ -122,15 +118,15 @@ func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bo
 
 func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) *watchChan {
 	wc := &watchChan{
-		watcher:           w,
-		key:               key,
-		initialRev:        rev,
-		recursive:         recursive,
-		internalPred:      pred,
-		incomingEventChan: make(chan *event, incomingBufSize),
-		resultChan:        make(chan watch.Event, outgoingBufSize),
-		errChan:           make(chan error, 1),
-		partitionConfig:   w.partitionConfig,
+		watcher:                 w,
+		key:                     key,
+		initialRev:              rev,
+		recursive:               recursive,
+		internalPred:            pred,
+		incomingEventChan:       make(chan *event, incomingBufSize),
+		resultChan:              make(chan watch.Event, outgoingBufSize),
+		errChan:                 make(chan error, 1),
+		partitionConfigFilename: w.partitionConfigFilename,
 	}
 	if pred.Empty() {
 		// The filter doesn't filter out any object.
@@ -210,7 +206,7 @@ func parseConfig(configFileName string) map[string][]string {
 
 	bytes, err := ioutil.ReadFile(configFileName)
 	if err != nil {
-		klog.V(3).Infof("Failed to read config file %v, will not partition any object, err: %v", configFileName, err)
+		klog.V(3).Infof("Failed to read config file [%v], will not partition any object, err: [%v]", configFileName, err)
 		return m
 	}
 
@@ -248,7 +244,7 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 	}
 
 	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
-	m := parseConfig(wc.partitionConfig)
+	m := parseConfig(wc.partitionConfigFilename)
 
 	if val, ok := m[wc.key]; ok {
 		rangeStart := wc.key + val[0]
