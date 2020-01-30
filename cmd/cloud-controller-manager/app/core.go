@@ -73,6 +73,7 @@ func startServiceController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cl
 		ctx.ClientBuilder.ClientOrDie("service-controller"),
 		ctx.SharedInformers.Core().V1().Services(),
 		ctx.SharedInformers.Core().V1().Nodes(),
+		ctx.SharedInformers.Core().V1().Pods(),
 		ctx.ComponentConfig.KubeCloudShared.ClusterName,
 	)
 	if err != nil {

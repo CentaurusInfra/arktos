@@ -98,6 +98,8 @@ type ServiceController struct {
 	eventRecorder       record.EventRecorder
 	nodeLister          corelisters.NodeLister
 	nodeListerSynced    cache.InformerSynced
+	podLister          	corelisters.PodLister
+	podListerSynced    	cache.InformerSynced
 	// services that need to be synced
 	queue workqueue.RateLimitingInterface
 }
@@ -109,6 +111,7 @@ func New(
 	kubeClient clientset.Interface,
 	serviceInformer coreinformers.ServiceInformer,
 	nodeInformer coreinformers.NodeInformer,
+	podInformer coreinformers.PodInformer,
 	clusterName string,
 ) (*ServiceController, error) {
 	broadcaster := record.NewBroadcaster()
@@ -132,6 +135,8 @@ func New(
 		eventRecorder:    recorder,
 		nodeLister:       nodeInformer.Lister(),
 		nodeListerSynced: nodeInformer.Informer().HasSynced,
+		podLister:        podInformer.Lister(),
+		podListerSynced:  podInformer.Informer().HasSynced,
 		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(minRetryDelay, maxRetryDelay), "service"),
 	}
 
@@ -139,14 +144,14 @@ func New(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(cur interface{}) {
 				svc, ok := cur.(*v1.Service)
-				if ok && (wantsLoadBalancer(svc) || needsCleanup(svc)) {
+				if ok && (wantsLoadBalancer(svc) || wantsNeutronLB(svc) || needsCleanup(svc)) {
 					s.enqueueService(cur)
 				}
 			},
 			UpdateFunc: func(old, cur interface{}) {
 				oldSvc, ok1 := old.(*v1.Service)
 				curSvc, ok2 := cur.(*v1.Service)
-				if ok1 && ok2 && (s.needsUpdate(oldSvc, curSvc) || needsCleanup(curSvc)) {
+				if ok1 && ok2 && (s.needsUpdate(oldSvc, curSvc) || s.needsUpdateNeutronLB(oldSvc, curSvc)  || needsCleanup(curSvc)) {
 					s.enqueueService(cur)
 				}
 			},
@@ -507,6 +512,18 @@ func (s *ServiceController) needsUpdate(oldService *v1.Service, newService *v1.S
 	return false
 }
 
+// needsUpdateNeutronLB checks if external Neutron load balancer needs to be updated due to change in attributes.
+func (s *ServiceController) needsUpdateNeutronLB(oldService *v1.Service, newService *v1.Service) bool {
+	if !wantsNeutronLB(oldService) && !wantsNeutronLB(newService) {
+		return false
+	}
+
+	if !portsEqualForLB(oldService, newService) || oldService.Spec.SessionAffinity != newService.Spec.SessionAffinity {
+		return true
+	}
+
+	return false
+}
 func (s *ServiceController) loadBalancerName(service *v1.Service) string {
 	return s.balancer.GetLoadBalancerName(context.TODO(), "", service)
 }
@@ -708,6 +725,10 @@ func (s *ServiceController) lockedUpdateLoadBalancerHosts(service *v1.Service, h
 
 func wantsLoadBalancer(service *v1.Service) bool {
 	return service.Spec.Type == v1.ServiceTypeLoadBalancer
+}
+
+func wantsNeutronLB(service *v1.Service) bool {
+	return service.Spec.Type == v1.ServiceTypeExternalNeutronLB
 }
 
 func loadBalancerIPsAreEqual(oldService, newService *v1.Service) bool {
