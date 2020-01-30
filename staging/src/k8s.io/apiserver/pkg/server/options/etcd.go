@@ -57,8 +57,6 @@ type EtcdOptions struct {
 	DefaultWatchCacheSize int
 	// WatchCacheSizes represents override to a given resource
 	WatchCacheSizes []string
-
-	PartitionConfigFilepath string
 }
 
 var storageTypes = sets.NewString(
