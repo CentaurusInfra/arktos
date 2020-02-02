@@ -19,6 +19,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/loadbalancers"
+	"os"
 	"sync"
 	"time"
 
@@ -144,14 +148,16 @@ func New(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(cur interface{}) {
 				svc, ok := cur.(*v1.Service)
-				if ok && (wantsLoadBalancer(svc) || wantsNeutronLB(svc) || needsCleanup(svc)) {
+				if ok && wantsNeutronLB(svc) {
+					s.createNeutronLB(cur)
+				} else if ok && (wantsLoadBalancer(svc) || needsCleanup(svc)) {
 					s.enqueueService(cur)
 				}
 			},
 			UpdateFunc: func(old, cur interface{}) {
 				oldSvc, ok1 := old.(*v1.Service)
 				curSvc, ok2 := cur.(*v1.Service)
-				if ok1 && ok2 && (s.needsUpdate(oldSvc, curSvc) || s.needsUpdateNeutronLB(oldSvc, curSvc)  || needsCleanup(curSvc)) {
+				if ok1 && ok2 && (s.needsUpdate(oldSvc, curSvc) || needsCleanup(curSvc)) {
 					s.enqueueService(cur)
 				}
 			},
@@ -838,4 +844,46 @@ func (s *ServiceController) patchStatus(service *v1.Service, previousStatus, new
 	klog.V(2).Infof("Patching status for service %s/%s", updated.Namespace, updated.Name)
 	_, err := patch(s.kubeClient.CoreV1(), service, updated)
 	return err
+}
+
+func GetOpenstackClient() *gophercloud.ProviderClient {
+	opts := gophercloud.AuthOptions{
+		IdentityEndpoint: os.Getenv("IdentityEndpoint"), //"http://192.168.113.135/identity/v3",
+		Username:         os.Getenv("Username"),         //"admin",
+		Password:         os.Getenv("Password"),         //openstack password
+		DomainName:       os.Getenv("DomainName"),       //"default",
+		TenantName:       os.Getenv("TenantName"),       //"demo",
+	}
+
+	provider, err := openstack.AuthenticatedClient(opts)
+	if err != nil {
+		klog.Errorf("Network controller AuthenticatedClient : (%v)", err)
+		return nil
+	}
+
+	return provider
+}
+
+// createNeutronLB creates external Neutron load balancer
+func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.LoadBalancer, error){
+	service := obj.(*v1.Service)
+	client := GetOpenstackClient()
+	lbclient, err := openstack.NewLoadBalancerV2(client, gophercloud.EndpointOpts{
+		Region: os.Getenv("Region"),
+	})
+
+	createOpts := loadbalancers.CreateOpts{
+		Name:         service.Name,
+		VipSubnetID:  service.Spec.SubnetID,
+		AdminStateUp: gophercloud.Enabled,
+	}
+
+	klog.V(4).Infof("Creating load balancer for service %s", service.Name)
+	lb, err := loadbalancers.Create(lbclient, createOpts).Extract()
+	if err != nil {
+		return nil, fmt.Errorf("error creating loadbalancer %v: %v", createOpts, err)
+	}
+
+
+	return lb, nil
 }
