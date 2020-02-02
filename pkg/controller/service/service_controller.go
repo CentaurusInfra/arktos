@@ -868,7 +868,7 @@ func GetOpenstackClient() *gophercloud.ProviderClient {
 func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.LoadBalancer, error){
 	service := obj.(*v1.Service)
 	client := GetOpenstackClient()
-	lbclient, err := openstack.NewLoadBalancerV2(client, gophercloud.EndpointOpts{
+	serviceclient, err := openstack.NewLoadBalancerV2(client, gophercloud.EndpointOpts{
 		Region: os.Getenv("Region"),
 	})
 
@@ -879,11 +879,32 @@ func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.Loa
 	}
 
 	klog.V(4).Infof("Creating load balancer for service %s", service.Name)
-	lb, err := loadbalancers.Create(lbclient, createOpts).Extract()
+	lb, err := loadbalancers.Create(serviceclient, createOpts).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("error creating loadbalancer %v: %v", createOpts, err)
 	}
 
+	sp := service.Spec.Ports[0]
+	_, err = s.createNeutronLBListener(serviceclient, lb.ID, service.Name, int(sp.Port))
 
 	return lb, nil
+}
+
+// createNeutronLBListener creates listener for external Neutron load balancer
+func (s *ServiceController) createNeutronLBListener(client *gophercloud.ServiceClient, loadbalancerID string, name string, port int) (*listeners.Listener, error){
+	klog.V(4).Infof("Creating listener for port %d", port)
+	createOpts := listeners.CreateOpts{
+		Name:           fmt.Sprintf("listener_%s_%d", name, port),
+		Protocol:       "TCP",
+		ProtocolPort:   int(port),
+		LoadbalancerID: loadbalancerID,
+	}
+
+	listener, err := listeners.Create(client, createOpts).Extract()
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating loadbalancer listener %v: %v", createOpts, err)
+	}
+
+	return listener, err
 }
