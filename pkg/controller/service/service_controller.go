@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/listeners"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/loadbalancers"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/pools"
 	"os"
 	"sync"
 	"time"
@@ -885,7 +887,8 @@ func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.Loa
 	}
 
 	sp := service.Spec.Ports[0]
-	_, err = s.createNeutronLBListener(serviceclient, lb.ID, service.Name, int(sp.Port))
+	listener, err := s.createNeutronLBListener(serviceclient, lb.ID, service.Name, int(sp.Port))
+	_, err = s.createNeutronLBPool(serviceclient, listener.ID, service.Name)
 
 	return lb, nil
 }
@@ -907,4 +910,23 @@ func (s *ServiceController) createNeutronLBListener(client *gophercloud.ServiceC
 	}
 
 	return listener, err
+}
+
+// createNeutronLBPool creates listener for external Neutron load balancer
+func (s *ServiceController) createNeutronLBPool(client *gophercloud.ServiceClient, listenerID string, name string) (*pools.Pool, error) {
+	klog.V(4).Infof("Creating LB Pool of %s", name)
+	createOpts := pools.CreateOpts{
+		LBMethod:       pools.LBMethodRoundRobin,
+		Protocol:       "TCP",
+		Name:           name,
+		ListenerID:     listenerID,
+	}
+
+	pool, err := pools.Create(client, createOpts).Extract()
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating loadbalancer Pool %v: %v", createOpts, err)
+	}
+
+	return pool, err
 }
