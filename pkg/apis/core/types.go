@@ -3479,7 +3479,7 @@ type ServiceSpec struct {
 	// Only applies to Service Type: NeutronLB
 	// subnetID is external Neutron load balancer vip_subnet_id
 	// +optional
-	SubnetID string `json:"subnetID,omitempty" protobuf:"bytes,16,opt,name=subnetID"`
+	SubnetID string
 
 	// Optional: Supports "ClientIP" and "None".  Used to maintain session affinity.
 	// +optional
