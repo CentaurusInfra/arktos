@@ -38,12 +38,12 @@ spec:
   clusterIP: "28"
   externalIPs:
   - "29"
-  externalName: "32"
+  externalName: "33"
   externalTrafficPolicy: 螩B
   healthCheckNodePort: -21009133
-  loadBalancerIP: "30"
+  loadBalancerIP: "31"
   loadBalancerSourceRanges:
-  - "31"
+  - "32"
   ports:
   - name: "25"
     nodePort: 2048967527
@@ -57,9 +57,10 @@ spec:
   sessionAffinityConfig:
     clientIP:
       timeoutSeconds: -1487653240
+  subnetID: "30"
   type: ǡƏS$+½H
 status:
   loadBalancer:
     ingress:
-    - hostname: "34"
-      ip: "33"
+    - hostname: "35"
+      ip: "34"
