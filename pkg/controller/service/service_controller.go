@@ -19,6 +19,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/listeners"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/loadbalancers"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas_v2/pools"
+	"os"
 	"sync"
 	"time"
 
@@ -98,6 +104,8 @@ type ServiceController struct {
 	eventRecorder       record.EventRecorder
 	nodeLister          corelisters.NodeLister
 	nodeListerSynced    cache.InformerSynced
+	podLister          	corelisters.PodLister
+	podListerSynced    	cache.InformerSynced
 	// services that need to be synced
 	queue workqueue.RateLimitingInterface
 }
@@ -109,6 +117,7 @@ func New(
 	kubeClient clientset.Interface,
 	serviceInformer coreinformers.ServiceInformer,
 	nodeInformer coreinformers.NodeInformer,
+	podInformer coreinformers.PodInformer,
 	clusterName string,
 ) (*ServiceController, error) {
 	broadcaster := record.NewBroadcaster()
@@ -132,6 +141,8 @@ func New(
 		eventRecorder:    recorder,
 		nodeLister:       nodeInformer.Lister(),
 		nodeListerSynced: nodeInformer.Informer().HasSynced,
+		podLister:        podInformer.Lister(),
+		podListerSynced:  podInformer.Informer().HasSynced,
 		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(minRetryDelay, maxRetryDelay), "service"),
 	}
 
@@ -139,7 +150,9 @@ func New(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(cur interface{}) {
 				svc, ok := cur.(*v1.Service)
-				if ok && (wantsLoadBalancer(svc) || needsCleanup(svc)) {
+				if ok && wantsNeutronLB(svc) {
+					s.createNeutronLB(cur)
+				} else if ok && (wantsLoadBalancer(svc) || needsCleanup(svc)) {
 					s.enqueueService(cur)
 				}
 			},
@@ -507,6 +520,18 @@ func (s *ServiceController) needsUpdate(oldService *v1.Service, newService *v1.S
 	return false
 }
 
+// needsUpdateNeutronLB checks if external Neutron load balancer needs to be updated due to change in attributes.
+func (s *ServiceController) needsUpdateNeutronLB(oldService *v1.Service, newService *v1.Service) bool {
+	if !wantsNeutronLB(oldService) && !wantsNeutronLB(newService) {
+		return false
+	}
+
+	if !portsEqualForLB(oldService, newService) || oldService.Spec.SessionAffinity != newService.Spec.SessionAffinity {
+		return true
+	}
+
+	return false
+}
 func (s *ServiceController) loadBalancerName(service *v1.Service) string {
 	return s.balancer.GetLoadBalancerName(context.TODO(), "", service)
 }
@@ -710,6 +735,10 @@ func wantsLoadBalancer(service *v1.Service) bool {
 	return service.Spec.Type == v1.ServiceTypeLoadBalancer
 }
 
+func wantsNeutronLB(service *v1.Service) bool {
+	return service.Spec.Type == v1.ServiceTypeExternalNeutronLB
+}
+
 func loadBalancerIPsAreEqual(oldService, newService *v1.Service) bool {
 	return oldService.Spec.LoadBalancerIP == newService.Spec.LoadBalancerIP
 }
@@ -817,4 +846,87 @@ func (s *ServiceController) patchStatus(service *v1.Service, previousStatus, new
 	klog.V(2).Infof("Patching status for service %s/%s", updated.Namespace, updated.Name)
 	_, err := patch(s.kubeClient.CoreV1(), service, updated)
 	return err
+}
+
+func GetOpenstackClient() *gophercloud.ProviderClient {
+	opts := gophercloud.AuthOptions{
+		IdentityEndpoint: os.Getenv("IdentityEndpoint"), //"http://192.168.113.135/identity/v3",
+		Username:         os.Getenv("Username"),         //"admin",
+		Password:         os.Getenv("Password"),         //openstack password
+		DomainName:       os.Getenv("DomainName"),       //"default",
+		TenantName:       os.Getenv("TenantName"),       //"demo",
+	}
+
+	provider, err := openstack.AuthenticatedClient(opts)
+	if err != nil {
+		klog.Errorf("Network controller AuthenticatedClient : (%v)", err)
+		return nil
+	}
+
+	return provider
+}
+
+// createNeutronLB creates external Neutron load balancer
+func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.LoadBalancer, error){
+	service := obj.(*v1.Service)
+	client := GetOpenstackClient()
+	serviceclient, err := openstack.NewLoadBalancerV2(client, gophercloud.EndpointOpts{
+		Region: os.Getenv("Region"),
+	})
+
+	createOpts := loadbalancers.CreateOpts{
+		Name:         service.Name,
+		VipSubnetID:  service.Spec.SubnetID,
+		AdminStateUp: gophercloud.Enabled,
+	}
+
+	klog.V(4).Infof("Creating load balancer for service %s", service.Name)
+	lb, err := loadbalancers.Create(serviceclient, createOpts).Extract()
+	if err != nil {
+		return nil, fmt.Errorf("error creating loadbalancer %v: %v", createOpts, err)
+	}
+
+	sp := service.Spec.Ports[0]
+	listener, err := s.createNeutronLBListener(serviceclient, lb.ID, service.Name, int(sp.Port))
+	_, err = s.createNeutronLBPool(serviceclient, listener.ID, service.Name)
+
+	return lb, nil
+}
+
+// createNeutronLBListener creates listener for external Neutron load balancer
+func (s *ServiceController) createNeutronLBListener(client *gophercloud.ServiceClient, loadbalancerID string, name string, port int) (*listeners.Listener, error){
+	klog.V(4).Infof("Creating listener for port %d", port)
+	createOpts := listeners.CreateOpts{
+		Name:           fmt.Sprintf("listener_%s_%d", name, port),
+		Protocol:       "TCP",
+		ProtocolPort:   int(port),
+		LoadbalancerID: loadbalancerID,
+	}
+
+	listener, err := listeners.Create(client, createOpts).Extract()
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating loadbalancer listener %v: %v", createOpts, err)
+	}
+
+	return listener, err
+}
+
+// createNeutronLBPool creates listener for external Neutron load balancer
+func (s *ServiceController) createNeutronLBPool(client *gophercloud.ServiceClient, listenerID string, name string) (*pools.Pool, error) {
+	klog.V(4).Infof("Creating LB Pool of %s", name)
+	createOpts := pools.CreateOpts{
+		LBMethod:       pools.LBMethodRoundRobin,
+		Protocol:       "TCP",
+		Name:           name,
+		ListenerID:     listenerID,
+	}
+
+	pool, err := pools.Create(client, createOpts).Extract()
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating loadbalancer Pool %v: %v", createOpts, err)
+	}
+
+	return pool, err
 }

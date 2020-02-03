@@ -76,8 +76,9 @@ func newController() (*ServiceController, *fakecloud.Cloud, *fake.Clientset) {
 	informerFactory := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	serviceInformer := informerFactory.Core().V1().Services()
 	nodeInformer := informerFactory.Core().V1().Nodes()
+	podInformer := informerFactory.Core().V1().Pods()
 
-	controller, _ := New(cloud, client, serviceInformer, nodeInformer, "test-cluster")
+	controller, _ := New(cloud, client, serviceInformer, nodeInformer, podInformer, "test-cluster")
 	controller.nodeListerSynced = alwaysReady
 	controller.serviceListerSynced = alwaysReady
 	controller.eventRecorder = record.NewFakeRecorder(100)

@@ -3476,6 +3476,11 @@ type ServiceSpec struct {
 	// +optional
 	LoadBalancerIP string
 
+	// Only applies to Service Type: NeutronLB
+	// subnetID is external Neutron load balancer vip_subnet_id
+	// +optional
+	SubnetID string
+
 	// Optional: Supports "ClientIP" and "None".  Used to maintain session affinity.
 	// +optional
 	SessionAffinity ServiceAffinity

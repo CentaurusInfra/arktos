@@ -7693,6 +7693,7 @@ func autoConvert_v1_ServiceSpec_To_core_ServiceSpec(in *v1.ServiceSpec, out *cor
 	out.ClusterIP = in.ClusterIP
 	out.Type = core.ServiceType(in.Type)
 	out.ExternalIPs = *(*[]string)(unsafe.Pointer(&in.ExternalIPs))
+	out.SubnetID = in.SubnetID
 	out.SessionAffinity = core.ServiceAffinity(in.SessionAffinity)
 	out.LoadBalancerIP = in.LoadBalancerIP
 	out.LoadBalancerSourceRanges = *(*[]string)(unsafe.Pointer(&in.LoadBalancerSourceRanges))
@@ -7717,6 +7718,7 @@ func autoConvert_core_ServiceSpec_To_v1_ServiceSpec(in *core.ServiceSpec, out *v
 	out.ExternalName = in.ExternalName
 	out.ExternalIPs = *(*[]string)(unsafe.Pointer(&in.ExternalIPs))
 	out.LoadBalancerIP = in.LoadBalancerIP
+	out.SubnetID = in.SubnetID
 	out.SessionAffinity = v1.ServiceAffinity(in.SessionAffinity)
 	out.SessionAffinityConfig = (*v1.SessionAffinityConfig)(unsafe.Pointer(in.SessionAffinityConfig))
 	out.LoadBalancerSourceRanges = *(*[]string)(unsafe.Pointer(&in.LoadBalancerSourceRanges))

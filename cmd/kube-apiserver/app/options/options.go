@@ -57,6 +57,7 @@ type ServerRunOptions struct {
 	MaxConnectionBytesPerSec  int64
 	ServiceClusterIPRange     net.IPNet // TODO: make this a list
 	ServiceNodePortRange      utilnet.PortRange
+	ServiceClusterSubnet      string
 	SSHKeyfile                string
 	SSHUser                   string
 
@@ -183,6 +184,11 @@ func (s *ServerRunOptions) Flags() (fss cliflag.NamedFlagSets) {
 	fs.Var(&s.ServiceNodePortRange, "service-node-port-range", ""+
 		"A port range to reserve for services with NodePort visibility. "+
 		"Example: '30000-32767'. Inclusive at both ends of the range.")
+
+	fs.StringVar(&s.ServiceClusterSubnet, "service-cluster-subnet", s.ServiceClusterSubnet, ""+
+		"A Subnet name/ID from which to assign service cluster IPs. This must not "+
+		"be the subnet assigned to nodes for pods. "+
+		"Note this subnet if defined will OVERWRITE service-cluster-ip-range.")
 
 	// Kubelet related flags:
 	fs.BoolVar(&s.KubeletConfig.EnableHttps, "kubelet-https", s.KubeletConfig.EnableHttps,

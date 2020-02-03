@@ -55,6 +55,10 @@ type ServiceExternalNameGeneratorV1 struct {
 	ServiceCommonGeneratorV1
 }
 
+type ServiceExternalNeutronLBGeneratorV1 struct {
+	ServiceCommonGeneratorV1
+}
+
 func (ServiceClusterIPGeneratorV1) ParamNames() []generate.GeneratorParam {
 	return []generate.GeneratorParam{
 		{Name: "name", Required: true},
@@ -80,6 +84,13 @@ func (ServiceExternalNameGeneratorV1) ParamNames() []generate.GeneratorParam {
 	return []generate.GeneratorParam{
 		{Name: "name", Required: true},
 		{Name: "externalname", Required: true},
+	}
+}
+
+func (ServiceExternalNeutronLBGeneratorV1) ParamNames() []generate.GeneratorParam {
+	return []generate.GeneratorParam{
+		{Name: "name", Required: true},
+		{Name: "externalneutronlb", Required: true},
 	}
 }
 
@@ -183,6 +194,19 @@ func (s ServiceExternalNameGeneratorV1) Generate(params map[string]interface{}) 
 		return nil, err
 	}
 	delegate := &ServiceCommonGeneratorV1{Type: v1.ServiceTypeExternalName, ClusterIP: ""}
+	err = delegate.GenerateCommon(params)
+	if err != nil {
+		return nil, err
+	}
+	return delegate.StructuredGenerate()
+}
+
+func (s ServiceExternalNeutronLBGeneratorV1) Generate(params map[string]interface{}) (runtime.Object, error) {
+	err := generate.ValidateParams(s.ParamNames(), params)
+	if err != nil {
+		return nil, err
+	}
+	delegate := &ServiceCommonGeneratorV1{Type: v1.ServiceTypeExternalNeutronLB, ClusterIP: ""}
 	err = delegate.GenerateCommon(params)
 	if err != nil {
 		return nil, err
