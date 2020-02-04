@@ -30,6 +30,28 @@ LOGDIR=$TMPDIR
 LOGFILE=$LOGDIR/$LOGFILENAME
 EXIT_ERROR=0
 
+SED_CMD=""
+if [[ "$OSTYPE" == "darwin"* ]]
+then
+    SED_CMD=`which gsed`
+    if [ -z $SED_CMD ]
+    then
+        echo "Please install gnu-sed (brew install gnu-sed)"
+        exit 1
+    fi
+elif [[ "$OSTYPE" == "linux"* ]]
+then
+    SED_CMD=`which sed`
+    if [ -z $SED_CMD ]
+    then
+        echo "Please install sed"
+        exit 1
+    fi
+else
+    echo "Unsupported OS $OSTYPE"
+    exit 1
+fi
+
 display_usage() {
     echo "Usage: $0 <optional-arktos-repo-path> <optional-log-directory>"
     echo "       If optional Arktos repo path is provided, repo setup step will be skipped"
@@ -95,9 +117,9 @@ replace_k8s_copyright_with_arktos_copyright() {
     local REPOFILE=$1
     if [[ $REPOFILE = *.go ]]
     then
-        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_GO/" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_GO/" $REPOFILE
     else
-        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_OTHER/" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_OTHER/" $REPOFILE
     fi
 }
 
@@ -131,9 +153,9 @@ update_arktos_copyright() {
     local REPOFILE=$1
     if [[ $REPOFILE = *.go ]]
     then
-        sed -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_GO" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_GO" $REPOFILE
     else
-        sed -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_OTHER" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_OTHER" $REPOFILE
     fi
 }
 
@@ -167,7 +189,7 @@ verify_copied_file_copyright() {
         if [ $? -eq 0 ]
         then
             echo "WARN: Copied file $REPOFILE has both K8s and Arktos copyright. Patching." >> $LOGFILE
-            sed -i "/$ARKTOS_COPYRIGHT_MATCH/d" $REPOFILE
+            $SED_CMD -i "/$ARKTOS_COPYRIGHT_MATCH/d" $REPOFILE
         else
             echo "Copied file $REPOFILE has K8s copyright but not Arktos copyright. Skipping." >> $LOGFILE
         fi
