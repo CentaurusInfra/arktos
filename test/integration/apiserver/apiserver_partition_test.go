@@ -706,3 +706,268 @@ func _TestInformerCanGetAllData(t *testing.T) {
 	deleteRS(t, clientset1, rs2)
 	deleteApiServerDataPartitionFile(t)
 }
+
+// Test apiserver sync data like ["registry/pods/", "registry/pods/tenant2")
+func TestPartitionWithLeftUnbounded(t *testing.T) {
+	_, closeFn, clientset:= setUpApiserver(t, "", tenant2 )
+	defer closeFn()
+	//defer closeFn2()
+
+	// create informer 1 from server 1
+	resyncPeriod := 12 * time.Hour
+	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
+	stopCh := make(chan struct{})
+	informer.Start(stopCh)
+	defer close(stopCh)
+
+	startEventBroadCaster(t, clientset)
+	informer.WaitForCacheSync(stopCh)
+	go informer.Apps().V1().ReplicaSets().Informer().Run(stopCh)
+
+	namespace := "ns1"
+	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
+	w, err := rsClient.Watch(metav1.ListOptions{})
+	defer w.Stop()
+	assert.Nil(t, err)
+
+	rs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
+	assert.NotNil(t, rs)
+
+	otherRs :=  createRS(t, clientset, "tenant3", namespace, "rs1", 1)
+	assert.NotNil(t, otherRs)
+	assert.NotEqual(t, rs.UID, otherRs.UID)
+
+	// check data from different api servers
+	rsFound := false
+	for {
+		select {
+		case event, ok := <-w.ResultChan():
+			if !ok {
+				t.Fatalf("Failed to get replicaset from watch api server")
+			}
+			if event.Type == watch.Error {
+				t.Fatalf("Result channel get error event. %v", event)
+			}
+			meta, err := meta.Accessor(event.Object)
+			if err != nil {
+				t.Fatalf("Unable to understand watch event %#v", event)
+			}
+
+			if rs.UID == meta.GetUID() {
+				rsFound = true
+				assert.Equal(t, rs.UID, meta.GetUID())
+				assert.Equal(t, rs.HashKey, meta.GetHashKey())
+				assert.Equal(t, rs.Name, meta.GetName())
+				assert.Equal(t, rs.Namespace, meta.GetNamespace())
+				assert.Equal(t, rs.Tenant, meta.GetTenant())
+			}
+			if otherRs.UID == meta.GetUID() {
+				t.Fatalf("The api server should not sync other replicaset data")
+			}
+
+		case <-time.After(10 * time.Second):
+			t.Fatalf("unable to get replicaset from watch api server")
+		}
+
+		if rsFound {
+			break
+		}
+	}
+	assert.True(t, rsFound)
+
+	// tear down
+	deleteRS(t, clientset, rs)
+	deletePartitionConfigFile(t)
+}
+
+// Test apiserver sync data like ["registry/pods/tenant2", "")
+func TestPartitionRightUnbounded(t *testing.T) {
+	_, closeFn, clientset:= setUpApiserver(t, tenant2, "" )
+	defer closeFn()
+	//defer closeFn2()
+
+	// create informer 1 from server 1
+	resyncPeriod := 12 * time.Hour
+	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
+	stopCh := make(chan struct{})
+	informer.Start(stopCh)
+	defer close(stopCh)
+
+	startEventBroadCaster(t, clientset)
+	informer.WaitForCacheSync(stopCh)
+	go informer.Apps().V1().ReplicaSets().Informer().Run(stopCh)
+
+	namespace := "ns1"
+	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
+	w, err := rsClient.Watch(metav1.ListOptions{})
+	defer w.Stop()
+	assert.Nil(t, err)
+
+	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
+	assert.NotNil(t, rs)
+
+	otherRs :=  createRS(t, clientset, tenant1, namespace, "rs1", 1)
+	assert.NotNil(t, otherRs)
+	assert.NotEqual(t, rs.UID, otherRs.UID)
+
+	// check data from different api servers
+	rsFound := false
+	for {
+		select {
+		case event, ok := <-w.ResultChan():
+			if !ok {
+				t.Fatalf("Failed to get replicaset from watch api server")
+			}
+			if event.Type == watch.Error {
+				t.Fatalf("Result channel get error event. %v", event)
+			}
+			meta, err := meta.Accessor(event.Object)
+			if err != nil {
+				t.Fatalf("Unable to understand watch event %#v", event)
+			}
+
+			if rs.UID == meta.GetUID() {
+				rsFound = true
+				assert.Equal(t, rs.UID, meta.GetUID())
+				assert.Equal(t, rs.HashKey, meta.GetHashKey())
+				assert.Equal(t, rs.Name, meta.GetName())
+				assert.Equal(t, rs.Namespace, meta.GetNamespace())
+				assert.Equal(t, rs.Tenant, meta.GetTenant())
+			}
+			if otherRs.UID == meta.GetUID() {
+				t.Fatalf("The api server should not sync other replicaset data")
+			}
+
+		case <-time.After(10 * time.Second):
+			t.Fatalf("unable to get replicaset from watch api server")
+		}
+
+		if rsFound {
+			break
+		}
+	}
+	assert.True(t, rsFound)
+
+	// tear down
+	deleteRS(t, clientset, rs)
+	deletePartitionConfigFile(t)
+}
+
+// Test apiserver sync data like ["registry/pods/tenant2", "registry/pods/tenant3")
+func TestPartitionLeftRightBounded(t *testing.T) {
+	_, closeFn, clientset:= setUpApiserver(t, tenant2,  "tenant3" )
+	defer closeFn()
+	//defer closeFn2()
+
+	// create informer 1 from server 1
+	resyncPeriod := 12 * time.Hour
+	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
+	stopCh := make(chan struct{})
+	informer.Start(stopCh)
+	defer close(stopCh)
+
+	startEventBroadCaster(t, clientset)
+	informer.WaitForCacheSync(stopCh)
+	go informer.Apps().V1().ReplicaSets().Informer().Run(stopCh)
+
+	namespace := "ns1"
+	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
+	w, err := rsClient.Watch(metav1.ListOptions{})
+	defer w.Stop()
+	assert.Nil(t, err)
+
+	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
+	assert.NotNil(t, rs)
+
+	otherRs :=  createRS(t, clientset, "tenant3", namespace, "rs3", 1)
+	assert.NotNil(t, otherRs)
+	assert.NotEqual(t, rs.UID, otherRs.UID)
+
+	// check data from different api servers
+	rsFound := false
+	for {
+		select {
+		case event, ok := <-w.ResultChan():
+			if !ok {
+				t.Fatalf("Failed to get replicaset from watch api server")
+			}
+			if event.Type == watch.Error {
+				t.Fatalf("Result channel get error event. %v", event)
+			}
+			meta, err := meta.Accessor(event.Object)
+			if err != nil {
+				t.Fatalf("Unable to understand watch event %#v", event)
+			}
+
+			if rs.UID == meta.GetUID() {
+				rsFound = true
+				assert.Equal(t, rs.UID, meta.GetUID())
+				assert.Equal(t, rs.HashKey, meta.GetHashKey())
+				assert.Equal(t, rs.Name, meta.GetName())
+				assert.Equal(t, rs.Namespace, meta.GetNamespace())
+				assert.Equal(t, rs.Tenant, meta.GetTenant())
+			}
+			if otherRs.UID == meta.GetUID() {
+				t.Fatalf("The api server should not sync other replicaset data")
+			}
+
+		case <-time.After(10 * time.Second):
+			t.Fatalf("unable to get replicaset from watch api server")
+		}
+
+		if rsFound {
+			break
+		}
+	}
+	assert.True(t, rsFound)
+
+	// tear down
+	deleteRS(t, clientset, rs)
+	deletePartitionConfigFile(t)
+}
+
+func setUpApiserver(t *testing.T, begin, end string) (*httptest.Server, framework.CloseFunc, clientset.Interface) {
+	prefix, configFilename1 := createPartitionConfig(t, begin, end)
+	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1)
+	_, s, closeFn := framework.RunAMaster(masterConfig)
+
+	config := restclient.Config{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(&config)
+	if err != nil {
+		t.Fatalf("Error in create clientset: %v", err)
+	}
+	return s, closeFn, clientSet
+}
+
+func createPartitionConfig(t *testing.T, begin, end string) (prefix, configFilename string) {
+	prefix = path.Join(uuid.New(), "registry")
+
+	podData := fmt.Sprintf(podDataParitionModel, prefix, begin, end)
+	rsData := fmt.Sprintf(rsDataParitionModel, prefix, begin, end)
+
+	// const does not work here
+	configFile, err := os.Create("apiserver-0.config")
+	if err != nil {
+		t.Fatalf("Unable to create api server partition file. error %v", err)
+	}
+	_, err = configFile.WriteString(podData)
+	if err != nil {
+		t.Fatalf("Unable to write api server partition file. error %v", err)
+	}
+
+	_, err = configFile.WriteString(rsData)
+	if err != nil {
+		t.Fatalf("Unable to write api server partition file. error %v", err)
+	}
+
+	return prefix, configFilename
+}
+
+func deletePartitionConfigFile(t *testing.T) {
+	err := os.Remove(configFilename1)
+	if err != nil {
+		t.Fatalf("Unable to delete api server partition file. error %v", err)
+	}
+}
+
+

@@ -241,3 +241,10 @@ type Interface interface {
 	// Count returns number of different entries under the key (generally being path prefix).
 	Count(key string) (int64, error)
 }
+
+// Interval defines a left closed Begin bound and a right open End bound.
+// If Begin is empty, it is left unbounded.
+// If End is empty, it is right unbounded.
+type Interval struct {
+	Begin, End string
+}

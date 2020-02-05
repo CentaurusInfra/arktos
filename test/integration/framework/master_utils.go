@@ -374,3 +374,15 @@ func (fakeLocalhost443Listener) Addr() net.Addr {
 		Port: 443,
 	}
 }
+
+// NewIntegrationServerWithPartitionConfig returns two master config for api server partition tests.
+func NewIntegrationServerWithPartitionConfig(prefix, configFilename string) (*master.Config) {
+	etcdOptions := DefaultEtcdOptions()
+	etcdOptions.StorageConfig.Prefix = prefix
+	etcdOptions.StorageConfig.PartitionConfigFilepath = configFilename
+	masterConfigOptions1 := &MasterConfigOptions{EtcdOptions: etcdOptions}
+	master1Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions1, "192.168.10.6")
+
+	return master1Config
+}
+
