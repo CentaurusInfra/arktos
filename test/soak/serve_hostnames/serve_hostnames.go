@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -256,7 +257,8 @@ func main() {
 		}
 	}
 
-	rclient, err := restclient.RESTClientFor(config)
+	// TODO - use single api server for now
+	rclient, err := restclient.RESTClientFor(config.GetConfig())
 	if err != nil {
 		klog.Warningf("Failed to build restclient: %v", err)
 		return

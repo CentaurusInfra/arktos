@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -106,18 +107,20 @@ var _ = SIGDescribe("Certificates API", func() {
 		}))
 
 		e2elog.Logf("testing the client")
-		rcfg, err := framework.LoadConfig()
+		rcfgs, err := framework.LoadConfig()
 		framework.ExpectNoError(err)
 
-		rcfg.TLSClientConfig.CertData = csr.Status.Certificate
-		rcfg.TLSClientConfig.KeyData = pkpem
-		rcfg.TLSClientConfig.CertFile = ""
-		rcfg.BearerToken = ""
-		rcfg.AuthProvider = nil
-		rcfg.Username = ""
-		rcfg.Password = ""
+		for _, rcfg := range rcfgs.GetAllConfigs() {
+			rcfg.TLSClientConfig.CertData = csr.Status.Certificate
+			rcfg.TLSClientConfig.KeyData = pkpem
+			rcfg.TLSClientConfig.CertFile = ""
+			rcfg.BearerToken = ""
+			rcfg.AuthProvider = nil
+			rcfg.Username = ""
+			rcfg.Password = ""
+		}
 
-		newClient, err := v1beta1client.NewForConfig(rcfg)
+		newClient, err := v1beta1client.NewForConfig(rcfgs)
 		framework.ExpectNoError(err)
 		framework.ExpectNoError(newClient.CertificateSigningRequests().Delete(csrName, nil))
 	})

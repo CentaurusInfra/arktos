@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -239,9 +240,11 @@ func setupWithOptions(t *testing.T, instanceOptions *apitesting.TestServerInstan
 		"etcdserver/api/v3rpc": capnslog.CRITICAL,
 	})
 
-	result.ClientConfig.AcceptContentTypes = ""
-	result.ClientConfig.ContentType = ""
-	result.ClientConfig.NegotiatedSerializer = nil
+	for _, clientConfig := range result.ClientConfig.GetAllConfigs() {
+		clientConfig.AcceptContentTypes = ""
+		clientConfig.ContentType = ""
+		clientConfig.NegotiatedSerializer = nil
+	}
 	clientSet, err := kubernetes.NewForConfig(result.ClientConfig)
 	if err != nil {
 		t.Fatalf("error creating clientset: %v", err)

@@ -119,13 +119,15 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 		t.Fatal(err)
 	}
 
-	kubeClientConfig := restclient.CopyConfig(kubeAPIServer.LoopbackClientConfig)
+	kubeClientConfigs := restclient.CopyConfigs(kubeAPIServer.LoopbackClientConfig)
 
 	// we make lots of requests, don't be slow
-	kubeClientConfig.QPS = 99999
-	kubeClientConfig.Burst = 9999
+	for _, kubeClientConfig := range kubeClientConfigs.GetAllConfigs() {
+		kubeClientConfig.QPS = 99999
+		kubeClientConfig.Burst = 9999
+	}
 
-	kubeClient := clientset.NewForConfigOrDie(kubeClientConfig)
+	kubeClient := clientset.NewForConfigOrDie(kubeClientConfigs)
 
 	go func() {
 		// Catch panics that occur in this go routine so we get a comprehensible failure
@@ -165,7 +167,7 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 	}
 
 	// create CRDs so we can make sure that custom resources do not get lost
-	CreateTestCRDs(t, apiextensionsclientset.NewForConfigOrDie(kubeClientConfig), false, GetCustomResourceDefinitionData()...)
+	CreateTestCRDs(t, apiextensionsclientset.NewForConfigOrDie(kubeClientConfigs), false, GetCustomResourceDefinitionData()...)
 
 	// force cached discovery reset
 	discoveryClient := cacheddiscovery.NewMemCacheClient(kubeClient.Discovery())
@@ -190,8 +192,8 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 
 	return &Master{
 		Client:    kubeClient,
-		Dynamic:   dynamic.NewForConfigOrDie(kubeClientConfig),
-		Config:    kubeClientConfig,
+		Dynamic:   dynamic.NewForConfigOrDie(kubeClientConfigs),
+		Config:    kubeClientConfigs,
 		KV:        kvClient,
 		Mapper:    restMapper,
 		Resources: GetResources(t, serverResources),

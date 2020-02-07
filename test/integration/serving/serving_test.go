@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -111,6 +112,8 @@ func TestComponentSecureServingAndAuth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	config := server.ClientConfig.GetConfig()
 	apiserverConfig.WriteString(fmt.Sprintf(`
 apiVersion: v1
 kind: Config
@@ -129,7 +132,7 @@ users:
 - name: controller-manager
   user:
     token: %s
-`, server.ClientConfig.Host, server.ServerOpts.SecureServing.ServerCert.CertKey.CertFile, token))
+`, config.Host, server.ServerOpts.SecureServing.ServerCert.CertKey.CertFile, token))
 	apiserverConfig.Close()
 
 	// create BROKEN kubeconfig for the apiserver
@@ -155,7 +158,7 @@ users:
 - name: controller-manager
   user:
     token: WRONGTOKEN
-`, server.ClientConfig.Host, server.ServerOpts.SecureServing.ServerCert.CertKey.CertFile))
+`, config.Host, server.ServerOpts.SecureServing.ServerCert.CertKey.CertFile))
 	brokenApiserverConfig.Close()
 
 	tests := []struct {

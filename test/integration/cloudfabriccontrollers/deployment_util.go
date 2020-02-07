@@ -154,13 +154,14 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 
-	config := restclient.Config{Host: s.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: s.URL}
+	configs := restclient.NewAggregatedConfig(&kubeConfig)
+	clientSet, err := clientset.NewForConfig(configs)
 	if err != nil {
 		t.Fatalf("error in create clientset: %v", err)
 	}
 	resyncPeriod := 12 * time.Hour
-	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-informers")), resyncPeriod)
+	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "deployment-informers")), resyncPeriod)
 
 	// controller instance manager set up
 	cim := controller.GetControllerInstanceManager()
@@ -170,7 +171,7 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 
 		cim = controller.NewControllerInstanceManager(
 			informers.Core().V1().ControllerInstances(),
-			clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "controller-instance-manager")),
+			clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "controller-instance-manager")),
 			cimUpdateChGrp,
 		)
 	}
@@ -197,7 +198,7 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 		deploymentInformer,
 		rsInformer,
 		podInformer,
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-controller")),
+		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "deployment-controller")),
 		cimUpdateCh,
 		dResetChGrp,
 	)
@@ -220,7 +221,7 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	rsc := replicaset.NewReplicaSetController(
 		rsInformer,
 		podInformer,
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "replicaset-controller")),
+		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "replicaset-controller")),
 		replicaset.BurstReplicas,
 		cimUpdateCh,
 		rsResetChGrp,
@@ -235,8 +236,8 @@ func dcSimpleSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, clients
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 
-	config := restclient.Config{Host: s.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(restclient.NewAggregatedConfig(&kubeConfig))
 	if err != nil {
 		t.Fatalf("error in create clientset: %v", err)
 	}

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -123,11 +124,13 @@ func TestAggregatedAPIServer(t *testing.T) {
 			t.Fatal(err)
 		}
 		// Adjust the loopback config for external use (external server name and CA)
-		kubeAPIServerClientConfig := rest.CopyConfig(kubeAPIServerConfig.GenericConfig.LoopbackClientConfig)
-		kubeAPIServerClientConfig.CAFile = path.Join(certDir, "apiserver.crt")
-		kubeAPIServerClientConfig.CAData = nil
-		kubeAPIServerClientConfig.ServerName = ""
-		kubeClientConfigValue.Store(kubeAPIServerClientConfig)
+		kubeAPIServerClientConfigs := rest.CopyConfigs(kubeAPIServerConfig.GenericConfig.LoopbackClientConfig)
+		for _, kubeAPIServerClientConfig := range kubeAPIServerClientConfigs.GetAllConfigs() {
+			kubeAPIServerClientConfig.CAFile = path.Join(certDir, "apiserver.crt")
+			kubeAPIServerClientConfig.CAData = nil
+			kubeAPIServerClientConfig.ServerName = ""
+		}
+		kubeClientConfigValue.Store(kubeAPIServerClientConfigs)
 
 		kubeAPIServer, err := app.CreateKubeAPIServer(kubeAPIServerConfig, genericapiserver.NewEmptyDelegate(), admissionPostStartHook)
 		if err != nil {
@@ -145,10 +148,12 @@ func TestAggregatedAPIServer(t *testing.T) {
 		if obj == nil {
 			return false, nil
 		}
-		kubeClientConfig := kubeClientConfigValue.Load().(*rest.Config)
-		kubeClientConfig.ContentType = ""
-		kubeClientConfig.AcceptContentTypes = ""
-		kubeClient, err := client.NewForConfig(kubeClientConfig)
+		kubeClientConfigs := kubeClientConfigValue.Load().(*rest.Config)
+		for _, kubeClientConfig := range kubeClientConfigs.GetAllConfigs() {
+			kubeClientConfig.ContentType = ""
+			kubeClientConfig.AcceptContentTypes = ""
+		}
+		kubeClient, err := client.NewForConfig(kubeClientConfigs)
 		if err != nil {
 			// this happens because we race the API server start
 			t.Log(err)
@@ -168,10 +173,10 @@ func TestAggregatedAPIServer(t *testing.T) {
 	}
 
 	// after this point we won't be mutating, so the race detector will be fine
-	kubeClientConfig := kubeClientConfigValue.Load().(*rest.Config)
+	kubeClientConfigs := kubeClientConfigValue.Load().(*rest.Config)
 
 	// write a kubeconfig out for starting other API servers with delegated auth.  remember, no in-cluster config
-	adminKubeConfig := createKubeConfig(kubeClientConfig)
+	adminKubeConfig := createKubeConfig(kubeClientConfigs)
 	kubeconfigFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(kubeconfigFile.Name())
 	clientcmd.WriteToFile(*adminKubeConfig, kubeconfigFile.Name())
@@ -208,15 +213,18 @@ func TestAggregatedAPIServer(t *testing.T) {
 		}
 	}()
 
-	wardleClientConfig := rest.AnonymousClientConfig(kubeClientConfig)
-	wardleClientConfig.CAFile = path.Join(wardleCertDir, "apiserver.crt")
-	wardleClientConfig.CAData = nil
-	wardleClientConfig.ServerName = ""
-	wardleClientConfig.BearerToken = kubeClientConfig.BearerToken
+	wardleClientConfigs := rest.AnonymousClientConfig(kubeClientConfigs)
 	var wardleClient client.Interface
 	err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (done bool, err error) {
-		wardleClientConfig.Host = fmt.Sprintf("https://127.0.0.1:%d", atomic.LoadInt32(wardlePort))
-		wardleClient, err = client.NewForConfig(wardleClientConfig)
+		for i, wardleClientConfig := range wardleClientConfigs.GetAllConfigs() {
+			wardleClientConfig.CAFile = path.Join(wardleCertDir, "apiserver.crt")
+			wardleClientConfig.CAData = nil
+			wardleClientConfig.ServerName = ""
+			wardleClientConfig.BearerToken = kubeClientConfigs.GetConfigInPlace(i).BearerToken
+			wardleClientConfig.Host = fmt.Sprintf("https://127.0.0.1:%d", atomic.LoadInt32(wardlePort))
+		}
+
+		wardleClient, err = client.NewForConfig(wardleClientConfigs)
 		if err != nil {
 			// this happens because we race the API server start
 			t.Log(err)
@@ -288,15 +296,17 @@ func TestAggregatedAPIServer(t *testing.T) {
 		}
 	}()
 
-	aggregatorClientConfig := rest.AnonymousClientConfig(kubeClientConfig)
-	aggregatorClientConfig.CAFile = path.Join(aggregatorCertDir, "apiserver.crt")
-	aggregatorClientConfig.CAData = nil
-	aggregatorClientConfig.ServerName = ""
-	aggregatorClientConfig.BearerToken = kubeClientConfig.BearerToken
+	aggregatorClientConfigs := rest.AnonymousClientConfig(kubeClientConfigs)
 	var aggregatorDiscoveryClient client.Interface
 	err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (done bool, err error) {
-		aggregatorClientConfig.Host = fmt.Sprintf("https://127.0.0.1:%d", atomic.LoadInt32(aggregatorPort))
-		aggregatorDiscoveryClient, err = client.NewForConfig(aggregatorClientConfig)
+		for i, aggregatorClientConfig := range aggregatorClientConfigs.GetAllConfigs() {
+			aggregatorClientConfig.CAFile = path.Join(aggregatorCertDir, "apiserver.crt")
+			aggregatorClientConfig.CAData = nil
+			aggregatorClientConfig.ServerName = ""
+			aggregatorClientConfig.BearerToken = kubeClientConfigs.GetConfigInPlace(i).BearerToken
+			aggregatorClientConfig.Host = fmt.Sprintf("https://127.0.0.1:%d", atomic.LoadInt32(aggregatorPort))
+		}
+		aggregatorDiscoveryClient, err = client.NewForConfig(aggregatorClientConfigs)
 		if err != nil {
 			// this happens if we race the API server for writing the cert
 			return false, nil
@@ -317,52 +327,54 @@ func TestAggregatedAPIServer(t *testing.T) {
 	testAPIGroup(t, wardleClient.Discovery().RESTClient())
 	testAPIResourceList(t, wardleClient.Discovery().RESTClient())
 
-	wardleCA, err := ioutil.ReadFile(wardleClientConfig.CAFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	aggregatorClient := aggregatorclient.NewForConfigOrDie(aggregatorClientConfig)
-	_, err = aggregatorClient.ApiregistrationV1beta1().APIServices().Create(&apiregistrationv1beta1.APIService{
-		ObjectMeta: metav1.ObjectMeta{Name: "v1alpha1.wardle.k8s.io"},
-		Spec: apiregistrationv1beta1.APIServiceSpec{
-			Service: &apiregistrationv1beta1.ServiceReference{
-				Namespace: "kube-wardle",
-				Name:      "api",
+	for _, wardleClientConfig := range wardleClientConfigs.GetAllConfigs() {
+		wardleCA, err := ioutil.ReadFile(wardleClientConfig.CAFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		aggregatorClient := aggregatorclient.NewForConfigOrDie(aggregatorClientConfigs)
+		_, err = aggregatorClient.ApiregistrationV1beta1().APIServices().Create(&apiregistrationv1beta1.APIService{
+			ObjectMeta: metav1.ObjectMeta{Name: "v1alpha1.wardle.k8s.io"},
+			Spec: apiregistrationv1beta1.APIServiceSpec{
+				Service: &apiregistrationv1beta1.ServiceReference{
+					Namespace: "kube-wardle",
+					Name:      "api",
+				},
+				Group:                "wardle.k8s.io",
+				Version:              "v1alpha1",
+				CABundle:             wardleCA,
+				GroupPriorityMinimum: 200,
+				VersionPriority:      200,
 			},
-			Group:                "wardle.k8s.io",
-			Version:              "v1alpha1",
-			CABundle:             wardleCA,
-			GroupPriorityMinimum: 200,
-			VersionPriority:      200,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// wait for the unavailable API service to be processed with updated status
-	err = wait.Poll(100*time.Millisecond, 5*time.Second, func() (done bool, err error) {
-		_, err = aggregatorDiscoveryClient.Discovery().ServerResources()
-		hasExpectedError := checkWardleUnavailableDiscoveryError(t, err)
-		return hasExpectedError, nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+		// wait for the unavailable API service to be processed with updated status
+		err = wait.Poll(100*time.Millisecond, 5*time.Second, func() (done bool, err error) {
+			_, err = aggregatorDiscoveryClient.Discovery().ServerResources()
+			hasExpectedError := checkWardleUnavailableDiscoveryError(t, err)
+			return hasExpectedError, nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	_, err = aggregatorClient.ApiregistrationV1beta1().APIServices().Create(&apiregistrationv1beta1.APIService{
-		ObjectMeta: metav1.ObjectMeta{Name: "v1."},
-		Spec: apiregistrationv1beta1.APIServiceSpec{
-			// register this as a local service so it doesn't try to lookup the default kubernetes service
-			// which will have an unroutable IP address since it's fake.
-			Group:                "",
-			Version:              "v1",
-			GroupPriorityMinimum: 100,
-			VersionPriority:      100,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
+		_, err = aggregatorClient.ApiregistrationV1beta1().APIServices().Create(&apiregistrationv1beta1.APIService{
+			ObjectMeta: metav1.ObjectMeta{Name: "v1."},
+			Spec: apiregistrationv1beta1.APIServiceSpec{
+				// register this as a local service so it doesn't try to lookup the default kubernetes service
+				// which will have an unroutable IP address since it's fake.
+				Group:                "",
+				Version:              "v1",
+				GroupPriorityMinimum: 100,
+				VersionPriority:      100,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// this is ugly, but sleep just a little bit so that the watch is probably observed.  Since nothing will actually be added to discovery
@@ -404,7 +416,7 @@ func checkWardleUnavailableDiscoveryError(t *testing.T, err error) bool {
 	return true
 }
 
-func createKubeConfig(clientCfg *rest.Config) *clientcmdapi.Config {
+func createKubeConfig(clientCfgs *rest.Config) *clientcmdapi.Config {
 	clusterNick := "cluster"
 	userNick := "user"
 	contextNick := "context"
@@ -412,6 +424,7 @@ func createKubeConfig(clientCfg *rest.Config) *clientcmdapi.Config {
 	config := clientcmdapi.NewConfig()
 
 	credentials := clientcmdapi.NewAuthInfo()
+	clientCfg := clientCfgs.GetConfig()
 	credentials.Token = clientCfg.BearerToken
 	credentials.ClientCertificate = clientCfg.TLSClientConfig.CertFile
 	if len(credentials.ClientCertificate) == 0 {

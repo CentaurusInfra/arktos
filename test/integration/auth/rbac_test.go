@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,15 +75,19 @@ func clientForToken(user string) *http.Client {
 }
 
 func clientsetForToken(user string, config *restclient.Config) (clientset.Interface, clientset.Interface) {
-	configCopy := *config
-	configCopy.BearerToken = user
-	return clientset.NewForConfigOrDie(&configCopy), clientset.NewForConfigOrDie(&configCopy)
+	configCopys := restclient.CopyConfigs(config)
+	for _, configCopy := range configCopys.GetAllConfigs() {
+		configCopy.BearerToken = user
+	}
+	return clientset.NewForConfigOrDie(configCopys), clientset.NewForConfigOrDie(configCopys)
 }
 
 func crdClientsetForToken(user string, config *restclient.Config) apiextensionsclient.Interface {
-	configCopy := *config
-	configCopy.BearerToken = user
-	return apiextensionsclient.NewForConfigOrDie(&configCopy)
+	configCopys := restclient.CopyConfigs(config)
+	for _, configCopy := range configCopys.GetAllConfigs() {
+		configCopy.BearerToken = user
+	}
+	return apiextensionsclient.NewForConfigOrDie(configCopys)
 }
 
 type testRESTOptionsGetter struct {
@@ -533,7 +538,8 @@ func TestRBAC(t *testing.T) {
 		_, s, closeFn := framework.RunAMaster(masterConfig)
 		defer closeFn()
 
-		clientConfig := &restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		clientConfig := restclient.NewAggregatedConfig(kubeConfig)
 
 		// Bootstrap the API Server with the test case's initial roles.
 		superuserClient, _ := clientsetForToken(superUser, clientConfig)
@@ -636,7 +642,8 @@ func TestBootstrapping(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
 
-	clientset := clientset.NewForConfigOrDie(&restclient.Config{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig := &restclient.KubeConfig{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	watcher, err := clientset.RbacV1().ClusterRoles().Watch(metav1.ListOptions{ResourceVersion: "0"})
 	if err != nil {
@@ -696,7 +703,8 @@ func TestDiscoveryUpgradeBootstrapping(t *testing.T) {
 	}))
 	_, s, tearDownFn := framework.RunAMaster(masterConfig)
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig := &restclient.KubeConfig{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	// Modify the default RBAC discovery ClusterRoleBidnings to look more like the defaults that
 	// existed prior to v1.14, but with user modifications.
@@ -734,7 +742,8 @@ func TestDiscoveryUpgradeBootstrapping(t *testing.T) {
 	// `system:discovery`, and respect auto-reconciliation annotations.
 	_, s, tearDownFn = framework.RunAMaster(masterConfig)
 
-	client = clientset.NewForConfigOrDie(&restclient.Config{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig2 := &restclient.KubeConfig{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	client = clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig2))
 
 	newDiscRoleBinding, err := client.RbacV1().ClusterRoleBindings().Get("system:discovery", metav1.GetOptions{})
 	if err != nil {

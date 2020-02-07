@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -161,51 +162,56 @@ func (f *Framework) BeforeEach() {
 	f.cleanupHandle = AddCleanupAction(f.AfterEach)
 	if f.ClientSet == nil {
 		ginkgo.By("Creating a kubernetes client")
-		config, err := LoadConfig()
+		configs, err := LoadConfig()
 		testDesc := ginkgo.CurrentGinkgoTestDescription()
-		if len(testDesc.ComponentTexts) > 0 {
-			componentTexts := strings.Join(testDesc.ComponentTexts, " ")
-			config.UserAgent = fmt.Sprintf(
-				"%v -- %v",
-				rest.DefaultKubernetesUserAgent(),
-				componentTexts)
+
+		for _, config := range configs.GetAllConfigs() {
+			if len(testDesc.ComponentTexts) > 0 {
+				componentTexts := strings.Join(testDesc.ComponentTexts, " ")
+				config.UserAgent = fmt.Sprintf(
+					"%v -- %v",
+					rest.DefaultKubernetesUserAgent(),
+					componentTexts)
+			}
+
+			ExpectNoError(err)
+			config.QPS = f.Options.ClientQPS
+			config.Burst = f.Options.ClientBurst
+			if f.Options.GroupVersion != nil {
+				config.GroupVersion = f.Options.GroupVersion
+			}
+			if TestContext.KubeAPIContentType != "" {
+				config.ContentType = TestContext.KubeAPIContentType
+			}
+			// node.k8s.io is based on CRD, which is served only as JSON
+			jsonConfig := config
+			jsonConfig.ContentType = "application/json"
+			ExpectNoError(err)
+
+			// create scales getter, set GroupVersion and NegotiatedSerializer to default values
+			// as they are required when creating a REST client.
+			if config.GroupVersion == nil {
+				config.GroupVersion = &schema.GroupVersion{}
+			}
+			if config.NegotiatedSerializer == nil {
+				config.NegotiatedSerializer = scheme.Codecs
+			}
 		}
 
+		f.ClientSet, err = clientset.NewForConfig(configs)
 		ExpectNoError(err)
-		config.QPS = f.Options.ClientQPS
-		config.Burst = f.Options.ClientBurst
-		if f.Options.GroupVersion != nil {
-			config.GroupVersion = f.Options.GroupVersion
-		}
-		if TestContext.KubeAPIContentType != "" {
-			config.ContentType = TestContext.KubeAPIContentType
-		}
-		f.ClientSet, err = clientset.NewForConfig(config)
-		ExpectNoError(err)
-		f.DynamicClient, err = dynamic.NewForConfig(config)
-		ExpectNoError(err)
-		// node.k8s.io is based on CRD, which is served only as JSON
-		jsonConfig := config
-		jsonConfig.ContentType = "application/json"
+		f.DynamicClient, err = dynamic.NewForConfig(configs)
 		ExpectNoError(err)
 
-		// create scales getter, set GroupVersion and NegotiatedSerializer to default values
-		// as they are required when creating a REST client.
-		if config.GroupVersion == nil {
-			config.GroupVersion = &schema.GroupVersion{}
-		}
-		if config.NegotiatedSerializer == nil {
-			config.NegotiatedSerializer = scheme.Codecs
-		}
-		restClient, err := rest.RESTClientFor(config)
+		//restClient, err := rest.RESTClientFor(config)
 		ExpectNoError(err)
-		discoClient, err := discovery.NewDiscoveryClientForConfig(config)
+		discoClient, err := discovery.NewDiscoveryClientForConfig(configs)
 		ExpectNoError(err)
 		cachedDiscoClient := cacheddiscovery.NewMemCacheClient(discoClient)
 		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoClient)
 		restMapper.Reset()
 		resolver := scaleclient.NewDiscoveryScaleKindResolver(cachedDiscoClient)
-		f.ScalesGetter = scaleclient.New(restClient, restMapper, dynamic.LegacyAPIPathResolverFunc, resolver)
+		f.ScalesGetter = scaleclient.New(discoClient.RESTClient(), restMapper, dynamic.LegacyAPIPathResolverFunc, resolver)
 
 		TestContext.CloudConfig.Provider.FrameworkBeforeEach(f)
 	}

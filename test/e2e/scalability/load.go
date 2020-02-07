@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -346,63 +347,62 @@ func createClients(numberOfClients int) ([]clientset.Interface, []scaleclient.Sc
 	scalesClients := make([]scaleclient.ScalesGetter, numberOfClients)
 
 	for i := 0; i < numberOfClients; i++ {
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err)
-		config.QPS = 100
-		config.Burst = 200
-		if framework.TestContext.KubeAPIContentType != "" {
-			config.ContentType = framework.TestContext.KubeAPIContentType
+
+		for _, config := range configs.GetAllConfigs() {
+			config.QPS = 100
+			config.Burst = 200
+			if framework.TestContext.KubeAPIContentType != "" {
+				config.ContentType = framework.TestContext.KubeAPIContentType
+			}
+
+			// For the purpose of this test, we want to force that clients
+			// do not share underlying transport (which is a default behavior
+			// in Kubernetes). Thus, we are explicitly creating transport for
+			// each client here.
+			transportConfig, err := config.TransportConfig()
+			if err != nil {
+				return nil, nil, err
+			}
+			tlsConfig, err := transport.TLSConfigFor(transportConfig)
+			if err != nil {
+				return nil, nil, err
+			}
+			config.Transport = utilnet.SetTransportDefaults(&http.Transport{
+				Proxy:               http.ProxyFromEnvironment,
+				TLSHandshakeTimeout: 10 * time.Second,
+				TLSClientConfig:     tlsConfig,
+				MaxIdleConnsPerHost: 100,
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+			})
+			config.WrapTransport = transportConfig.WrapTransport
+			config.Dial = transportConfig.Dial
+			// Overwrite TLS-related fields from config to avoid collision with
+			// Transport field.
+			config.TLSClientConfig = restclient.TLSClientConfig{}
+			config.AuthProvider = nil
+			config.ExecProvider = nil
+
+			// create scale client, if GroupVersion or NegotiatedSerializer are not set
+			// assign default values - these fields are mandatory (required by RESTClientFor).
+			if config.GroupVersion == nil {
+				config.GroupVersion = &schema.GroupVersion{}
+			}
+			if config.NegotiatedSerializer == nil {
+				config.NegotiatedSerializer = scheme.Codecs
+			}
 		}
 
-		// For the purpose of this test, we want to force that clients
-		// do not share underlying transport (which is a default behavior
-		// in Kubernetes). Thus, we are explicitly creating transport for
-		// each client here.
-		transportConfig, err := config.TransportConfig()
-		if err != nil {
-			return nil, nil, err
-		}
-		tlsConfig, err := transport.TLSConfigFor(transportConfig)
-		if err != nil {
-			return nil, nil, err
-		}
-		config.Transport = utilnet.SetTransportDefaults(&http.Transport{
-			Proxy:               http.ProxyFromEnvironment,
-			TLSHandshakeTimeout: 10 * time.Second,
-			TLSClientConfig:     tlsConfig,
-			MaxIdleConnsPerHost: 100,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-		})
-		config.WrapTransport = transportConfig.WrapTransport
-		config.Dial = transportConfig.Dial
-		// Overwrite TLS-related fields from config to avoid collision with
-		// Transport field.
-		config.TLSClientConfig = restclient.TLSClientConfig{}
-		config.AuthProvider = nil
-		config.ExecProvider = nil
-
-		c, err := clientset.NewForConfig(config)
+		c, err := clientset.NewForConfig(configs)
 		if err != nil {
 			return nil, nil, err
 		}
 		clients[i] = c
-
-		// create scale client, if GroupVersion or NegotiatedSerializer are not set
-		// assign default values - these fields are mandatory (required by RESTClientFor).
-		if config.GroupVersion == nil {
-			config.GroupVersion = &schema.GroupVersion{}
-		}
-		if config.NegotiatedSerializer == nil {
-			config.NegotiatedSerializer = scheme.Codecs
-		}
-		restClient, err := restclient.RESTClientFor(config)
-		if err != nil {
-			return nil, nil, err
-		}
-		discoClient, err := discovery.NewDiscoveryClientForConfig(config)
+		discoClient, err := discovery.NewDiscoveryClientForConfig(configs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -410,7 +410,8 @@ func createClients(numberOfClients int) ([]clientset.Interface, []scaleclient.Sc
 		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoClient)
 		restMapper.Reset()
 		resolver := scaleclient.NewDiscoveryScaleKindResolver(cachedDiscoClient)
-		scalesClients[i] = scaleclient.New(restClient, restMapper, dynamic.LegacyAPIPathResolverFunc, resolver)
+		scalesClients[i] = scaleclient.New(discoClient.RESTClient(), restMapper, dynamic.LegacyAPIPathResolverFunc, resolver)
+
 	}
 	return clients, scalesClients, nil
 }

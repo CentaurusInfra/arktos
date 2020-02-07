@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -424,7 +425,7 @@ var _ = SIGDescribe("ServiceAccounts", func() {
 				Name: "kube-root-ca.crt",
 			},
 			Data: map[string]string{
-				"ca.crt": string(cfg.TLSClientConfig.CAData),
+				"ca.crt": string(cfg.GetConfig().TLSClientConfig.CAData),
 			},
 		}); err != nil && !apierrors.IsAlreadyExists(err) {
 			framework.Failf("Unexpected err creating kube-ca-crt: %v", err)
