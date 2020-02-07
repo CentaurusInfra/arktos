@@ -56,17 +56,16 @@ func setUpApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, clien
 	masterConfig1, masterConfig2 := framework.NewIntegrationTestMasterConfigParition(prefix, configFilename1, configFilename2)
 	_, s1, closeFn1 := framework.RunAMaster(masterConfig1)
 
-	// TODO - temporary change for current api server support - need to change after multiple api servers partition code is in place
-	kubeConfig1 := restclient.KubeConfig{Host: s1.URL}
-	clientSet1, err := clientset.NewForConfig(restclient.NewAggregatedConfig(&kubeConfig1))
+	config1 := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s1.URL})
+	clientSet1, err := clientset.NewForConfig(config1)
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}
 
 	_, s2, closeFn2 := framework.RunAMaster(masterConfig2)
 
-	kubeConfig2 := restclient.KubeConfig{Host: s2.URL}
-	clientSet2, err := clientset.NewForConfig(restclient.NewAggregatedConfig(&kubeConfig2))
+	config2 := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s2.URL})
+	clientSet2, err := clientset.NewForConfig(config2)
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}
@@ -931,9 +930,8 @@ func setUpApiserver(t *testing.T, begin, end string) (*httptest.Server, framewor
 	prefix, configFilename1 := createPartitionConfig(t, begin, end)
 	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1)
 	_, s, closeFn := framework.RunAMaster(masterConfig)
-
-	config := restclient.Config{Host: s.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	config := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s.URL})
+	clientSet, err := clientset.NewForConfig(config)
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}
