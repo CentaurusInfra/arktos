@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -104,7 +105,8 @@ func NewAvailableConditionController(
 	// if a particular transport was specified, use that otherwise build one
 	// construct an http client that will ignore TLS verification (if someone owns the network and messes with your status
 	// that's not so bad) and sets a very short timeout.  This is a best effort GET that provides no additional information
-	restConfig := &rest.Config{
+	// TODO - Looks like used by api server only. Assume one client config for now
+	restConfig := &rest.KubeConfig{
 		TLSClientConfig: rest.TLSClientConfig{
 			Insecure: true,
 			CertData: proxyClientCert,

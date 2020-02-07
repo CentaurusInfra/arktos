@@ -600,7 +600,7 @@ function start_apiserver {
     ${CONTROLPLANE_SUDO} rm -f  $configfilepath
     echo "Creating apiserver partition config file  $configfilepath..."
     cat << EOF | ${CONTROLPLANE_SUDO}  tee -a $configfilepath
-/registry/pods/, tenant$(($1+1)), tenant$(($1+2))
+/registry/pods/, A$(($1+1)), z$(($1+2))
 EOF
 
     security_admission=""

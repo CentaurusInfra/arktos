@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -152,7 +153,7 @@ func (r *proxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// we need to wrap the roundtripper in another roundtripper which will apply the front proxy headers
-	proxyRoundTripper, upgrade, err := maybeWrapForConnectionUpgrades(handlingInfo.restConfig, handlingInfo.proxyRoundTripper, req)
+	proxyRoundTripper, upgrade, err := maybeWrapForConnectionUpgrades(handlingInfo.restConfig.GetConfig(), handlingInfo.proxyRoundTripper, req)
 	if err != nil {
 		proxyError(w, req, err.Error(), http.StatusInternalServerError)
 		return
@@ -172,7 +173,7 @@ func (r *proxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // maybeWrapForConnectionUpgrades wraps the roundtripper for upgrades.  The bool indicates if it was wrapped
-func maybeWrapForConnectionUpgrades(restConfig *restclient.Config, rt http.RoundTripper, req *http.Request) (http.RoundTripper, bool, error) {
+func maybeWrapForConnectionUpgrades(restConfig *restclient.KubeConfig, rt http.RoundTripper, req *http.Request) (http.RoundTripper, bool, error) {
 	if !httpstream.IsUpgradeRequest(req) {
 		return rt, false, nil
 	}
@@ -215,26 +216,28 @@ func (r *proxyHandler) updateAPIService(apiService *apiregistrationapi.APIServic
 		return
 	}
 
-	newInfo := proxyHandlingInfo{
-		name: apiService.Name,
-		restConfig: &restclient.Config{
-			TLSClientConfig: restclient.TLSClientConfig{
-				Insecure:   apiService.Spec.InsecureSkipTLSVerify,
-				ServerName: apiService.Spec.Service.Name + "." + apiService.Spec.Service.Namespace + ".svc",
-				CertData:   r.proxyClientCert,
-				KeyData:    r.proxyClientKey,
-				CAData:     apiService.Spec.CABundle,
-			},
+	kubeConfig := &restclient.KubeConfig{
+		TLSClientConfig: restclient.TLSClientConfig{
+			Insecure:   apiService.Spec.InsecureSkipTLSVerify,
+			ServerName: apiService.Spec.Service.Name + "." + apiService.Spec.Service.Namespace + ".svc",
+			CertData:   r.proxyClientCert,
+			KeyData:    r.proxyClientKey,
+			CAData:     apiService.Spec.CABundle,
 		},
+	}
+	if r.proxyTransport != nil && r.proxyTransport.DialContext != nil {
+		kubeConfig.Dial = r.proxyTransport.DialContext
+	}
+
+	newInfo := proxyHandlingInfo{
+		name:             apiService.Name,
+		restConfig:       restclient.NewAggregatedConfig(kubeConfig),
 		serviceName:      apiService.Spec.Service.Name,
 		serviceNamespace: apiService.Spec.Service.Namespace,
 		servicePort:      apiService.Spec.Service.Port,
 		serviceAvailable: apiregistrationapi.IsAPIServiceConditionTrue(apiService, apiregistrationapi.Available),
 	}
-	if r.proxyTransport != nil && r.proxyTransport.DialContext != nil {
-		newInfo.restConfig.Dial = r.proxyTransport.DialContext
-	}
-	newInfo.proxyRoundTripper, newInfo.transportBuildingError = restclient.TransportFor(newInfo.restConfig)
+	newInfo.proxyRoundTripper, newInfo.transportBuildingError = restclient.TransportFor(kubeConfig)
 	if newInfo.transportBuildingError != nil {
 		klog.Warning(newInfo.transportBuildingError.Error())
 	}
