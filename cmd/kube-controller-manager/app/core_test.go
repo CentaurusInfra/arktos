@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +38,8 @@ type TestClientBuilder struct {
 
 func (TestClientBuilder) Config(name string) (*restclient.Config, error) { return nil, nil }
 func (TestClientBuilder) ConfigOrDie(name string) *restclient.Config {
-	return &restclient.Config{}
+	configs := restclient.CreateEmptyConfig()
+	return configs
 }
 
 func (TestClientBuilder) Client(name string) (clientset.Interface, error) { return nil, nil }
@@ -137,7 +139,7 @@ func TestController_DiscoveryError(t *testing.T) {
 		_, _, err := startModifiedNamespaceController(
 			ctx, testClientset, testClientBuilder.ConfigOrDie("namespace-controller"))
 		if test.expectedErr != (err != nil) {
-			t.Errorf("Namespace Controller test failed for use case: %v", name)
+			t.Errorf("Namespace Controller test failed for use case: %v. err %v. Expected err %v", name, err, test.expectedErr)
 		}
 	}
 }

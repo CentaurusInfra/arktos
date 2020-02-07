@@ -129,7 +129,7 @@ func setUp(t *testing.T) (Config, *assert.Assertions) {
 	config.ExternalAddress = "192.168.10.4:443"
 	config.PublicAddress = net.ParseIP("192.168.10.4")
 	config.LegacyAPIGroupPrefixes = sets.NewString("/api")
-	config.LoopbackClientConfig = &restclient.Config{}
+	config.LoopbackClientConfig = restclient.CreateEmptyConfig()
 
 	clientset := fake.NewSimpleClientset()
 	if clientset == nil {
@@ -138,7 +138,7 @@ func setUp(t *testing.T) (Config, *assert.Assertions) {
 
 	config.OpenAPIConfig = DefaultOpenAPIConfig(testGetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(runtime.NewScheme()))
 	config.OpenAPIConfig.Info.Version = "unversioned"
-	sharedInformers := informers.NewSharedInformerFactory(clientset, config.LoopbackClientConfig.Timeout)
+	sharedInformers := informers.NewSharedInformerFactory(clientset, config.LoopbackClientConfig.GetConfig().Timeout)
 	config.Complete(sharedInformers)
 
 	return *config, assert.New(t)

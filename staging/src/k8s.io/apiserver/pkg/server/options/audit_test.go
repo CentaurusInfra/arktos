@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,7 +49,7 @@ func TestAuditValidOptions(t *testing.T) {
 
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.DynamicAuditing, true)()
 
-	clientConfig := &restclient.Config{}
+	clientConfig := restclient.CreateEmptyConfig()
 	informerFactory := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), 0)
 	processInfo := &ProcessInfo{"test", "test"}
 
