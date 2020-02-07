@@ -45,16 +45,20 @@ func (c *ApiregistrationV1beta1Client) APIServices() APIServiceInterface {
 
 // NewForConfig creates a new ApiregistrationV1beta1Client for the given config.
 func NewForConfig(c *rest.Config) (*ApiregistrationV1beta1Client, error) {
-	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
-	client, err := rest.RESTClientFor(&config)
-	if err != nil {
+	configs := rest.CopyConfigs(c)
+	if err := setConfigDefaults(configs); err != nil {
 		return nil, err
 	}
 
-	clients := []rest.Interface{client}
+	clients := make([]rest.Interface, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		client, err := rest.RESTClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		clients[i] = client
+	}
+
 	return &ApiregistrationV1beta1Client{clients}, nil
 }
 
@@ -74,14 +78,17 @@ func New(c rest.Interface) *ApiregistrationV1beta1Client {
 	return &ApiregistrationV1beta1Client{clients}
 }
 
-func setConfigDefaults(config *rest.Config) error {
+func setConfigDefaults(configs *rest.Config) error {
 	gv := v1beta1.SchemeGroupVersion
-	config.GroupVersion = &gv
-	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
-	if config.UserAgent == "" {
-		config.UserAgent = rest.DefaultKubernetesUserAgent()
+	for _, config := range configs.GetAllConfigs() {
+		config.GroupVersion = &gv
+		config.APIPath = "/apis"
+		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+		if config.UserAgent == "" {
+			config.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
 	}
 
 	return nil

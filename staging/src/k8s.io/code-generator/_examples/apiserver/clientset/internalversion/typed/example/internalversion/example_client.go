@@ -48,16 +48,20 @@ func (c *ExampleClient) TestTypesWithMultiTenancy(namespace string, tenant strin
 
 // NewForConfig creates a new ExampleClient for the given config.
 func NewForConfig(c *rest.Config) (*ExampleClient, error) {
-	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
-	client, err := rest.RESTClientFor(&config)
-	if err != nil {
+	configs := rest.CopyConfigs(c)
+	if err := setConfigDefaults(configs); err != nil {
 		return nil, err
 	}
 
-	clients := []rest.Interface{client}
+	clients := make([]rest.Interface, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		client, err := rest.RESTClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		clients[i] = client
+	}
+
 	return &ExampleClient{clients}, nil
 }
 
@@ -77,22 +81,24 @@ func New(c rest.Interface) *ExampleClient {
 	return &ExampleClient{clients}
 }
 
-func setConfigDefaults(config *rest.Config) error {
-	config.APIPath = "/apis"
-	if config.UserAgent == "" {
-		config.UserAgent = rest.DefaultKubernetesUserAgent()
-	}
-	if config.GroupVersion == nil || config.GroupVersion.Group != scheme.Scheme.PrioritizedVersionsForGroup("example.apiserver.code-generator.k8s.io")[0].Group {
-		gv := scheme.Scheme.PrioritizedVersionsForGroup("example.apiserver.code-generator.k8s.io")[0]
-		config.GroupVersion = &gv
-	}
-	config.NegotiatedSerializer = scheme.Codecs
+func setConfigDefaults(configs *rest.Config) error {
+	for _, config := range configs.GetAllConfigs() {
+		config.APIPath = "/apis"
+		if config.UserAgent == "" {
+			config.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
+		if config.GroupVersion == nil || config.GroupVersion.Group != scheme.Scheme.PrioritizedVersionsForGroup("example.apiserver.code-generator.k8s.io")[0].Group {
+			gv := scheme.Scheme.PrioritizedVersionsForGroup("example.apiserver.code-generator.k8s.io")[0]
+			config.GroupVersion = &gv
+		}
+		config.NegotiatedSerializer = scheme.Codecs
 
-	if config.QPS == 0 {
-		config.QPS = 5
-	}
-	if config.Burst == 0 {
-		config.Burst = 10
+		if config.QPS == 0 {
+			config.QPS = 5
+		}
+		if config.Burst == 0 {
+			config.Burst = 10
+		}
 	}
 
 	return nil
