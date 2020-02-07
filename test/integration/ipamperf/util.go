@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,12 +56,13 @@ var (
 
 func deleteNodes(apiURL string, config *Config) {
 	klog.Info("Deleting nodes")
-	clientSet := clientset.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          apiURL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}},
 		QPS:           float32(config.CreateQPS),
 		Burst:         config.CreateQPS,
-	})
+	}
+	clientSet := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	noGrace := int64(0)
 	if err := clientSet.CoreV1().Nodes().DeleteCollection(&metav1.DeleteOptions{GracePeriodSeconds: &noGrace}, metav1.ListOptions{}); err != nil {
 		klog.Errorf("Error deleting node: %v", err)
@@ -68,12 +70,13 @@ func deleteNodes(apiURL string, config *Config) {
 }
 
 func createNodes(apiURL string, config *Config) error {
-	clientSet := clientset.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          apiURL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}},
 		QPS:           float32(config.CreateQPS),
 		Burst:         config.CreateQPS,
-	})
+	}
+	clientSet := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	klog.Infof("Creating %d nodes", config.NumNodes)
 	for i := 0; i < config.NumNodes; i++ {
 		var err error

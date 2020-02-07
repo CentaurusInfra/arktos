@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -161,20 +162,21 @@ func scSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *statefulset.
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 
-	config := restclient.Config{Host: s.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: s.URL}
+	configs := restclient.NewAggregatedConfig(&kubeConfig)
+	clientSet, err := clientset.NewForConfig(configs)
 	if err != nil {
 		t.Fatalf("error in create clientset: %v", err)
 	}
 	resyncPeriod := 12 * time.Hour
-	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "statefulset-informers")), resyncPeriod)
+	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "statefulset-informers")), resyncPeriod)
 
 	sc := statefulset.NewStatefulSetController(
 		informers.Core().V1().Pods(),
 		informers.Apps().V1().StatefulSets(),
 		informers.Core().V1().PersistentVolumeClaims(),
 		informers.Apps().V1().ControllerRevisions(),
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "statefulset-controller")),
+		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "statefulset-controller")),
 	)
 
 	return s, closeFn, sc, informers, clientSet

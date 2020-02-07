@@ -62,19 +62,20 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *daemon.DaemonS
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, server, closeFn := framework.RunAMaster(masterConfig)
 
-	config := restclient.Config{Host: server.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: server.URL}
+	configs := restclient.NewAggregatedConfig(&kubeConfig)
+	clientSet, err := clientset.NewForConfig(configs)
 	if err != nil {
 		t.Fatalf("Error in creating clientset: %v", err)
 	}
 	resyncPeriod := 12 * time.Hour
-	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "daemonset-informers")), resyncPeriod)
+	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "daemonset-informers")), resyncPeriod)
 	dc, err := daemon.NewDaemonSetsController(
 		informers.Apps().V1().DaemonSets(),
 		informers.Apps().V1().ControllerRevisions(),
 		informers.Core().V1().Pods(),
 		informers.Core().V1().Nodes(),
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "daemonset-controller")),
+		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "daemonset-controller")),
 		flowcontrol.NewBackOff(5*time.Second, 15*time.Minute),
 	)
 	if err != nil {

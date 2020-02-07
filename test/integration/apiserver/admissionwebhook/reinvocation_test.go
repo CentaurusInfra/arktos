@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -182,10 +183,12 @@ func TestWebhookReinvocationPolicy(t *testing.T) {
 	// made by the client from requests made by controllers. We use this to filter out requests
 	// before recording them to ensure we don't accidentally mistake requests from controllers
 	// as requests made by the client.
-	clientConfig := rest.CopyConfig(s.ClientConfig)
-	clientConfig.Impersonate.UserName = testReinvocationClientUsername
-	clientConfig.Impersonate.Groups = []string{"system:masters", "system:authenticated"}
-	client, err := clientset.NewForConfig(clientConfig)
+	clientConfigs := rest.CopyConfigs(s.ClientConfig)
+	for _, clientConfig := range clientConfigs.GetAllConfigs() {
+		clientConfig.Impersonate.UserName = testReinvocationClientUsername
+		clientConfig.Impersonate.Groups = []string{"system:masters", "system:authenticated"}
+	}
+	client, err := clientset.NewForConfig(clientConfigs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

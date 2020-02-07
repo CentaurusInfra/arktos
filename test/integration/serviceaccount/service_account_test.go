@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -309,9 +310,9 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roClientConfig := config
-	roClientConfig.BearerToken = roToken
-	roClient := clientset.NewForConfigOrDie(&roClientConfig)
+	roClientConfigs := restclient.CopyConfigs(&config)
+	restclient.SetBearerToken(roClientConfigs, roToken)
+	roClient := clientset.NewForConfigOrDie(roClientConfigs)
 	doServiceAccountAPIRequests(t, roClient, myns, true, true, false)
 	doServiceAccountAPIRequests(t, roClient, otherns, true, false, false)
 	err = c.CoreV1().Secrets(myns).Delete(roTokenName, nil)
@@ -342,9 +343,9 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rwClientConfig := config
-	rwClientConfig.BearerToken = rwToken
-	rwClient := clientset.NewForConfigOrDie(&rwClientConfig)
+	rwClientConfigs := restclient.CopyConfigs(&config)
+	restclient.SetBearerToken(rwClientConfigs, rwToken)
+	rwClient := clientset.NewForConfigOrDie(rwClientConfigs)
 	doServiceAccountAPIRequests(t, rwClient, myns, true, true, true)
 	doServiceAccountAPIRequests(t, rwClient, otherns, true, false, false)
 
@@ -353,9 +354,9 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get default user and token: %v", err)
 	}
-	defaultClientConfig := config
-	defaultClientConfig.BearerToken = defaultToken
-	defaultClient := clientset.NewForConfigOrDie(&defaultClientConfig)
+	defaultClientConfigs := restclient.CopyConfigs(&config)
+	restclient.SetBearerToken(defaultClientConfigs, defaultToken)
+	defaultClient := clientset.NewForConfigOrDie(defaultClientConfigs)
 	doServiceAccountAPIRequests(t, defaultClient, myns, true, false, false)
 }
 
@@ -370,11 +371,14 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 	}))
 
 	// Anonymous client config
-	clientConfig := restclient.Config{Host: apiServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	kubeConfig1 := restclient.KubeConfig{Host: apiServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	clientConfig := restclient.NewAggregatedConfig(&kubeConfig1)
 	// Root client
 	// TODO: remove rootClient after we refactor pkg/admission to use the clientset.
-	rootClientset := clientset.NewForConfigOrDie(&restclient.Config{Host: apiServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}, BearerToken: rootToken})
-	externalRootClientset := clientset.NewForConfigOrDie(&restclient.Config{Host: apiServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}, BearerToken: rootToken})
+	kubeConfig2 := &restclient.KubeConfig{Host: apiServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}, BearerToken: rootToken}
+	rootClientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig2))
+	kubeConfig3 := &restclient.KubeConfig{Host: apiServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}, BearerToken: rootToken}
+	externalRootClientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig3))
 
 	externalInformers := informers.NewSharedInformerFactory(externalRootClientset, controller.NoResyncPeriodFunc())
 	informers := informers.NewSharedInformerFactory(rootClientset, controller.NoResyncPeriodFunc())
@@ -457,7 +461,7 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 
 	tokenGenerator, err := serviceaccount.JWTTokenGenerator(serviceaccount.LegacyIssuer, serviceAccountKey)
 	if err != nil {
-		return rootClientset, clientConfig, stop, err
+		return rootClientset, *clientConfig, stop, err
 	}
 	tokenController, err := serviceaccountcontroller.NewTokensController(
 		informers.Core().V1().ServiceAccounts(),
@@ -466,7 +470,7 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 		serviceaccountcontroller.TokensControllerOptions{TokenGenerator: tokenGenerator},
 	)
 	if err != nil {
-		return rootClientset, clientConfig, stop, err
+		return rootClientset, *clientConfig, stop, err
 	}
 	go tokenController.Run(1, stopCh)
 
@@ -477,13 +481,13 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 		serviceaccountcontroller.DefaultServiceAccountsControllerOptions(),
 	)
 	if err != nil {
-		return rootClientset, clientConfig, stop, err
+		return rootClientset, *clientConfig, stop, err
 	}
 	informers.Start(stopCh)
 	externalInformers.Start(stopCh)
 	go serviceAccountController.Run(5, stopCh)
 
-	return rootClientset, clientConfig, stop, nil
+	return rootClientset, *clientConfig, stop, nil
 }
 
 func getServiceAccount(c *clientset.Clientset, ns string, name string, shouldWait bool) (*v1.ServiceAccount, error) {

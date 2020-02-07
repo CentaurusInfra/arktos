@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,12 +38,12 @@ import (
 )
 
 func createClientAndInformers(t *testing.T, server *httptest.Server) (*clientset.Clientset, informers.SharedInformerFactory) {
-	config := restclient.Config{
+	kubeConfig := restclient.KubeConfig{
 		Host:  server.URL,
 		QPS:   500,
 		Burst: 500,
 	}
-	testClient := clientset.NewForConfigOrDie(&config)
+	testClient := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(&kubeConfig))
 
 	informers := informers.NewSharedInformerFactory(testClient, time.Second)
 	return testClient, informers

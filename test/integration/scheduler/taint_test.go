@@ -73,10 +73,11 @@ func TestTaintNodeByCondition(t *testing.T) {
 	context := initTestMaster(t, "default", admission)
 
 	// Build clientset and informers for controllers.
-	externalClientset := kubernetes.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		QPS:           -1,
 		Host:          context.httpServer.URL,
-		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	externalClientset := kubernetes.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	externalInformers := informers.NewSharedInformerFactory(externalClientset, time.Second)
 
 	admission.SetExternalKubeClientSet(externalClientset)

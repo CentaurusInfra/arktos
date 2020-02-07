@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,7 +75,7 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
 
-	config := &restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          s.URL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[corev1.GroupName].GroupVersion()},
 	}
@@ -209,6 +210,7 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 	for _, tmptc := range tt {
 		tc := tmptc // we need to copy it for parallel runs
 		t.Run(tc.name, func(t *testing.T) {
+			config := restclient.NewAggregatedConfig(kubeConfig)
 			c, err := kubernetes.NewForConfig(config)
 			if err != nil {
 				t.Fatalf("Failed to create clientset: %v", err)

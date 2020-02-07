@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -303,7 +304,8 @@ func TestObjectSizeResponses(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	const DeploymentMegabyteSize = 100000
 	const DeploymentTwoMegabyteSize = 1000000
@@ -647,7 +649,8 @@ func TestMasterService(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	err := wait.Poll(time.Second, time.Minute, func() (bool, error) {
 		svcList, err := client.CoreV1().Services(metav1.NamespaceDefault).List(metav1.ListOptions{})
@@ -689,7 +692,8 @@ func TestServiceAlloc(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(cfg)
 	defer closeFn()
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	svc := func(i int) *corev1.Service {
 		return &corev1.Service{
@@ -760,14 +764,15 @@ func TestUpdateNodeObjects(t *testing.T) {
 	if len(server) == 0 {
 		t.Skip("UPDATE_NODE_APISERVER is not set")
 	}
-	c := clienttypedv1.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		QPS:  10000,
 		Host: server,
 		ContentConfig: restclient.ContentConfig{
 			AcceptContentTypes: "application/vnd.kubernetes.protobuf",
 			ContentType:        "application/vnd.kubernetes.protobuf",
 		},
-	})
+	}
+	c := clienttypedv1.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	nodes := 400
 	listers := 5

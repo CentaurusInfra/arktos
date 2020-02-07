@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -354,7 +355,7 @@ func HandleFlags() {
 	flag.Parse()
 }
 
-func createKubeConfig(clientCfg *restclient.Config) *clientcmdapi.Config {
+func createKubeConfig(clientCfgs *restclient.Config) *clientcmdapi.Config {
 	clusterNick := "cluster"
 	userNick := "user"
 	contextNick := "context"
@@ -362,6 +363,7 @@ func createKubeConfig(clientCfg *restclient.Config) *clientcmdapi.Config {
 	config := clientcmdapi.NewConfig()
 
 	credentials := clientcmdapi.NewAuthInfo()
+	clientCfg := clientCfgs.GetConfig()
 	credentials.Token = clientCfg.BearerToken
 	credentials.TokenFile = clientCfg.BearerTokenFile
 	credentials.ClientCertificate = clientCfg.TLSClientConfig.CertFile

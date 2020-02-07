@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,12 +43,13 @@ func setupAllocator(apiURL string, config *Config, clusterCIDR, serviceCIDR *net
 		close(controllerStopChan)
 	}
 
-	clientSet := clientset.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          apiURL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}},
 		QPS:           float32(config.KubeQPS),
 		Burst:         config.KubeQPS,
-	})
+	}
+	clientSet := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	sharedInformer := informers.NewSharedInformerFactory(clientSet, 1*time.Hour)
 	ipamController, err := nodeipam.NewNodeIpamController(

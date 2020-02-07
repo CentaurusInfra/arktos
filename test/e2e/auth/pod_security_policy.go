@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,13 +63,15 @@ var _ = SIGDescribe("PodSecurityPolicy", func() {
 		ns = f.Namespace.Name
 
 		ginkgo.By("Creating a kubernetes client that impersonates the default service account")
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err)
-		config.Impersonate = restclient.ImpersonationConfig{
-			UserName: serviceaccount.MakeUsername(ns, "default"),
-			Groups:   serviceaccount.MakeGroupNames(ns),
+		for _, config := range configs.GetAllConfigs() {
+			config.Impersonate = restclient.ImpersonationConfig{
+				UserName: serviceaccount.MakeUsername(ns, "default"),
+				Groups:   serviceaccount.MakeGroupNames(ns),
+			}
 		}
-		c, err = clientset.NewForConfig(config)
+		c, err = clientset.NewForConfig(configs)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Binding the edit role to the default SA")
