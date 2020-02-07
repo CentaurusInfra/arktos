@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,14 +36,15 @@ func Wrapper(r webhook.AuthenticationInfoResolver) func(webhook.AuthenticationIn
 // NewAuthenticationInfoResolver creates a fake AuthenticationInfoResolver that counts cache misses on
 // every call to its methods.
 func NewAuthenticationInfoResolver(cacheMisses *int32) webhook.AuthenticationInfoResolver {
-	return &authenticationInfoResolver{
-		restConfig: &rest.Config{
-			TLSClientConfig: rest.TLSClientConfig{
-				CAData:   testcerts.CACert,
-				CertData: testcerts.ClientCert,
-				KeyData:  testcerts.ClientKey,
-			},
+	kubeConfig := &rest.KubeConfig{
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData:   testcerts.CACert,
+			CertData: testcerts.ClientCert,
+			KeyData:  testcerts.ClientKey,
 		},
+	}
+	return &authenticationInfoResolver{
+		restConfig:  rest.NewAggregatedConfig(kubeConfig),
 		cacheMisses: cacheMisses,
 	}
 }

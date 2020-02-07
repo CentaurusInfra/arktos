@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,8 +54,10 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 // NewForConfig creates a new Clientset for the given config.
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
-	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
-		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
+	for _, configCopy := range configShallowCopy.GetAllConfigs() {
+		if configCopy.RateLimiter == nil && configCopy.QPS > 0 {
+			configCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configCopy.QPS, configCopy.Burst)
+		}
 	}
 	var cs Clientset
 	var err error

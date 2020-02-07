@@ -85,16 +85,20 @@ func (c *AppsV1beta2Client) StatefulSetsWithMultiTenancy(namespace string, tenan
 
 // NewForConfig creates a new AppsV1beta2Client for the given config.
 func NewForConfig(c *rest.Config) (*AppsV1beta2Client, error) {
-	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
-	client, err := rest.RESTClientFor(&config)
-	if err != nil {
+	configs := rest.CopyConfigs(c)
+	if err := setConfigDefaults(configs); err != nil {
 		return nil, err
 	}
 
-	clients := []rest.Interface{client}
+	clients := make([]rest.Interface, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		client, err := rest.RESTClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		clients[i] = client
+	}
+
 	return &AppsV1beta2Client{clients}, nil
 }
 
@@ -114,14 +118,17 @@ func New(c rest.Interface) *AppsV1beta2Client {
 	return &AppsV1beta2Client{clients}
 }
 
-func setConfigDefaults(config *rest.Config) error {
+func setConfigDefaults(configs *rest.Config) error {
 	gv := v1beta2.SchemeGroupVersion
-	config.GroupVersion = &gv
-	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
-	if config.UserAgent == "" {
-		config.UserAgent = rest.DefaultKubernetesUserAgent()
+	for _, config := range configs.GetAllConfigs() {
+		config.GroupVersion = &gv
+		config.APIPath = "/apis"
+		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+		if config.UserAgent == "" {
+			config.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
 	}
 
 	return nil
