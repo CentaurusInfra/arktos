@@ -812,7 +812,7 @@ func TestForceApplyWithMultiTenancy(t *testing.T) {
 			tf.FakeDynamicClient = fakeDynamicClient
 			tf.OpenAPISchemaFunc = fn
 			tf.Client = tf.UnstructuredClient
-			tf.ClientConfigVal = &restclient.Config{}
+			tf.ClientConfigVal = restclient.CreateEmptyConfig()
 
 			ioStreams, _, buf, errBuf := genericclioptions.NewTestIOStreams()
 			cmd := NewCmdApply("kubectl", tf, ioStreams)

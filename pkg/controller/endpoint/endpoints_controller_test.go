@@ -139,7 +139,9 @@ type endpointController struct {
 }
 
 func newController(url string) *endpointController {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: url, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{Host: url, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	configs := restclient.NewAggregatedConfig(kubeConfig)
+	client := clientset.NewForConfigOrDie(configs)
 	informerFactory := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 	endpoints := NewEndpointController(informerFactory.Core().V1().Pods(), informerFactory.Core().V1().Services(),
 		informerFactory.Core().V1().Endpoints(), client)

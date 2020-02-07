@@ -153,7 +153,7 @@ func (config *DirectClientConfig) ClientConfig() (*restclient.Config, error) {
 		return nil, err
 	}
 
-	clientConfig := &restclient.Config{}
+	clientConfig := &restclient.KubeConfig{}
 	clientConfig.Host = configClusterInfo.Server
 
 	if len(config.overrides.Timeout) > 0 {
@@ -198,7 +198,7 @@ func (config *DirectClientConfig) ClientConfig() (*restclient.Config, error) {
 		mergo.MergeWithOverwrite(clientConfig, serverAuthPartialConfig)
 	}
 
-	return clientConfig, nil
+	return restclient.NewAggregatedConfig(clientConfig), nil
 }
 
 // clientauth.Info object contain both user identification and server identification.  We want different precedence orders for
@@ -207,11 +207,11 @@ func (config *DirectClientConfig) ClientConfig() (*restclient.Config, error) {
 // 1.  configClusterInfo (the final result of command line flags and merged .kubeconfig files)
 // 2.  configAuthInfo.auth-path (this file can contain information that conflicts with #1, and we want #1 to win the priority)
 // 3.  load the ~/.kubernetes_auth file as a default
-func getServerIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, configClusterInfo clientcmdapi.Cluster) (*restclient.Config, error) {
-	mergedConfig := &restclient.Config{}
+func getServerIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, configClusterInfo clientcmdapi.Cluster) (*restclient.KubeConfig, error) {
+	mergedConfig := &restclient.KubeConfig{}
 
 	// configClusterInfo holds the information identify the server provided by .kubeconfig
-	configClientConfig := &restclient.Config{}
+	configClientConfig := &restclient.KubeConfig{}
 	configClientConfig.CAFile = configClusterInfo.CertificateAuthority
 	configClientConfig.CAData = configClusterInfo.CertificateAuthorityData
 	configClientConfig.Insecure = configClusterInfo.InsecureSkipTLSVerify
@@ -227,8 +227,8 @@ func getServerIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, 
 // 2.  configAuthInfo.auth-path (this file can contain information that conflicts with #1, and we want #1 to win the priority)
 // 3.  if there is not enough information to identify the user, load try the ~/.kubernetes_auth file
 // 4.  if there is not enough information to identify the user, prompt if possible
-func (config *DirectClientConfig) getUserIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, fallbackReader io.Reader, persistAuthConfig restclient.AuthProviderConfigPersister) (*restclient.Config, error) {
-	mergedConfig := &restclient.Config{}
+func (config *DirectClientConfig) getUserIdentificationPartialConfig(configAuthInfo clientcmdapi.AuthInfo, fallbackReader io.Reader, persistAuthConfig restclient.AuthProviderConfigPersister) (*restclient.KubeConfig, error) {
+	mergedConfig := &restclient.KubeConfig{}
 
 	// blindly overwrite existing values based on precedence
 	if len(configAuthInfo.Token) > 0 {
@@ -281,7 +281,7 @@ func (config *DirectClientConfig) getUserIdentificationPartialConfig(configAuthI
 		}
 		promptedConfig := makeUserIdentificationConfig(*promptedAuthInfo)
 		previouslyMergedConfig := mergedConfig
-		mergedConfig = &restclient.Config{}
+		mergedConfig = &restclient.KubeConfig{}
 		mergo.MergeWithOverwrite(mergedConfig, promptedConfig)
 		mergo.MergeWithOverwrite(mergedConfig, previouslyMergedConfig)
 		config.promptedCredentials.username = mergedConfig.Username
@@ -292,8 +292,8 @@ func (config *DirectClientConfig) getUserIdentificationPartialConfig(configAuthI
 }
 
 // makeUserIdentificationFieldsConfig returns a client.Config capable of being merged using mergo for only user identification information
-func makeUserIdentificationConfig(info clientauth.Info) *restclient.Config {
-	config := &restclient.Config{}
+func makeUserIdentificationConfig(info clientauth.Info) *restclient.KubeConfig {
+	config := &restclient.KubeConfig{}
 	config.Username = info.User
 	config.Password = info.Password
 	config.CertFile = info.CertFile
@@ -302,7 +302,7 @@ func makeUserIdentificationConfig(info clientauth.Info) *restclient.Config {
 	return config
 }
 
-func canIdentifyUser(config restclient.Config) bool {
+func canIdentifyUser(config restclient.KubeConfig) bool {
 	return len(config.Username) > 0 ||
 		(len(config.CertFile) > 0 || len(config.CertData) > 0) ||
 		len(config.BearerToken) > 0 ||
@@ -510,10 +510,11 @@ func (config *inClusterClientConfig) ClientConfig() (*restclient.Config, error) 
 		config.inClusterConfigProvider = restclient.InClusterConfig
 	}
 
-	icc, err := config.inClusterConfigProvider()
+	iccs, err := config.inClusterConfigProvider()
 	if err != nil {
 		return nil, err
 	}
+	icc := iccs.GetConfig()
 
 	// in-cluster configs only takes a host, token, or CA file
 	// if any of them were individually provided, overwrite anything else
@@ -530,7 +531,7 @@ func (config *inClusterClientConfig) ClientConfig() (*restclient.Config, error) 
 		}
 	}
 
-	return icc, err
+	return iccs, err
 }
 
 func (config *inClusterClientConfig) Tenant() (string, bool, error) {
@@ -594,6 +595,7 @@ func BuildConfigFromFlags(masterUrl, kubeconfigPath string) (*restclient.Config,
 		}
 		klog.Warning("error creating inClusterConfig, falling back to default config: ", err)
 	}
+
 	return NewNonInteractiveDeferredLoadingClientConfig(
 		&ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
 		&ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: masterUrl}}).ClientConfig()

@@ -344,7 +344,8 @@ func (p *ExecOptions) Run() error {
 	}
 
 	fn := func() error {
-		restClient, err := restclient.RESTClientFor(p.Config)
+		// TODO - use single client for now.
+		restClient, err := restclient.RESTClientFor(p.Config.GetConfig())
 		if err != nil {
 			return err
 		}

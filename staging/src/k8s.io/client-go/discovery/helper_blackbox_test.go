@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -97,7 +98,7 @@ func TestServerSupportsVersion(t *testing.T) {
 				return &http.Response{StatusCode: test.statusCode, Header: header, Body: objBody(&metav1.APIVersions{Versions: test.serverVersions})}, nil
 			}),
 		}
-		c := discovery.NewDiscoveryClientForConfigOrDie(&restclient.Config{})
+		c := discovery.NewDiscoveryClientForConfigOrDie(restclient.CreateEmptyConfig())
 		c.RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
 		err := discovery.ServerSupportsVersion(c, test.requiredVersion)
 		if err == nil && test.expectErr != nil {

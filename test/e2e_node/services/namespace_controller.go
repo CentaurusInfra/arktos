@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,17 +50,20 @@ func NewNamespaceController(host string) *NamespaceController {
 
 // Start starts the namespace controller.
 func (n *NamespaceController) Start() error {
-	config := restclient.AddUserAgent(&restclient.Config{Host: n.host}, ncName)
-
 	// the namespace cleanup controller is very chatty.  It makes lots of discovery calls and then it makes lots of delete calls.
-	config.QPS = 50
-	config.Burst = 200
+	kubeConfig := &restclient.KubeConfig{
+		Host:  n.host,
+		QPS:   50,
+		Burst: 200,
+	}
 
-	client, err := clientset.NewForConfig(config)
+	configs := restclient.AddUserAgent(restclient.NewAggregatedConfig(kubeConfig), ncName)
+
+	client, err := clientset.NewForConfig(configs)
 	if err != nil {
 		return err
 	}
-	dynamicClient, err := dynamic.NewForConfig(config)
+	dynamicClient, err := dynamic.NewForConfig(configs)
 	if err != nil {
 		return err
 	}

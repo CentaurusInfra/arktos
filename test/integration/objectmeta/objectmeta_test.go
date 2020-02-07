@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +35,8 @@ func TestIgnoreClusterName(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(config)
 	defer closeFn()
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	ns := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test-namespace",

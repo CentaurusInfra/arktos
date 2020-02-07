@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,13 +78,14 @@ users:
 		t.Fatal(err)
 	}
 
-	expectedConfig := &restclient.Config{
+	expectedKubeConfig := &restclient.KubeConfig{
 		Host: "https://cluster-b.com",
 		TLSClientConfig: restclient.TLSClientConfig{
 			CAData: []byte(`Test`),
 		},
 		BearerToken: "mytoken-b",
 	}
+	expectedConfig := restclient.NewAggregatedConfig(expectedKubeConfig)
 
 	if !reflect.DeepEqual(config, expectedConfig) {
 		t.Errorf("Unexpected config: %s", diff.ObjectDiff(config, expectedConfig))

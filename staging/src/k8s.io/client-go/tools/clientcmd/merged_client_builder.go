@@ -113,7 +113,7 @@ func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, e
 	case mergedConfig != nil:
 		// the configuration is valid, but if this is equal to the defaults we should try
 		// in-cluster configuration
-		if !config.loader.IsDefaultConfig(mergedConfig) {
+		if !config.loader.IsDefaultConfig(mergedConfig.GetConfig()) {
 			return mergedConfig, nil
 		}
 	}

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -394,8 +395,9 @@ func (s *DelegatingAuthenticationOptions) getClient() (kubernetes.Interface, err
 	}
 
 	// set high qps/burst limits since this will effectively limit API server responsiveness
-	clientConfig.QPS = 200
-	clientConfig.Burst = 400
+	config := clientConfig.GetConfig()
+	config.QPS = 200
+	config.Burst = 400
 
 	return kubernetes.NewForConfig(clientConfig)
 }

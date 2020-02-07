@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,6 +52,7 @@ const (
 
 // DiscoveryInterface holds the methods that discover server-supported API groups,
 // versions and resources.
+// Keep only one rest client for discovery for now
 type DiscoveryInterface interface {
 	RESTClient() restclient.Interface
 	ServerGroupsInterface
@@ -457,16 +459,18 @@ func withRetries(maxRetries int, f func() ([]*metav1.APIGroup, []*metav1.APIReso
 	return resultGroups, result, err
 }
 
-func setDiscoveryDefaults(config *restclient.Config) error {
-	config.APIPath = ""
-	config.GroupVersion = nil
-	if config.Timeout == 0 {
-		config.Timeout = defaultTimeout
-	}
-	codec := runtime.NoopEncoder{Decoder: scheme.Codecs.UniversalDecoder()}
-	config.NegotiatedSerializer = serializer.NegotiatedSerializerWrapper(runtime.SerializerInfo{Serializer: codec})
-	if len(config.UserAgent) == 0 {
-		config.UserAgent = restclient.DefaultKubernetesUserAgent()
+func setDiscoveryDefaults(configs *restclient.Config) error {
+	for _, config := range configs.GetAllConfigs() {
+		config.APIPath = ""
+		config.GroupVersion = nil
+		if config.Timeout == 0 {
+			config.Timeout = defaultTimeout
+		}
+		codec := runtime.NoopEncoder{Decoder: scheme.Codecs.UniversalDecoder()}
+		config.NegotiatedSerializer = serializer.NegotiatedSerializerWrapper(runtime.SerializerInfo{Serializer: codec})
+		if len(config.UserAgent) == 0 {
+			config.UserAgent = restclient.DefaultKubernetesUserAgent()
+		}
 	}
 	return nil
 }
@@ -474,11 +478,11 @@ func setDiscoveryDefaults(config *restclient.Config) error {
 // NewDiscoveryClientForConfig creates a new DiscoveryClient for the given config. This client
 // can be used to discover supported resources in the API server.
 func NewDiscoveryClientForConfig(c *restclient.Config) (*DiscoveryClient, error) {
-	config := *c
-	if err := setDiscoveryDefaults(&config); err != nil {
+	config := restclient.CopyConfigs(c)
+	if err := setDiscoveryDefaults(config); err != nil {
 		return nil, err
 	}
-	client, err := restclient.UnversionedRESTClientFor(&config)
+	client, err := restclient.UnversionedRESTClientFor(config.GetConfig())
 	return &DiscoveryClient{restClient: client, LegacyPrefix: "/api"}, err
 }
 

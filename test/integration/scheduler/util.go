@@ -138,14 +138,13 @@ func initTestMaster(t *testing.T, nsPrefix string, admission admission.Interface
 	}
 
 	// 2. Create kubeclient
-	context.clientSet = clientset.NewForConfigOrDie(
-		&restclient.Config{
-			QPS: -1, Host: s.URL,
-			ContentConfig: restclient.ContentConfig{
-				GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"},
-			},
+	kubeConfig := &restclient.KubeConfig{
+		QPS: -1, Host: s.URL,
+		ContentConfig: restclient.ContentConfig{
+			GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"},
 		},
-	)
+	}
+	context.clientSet = clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	return &context
 }
 
@@ -249,9 +248,10 @@ func initDisruptionController(t *testing.T, context *testContext) *disruption.Di
 	discoveryClient := cacheddiscovery.NewMemCacheClient(context.clientSet.Discovery())
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
 
-	config := restclient.Config{Host: context.httpServer.URL}
+	kubeConfig := restclient.KubeConfig{Host: context.httpServer.URL}
+	configs := restclient.NewAggregatedConfig(&kubeConfig)
 	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(context.clientSet.Discovery())
-	scaleClient, err := scale.NewForConfig(&config, mapper, dynamic.LegacyAPIPathResolverFunc, scaleKindResolver)
+	scaleClient, err := scale.NewForConfig(configs, mapper, dynamic.LegacyAPIPathResolverFunc, scaleKindResolver)
 	if err != nil {
 		t.Fatalf("Error in create scaleClient: %v", err)
 	}

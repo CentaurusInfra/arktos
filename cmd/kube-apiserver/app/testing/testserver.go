@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -212,8 +213,10 @@ func StartTestServer(t Logger, instanceOptions *TestServerInstanceOptions, custo
 
 	// from here the caller must call tearDown
 	result.ClientConfig = server.LoopbackClientConfig
-	result.ClientConfig.QPS = 1000
-	result.ClientConfig.Burst = 10000
+	for _, config := range result.ClientConfig.GetAllConfigs() {
+		config.QPS = 1000
+		config.Burst = 10000
+	}
 	result.ServerOpts = s
 	result.TearDownFn = tearDown
 

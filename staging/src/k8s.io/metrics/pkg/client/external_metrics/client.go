@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,8 +36,10 @@ func New(client rest.Interface) ExternalMetricsClient {
 	}
 }
 
+// One client for metrics for now
 func NewForConfig(c *rest.Config) (ExternalMetricsClient, error) {
-	configShallowCopy := *c
+	configShallowCopy := *c.GetConfig()
+
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}

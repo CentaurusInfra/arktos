@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,7 +51,7 @@ func TestAuthPluginWrapTransport(t *testing.T) {
 		{false, "pluginUnknown", true, false, false},
 	}
 	for i, tc := range testCases {
-		c := Config{}
+		c := KubeConfig{}
 		if tc.useWrapTransport {
 			// Specify an existing WrapTransport in the config to make sure that
 			// plugins play nicely.

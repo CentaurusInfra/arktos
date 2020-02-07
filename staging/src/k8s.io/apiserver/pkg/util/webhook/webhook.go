@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,7 +57,7 @@ func newGenericWebhook(scheme *runtime.Scheme, codecFactory serializer.CodecFact
 	loadingRules.ExplicitPath = kubeConfigFile
 	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 
-	clientConfig, err := loader.ClientConfig()
+	clientConfigs, err := loader.ClientConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +67,7 @@ func newGenericWebhook(scheme *runtime.Scheme, codecFactory serializer.CodecFact
 	// https://github.com/kubernetes/client-go/blob/master/tools/clientcmd/overrides.go
 	//
 	// Set this to something reasonable so request to webhooks don't hang forever.
+	clientConfig := clientConfigs.GetConfig()
 	clientConfig.Timeout = requestTimeout
 
 	codec := codecFactory.LegacyCodec(groupVersions...)

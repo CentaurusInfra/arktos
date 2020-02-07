@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -302,36 +303,40 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 
 	// This creates a client, first loading any specified kubeconfig
 	// file, and then overriding the Master flag, if non-empty.
-	kubeConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+	kubeConfigs, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: config.Kubeconfig},
 		&clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: masterOverride}}).ClientConfig()
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	kubeConfig.AcceptContentTypes = config.AcceptContentTypes
-	kubeConfig.ContentType = config.ContentType
-	kubeConfig.QPS = config.QPS
-	//TODO make config struct use int instead of int32?
-	kubeConfig.Burst = int(config.Burst)
+	for _, kubeConfig := range kubeConfigs.GetAllConfigs() {
+		kubeConfig.AcceptContentTypes = config.AcceptContentTypes
+		kubeConfig.ContentType = config.ContentType
+		kubeConfig.QPS = config.QPS
+		//TODO make config struct use int instead of int32?
+		kubeConfig.Burst = int(config.Burst)
+	}
 
-	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeConfig, "scheduler"))
+	clients, err := clientset.NewForConfig(restclient.AddUserAgent(kubeConfigs, "scheduler"))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	// shallow copy, do not modify the kubeConfig.Timeout.
-	restConfig := *kubeConfig
-	restConfig.Timeout = timeout
-	leaderElectionClient, err := clientset.NewForConfig(restclient.AddUserAgent(&restConfig, "leader-election"))
+	restConfigs := *kubeConfigs
+	for _, restConfig := range restConfigs.GetAllConfigs() {
+		restConfig.Timeout = timeout
+	}
+	leaderElectionClient, err := clientset.NewForConfig(restclient.AddUserAgent(&restConfigs, "leader-election"))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	eventClient, err := clientset.NewForConfig(kubeConfig)
+	eventClient, err := clientset.NewForConfig(kubeConfigs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	return client, leaderElectionClient, eventClient.CoreV1(), nil
+	return clients, leaderElectionClient, eventClient.CoreV1(), nil
 }

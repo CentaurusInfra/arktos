@@ -84,7 +84,8 @@ func setupWithResourcesWithOptions(t *testing.T, opts *framework.MasterConfigOpt
 	masterConfig.GenericConfig.OpenAPIConfig = framework.DefaultOpenAPIConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 
-	clientSet, err := clientset.NewForConfig(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(restclient.NewAggregatedConfig(kubeConfig))
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}
@@ -519,13 +520,14 @@ func TestAPICRDProtobuf(t *testing.T) {
 
 			cfg := dynamic.ConfigFor(config)
 			if len(group) == 0 {
-				cfg = dynamic.ConfigFor(&restclient.Config{Host: s.URL})
-				cfg.APIPath = "/api"
+				kubeConfig := &restclient.KubeConfig{Host: s.URL}
+				cfg = dynamic.ConfigFor(restclient.NewAggregatedConfig(kubeConfig))
+				cfg.GetConfig().APIPath = "/api"
 			} else {
-				cfg.APIPath = "/apis"
+				cfg.GetConfig().APIPath = "/apis"
 			}
-			cfg.GroupVersion = &schema.GroupVersion{Group: group, Version: "v1"}
-			client, err := restclient.RESTClientFor(cfg)
+			cfg.GetConfig().GroupVersion = &schema.GroupVersion{Group: group, Version: "v1"}
+			client, err := restclient.RESTClientFor(cfg.GetConfig())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1124,14 +1126,15 @@ func TestTransform(t *testing.T) {
 
 			cfg := dynamic.ConfigFor(config)
 			if len(group) == 0 {
-				cfg = dynamic.ConfigFor(&restclient.Config{Host: s.URL})
-				cfg.APIPath = "/api"
+				kubeConfig := &restclient.KubeConfig{Host: s.URL}
+				cfg = dynamic.ConfigFor(restclient.NewAggregatedConfig(kubeConfig))
+				cfg.GetConfig().APIPath = "/api"
 			} else {
-				cfg.APIPath = "/apis"
+				cfg.GetConfig().APIPath = "/apis"
 			}
-			cfg.GroupVersion = &schema.GroupVersion{Group: group, Version: "v1"}
+			cfg.GetConfig().GroupVersion = &schema.GroupVersion{Group: group, Version: "v1"}
 
-			client, err := restclient.RESTClientFor(cfg)
+			client, err := restclient.RESTClientFor(cfg.GetConfig())
 			if err != nil {
 				t.Fatal(err)
 			}

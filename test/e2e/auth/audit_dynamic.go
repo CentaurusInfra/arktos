@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,14 +50,16 @@ var _ = SIGDescribe("[Feature:DynamicAudit]", func() {
 		namespace := f.Namespace.Name
 
 		ginkgo.By("Creating a kubernetes client that impersonates an unauthorized anonymous user")
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to fetch config")
 
-		config.Impersonate = restclient.ImpersonationConfig{
-			UserName: "system:anonymous",
-			Groups:   []string{"system:unauthenticated"},
+		for _, config := range configs.GetAllConfigs() {
+			config.Impersonate = restclient.ImpersonationConfig{
+				UserName: "system:anonymous",
+				Groups:   []string{"system:unauthenticated"},
+			}
 		}
-		anonymousClient, err := clientset.NewForConfig(config)
+		anonymousClient, err := clientset.NewForConfig(configs)
 		framework.ExpectNoError(err, "failed to create the anonymous client")
 
 		_, err = f.ClientSet.CoreV1().Namespaces().Create(&apiv1.Namespace{
@@ -107,7 +110,7 @@ var _ = SIGDescribe("[Feature:DynamicAudit]", func() {
 		})
 		framework.ExpectNoError(err, "failed to create proxy service")
 
-		config, err = framework.LoadConfig()
+		configs, err = framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
 
 		var podIP string

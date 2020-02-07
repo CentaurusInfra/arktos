@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +53,7 @@ func (b *readDelayer) Read(p []byte) (n int, err error) {
 func TestClusterScopedOwners(t *testing.T) {
 	// Start the test server and wrap the client to delay PV watch responses
 	server := kubeapiservertesting.StartTestServerOrDie(t, nil, nil, framework.SharedEtcd())
-	server.ClientConfig.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+	f := func(rt http.RoundTripper) http.RoundTripper {
 		return roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			if req.URL.Query().Get("watch") != "true" || !strings.Contains(req.URL.String(), "persistentvolumes") {
 				return rt.RoundTrip(req)
@@ -65,6 +66,10 @@ func TestClusterScopedOwners(t *testing.T) {
 			return resp, err
 		})
 	}
+	for _, config := range server.ClientConfig.GetAllConfigs() {
+		config.WrapTransport = f
+	}
+
 	ctx := setupWithServer(t, server, 5)
 	defer ctx.tearDown()
 

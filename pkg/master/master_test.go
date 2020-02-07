@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,7 +101,8 @@ func setUp(t *testing.T) (*etcdtesting.EtcdTestServer, Config, *assert.Assertion
 	config.GenericConfig.Authorization.Authorizer = authorizerfactory.NewAlwaysAllowAuthorizer()
 	config.GenericConfig.Version = &kubeVersion
 	config.ExtraConfig.StorageFactory = storageFactory
-	config.GenericConfig.LoopbackClientConfig = &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+	kubeConfig := &restclient.KubeConfig{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+	config.GenericConfig.LoopbackClientConfig = restclient.NewAggregatedConfig(kubeConfig)
 	config.GenericConfig.PublicAddress = net.ParseIP("192.168.10.4")
 	config.GenericConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	config.ExtraConfig.KubeletClientConfig = kubeletclient.KubeletClientConfig{Port: 10250}
@@ -116,7 +118,7 @@ func setUp(t *testing.T) (*etcdtesting.EtcdTestServer, Config, *assert.Assertion
 	if err != nil {
 		t.Fatalf("unable to create client set due to %v", err)
 	}
-	config.ExtraConfig.VersionedInformers = informers.NewSharedInformerFactory(clientset, config.GenericConfig.LoopbackClientConfig.Timeout)
+	config.ExtraConfig.VersionedInformers = informers.NewSharedInformerFactory(clientset, config.GenericConfig.LoopbackClientConfig.GetConfig().Timeout)
 
 	return server, *config, assert.New(t)
 }
@@ -380,12 +382,12 @@ func TestStorageVersionHashes(t *testing.T) {
 
 	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
 
-	c := &restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          server.URL,
 		APIPath:       "/api",
 		ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs},
 	}
-	discover := discovery.NewDiscoveryClientForConfigOrDie(c)
+	discover := discovery.NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	all, err := discover.ServerResources()
 	if err != nil {
 		t.Error(err)

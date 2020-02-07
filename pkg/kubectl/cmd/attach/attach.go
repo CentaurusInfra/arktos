@@ -127,7 +127,8 @@ type RemoteAttach interface {
 // DefaultAttachFunc is the default AttachFunc used
 func DefaultAttachFunc(o *AttachOptions, containerToAttach *corev1.Container, raw bool, sizeQueue remotecommand.TerminalSizeQueue) func() error {
 	return func() error {
-		restClient, err := restclient.RESTClientFor(o.Config)
+		// TODO - check whether this is used for watch, use single client for now
+		restClient, err := restclient.RESTClientFor(o.Config.GetConfig())
 		if err != nil {
 			return err
 		}

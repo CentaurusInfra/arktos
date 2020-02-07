@@ -150,19 +150,20 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 
-	config := restclient.Config{Host: s.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: s.URL}
+	configs := restclient.NewAggregatedConfig(&kubeConfig)
+	clientSet, err := clientset.NewForConfig(configs)
 	if err != nil {
 		t.Fatalf("error in create clientset: %v", err)
 	}
 	resyncPeriod := 12 * time.Hour
-	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-informers")), resyncPeriod)
+	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "deployment-informers")), resyncPeriod)
 
 	dc, err := deployment.NewDeploymentController(
 		informers.Apps().V1().Deployments(),
 		informers.Apps().V1().ReplicaSets(),
 		informers.Core().V1().Pods(),
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-controller")),
+		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "deployment-controller")),
 	)
 	if err != nil {
 		t.Fatalf("error creating Deployment controller: %v", err)
@@ -170,7 +171,7 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	rm := replicaset.NewReplicaSetController(
 		informers.Apps().V1().ReplicaSets(),
 		informers.Core().V1().Pods(),
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "replicaset-controller")),
+		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "replicaset-controller")),
 		replicaset.BurstReplicas,
 	)
 	return s, closeFn, rm, dc, informers, clientSet
@@ -182,8 +183,8 @@ func dcSimpleSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, clients
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 
-	config := restclient.Config{Host: s.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(restclient.NewAggregatedConfig(&kubeConfig))
 	if err != nil {
 		t.Fatalf("error in create clientset: %v", err)
 	}

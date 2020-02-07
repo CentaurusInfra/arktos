@@ -483,7 +483,8 @@ func TestGetSortedObjects(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Resp:                 &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)},
 	}
-	tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &corev1.SchemeGroupVersion}}
+	kubeConfig := &restclient.KubeConfig{ContentConfig: restclient.ContentConfig{GroupVersion: &corev1.SchemeGroupVersion}}
+	tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 	cmd := NewCmdGet("kubectl", tf, streams)
@@ -522,7 +523,8 @@ func TestGetSortedObjectsUnstructuredTable(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Resp:                 &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: body},
 	}
-	tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &corev1.SchemeGroupVersion}}
+	kubeConfig := &restclient.KubeConfig{ContentConfig: restclient.ContentConfig{GroupVersion: &corev1.SchemeGroupVersion}}
+	tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 	cmd := NewCmdGet("kubectl", tf, streams)

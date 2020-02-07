@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -399,14 +400,14 @@ func waitForPodFuncInDSWP(t *testing.T, dswp volumecache.DesiredStateOfWorld, ch
 }
 
 func createAdClients(ns *v1.Namespace, t *testing.T, server *httptest.Server, syncPeriod time.Duration, timers attachdetach.TimerConfig) (*clientset.Clientset, attachdetach.AttachDetachController, *persistentvolume.PersistentVolumeController, clientgoinformers.SharedInformerFactory) {
-	config := restclient.Config{
+	kubeConfig := restclient.KubeConfig{
 		Host:          server.URL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}},
 		QPS:           1000000,
 		Burst:         1000000,
 	}
 	resyncPeriod := 12 * time.Hour
-	testClient := clientset.NewForConfigOrDie(&config)
+	testClient := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(&kubeConfig))
 
 	host := volumetest.NewFakeVolumeHost("/tmp/fake", nil, nil)
 	plugin := &volumetest.FakeVolumePlugin{

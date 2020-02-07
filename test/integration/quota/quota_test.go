@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,7 +63,8 @@ func TestQuota(t *testing.T) {
 	}))
 
 	admissionCh := make(chan struct{})
-	clientset := clientset.NewForConfigOrDie(&restclient.Config{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	config := &resourcequotaapi.Configuration{}
 	admission, err := resourcequota.NewResourceQuota(config, 5, admissionCh)
 	if err != nil {
@@ -253,7 +255,8 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 	}))
 
 	admissionCh := make(chan struct{})
-	clientset := clientset.NewForConfigOrDie(&restclient.Config{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	// stop creation of a pod resource unless there is a quota
 	config := &resourcequotaapi.Configuration{

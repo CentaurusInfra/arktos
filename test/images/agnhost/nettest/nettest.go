@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -266,12 +267,13 @@ func contactOthers(state *State) {
 	}
 	defer state.doneContactingPeers()
 
-	config, err := restclient.InClusterConfig()
+	configs, err := restclient.InClusterConfig()
 	if err != nil {
 		log.Fatalf("Unable to create config; error: %v\n", err)
 	}
-	config.ContentType = "application/vnd.kubernetes.protobuf"
-	client, err := clientset.NewForConfig(config)
+	kubeConfig := configs.GetConfig()
+	kubeConfig.ContentType = "application/vnd.kubernetes.protobuf"
+	client, err := clientset.NewForConfig(configs)
 	if err != nil {
 		log.Fatalf("Unable to create client; error: %v\n", err)
 	}

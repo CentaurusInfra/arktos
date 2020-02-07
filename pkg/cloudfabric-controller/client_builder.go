@@ -181,7 +181,6 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 	username := apiserverserviceaccount.MakeUsername(sa.Namespace, sa.Name)
 
 	clientConfig := restclient.AnonymousClientConfig(b.ClientConfig)
-	clientConfig.BearerToken = token
 	restclient.AddUserAgent(clientConfig, username)
 
 	// Try token review first
@@ -202,15 +201,20 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 	// If we couldn't run the token review, the API might be disabled or we might not have permission.
 	// Try to make a request to /apis with the token. If we get a 401 we should consider the token invalid.
 	clientConfigCopy := *clientConfig
-	clientConfigCopy.NegotiatedSerializer = legacyscheme.Codecs
-	client, err := restclient.UnversionedRESTClientFor(&clientConfigCopy)
-	if err != nil {
-		return nil, false, err
-	}
-	err = client.Get().AbsPath("/apis").Do().Error()
-	if apierrors.IsUnauthorized(err) {
-		klog.Warningf("Token for %s/%s did not authenticate correctly: %v", sa.Namespace, sa.Name, err)
-		return nil, false, nil
+
+	for _, config := range clientConfigCopy.GetAllConfigs() {
+		config.BearerToken = token
+
+		config.NegotiatedSerializer = legacyscheme.Codecs
+		client, err := restclient.UnversionedRESTClientFor(config)
+		if err != nil {
+			return nil, false, err
+		}
+		err = client.Get().AbsPath("/apis").Do().Error()
+		if apierrors.IsUnauthorized(err) {
+			klog.Warningf("Token for %s/%s did not authenticate correctly: %v", sa.Namespace, sa.Name, err)
+			return nil, false, nil
+		}
 	}
 
 	return clientConfig, true, nil
