@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -146,11 +147,12 @@ func TestInsecureOverridesCA(t *testing.T) {
 		},
 	}, nil)
 
-	actualCfg, err := clientBuilder.ClientConfig()
+	actualCfgs, err := clientBuilder.ClientConfig()
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
+	actualCfg := actualCfgs.GetConfig()
 	matchBoolArg(true, actualCfg.Insecure, t)
 	matchStringArg("", actualCfg.TLSClientConfig.CAFile, t)
 	matchByteArg(nil, actualCfg.TLSClientConfig.CAData, t)
@@ -259,11 +261,12 @@ func TestCertificateData(t *testing.T) {
 
 	clientBuilder := NewNonInteractiveClientConfig(*config, "clean", &ConfigOverrides{}, nil)
 
-	clientConfig, err := clientBuilder.ClientConfig()
+	clientConfigs, err := clientBuilder.ClientConfig()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	clientConfig := clientConfigs.GetConfig()
 	// Make sure cert data gets into config (will override file paths)
 	matchByteArg(caData, clientConfig.TLSClientConfig.CAData, t)
 	matchByteArg(certData, clientConfig.TLSClientConfig.CertData, t)
@@ -290,11 +293,12 @@ func TestBasicAuthData(t *testing.T) {
 
 	clientBuilder := NewNonInteractiveClientConfig(*config, "clean", &ConfigOverrides{}, nil)
 
-	clientConfig, err := clientBuilder.ClientConfig()
+	clientConfigs, err := clientBuilder.ClientConfig()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	clientConfig := clientConfigs.GetConfig()
 	// Make sure basic auth data gets into config
 	matchStringArg(username, clientConfig.Username, t)
 	matchStringArg(password, clientConfig.Password, t)
@@ -333,7 +337,7 @@ func TestBasicTokenFile(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	matchStringArg(token, clientConfig.BearerToken, t)
+	matchStringArg(token, clientConfig.GetConfig().BearerToken, t)
 }
 
 func TestPrecedenceTokenFile(t *testing.T) {
@@ -371,18 +375,19 @@ func TestPrecedenceTokenFile(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	matchStringArg(expectedToken, clientConfig.BearerToken, t)
+	matchStringArg(expectedToken, clientConfig.GetConfig().BearerToken, t)
 }
 
 func TestCreateClean(t *testing.T) {
 	config := createValidTestConfig()
 	clientBuilder := NewNonInteractiveClientConfig(*config, "clean", &ConfigOverrides{}, nil)
 
-	clientConfig, err := clientBuilder.ClientConfig()
+	clientConfigs, err := clientBuilder.ClientConfig()
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
+	clientConfig := clientConfigs.GetConfig()
 	matchStringArg(config.Clusters["clean"].Server, clientConfig.Host, t)
 	matchStringArg("", clientConfig.APIPath, t)
 	matchBoolArg(config.Clusters["clean"].InsecureSkipTLSVerify, clientConfig.Insecure, t)
@@ -423,7 +428,7 @@ func TestCreateCleanWithPrefix(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		matchStringArg(tc.host, clientConfig.Host, t)
+		matchStringArg(tc.host, clientConfig.GetConfig().Host, t)
 	}
 }
 
@@ -431,11 +436,12 @@ func TestCreateCleanDefault(t *testing.T) {
 	config := createValidTestConfig()
 	clientBuilder := NewDefaultClientConfig(*config, &ConfigOverrides{})
 
-	clientConfig, err := clientBuilder.ClientConfig()
+	clientConfigs, err := clientBuilder.ClientConfig()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	clientConfig := clientConfigs.GetConfig()
 	matchStringArg(config.Clusters["clean"].Server, clientConfig.Host, t)
 	matchBoolArg(config.Clusters["clean"].InsecureSkipTLSVerify, clientConfig.Insecure, t)
 	matchStringArg(config.AuthInfos["clean"].Token, clientConfig.BearerToken, t)
@@ -447,11 +453,12 @@ func TestCreateCleanDefaultCluster(t *testing.T) {
 		ClusterDefaults: clientcmdapi.Cluster{Server: "http://localhost:8080"},
 	})
 
-	clientConfig, err := clientBuilder.ClientConfig()
+	clientConfigs, err := clientBuilder.ClientConfig()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	clientConfig := clientConfigs.GetConfig()
 	matchStringArg(config.Clusters["clean"].Server, clientConfig.Host, t)
 	matchBoolArg(config.Clusters["clean"].InsecureSkipTLSVerify, clientConfig.Insecure, t)
 	matchStringArg(config.AuthInfos["clean"].Token, clientConfig.BearerToken, t)
@@ -585,19 +592,21 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 
 		icc := &inClusterClientConfig{
 			inClusterConfigProvider: func() (*restclient.Config, error) {
-				return &restclient.Config{
+				kubeConfig := &restclient.KubeConfig{
 					Host:            expectedServer,
 					BearerToken:     expectedToken,
 					BearerTokenFile: expectedTokenFile,
 					TLSClientConfig: restclient.TLSClientConfig{
 						CAFile: expectedCAFile,
 					},
-				}, nil
+				}
+
+				return restclient.NewAggregatedConfig(kubeConfig), nil
 			},
 			overrides: tc.overrides,
 		}
 
-		clientConfig, err := icc.ClientConfig()
+		clientConfigs, err := icc.ClientConfig()
 		if err != nil {
 			t.Fatalf("Unxpected error: %v", err)
 		}
@@ -613,6 +622,7 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 			expectedCAFile = overridenCAFile
 		}
 
+		clientConfig := clientConfigs.GetConfig()
 		if clientConfig.Host != expectedServer {
 			t.Errorf("Expected server %v, got %v", expectedServer, clientConfig.Host)
 		}
@@ -701,10 +711,11 @@ users:
 	if err := ioutil.WriteFile(tmpfile.Name(), []byte(content), 0666); err != nil {
 		t.Error(err)
 	}
-	config, err := BuildConfigFromFlags("", tmpfile.Name())
+	configs, err := BuildConfigFromFlags("", tmpfile.Name())
 	if err != nil {
 		t.Error(err)
 	}
+	config := configs.GetConfig()
 	if !reflect.DeepEqual(config.ExecProvider.Args, []string{"arg-1", "arg-2"}) {
 		t.Errorf("Got args %v when they should be %v\n", config.ExecProvider.Args, []string{"arg-1", "arg-2"})
 	}

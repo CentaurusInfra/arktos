@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -483,7 +484,7 @@ func TestServerRunWithSNI(t *testing.T) {
 			secureOptions.Listener = ln
 			// get port
 			secureOptions.BindPort = ln.Addr().(*net.TCPAddr).Port
-			config.LoopbackClientConfig = &restclient.Config{}
+			config.LoopbackClientConfig = restclient.CreateEmptyConfig()
 			if err := secureOptions.ApplyTo(&config.SecureServing, &config.LoopbackClientConfig); err != nil {
 				t.Fatalf("failed applying the SecureServingOptions: %v", err)
 			}
@@ -541,7 +542,10 @@ func TestServerRunWithSNI(t *testing.T) {
 			if len(test.LoopbackClientBindAddressOverride) != 0 {
 				host = test.LoopbackClientBindAddressOverride
 			}
-			s.LoopbackClientConfig.Host = net.JoinHostPort(host, strconv.Itoa(secureOptions.BindPort))
+
+			for _, config := range s.LoopbackClientConfig.GetAllConfigs() {
+				config.Host = net.JoinHostPort(host, strconv.Itoa(secureOptions.BindPort))
+			}
 			if test.ExpectLoopbackClientError {
 				if err == nil {
 					t.Fatalf("expected error creating loopback client config")

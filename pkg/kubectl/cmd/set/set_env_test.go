@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,6 +42,8 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
+var kubeConfig = &restclient.KubeConfig{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+
 func TestSetEnvLocal(t *testing.T) {
 	tf := cmdtesting.NewTestFactory().WithNamespace("test")
 	defer tf.Cleanup()
@@ -53,7 +56,7 @@ func TestSetEnvLocal(t *testing.T) {
 			return nil, nil
 		}),
 	}
-	tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+	tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 	outputFormat := "name"
 
 	streams, _, buf, bufErr := genericclioptions.NewTestIOStreams()
@@ -90,7 +93,7 @@ func TestSetEnvLocalNamespace(t *testing.T) {
 			return nil, nil
 		}),
 	}
-	tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+	tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 	outputFormat := "yaml"
 
 	streams, _, buf, bufErr := genericclioptions.NewTestIOStreams()
@@ -127,7 +130,7 @@ func TestSetMultiResourcesEnvLocal(t *testing.T) {
 			return nil, nil
 		}),
 	}
-	tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+	tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 	outputFormat := "name"
 	streams, _, buf, bufErr := genericclioptions.NewTestIOStreams()
@@ -616,7 +619,7 @@ func TestSetEnvFromResource(t *testing.T) {
 			tf := cmdtesting.NewTestFactory().WithNamespace("test")
 			defer tf.Cleanup()
 
-			tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+			tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 			tf.Client = &fake.RESTClient{
 				GroupVersion:         schema.GroupVersion{Group: "", Version: "v1"},
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),

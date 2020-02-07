@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ func TestAuthenticationDetection(t *testing.T) {
 		name       string
 		kubeconfig clientcmdapi.Config
 		serverName string
-		expected   rest.Config
+		expected   rest.KubeConfig
 	}{
 		{
 			name:       "empty",
@@ -50,7 +51,7 @@ func TestAuthenticationDetection(t *testing.T) {
 				},
 				CurrentContext: "ctx",
 			},
-			expected: rest.Config{BearerToken: "bar"},
+			expected: rest.KubeConfig{BearerToken: "bar"},
 		},
 		{
 			name:       "exact match",
@@ -62,7 +63,7 @@ func TestAuthenticationDetection(t *testing.T) {
 					"bar.com": {Token: "bar"},
 				},
 			},
-			expected: rest.Config{BearerToken: "foo"},
+			expected: rest.KubeConfig{BearerToken: "foo"},
 		},
 		{
 			name:       "partial star match",
@@ -73,7 +74,7 @@ func TestAuthenticationDetection(t *testing.T) {
 					"bar.com": {Token: "bar"},
 				},
 			},
-			expected: rest.Config{BearerToken: "foo-star"},
+			expected: rest.KubeConfig{BearerToken: "foo-star"},
 		},
 		{
 			name:       "full star match",
@@ -84,7 +85,7 @@ func TestAuthenticationDetection(t *testing.T) {
 					"bar.com": {Token: "bar"},
 				},
 			},
-			expected: rest.Config{BearerToken: "star"},
+			expected: rest.KubeConfig{BearerToken: "star"},
 		},
 		{
 			name:       "skip bad in cluster config",
@@ -95,7 +96,7 @@ func TestAuthenticationDetection(t *testing.T) {
 					"bar.com": {Token: "bar"},
 				},
 			},
-			expected: rest.Config{BearerToken: "star"},
+			expected: rest.KubeConfig{BearerToken: "star"},
 		},
 		{
 			name:       "most selective",
@@ -107,7 +108,7 @@ func TestAuthenticationDetection(t *testing.T) {
 					"*.com":           {Token: "third"},
 				},
 			},
-			expected: rest.Config{BearerToken: "first"},
+			expected: rest.KubeConfig{BearerToken: "first"},
 		},
 	}
 
@@ -118,11 +119,12 @@ func TestAuthenticationDetection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			actual.UserAgent = ""
-			actual.Timeout = 0
+			actualConfig := actual.GetConfig()
+			actualConfig.UserAgent = ""
+			actualConfig.Timeout = 0
 
-			if !equality.Semantic.DeepEqual(*actual, tc.expected) {
-				t.Errorf("%v", diff.ObjectReflectDiff(tc.expected, *actual))
+			if !equality.Semantic.DeepEqual(*actualConfig, tc.expected) {
+				t.Errorf("%v", diff.ObjectReflectDiff(tc.expected, *actualConfig))
 			}
 		})
 	}

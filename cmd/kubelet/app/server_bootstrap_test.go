@@ -75,14 +75,17 @@ func Test_buildClientCertificateManager(t *testing.T) {
 	s := httptest.NewServer(server)
 	defer s.Close()
 
-	config1 := &restclient.Config{
+	kubeConfig1 := &restclient.KubeConfig{
 		UserAgent: "FirstClient",
 		Host:      s.URL,
 	}
-	config2 := &restclient.Config{
+	config1 := restclient.NewAggregatedConfig(kubeConfig1)
+
+	kubeConfig2 := &restclient.KubeConfig{
 		UserAgent: "SecondClient",
 		Host:      s.URL,
 	}
+	config2 := restclient.NewAggregatedConfig(kubeConfig2)
 
 	nodeName := types.NodeName("test")
 	m, err := buildClientCertificateManager(config1, config2, testDir, nodeName)
@@ -144,14 +147,17 @@ func Test_buildClientCertificateManager_populateCertDir(t *testing.T) {
 	defer func() { os.RemoveAll(testDir) }()
 
 	// when no cert is provided, write nothing to disk
-	config1 := &restclient.Config{
+	kubeConfig1 := &restclient.KubeConfig{
 		UserAgent: "FirstClient",
 		Host:      "http://localhost",
 	}
-	config2 := &restclient.Config{
+	config1 := restclient.NewAggregatedConfig(kubeConfig1)
+
+	kubeConfig2 := &restclient.KubeConfig{
 		UserAgent: "SecondClient",
 		Host:      "http://localhost",
 	}
+	config2 := restclient.NewAggregatedConfig(kubeConfig2)
 	nodeName := types.NodeName("test")
 	if _, err := buildClientCertificateManager(config1, config2, testDir, nodeName); err != nil {
 		t.Fatal(err)
@@ -162,8 +168,8 @@ func Test_buildClientCertificateManager_populateCertDir(t *testing.T) {
 	}
 
 	// an invalid cert should be ignored
-	config2.CertData = []byte("invalid contents")
-	config2.KeyData = []byte("invalid contents")
+	kubeConfig2.CertData = []byte("invalid contents")
+	kubeConfig2.KeyData = []byte("invalid contents")
 	if _, err := buildClientCertificateManager(config1, config2, testDir, nodeName); err == nil {
 		t.Fatal("unexpected non error")
 	}
@@ -174,7 +180,7 @@ func Test_buildClientCertificateManager_populateCertDir(t *testing.T) {
 
 	// an expired client certificate should be written to disk, because the cert manager can
 	// use config1 to refresh it and the cert manager won't return it for clients.
-	config2.CertData, config2.KeyData = genClientCert(t, time.Now().Add(-2*time.Hour), time.Now().Add(-time.Hour))
+	kubeConfig2.CertData, kubeConfig2.KeyData = genClientCert(t, time.Now().Add(-2*time.Hour), time.Now().Add(-time.Hour))
 	if _, err := buildClientCertificateManager(config1, config2, testDir, nodeName); err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +190,7 @@ func Test_buildClientCertificateManager_populateCertDir(t *testing.T) {
 	}
 
 	// a valid, non-expired client certificate should be written to disk
-	config2.CertData, config2.KeyData = genClientCert(t, time.Now().Add(-time.Hour), time.Now().Add(24*time.Hour))
+	kubeConfig2.CertData, kubeConfig2.KeyData = genClientCert(t, time.Now().Add(-time.Hour), time.Now().Add(24*time.Hour))
 	if _, err := buildClientCertificateManager(config1, config2, testDir, nodeName); err != nil {
 		t.Fatal(err)
 	}

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -329,7 +330,7 @@ func testServerEnv(t *testing.T, statusCode int) (*httptest.Server, *utiltesting
 }
 
 func restClient(testServer *httptest.Server) (*RESTClient, error) {
-	c, err := RESTClientFor(&Config{
+	c, err := RESTClientFor(&KubeConfig{
 		Host: testServer.URL,
 		ContentConfig: ContentConfig{
 			GroupVersion:         &v1.SchemeGroupVersion,

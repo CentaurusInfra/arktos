@@ -105,7 +105,8 @@ func TestInClusterConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config2 := &restclient.Config{Host: "config2"}
+	kubeconfig2 := &restclient.KubeConfig{Host: "config2"}
+	config2 := restclient.NewAggregatedConfig(kubeconfig2)
 	err1 := fmt.Errorf("unique error")
 
 	testCases := map[string]struct {

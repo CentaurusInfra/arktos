@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,7 +55,8 @@ func TestImageLocal(t *testing.T) {
 			return nil, nil
 		}),
 	}
-	tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+	kubeConfig := &restclient.KubeConfig{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+	tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 	outputFormat := "name"
 
@@ -166,7 +168,8 @@ func TestSetMultiResourcesImageLocal(t *testing.T) {
 			return nil, nil
 		}),
 	}
-	tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+	kubeConfig := &restclient.KubeConfig{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: ""}}}
+	tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 	outputFormat := "name"
 

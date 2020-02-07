@@ -1064,7 +1064,7 @@ func TestDiscoverySync(t *testing.T) {
 
 	srv, clientConfig := testServerAndClientConfig(testHandler.ServeHTTP)
 	defer srv.Close()
-	clientConfig.ContentConfig.NegotiatedSerializer = nil
+	//clientConfig.ContentConfig.NegotiatedSerializer = nil
 	kubeClient, err := kubernetes.NewForConfig(clientConfig)
 	if err != nil {
 		t.Fatal(err)
@@ -1140,10 +1140,11 @@ func TestDiscoverySync(t *testing.T) {
 // testServerAndClientConfig returns a server that listens and a config that can reference it
 func testServerAndClientConfig(handler func(http.ResponseWriter, *http.Request)) (*httptest.Server, *rest.Config) {
 	srv := httptest.NewServer(http.HandlerFunc(handler))
-	config := &rest.Config{
+	kubeConfig := &rest.KubeConfig{
 		Host: srv.URL,
 	}
-	return srv, config
+	configs := rest.NewAggregatedConfig(kubeConfig)
+	return srv, configs
 }
 
 func expectSyncNotBlocked(fakeDiscoveryClient *fakeServerResources, workerLock *sync.RWMutex) error {

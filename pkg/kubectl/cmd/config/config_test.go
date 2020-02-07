@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -163,8 +164,9 @@ func TestSetWithPathPrefixIntoExistingStruct(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expectedHost := "http://cow.org:8080/foo/baz"
-	if expectedHost != dcc.Host {
-		t.Fatalf("expected client.Config.Host = %q instead of %q", expectedHost, dcc.Host)
+	kubeConfig := dcc.GetConfig()
+	if expectedHost != kubeConfig.Host {
+		t.Fatalf("expected client.Config.Host = %q instead of %q", expectedHost, kubeConfig.Host)
 	}
 }
 

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,7 +55,8 @@ func TestGetServerVersion(t *testing.T) {
 		w.Write(output)
 	}))
 	defer server.Close()
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	got, err := client.ServerVersion()
 	if err != nil {
@@ -100,7 +102,8 @@ func TestGetServerGroupsWithV1Server(t *testing.T) {
 		w.Write(output)
 	}))
 	defer server.Close()
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	// ServerGroups should not return an error even if server returns error at /api and /apis
 	apiGroupList, err := client.ServerGroups()
 	if err != nil {
@@ -118,7 +121,8 @@ func TestGetServerGroupsWithBrokenServer(t *testing.T) {
 			w.WriteHeader(statusCode)
 		}))
 		defer server.Close()
-		client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+		kubeConfig := &restclient.KubeConfig{Host: server.URL}
+		client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 		// ServerGroups should not return an error even if server returns Not Found or Forbidden error at all end points
 		apiGroupList, err := client.ServerGroups()
 		if err != nil {
@@ -132,9 +136,9 @@ func TestGetServerGroupsWithBrokenServer(t *testing.T) {
 }
 
 func TestTimeoutIsSet(t *testing.T) {
-	cfg := &restclient.Config{}
+	cfg := restclient.CreateEmptyConfig()
 	setDiscoveryDefaults(cfg)
-	assert.Equal(t, defaultTimeout, cfg.Timeout)
+	assert.Equal(t, defaultTimeout, cfg.GetConfig().Timeout)
 }
 
 func TestGetServerResourcesWithV1Server(t *testing.T) {
@@ -161,7 +165,8 @@ func TestGetServerResourcesWithV1Server(t *testing.T) {
 		w.Write(output)
 	}))
 	defer server.Close()
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	// ServerResources should not return an error even if server returns error at /api/v1.
 	serverResources, err := client.ServerResources()
 	if err != nil {
@@ -265,7 +270,8 @@ func TestGetServerResources(t *testing.T) {
 		w.Write(output)
 	}))
 	defer server.Close()
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	for _, test := range tests {
 		got, err := client.ServerResourcesForGroupVersion(test.request)
 		if test.expectErr {
@@ -406,7 +412,8 @@ func TestGetOpenAPISchema(t *testing.T) {
 	}
 	defer server.Close()
 
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	got, err := client.OpenAPISchema()
 	if err != nil {
 		t.Fatalf("unexpected error getting openapi: %v", err)
@@ -423,7 +430,8 @@ func TestGetOpenAPISchemaForbiddenFallback(t *testing.T) {
 	}
 	defer server.Close()
 
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	got, err := client.OpenAPISchema()
 	if err != nil {
 		t.Fatalf("unexpected error getting openapi: %v", err)
@@ -440,7 +448,8 @@ func TestGetOpenAPISchemaNotFoundFallback(t *testing.T) {
 	}
 	defer server.Close()
 
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	got, err := client.OpenAPISchema()
 	if err != nil {
 		t.Fatalf("unexpected error getting openapi: %v", err)
@@ -457,7 +466,8 @@ func TestGetOpenAPISchemaNotAcceptableFallback(t *testing.T) {
 	}
 	defer server.Close()
 
-	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+	kubeConfig := &restclient.KubeConfig{Host: server.URL}
+	client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	got, err := client.OpenAPISchema()
 	if err != nil {
 		t.Fatalf("unexpected error getting openapi: %v", err)
@@ -570,7 +580,8 @@ func TestServerPreferredResources(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(test.response))
 		defer server.Close()
 
-		client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+		kubeConfig := &restclient.KubeConfig{Host: server.URL}
+		client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 		resources, err := client.ServerPreferredResources()
 		if test.expectErr != nil {
 			if err == nil {
@@ -683,7 +694,8 @@ func TestServerPreferredResourcesRetries(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(response(tc.responseErrors)))
 		defer server.Close()
 
-		client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+		kubeConfig := &restclient.KubeConfig{Host: server.URL}
+		client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 		resources, err := client.ServerPreferredResources()
 		if !tc.expectedError(err) {
 			t.Errorf("case %d: unexpected error: %v", i, err)
@@ -854,7 +866,8 @@ func TestServerPreferredNamespacedResources(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(test.response))
 		defer server.Close()
 
-		client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
+		kubeConfig := &restclient.KubeConfig{Host: server.URL}
+		client := NewDiscoveryClientForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 		resources, err := client.ServerPreferredNamespacedResources()
 		if err != nil {
 			t.Errorf("[%d] unexpected error: %v", i, err)
