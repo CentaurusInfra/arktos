@@ -214,7 +214,7 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 		}
 		err = client.Get().AbsPath("/apis").Do().Error()
 		if apierrors.IsUnauthorized(err) {
-			klog.Warningf("Token for %s/%s did not authenticate correctly: %v", sa.Namespace, sa.Name, err)
+			klog.Warningf("Token for %s/%s did not authenticate correctly: %v. Host %s", sa.Namespace, sa.Name, err, config.Host)
 			return nil, false, nil
 		}
 	}
