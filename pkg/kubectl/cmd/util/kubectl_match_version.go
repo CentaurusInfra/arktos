@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -112,18 +113,22 @@ func NewMatchVersionFlags(delegate genericclioptions.RESTClientGetter) *MatchVer
 // setKubernetesDefaults sets default values on the provided client config for accessing the
 // Kubernetes API or returns an error if any of the defaults are impossible or invalid.
 // TODO this isn't what we want.  Each clientset should be setting defaults as it sees fit.
-func setKubernetesDefaults(config *rest.Config) error {
-	// TODO remove this hack.  This is allowing the GetOptions to be serialized.
-	config.GroupVersion = &schema.GroupVersion{Group: "", Version: "v1"}
+func setKubernetesDefaults(configs *rest.Config) error {
+	for _, config := range configs.GetAllConfigs() {
+		// TODO remove this hack.  This is allowing the GetOptions to be serialized.
+		config.GroupVersion = &schema.GroupVersion{Group: "", Version: "v1"}
 
-	if config.APIPath == "" {
-		config.APIPath = "/api"
+		if config.APIPath == "" {
+			config.APIPath = "/api"
+		}
+		if config.NegotiatedSerializer == nil {
+			// This codec factory ensures the resources are not converted. Therefore, resources
+			// will not be round-tripped through internal versions. Defaulting does not happen
+			// on the client.
+			config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+		}
+		rest.SetKubernetesDefaults(config)
 	}
-	if config.NegotiatedSerializer == nil {
-		// This codec factory ensures the resources are not converted. Therefore, resources
-		// will not be round-tripped through internal versions. Defaulting does not happen
-		// on the client.
-		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
-	}
-	return rest.SetKubernetesDefaults(config)
+
+	return nil
 }

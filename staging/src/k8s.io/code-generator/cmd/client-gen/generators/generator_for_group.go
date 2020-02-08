@@ -107,6 +107,7 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 		"restDefaultKubernetesUserAgent": c.Universe.Function(types.Name{Package: "k8s.io/client-go/rest", Name: "DefaultKubernetesUserAgent"}),
 		"restRESTClientInterface":        c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
 		"restRESTClientFor":              c.Universe.Function(types.Name{Package: "k8s.io/client-go/rest", Name: "RESTClientFor"}),
+		"restRESTClientCopyConfig":       c.Universe.Function(types.Name{Package: "k8s.io/client-go/rest", Name: "CopyConfigs"}),
 		"SchemeGroupVersion":             c.Universe.Variable(types.Name{Package: path.Vendorless(g.inputPackage), Name: "SchemeGroupVersion"}),
 	}
 	sw.Do(groupInterfaceTemplate, m)
@@ -196,16 +197,20 @@ func (c *$.GroupGoName$$.Version$Client) $.type|publicPlural$() $.type|public$In
 var newClientForConfigTemplate = `
 // NewForConfig creates a new $.GroupGoName$$.Version$Client for the given config.
 func NewForConfig(c *$.restConfig|raw$) (*$.GroupGoName$$.Version$Client, error) {
-	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
-	client, err := $.restRESTClientFor|raw$(&config)
-	if err != nil {
+	configs := $.restRESTClientCopyConfig|raw$(c)
+	if err := setConfigDefaults(configs); err != nil {
 		return nil, err
 	}
 
-	clients := []rest.Interface{client}
+	clients := make([]rest.Interface, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		client, err := $.restRESTClientFor|raw$(config)
+		if err != nil {
+			return nil, err
+		}
+		clients[i] = client
+	}
+
 	return &$.GroupGoName$$.Version$Client{clients}, nil
 }
 `
@@ -265,22 +270,24 @@ func New(c $.restRESTClientInterface|raw$) *$.GroupGoName$$.Version$Client {
 `
 
 var setInternalVersionClientDefaultsTemplate = `
-func setConfigDefaults(config *$.restConfig|raw$) error {
-	config.APIPath = $.apiPath$
-	if config.UserAgent == "" {
-		config.UserAgent = $.restDefaultKubernetesUserAgent|raw$()
-	}
-	if config.GroupVersion == nil || config.GroupVersion.Group != scheme.Scheme.PrioritizedVersionsForGroup("$.groupName$")[0].Group {
-		gv := scheme.Scheme.PrioritizedVersionsForGroup("$.groupName$")[0]
-		config.GroupVersion = &gv
-	}
-	config.NegotiatedSerializer = scheme.Codecs
-
-	if config.QPS == 0 {
-		config.QPS = 5
-	}
-	if config.Burst == 0 {
-		config.Burst = 10
+func setConfigDefaults(configs *$.restConfig|raw$) error {
+	for _, config := range configs.GetAllConfigs() {
+		config.APIPath = $.apiPath$
+		if config.UserAgent == "" {
+			config.UserAgent = $.restDefaultKubernetesUserAgent|raw$()
+		}
+		if config.GroupVersion == nil || config.GroupVersion.Group != scheme.Scheme.PrioritizedVersionsForGroup("$.groupName$")[0].Group {
+			gv := scheme.Scheme.PrioritizedVersionsForGroup("$.groupName$")[0]
+			config.GroupVersion = &gv
+		}
+		config.NegotiatedSerializer = scheme.Codecs
+	
+		if config.QPS == 0 {
+			config.QPS = 5
+		}
+		if config.Burst == 0 {
+			config.Burst = 10
+		}
 	}
 
 	return nil
@@ -288,14 +295,17 @@ func setConfigDefaults(config *$.restConfig|raw$) error {
 `
 
 var setClientDefaultsTemplate = `
-func setConfigDefaults(config *$.restConfig|raw$) error {
+func setConfigDefaults(configs *$.restConfig|raw$) error {
 	gv := $.SchemeGroupVersion|raw$
-	config.GroupVersion =  &gv
-	config.APIPath = $.apiPath$
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
-	if config.UserAgent == "" {
-		config.UserAgent = $.restDefaultKubernetesUserAgent|raw$()
+	for _, config := range configs.GetAllConfigs() {
+		config.GroupVersion =  &gv
+		config.APIPath = $.apiPath$
+		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+		
+		if config.UserAgent == "" {
+			config.UserAgent = $.restDefaultKubernetesUserAgent|raw$()
+		}
 	}
 
 	return nil

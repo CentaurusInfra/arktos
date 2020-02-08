@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -656,10 +657,17 @@ func (s *SecureServingInfo) HostPort() (string, int, error) {
 // AuthorizeClientBearerToken wraps the authenticator and authorizer in loopback authentication logic
 // if the loopback client config is specified AND it has a bearer token. Note that if either authn or
 // authz is nil, this function won't add a token authenticator or authorizer.
-func AuthorizeClientBearerToken(loopback *restclient.Config, authn *AuthenticationInfo, authz *AuthorizationInfo) {
-	if loopback == nil || len(loopback.BearerToken) == 0 {
+// Config ins api server - assuming one client only
+func AuthorizeClientBearerToken(loopbacks *restclient.Config, authn *AuthenticationInfo, authz *AuthorizationInfo) {
+	if loopbacks == nil || len(loopbacks.GetAllConfigs()) == 0 || len(loopbacks.GetAllConfigs()) > 1 {
 		return
 	}
+
+	loopback := loopbacks.GetConfig()
+	if len(loopback.BearerToken) == 0 {
+		return
+	}
+
 	if authn == nil || authz == nil {
 		// prevent nil pointer panic
 	}

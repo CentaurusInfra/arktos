@@ -248,7 +248,7 @@ type Dependencies struct {
 	DockerClientConfig      *dockershim.ClientConfig
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
-	OnHeartbeatFailure      func()
+	OnHeartbeatFailure      []func()
 	KubeClient              clientset.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
@@ -898,7 +898,7 @@ type Kubelet struct {
 	lastObservedNodeAddresses    []v1.NodeAddress
 
 	// onRepeatedHeartbeatFailure is called when a heartbeat operation fails more than once. optional.
-	onRepeatedHeartbeatFailure func()
+	onRepeatedHeartbeatFailure []func()
 
 	// podWorkers handle syncing Pods in response to events.
 	podWorkers PodWorkers

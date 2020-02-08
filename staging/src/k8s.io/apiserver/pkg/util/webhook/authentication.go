@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,7 +56,9 @@ func NewDefaultAuthenticationInfoResolverWrapper(
 					return nil, err
 				}
 				if proxyTransport != nil && proxyTransport.DialContext != nil {
-					ret.Dial = proxyTransport.DialContext
+					for _, config := range ret.GetAllConfigs() {
+						config.Dial = proxyTransport.DialContext
+					}
 				}
 				return ret, err
 			},
@@ -162,14 +165,15 @@ func (c *defaultAuthenticationInfoResolver) clientConfig(target string) (*rest.C
 	}
 
 	// anonymous
-	return setGlobalDefaults(&rest.Config{}), nil
+	config := rest.CreateEmptyConfig()
+	return setGlobalDefaults(config), nil
 }
 
 func restConfigFromKubeconfig(configAuthInfo *clientcmdapi.AuthInfo) (*rest.Config, error) {
-	config := &rest.Config{}
-
+	config := &rest.KubeConfig{}
 	// blindly overwrite existing values based on precedence
 	if len(configAuthInfo.Token) > 0 {
+
 		config.BearerToken = configAuthInfo.Token
 		config.BearerTokenFile = configAuthInfo.TokenFile
 	} else if len(configAuthInfo.TokenFile) > 0 {
@@ -204,12 +208,14 @@ func restConfigFromKubeconfig(configAuthInfo *clientcmdapi.AuthInfo) (*rest.Conf
 		return nil, fmt.Errorf("auth provider not supported")
 	}
 
-	return setGlobalDefaults(config), nil
+	configs := rest.NewAggregatedConfig(config)
+	return setGlobalDefaults(configs), nil
 }
 
-func setGlobalDefaults(config *rest.Config) *rest.Config {
-	config.UserAgent = "kube-apiserver-admission"
-	config.Timeout = 30 * time.Second
-
-	return config
+func setGlobalDefaults(configs *rest.Config) *rest.Config {
+	for _, config := range configs.GetAllConfigs() {
+		config.UserAgent = "kube-apiserver-admission"
+		config.Timeout = 30 * time.Second
+	}
+	return configs
 }

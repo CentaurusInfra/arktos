@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,6 +92,7 @@ func (o *ClusterInfoOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) err
 	return nil
 }
 
+// TODO - use single client for now
 func (o *ClusterInfoOptions) Run() error {
 	// TODO use generalized labels once they are implemented (#341)
 	b := o.Builder.
@@ -103,7 +105,9 @@ func (o *ClusterInfoOptions) Run() error {
 		if err != nil {
 			return err
 		}
-		printService(o.Out, "Kubernetes master", o.Client.Host)
+
+		client := o.Client.GetConfig()
+		printService(o.Out, "Kubernetes master", client.Host)
 
 		services := r.Object.(*corev1.ServiceList).Items
 		for _, service := range services {
@@ -133,10 +137,10 @@ func (o *ClusterInfoOptions) Run() error {
 					name = utilnet.JoinSchemeNamePort(scheme, service.ObjectMeta.Name, port.Name)
 				}
 
-				if len(o.Client.GroupVersion.Group) == 0 {
-					link = o.Client.Host + "/api/" + o.Client.GroupVersion.Version + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
+				if len(client.GroupVersion.Group) == 0 {
+					link = client.Host + "/api/" + client.GroupVersion.Version + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
 				} else {
-					link = o.Client.Host + "/api/" + o.Client.GroupVersion.Group + "/" + o.Client.GroupVersion.Version + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
+					link = client.Host + "/api/" + client.GroupVersion.Group + "/" + client.GroupVersion.Version + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
 
 				}
 			}

@@ -384,7 +384,9 @@ func (kl *Kubelet) updateNodeStatus() error {
 	for i := 0; i < nodeStatusUpdateRetry; i++ {
 		if err := kl.tryUpdateNodeStatus(i); err != nil {
 			if i > 0 && kl.onRepeatedHeartbeatFailure != nil {
-				kl.onRepeatedHeartbeatFailure()
+				for _, failureFn := range kl.onRepeatedHeartbeatFailure {
+					failureFn()
+				}
 			}
 			klog.Errorf("Error updating node status, will retry: %v", err)
 		} else {

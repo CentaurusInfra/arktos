@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,7 +72,7 @@ func currentMigrationRules() map[string]string {
 type ClientConfigLoader interface {
 	ConfigAccess
 	// IsDefaultConfig returns true if the returned config matches the defaults.
-	IsDefaultConfig(*restclient.Config) bool
+	IsDefaultConfig(config *restclient.KubeConfig) bool
 	// Load returns the latest config
 	Load() (*clientcmdapi.Config, error)
 }
@@ -104,7 +105,7 @@ func (g *ClientConfigGetter) IsExplicitFile() bool {
 func (g *ClientConfigGetter) GetExplicitFile() string {
 	return ""
 }
-func (g *ClientConfigGetter) IsDefaultConfig(config *restclient.Config) bool {
+func (g *ClientConfigGetter) IsDefaultConfig(config *restclient.KubeConfig) bool {
 	return false
 }
 
@@ -335,7 +336,7 @@ func (rules *ClientConfigLoadingRules) GetExplicitFile() string {
 }
 
 // IsDefaultConfig returns true if the provided configuration matches the default
-func (rules *ClientConfigLoadingRules) IsDefaultConfig(config *restclient.Config) bool {
+func (rules *ClientConfigLoadingRules) IsDefaultConfig(kubeConfig *restclient.KubeConfig) bool {
 	if rules.DefaultClientConfig == nil {
 		return false
 	}
@@ -343,7 +344,8 @@ func (rules *ClientConfigLoadingRules) IsDefaultConfig(config *restclient.Config
 	if err != nil {
 		return false
 	}
-	return reflect.DeepEqual(config, defaultConfig)
+	configs := restclient.NewAggregatedConfig(kubeConfig)
+	return reflect.DeepEqual(configs, defaultConfig)
 }
 
 // LoadFromFile takes a filename and deserializes the contents into Config object
@@ -414,6 +416,7 @@ func WriteToFile(config clientcmdapi.Config, filename string) error {
 		}
 	}
 
+	// TODO - check write is append
 	if err := ioutil.WriteFile(filename, content, 0600); err != nil {
 		return err
 	}

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -96,24 +97,47 @@ func (f *factoryImpl) NewBuilder() *resource.Builder {
 	return resource.NewBuilder(f.clientGetter)
 }
 
+// Use for non watch command
 func (f *factoryImpl) RESTClient() (*restclient.RESTClient, error) {
-	clientConfig, err := f.ToRESTConfig()
+	clientConfigs, err := f.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}
-	setKubernetesDefaults(clientConfig)
-	return restclient.RESTClientFor(clientConfig)
+	setKubernetesDefaults(clientConfigs)
+	return restclient.RESTClientFor(clientConfigs.GetConfig())
 }
 
-func (f *factoryImpl) ClientForMapping(mapping *meta.RESTMapping) (resource.RESTClient, error) {
-	cfg, err := f.clientGetter.ToRESTConfig()
+// Used only for watch
+func (f *factoryImpl) RESTClients() ([]*restclient.RESTClient, error) {
+	clientConfigs, err := f.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}
-	if err := setKubernetesDefaults(cfg); err != nil {
+	setKubernetesDefaults(clientConfigs)
+
+	restClients := make([]*restclient.RESTClient, len(clientConfigs.GetAllConfigs()))
+	for i, clientConfig := range clientConfigs.GetAllConfigs() {
+		restClient, err := restclient.RESTClientFor(clientConfig)
+		if err != nil {
+			return restClients, err
+		}
+		restClients[i] = restClient
+	}
+	return restClients, nil
+}
+
+// TODO - assume single client for now
+func (f *factoryImpl) ClientForMapping(mapping *meta.RESTMapping) (resource.RESTClient, error) {
+	cfgs, err := f.clientGetter.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	if err := setKubernetesDefaults(cfgs); err != nil {
 		return nil, err
 	}
 	gvk := mapping.GroupVersionKind
+
+	cfg := cfgs.GetConfig()
 	switch gvk.Group {
 	case corev1.GroupName:
 		cfg.APIPath = "/api"
@@ -125,11 +149,13 @@ func (f *factoryImpl) ClientForMapping(mapping *meta.RESTMapping) (resource.REST
 	return restclient.RESTClientFor(cfg)
 }
 
+// TODO - assume single client for now
 func (f *factoryImpl) UnstructuredClientForMapping(mapping *meta.RESTMapping) (resource.RESTClient, error) {
-	cfg, err := f.clientGetter.ToRESTConfig()
+	cfgs, err := f.clientGetter.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}
+	cfg := cfgs.GetConfig()
 	if err := restclient.SetKubernetesDefaults(cfg); err != nil {
 		return nil, err
 	}

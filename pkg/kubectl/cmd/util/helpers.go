@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -633,12 +634,13 @@ func scaleClient(restClientGetter genericclioptions.RESTClientGetter) (scale.Sca
 		return nil, err
 	}
 
-	clientConfig, err := restClientGetter.ToRESTConfig()
+	clientConfigs, err := restClientGetter.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	setKubernetesDefaults(clientConfig)
+	setKubernetesDefaults(clientConfigs)
+	clientConfig := clientConfigs.GetConfig()
 	restClient, err := rest.RESTClientFor(clientConfig)
 	if err != nil {
 		return nil, err

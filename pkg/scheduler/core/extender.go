@@ -53,8 +53,10 @@ type HTTPExtender struct {
 	ignorable        bool
 }
 
+// TODO - looks like used not in informer - use single client for now
 func makeTransport(config *schedulerapi.ExtenderConfig) (http.RoundTripper, error) {
-	var cfg restclient.Config
+	var cfg restclient.KubeConfig
+
 	if config.TLSConfig != nil {
 		cfg.TLSClientConfig.Insecure = config.TLSConfig.Insecure
 		cfg.TLSClientConfig.ServerName = config.TLSConfig.ServerName

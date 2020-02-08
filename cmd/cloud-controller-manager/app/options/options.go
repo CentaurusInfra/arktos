@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -172,29 +173,32 @@ func (o *CloudControllerManagerOptions) ApplyTo(c *cloudcontrollerconfig.Config,
 		}
 	}
 
-	c.Kubeconfig, err = clientcmd.BuildConfigFromFlags(o.Master, o.Kubeconfig)
-	if err != nil {
-		return err
-	}
-	c.Kubeconfig.ContentConfig.ContentType = o.Generic.ClientConnection.ContentType
-	c.Kubeconfig.QPS = o.Generic.ClientConnection.QPS
-	c.Kubeconfig.Burst = int(o.Generic.ClientConnection.Burst)
-
-	c.Client, err = clientset.NewForConfig(restclient.AddUserAgent(c.Kubeconfig, userAgent))
+	c.Kubeconfigs, err = clientcmd.BuildConfigFromFlags(o.Master, o.Kubeconfig)
 	if err != nil {
 		return err
 	}
 
-	c.LeaderElectionClient = clientset.NewForConfigOrDie(restclient.AddUserAgent(c.Kubeconfig, "leader-election"))
+	for _, kubeConfig := range c.Kubeconfigs.GetAllConfigs() {
+		kubeConfig.ContentConfig.ContentType = o.Generic.ClientConnection.ContentType
+		kubeConfig.QPS = o.Generic.ClientConnection.QPS
+		kubeConfig.Burst = int(o.Generic.ClientConnection.Burst)
+	}
+
+	c.Client, err = clientset.NewForConfig(restclient.AddUserAgent(c.Kubeconfigs, userAgent))
+	if err != nil {
+		return err
+	}
+
+	c.LeaderElectionClient = clientset.NewForConfigOrDie(restclient.AddUserAgent(c.Kubeconfigs, "leader-election"))
 
 	c.EventRecorder = createRecorder(c.Client, userAgent)
 
 	rootClientBuilder := controller.SimpleControllerClientBuilder{
-		ClientConfig: c.Kubeconfig,
+		ClientConfig: c.Kubeconfigs,
 	}
 	if c.ComponentConfig.KubeCloudShared.UseServiceAccountCredentials {
 		c.ClientBuilder = controller.SAControllerClientBuilder{
-			ClientConfig:         restclient.AnonymousClientConfig(c.Kubeconfig),
+			ClientConfig:         restclient.AnonymousClientConfig(c.Kubeconfigs),
 			CoreClient:           c.Client.CoreV1(),
 			AuthenticationClient: c.Client.AuthenticationV1(),
 			Namespace:            metav1.NamespaceSystem,
