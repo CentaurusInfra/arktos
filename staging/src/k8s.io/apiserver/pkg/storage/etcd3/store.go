@@ -86,19 +86,19 @@ type objState struct {
 
 // New returns an etcd3 implementation of storage.Interface.
 func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool) storage.Interface {
-	return NewWithPartitionConfig(c, codec, prefix, transformer, pagingEnabled, "")
+	return NewWithPartitionConfig(c, codec, prefix, transformer, pagingEnabled, nil )
 }
 
 // New returns an etcd3 implementation of storage.Interface with partition config
-func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigFilename string) storage.Interface {
-	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfigFilename)
+func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigMap map[string]storage.Interval) storage.Interface {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfigMap)
 }
 
 func newStore(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer) *store {
-	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, "")
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil)
 }
 
-func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfigFilename string) *store {
+func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfigMap map[string]storage.Interval) *store {
 	versioner := etcd.APIObjectVersioner{}
 	result := &store{
 		client:        c,
@@ -110,7 +110,7 @@ func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec r
 		// no-op for default prefix of '/registry'.
 		// keeps compatibility with etcd2 impl for custom prefixes that don't start with '/'
 		pathPrefix:   path.Join("/", prefix),
-		watcher:      newWatcherWithPartitionConfig(c, codec, versioner, transformer, partitionConfigFilename),
+		watcher:      newWatcherWithPartitionConfig(c, codec, versioner, transformer, partitionConfigMap),
 		leaseManager: newDefaultLeaseManager(c),
 	}
 	return result

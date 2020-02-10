@@ -20,7 +20,9 @@ package factory
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"path"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -202,7 +204,31 @@ func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, e
 	}
 
 	if c.PartitionConfigFilepath != "" {
-		return etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, c.PartitionConfigFilepath), destroyFunc, nil
+		configMap, _ := parseConfig(c.PartitionConfigFilepath)
+		return etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap), destroyFunc, nil
 	}
 	return etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging), destroyFunc, nil
+}
+
+// Each line in the config needs to contain three part: keyName, start, end
+// End is excludsive in the range, for example, below line means partition pods, the keys in the partition are ns1 and ns2
+// /registry/pods/, ns1, ns3
+// /registry/minions/, node1, node100
+func parseConfig(configFileName string) (map[string]storage.Interval, error) {
+	m := make(map[string]storage.Interval)
+
+	bytes, err := ioutil.ReadFile(configFileName)
+	if err != nil {
+		return m, err
+	}
+	lines := strings.Split(string(bytes), "\n")
+
+	for _, line := range lines {
+		slices := strings.Split(line, ",")
+		size := len(slices)
+		if size >= 3 {
+			m[strings.TrimSpace(slices[0])] = storage.Interval{Begin: strings.TrimSpace(slices[1]), End: strings.TrimSpace(slices[2])}
+		}
+	}
+	return m, nil
 }

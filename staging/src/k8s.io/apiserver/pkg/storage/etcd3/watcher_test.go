@@ -371,3 +371,109 @@ func testCheckStop(t *testing.T, i int, w watch.Interface) {
 		t.Errorf("#%d: time out after waiting 1s on ResultChan", i)
 	}
 }
+
+func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		key                string
+		partitionedConfig  map[string]storage.Interval
+		expectedKey        string
+		expectedOpt        clientv3.OpOption
+	}{
+		{
+			name: "opt with interval beginning and end via key",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": storage.Interval{
+					Begin: "tenant1",
+					End:   "tenant2",
+				},
+				"registry/pod/": storage.Interval{
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			expectedKey: "registry/pods/tenant1",
+			expectedOpt: clientv3.WithRange("registry/pods/tenant2"),
+		},
+		{
+			name: "opt with interval beginning only via key",
+			key:  "registry/deployment/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/deployment/": storage.Interval{
+					Begin: "tenant1",
+				},
+				"registry/pod/": storage.Interval{
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			expectedKey: "registry/deployment/tenant1",
+			expectedOpt: clientv3.WithFromKey(),
+		},
+		{
+			name: "opt with interval end only via key",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": storage.Interval{
+					End: "tenant",
+				},
+				"registry/pod/": storage.Interval{
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			expectedKey: "registry/pods/",
+			expectedOpt: clientv3.WithRange("tenant"),
+		},
+		{
+			name: "opt without beginning and end",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/po/": storage.Interval{
+					End: "tenant",
+				},
+				"registry/pod/": storage.Interval{
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			expectedKey: "registry/pods/",
+			expectedOpt: nil,
+		},
+		{
+			name: "opt with empty entry via key",
+			key:  "registry/replicaset/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/replicaset/": storage.Interval{
+				},
+				"registry/pod/": storage.Interval{
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			expectedKey: "registry/replicaset/",
+			expectedOpt: nil,
+		},
+		{
+			name: "opt with empty config",
+			key:  "registry/demonset/",
+			partitionedConfig: map[string]storage.Interval{
+			},
+			expectedKey: "registry/demonset/",
+			expectedOpt: nil,
+		},
+
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			updatedKey, opt := GetKeyAndOptFromPartitionConfig( tc.key, tc.partitionedConfig)
+			if tc.expectedKey != updatedKey {
+				t.Fatalf("The key %s is not expected as %s", updatedKey, tc.expectedKey)
+			}
+			if reflect.ValueOf(tc.expectedOpt).Pointer() != reflect.ValueOf(opt).Pointer() {
+				t.Fatalf("The opt %s is not expected as %s ", reflect.ValueOf(opt).String(), reflect.ValueOf(tc.expectedOpt).String())
+			}
+		})
+	}
+}
+

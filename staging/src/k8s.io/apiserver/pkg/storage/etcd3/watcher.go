@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -72,7 +71,7 @@ type watcher struct {
 	codec                   runtime.Codec
 	versioner               storage.Versioner
 	transformer             value.Transformer
-	partitionConfigFilename string
+	partitionConfig         map[string]storage.Interval
 }
 
 // watchChan implements watch.Interface.
@@ -87,16 +86,16 @@ type watchChan struct {
 	incomingEventChan       chan *event
 	resultChan              chan watch.Event
 	errChan                 chan error
-	partitionConfigFilename string
+	partitionConfig         map[string]storage.Interval
 }
 
-func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfigFilename string) *watcher {
+func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfigMap map[string]storage.Interval) *watcher {
 	return &watcher{
 		client:                  client,
 		codec:                   codec,
 		versioner:               versioner,
 		transformer:             transformer,
-		partitionConfigFilename: partitionConfigFilename,
+		partitionConfig:         partitionConfigMap,
 	}
 }
 
@@ -126,7 +125,7 @@ func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, re
 		incomingEventChan:       make(chan *event, incomingBufSize),
 		resultChan:              make(chan watch.Event, outgoingBufSize),
 		errChan:                 make(chan error, 1),
-		partitionConfigFilename: w.partitionConfigFilename,
+		partitionConfig:         w.partitionConfig,
 	}
 	if pred.Empty() {
 		// The filter doesn't filter out any object.
@@ -197,36 +196,6 @@ func (wc *watchChan) sync() error {
 	return nil
 }
 
-// Each line in the config needs to contain three part: keyName, start, end
-// End is excludsive in the range, for example, below line means partition pods, the keys in the partition are ns1 and ns2
-// /registry/pods/, ns1, ns3
-// /registry/minions/, node1, node100
-func parseConfig(configFileName string) map[string][]string {
-	m := make(map[string][]string)
-
-	bytes, err := ioutil.ReadFile(configFileName)
-	if err != nil {
-		klog.V(3).Infof("Failed to read config file [%v], will not partition any object, err: [%v]", configFileName, err)
-		return m
-	}
-
-	lines := strings.Split(string(bytes), "\n")
-
-	for _, line := range lines {
-		strs := strings.Split(line, ",")
-
-		size := len(strs)
-		if size >= 2 {
-			key := strings.TrimSpace(strs[0])
-			m[key] = make([]string, 2)
-			m[key][0] = strings.TrimSpace(strs[1])
-			m[key][1] = strings.TrimSpace(strs[2])
-		}
-	}
-
-	return m
-}
-
 // startWatching does:
 // - get current objects if initialRev=0; set initialRev to current rev
 // - watch on given key and send events to process.
@@ -244,16 +213,14 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 	}
 
 	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
-	m := parseConfig(wc.partitionConfigFilename)
 
-	if val, ok := m[wc.key]; ok {
-		rangeStart := wc.key + val[0]
-		rangeEnd := wc.key + val[1]
-
-		wc.key = rangeStart
-		opts = append(opts, clientv3.WithRange(rangeEnd))
-		klog.V(3).Infof("Assigned watcher to partition wc.key=%v, endKey=%v", wc.key, rangeEnd)
+	updatedKey, opt := GetKeyAndOptFromPartitionConfig( wc.key, wc.partitionConfig)
+	wc.key = updatedKey
+	if opt != nil {
+		opts = append(opts, opt)
 	}
+
+	klog.V(3).Infof("Updated wc.key=%v and the opts is %+v", wc.key, opts)
 
 	wch := wc.watcher.client.Watch(wc.ctx, wc.key, opts...)
 	for wres := range wch {
@@ -279,6 +246,34 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 	// If this watch chan is broken and context isn't cancelled, other goroutines will still hang.
 	// We should notify the main thread that this goroutine has exited.
 	close(watchClosedCh)
+}
+
+//  getKeyAndOptFromPartitionConfig does:
+// - update the watchChan key by adding interval begin / end
+// - create the opts by adding opened range end or range beginning if either of them applies
+func GetKeyAndOptFromPartitionConfig(key string, partitionConfig map[string]storage.Interval) (string, clientv3.OpOption) {
+	updatedKey := key
+	opt := clientv3.OpOption(nil)
+	if val, ok := partitionConfig[key]; ok {
+		// The interval end is not empty.
+		if len(val.Begin) > 0 {
+			updatedKey += val.Begin
+			// If the interval begin is not empty, update the key by adding the interval begin, such as [key+val.Begin, key + val.End)
+			if len(val.End) > 0 {
+				opt = clientv3.WithRange(key + val.End)
+			// If the interval begin is empty, update the key by adding the interval begin, such as [key+val.Begin, ∞)
+			} else {
+				opt = clientv3.WithFromKey()
+			}
+		} else {
+			// The interval begin is empty and the end is not empty. So that the key remains unchanged, such as [key, key + val.End)
+			if len(val.End) > 0 {
+				opt = clientv3.WithRange(key + val.End)
+			}
+			// If the begin and the end  are both empty, there is no need to add options.
+		}
+	}
+	return updatedKey, opt
 }
 
 // processEvent processes events from etcd watcher and sends results to resultChan.
