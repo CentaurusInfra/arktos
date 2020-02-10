@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,8 +42,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-type listObjectFunc func(string, metav1.ListOptions) (runtime.Object, error)
-type watchObjectFunc func(string, metav1.ListOptions) (watch.Interface, error)
+type listObjectFunc func(string, string, metav1.ListOptions) (runtime.Object, error)
+type watchObjectFunc func(string, string, metav1.ListOptions) (watch.Interface, error)
 type newObjectFunc func() runtime.Object
 
 // objectCacheItem is a single item stored in objectCache.
@@ -85,19 +86,19 @@ func (c *objectCache) newStore() cache.Store {
 	return cache.NewStore(cache.MetaNamespaceKeyFunc)
 }
 
-func (c *objectCache) newReflector(namespace, name string) *objectCacheItem {
+func (c *objectCache) newReflector(tenant, namespace, name string) *objectCacheItem {
 	fieldSelector := fields.Set{"metadata.name": name}.AsSelector().String()
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		options.FieldSelector = fieldSelector
-		return c.listObject(namespace, options)
+		return c.listObject(tenant, namespace, options)
 	}
 	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
 		options.FieldSelector = fieldSelector
-		return c.watchObject(namespace, options)
+		return c.watchObject(tenant, namespace, options)
 	}
 	store := c.newStore()
 	reflector := cache.NewNamedReflector(
-		fmt.Sprintf("object-%q/%q", namespace, name),
+		fmt.Sprintf("object-%q/%q/%q", tenant, namespace, name),
 		&cache.ListWatch{ListFunc: listFunc, WatchFunc: watchFunc},
 		c.newObject(),
 		store,
@@ -113,8 +114,8 @@ func (c *objectCache) newReflector(namespace, name string) *objectCacheItem {
 	}
 }
 
-func (c *objectCache) AddReference(namespace, name string) {
-	key := objectKey{namespace: namespace, name: name}
+func (c *objectCache) AddReference(tenant, namespace, name string) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name}
 
 	// AddReference is called from RegisterPod thus it needs to be efficient.
 	// Thus, it is only increaisng refCount and in case of first registration
@@ -125,14 +126,14 @@ func (c *objectCache) AddReference(namespace, name string) {
 	defer c.lock.Unlock()
 	item, exists := c.items[key]
 	if !exists {
-		item = c.newReflector(namespace, name)
+		item = c.newReflector(tenant, namespace, name)
 		c.items[key] = item
 	}
 	item.refCount++
 }
 
-func (c *objectCache) DeleteReference(namespace, name string) {
-	key := objectKey{namespace: namespace, name: name}
+func (c *objectCache) DeleteReference(tenant, namespace, name string) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name}
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -148,28 +149,32 @@ func (c *objectCache) DeleteReference(namespace, name string) {
 
 // key returns key of an object with a given name and namespace.
 // This has to be in-sync with cache.MetaNamespaceKeyFunc.
-func (c *objectCache) key(namespace, name string) string {
+func (c *objectCache) key(tenant, namespace, name string) string {
+	result := name
 	if len(namespace) > 0 {
-		return namespace + "/" + name
+		result = namespace + "/" + result
 	}
-	return name
+	if len(tenant) > 0 && tenant != metav1.TenantDefault {
+		result = tenant + "/" + result
+	}
+	return result
 }
 
-func (c *objectCache) Get(namespace, name string) (runtime.Object, error) {
-	key := objectKey{namespace: namespace, name: name}
+func (c *objectCache) Get(tenant, namespace, name string) (runtime.Object, error) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name}
 
 	c.lock.Lock()
 	item, exists := c.items[key]
 	c.lock.Unlock()
 
 	if !exists {
-		return nil, fmt.Errorf("object %q/%q not registered", namespace, name)
+		return nil, fmt.Errorf("object %q/%q/%q not registered", tenant, namespace, name)
 	}
 	if err := wait.PollImmediate(10*time.Millisecond, time.Second, item.hasSynced); err != nil {
 		return nil, fmt.Errorf("couldn't propagate object cache: %v", err)
 	}
 
-	obj, exists, err := item.store.GetByKey(c.key(namespace, name))
+	obj, exists, err := item.store.GetByKey(c.key(tenant, namespace, name))
 	if err != nil {
 		return nil, err
 	}

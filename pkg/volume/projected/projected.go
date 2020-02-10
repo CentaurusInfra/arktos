@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,7 +48,7 @@ const (
 
 type projectedPlugin struct {
 	host                      volume.VolumeHost
-	getSecret                 func(namespace, name string) (*v1.Secret, error)
+	getSecret                 func(tenant, namespace, name string) (*v1.Secret, error)
 	getConfigMap              func(namespace, name string) (*v1.ConfigMap, error)
 	getServiceAccountToken    func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	deleteServiceAccountToken func(podUID types.UID)
@@ -268,7 +269,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 		switch {
 		case source.Secret != nil:
 			optional := source.Secret.Optional != nil && *source.Secret.Optional
-			secretapi, err := s.plugin.getSecret(s.pod.Namespace, source.Secret.Name)
+			secretapi, err := s.plugin.getSecret(s.pod.Tenant, s.pod.Namespace, source.Secret.Name)
 			if err != nil {
 				if !(errors.IsNotFound(err) && optional) {
 					klog.Errorf("Couldn't get secret %v/%v: %v", s.pod.Namespace, source.Secret.Name, err)
@@ -277,6 +278,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 				}
 				secretapi = &v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
+						Tenant:    s.pod.Tenant,
 						Namespace: s.pod.Namespace,
 						Name:      source.Secret.Name,
 					},

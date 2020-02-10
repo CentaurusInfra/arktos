@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -143,19 +144,19 @@ func (c *ServiceAccountsController) serviceAccountDeleted(obj interface{}) {
 			return
 		}
 	}
-	c.queue.Add(sa.Namespace)
+	c.queue.Add(sa.Tenant + "/" + sa.Namespace)
 }
 
 // namespaceAdded reacts to a Namespace creation by creating a default ServiceAccount object
 func (c *ServiceAccountsController) namespaceAdded(obj interface{}) {
 	namespace := obj.(*v1.Namespace)
-	c.queue.Add(namespace.Name)
+	c.queue.Add(namespace.Tenant + "/" + namespace.Name)
 }
 
 // namespaceUpdated reacts to a Namespace update (or re-list) by creating a default ServiceAccount in the namespace if needed
 func (c *ServiceAccountsController) namespaceUpdated(oldObj interface{}, newObj interface{}) {
 	newNamespace := newObj.(*v1.Namespace)
-	c.queue.Add(newNamespace.Name)
+	c.queue.Add(newNamespace.Tenant + "/" + newNamespace.Name)
 }
 
 func (c *ServiceAccountsController) runWorker() {
@@ -188,7 +189,12 @@ func (c *ServiceAccountsController) syncNamespace(key string) error {
 		klog.V(4).Infof("Finished syncing namespace %q (%v)", key, time.Since(startTime))
 	}()
 
-	ns, err := c.nsLister.Get(key)
+	tenant, nsName, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
+	ns, err := c.nsLister.NamespacesWithMultiTenancy(tenant).Get(nsName)
 	if apierrs.IsNotFound(err) {
 		return nil
 	}
@@ -202,7 +208,7 @@ func (c *ServiceAccountsController) syncNamespace(key string) error {
 
 	createFailures := []error{}
 	for _, sa := range c.serviceAccountsToEnsure {
-		switch _, err := c.saLister.ServiceAccounts(ns.Name).Get(sa.Name); {
+		switch _, err := c.saLister.ServiceAccountsWithMultiTenancy(ns.Name, ns.Tenant).Get(sa.Name); {
 		case err == nil:
 			continue
 		case apierrs.IsNotFound(err):
@@ -212,8 +218,8 @@ func (c *ServiceAccountsController) syncNamespace(key string) error {
 		// this is only safe because we never read it and we always write it
 		// TODO eliminate this once the fake client can handle creation without NS
 		sa.Namespace = ns.Name
-
-		if _, err := c.client.CoreV1().ServiceAccounts(ns.Name).Create(&sa); err != nil && !apierrs.IsAlreadyExists(err) {
+		sa.Tenant = ns.Tenant
+		if _, err := c.client.CoreV1().ServiceAccountsWithMultiTenancy(ns.Name, ns.Tenant).Create(&sa); err != nil && !apierrs.IsAlreadyExists(err) {
 			createFailures = append(createFailures, err)
 		}
 	}

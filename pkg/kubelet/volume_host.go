@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -250,7 +251,7 @@ func (kvh *kubeletVolumeHost) GetNodeAllocatable() (v1.ResourceList, error) {
 	return node.Status.Allocatable, nil
 }
 
-func (kvh *kubeletVolumeHost) GetSecretFunc() func(namespace, name string) (*v1.Secret, error) {
+func (kvh *kubeletVolumeHost) GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error) {
 	return kvh.secretManager.GetSecret
 }
 

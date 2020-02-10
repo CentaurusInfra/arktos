@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -416,7 +417,7 @@ type VolumeHost interface {
 	GetNodeAllocatable() (v1.ResourceList, error)
 
 	// Returns a function that returns a secret.
-	GetSecretFunc() func(namespace, name string) (*v1.Secret, error)
+	GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error)
 
 	// Returns a function that returns a configmap.
 	GetConfigMapFunc() func(namespace, name string) (*v1.ConfigMap, error)
