@@ -34,11 +34,11 @@ import (
 )
 
 func checkObject(t *testing.T, store manager.Store, ns, name string, shouldExist bool) {
-	_, err := store.Get(ns, name)
+	_, err := store.Get(metav1.TenantDefault, ns, name)
 	if shouldExist && err != nil {
 		t.Errorf("unexpected actions: %#v", err)
 	}
-	if !shouldExist && (err == nil || !strings.Contains(err.Error(), fmt.Sprintf("object %q/%q not registered", ns, name))) {
+	if !shouldExist && (err == nil || !strings.Contains(err.Error(), fmt.Sprintf("object %q/%q/%q not registered", metav1.TenantDefault, ns, name))) {
 		t.Errorf("unexpected actions: %#v", err)
 	}
 }
@@ -48,7 +48,7 @@ func noObjectTTL() (time.Duration, bool) {
 }
 
 func getConfigMap(fakeClient clientset.Interface) manager.GetObjectFunc {
-	return func(namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
+	return func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
 		return fakeClient.CoreV1().ConfigMaps(namespace).Get(name, opts)
 	}
 }
@@ -66,6 +66,7 @@ type configMapsToAttach struct {
 func podWithConfigMaps(ns, podName string, toAttach configMapsToAttach) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    metav1.TenantDefault,
 			Namespace: ns,
 			Name:      podName,
 		},

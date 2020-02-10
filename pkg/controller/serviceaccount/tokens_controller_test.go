@@ -80,13 +80,13 @@ func addNamedTokenSecretReference(refs []v1.ObjectReference, name string) []v1.O
 }
 
 // serviceAccount returns a service account with the given secret refs
-func serviceAccount(secretRefs []v1.ObjectReference) *v1.ServiceAccount {
+func serviceAccount(tenant string, secretRefs []v1.ObjectReference) *v1.ServiceAccount {
 	return &v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "default",
 			UID:             "12345",
 			Namespace:       "default",
-			Tenant:          "default",
+			Tenant:          tenant,
 			ResourceVersion: "1",
 		},
 		Secrets: secretRefs,
@@ -94,19 +94,19 @@ func serviceAccount(secretRefs []v1.ObjectReference) *v1.ServiceAccount {
 }
 
 // updatedServiceAccount returns a service account with the resource version modified
-func updatedServiceAccount(secretRefs []v1.ObjectReference) *v1.ServiceAccount {
-	sa := serviceAccount(secretRefs)
+func updatedServiceAccount(tenant string, secretRefs []v1.ObjectReference) *v1.ServiceAccount {
+	sa := serviceAccount(tenant, secretRefs)
 	sa.ResourceVersion = "2"
 	return sa
 }
 
 // opaqueSecret returns a persisted non-ServiceAccountToken secret named "regular-secret-1"
-func opaqueSecret() *v1.Secret {
+func opaqueSecret(tenant string) *v1.Secret {
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "regular-secret-1",
 			Namespace:       "default",
-			Tenant:          "default",
+			Tenant:          tenant,
 			UID:             "23456",
 			ResourceVersion: "1",
 		},
@@ -119,17 +119,21 @@ func opaqueSecret() *v1.Secret {
 
 // createdTokenSecret returns the ServiceAccountToken secret posted when creating a new token secret.
 // Named "default-token-xn8fg", since that is the first generated name after rand.Seed(1)
-func createdTokenSecret(overrideName ...string) *v1.Secret {
-	return namedCreatedTokenSecret("default-token-xn8fg")
+func createdTokenSecret(tenant string, overrideName ...string) *v1.Secret {
+	return namedCreatedTokenSecret(tenant, "default-token-xn8fg")
 }
 
 // namedTokenSecret returns the ServiceAccountToken secret posted when creating a new token secret with the given name.
-func namedCreatedTokenSecret(name string) *v1.Secret {
+func namedCreatedTokenSecret(tenant string, name string) *v1.Secret {
+	namespaceKey := tenant + "/" + "default"
+	if tenant == "default" {
+		namespaceKey = "default"
+	}
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
-			Tenant:    "default",
+			Tenant:    tenant,
 			Annotations: map[string]string{
 				v1.ServiceAccountNameKey: "default",
 				v1.ServiceAccountUIDKey:  "12345",
@@ -139,18 +143,22 @@ func namedCreatedTokenSecret(name string) *v1.Secret {
 		Data: map[string][]byte{
 			"token":     []byte("ABC"),
 			"ca.crt":    []byte("CA Data"),
-			"namespace": []byte("default"),
+			"namespace": []byte(namespaceKey),
 		},
 	}
 }
 
 // serviceAccountTokenSecret returns an existing ServiceAccountToken secret named "token-secret-1"
-func serviceAccountTokenSecret() *v1.Secret {
+func serviceAccountTokenSecret(tenant string) *v1.Secret {
+	namespaceKey := tenant + "/" + "default"
+	if tenant == "default" {
+		namespaceKey = "default"
+	}
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "token-secret-1",
 			Namespace:       "default",
-			Tenant:          "default",
+			Tenant:          tenant,
 			UID:             "23456",
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -162,42 +170,42 @@ func serviceAccountTokenSecret() *v1.Secret {
 		Data: map[string][]byte{
 			"token":     []byte("ABC"),
 			"ca.crt":    []byte("CA Data"),
-			"namespace": []byte("default"),
+			"namespace": []byte(namespaceKey),
 		},
 	}
 }
 
 // serviceAccountTokenSecretWithoutTokenData returns an existing ServiceAccountToken secret that lacks token data
-func serviceAccountTokenSecretWithoutTokenData() *v1.Secret {
-	secret := serviceAccountTokenSecret()
+func serviceAccountTokenSecretWithoutTokenData(tenant string) *v1.Secret {
+	secret := serviceAccountTokenSecret(tenant)
 	delete(secret.Data, v1.ServiceAccountTokenKey)
 	return secret
 }
 
 // serviceAccountTokenSecretWithoutCAData returns an existing ServiceAccountToken secret that lacks ca data
-func serviceAccountTokenSecretWithoutCAData() *v1.Secret {
-	secret := serviceAccountTokenSecret()
+func serviceAccountTokenSecretWithoutCAData(tenant string) *v1.Secret {
+	secret := serviceAccountTokenSecret(tenant)
 	delete(secret.Data, v1.ServiceAccountRootCAKey)
 	return secret
 }
 
 // serviceAccountTokenSecretWithCAData returns an existing ServiceAccountToken secret with the specified ca data
-func serviceAccountTokenSecretWithCAData(data []byte) *v1.Secret {
-	secret := serviceAccountTokenSecret()
+func serviceAccountTokenSecretWithCAData(tenant string, data []byte) *v1.Secret {
+	secret := serviceAccountTokenSecret(tenant)
 	secret.Data[v1.ServiceAccountRootCAKey] = data
 	return secret
 }
 
 // serviceAccountTokenSecretWithoutNamespaceData returns an existing ServiceAccountToken secret that lacks namespace data
-func serviceAccountTokenSecretWithoutNamespaceData() *v1.Secret {
-	secret := serviceAccountTokenSecret()
+func serviceAccountTokenSecretWithoutNamespaceData(tenant string) *v1.Secret {
+	secret := serviceAccountTokenSecret(tenant)
 	delete(secret.Data, v1.ServiceAccountNamespaceKey)
 	return secret
 }
 
 // serviceAccountTokenSecretWithNamespaceData returns an existing ServiceAccountToken secret with the specified namespace data
-func serviceAccountTokenSecretWithNamespaceData(data []byte) *v1.Secret {
-	secret := serviceAccountTokenSecret()
+func serviceAccountTokenSecretWithNamespaceData(tenant string, data []byte) *v1.Secret {
+	secret := serviceAccountTokenSecret(tenant)
 	secret.Data[v1.ServiceAccountNamespaceKey] = data
 	return secret
 }
@@ -209,6 +217,14 @@ type reaction struct {
 }
 
 func TestTokenCreation(t *testing.T) {
+	testTokenCreation(t, "default")
+}
+
+func TestTokenCreationWithMultiTenancy(t *testing.T) {
+	testTokenCreation(t, "test-te")
+}
+
+func testTokenCreation(t *testing.T, tenant string) {
 	testcases := map[string]struct {
 		ClientObjects []runtime.Object
 
@@ -231,17 +247,17 @@ func TestTokenCreation(t *testing.T) {
 		ExpectedActions []core.Action
 	}{
 		"new serviceaccount with no secrets": {
-			ClientObjects: []runtime.Object{serviceAccount(emptySecretReferences())},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, emptySecretReferences())},
 
-			AddedServiceAccount: serviceAccount(emptySecretReferences()),
+			AddedServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, addTokenSecretReference(emptySecretReferences())), tenant),
 			},
 		},
 		"new serviceaccount with no secrets encountering create error": {
-			ClientObjects: []runtime.Object{serviceAccount(emptySecretReferences())},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, emptySecretReferences())},
 			MaxRetries:    10,
 			IsAsync:       true,
 			Reactors: []reaction{{
@@ -258,24 +274,24 @@ func TestTokenCreation(t *testing.T) {
 					}
 				},
 			}},
-			AddedServiceAccount: serviceAccount(emptySecretReferences()),
+			AddedServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 			ExpectedActions: []core.Action{
 				// Attempt 1
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
 
 				// Attempt 2
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret("default-token-txhzt")),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret(tenant, "default-token-txhzt"), tenant),
 
 				// Attempt 3
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret("default-token-vnmz7")),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(addNamedTokenSecretReference(emptySecretReferences(), "default-token-vnmz7"))),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret(tenant, "default-token-vnmz7"), tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, addNamedTokenSecretReference(emptySecretReferences(), "default-token-vnmz7")), tenant),
 			},
 		},
 		"new serviceaccount with no secrets encountering unending create error": {
-			ClientObjects: []runtime.Object{serviceAccount(emptySecretReferences()), createdTokenSecret()},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, emptySecretReferences()), createdTokenSecret(tenant)},
 			MaxRetries:    2,
 			IsAsync:       true,
 			Reactors: []reaction{{
@@ -288,286 +304,286 @@ func TestTokenCreation(t *testing.T) {
 				},
 			}},
 
-			AddedServiceAccount: serviceAccount(emptySecretReferences()),
+			AddedServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 			ExpectedActions: []core.Action{
 				// Attempt
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
 				// Retry 1
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret("default-token-txhzt")),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret(tenant, "default-token-txhzt"), tenant),
 				// Retry 2
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret("default-token-vnmz7")),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, namedCreatedTokenSecret(tenant, "default-token-vnmz7"), tenant),
 			},
 		},
 		"new serviceaccount with missing secrets": {
-			ClientObjects: []runtime.Object{serviceAccount(missingSecretReferences())},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, missingSecretReferences())},
 
-			AddedServiceAccount: serviceAccount(missingSecretReferences()),
+			AddedServiceAccount: serviceAccount(tenant, missingSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(addTokenSecretReference(missingSecretReferences()))),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, addTokenSecretReference(missingSecretReferences())), tenant),
 			},
 		},
 		"new serviceaccount with missing secrets and a local secret in the cache": {
-			ClientObjects: []runtime.Object{serviceAccount(missingSecretReferences())},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, missingSecretReferences())},
 
-			AddedServiceAccount: serviceAccount(tokenSecretReferences()),
-			AddedSecretLocal:    serviceAccountTokenSecret(),
+			AddedServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
+			AddedSecretLocal:    serviceAccountTokenSecret(tenant),
 			ExpectedActions:     []core.Action{},
 		},
 		"new serviceaccount with non-token secrets": {
-			ClientObjects: []runtime.Object{serviceAccount(regularSecretReferences()), opaqueSecret()},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, regularSecretReferences()), opaqueSecret(tenant)},
 
-			AddedServiceAccount: serviceAccount(regularSecretReferences()),
+			AddedServiceAccount: serviceAccount(tenant, regularSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(addTokenSecretReference(regularSecretReferences()))),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, addTokenSecretReference(regularSecretReferences())), tenant),
 			},
 		},
 		"new serviceaccount with token secrets": {
-			ClientObjects:   []runtime.Object{serviceAccount(tokenSecretReferences()), serviceAccountTokenSecret()},
-			ExistingSecrets: []*v1.Secret{serviceAccountTokenSecret()},
+			ClientObjects:   []runtime.Object{serviceAccount(tenant, tokenSecretReferences()), serviceAccountTokenSecret(tenant)},
+			ExistingSecrets: []*v1.Secret{serviceAccountTokenSecret(tenant)},
 
-			AddedServiceAccount: serviceAccount(tokenSecretReferences()),
+			AddedServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 			ExpectedActions:     []core.Action{},
 		},
 		"new serviceaccount with no secrets with resource conflict": {
-			ClientObjects: []runtime.Object{updatedServiceAccount(emptySecretReferences()), createdTokenSecret()},
+			ClientObjects: []runtime.Object{updatedServiceAccount(tenant, emptySecretReferences()), createdTokenSecret(tenant)},
 			IsAsync:       true,
 			MaxRetries:    1,
 
-			AddedServiceAccount: serviceAccount(emptySecretReferences()),
+			AddedServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
 			},
 		},
 		"updated serviceaccount with no secrets": {
-			ClientObjects: []runtime.Object{serviceAccount(emptySecretReferences())},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, emptySecretReferences())},
 
-			UpdatedServiceAccount: serviceAccount(emptySecretReferences()),
+			UpdatedServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, addTokenSecretReference(emptySecretReferences())), tenant),
 			},
 		},
 		"updated serviceaccount with missing secrets": {
-			ClientObjects: []runtime.Object{serviceAccount(missingSecretReferences())},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, missingSecretReferences())},
 
-			UpdatedServiceAccount: serviceAccount(missingSecretReferences()),
+			UpdatedServiceAccount: serviceAccount(tenant, missingSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(addTokenSecretReference(missingSecretReferences()))),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, addTokenSecretReference(missingSecretReferences())), tenant),
 			},
 		},
 		"updated serviceaccount with non-token secrets": {
-			ClientObjects: []runtime.Object{serviceAccount(regularSecretReferences()), opaqueSecret()},
+			ClientObjects: []runtime.Object{serviceAccount(tenant, regularSecretReferences()), opaqueSecret(tenant)},
 
-			UpdatedServiceAccount: serviceAccount(regularSecretReferences()),
+			UpdatedServiceAccount: serviceAccount(tenant, regularSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewCreateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(addTokenSecretReference(regularSecretReferences()))),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewCreateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, createdTokenSecret(tenant), tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, addTokenSecretReference(regularSecretReferences())), tenant),
 			},
 		},
 		"updated serviceaccount with token secrets": {
-			ExistingSecrets: []*v1.Secret{serviceAccountTokenSecret()},
+			ExistingSecrets: []*v1.Secret{serviceAccountTokenSecret(tenant)},
 
-			UpdatedServiceAccount: serviceAccount(tokenSecretReferences()),
+			UpdatedServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 			ExpectedActions:       []core.Action{},
 		},
 		"updated serviceaccount with no secrets with resource conflict": {
-			ClientObjects: []runtime.Object{updatedServiceAccount(emptySecretReferences())},
+			ClientObjects: []runtime.Object{updatedServiceAccount(tenant, emptySecretReferences())},
 			IsAsync:       true,
 			MaxRetries:    1,
 
-			UpdatedServiceAccount: serviceAccount(emptySecretReferences()),
+			UpdatedServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
 			},
 		},
 
 		"deleted serviceaccount with no secrets": {
-			DeletedServiceAccount: serviceAccount(emptySecretReferences()),
+			DeletedServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 			ExpectedActions:       []core.Action{},
 		},
 		"deleted serviceaccount with missing secrets": {
-			DeletedServiceAccount: serviceAccount(missingSecretReferences()),
+			DeletedServiceAccount: serviceAccount(tenant, missingSecretReferences()),
 			ExpectedActions:       []core.Action{},
 		},
 		"deleted serviceaccount with non-token secrets": {
-			ClientObjects: []runtime.Object{opaqueSecret()},
+			ClientObjects: []runtime.Object{opaqueSecret(tenant)},
 
-			DeletedServiceAccount: serviceAccount(regularSecretReferences()),
+			DeletedServiceAccount: serviceAccount(tenant, regularSecretReferences()),
 			ExpectedActions:       []core.Action{},
 		},
 		"deleted serviceaccount with token secrets": {
-			ClientObjects:   []runtime.Object{serviceAccountTokenSecret()},
-			ExistingSecrets: []*v1.Secret{serviceAccountTokenSecret()},
+			ClientObjects:   []runtime.Object{serviceAccountTokenSecret(tenant)},
+			ExistingSecrets: []*v1.Secret{serviceAccountTokenSecret(tenant)},
 
-			DeletedServiceAccount: serviceAccount(tokenSecretReferences()),
+			DeletedServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewDeleteAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
+				core.NewDeleteActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
 			},
 		},
 
 		"added secret without serviceaccount": {
-			ClientObjects: []runtime.Object{serviceAccountTokenSecret()},
+			ClientObjects: []runtime.Object{serviceAccountTokenSecret(tenant)},
 
-			AddedSecret: serviceAccountTokenSecret(),
+			AddedSecret: serviceAccountTokenSecret(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewDeleteAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewDeleteActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
 			},
 		},
 		"added secret with serviceaccount": {
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			AddedSecret:     serviceAccountTokenSecret(),
+			AddedSecret:     serviceAccountTokenSecret(tenant),
 			ExpectedActions: []core.Action{},
 		},
 		"added token secret without token data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutTokenData()},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutTokenData(tenant)},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			AddedSecret: serviceAccountTokenSecretWithoutTokenData(),
+			AddedSecret: serviceAccountTokenSecretWithoutTokenData(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"added token secret without ca data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutCAData()},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutCAData(tenant)},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			AddedSecret: serviceAccountTokenSecretWithoutCAData(),
+			AddedSecret: serviceAccountTokenSecretWithoutCAData(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"added token secret with mismatched ca data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithCAData([]byte("mismatched"))},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithCAData(tenant, []byte("mismatched"))},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			AddedSecret: serviceAccountTokenSecretWithCAData([]byte("mismatched")),
+			AddedSecret: serviceAccountTokenSecretWithCAData(tenant, []byte("mismatched")),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"added token secret without namespace data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutNamespaceData()},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutNamespaceData(tenant)},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			AddedSecret: serviceAccountTokenSecretWithoutNamespaceData(),
+			AddedSecret: serviceAccountTokenSecretWithoutNamespaceData(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"added token secret with custom namespace data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithNamespaceData([]byte("custom"))},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithNamespaceData(tenant, []byte("custom"))},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			AddedSecret:     serviceAccountTokenSecretWithNamespaceData([]byte("custom")),
+			AddedSecret:     serviceAccountTokenSecretWithNamespaceData(tenant, []byte("custom")),
 			ExpectedActions: []core.Action{
 				// no update is performed... the custom namespace is preserved
 			},
 		},
 
 		"updated secret without serviceaccount": {
-			ClientObjects: []runtime.Object{serviceAccountTokenSecret()},
+			ClientObjects: []runtime.Object{serviceAccountTokenSecret(tenant)},
 
-			UpdatedSecret: serviceAccountTokenSecret(),
+			UpdatedSecret: serviceAccountTokenSecret(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewDeleteAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewDeleteActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
 			},
 		},
 		"updated secret with serviceaccount": {
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			UpdatedSecret:   serviceAccountTokenSecret(),
+			UpdatedSecret:   serviceAccountTokenSecret(tenant),
 			ExpectedActions: []core.Action{},
 		},
 		"updated token secret without token data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutTokenData()},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutTokenData(tenant)},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			UpdatedSecret: serviceAccountTokenSecretWithoutTokenData(),
+			UpdatedSecret: serviceAccountTokenSecretWithoutTokenData(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"updated token secret without ca data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutCAData()},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutCAData(tenant)},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			UpdatedSecret: serviceAccountTokenSecretWithoutCAData(),
+			UpdatedSecret: serviceAccountTokenSecretWithoutCAData(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"updated token secret with mismatched ca data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithCAData([]byte("mismatched"))},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithCAData(tenant, []byte("mismatched"))},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			UpdatedSecret: serviceAccountTokenSecretWithCAData([]byte("mismatched")),
+			UpdatedSecret: serviceAccountTokenSecretWithCAData(tenant, []byte("mismatched")),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"updated token secret without namespace data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutNamespaceData()},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithoutNamespaceData(tenant)},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			UpdatedSecret: serviceAccountTokenSecretWithoutNamespaceData(),
+			UpdatedSecret: serviceAccountTokenSecretWithoutNamespaceData(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, "token-secret-1", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}, metav1.NamespaceDefault, serviceAccountTokenSecret(tenant), tenant),
 			},
 		},
 		"updated token secret with custom namespace data": {
-			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithNamespaceData([]byte("custom"))},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccountTokenSecretWithNamespaceData(tenant, []byte("custom"))},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			UpdatedSecret:   serviceAccountTokenSecretWithNamespaceData([]byte("custom")),
+			UpdatedSecret:   serviceAccountTokenSecretWithNamespaceData(tenant, []byte("custom")),
 			ExpectedActions: []core.Action{
 				// no update is performed... the custom namespace is preserved
 			},
 		},
 
 		"deleted secret without serviceaccount": {
-			DeletedSecret:   serviceAccountTokenSecret(),
+			DeletedSecret:   serviceAccountTokenSecret(tenant),
 			ExpectedActions: []core.Action{},
 		},
 		"deleted secret with serviceaccount with reference": {
-			ClientObjects:          []runtime.Object{serviceAccount(tokenSecretReferences())},
-			ExistingServiceAccount: serviceAccount(tokenSecretReferences()),
+			ClientObjects:          []runtime.Object{serviceAccount(tenant, tokenSecretReferences())},
+			ExistingServiceAccount: serviceAccount(tenant, tokenSecretReferences()),
 
-			DeletedSecret: serviceAccountTokenSecret(),
+			DeletedSecret: serviceAccountTokenSecret(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
-				core.NewUpdateAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(emptySecretReferences())),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
+				core.NewUpdateActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, serviceAccount(tenant, emptySecretReferences()), tenant),
 			},
 		},
 		"deleted secret with serviceaccount without reference": {
-			ExistingServiceAccount: serviceAccount(emptySecretReferences()),
+			ExistingServiceAccount: serviceAccount(tenant, emptySecretReferences()),
 
-			DeletedSecret: serviceAccountTokenSecret(),
+			DeletedSecret: serviceAccountTokenSecret(tenant),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default"),
+				core.NewGetActionWithMultiTenancy(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, metav1.NamespaceDefault, "default", tenant),
 			},
 		},
 	}
