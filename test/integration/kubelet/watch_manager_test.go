@@ -36,6 +36,14 @@ import (
 )
 
 func TestWatchBasedManager(t *testing.T) {
+	testWatchBasedManager(t, metav1.TenantDefault)
+}
+
+func TestWatchBasedManagerWithMultiTenancy(t *testing.T) {
+	testWatchBasedManager(t, "test-te")
+}
+
+func testWatchBasedManager(t *testing.T, tenant string) {
 	testNamespace := "test-watch-based-manager"
 	server := kubeapiservertesting.StartTestServerOrDie(t, nil, nil, framework.SharedEtcd())
 	defer server.TearDownFn()
@@ -47,15 +55,20 @@ func TestWatchBasedManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if _, err := client.CoreV1().Namespaces().Create((&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}})); err != nil {
+	if tenant != metav1.TenantDefault {
+		if _, err := client.CoreV1().Tenants().Create((&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: tenant}})); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := client.CoreV1().NamespacesWithMultiTenancy(tenant).Create((&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}})); err != nil {
 		t.Fatal(err)
 	}
 
-	listObj := func(namespace string, options metav1.ListOptions) (runtime.Object, error) {
-		return client.CoreV1().Secrets(namespace).List(options)
+	listObj := func(tenant, namespace string, options metav1.ListOptions) (runtime.Object, error) {
+		return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(options)
 	}
-	watchObj := func(namespace string, options metav1.ListOptions) (watch.Interface, error) {
-		return client.CoreV1().Secrets(namespace).Watch(options)
+	watchObj := func(tenant, namespace string, options metav1.ListOptions) (watch.Interface, error) {
+		return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(options)
 	}
 	newObj := func() runtime.Object { return &v1.Secret{} }
 	store := manager.NewObjectCache(listObj, watchObj, newObj, schema.GroupResource{Group: "v1", Resource: "secrets"})
@@ -69,7 +82,7 @@ func TestWatchBasedManager(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < 100; j++ {
 				name := fmt.Sprintf("s%d", i*100+j)
-				if _, err := client.CoreV1().Secrets(testNamespace).Create(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
+				if _, err := client.CoreV1().SecretsWithMultiTenancy(testNamespace, tenant).Create(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -88,9 +101,9 @@ func TestWatchBasedManager(t *testing.T) {
 			for j := 0; j < 100; j++ {
 				name := fmt.Sprintf("s%d", i*100+j)
 				start := time.Now()
-				store.AddReference(testNamespace, name)
+				store.AddReference(tenant, testNamespace, name)
 				err := wait.PollImmediate(10*time.Millisecond, 10*time.Second, func() (bool, error) {
-					obj, err := store.Get(testNamespace, name)
+					obj, err := store.Get(tenant, testNamespace, name)
 					if err != nil {
 						t.Logf("failed on %s, retrying: %v", name, err)
 						return false, nil
