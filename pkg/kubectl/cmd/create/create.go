@@ -225,6 +225,11 @@ func (o *CreateOptions) RunCreate(f cmdutil.Factory, cmd *cobra.Command) error {
 		return err
 	}
 
+	cmdTenant, enforceTenant, err := f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	cmdNamespace, enforceNamespace, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
@@ -234,8 +239,9 @@ func (o *CreateOptions) RunCreate(f cmdutil.Factory, cmd *cobra.Command) error {
 		Unstructured().
 		Schema(schema).
 		ContinueOnError().
+		TenantParam(cmdTenant).DefaultTenant().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(enforceTenant, enforceNamespace, &o.FilenameOptions).
 		LabelSelectorParam(o.Selector).
 		Flatten().
 		Do()
@@ -327,7 +333,7 @@ func RunEditOnCreate(f cmdutil.Factory, printFlags *genericclioptions.PrintFlags
 
 // createAndRefresh creates an object from input info and refreshes info with that object
 func createAndRefresh(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, nil)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, nil)
 	if err != nil {
 		return err
 	}
@@ -359,6 +365,9 @@ type CreateSubcommandOptions struct {
 	// DryRun is true if the command should be simulated but not run against the server
 	DryRun           bool
 	CreateAnnotation bool
+
+	Tenant        string
+	EnforceTenant bool
 
 	Namespace        string
 	EnforceNamespace bool
@@ -401,6 +410,11 @@ func (o *CreateSubcommandOptions) Complete(f cmdutil.Factory, cmd *cobra.Command
 
 	o.PrintObj = func(obj kruntime.Object, out io.Writer) error {
 		return printer.PrintObj(obj, out)
+	}
+
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
 	}
 
 	o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
@@ -448,10 +462,13 @@ func (o *CreateSubcommandOptions) Run() error {
 		if err := scheme.Scheme.Convert(obj, asUnstructured, nil); err != nil {
 			return err
 		}
+		if mapping.Scope.Name() == meta.RESTScopeNameRoot {
+			o.Tenant = ""
+		}
 		if mapping.Scope.Name() == meta.RESTScopeNameRoot || mapping.Scope.Name() == meta.RESTScopeNameTenant {
 			o.Namespace = ""
 		}
-		actualObject, err := o.DynamicClient.Resource(mapping.Resource).Namespace(o.Namespace).Create(asUnstructured, metav1.CreateOptions{})
+		actualObject, err := o.DynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(o.Namespace, o.Tenant).Create(asUnstructured, metav1.CreateOptions{})
 		if err != nil {
 			return err
 		}
@@ -459,8 +476,14 @@ func (o *CreateSubcommandOptions) Run() error {
 		// ensure we pass a versioned object to the printer
 		obj = actualObject
 	} else {
-		if meta, err := meta.Accessor(obj); err == nil && o.EnforceNamespace {
-			meta.SetNamespace(o.Namespace)
+		meta, err := meta.Accessor(obj)
+		if err == nil {
+			if o.EnforceTenant {
+				meta.SetTenant(o.Tenant)
+			}
+			if o.EnforceNamespace {
+				meta.SetNamespace(o.Namespace)
+			}
 		}
 	}
 
