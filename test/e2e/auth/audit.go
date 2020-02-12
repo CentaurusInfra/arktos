@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -660,13 +661,15 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		}
 
 		ginkgo.By("Creating a kubernetes client that impersonates an unauthorized anonymous user")
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err)
-		config.Impersonate = restclient.ImpersonationConfig{
-			UserName: "system:anonymous",
-			Groups:   []string{"system:unauthenticated"},
+		for _, config := range configs.GetAllConfigs() {
+			config.Impersonate = restclient.ImpersonationConfig{
+				UserName: "system:anonymous",
+				Groups:   []string{"system:unauthenticated"},
+			}
 		}
-		anonymousClient, err := clientset.NewForConfig(config)
+		anonymousClient, err := clientset.NewForConfig(configs)
 		framework.ExpectNoError(err)
 
 		_, err = anonymousClient.CoreV1().Pods(namespace).Get("another-audit-pod", metav1.GetOptions{})
@@ -693,13 +696,15 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 
 	ginkgo.It("should list pods as impersonated user.", func() {
 		ginkgo.By("Creating a kubernetes client that impersonates an authorized user")
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err)
-		config.Impersonate = restclient.ImpersonationConfig{
-			UserName: "superman",
-			Groups:   []string{"system:masters"},
+		for _, config := range configs.GetAllConfigs() {
+			config.Impersonate = restclient.ImpersonationConfig{
+				UserName: "superman",
+				Groups:   []string{"system:masters"},
+			}
 		}
-		impersonatedClient, err := clientset.NewForConfig(config)
+		impersonatedClient, err := clientset.NewForConfig(configs)
 		framework.ExpectNoError(err)
 
 		_, err = impersonatedClient.CoreV1().Pods(namespace).List(metav1.ListOptions{})

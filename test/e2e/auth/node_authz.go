@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,14 +63,16 @@ var _ = SIGDescribe("[Feature:NodeAuthorizer]", func() {
 		framework.ExpectNoError(err, "failed to retrieve service account (%s:%s)", ns, saName)
 		defaultSaSecret = sa.Secrets[0].Name
 		ginkgo.By("Creating a kubernetes client that impersonates a node")
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load kubernetes client config")
-		config.Impersonate = restclient.ImpersonationConfig{
-			UserName: asUser,
-			Groups:   []string{nodesGroup},
+		for _, config := range configs.GetAllConfigs() {
+			config.Impersonate = restclient.ImpersonationConfig{
+				UserName: asUser,
+				Groups:   []string{nodesGroup},
+			}
 		}
-		c, err = clientset.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create Clientset for the given config: %+v", *config)
+		c, err = clientset.NewForConfig(configs)
+		framework.ExpectNoError(err, "failed to create Clientset for the given config: %+v", *configs)
 
 	})
 	ginkgo.It("Getting a non-existent secret should exit with the Forbidden error, not a NotFound error", func() {

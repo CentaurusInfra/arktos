@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -160,7 +161,8 @@ func TestRunAccessCheck(t *testing.T) {
 						test.serverErr
 				}),
 			}
-			tf.ClientConfigVal = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+			kubeConfig := &restclient.KubeConfig{ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+			tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 			if err := test.o.Complete(tf, test.args); err != nil {
 				t.Errorf("%s: %v", test.name, err)

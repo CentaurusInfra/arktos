@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -264,9 +265,10 @@ func TestStream(t *testing.T) {
 				streamErr = localErr
 			}
 
-			conf := &restclient.Config{
+			kubeConfig := &restclient.KubeConfig{
 				Host: server.URL,
 			}
+			conf := restclient.NewAggregatedConfig(kubeConfig)
 			transport, upgradeTransport, err := spdy.RoundTripperFor(conf)
 			if err != nil {
 				t.Errorf("%s: unexpected error: %v", name, err)

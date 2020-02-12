@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,21 +45,21 @@ import (
 
 func TestIsConfigTransportTLS(t *testing.T) {
 	testCases := []struct {
-		Config       *Config
+		Config       *KubeConfig
 		TransportTLS bool
 	}{
 		{
-			Config:       &Config{},
+			Config:       &KubeConfig{},
 			TransportTLS: false,
 		},
 		{
-			Config: &Config{
+			Config: &KubeConfig{
 				Host: "https://localhost",
 			},
 			TransportTLS: true,
 		},
 		{
-			Config: &Config{
+			Config: &KubeConfig{
 				Host: "localhost",
 				TLSClientConfig: TLSClientConfig{
 					CertFile: "foo",
@@ -67,7 +68,7 @@ func TestIsConfigTransportTLS(t *testing.T) {
 			TransportTLS: true,
 		},
 		{
-			Config: &Config{
+			Config: &KubeConfig{
 				Host: "///:://localhost",
 				TLSClientConfig: TLSClientConfig{
 					CertFile: "foo",
@@ -76,7 +77,7 @@ func TestIsConfigTransportTLS(t *testing.T) {
 			TransportTLS: false,
 		},
 		{
-			Config: &Config{
+			Config: &KubeConfig{
 				Host: "1.2.3.4:567",
 				TLSClientConfig: TLSClientConfig{
 					Insecure: true,
@@ -98,7 +99,7 @@ func TestIsConfigTransportTLS(t *testing.T) {
 }
 
 func TestSetKubernetesDefaultsUserAgent(t *testing.T) {
-	config := &Config{}
+	config := &KubeConfig{}
 	if err := SetKubernetesDefaults(config); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -144,13 +145,13 @@ func TestDefaultKubernetesUserAgent(t *testing.T) {
 }
 
 func TestRESTClientRequires(t *testing.T) {
-	if _, err := RESTClientFor(&Config{Host: "127.0.0.1", ContentConfig: ContentConfig{NegotiatedSerializer: scheme.Codecs}}); err == nil {
+	if _, err := RESTClientFor(&KubeConfig{Host: "127.0.0.1", ContentConfig: ContentConfig{NegotiatedSerializer: scheme.Codecs}}); err == nil {
 		t.Errorf("unexpected non-error")
 	}
-	if _, err := RESTClientFor(&Config{Host: "127.0.0.1", ContentConfig: ContentConfig{GroupVersion: &v1.SchemeGroupVersion}}); err == nil {
+	if _, err := RESTClientFor(&KubeConfig{Host: "127.0.0.1", ContentConfig: ContentConfig{GroupVersion: &v1.SchemeGroupVersion}}); err == nil {
 		t.Errorf("unexpected non-error")
 	}
-	if _, err := RESTClientFor(&Config{Host: "127.0.0.1", ContentConfig: ContentConfig{GroupVersion: &v1.SchemeGroupVersion, NegotiatedSerializer: scheme.Codecs}}); err != nil {
+	if _, err := RESTClientFor(&KubeConfig{Host: "127.0.0.1", ContentConfig: ContentConfig{GroupVersion: &v1.SchemeGroupVersion, NegotiatedSerializer: scheme.Codecs}}); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -261,10 +262,11 @@ func TestAnonymousConfig(t *testing.T) {
 		func(r *func(ctx context.Context, network, addr string) (net.Conn, error), f fuzz.Continue) {},
 	)
 	for i := 0; i < 20; i++ {
-		original := &Config{}
-		f.Fuzz(original)
-		actual := AnonymousClientConfig(original)
-		expected := *original
+		originalKubeConfig := &KubeConfig{}
+		f.Fuzz(originalKubeConfig)
+		original := NewAggregatedConfig(originalKubeConfig)
+		actualConfigs := AnonymousClientConfig(original)
+		expected := *originalKubeConfig
 
 		// this is the list of known security related fields, add to this list if a new field
 		// is added to Config, update AnonymousClientConfig to preserve the field otherwise.
@@ -283,6 +285,7 @@ func TestAnonymousConfig(t *testing.T) {
 		expected.Transport = nil
 		expected.WrapTransport = nil
 
+		actual := actualConfigs.GetConfig()
 		if actual.Dial != nil {
 			_, actualError := actual.Dial(context.Background(), "", "")
 			_, expectedError := expected.Dial(context.Background(), "", "")
@@ -337,7 +340,7 @@ func TestCopyConfig(t *testing.T) {
 		},
 	)
 	for i := 0; i < 20; i++ {
-		original := &Config{}
+		original := &KubeConfig{}
 		f.Fuzz(original)
 		actual := CopyConfig(original)
 		expected := *original
@@ -386,7 +389,7 @@ func TestConfigStringer(t *testing.T) {
 	}
 	tests := []struct {
 		desc            string
-		c               *Config
+		c               *KubeConfig
 		expectContent   []string
 		prohibitContent []string
 	}{
@@ -397,7 +400,7 @@ func TestConfigStringer(t *testing.T) {
 		},
 		{
 			desc: "non-sensitive config",
-			c: &Config{
+			c: &KubeConfig{
 				Host:      "localhost:8080",
 				APIPath:   "v1",
 				UserAgent: "gobot",
@@ -406,7 +409,7 @@ func TestConfigStringer(t *testing.T) {
 		},
 		{
 			desc: "sensitive config",
-			c: &Config{
+			c: &KubeConfig{
 				Host:        "localhost:8080",
 				Username:    "gopher",
 				Password:    "g0ph3r",
@@ -465,7 +468,7 @@ func TestConfigStringer(t *testing.T) {
 }
 
 func TestConfigSprint(t *testing.T) {
-	c := &Config{
+	c := &KubeConfig{
 		Host:    "localhost:8080",
 		APIPath: "v1",
 		ContentConfig: ContentConfig{
@@ -504,7 +507,7 @@ func TestConfigSprint(t *testing.T) {
 		Dial:          fakeDialFunc,
 	}
 	want := fmt.Sprintf(
-		`&rest.Config{Host:"localhost:8080", APIPath:"v1", ContentConfig:rest.ContentConfig{AcceptContentTypes:"application/json", ContentType:"application/json", GroupVersion:(*schema.GroupVersion)(nil), NegotiatedSerializer:runtime.NegotiatedSerializer(nil)}, Username:"gopher", Password:"--- REDACTED ---", BearerToken:"--- REDACTED ---", BearerTokenFile:"", Impersonate:rest.ImpersonationConfig{UserName:"gopher2", Groups:[]string(nil), Extra:map[string][]string(nil)}, AuthProvider:api.AuthProviderConfig{Name: "gopher", Config: map[string]string{--- REDACTED ---}}, AuthConfigPersister:rest.AuthProviderConfigPersister(--- REDACTED ---), ExecProvider:api.AuthProviderConfig{Command: "sudo", Args: []string{"--- REDACTED ---"}, Env: []ExecEnvVar{--- REDACTED ---}, APIVersion: ""}, TLSClientConfig:rest.sanitizedTLSClientConfig{Insecure:false, ServerName:"", CertFile:"a.crt", KeyFile:"a.key", CAFile:"", CertData:[]uint8{0x2d, 0x2d, 0x2d, 0x20, 0x54, 0x52, 0x55, 0x4e, 0x43, 0x41, 0x54, 0x45, 0x44, 0x20, 0x2d, 0x2d, 0x2d}, KeyData:[]uint8{0x2d, 0x2d, 0x2d, 0x20, 0x52, 0x45, 0x44, 0x41, 0x43, 0x54, 0x45, 0x44, 0x20, 0x2d, 0x2d, 0x2d}, CAData:[]uint8(nil)}, UserAgent:"gobot", Transport:(*rest.fakeRoundTripper)(%p), WrapTransport:(transport.WrapperFunc)(%p), QPS:1, Burst:2, RateLimiter:(*rest.fakeLimiter)(%p), Timeout:3000000000, Dial:(func(context.Context, string, string) (net.Conn, error))(%p)}`,
+		`&rest.KubeConfig{Host:"localhost:8080", APIPath:"v1", ContentConfig:rest.ContentConfig{AcceptContentTypes:"application/json", ContentType:"application/json", GroupVersion:(*schema.GroupVersion)(nil), NegotiatedSerializer:runtime.NegotiatedSerializer(nil)}, Username:"gopher", Password:"--- REDACTED ---", BearerToken:"--- REDACTED ---", BearerTokenFile:"", Impersonate:rest.ImpersonationConfig{UserName:"gopher2", Groups:[]string(nil), Extra:map[string][]string(nil)}, AuthProvider:api.AuthProviderConfig{Name: "gopher", Config: map[string]string{--- REDACTED ---}}, AuthConfigPersister:rest.AuthProviderConfigPersister(--- REDACTED ---), ExecProvider:api.AuthProviderConfig{Command: "sudo", Args: []string{"--- REDACTED ---"}, Env: []ExecEnvVar{--- REDACTED ---}, APIVersion: ""}, TLSClientConfig:rest.sanitizedTLSClientConfig{Insecure:false, ServerName:"", CertFile:"a.crt", KeyFile:"a.key", CAFile:"", CertData:[]uint8{0x2d, 0x2d, 0x2d, 0x20, 0x54, 0x52, 0x55, 0x4e, 0x43, 0x41, 0x54, 0x45, 0x44, 0x20, 0x2d, 0x2d, 0x2d}, KeyData:[]uint8{0x2d, 0x2d, 0x2d, 0x20, 0x52, 0x45, 0x44, 0x41, 0x43, 0x54, 0x45, 0x44, 0x20, 0x2d, 0x2d, 0x2d}, CAData:[]uint8(nil)}, UserAgent:"gobot", Transport:(*rest.fakeRoundTripper)(%p), WrapTransport:(transport.WrapperFunc)(%p), QPS:1, Burst:2, RateLimiter:(*rest.fakeLimiter)(%p), Timeout:3000000000, Dial:(func(context.Context, string, string) (net.Conn, error))(%p)}`,
 		c.Transport, fakeWrapperFunc, c.RateLimiter, fakeDialFunc,
 	)
 

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/pkg/version"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/transport"
@@ -47,9 +49,74 @@ const (
 
 var ErrNotInCluster = errors.New("unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined")
 
-// Config holds the common attributes that can be passed to a Kubernetes client on
-// initialization.
+// Configs
+type AggregatedConfig interface {
+	GetConfig()
+	GetConfigInPlace(int)
+	GetAllConfigs()
+	AddConfig(*KubeConfig)
+	ToString()
+}
+
 type Config struct {
+	config []*KubeConfig
+}
+
+func NewAggregatedConfig(configs ...*KubeConfig) *Config {
+	ag := make([]*KubeConfig, len(configs))
+	for i, config := range configs {
+		ag[i] = config
+	}
+
+	return &Config{config: ag}
+}
+
+// For test purpose only
+func CreateEmptyConfig() *Config {
+	kubeConfig := &KubeConfig{}
+	return NewAggregatedConfig(kubeConfig)
+}
+
+func (ag *Config) AddConfig(config *KubeConfig) {
+	ag.config = append(ag.config, config)
+}
+
+func (ag *Config) GetAllConfigs() []*KubeConfig {
+	return ag.config
+}
+
+func (ag *Config) GetConfig() *KubeConfig {
+	max := len(ag.config)
+	switch max {
+	case 0:
+		return nil
+	case 1:
+		return ag.config[0]
+	default:
+		rand.Seed(time.Now().UnixNano())
+		ran := rand.IntnRange(0, max-1)
+		return ag.config[ran]
+	}
+}
+
+func (ag *Config) GetConfigInPlace(pos int) *KubeConfig {
+	if pos >= 0 && len(ag.config) > pos {
+		return ag.config[pos]
+	}
+	return nil
+}
+
+func (ag *Config) ToString() string {
+	text := ""
+	for _, kubeConfig := range ag.config {
+		text += fmt.Sprintf("%#v", kubeConfig)
+	}
+	return text
+}
+
+// kubeConfig holds the common attributes that can be passed to a Kubernetes client on
+// initialization.
+type KubeConfig struct {
 	// Host must be a host string, a host:port pair, or a URL to the base of the apiserver.
 	// If a URL is given then the (optional) Path of that URL represents a prefix that must
 	// be appended to all request URIs used to access the apiserver. This allows a frontend
@@ -129,10 +196,10 @@ type Config struct {
 	// Version string
 }
 
-var _ fmt.Stringer = new(Config)
-var _ fmt.GoStringer = new(Config)
+var _ fmt.Stringer = new(KubeConfig)
+var _ fmt.GoStringer = new(KubeConfig)
 
-type sanitizedConfig *Config
+type sanitizedConfig *KubeConfig
 
 type sanitizedAuthConfigPersister struct{ AuthProviderConfigPersister }
 
@@ -145,13 +212,13 @@ func (sanitizedAuthConfigPersister) String() string {
 
 // GoString implements fmt.GoStringer and sanitizes sensitive fields of Config
 // to prevent accidental leaking via logs.
-func (c *Config) GoString() string {
+func (c *KubeConfig) GoString() string {
 	return c.String()
 }
 
 // String implements fmt.Stringer and sanitizes sensitive fields of Config to
 // prevent accidental leaking via logs.
-func (c *Config) String() string {
+func (c *KubeConfig) String() string {
 	if c == nil {
 		return "<nil>"
 	}
@@ -265,7 +332,7 @@ type ContentConfig struct {
 // object. Note that a RESTClient may require fields that are optional when initializing a Client.
 // A RESTClient created by this method is generic - it expects to operate on an API that follows
 // the Kubernetes conventions, but may not be the Kubernetes API.
-func RESTClientFor(config *Config) (*RESTClient, error) {
+func RESTClientFor(config *KubeConfig) (*RESTClient, error) {
 	if config.GroupVersion == nil {
 		return nil, fmt.Errorf("GroupVersion is required when initializing a RESTClient")
 	}
@@ -304,7 +371,7 @@ func RESTClientFor(config *Config) (*RESTClient, error) {
 
 // UnversionedRESTClientFor is the same as RESTClientFor, except that it allows
 // the config.Version to be empty.
-func UnversionedRESTClientFor(config *Config) (*RESTClient, error) {
+func UnversionedRESTClientFor(config *KubeConfig) (*RESTClient, error) {
 	if config.NegotiatedSerializer == nil {
 		return nil, fmt.Errorf("NegotiatedSerializer is required when initializing a RESTClient")
 	}
@@ -338,7 +405,7 @@ func UnversionedRESTClientFor(config *Config) (*RESTClient, error) {
 
 // SetKubernetesDefaults sets default values on the provided client config for accessing the
 // Kubernetes API or returns an error if any of the defaults are impossible or invalid.
-func SetKubernetesDefaults(config *Config) error {
+func SetKubernetesDefaults(config *KubeConfig) error {
 	if len(config.UserAgent) == 0 {
 		config.UserAgent = DefaultKubernetesUserAgent()
 	}
@@ -419,13 +486,15 @@ func InClusterConfig() (*Config, error) {
 		tlsClientConfig.CAFile = rootCAFile
 	}
 
-	return &Config{
+	kConfig := &KubeConfig{
 		// TODO: switch to using cluster DNS.
 		Host:            "https://" + net.JoinHostPort(host, port),
 		TLSClientConfig: tlsClientConfig,
 		BearerToken:     string(token),
 		BearerTokenFile: tokenFile,
-	}, nil
+	}
+
+	return NewAggregatedConfig(kConfig), nil
 }
 
 // IsConfigTransportTLS returns true if and only if the provided
@@ -435,7 +504,7 @@ func InClusterConfig() (*Config, error) {
 //
 // Note: the Insecure flag is ignored when testing for this value, so MITM attacks are
 // still possible.
-func IsConfigTransportTLS(config Config) bool {
+func IsConfigTransportTLS(config KubeConfig) bool {
 	baseURL, _, err := defaultServerUrlFor(&config)
 	if err != nil {
 		return false
@@ -446,7 +515,7 @@ func IsConfigTransportTLS(config Config) bool {
 // LoadTLSFiles copies the data from the CertFile, KeyFile, and CAFile fields into the CertData,
 // KeyData, and CAFile fields, or returns an error. If no error is returned, all three fields are
 // either populated or were empty to start.
-func LoadTLSFiles(c *Config) error {
+func LoadTLSFiles(c *KubeConfig) error {
 	var err error
 	c.CAData, err = dataFromSliceOrFile(c.CAData, c.CAFile)
 	if err != nil {
@@ -483,35 +552,54 @@ func dataFromSliceOrFile(data []byte, file string) ([]byte, error) {
 
 func AddUserAgent(config *Config, userAgent string) *Config {
 	fullUserAgent := DefaultKubernetesUserAgent() + "/" + userAgent
-	config.UserAgent = fullUserAgent
+	kubeConfigs := config.GetAllConfigs()
+	for _, kubeConfig := range kubeConfigs {
+		kubeConfig.UserAgent = fullUserAgent
+	}
 	return config
 }
 
-// AnonymousClientConfig returns a copy of the given config with all user credentials (cert/key, bearer token, and username/password) and custom transports (WrapTransport, Transport) removed
-func AnonymousClientConfig(config *Config) *Config {
-	// copy only known safe fields
-	return &Config{
-		Host:          config.Host,
-		APIPath:       config.APIPath,
-		ContentConfig: config.ContentConfig,
-		TLSClientConfig: TLSClientConfig{
-			Insecure:   config.Insecure,
-			ServerName: config.ServerName,
-			CAFile:     config.TLSClientConfig.CAFile,
-			CAData:     config.TLSClientConfig.CAData,
-		},
-		RateLimiter: config.RateLimiter,
-		UserAgent:   config.UserAgent,
-		QPS:         config.QPS,
-		Burst:       config.Burst,
-		Timeout:     config.Timeout,
-		Dial:        config.Dial,
+func SetBearerToken(config *Config, token string) {
+	for _, kubeConfig := range config.GetAllConfigs() {
+		kubeConfig.BearerToken = token
 	}
 }
 
+// AnonymousClientConfig returns a copy of the given config with all user credentials (cert/key, bearer token, and username/password) and custom transports (WrapTransport, Transport) removed
+func AnonymousClientConfig(configs *Config) *Config {
+	if configs == nil || len(configs.GetAllConfigs()) == 0 {
+		return nil
+	}
+
+	anonymousClientConfigs := NewAggregatedConfig()
+	for _, config := range configs.GetAllConfigs() {
+		// copy only known safe fields
+		kubeConfig := &KubeConfig{
+			Host:          config.Host,
+			APIPath:       config.APIPath,
+			ContentConfig: config.ContentConfig,
+			TLSClientConfig: TLSClientConfig{
+				Insecure:   config.Insecure,
+				ServerName: config.ServerName,
+				CAFile:     config.TLSClientConfig.CAFile,
+				CAData:     config.TLSClientConfig.CAData,
+			},
+			RateLimiter: config.RateLimiter,
+			UserAgent:   config.UserAgent,
+			QPS:         config.QPS,
+			Burst:       config.Burst,
+			Timeout:     config.Timeout,
+			Dial:        config.Dial,
+		}
+		anonymousClientConfigs.AddConfig(kubeConfig)
+	}
+
+	return anonymousClientConfigs
+}
+
 // CopyConfig returns a copy of the given config
-func CopyConfig(config *Config) *Config {
-	return &Config{
+func CopyConfig(config *KubeConfig) *KubeConfig {
+	return &KubeConfig{
 		Host:            config.Host,
 		APIPath:         config.APIPath,
 		ContentConfig:   config.ContentConfig,
@@ -546,4 +634,14 @@ func CopyConfig(config *Config) *Config {
 		Timeout:       config.Timeout,
 		Dial:          config.Dial,
 	}
+}
+
+func CopyConfigs(configs *Config) *Config {
+	newCfgs := NewAggregatedConfig()
+	for _, cfg := range configs.GetAllConfigs() {
+		newCfg := CopyConfig(cfg)
+		newCfgs.AddConfig(newCfg)
+	}
+
+	return newCfgs
 }

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,11 +63,13 @@ func (p *Provider) GetGroupNodes(group string) ([]string, error) {
 // FrameworkBeforeEach prepares clients, configurations etc. for e2e testing
 func (p *Provider) FrameworkBeforeEach(f *framework.Framework) {
 	if *kubemarkExternalKubeConfig != "" && p.controller == nil {
-		externalConfig, err := clientcmd.BuildConfigFromFlags("", *kubemarkExternalKubeConfig)
-		externalConfig.QPS = f.Options.ClientQPS
-		externalConfig.Burst = f.Options.ClientBurst
+		externalConfigs, err := clientcmd.BuildConfigFromFlags("", *kubemarkExternalKubeConfig)
+		for _, externalConfig := range externalConfigs.GetAllConfigs() {
+			externalConfig.QPS = f.Options.ClientQPS
+			externalConfig.Burst = f.Options.ClientBurst
+		}
 		framework.ExpectNoError(err)
-		externalClient, err := clientset.NewForConfig(externalConfig)
+		externalClient, err := clientset.NewForConfig(externalConfigs)
 		framework.ExpectNoError(err)
 		f.KubemarkExternalClusterClientSet = externalClient
 		p.closeChannel = make(chan struct{})

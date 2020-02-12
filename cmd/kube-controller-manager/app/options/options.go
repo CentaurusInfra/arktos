@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -378,29 +379,32 @@ func (s KubeControllerManagerOptions) Config(allControllers []string, disabledBy
 		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 	}
 
-	kubeconfig, err := clientcmd.BuildConfigFromFlags(s.Master, s.Kubeconfig)
+	kubeconfigs, err := clientcmd.BuildConfigFromFlags(s.Master, s.Kubeconfig)
 	if err != nil {
 		return nil, err
 	}
-	kubeconfig.ContentConfig.ContentType = s.Generic.ClientConnection.ContentType
-	kubeconfig.QPS = s.Generic.ClientConnection.QPS
-	kubeconfig.Burst = int(s.Generic.ClientConnection.Burst)
 
-	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeconfig, KubeControllerManagerUserAgent))
+	for _, kubeConfig := range kubeconfigs.GetAllConfigs() {
+		kubeConfig.ContentConfig.ContentType = s.Generic.ClientConnection.ContentType
+		kubeConfig.QPS = s.Generic.ClientConnection.QPS
+		kubeConfig.Burst = int(s.Generic.ClientConnection.Burst)
+	}
+
+	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeconfigs, KubeControllerManagerUserAgent))
 	if err != nil {
 		return nil, err
 	}
 
 	// shallow copy, do not modify the kubeconfig.Timeout.
-	config := *kubeconfig
+	config := *kubeconfigs.GetConfig()
 	config.Timeout = s.Generic.LeaderElection.RenewDeadline.Duration
-	leaderElectionClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "leader-election"))
+	leaderElectionClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(restclient.NewAggregatedConfig(&config), "leader-election"))
 
 	eventRecorder := createRecorder(client, KubeControllerManagerUserAgent)
 
 	c := &kubecontrollerconfig.Config{
 		Client:               client,
-		Kubeconfig:           kubeconfig,
+		Kubeconfig:           kubeconfigs,
 		EventRecorder:        eventRecorder,
 		LeaderElectionClient: leaderElectionClient,
 	}

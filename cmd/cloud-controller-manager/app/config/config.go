@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,7 +47,7 @@ type Config struct {
 	LeaderElectionClient *clientset.Clientset
 
 	// the rest config for the master
-	Kubeconfig *restclient.Config
+	Kubeconfigs *restclient.Config
 
 	// the event sink
 	EventRecorder record.EventRecorder

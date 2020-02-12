@@ -566,7 +566,7 @@ func (c serviceAccountTokenControllerStarter) startServiceAccountTokenController
 			return nil, true, fmt.Errorf("error parsing root-ca-file at %s: %v", ctx.ComponentConfig.SAController.RootCAFile, err)
 		}
 	} else {
-		rootCA = c.rootClientBuilder.ConfigOrDie("tokens-controller").CAData
+		rootCA = c.rootClientBuilder.ConfigOrDie("tokens-controller").GetConfig().CAData
 	}
 
 	tokenGenerator, err := serviceaccount.JWTTokenGenerator(serviceaccount.LegacyIssuer, privateKey)

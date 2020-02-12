@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,8 +47,11 @@ type scaleClient struct {
 // NewForConfig creates a new ScalesGetter which resolves kinds
 // to resources using the given RESTMapper, and API paths using
 // the given dynamic.APIPathResolverFunc.
-func NewForConfig(cfg *restclient.Config, mapper PreferredResourceMapper, resolver dynamic.APIPathResolverFunc, scaleKindResolver ScaleKindResolver) (ScalesGetter, error) {
+// TODO - since this is used to support discoverable resource, assume single api server for now
+func NewForConfig(cfgs *restclient.Config, mapper PreferredResourceMapper, resolver dynamic.APIPathResolverFunc, scaleKindResolver ScaleKindResolver) (ScalesGetter, error) {
 	// so that the RESTClientFor doesn't complain
+	cfg := cfgs.GetConfig()
+
 	cfg.GroupVersion = &schema.GroupVersion{}
 
 	cfg.NegotiatedSerializer = codecs.WithoutConversion()

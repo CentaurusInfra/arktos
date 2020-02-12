@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,18 +42,19 @@ func main() {
 
 	klog.Infof("started")
 
-	cfg, err := rest.InClusterConfig()
+	cfgs, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("err: %v", err)
 	}
 
-	cfg.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+	kubeConfig := cfgs.GetConfig()
+	kubeConfig.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 		return &debugRt{
 			rt: rt,
 		}
 	})
 
-	c := kubernetes.NewForConfigOrDie(cfg).RESTClient()
+	c := kubernetes.NewForConfigOrDie(cfgs).RESTClient()
 
 	t := time.Tick(time.Duration(*pollInterval) * time.Second)
 	for {

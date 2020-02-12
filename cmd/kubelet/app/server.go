@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -564,7 +565,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		klog.Warningf("standalone mode, no API client")
 
 	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil:
-		clientConfig, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
+		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
 		if err != nil {
 			return err
 		}
@@ -573,32 +574,36 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		}
 		kubeDeps.OnHeartbeatFailure = closeAllConns
 
-		kubeDeps.KubeClient, err = clientset.NewForConfig(clientConfig)
+		kubeDeps.KubeClient, err = clientset.NewForConfig(clientConfigs)
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet client: %v", err)
 		}
 
 		// make a separate client for events
-		eventClientConfig := *clientConfig
-		eventClientConfig.QPS = float32(s.EventRecordQPS)
-		eventClientConfig.Burst = int(s.EventBurst)
-		kubeDeps.EventClient, err = v1core.NewForConfig(&eventClientConfig)
+		eventClientConfigs := *clientConfigs
+		for _, eventClientConfig := range eventClientConfigs.GetAllConfigs() {
+			eventClientConfig.QPS = float32(s.EventRecordQPS)
+			eventClientConfig.Burst = int(s.EventBurst)
+		}
+		kubeDeps.EventClient, err = v1core.NewForConfig(&eventClientConfigs)
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet event client: %v", err)
 		}
 
 		// make a separate client for heartbeat with throttling disabled and a timeout attached
-		heartbeatClientConfig := *clientConfig
-		heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
-		// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
-		if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
-			leaseTimeout := time.Duration(s.KubeletConfiguration.NodeLeaseDurationSeconds) * time.Second
-			if heartbeatClientConfig.Timeout > leaseTimeout {
-				heartbeatClientConfig.Timeout = leaseTimeout
+		heartbeatClientConfigs := *clientConfigs
+		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
+			heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
+			// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
+			if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
+				leaseTimeout := time.Duration(s.KubeletConfiguration.NodeLeaseDurationSeconds) * time.Second
+				if heartbeatClientConfig.Timeout > leaseTimeout {
+					heartbeatClientConfig.Timeout = leaseTimeout
+				}
 			}
+			heartbeatClientConfig.QPS = float32(-1)
 		}
-		heartbeatClientConfig.QPS = float32(-1)
-		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfig)
+		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet heartbeat client: %v", err)
 		}
@@ -769,7 +774,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 
 // buildKubeletClientConfig constructs the appropriate client config for the kubelet depending on whether
 // bootstrapping is enabled or client certificate rotation is enabled.
-func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName) (*restclient.Config, func(), error) {
+func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName) (*restclient.Config, []func(), error) {
 	if s.RotateCertificates && utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletClientCertificate) {
 		// Rules for client rotation and the handling of kube config files:
 		//
@@ -844,35 +849,44 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 }
 
 // updateDialer instruments a restconfig with a dial. the returned function allows forcefully closing all active connections.
-func updateDialer(clientConfig *restclient.Config) (func(), error) {
-	if clientConfig.Transport != nil || clientConfig.Dial != nil {
-		return nil, fmt.Errorf("there is already a transport or dialer configured")
+func updateDialer(clientConfigs *restclient.Config) ([]func(), error) {
+	returnFuncs := make([]func(), len(clientConfigs.GetAllConfigs()))
+	for i, clientConfig := range clientConfigs.GetAllConfigs() {
+		if clientConfig.Transport != nil || clientConfig.Dial != nil {
+			return nil, fmt.Errorf("there is already a transport or dialer configured")
+		}
+		d := connrotation.NewDialer((&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext)
+		clientConfig.Dial = d.DialContext
+
+		returnFuncs[i] = d.CloseAll
 	}
-	d := connrotation.NewDialer((&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext)
-	clientConfig.Dial = d.DialContext
-	return d.CloseAll, nil
+	return returnFuncs, nil
 }
 
 // buildClientCertificateManager creates a certificate manager that will use certConfig to request a client certificate
 // if no certificate is available, or the most recent clientConfig (which is assumed to point to the cert that the manager will
 // write out).
-func buildClientCertificateManager(certConfig, clientConfig *restclient.Config, certDir string, nodeName types.NodeName) (certificate.Manager, error) {
+func buildClientCertificateManager(certConfig, clientConfigs *restclient.Config, certDir string, nodeName types.NodeName) (certificate.Manager, error) {
 	newClientFn := func(current *tls.Certificate) (certificatesclient.CertificateSigningRequestInterface, error) {
 		// If we have a valid certificate, use that to fetch CSRs. Otherwise use the bootstrap
 		// credentials. In the future it would be desirable to change the behavior of bootstrap
 		// to always fall back to the external bootstrap credentials when such credentials are
 		// provided by a fundamental trust system like cloud VM identity or an HSM module.
-		config := certConfig
+		configs := certConfig
 		if current != nil {
-			config = clientConfig
+			configs = clientConfigs
 		}
-		client, err := clientset.NewForConfig(config)
+		clients, err := clientset.NewForConfig(configs)
 		if err != nil {
 			return nil, err
 		}
-		return client.CertificatesV1beta1().CertificateSigningRequests(), nil
+		return clients.CertificatesV1beta1().CertificateSigningRequests(), nil
 	}
 
+	// Cerificates Manager is used to sign certificates. It should be only one.
+	// TODO - Verify usage
+
+	clientConfig := clientConfigs.GetConfig()
 	return kubeletcertificate.NewKubeletClientCertificateManager(
 		certDir,
 		nodeName,
@@ -889,11 +903,14 @@ func buildClientCertificateManager(certConfig, clientConfig *restclient.Config, 
 	)
 }
 
-func kubeClientConfigOverrides(s *options.KubeletServer, clientConfig *restclient.Config) {
-	setContentTypeForClient(clientConfig, s.ContentType)
+func kubeClientConfigOverrides(s *options.KubeletServer, clientConfigs *restclient.Config) {
+	setContentTypeForClient(clientConfigs, s.ContentType)
 	// Override kubeconfig qps/burst settings from flags
-	clientConfig.QPS = float32(s.KubeAPIQPS)
-	clientConfig.Burst = int(s.KubeAPIBurst)
+
+	for _, clientConfig := range clientConfigs.GetAllConfigs() {
+		clientConfig.QPS = float32(s.KubeAPIQPS)
+		clientConfig.Burst = int(s.KubeAPIBurst)
+	}
 }
 
 // getNodeName returns the node name according to the cloud provider
@@ -986,16 +1003,19 @@ func InitializeTLS(kf *options.KubeletFlags, kc *kubeletconfiginternal.KubeletCo
 
 // setContentTypeForClient sets the appropritae content type into the rest config
 // and handles defaulting AcceptContentTypes based on that input.
-func setContentTypeForClient(cfg *restclient.Config, contentType string) {
+func setContentTypeForClient(cfgs *restclient.Config, contentType string) {
 	if len(contentType) == 0 {
 		return
 	}
-	cfg.ContentType = contentType
-	switch contentType {
-	case runtime.ContentTypeProtobuf:
-		cfg.AcceptContentTypes = strings.Join([]string{runtime.ContentTypeProtobuf, runtime.ContentTypeJSON}, ",")
-	default:
-		// otherwise let the rest client perform defaulting
+
+	for _, cfg := range cfgs.GetAllConfigs() {
+		cfg.ContentType = contentType
+		switch contentType {
+		case runtime.ContentTypeProtobuf:
+			cfg.AcceptContentTypes = strings.Join([]string{runtime.ContentTypeProtobuf, runtime.ContentTypeJSON}, ",")
+		default:
+			// otherwise let the rest client perform defaulting
+		}
 	}
 }
 

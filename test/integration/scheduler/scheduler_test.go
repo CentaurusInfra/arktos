@@ -82,7 +82,8 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 	ns := framework.CreateTestingNamespace("configmap", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
-	clientSet := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	clientSet := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	defer clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
 
@@ -311,7 +312,8 @@ func TestSchedulerCreationFromNonExistentConfigMap(t *testing.T) {
 	ns := framework.CreateTestingNamespace("configmap", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
-	clientSet := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	clientSet := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	defer clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
 
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
@@ -624,7 +626,8 @@ func TestMultiScheduler(t *testing.T) {
 	}
 
 	// 5. create and start a scheduler with name "foo-scheduler"
-	clientSet2 := clientset.NewForConfigOrDie(&restclient.Config{Host: context.httpServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{Host: context.httpServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	clientSet2 := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	informerFactory2 := informers.NewSharedInformerFactory(context.clientSet, 0)
 	podInformer2 := factory.NewPodInformer(context.clientSet, 0)
 

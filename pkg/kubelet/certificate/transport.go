@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,31 +53,36 @@ import (
 //
 // stopCh should be used to indicate when the transport is unused and doesn't need
 // to continue checking the manager.
-func UpdateTransport(stopCh <-chan struct{}, clientConfig *restclient.Config, clientCertificateManager certificate.Manager, exitAfter time.Duration) (func(), error) {
+func UpdateTransport(stopCh <-chan struct{}, clientConfig *restclient.Config, clientCertificateManager certificate.Manager, exitAfter time.Duration) ([]func(), error) {
 	return updateTransport(stopCh, 10*time.Second, clientConfig, clientCertificateManager, exitAfter)
 }
 
 // updateTransport is an internal method that exposes how often this method checks that the
 // client cert has changed.
-func updateTransport(stopCh <-chan struct{}, period time.Duration, clientConfig *restclient.Config, clientCertificateManager certificate.Manager, exitAfter time.Duration) (func(), error) {
-	if clientConfig.Transport != nil || clientConfig.Dial != nil {
-		return nil, fmt.Errorf("there is already a transport or dialer configured")
-	}
+func updateTransport(stopCh <-chan struct{}, period time.Duration, clientConfigs *restclient.Config, clientCertificateManager certificate.Manager, exitAfter time.Duration) ([]func(), error) {
+	returnFuncs := make([]func(), len(clientConfigs.GetAllConfigs()))
 
-	d := connrotation.NewDialer((&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext)
-
-	if clientCertificateManager != nil {
-		if err := addCertRotation(stopCh, period, clientConfig, clientCertificateManager, exitAfter, d); err != nil {
-			return nil, err
+	for i, clientConfig := range clientConfigs.GetAllConfigs() {
+		if clientConfig.Transport != nil || clientConfig.Dial != nil {
+			return nil, fmt.Errorf("there is already a transport or dialer configured")
 		}
-	} else {
-		clientConfig.Dial = d.DialContext
-	}
 
-	return d.CloseAll, nil
+		d := connrotation.NewDialer((&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext)
+
+		if clientCertificateManager != nil {
+			if err := addCertRotation(stopCh, period, clientConfig, clientCertificateManager, exitAfter, d); err != nil {
+				return nil, err
+			}
+		} else {
+			clientConfig.Dial = d.DialContext
+		}
+
+		returnFuncs[i] = d.CloseAll
+	}
+	return returnFuncs, nil
 }
 
-func addCertRotation(stopCh <-chan struct{}, period time.Duration, clientConfig *restclient.Config, clientCertificateManager certificate.Manager, exitAfter time.Duration, d *connrotation.Dialer) error {
+func addCertRotation(stopCh <-chan struct{}, period time.Duration, clientConfig *restclient.KubeConfig, clientCertificateManager certificate.Manager, exitAfter time.Duration, d *connrotation.Dialer) error {
 	tlsConfig, err := restclient.TLSConfigFor(clientConfig)
 	if err != nil {
 		return fmt.Errorf("unable to configure TLS for the rest client: %v", err)

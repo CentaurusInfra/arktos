@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -131,7 +132,7 @@ func TestForwardPorts(t *testing.T) {
 	for testName, test := range tests {
 		server := httptest.NewServer(fakePortForwardServer(t, testName, test.serverSends, test.clientSends))
 
-		transport, upgrader, err := spdy.RoundTripperFor(&restclient.Config{})
+		transport, upgrader, err := spdy.RoundTripperFor(restclient.CreateEmptyConfig())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -202,7 +203,7 @@ func TestForwardPortsReturnsErrorWhenAllBindsFailed(t *testing.T) {
 	server := httptest.NewServer(fakePortForwardServer(t, "allBindsFailed", nil, nil))
 	defer server.Close()
 
-	transport, upgrader, err := spdy.RoundTripperFor(&restclient.Config{})
+	transport, upgrader, err := spdy.RoundTripperFor(restclient.CreateEmptyConfig())
 	if err != nil {
 		t.Fatal(err)
 	}

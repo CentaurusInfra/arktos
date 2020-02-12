@@ -599,10 +599,17 @@ function start_apiserver {
     configfilepath="${PARTITION_CONFIG_DIR}apiserver${configsuffix}.config"
     ${CONTROLPLANE_SUDO} rm -f  $configfilepath
     echo "Creating apiserver partition config file  $configfilepath..."
+    previous=tenant$(($1+1))
+    if [[ $1 -eq 0 ]]; then
+      previous=
+    fi
+    partition_end=tenant$(($1+2))
+    if [[ "$(($1 + 1))" -eq "${APISERVER_NUMBER}" ]]; then
+      partition_end=
+    fi
     cat << EOF | ${CONTROLPLANE_SUDO}  tee -a $configfilepath
-/registry/pods/, tenant$(($1+1)), tenant$(($1+2))
+/registry/pods/,$previous,$partition_end
 EOF
-
     security_admission=""
     if [[ -n "${DENY_SECURITY_CONTEXT_ADMISSION}" ]]; then
       security_admission=",SecurityContextDeny"
@@ -1160,6 +1167,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   set_service_accounts
   echo "Starting ${APISERVER_NUMBER} kube-apiserver instances. If you want to make changes to the kube-apiserver nubmer, please run export APISERVER_SERVER=n(n=1,2,...). "
   APISERVER_PID_ARRAY=()
+  previous=
   for ((i = $((APISERVER_NUMBER - 1)) ; i >= 0 ; i--)); do
     start_apiserver $i
   done

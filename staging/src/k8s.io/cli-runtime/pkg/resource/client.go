@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,11 +24,13 @@ import (
 )
 
 // TODO require negotiatedSerializer.  leaving it optional lets us plumb current behavior and deal with the difference after major plumbing is complete
+// TODO assume single client config for now
 func (clientConfigFn ClientConfigFunc) clientForGroupVersion(gv schema.GroupVersion, negotiatedSerializer runtime.NegotiatedSerializer) (RESTClient, error) {
-	cfg, err := clientConfigFn()
+	cfgs, err := clientConfigFn()
 	if err != nil {
 		return nil, err
 	}
+	cfg := cfgs.GetConfig()
 	if negotiatedSerializer != nil {
 		cfg.ContentConfig.NegotiatedSerializer = negotiatedSerializer
 	}
@@ -42,10 +45,11 @@ func (clientConfigFn ClientConfigFunc) clientForGroupVersion(gv schema.GroupVers
 }
 
 func (clientConfigFn ClientConfigFunc) unstructuredClientForGroupVersion(gv schema.GroupVersion) (RESTClient, error) {
-	cfg, err := clientConfigFn()
+	cfgs, err := clientConfigFn()
 	if err != nil {
 		return nil, err
 	}
+	cfg := cfgs.GetConfig()
 	cfg.ContentConfig = UnstructuredPlusDefaultContentConfig()
 	cfg.GroupVersion = &gv
 	if len(gv.Group) == 0 {

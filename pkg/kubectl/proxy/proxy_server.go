@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -147,7 +148,8 @@ func (r *responder) Error(w http.ResponseWriter, req *http.Request, err error) {
 
 // makeUpgradeTransport creates a transport that explicitly bypasses HTTP2 support
 // for proxy connections that must upgrade.
-func makeUpgradeTransport(config *rest.Config, keepalive time.Duration) (proxy.UpgradeRequestRoundTripper, error) {
+// TODO - Assume one server for now
+func makeUpgradeTransport(config *rest.KubeConfig, keepalive time.Duration) (proxy.UpgradeRequestRoundTripper, error) {
 	transportConfig, err := config.TransportConfig()
 	if err != nil {
 		return nil, err
@@ -173,7 +175,9 @@ func makeUpgradeTransport(config *rest.Config, keepalive time.Duration) (proxy.U
 
 // NewServer creates and installs a new Server.
 // 'filter', if non-nil, protects requests to the api only.
-func NewServer(filebase string, apiProxyPrefix string, staticPrefix string, filter *FilterServer, cfg *rest.Config, keepalive time.Duration) (*Server, error) {
+// TODO - assume one server for now
+func NewServer(filebase string, apiProxyPrefix string, staticPrefix string, filter *FilterServer, cfgs *rest.Config, keepalive time.Duration) (*Server, error) {
+	cfg := cfgs.GetConfig()
 	host := cfg.Host
 	if !strings.HasSuffix(host, "/") {
 		host = host + "/"

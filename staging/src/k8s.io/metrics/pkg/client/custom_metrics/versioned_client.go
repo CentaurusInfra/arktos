@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,7 +55,7 @@ func NewForVersion(client rest.Interface, mapper meta.RESTMapper, version schema
 
 // NewForVersionForConfig returns a new CustomMetricsClient for a particular api version and base configuration.
 func NewForVersionForConfig(c *rest.Config, mapper meta.RESTMapper, version schema.GroupVersion) (CustomMetricsClient, error) {
-	configShallowCopy := *c
+	configShallowCopy := *c.GetConfig()
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}

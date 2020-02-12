@@ -455,7 +455,7 @@ func (f *TestFactory) DynamicClient() (dynamic.Interface, error) {
 func (f *TestFactory) RESTClient() (*restclient.RESTClient, error) {
 	// Swap out the HTTP client out of the client with the fake's version.
 	fakeClient := f.Client.(*fake.RESTClient)
-	restClient, err := restclient.RESTClientFor(f.ClientConfigVal)
+	restClient, err := restclient.RESTClientFor(f.ClientConfigVal.GetConfig())
 	if err != nil {
 		panic(err)
 	}

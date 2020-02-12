@@ -153,11 +153,18 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 
 	// set the loopback client config
 	if masterConfig.GenericConfig.LoopbackClientConfig == nil {
-		masterConfig.GenericConfig.LoopbackClientConfig = &restclient.Config{QPS: 50, Burst: 100, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		kubeConfig := &restclient.KubeConfig{QPS: 50, Burst: 100, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		masterConfig.GenericConfig.LoopbackClientConfig = restclient.NewAggregatedConfig(kubeConfig)
 	}
-	masterConfig.GenericConfig.LoopbackClientConfig.Host = s.URL
 
 	privilegedLoopbackToken := uuid.NewRandom().String()
+
+	// TODO - performance test pick up multiple api server partition
+	for _, config := range masterConfig.GenericConfig.LoopbackClientConfig.GetAllConfigs() {
+		config.Host = s.URL
+		config.BearerToken = privilegedLoopbackToken
+	}
+
 	// wrap any available authorizer
 	tokens := make(map[string]*user.DefaultInfo)
 	tokens[privilegedLoopbackToken] = &user.DefaultInfo{
@@ -180,14 +187,12 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 		masterConfig.GenericConfig.Authorization.Authorizer = alwaysAllow{}
 	}
 
-	masterConfig.GenericConfig.LoopbackClientConfig.BearerToken = privilegedLoopbackToken
-
 	clientset, err := clientset.NewForConfig(masterConfig.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		klog.Fatal(err)
 	}
 
-	masterConfig.ExtraConfig.VersionedInformers = informers.NewSharedInformerFactory(clientset, masterConfig.GenericConfig.LoopbackClientConfig.Timeout)
+	masterConfig.ExtraConfig.VersionedInformers = informers.NewSharedInformerFactory(clientset, masterConfig.GenericConfig.LoopbackClientConfig.GetConfig().Timeout)
 	m, err = masterConfig.Complete().New(genericapiserver.NewEmptyDelegate())
 	if err != nil {
 		closeFn()
@@ -203,7 +208,7 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 	m.GenericAPIServer.PrepareRun()
 	m.GenericAPIServer.RunPostStartHooks(stopCh)
 
-	cfg := *masterConfig.GenericConfig.LoopbackClientConfig
+	cfg := *masterConfig.GenericConfig.LoopbackClientConfig.GetConfig()
 	cfg.ContentConfig.GroupVersion = &schema.GroupVersion{}
 	privilegedClient, err := restclient.RESTClientFor(&cfg)
 	if err != nil {
@@ -374,3 +379,15 @@ func (fakeLocalhost443Listener) Addr() net.Addr {
 		Port: 443,
 	}
 }
+
+// NewIntegrationServerWithPartitionConfig returns two master config for api server partition tests.
+func NewIntegrationServerWithPartitionConfig(prefix, configFilename string) (*master.Config) {
+	etcdOptions := DefaultEtcdOptions()
+	etcdOptions.StorageConfig.Prefix = prefix
+	etcdOptions.StorageConfig.PartitionConfigFilepath = configFilename
+	masterConfigOptions1 := &MasterConfigOptions{EtcdOptions: etcdOptions}
+	master1Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions1, "192.168.10.6")
+
+	return master1Config
+}
+

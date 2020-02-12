@@ -573,11 +573,12 @@ func TestUpdateExistingNodeStatusTimeout(t *testing.T) {
 		}
 	}()
 
-	config := &rest.Config{
+	kubeConfig := &rest.KubeConfig{
 		Host:    "http://" + ln.Addr().String(),
 		QPS:     -1,
 		Timeout: time.Second,
 	}
+	config := rest.NewAggregatedConfig(kubeConfig)
 	assert.NoError(t, err)
 
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
@@ -585,9 +586,12 @@ func TestUpdateExistingNodeStatusTimeout(t *testing.T) {
 	kubelet := testKubelet.kubelet
 	kubelet.kubeClient = nil // ensure only the heartbeat client is used
 	kubelet.heartbeatClient, err = clientset.NewForConfig(config)
-	kubelet.onRepeatedHeartbeatFailure = func() {
+
+	f := func() {
 		atomic.AddInt64(&failureCallbacks, 1)
 	}
+	kubelet.onRepeatedHeartbeatFailure = make([]func(), 1)
+	kubelet.onRepeatedHeartbeatFailure[0] = f
 	kubelet.containerManager = &localCM{
 		ContainerManager: cm.NewStubContainerManager(),
 		allocatableReservation: v1.ResourceList{

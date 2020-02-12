@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -347,7 +348,7 @@ func doTestMustConnectSendDisconnect(bindAddress string, f *framework.Framework)
 }
 
 func doTestOverWebSockets(bindAddress string, f *framework.Framework) {
-	config, err := framework.LoadConfig()
+	configs, err := framework.LoadConfig()
 	framework.ExpectNoError(err, "unable to get base config")
 
 	ginkgo.By("Creating the pod")
@@ -367,6 +368,8 @@ func doTestOverWebSockets(bindAddress string, f *framework.Framework) {
 		Param("ports", "80")
 
 	url := req.URL()
+	// TODO - use single api server for now
+	config := configs.GetConfig()
 	ws, err := framework.OpenWebSocketForURL(url, config, []string{"v4.channel.k8s.io"})
 	if err != nil {
 		framework.Failf("Failed to open websocket to %s: %v", url.String(), err)

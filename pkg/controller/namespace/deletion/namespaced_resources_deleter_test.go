@@ -316,10 +316,11 @@ func testSyncNamespaceThatIsActive(t *testing.T, tenant string) {
 // testServerAndClientConfig returns a server that listens and a config that can reference it
 func testServerAndClientConfig(handler func(http.ResponseWriter, *http.Request)) (*httptest.Server, *restclient.Config) {
 	srv := httptest.NewServer(http.HandlerFunc(handler))
-	config := &restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host: srv.URL,
 	}
-	return srv, config
+	configs := restclient.NewAggregatedConfig(kubeConfig)
+	return srv, configs
 }
 
 // fakeAction records information about requests to aid in testing.

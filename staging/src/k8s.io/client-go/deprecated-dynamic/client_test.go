@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,10 +61,11 @@ func getObject(version, kind, name string) *unstructured.Unstructured {
 
 func getClientServer(gv *schema.GroupVersion, h func(http.ResponseWriter, *http.Request)) (Interface, *httptest.Server, error) {
 	srv := httptest.NewServer(http.HandlerFunc(h))
-	cl, err := NewClient(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          srv.URL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: gv},
-	}, *gv)
+	}
+	cl, err := NewClient(restclient.NewAggregatedConfig(kubeConfig), *gv)
 	if err != nil {
 		srv.Close()
 		return nil, nil, err

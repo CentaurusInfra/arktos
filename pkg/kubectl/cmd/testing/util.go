@@ -45,7 +45,7 @@ func DefaultHeader() http.Header {
 }
 
 func DefaultClientConfig() *restclient.Config {
-	return &restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		APIPath: "/api",
 		ContentConfig: restclient.ContentConfig{
 			NegotiatedSerializer: scheme.Codecs,
@@ -53,6 +53,8 @@ func DefaultClientConfig() *restclient.Config {
 			GroupVersion:         &corev1.SchemeGroupVersion,
 		},
 	}
+
+	return restclient.NewAggregatedConfig(kubeConfig)
 }
 
 func ObjBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +34,9 @@ type Upgrader interface {
 }
 
 // RoundTripperFor returns a round tripper and upgrader to use with SPDY.
-func RoundTripperFor(config *restclient.Config) (http.RoundTripper, Upgrader, error) {
+// Currently all upstream code except test has single URL - treat as one client
+func RoundTripperFor(configs *restclient.Config) (http.RoundTripper, Upgrader, error) {
+	config := configs.GetConfig()
 	tlsConfig, err := restclient.TLSConfigFor(config)
 	if err != nil {
 		return nil, nil, err

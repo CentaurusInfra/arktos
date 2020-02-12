@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -59,7 +60,7 @@ func NewForConfig(baseConfig *rest.Config, mapper meta.RESTMapper, availableAPIs
 		availableAPIs: availableAPIs,
 
 		newClient: func(ver schema.GroupVersion) (CustomMetricsClient, error) {
-			return NewForVersionForConfig(rest.CopyConfig(baseConfig), mapper, ver)
+			return NewForVersionForConfig(baseConfig, mapper, ver)
 		},
 	}
 }

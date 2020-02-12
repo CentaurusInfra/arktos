@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -159,7 +160,9 @@ func TestMarkControlPlane(t *testing.T) {
 			}))
 			defer s.Close()
 
-			cs, err := clientset.NewForConfig(&restclient.Config{Host: s.URL})
+			kubeConfig := restclient.KubeConfig{Host: s.URL}
+			configs := restclient.NewAggregatedConfig(&kubeConfig)
+			cs, err := clientset.NewForConfig(configs)
 			if err != nil {
 				t.Fatalf("MarkControlPlane(%s): unexpected error building clientset: %v", tc.name, err)
 			}

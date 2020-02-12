@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,12 +34,13 @@ import (
 //   - client rate limit is set to 5000.
 func mustSetupScheduler() (factory.Configurator, util.ShutdownFunc) {
 	apiURL, apiShutdown := util.StartApiserver()
-	clientSet := clientset.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          apiURL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}},
 		QPS:           5000.0,
 		Burst:         5000,
-	})
+	}
+	clientSet := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	schedulerConfig, schedulerShutdown := util.StartScheduler(clientSet)
 
 	shutdownFunc := func() {

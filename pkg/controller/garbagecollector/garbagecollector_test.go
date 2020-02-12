@@ -59,7 +59,7 @@ type testRESTMapper struct {
 func (_ *testRESTMapper) Reset() {}
 
 func TestGarbageCollectorConstruction(t *testing.T) {
-	config := &restclient.Config{}
+	config := restclient.CreateEmptyConfig()
 	tweakableRM := meta.NewDefaultRESTMapper(nil)
 	rm := &testRESTMapper{meta.MultiRESTMapper{tweakableRM, testrestmapper.TestOnlyStaticRESTMapper(legacyscheme.Scheme)}}
 	dynamicClient, err := dynamic.NewForConfig(config)
@@ -182,10 +182,11 @@ func (f *fakeActionHandler) ServeHTTP(response http.ResponseWriter, request *htt
 // testServerAndClientConfig returns a server that listens and a config that can reference it
 func testServerAndClientConfig(handler func(http.ResponseWriter, *http.Request)) (*httptest.Server, *restclient.Config) {
 	srv := httptest.NewServer(http.HandlerFunc(handler))
-	config := &restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host: srv.URL,
 	}
-	return srv, config
+	configs := restclient.NewAggregatedConfig(kubeConfig)
+	return srv, configs
 }
 
 type garbageCollector struct {
@@ -486,7 +487,7 @@ func TestProcessEvent(t *testing.T) {
 // TestDependentsRace relies on golang's data race detector to check if there is
 // data race among in the dependents field.
 func TestDependentsRace(t *testing.T) {
-	gc := setupGC(t, &restclient.Config{})
+	gc := setupGC(t, restclient.CreateEmptyConfig())
 	defer close(gc.stop)
 
 	const updates = 100
@@ -1017,7 +1018,7 @@ func TestGarbageCollectorSync(t *testing.T) {
 	}
 	srv, clientConfig := testServerAndClientConfig(testHandler.ServeHTTP)
 	defer srv.Close()
-	clientConfig.ContentConfig.NegotiatedSerializer = nil
+	//clientConfig.ContentConfig.NegotiatedSerializer = nil
 	client, err := kubernetes.NewForConfig(clientConfig)
 	if err != nil {
 		t.Fatal(err)

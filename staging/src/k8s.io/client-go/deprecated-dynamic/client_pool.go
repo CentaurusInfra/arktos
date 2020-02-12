@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -108,10 +109,12 @@ func (c *clientPoolImpl) ClientForGroupVersionKind(kind schema.GroupVersionKind)
 	conf := &confCopy
 
 	// we need to set the api path based on group version, if no group, default to legacy path
-	conf.APIPath = c.apiPathResolverFunc(kind)
+	for _, config := range conf.GetAllConfigs() {
+		config.APIPath = c.apiPathResolverFunc(kind)
 
-	// we need to make a client
-	conf.GroupVersion = &gv
+		// we need to make a client
+		config.GroupVersion = &gv
+	}
 
 	dynamicClient, err := NewClient(conf, gv)
 	if err != nil {
