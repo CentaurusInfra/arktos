@@ -599,10 +599,17 @@ function start_apiserver {
     configfilepath="${PARTITION_CONFIG_DIR}apiserver${configsuffix}.config"
     ${CONTROLPLANE_SUDO} rm -f  $configfilepath
     echo "Creating apiserver partition config file  $configfilepath..."
+    previous=tenant$(($1+1))
+    if [[ $1 -eq 0 ]]; then
+      previous=
+    fi
+    partition_end=tenant$(($1+2))
+    if [[ "$(($1 + 1))" -eq "${APISERVER_NUMBER}" ]]; then
+      partition_end=
+    fi
     cat << EOF | ${CONTROLPLANE_SUDO}  tee -a $configfilepath
-/registry/pods/,$previous,tenant$(($1+2))
+/registry/pods/,$previous,$partition_end
 EOF
-    previous=tenant$(($1+2))
     security_admission=""
     if [[ -n "${DENY_SECURITY_CONTEXT_ADMISSION}" ]]; then
       security_admission=",SecurityContextDeny"
