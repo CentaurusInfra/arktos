@@ -607,6 +607,7 @@ function start_apiserver {
     if [[ "$(($1 + 1))" -eq "${APISERVER_NUMBER}" ]]; then
       partition_end=
     fi
+
     cat << EOF | ${CONTROLPLANE_SUDO}  tee -a $configfilepath
 /registry/pods/,$previous,$partition_end
 EOF
@@ -729,11 +730,15 @@ EOF
     # Create kubeconfigs for all components, using client certs
     # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" admin
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" "admin$1"
     ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
+
+    # Move the admin kubeconfig for each apiserver
+    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin.kubeconfig" "${CERT_DIR}/admin$1.kubeconfig"
+    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/workload-controller.kubeconfig" "${CERT_DIR}/workload-controller$1.kubeconfig"
+
 
     if [[ -z "${AUTH_ARGS}" ]]; then
         AUTH_ARGS="--client-key=${CERT_DIR}/client-admin.key --client-certificate=${CERT_DIR}/client-admin.crt"
@@ -741,12 +746,12 @@ EOF
 
     # Grant apiserver permission to speak to the kubelet
     # TODO kubelet can talk to mutilple apiservers. However, it needs to implement after code changes
-    ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" create clusterrolebinding kube-apiserver-kubelet-admin --clusterrole=system:kubelet-api-admin --user=kube-apiserver
+    ${KUBECTL} --kubeconfig "${CERT_DIR}/admin$1.kubeconfig" create clusterrolebinding kube-apiserver-kubelet-admin --clusterrole=system:kubelet-api-admin --user=kube-apiserver
 
-    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin.kubeconfig" "${CERT_DIR}/admin-kube-aggregator.kubeconfig"
-    ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/admin-kube-aggregator.kubeconfig"
-    ${KUBECTL} config set-cluster local-up-cluster --kubeconfig="${CERT_DIR}/admin-kube-aggregator.kubeconfig" --server="https://${API_HOST_IP}:31090"
-    echo "use 'kubectl --kubeconfig=${CERT_DIR}/admin-kube-aggregator.kubeconfig' to use the aggregated API server"
+    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin$1.kubeconfig" "${CERT_DIR}/admin-kube-aggregator$1.kubeconfig"
+    ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/admin-kube-aggregator$1.kubeconfig"
+    ${KUBECTL} config set-cluster local-up-cluster --kubeconfig="${CERT_DIR}/admin-kube-aggregator$1.kubeconfig" --server="https://${API_HOST_IP}:31090"
+    echo "use 'kubectl --kubeconfig=${CERT_DIR}/admin-kube-aggregator$1.kubeconfig' to use the aggregated API server"
 
     # Copy workload controller manager config to run path
     ${CONTROLPLANE_SUDO} cp "cmd/workload-controller-manager/config/controllerconfig.json" "${CERT_DIR}/controllerconfig.json"
@@ -791,10 +796,19 @@ function start_controller_manager {
 function start_workload_controller_manager {
     controller_config_arg=("--controllerconfig=${WORKLOAD_CONTROLLER_CONFIG_PATH}")
 
+    kubeconfigfilepaths="${CERT_DIR}/workload-controller.kubeconfig"
+
+    if [ "${APISERVER_NUMBER}" > "1" ]; then
+        kubeconfigfilepaths=""
+        for ((i=0; i<=$((APISERVER_NUMBER - 1)) ; i++)); do
+          kubeconfigfilepaths+="${CERT_DIR}/workload-controller$i.kubeconfig "
+        done
+    fi
+
     WORKLOAD_CONTROLLER_LOG=${LOG_DIR}/workload-controller-manager.log
     ${CONTROLPLANE_SUDO} "${GO_OUT}/workload-controller-manager" \
       --v="${LOG_LEVEL}" \
-      --kubeconfig "${CERT_DIR}"/workload-controller.kubeconfig \
+      --kubeconfig "$kubeconfigfilepaths" \
       "${controller_config_arg[@]}" >"${WORKLOAD_CONTROLLER_LOG}" 2>&1 &
     WORKLOAD_CTLRMGR_PID=$!
 }
