@@ -1,11 +1,10 @@
-# See the OWNERS docs at https://go.k8s.io/owners
-
 reviewers:
-  - brendandburns
-  - smarterclayton
-  - thockin
+  - deepak-vij
+  - panda98004
+  - xiaoningDing
+  - zmn223
 approvers:
-  - brendandburns
-  - smarterclayton
-  - thockin
-  - pwittrock
+  - deepak-vij
+  - panda98004
+  - xiaoningDing
+  - zmn223
