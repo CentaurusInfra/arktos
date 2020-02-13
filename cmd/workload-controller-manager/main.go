@@ -22,6 +22,7 @@ import (
 	"k8s.io/klog"
 	"net"
 	"os"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/clientcmd"
@@ -48,7 +49,7 @@ const (
 
 func init() {
 	kubeconfigEnv := os.Getenv("KUBECONFIG")
-	flag.StringVar(&kubeconfig, "kubeconfig", kubeconfigEnv, "absolute path to the kubeconfig file")
+	flag.StringVar(&kubeconfig, "kubeconfig", kubeconfigEnv, "absolute path to the kubeconfig files")
 	flag.StringVar(&controllerconfigfilepath, "controllerconfig", "", "absolute path to the controllerconfig file")
 	flag.IntVar(&workloadControllerPort, "port", ports.InsecureWorkloadControllerManagerPort, "port for current workload controller manager rest service")
 	flag.Parse()
@@ -76,19 +77,30 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 		fmt.Println("using controller configuration from ", controllerconfigfilepath)
 	}
 
-	controllerManagerKubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return nil, err
+	kubeconfigarray := strings.Split(kubeconfig, " ")
+	klog.V(3).Infof("using kube configuration from %+v", kubeconfigarray)
+
+	var configs []*restclient.KubeConfig
+	for _, kubeconfigitem := range kubeconfigarray {
+		if len(kubeconfigitem) > 0 {
+
+			restkubeconfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigitem)
+			if err != nil {
+				return nil, err
+			}
+			configs = append(configs, restkubeconfig.GetAllConfigs()...)
+		}
 	}
 
-	client, err := clientset.NewForConfig(restclient.AddUserAgent(controllerManagerKubeConfig, WorkloadControllerManagerUserAgent))
+	agConfig := restclient.NewAggregatedConfig(configs...)
+	client, err := clientset.NewForConfig(agConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &controllerManagerConfig.Config{
 		Client:                  client,
-		ControllerManagerConfig: controllerManagerKubeConfig,
+		ControllerManagerConfig: agConfig,
 		ControllerTypeConfig:    controllerconfig,
 		//EventRecorder:        eventRecorder,
 	}
