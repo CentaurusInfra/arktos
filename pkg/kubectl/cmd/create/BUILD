@@ -74,6 +74,7 @@ go_test(
         "create_service_test.go",
         "create_serviceaccount_test.go",
         "create_test.go",
+        "multi_tenancy_create_test.go",
     ],
     data = [
         "//test/e2e/testing-manifests:all-srcs",
