@@ -21,6 +21,7 @@ go_library(
         "service.go",
         "service_basic.go",
         "serviceaccount.go",
+        "tenant.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/kubectl/generate/versioned",
     visibility = ["//visibility:public"],
@@ -72,6 +73,7 @@ go_test(
         "service_basic_test.go",
         "service_test.go",
         "serviceaccount_test.go",
+        "tenant_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
