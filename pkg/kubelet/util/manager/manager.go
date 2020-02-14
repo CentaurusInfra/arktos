@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +26,8 @@ import (
 // objects referenced by pods in the underlying cache and
 // extracting those from that cache if needed.
 type Manager interface {
-	// Get object by its namespace and name.
-	GetObject(namespace, name string) (runtime.Object, error)
+	// Get object by its tenant, namespace and name.
+	GetObject(tenant, namespace, name string) (runtime.Object, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.
@@ -49,12 +50,12 @@ type Store interface {
 	// AddReference adds a reference to the object to the store.
 	// Note that multiple additions to the store has to be allowed
 	// in the implementations and effectively treated as refcounted.
-	AddReference(namespace, name string)
+	AddReference(tenant, namespace, name string)
 	// DeleteReference deletes reference to the object from the store.
 	// Note that object should be deleted only when there was a
 	// corresponding Delete call for each of Add calls (effectively
 	// when refcount was reduced to zero).
-	DeleteReference(namespace, name string)
+	DeleteReference(tenant, namespace, name string)
 	// Get an object from a store.
-	Get(namespace, name string) (runtime.Object, error)
+	Get(tenant, namespace, name string) (runtime.Object, error)
 }

@@ -31,39 +31,50 @@ import (
 )
 
 func TestServiceAccountCreation(t *testing.T) {
+	testServiceAccountCreation(t, metav1.TenantDefault)
+}
+
+func TestServiceAccountCreationWithMultiTenancy(t *testing.T) {
+	testServiceAccountCreation(t, "test-te")
+}
+
+func testServiceAccountCreation(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
 
 	defaultName := "default"
 	managedName := "managed"
 
 	activeNS := &v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: ns},
+		ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Name: ns},
 		Status: v1.NamespaceStatus{
 			Phase: v1.NamespaceActive,
 		},
 	}
 	terminatingNS := &v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: ns},
+		ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Name: ns},
 		Status: v1.NamespaceStatus{
 			Phase: v1.NamespaceTerminating,
 		},
 	}
 	defaultServiceAccount := &v1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault,
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant:          tenant,
 			Name:            defaultName,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 	}
 	managedServiceAccount := &v1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault,
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant:          tenant,
 			Name:            managedName,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 	}
 	unmanagedServiceAccount := &v1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault,
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant:          tenant,
 			Name:            "other-unmanaged",
 			Namespace:       ns,
 			ResourceVersion: "1",

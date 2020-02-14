@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,7 +80,7 @@ type configMapManager struct {
 }
 
 func (c *configMapManager) GetConfigMap(namespace, name string) (*v1.ConfigMap, error) {
-	object, err := c.manager.GetObject(namespace, name)
+	object, err := c.manager.GetObject(metav1.TenantDefault, namespace, name)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ const (
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingConfigMapManager(kubeClient clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
-	getConfigMap := func(namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
+	getConfigMap := func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
 		return kubeClient.CoreV1().ConfigMaps(namespace).Get(name, opts)
 	}
 	configMapStore := manager.NewObjectStore(getConfigMap, clock.RealClock{}, getTTL, defaultTTL)
@@ -135,10 +136,10 @@ func NewCachingConfigMapManager(kubeClient clientset.Interface, getTTL manager.G
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingConfigMapManager(kubeClient clientset.Interface) Manager {
-	listConfigMap := func(namespace string, opts metav1.ListOptions) (runtime.Object, error) {
+	listConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
 		return kubeClient.CoreV1().ConfigMaps(namespace).List(opts)
 	}
-	watchConfigMap := func(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
+	watchConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
 		return kubeClient.CoreV1().ConfigMaps(namespace).Watch(opts)
 	}
 	newConfigMap := func() runtime.Object {

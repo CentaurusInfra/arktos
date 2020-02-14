@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +43,7 @@ const (
 // secretPlugin implements the VolumePlugin interface.
 type secretPlugin struct {
 	host      volume.VolumeHost
-	getSecret func(namespace, name string) (*v1.Secret, error)
+	getSecret func(tenant, namespace, name string) (*v1.Secret, error)
 }
 
 var _ volume.VolumePlugin = &secretPlugin{}
@@ -158,7 +159,7 @@ type secretVolumeMounter struct {
 	source    v1.SecretVolumeSource
 	pod       v1.Pod
 	opts      *volume.VolumeOptions
-	getSecret func(namespace, name string) (*v1.Secret, error)
+	getSecret func(tenant, namespace, name string) (*v1.Secret, error)
 }
 
 var _ volume.Mounter = &secretVolumeMounter{}
@@ -192,14 +193,15 @@ func (b *secretVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterArgs
 	}
 
 	optional := b.source.Optional != nil && *b.source.Optional
-	secret, err := b.getSecret(b.pod.Namespace, b.source.SecretName)
+	secret, err := b.getSecret(b.pod.Tenant, b.pod.Namespace, b.source.SecretName)
 	if err != nil {
 		if !(errors.IsNotFound(err) && optional) {
-			klog.Errorf("Couldn't get secret %v/%v: %v", b.pod.Namespace, b.source.SecretName, err)
+			klog.Errorf("Couldn't get secret %v/%v/%v: %v", b.pod.Tenant, b.pod.Namespace, b.source.SecretName, err)
 			return err
 		}
 		secret = &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:    b.pod.Tenant,
 				Namespace: b.pod.Namespace,
 				Name:      b.source.SecretName,
 			},
@@ -207,7 +209,8 @@ func (b *secretVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterArgs
 	}
 
 	totalBytes := totalSecretBytes(secret)
-	klog.V(3).Infof("Received secret %v/%v containing (%v) pieces of data, %v total bytes",
+	klog.V(3).Infof("Received secret %v/%v/%v containing (%v) pieces of data, %v total bytes",
+		b.pod.Tenant,
 		b.pod.Namespace,
 		b.source.SecretName,
 		len(secret.Data),

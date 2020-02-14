@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +37,7 @@ import (
 // Manager interface provides methods for Kubelet to manage secrets.
 type Manager interface {
 	// Get secret by secret namespace and name.
-	GetSecret(namespace, name string) (*v1.Secret, error)
+	GetSecret(tenant, namespace, name string) (*v1.Secret, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.
@@ -60,8 +61,8 @@ func NewSimpleSecretManager(kubeClient clientset.Interface) Manager {
 	return &simpleSecretManager{kubeClient: kubeClient}
 }
 
-func (s *simpleSecretManager) GetSecret(namespace, name string) (*v1.Secret, error) {
-	return s.kubeClient.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+func (s *simpleSecretManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
+	return s.kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 
 func (s *simpleSecretManager) RegisterPod(pod *v1.Pod) {
@@ -78,8 +79,8 @@ type secretManager struct {
 	manager manager.Manager
 }
 
-func (s *secretManager) GetSecret(namespace, name string) (*v1.Secret, error) {
-	object, err := s.manager.GetObject(namespace, name)
+func (s *secretManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
+	object, err := s.manager.GetObject(tenant, namespace, name)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +120,8 @@ const (
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingSecretManager(kubeClient clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
-	getSecret := func(namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
-		return kubeClient.CoreV1().Secrets(namespace).Get(name, opts)
+	getSecret := func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
+		return kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	secretStore := manager.NewObjectStore(getSecret, clock.RealClock{}, getTTL, defaultTTL)
 	return &secretManager{
@@ -135,11 +136,11 @@ func NewCachingSecretManager(kubeClient clientset.Interface, getTTL manager.GetO
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingSecretManager(kubeClient clientset.Interface) Manager {
-	listSecret := func(namespace string, opts metav1.ListOptions) (runtime.Object, error) {
-		return kubeClient.CoreV1().Secrets(namespace).List(opts)
+	listSecret := func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
+		return kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(opts)
 	}
-	watchSecret := func(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-		return kubeClient.CoreV1().Secrets(namespace).Watch(opts)
+	watchSecret := func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
+		return kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newSecret := func() runtime.Object {
 		return &v1.Secret{}

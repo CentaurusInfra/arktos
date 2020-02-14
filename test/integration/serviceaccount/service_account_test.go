@@ -63,6 +63,14 @@ const (
 )
 
 func TestServiceAccountAutoCreate(t *testing.T) {
+	testServiceAccountAutoCreate(t, metav1.TenantDefault)
+}
+
+func TestServiceAccountAutoCreateWithMultiTenancy(t *testing.T) {
+	testServiceAccountAutoCreate(t, "test-te")
+}
+
+func testServiceAccountAutoCreate(t *testing.T, tenant string) {
 	c, _, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -72,25 +80,25 @@ func TestServiceAccountAutoCreate(t *testing.T) {
 	ns := "test-service-account-creation"
 
 	// Create namespace
-	_, err = c.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+	_, err = c.CoreV1().NamespacesWithMultiTenancy(tenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	if err != nil {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Get service account
-	defaultUser, err := getServiceAccount(c, ns, "default", true)
+	defaultUser, err := getServiceAccount(c, tenant, ns, "default", true)
 	if err != nil {
 		t.Fatalf("Default serviceaccount not created: %v", err)
 	}
 
 	// Delete service account
-	err = c.CoreV1().ServiceAccounts(ns).Delete(defaultUser.Name, nil)
+	err = c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Delete(defaultUser.Name, nil)
 	if err != nil {
 		t.Fatalf("Could not delete default serviceaccount: %v", err)
 	}
 
 	// Get recreated service account
-	defaultUser2, err := getServiceAccount(c, ns, "default", true)
+	defaultUser2, err := getServiceAccount(c, tenant, ns, "default", true)
 	if err != nil {
 		t.Fatalf("Default serviceaccount not created: %v", err)
 	}
@@ -100,6 +108,14 @@ func TestServiceAccountAutoCreate(t *testing.T) {
 }
 
 func TestServiceAccountTokenAutoCreate(t *testing.T) {
+	testServiceAccountTokenAutoCreate(t, metav1.TenantDefault)
+}
+
+func TestServiceAccountTokenAutoCreateWithMultiTenancy(t *testing.T) {
+	testServiceAccountTokenAutoCreate(t, "test-te")
+}
+
+func testServiceAccountTokenAutoCreate(t *testing.T, tenant string) {
 	c, _, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -110,31 +126,31 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	name := "my-service-account"
 
 	// Create namespace
-	_, err = c.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+	_, err = c.CoreV1().NamespacesWithMultiTenancy(tenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	if err != nil {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Create service account
-	serviceAccount, err := c.CoreV1().ServiceAccounts(ns).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name}})
+	serviceAccount, err := c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name}})
 	if err != nil {
 		t.Fatalf("Service Account not created: %v", err)
 	}
 
 	// Get token
-	token1Name, token1, err := getReferencedServiceAccountToken(c, ns, name, true)
+	token1Name, token1, err := getReferencedServiceAccountToken(c, tenant, ns, name, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Delete token
-	err = c.CoreV1().Secrets(ns).Delete(token1Name, nil)
+	err = c.CoreV1().SecretsWithMultiTenancy(ns, tenant).Delete(token1Name, nil)
 	if err != nil {
 		t.Fatalf("Could not delete token: %v", err)
 	}
 
 	// Get recreated token
-	token2Name, token2, err := getReferencedServiceAccountToken(c, ns, name, true)
+	token2Name, token2, err := getReferencedServiceAccountToken(c, tenant, ns, name, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,18 +162,18 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	}
 
 	// Trigger creation of a new referenced token
-	serviceAccount, err = c.CoreV1().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+	serviceAccount, err = c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	serviceAccount.Secrets = []v1.ObjectReference{}
-	_, err = c.CoreV1().ServiceAccounts(ns).Update(serviceAccount)
+	_, err = c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Update(serviceAccount)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Get rotated token
-	token3Name, token3, err := getReferencedServiceAccountToken(c, ns, name, true)
+	token3Name, token3, err := getReferencedServiceAccountToken(c, tenant, ns, name, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +185,7 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	}
 
 	// Delete service account
-	err = c.CoreV1().ServiceAccounts(ns).Delete(name, nil)
+	err = c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Delete(name, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +194,7 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	tokensToCleanup := sets.NewString(token1Name, token2Name, token3Name)
 	err = wait.Poll(time.Second, 10*time.Second, func() (bool, error) {
 		// Get all secrets in the namespace
-		secrets, err := c.CoreV1().Secrets(ns).List(metav1.ListOptions{})
+		secrets, err := c.CoreV1().SecretsWithMultiTenancy(ns, tenant).List(metav1.ListOptions{})
 		// Retrieval errors should fail
 		if err != nil {
 			return false, err
@@ -198,6 +214,14 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 }
 
 func TestServiceAccountTokenAutoMount(t *testing.T) {
+	testServiceAccountTokenAutoMount(t, metav1.TenantDefault)
+}
+
+func TestServiceAccountTokenAutoMountWithMultiTenancy(t *testing.T) {
+	testServiceAccountTokenAutoMount(t, "test-te")
+}
+
+func testServiceAccountTokenAutoMount(t *testing.T, tenant string) {
 	c, _, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -207,13 +231,13 @@ func TestServiceAccountTokenAutoMount(t *testing.T) {
 	ns := "auto-mount-ns"
 
 	// Create "my" namespace
-	_, err = c.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+	_, err = c.CoreV1().NamespacesWithMultiTenancy(tenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Get default token
-	defaultTokenName, _, err := getReferencedServiceAccountToken(c, ns, serviceaccountadmission.DefaultServiceAccountName, true)
+	defaultTokenName, _, err := getReferencedServiceAccountToken(c, tenant, ns, serviceaccountadmission.DefaultServiceAccountName, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +285,7 @@ func TestServiceAccountTokenAutoMount(t *testing.T) {
 	}
 	expectedContainer2VolumeMounts := protoPod.Spec.Containers[1].VolumeMounts
 
-	createdPod, err := c.CoreV1().Pods(ns).Create(&protoPod)
+	createdPod, err := c.CoreV1().PodsWithMultiTenancy(ns, tenant).Create(&protoPod)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,6 +304,15 @@ func TestServiceAccountTokenAutoMount(t *testing.T) {
 }
 
 func TestServiceAccountTokenAuthentication(t *testing.T) {
+	testServiceAccountTokenAuthentication(t, metav1.TenantDefault)
+}
+
+// Enable the following test after the multi-tenancy authentication is done
+/*func TestServiceAccountTokenAuthenticationWithMultiTenancy(t *testing.T) {
+	testServiceAccountTokenAuthentication(t, "test-te")
+}*/
+
+func testServiceAccountTokenAuthentication(t *testing.T, tenant string) {
 	c, config, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -290,38 +323,38 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 	otherns := "other-ns"
 
 	// Create "my" namespace
-	_, err = c.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: myns}})
+	_, err = c.CoreV1().NamespacesWithMultiTenancy(tenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: myns}})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Create "other" namespace
-	_, err = c.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: otherns}})
+	_, err = c.CoreV1().NamespacesWithMultiTenancy(tenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: otherns}})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Create "ro" user in myns
-	_, err = c.CoreV1().ServiceAccounts(myns).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readOnlyServiceAccountName}})
+	_, err = c.CoreV1().ServiceAccountsWithMultiTenancy(myns, tenant).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readOnlyServiceAccountName}})
 	if err != nil {
 		t.Fatalf("Service Account not created: %v", err)
 	}
-	roTokenName, roToken, err := getReferencedServiceAccountToken(c, myns, readOnlyServiceAccountName, true)
+	roTokenName, roToken, err := getReferencedServiceAccountToken(c, tenant, myns, readOnlyServiceAccountName, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	roClientConfigs := restclient.CopyConfigs(&config)
 	restclient.SetBearerToken(roClientConfigs, roToken)
 	roClient := clientset.NewForConfigOrDie(roClientConfigs)
-	doServiceAccountAPIRequests(t, roClient, myns, true, true, false)
-	doServiceAccountAPIRequests(t, roClient, otherns, true, false, false)
+	doServiceAccountAPIRequests(t, roClient, tenant, myns, true, true, false)
+	doServiceAccountAPIRequests(t, roClient, tenant, otherns, true, false, false)
 	err = c.CoreV1().Secrets(myns).Delete(roTokenName, nil)
 	if err != nil {
 		t.Fatalf("could not delete token: %v", err)
 	}
 	// wait for delete to be observed and reacted to via watch
 	wait.PollImmediate(100*time.Millisecond, 30*time.Second, func() (bool, error) {
-		sa, err := c.CoreV1().ServiceAccounts(myns).Get(readOnlyServiceAccountName, metav1.GetOptions{})
+		sa, err := c.CoreV1().ServiceAccountsWithMultiTenancy(myns, tenant).Get(readOnlyServiceAccountName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -332,32 +365,32 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 		}
 		return true, nil
 	})
-	doServiceAccountAPIRequests(t, roClient, myns, false, false, false)
+	doServiceAccountAPIRequests(t, roClient, tenant, myns, false, false, false)
 
 	// Create "rw" user in myns
-	_, err = c.CoreV1().ServiceAccounts(myns).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readWriteServiceAccountName}})
+	_, err = c.CoreV1().ServiceAccountsWithMultiTenancy(myns, tenant).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readWriteServiceAccountName}})
 	if err != nil {
 		t.Fatalf("Service Account not created: %v", err)
 	}
-	_, rwToken, err := getReferencedServiceAccountToken(c, myns, readWriteServiceAccountName, true)
+	_, rwToken, err := getReferencedServiceAccountToken(c, tenant, myns, readWriteServiceAccountName, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rwClientConfigs := restclient.CopyConfigs(&config)
 	restclient.SetBearerToken(rwClientConfigs, rwToken)
 	rwClient := clientset.NewForConfigOrDie(rwClientConfigs)
-	doServiceAccountAPIRequests(t, rwClient, myns, true, true, true)
-	doServiceAccountAPIRequests(t, rwClient, otherns, true, false, false)
+	doServiceAccountAPIRequests(t, rwClient, tenant, myns, true, true, true)
+	doServiceAccountAPIRequests(t, rwClient, tenant, otherns, true, false, false)
 
 	// Get default user and token which should have been automatically created
-	_, defaultToken, err := getReferencedServiceAccountToken(c, myns, "default", true)
+	_, defaultToken, err := getReferencedServiceAccountToken(c, tenant, myns, "default", true)
 	if err != nil {
 		t.Fatalf("could not get default user and token: %v", err)
 	}
 	defaultClientConfigs := restclient.CopyConfigs(&config)
 	restclient.SetBearerToken(defaultClientConfigs, defaultToken)
 	defaultClient := clientset.NewForConfigOrDie(defaultClientConfigs)
-	doServiceAccountAPIRequests(t, defaultClient, myns, true, false, false)
+	doServiceAccountAPIRequests(t, defaultClient, tenant, myns, true, false, false)
 }
 
 // startServiceAccountTestServer returns a started server
@@ -490,15 +523,15 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 	return rootClientset, *clientConfig, stop, nil
 }
 
-func getServiceAccount(c *clientset.Clientset, ns string, name string, shouldWait bool) (*v1.ServiceAccount, error) {
+func getServiceAccount(c *clientset.Clientset, tenant string, ns string, name string, shouldWait bool) (*v1.ServiceAccount, error) {
 	if !shouldWait {
-		return c.CoreV1().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+		return c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Get(name, metav1.GetOptions{})
 	}
 
 	var user *v1.ServiceAccount
 	var err error
 	err = wait.Poll(time.Second, 10*time.Second, func() (bool, error) {
-		user, err = c.CoreV1().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+		user, err = c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Get(name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -510,12 +543,12 @@ func getServiceAccount(c *clientset.Clientset, ns string, name string, shouldWai
 	return user, err
 }
 
-func getReferencedServiceAccountToken(c *clientset.Clientset, ns string, name string, shouldWait bool) (string, string, error) {
+func getReferencedServiceAccountToken(c *clientset.Clientset, tenant string, ns string, name string, shouldWait bool) (string, string, error) {
 	tokenName := ""
 	token := ""
 
 	findToken := func() (bool, error) {
-		user, err := c.CoreV1().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+		user, err := c.CoreV1().ServiceAccountsWithMultiTenancy(ns, tenant).Get(name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -524,7 +557,7 @@ func getReferencedServiceAccountToken(c *clientset.Clientset, ns string, name st
 		}
 
 		for _, ref := range user.Secrets {
-			secret, err := c.CoreV1().Secrets(ns).Get(ref.Name, metav1.GetOptions{})
+			secret, err := c.CoreV1().SecretsWithMultiTenancy(ns, tenant).Get(ref.Name, metav1.GetOptions{})
 			if errors.IsNotFound(err) {
 				continue
 			}
@@ -558,7 +591,7 @@ func getReferencedServiceAccountToken(c *clientset.Clientset, ns string, name st
 			return "", "", err
 		}
 		if !ok {
-			return "", "", fmt.Errorf("No token found for %s/%s", ns, name)
+			return "", "", fmt.Errorf("No token found for %s/%s/%s", tenant, ns, name)
 		}
 	}
 	return tokenName, token, nil
@@ -566,7 +599,7 @@ func getReferencedServiceAccountToken(c *clientset.Clientset, ns string, name st
 
 type testOperation func() error
 
-func doServiceAccountAPIRequests(t *testing.T, c *clientset.Clientset, ns string, authenticated bool, canRead bool, canWrite bool) {
+func doServiceAccountAPIRequests(t *testing.T, c *clientset.Clientset, tenant string, ns string, authenticated bool, canRead bool, canWrite bool) {
 	testSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "testSecret"},
 		Data:       map[string][]byte{"test": []byte("data")},
@@ -574,17 +607,17 @@ func doServiceAccountAPIRequests(t *testing.T, c *clientset.Clientset, ns string
 
 	readOps := []testOperation{
 		func() error {
-			_, err := c.CoreV1().Secrets(ns).List(metav1.ListOptions{})
+			_, err := c.CoreV1().SecretsWithMultiTenancy(ns, tenant).List(metav1.ListOptions{})
 			return err
 		},
 		func() error {
-			_, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			_, err := c.CoreV1().PodsWithMultiTenancy(ns, tenant).List(metav1.ListOptions{})
 			return err
 		},
 	}
 	writeOps := []testOperation{
-		func() error { _, err := c.CoreV1().Secrets(ns).Create(testSecret); return err },
-		func() error { return c.CoreV1().Secrets(ns).Delete(testSecret.Name, nil) },
+		func() error { _, err := c.CoreV1().SecretsWithMultiTenancy(ns, tenant).Create(testSecret); return err },
+		func() error { return c.CoreV1().SecretsWithMultiTenancy(ns, tenant).Delete(testSecret.Name, nil) },
 	}
 
 	for _, op := range readOps {

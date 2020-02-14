@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ func NewFakeManager() Manager {
 	return &fakeManager{}
 }
 
-func (s *fakeManager) GetSecret(namespace, name string) (*v1.Secret, error) {
+func (s *fakeManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
 	return nil, nil
 }
 
