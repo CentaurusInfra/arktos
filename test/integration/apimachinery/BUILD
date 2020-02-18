@@ -8,7 +8,7 @@ go_test(
     ],
     tags = [
         "etcd",
-#        "integration",
+        "integration",
     ],
     deps = [
         "//pkg/api/testapi:go_default_library",
