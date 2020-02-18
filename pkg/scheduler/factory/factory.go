@@ -654,7 +654,7 @@ func NewPodInformer(client clientset.Interface, resyncPeriod time.Duration) core
 	selector := fields.ParseSelectorOrDie(
 		"status.phase!=" + string(v1.PodSucceeded) +
 			",status.phase!=" + string(v1.PodFailed))
-	lw := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), string(v1.ResourcePods), metav1.NamespaceAll, selector)
+	lw := cache.NewListWatchFromClient(client.CoreV1(), string(v1.ResourcePods), metav1.NamespaceAll, selector)
 	return &podInformer{
 		informer: cache.NewSharedIndexInformer(lw, &v1.Pod{}, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}),
 	}

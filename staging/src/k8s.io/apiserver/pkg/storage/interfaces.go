@@ -173,7 +173,7 @@ type Interface interface {
 	// (e.g. reconnecting without missing any updates).
 	// If resource version is "0", this interface will get current object at given key
 	// and send it in an "ADDED" event, before watch starts.
-	Watch(ctx context.Context, key string, resourceVersion string, p SelectionPredicate) (watch.Interface, error)
+	Watch(ctx context.Context, key string, resourceVersion string, p SelectionPredicate) watch.AggregatedWatchInterface
 
 	// WatchList begins watching the specified key's items. Items are decoded into API
 	// objects and any item selected by 'p' are sent down to returned watch.Interface.
@@ -182,7 +182,7 @@ type Interface interface {
 	// (e.g. reconnecting without missing any updates).
 	// If resource version is "0", this interface will list current objects directory defined by key
 	// and send them in "ADDED" events, before watch starts.
-	WatchList(ctx context.Context, key string, resourceVersion string, p SelectionPredicate) (watch.Interface, error)
+	WatchList(ctx context.Context, key string, resourceVersion string, p SelectionPredicate) watch.AggregatedWatchInterface
 
 	// Get unmarshals json found at key into objPtr. On a not found error, will either
 	// return a zero object of the requested type, or an error, depending on ignoreNotFound.
