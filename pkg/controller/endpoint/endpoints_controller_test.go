@@ -49,12 +49,12 @@ var triggerTime = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
 var triggerTimeString = triggerTime.Format(time.RFC3339Nano)
 var oldTriggerTimeString = triggerTime.Add(-time.Hour).Format(time.RFC3339Nano)
 
-func addPods(store cache.Store, namespace string, nPods int, nPorts int, nNotReady int) {
+func addPods(store cache.Store, tenant, namespace string, nPods int, nPorts int, nNotReady int) {
 	for i := 0; i < nPods+nNotReady; i++ {
 		p := &v1.Pod{
 			TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Tenant:    metav1.TenantDefault,
+				Tenant:    tenant,
 				Namespace: namespace,
 				Name:      fmt.Sprintf("pod%d", i),
 				Labels:    map[string]string{"foo": "bar"},
@@ -83,12 +83,12 @@ func addPods(store cache.Store, namespace string, nPods int, nPorts int, nNotRea
 	}
 }
 
-func addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(store cache.Store, namespace string, nPods int, nPorts int, restartPolicy v1.RestartPolicy, podPhase v1.PodPhase) {
+func addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(store cache.Store, tenant, namespace string, nPods int, nPorts int, restartPolicy v1.RestartPolicy, podPhase v1.PodPhase) {
 	for i := 0; i < nPods; i++ {
 		p := &v1.Pod{
 			TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Tenant:    metav1.TenantDefault,
+				Tenant:    tenant,
 				Namespace: namespace,
 				Name:      fmt.Sprintf("pod%d", i),
 				Labels:    map[string]string{"foo": "bar"},
@@ -116,19 +116,41 @@ func addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(store cache.Store, namesp
 	}
 }
 
-func makeTestServer(t *testing.T, namespace string) (*httptest.Server, *utiltesting.FakeHandler) {
+func makeEndpointsResourcePath(tenant, namespace, name string) string {
+	if tenant == "" || tenant == metav1.TenantDefault {
+		return testapi.Default.ResourcePath("endpoints", namespace, name)
+	}
+
+	return testapi.Default.ResourcePathWithMultiTenancy("endpoints", tenant, namespace, name)
+}
+
+func makeTestServer(t *testing.T, tenant, namespace string) (*httptest.Server, *utiltesting.FakeHandler) {
 	fakeEndpointsHandler := utiltesting.FakeHandler{
 		StatusCode:   http.StatusOK,
 		ResponseBody: runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{}),
 	}
 	mux := http.NewServeMux()
-	mux.Handle(testapi.Default.ResourcePath("endpoints", namespace, ""), &fakeEndpointsHandler)
-	mux.Handle(testapi.Default.ResourcePath("endpoints/", namespace, ""), &fakeEndpointsHandler)
+	if tenant == "" || tenant == metav1.TenantDefault {
+		mux.Handle(testapi.Default.ResourcePath("endpoints", namespace, ""), &fakeEndpointsHandler)
+		mux.Handle(testapi.Default.ResourcePath("endpoints/", namespace, ""), &fakeEndpointsHandler)
+	} else {
+		mux.Handle(testapi.Default.ResourcePathWithMultiTenancy("endpoints", tenant, namespace, ""), &fakeEndpointsHandler)
+		mux.Handle(testapi.Default.ResourcePathWithMultiTenancy("endpoints/", tenant, namespace, ""), &fakeEndpointsHandler)
+	}
+
 	mux.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
 		t.Errorf("unexpected request: %v", req.RequestURI)
 		http.Error(res, "", http.StatusNotFound)
 	})
 	return httptest.NewServer(mux), &fakeEndpointsHandler
+}
+
+func makeTenantNamespaceKey(tenant, namespace, name string) string {
+	if tenant == "" || tenant == metav1.TenantDefault {
+		return fmt.Sprintf("%s/%s", namespace, name)
+	}
+
+	return fmt.Sprintf("%s/%s/%s", tenant, namespace, name)
 }
 
 type endpointController struct {
@@ -157,14 +179,22 @@ func newController(url string) *endpointController {
 }
 
 func TestSyncEndpointsItemsPreserveNoSelector(t *testing.T) {
+	testSyncEndpointsItemsPreserveNoSelector(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsPreserveNoSelectorWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsPreserveNoSelector(t, "test-te")
+}
+
+func testSyncEndpointsItemsPreserveNoSelector(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -174,88 +204,120 @@ func TestSyncEndpointsItemsPreserveNoSelector(t *testing.T) {
 		}},
 	})
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec:       v1.ServiceSpec{Ports: []v1.ServicePort{{Port: 80}}},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
 func TestSyncEndpointsExistingNilSubsets(t *testing.T) {
+	testSyncEndpointsExistingNilSubsets(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsExistingNilSubsetsWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsExistingNilSubsets(t, "test-te")
+}
+
+func testSyncEndpointsExistingNilSubsets(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: nil,
 	})
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
 func TestSyncEndpointsExistingEmptySubsets(t *testing.T) {
+	testSyncEndpointsExistingEmptySubsets(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsExistingEmptySubsetsWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsExistingEmptySubsets(t, "test-te")
+}
+
+func testSyncEndpointsExistingEmptySubsets(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
 func TestSyncEndpointsNewNoSubsets(t *testing.T) {
+	testSyncEndpointsNewNoSubsets(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsNewNoSubsetsWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsNewNoSubsets(t, "test-te")
+}
+
+func testSyncEndpointsNewNoSubsets(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	endpointsHandler.ValidateRequestCount(t, 1)
 }
 
 func TestCheckLeftoverEndpoints(t *testing.T) {
+	testCheckLeftoverEndpoints(t, metav1.TenantDefault)
+}
+
+func TestCheckLeftoverEndpointsWithMultiTenancy(t *testing.T) {
+	testCheckLeftoverEndpoints(t, "test-te")
+}
+
+func testCheckLeftoverEndpoints(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
-	testServer, _ := makeTestServer(t, ns)
+	testServer, _ := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -269,20 +331,29 @@ func TestCheckLeftoverEndpoints(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", e, a)
 	}
 	got, _ := endpoints.queue.Get()
-	if e, a := ns+"/foo", got; e != a {
+
+	if e, a := makeTenantNamespaceKey(tenant, ns, "foo"), got; e != a {
 		t.Errorf("Expected %v, got %v", e, a)
 	}
 }
 
 func TestSyncEndpointsProtocolTCP(t *testing.T) {
+	testSyncEndpointsProtocolTCP(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsProtocolTCPWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsProtocolTCP(t, "test-te")
+}
+
+func testSyncEndpointsProtocolTCP(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -291,41 +362,49 @@ func TestSyncEndpointsProtocolTCP(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000, Protocol: "TCP"}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "TCP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsProtocolUDP(t *testing.T) {
+	testSyncEndpointsProtocolUDP(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsProtocolUDPWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsProtocolUDP(t, "test-te")
+}
+
+func testSyncEndpointsProtocolUDP(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -334,41 +413,49 @@ func TestSyncEndpointsProtocolUDP(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000, Protocol: "UDP"}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "UDP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "UDP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsProtocolSCTP(t *testing.T) {
+	testSyncEndpointsProtocolSCTP(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsProtocolSCTPWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsProtocolSCTP(t, "test-te")
+}
+
+func testSyncEndpointsProtocolSCTP(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -377,159 +464,191 @@ func TestSyncEndpointsProtocolSCTP(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000, Protocol: "SCTP"}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "SCTP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "SCTP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T) {
+	testSyncEndpointsItemsEmptySelectorSelectsAll(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsEmptySelectorSelectsAllWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsEmptySelectorSelectsAll(t, "test-te")
+}
+
+func testSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T) {
+	testSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReadyWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t, "test-te")
+}
+
+func testSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	addPods(endpoints.podStore, ns, 0, 1, 1)
+	addPods(endpoints.podStore, tenant, ns, 0, 1, 1)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			NotReadyAddresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			NotReadyAddresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:             []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T) {
+	testSyncEndpointsItemsEmptySelectorSelectsAllMixed(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsEmptySelectorSelectsAllMixedWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsEmptySelectorSelectsAllMixed(t, "test-te")
+}
+
+func testSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 1)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 1)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses:         []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
-			NotReadyAddresses: []v1.EndpointAddress{{IP: "1.2.3.5", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod1", Namespace: ns}}},
+			Addresses:         []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
+			NotReadyAddresses: []v1.EndpointAddress{{IP: "1.2.3.5", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod1", Namespace: ns, Tenant: tenant}}},
 			Ports:             []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsPreexisting(t *testing.T) {
+	testSyncEndpointsItemsPreexisting(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsPreexistingWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsPreexisting(t, "test-te")
+}
+
+func testSyncEndpointsItemsPreexisting(t *testing.T, tenant string) {
 	ns := "bar"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -538,69 +657,85 @@ func TestSyncEndpointsItemsPreexisting(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsPreexistingIdentical(t *testing.T) {
+	testSyncEndpointsItemsPreexistingIdentical(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsPreexistingIdenticalWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsPreexistingIdentical(t, "test-te")
+}
+
+func testSyncEndpointsItemsPreexistingIdentical(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			ResourceVersion: "1",
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	addPods(endpoints.podStore, metav1.NamespaceDefault, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, metav1.NamespaceDefault, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: metav1.NamespaceDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: metav1.NamespaceDefault, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
 func TestSyncEndpointsItems(t *testing.T) {
+	testSyncEndpointsItems(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItems(t, "test-te")
+}
+
+func testSyncEndpointsItems(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
-	addPods(endpoints.podStore, ns, 3, 2, 0)
-	addPods(endpoints.podStore, "blah", 5, 2, 0) // make sure these aren't found!
+	addPods(endpoints.podStore, tenant, ns, 3, 2, 0)
+	addPods(endpoints.podStore, tenant, "blah", 5, 2, 0) // make sure these aren't found!
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports: []v1.ServicePort{
@@ -609,13 +744,13 @@ func TestSyncEndpointsItems(t *testing.T) {
 			},
 		},
 	})
-	endpoints.syncService("other/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, "other", "foo"))
 
 	expectedSubsets := []v1.EndpointSubset{{
 		Addresses: []v1.EndpointAddress{
-			{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}},
-			{IP: "1.2.3.5", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod1", Namespace: ns}},
-			{IP: "1.2.3.6", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod2", Namespace: ns}},
+			{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}},
+			{IP: "1.2.3.5", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod1", Namespace: ns, Tenant: tenant}},
+			{IP: "1.2.3.6", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod2", Namespace: ns, Tenant: tenant}},
 		},
 		Ports: []v1.EndpointPort{
 			{Name: "port0", Port: 8080, Protocol: "TCP"},
@@ -630,20 +765,28 @@ func TestSyncEndpointsItems(t *testing.T) {
 		Subsets: endptspkg.SortSubsets(expectedSubsets),
 	})
 	endpointsHandler.ValidateRequestCount(t, 1)
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, ""), "POST", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, ""), "POST", &data)
 }
 
 func TestSyncEndpointsItemsWithLabels(t *testing.T) {
+	testSyncEndpointsItemsWithLabels(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsWithLabelsWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsWithLabels(t, "test-te")
+}
+
+func testSyncEndpointsItemsWithLabels(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
-	addPods(endpoints.podStore, ns, 3, 2, 0)
+	addPods(endpoints.podStore, tenant, ns, 3, 2, 0)
 	serviceLabels := map[string]string{"foo": "bar"}
 	endpoints.serviceStore.Add(&v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    tenant,
 			Namespace: ns,
 			Labels:    serviceLabels,
 		},
@@ -655,13 +798,13 @@ func TestSyncEndpointsItemsWithLabels(t *testing.T) {
 			},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	expectedSubsets := []v1.EndpointSubset{{
 		Addresses: []v1.EndpointAddress{
-			{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}},
-			{IP: "1.2.3.5", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod1", Namespace: ns}},
-			{IP: "1.2.3.6", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod2", Namespace: ns}},
+			{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}},
+			{IP: "1.2.3.5", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod1", Namespace: ns, Tenant: tenant}},
+			{IP: "1.2.3.6", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod2", Namespace: ns, Tenant: tenant}},
 		},
 		Ports: []v1.EndpointPort{
 			{Name: "port0", Port: 8080, Protocol: "TCP"},
@@ -677,18 +820,26 @@ func TestSyncEndpointsItemsWithLabels(t *testing.T) {
 		Subsets: endptspkg.SortSubsets(expectedSubsets),
 	})
 	endpointsHandler.ValidateRequestCount(t, 1)
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, ""), "POST", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, ""), "POST", &data)
 }
 
 func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
+	testSyncEndpointsItemsPreexistingLabelsChange(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsPreexistingLabelsChangeWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsPreexistingLabelsChange(t, "test-te")
+}
+
+func testSyncEndpointsItemsPreexistingLabelsChange(t *testing.T, tenant string) {
 	ns := "bar"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -700,12 +851,12 @@ func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	serviceLabels := map[string]string{"baz": "blah"}
 	endpoints.serviceStore.Add(&v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    tenant,
 			Namespace: ns,
 			Labels:    serviceLabels,
 		},
@@ -714,25 +865,33 @@ func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels:          serviceLabels,
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestWaitsForAllInformersToBeSynced2(t *testing.T) {
+	testWaitsForAllInformersToBeSynced2(t, metav1.TenantDefault)
+}
+
+func TestWaitsForAllInformersToBeSynced2WithMultiTenancy(t *testing.T) {
+	testWaitsForAllInformersToBeSynced2(t, "test-te")
+}
+
+func testWaitsForAllInformersToBeSynced2(t *testing.T, tenant string) {
 	var tests = []struct {
 		podsSynced            func() bool
 		servicesSynced        func() bool
@@ -748,12 +907,12 @@ func TestWaitsForAllInformersToBeSynced2(t *testing.T) {
 	for _, test := range tests {
 		func() {
 			ns := "other"
-			testServer, endpointsHandler := makeTestServer(t, ns)
+			testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 			defer testServer.Close()
 			endpoints := newController(testServer.URL)
-			addPods(endpoints.podStore, ns, 1, 1, 0)
+			addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 			service := &v1.Service{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 				Spec: v1.ServiceSpec{
 					Selector: map[string]string{},
 					Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "TCP"}},
@@ -787,14 +946,22 @@ func TestWaitsForAllInformersToBeSynced2(t *testing.T) {
 }
 
 func TestSyncEndpointsHeadlessService(t *testing.T) {
+	testSyncEndpointsHeadlessService(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsHeadlessServiceWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsHeadlessService(t, "test-te")
+}
+
+func testSyncEndpointsHeadlessService(t *testing.T, tenant string) {
 	ns := "headless"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -803,41 +970,49 @@ func TestSyncEndpointsHeadlessService(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000, Protocol: "TCP"}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector:  map[string]string{},
 			ClusterIP: api.ClusterIPNone,
 			Ports:     []v1.ServicePort{},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{},
 		}},
 	})
 	endpointsHandler.ValidateRequestCount(t, 1)
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t *testing.T) {
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailedWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t, "test-te")
+}
+
+func testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -846,36 +1021,44 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFail
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, ns, 1, 1, v1.RestartPolicyNever, v1.PodFailed)
+	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, tenant, ns, 1, 1, v1.RestartPolicyNever, v1.PodFailed)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t *testing.T) {
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceededWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t, "test-te")
+}
+
+func testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -884,36 +1067,44 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucc
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, ns, 1, 1, v1.RestartPolicyNever, v1.PodSucceeded)
+	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, tenant, ns, 1, 1, v1.RestartPolicyNever, v1.PodSucceeded)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t *testing.T) {
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceededWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t, "test-te")
+}
+
+func testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Labels: map[string]string{
@@ -922,58 +1113,74 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhase
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, ns, 1, 1, v1.RestartPolicyOnFailure, v1.PodSucceeded)
+	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, tenant, ns, 1, 1, v1.RestartPolicyOnFailure, v1.PodSucceeded)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
 		Subsets: []v1.EndpointSubset{},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestSyncEndpointsHeadlessWithoutPort(t *testing.T) {
+	testSyncEndpointsHeadlessWithoutPort(t, metav1.TenantDefault)
+}
+
+func TestSyncEndpointsHeadlessWithoutPortWithMultiTenancy(t *testing.T) {
+	testSyncEndpointsHeadlessWithoutPort(t, "test-te")
+}
+
+func testSyncEndpointsHeadlessWithoutPort(t *testing.T, tenant string) {
 	ns := metav1.NamespaceDefault
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector:  map[string]string{"foo": "bar"},
 			ClusterIP: "None",
 			Ports:     nil,
 		},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
-	endpoints.syncService(ns + "/foo")
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     nil,
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, ""), "POST", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, ""), "POST", &data)
 }
 
 // There are 3*5 possibilities(3 types of RestartPolicy by 5 types of PodPhase). Not list them all here.
 // Just list all of the 3 false cases and 3 of the 12 true cases.
 func TestShouldPodBeInEndpoints(t *testing.T) {
+	testShouldPodBeInEndpoints(t, metav1.TenantDefault)
+}
+
+func TestShouldPodBeInEndpointsWithMultiTenancy(t *testing.T) {
+	testShouldPodBeInEndpoints(t, "test-te")
+}
+
+func testShouldPodBeInEndpoints(t *testing.T, tenant string) {
 	testCases := []struct {
 		name     string
 		pod      *v1.Pod
@@ -1063,9 +1270,17 @@ func TestShouldPodBeInEndpoints(t *testing.T) {
 }
 
 func TestPodToEndpointAddress(t *testing.T) {
+	testPodToEndpointAddress(t, metav1.TenantDefault)
+}
+
+func TestPodToEndpointAddressWithMultiTenancy(t *testing.T) {
+	testPodToEndpointAddress(t, "test-te")
+}
+
+func testPodToEndpointAddress(t *testing.T, tenant string) {
 	podStore := cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc)
 	ns := "test"
-	addPods(podStore, ns, 1, 1, 0)
+	addPods(podStore, tenant, ns, 1, 1, 0)
 	pods := podStore.List()
 	if len(pods) != 1 {
 		t.Errorf("podStore size: expected: %d, got: %d", 1, len(pods))
@@ -1097,9 +1312,17 @@ func TestPodToEndpointAddress(t *testing.T) {
 }
 
 func TestPodChanged(t *testing.T) {
+	testPodChanged(t, metav1.TenantDefault)
+}
+
+func TestPodChangedWithMultiTenancy(t *testing.T) {
+	testPodChanged(t, "test-te")
+}
+
+func testPodChanged(t *testing.T, tenant string) {
 	podStore := cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc)
 	ns := "test"
-	addPods(podStore, ns, 1, 1, 0)
+	addPods(podStore, tenant, ns, 1, 1, 0)
 	pods := podStore.List()
 	if len(pods) != 1 {
 		t.Errorf("podStore size: expected: %d, got: %d", 1, len(pods))
@@ -1216,14 +1439,22 @@ func TestDetermineNeededServiceUpdates(t *testing.T) {
 }
 
 func TestLastTriggerChangeTimeAnnotation(t *testing.T) {
+	testLastTriggerChangeTimeAnnotation(t, metav1.TenantDefault)
+}
+
+func TestLastTriggerChangeTimeAnnotationWithMultiTenancy(t *testing.T) {
+	testLastTriggerChangeTimeAnnotation(t, "test-te")
+}
+
+func testLastTriggerChangeTimeAnnotation(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 		},
@@ -1232,21 +1463,21 @@ func TestLastTriggerChangeTimeAnnotation(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000, Protocol: "TCP"}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, CreationTimestamp: metav1.NewTime(triggerTime)},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant, CreationTimestamp: metav1.NewTime(triggerTime)},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "TCP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1254,22 +1485,30 @@ func TestLastTriggerChangeTimeAnnotation(t *testing.T) {
 			},
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T) {
+	testLastTriggerChangeTimeAnnotation_AnnotationOverridden(t, metav1.TenantDefault)
+}
+
+func TestLastTriggerChangeTimeAnnotation_AnnotationOverriddenWithMultiTenancy(t *testing.T) {
+	testLastTriggerChangeTimeAnnotation_AnnotationOverridden(t, "test-te")
+}
+
+func testLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1281,21 +1520,21 @@ func TestLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Port: 1000, Protocol: "TCP"}},
 		}},
 	})
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, CreationTimestamp: metav1.NewTime(triggerTime)},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant, CreationTimestamp: metav1.NewTime(triggerTime)},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "TCP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1303,22 +1542,30 @@ func TestLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T) {
 			},
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
 
 func TestLastTriggerChangeTimeAnnotation_AnnotationCleared(t *testing.T) {
+	testLastTriggerChangeTimeAnnotation_AnnotationCleared(t, metav1.TenantDefault)
+}
+
+func TestLastTriggerChangeTimeAnnotation_AnnotationClearedWithMultiTenancy(t *testing.T) {
+	testLastTriggerChangeTimeAnnotation_AnnotationCleared(t, "test-te")
+}
+
+func testLastTriggerChangeTimeAnnotation_AnnotationCleared(t *testing.T, tenant string) {
 	ns := "other"
-	testServer, endpointsHandler := makeTestServer(t, ns)
+	testServer, endpointsHandler := makeTestServer(t, tenant, ns)
 	defer testServer.Close()
 	endpoints := newController(testServer.URL)
 	endpoints.endpointsStore.Add(&v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations: map[string]string{
@@ -1331,29 +1578,29 @@ func TestLastTriggerChangeTimeAnnotation_AnnotationCleared(t *testing.T) {
 		}},
 	})
 	// Neither pod nor service has trigger time, this should cause annotation to be cleared.
-	addPods(endpoints.podStore, ns, 1, 1, 0)
+	addPods(endpoints.podStore, tenant, ns, 1, 1, 0)
 	endpoints.serviceStore.Add(&v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns, Tenant: tenant},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{},
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "TCP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncService(makeTenantNamespaceKey(tenant, ns, "foo"))
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          tenant,
 			Namespace:       ns,
 			ResourceVersion: "1",
 			Annotations:     map[string]string{}, // Annotation not set anymore.
 		},
 		Subsets: []v1.EndpointSubset{{
-			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns}}},
+			Addresses: []v1.EndpointAddress{{IP: "1.2.3.4", NodeName: &emptyNodeName, TargetRef: &v1.ObjectReference{Kind: "Pod", Name: "pod0", Namespace: ns, Tenant: tenant}}},
 			Ports:     []v1.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 		}},
 	})
-	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+	endpointsHandler.ValidateRequest(t, makeEndpointsResourcePath(tenant, ns, "foo"), "PUT", &data)
 }
