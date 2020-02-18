@@ -4,8 +4,8 @@ deprecatedCount: 254375933
 deprecatedFirstTimestamp: "2149-06-18T16:38:18Z"
 deprecatedLastTimestamp: "2567-05-09T03:50:37Z"
 deprecatedSource:
-  component: "43"
-  host: "44"
+  component: "45"
+  host: "46"
 eventTime: "2600-06-10T04:50:19.358488Z"
 kind: Event
 metadata:
@@ -42,7 +42,7 @@ metadata:
   selfLink: "6"
   tenant: "4"
   uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
-note: "41"
+note: "43"
 reason: "28"
 regarding:
   apiVersion: "32"
@@ -51,14 +51,16 @@ regarding:
   name: "31"
   namespace: "30"
   resourceVersion: "33"
+  tenant: "35"
   uid: ǅSǡƏS$+½H牗洝尿彀亞螩B峅
 related:
-  apiVersion: "38"
-  fieldPath: "40"
-  kind: "35"
-  name: "37"
-  namespace: "36"
-  resourceVersion: "39"
+  apiVersion: "39"
+  fieldPath: "41"
+  kind: "36"
+  name: "38"
+  namespace: "37"
+  resourceVersion: "40"
+  tenant: "42"
   uid: 4%a鯿r
 reportingController: "25"
 reportingInstance: "26"
@@ -66,4 +68,4 @@ series:
   count: 2114329341
   lastObservedTime: "1999-07-03T22:31:10.529225Z"
   state: 凗蓏Ŋ蛊ĉy緅縕>Ž
-type: "42"
+type: "44"
