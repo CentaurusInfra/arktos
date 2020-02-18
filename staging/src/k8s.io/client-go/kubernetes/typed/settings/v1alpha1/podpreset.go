@@ -45,16 +45,17 @@ type PodPresetInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.PodPreset, error)
 	List(opts v1.ListOptions) (*v1alpha1.PodPresetList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PodPreset, err error)
 	PodPresetExpansion
 }
 
 // podPresets implements PodPresetInterface
 type podPresets struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newPodPresets returns a PodPresets
@@ -64,9 +65,10 @@ func newPodPresets(c *SettingsV1alpha1Client, namespace string) *podPresets {
 
 func newPodPresetsWithMultiTenancy(c *SettingsV1alpha1Client, namespace string, tenant string) *podPresets {
 	return &podPresets{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -104,19 +106,24 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 }
 
 // Watch returns a watch.Interface that watches the requested podPresets.
-func (c *podPresets) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *podPresets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("podpresets").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("podpresets").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a podPreset and creates it.  Returns the server's representation of the podPreset, and an error, if there is any.

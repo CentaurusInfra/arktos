@@ -73,7 +73,7 @@ func NewFilteredReplicaSetInformerWithMultiTenancy(client kubernetes.Interface, 
 				}
 				return client.ExtensionsV1beta1().ReplicaSetsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

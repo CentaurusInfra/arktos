@@ -63,7 +63,7 @@ func NewFilteredStorageClassInformer(client kubernetes.Interface, resyncPeriod t
 				}
 				return client.StorageV1().StorageClasses().List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

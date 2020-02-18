@@ -46,15 +46,16 @@ type VolumeAttachmentInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.VolumeAttachment, error)
 	List(opts v1.ListOptions) (*v1beta1.VolumeAttachmentList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.VolumeAttachment, err error)
 	VolumeAttachmentExpansion
 }
 
 // volumeAttachments implements VolumeAttachmentInterface
 type volumeAttachments struct {
-	client rest.Interface
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	te      string
 }
 
 // newVolumeAttachments returns a VolumeAttachments
@@ -64,8 +65,9 @@ func newVolumeAttachments(c *StorageV1beta1Client) *volumeAttachments {
 
 func newVolumeAttachmentsWithMultiTenancy(c *StorageV1beta1Client, tenant string) *volumeAttachments {
 	return &volumeAttachments{
-		client: c.RESTClient(),
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -102,18 +104,23 @@ func (c *volumeAttachments) List(opts v1.ListOptions) (result *v1beta1.VolumeAtt
 }
 
 // Watch returns a watch.Interface that watches the requested volumeAttachments.
-func (c *volumeAttachments) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *volumeAttachments) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Resource("volumeattachments").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Resource("volumeattachments").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a volumeAttachment and creates it.  Returns the server's representation of the volumeAttachment, and an error, if there is any.

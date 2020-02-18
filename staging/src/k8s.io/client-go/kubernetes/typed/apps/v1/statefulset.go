@@ -47,7 +47,7 @@ type StatefulSetInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.StatefulSet, error)
 	List(opts metav1.ListOptions) (*v1.StatefulSetList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StatefulSet, err error)
 	GetScale(statefulSetName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(statefulSetName string, scale *autoscalingv1.Scale) (*autoscalingv1.Scale, error)
@@ -57,9 +57,10 @@ type StatefulSetInterface interface {
 
 // statefulSets implements StatefulSetInterface
 type statefulSets struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newStatefulSets returns a StatefulSets
@@ -69,9 +70,10 @@ func newStatefulSets(c *AppsV1Client, namespace string) *statefulSets {
 
 func newStatefulSetsWithMultiTenancy(c *AppsV1Client, namespace string, tenant string) *statefulSets {
 	return &statefulSets{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -109,19 +111,24 @@ func (c *statefulSets) List(opts metav1.ListOptions) (result *v1.StatefulSetList
 }
 
 // Watch returns a watch.Interface that watches the requested statefulSets.
-func (c *statefulSets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *statefulSets) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("statefulsets").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("statefulsets").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.

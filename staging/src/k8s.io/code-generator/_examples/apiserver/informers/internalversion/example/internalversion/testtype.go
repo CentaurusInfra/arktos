@@ -73,7 +73,7 @@ func NewFilteredTestTypeInformerWithMultiTenancy(client clientsetinternalversion
 				}
 				return client.Example().TestTypesWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

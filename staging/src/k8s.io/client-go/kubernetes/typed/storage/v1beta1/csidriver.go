@@ -44,20 +44,22 @@ type CSIDriverInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.CSIDriver, error)
 	List(opts v1.ListOptions) (*v1beta1.CSIDriverList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CSIDriver, err error)
 	CSIDriverExpansion
 }
 
 // cSIDrivers implements CSIDriverInterface
 type cSIDrivers struct {
-	client rest.Interface
+	client  rest.Interface
+	clients []rest.Interface
 }
 
 // newCSIDrivers returns a CSIDrivers
 func newCSIDrivers(c *StorageV1beta1Client) *cSIDrivers {
 	return &cSIDrivers{
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 	}
 }
 
@@ -92,17 +94,22 @@ func (c *cSIDrivers) List(opts v1.ListOptions) (result *v1beta1.CSIDriverList, e
 }
 
 // Watch returns a watch.Interface that watches the requested cSIDrivers.
-func (c *cSIDrivers) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *cSIDrivers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Resource("csidrivers").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Resource("csidrivers").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a cSIDriver and creates it.  Returns the server's representation of the cSIDriver, and an error, if there is any.

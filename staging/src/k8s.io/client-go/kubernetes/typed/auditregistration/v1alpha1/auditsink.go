@@ -45,15 +45,16 @@ type AuditSinkInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.AuditSink, error)
 	List(opts v1.ListOptions) (*v1alpha1.AuditSinkList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.AuditSink, err error)
 	AuditSinkExpansion
 }
 
 // auditSinks implements AuditSinkInterface
 type auditSinks struct {
-	client rest.Interface
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	te      string
 }
 
 // newAuditSinks returns a AuditSinks
@@ -63,8 +64,9 @@ func newAuditSinks(c *AuditregistrationV1alpha1Client) *auditSinks {
 
 func newAuditSinksWithMultiTenancy(c *AuditregistrationV1alpha1Client, tenant string) *auditSinks {
 	return &auditSinks{
-		client: c.RESTClient(),
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -101,18 +103,23 @@ func (c *auditSinks) List(opts v1.ListOptions) (result *v1alpha1.AuditSinkList, 
 }
 
 // Watch returns a watch.Interface that watches the requested auditSinks.
-func (c *auditSinks) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *auditSinks) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Resource("auditsinks").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Resource("auditsinks").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a auditSink and creates it.  Returns the server's representation of the auditSink, and an error, if there is any.

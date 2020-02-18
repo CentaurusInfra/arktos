@@ -43,20 +43,22 @@ type TenantInterface interface {
 	Delete(name string, options *metav1.DeleteOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.Tenant, error)
 	List(opts metav1.ListOptions) (*v1.TenantList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Tenant, err error)
 	TenantExpansion
 }
 
 // tenants implements TenantInterface
 type tenants struct {
-	client rest.Interface
+	client  rest.Interface
+	clients []rest.Interface
 }
 
 // newTenants returns a Tenants
 func newTenants(c *CoreV1Client) *tenants {
 	return &tenants{
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 	}
 }
 
@@ -91,17 +93,22 @@ func (c *tenants) List(opts metav1.ListOptions) (result *v1.TenantList, err erro
 }
 
 // Watch returns a watch.Interface that watches the requested tenants.
-func (c *tenants) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *tenants) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Resource("tenants").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Resource("tenants").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a tenant and creates it.  Returns the server's representation of the tenant, and an error, if there is any.
