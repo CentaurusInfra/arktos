@@ -4466,6 +4466,8 @@ type ObjectReference struct {
 	// TODO: this design is not final and this field is subject to change in the future.
 	// +optional
 	FieldPath string
+
+	Tenant string
 }
 
 // LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
