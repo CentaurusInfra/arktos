@@ -60,22 +60,24 @@
     "uid": "ǅSǡƏS$+½H牗洝尿彀亞螩B峅",
     "apiVersion": "32",
     "resourceVersion": "33",
-    "fieldPath": "34"
+    "fieldPath": "34",
+    "tenant": "35"
   },
   "related": {
-    "kind": "35",
-    "namespace": "36",
-    "name": "37",
+    "kind": "36",
+    "namespace": "37",
+    "name": "38",
     "uid": "4%a鯿r",
-    "apiVersion": "38",
-    "resourceVersion": "39",
-    "fieldPath": "40"
+    "apiVersion": "39",
+    "resourceVersion": "40",
+    "fieldPath": "41",
+    "tenant": "42"
   },
-  "note": "41",
-  "type": "42",
+  "note": "43",
+  "type": "44",
   "deprecatedSource": {
-    "component": "43",
-    "host": "44"
+    "component": "45",
+    "host": "46"
   },
   "deprecatedFirstTimestamp": "2149-06-18T16:38:18Z",
   "deprecatedLastTimestamp": "2567-05-09T03:50:37Z",
