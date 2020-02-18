@@ -5042,6 +5042,9 @@ type ObjectReference struct {
 	// TODO: this design is not final and this field is subject to change in the future.
 	// +optional
 	FieldPath string `json:"fieldPath,omitempty" protobuf:"bytes,7,opt,name=fieldPath"`
+
+	// +optional
+	Tenant string `json:"tenant,omitempty" protobuf:"bytes,8,opt,name=tenant"`
 }
 
 // LocalObjectReference contains enough information to let you locate the
