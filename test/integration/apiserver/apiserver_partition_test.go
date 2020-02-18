@@ -565,14 +565,14 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient1 := clientset1.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
-	w1, err := rsClient1.Watch(metav1.ListOptions{})
+	w1 := rsClient1.Watch(metav1.ListOptions{})
 	defer w1.Stop()
-	assert.Nil(t, err)
+	assert.Nil(t, w1.GetFirstError())
 
 	rsClient2 := clientset2.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
-	w2, err := rsClient2.Watch(metav1.ListOptions{})
+	w2 := rsClient2.Watch(metav1.ListOptions{})
 	defer w2.Stop()
-	assert.Nil(t, err)
+	assert.Nil(t, w2.GetFirstError())
 
 	// create rs via 2 different api servers
 	rs1 := createRS(t, clientset1, tenant1, namespace, "rs1", 1)

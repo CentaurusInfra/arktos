@@ -653,13 +653,13 @@ func WaitForNamespacesDeleted(c clientset.Interface, namespaces []string, timeou
 }
 
 func waitForServiceAccountInNamespace(c clientset.Interface, ns, serviceAccountName string, timeout time.Duration) error {
-	w, err := c.CoreV1().ServiceAccounts(ns).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: serviceAccountName}))
-	if err != nil {
-		return err
+	aggWatch := c.CoreV1().ServiceAccounts(ns).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: serviceAccountName}))
+	if aggWatch.GetFirstError() != nil {
+		return aggWatch.GetFirstError()
 	}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.UntilWithoutRetry(ctx, w, conditions.ServiceAccountHasSecrets)
+	_, err := watchtools.UntilWithoutRetry(ctx, aggWatch, conditions.ServiceAccountHasSecrets)
 	return err
 }
 
@@ -1140,13 +1140,13 @@ func WaitForRCToStabilize(c clientset.Interface, ns, name string, timeout time.D
 		"metadata.name":      name,
 		"metadata.namespace": ns,
 	}.AsSelector().String()}
-	w, err := c.CoreV1().ReplicationControllers(ns).Watch(options)
-	if err != nil {
-		return err
+	aggWatcher := c.CoreV1().ReplicationControllers(ns).Watch(options)
+	if aggWatcher.GetFirstError() != nil {
+		return aggWatcher.GetFirstError()
 	}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.UntilWithoutRetry(ctx, w, func(event watch.Event) (bool, error) {
+	_, err := watchtools.UntilWithoutRetry(ctx, aggWatcher, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Deleted:
 			return false, apierrs.NewNotFound(schema.GroupResource{Resource: "replicationcontrollers"}, "")
