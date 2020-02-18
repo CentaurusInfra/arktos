@@ -359,7 +359,7 @@ func deleteApiServerDataPartitionFile(t *testing.T) {
 // Ideally, we should test all kinds - TODO - should be able to leverage generated test data
 func TestGetCanGetAlldata(t *testing.T) {
 	s1, closeFn1, clientset1, s2, _, clientset2 := setUpApiservers(t)
-	//_, closeFn1, clientset1, _, closeFn2, clientset2 := setUpApiservers(t)
+	//s1, closeFn1, clientset1, s2, closeFn2, clientset2 := setUpApiservers(t)
 	defer closeFn1()
 	//defer closeFn2()
 
@@ -488,9 +488,9 @@ func TestListCanGetAlldata(t *testing.T) {
 }
 
 func TestPostCanUpdateAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, s2, _, clientset2 := setUpApiservers(t)
+	s1, closeFn1, clientset1, s2, closeFn2, clientset2 := setUpApiservers(t)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 
 	// create pods via 2 different api servers
 	pod1 := createPod(t, clientset1, tenant1, "te", "pod1")
@@ -548,9 +548,9 @@ func TestPostCanUpdateAlldata(t *testing.T) {
 }
 
 func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
-	_, _, clientset1, _, _, clientset2 := setUpApiservers(t)
-	//defer closeFn1()
-	//defer closeFn2()
+	_, closeFn1, clientset1, _, closeFn2, clientset2 := setUpApiservers(t)
+	defer closeFn1()
+	defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
@@ -712,7 +712,6 @@ func _TestInformerCanGetAllData(t *testing.T) {
 func TestPartitionWithLeftUnbounded(t *testing.T) {
 	_, closeFn, clientset:= setUpApiserver(t, "", tenant2 )
 	defer closeFn()
-	//defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
@@ -785,7 +784,6 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 func TestPartitionRightUnbounded(t *testing.T) {
 	_, closeFn, clientset:= setUpApiserver(t, tenant2, "" )
 	defer closeFn()
-	//defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
@@ -858,7 +856,6 @@ func TestPartitionRightUnbounded(t *testing.T) {
 func TestPartitionLeftRightBounded(t *testing.T) {
 	_, closeFn, clientset:= setUpApiserver(t, tenant2,  "tenant3" )
 	defer closeFn()
-	//defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
