@@ -644,7 +644,7 @@ bazel-test-integration:
 	@echo "$$BAZEL_TEST_INTEGRATION_HELP_INFO"
 else
 bazel-test-integration:
-	bazel test --short --config integration //test/integration/...
+	bazel test --test_arg=-short --config integration //test/integration/...
 endif
 
 ifeq ($(PRINT_HELP),y)
