@@ -548,8 +548,8 @@ func TestPostCanUpdateAlldata(t *testing.T) {
 }
 
 func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
-	_, closeFn1, clientset1, _, _, clientset2 := setUpApiservers(t)
-	defer closeFn1()
+	_, _, clientset1, _, _, clientset2 := setUpApiservers(t)
+	//defer closeFn1()
 	//defer closeFn2()
 
 	// create informer 1 from server 1
@@ -727,9 +727,9 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
-	w, err := rsClient.Watch(metav1.ListOptions{})
+	w := rsClient.Watch(metav1.ListOptions{})
 	defer w.Stop()
-	assert.Nil(t, err)
+	assert.Nil(t, w.GetFirstError())
 
 	rs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
 	assert.NotNil(t, rs)
@@ -800,9 +800,9 @@ func TestPartitionRightUnbounded(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
-	w, err := rsClient.Watch(metav1.ListOptions{})
+	w := rsClient.Watch(metav1.ListOptions{})
 	defer w.Stop()
-	assert.Nil(t, err)
+	assert.Nil(t, w.GetFirstError())
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
@@ -873,9 +873,9 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
-	w, err := rsClient.Watch(metav1.ListOptions{})
+	w := rsClient.Watch(metav1.ListOptions{})
 	defer w.Stop()
-	assert.Nil(t, err)
+	assert.Nil(t, w.GetFirstError())
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
