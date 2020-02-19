@@ -787,3 +787,134 @@ func TestDeduplicate(t *testing.T) {
 		}
 	}
 }
+
+func TestMutilpleConfigfiles(t *testing.T) {
+	configFile1, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+	configFile2, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+
+	err := ioutil.WriteFile(configFile1.Name(), []byte(`
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    api-version: v1
+    server: https://kubernetes.default.svc:443
+    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  name: kubeconfig-cluster1
+contexts:
+- context:
+    cluster: kubeconfig-cluster1
+    namespace: default
+    user: kubeconfig-user1
+  name: kubeconfig-context1
+current-context: kubeconfig-context1
+users:
+- name: kubeconfig-user1
+  user:
+    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+- name: kubeconfig-user2
+  user:
+    tokenFile: /var/run/secrets/test.example.com/serviceaccount/token
+`), os.FileMode(0755))
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	err = ioutil.WriteFile(configFile2.Name(), []byte(`
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    api-version: v1
+    server: https://kubernetes.default.svc:443
+    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  name: kubeconfig-cluster2
+contexts:
+- context:
+    cluster: kubeconfig-cluster
+    namespace: default
+    user: kubeconfig-user3
+  name: kubeconfig-context2
+current-context: kubeconfig-context
+users:
+- name: kubeconfig-user3
+  user:
+    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+- name: kubeconfig-user4
+  user:
+    tokenFile: /var/run/secrets/test.example.com/serviceaccount/token
+`), os.FileMode(0755))
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile1.Name() + " " + configFile2.Name(),
+	}
+
+	mergedConfig, err := loadingRules.Load()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if len(mergedConfig.AuthInfos) != 4  {
+		t.Errorf("expected config.AuthInfos has 4 not %v user auth infos", len(mergedConfig.AuthInfos))
+	}
+
+	if len(mergedConfig.Clusters) != 2  {
+		t.Errorf("expected config.Clusters has 2 not %v clusters", len(mergedConfig.Clusters))
+	}
+
+	if len(mergedConfig.Contexts) != 2  {
+		t.Errorf("expected config.Contexts has 2 not %v contexts", len(mergedConfig.Contexts))
+	}
+}
+
+func TestExistingAndNonExistingConfigFile(t *testing.T) {
+	configFile, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile.Name())
+
+	err := ioutil.WriteFile(configFile.Name(), []byte(`
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    api-version: v1
+    server: https://kubernetes.default.svc:443
+    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  name: kubeconfig-cluster1
+contexts:
+- context:
+    cluster: kubeconfig-cluster1
+    namespace: default
+    user: kubeconfig-user1
+  name: kubeconfig-context1
+current-context: kubeconfig-context1
+users:
+- name: kubeconfig-user1
+  user:
+    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+- name: kubeconfig-user2
+  user:
+    tokenFile: /var/run/secrets/test.example.com/serviceaccount/token
+`), os.FileMode(0755))
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	fmt.Printf("%v", configFile.Name())
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile.Name() + " nonexisting_file",
+	}
+
+	_, err  = loadingRules.Load()
+	if err == nil {
+		t.Fatalf("Expected error for missing command-line file, got none")
+	}
+	if !strings.Contains(err.Error(), "nonexisting_file") {
+		t.Fatalf("Expected error about 'nonexisting_file', got %s", err.Error())
+	}
+}
