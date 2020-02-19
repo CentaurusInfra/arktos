@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug encountered while operating Kubernetes
+about: Report a bug encountered while operating Arktos
 labels: kind/bug
 
 ---
@@ -20,7 +20,7 @@ If the matter is security related, please disclose it privately via https://kube
 **Anything else we need to know?**:
 
 **Environment**:
-- Kubernetes version (use `kubectl version`):
+- Arktos version (use `kubectl version`):
 - Cloud provider or hardware configuration:
 - OS (e.g: `cat /etc/os-release`):
 - Kernel (e.g. `uname -a`):
