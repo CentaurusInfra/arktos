@@ -260,7 +260,8 @@ func TestScheduler(t *testing.T) {
 			expectErrorPod:   podWithID("foo", testNode.Name),
 			expectForgetPod:  podWithID("foo", testNode.Name),
 			eventReason:      "FailedScheduling",
-		}, {
+		},
+		{
 			sendPod:     deletingPod("foo"),
 			algo:        mockScheduler{core.ScheduleResult{}, nil},
 			eventReason: "FailedScheduling",
@@ -338,6 +339,7 @@ func TestScheduler(t *testing.T) {
 				t.Errorf("error: %s", diff.ObjectDiff(e, a))
 			}
 			events.Stop()
+			time.Sleep(1 * time.Second) // sleep 1 second as called channel cannot be passed into eventBroadcaster.StartEventWatcher
 		})
 	}
 }

@@ -45,16 +45,17 @@ type ConfigMapInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ConfigMap, error)
 	List(opts metav1.ListOptions) (*v1.ConfigMapList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ConfigMap, err error)
 	ConfigMapExpansion
 }
 
 // configMaps implements ConfigMapInterface
 type configMaps struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newConfigMaps returns a ConfigMaps
@@ -64,9 +65,10 @@ func newConfigMaps(c *CoreV1Client, namespace string) *configMaps {
 
 func newConfigMapsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *configMaps {
 	return &configMaps{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -104,19 +106,24 @@ func (c *configMaps) List(opts metav1.ListOptions) (result *v1.ConfigMapList, er
 }
 
 // Watch returns a watch.Interface that watches the requested configMaps.
-func (c *configMaps) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *configMaps) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("configmaps").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("configmaps").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a configMap and creates it.  Returns the server's representation of the configMap, and an error, if there is any.

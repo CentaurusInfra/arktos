@@ -37,8 +37,9 @@ type SelfSubjectRulesReviewInterface interface {
 
 // selfSubjectRulesReviews implements SelfSubjectRulesReviewInterface
 type selfSubjectRulesReviews struct {
-	client rest.Interface
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	te      string
 }
 
 // newSelfSubjectRulesReviews returns a SelfSubjectRulesReviews
@@ -48,7 +49,8 @@ func newSelfSubjectRulesReviews(c *AuthorizationV1beta1Client) *selfSubjectRules
 
 func newSelfSubjectRulesReviewsWithMultiTenancy(c *AuthorizationV1beta1Client, tenant string) *selfSubjectRulesReviews {
 	return &selfSubjectRulesReviews{
-		client: c.RESTClient(),
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }

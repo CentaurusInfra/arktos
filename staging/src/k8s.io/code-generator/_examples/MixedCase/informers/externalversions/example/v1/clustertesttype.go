@@ -63,7 +63,7 @@ func NewFilteredClusterTestTypeInformer(client versioned.Interface, resyncPeriod
 				}
 				return client.ExampleV1().ClusterTestTypes().List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

@@ -74,11 +74,14 @@ func (c *FakePodDisruptionBudgets) List(opts v1.ListOptions) (result *v1beta1.Po
 	return list, err
 }
 
-// Watch returns a watch.Interface that watches the requested podDisruptionBudgets.
-func (c *FakePodDisruptionBudgets) Watch(opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
+// Watch returns a watch.AggregatedWatchInterface that watches the requested podDisruptionBudgets.
+func (c *FakePodDisruptionBudgets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+	aggWatch := watch.NewAggregatedWatcher()
+	watcher, err := c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, opts, c.te))
 
+	aggWatch.AddWatchInterface(watcher, err)
+	return aggWatch
 }
 
 // Create takes the representation of a podDisruptionBudget and creates it.  Returns the server's representation of the podDisruptionBudget, and an error, if there is any.

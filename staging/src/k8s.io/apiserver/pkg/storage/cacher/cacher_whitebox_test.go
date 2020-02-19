@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -302,11 +303,14 @@ func (d *dummyStorage) Create(_ context.Context, _ string, _, _ runtime.Object, 
 func (d *dummyStorage) Delete(_ context.Context, _ string, _ runtime.Object, _ *storage.Preconditions, _ storage.ValidateObjectFunc) error {
 	return fmt.Errorf("unimplemented")
 }
-func (d *dummyStorage) Watch(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) (watch.Interface, error) {
-	return newDummyWatch(), nil
+func (d *dummyStorage) Watch(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	w := newDummyWatch()
+	aggWatch := watch.NewAggregatedWatcher()
+	aggWatch.AddWatchInterface(w, nil)
+	return aggWatch
 }
-func (d *dummyStorage) WatchList(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) (watch.Interface, error) {
-	return newDummyWatch(), nil
+func (d *dummyStorage) WatchList(c context.Context, s1 string, s2 string, p storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	return d.Watch(c, s1, s2, p)
 }
 func (d *dummyStorage) Get(_ context.Context, _ string, _ string, _ runtime.Object, _ bool) error {
 	return fmt.Errorf("unimplemented")
@@ -405,14 +409,14 @@ func TestWatcherNotGoingBackInTime(t *testing.T) {
 	totalPods := 100
 
 	// Create watcher that will be slowing down reading.
-	w1, err := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
-	if err != nil {
-		t.Fatalf("Failed to create watch: %v", err)
+	aw1 := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
+	if aw1.GetFirstError() != nil {
+		t.Fatalf("Failed to create watch: %v", aw1.GetFirstError())
 	}
-	defer w1.Stop()
+	defer aw1.Stop()
 	go func() {
 		a := 0
-		for range w1.ResultChan() {
+		for range aw1.ResultChan() {
 			time.Sleep(time.Millisecond)
 			a++
 			if a == 100 {
@@ -427,17 +431,17 @@ func TestWatcherNotGoingBackInTime(t *testing.T) {
 	}
 
 	// Create fast watcher and ensure it will get each object exactly once.
-	w2, err := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
-	if err != nil {
-		t.Fatalf("Failed to create watch: %v", err)
+	aw2 := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
+	if aw2.GetFirstError() != nil {
+		t.Fatalf("Failed to create watch: %v", aw2.GetFirstError())
 	}
-	defer w2.Stop()
+	defer aw2.Stop()
 
 	shouldContinue := true
 	currentRV := uint64(0)
 	for shouldContinue {
 		select {
-		case event, ok := <-w2.ResultChan():
+		case event, ok := <-aw2.ResultChan():
 			if !ok {
 				shouldContinue = false
 				break
@@ -452,7 +456,7 @@ func TestWatcherNotGoingBackInTime(t *testing.T) {
 				currentRV = rv
 			}
 		case <-time.After(time.Second):
-			w2.Stop()
+			aw2.Stop()
 		}
 	}
 }
@@ -504,15 +508,15 @@ func TestCacheWatcherStoppedOnDestroy(t *testing.T) {
 	// Wait until cacher is initialized.
 	cacher.ready.wait()
 
-	w, err := cacher.Watch(context.Background(), "pods/ns", "0", storage.Everything)
-	if err != nil {
-		t.Fatalf("Failed to create watch: %v", err)
+	aw := cacher.Watch(context.Background(), "pods/ns", "0", storage.Everything)
+	if aw.GetFirstError() != nil {
+		t.Fatalf("Failed to create watch: %v", aw.GetFirstError())
 	}
 
 	watchClosed := make(chan struct{})
 	go func() {
 		defer close(watchClosed)
-		for event := range w.ResultChan() {
+		for event := range aw.ResultChan() {
 			switch event.Type {
 			case watch.Added, watch.Modified, watch.Deleted:
 				// ok
@@ -586,16 +590,16 @@ func testCacherSendBookmarkEvents(t *testing.T, watchCacheEnabled, allowWatchBoo
 	pred.AllowWatchBookmarks = allowWatchBookmarks
 
 	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	w, err := cacher.Watch(ctx, "pods/ns", "0", pred)
-	if err != nil {
-		t.Fatalf("Failed to create watch: %v", err)
+	aw := cacher.Watch(ctx, "pods/ns", "0", pred)
+	if aw.GetFirstError() != nil {
+		t.Fatalf("Failed to create watch: %v", aw.GetFirstError())
 	}
 
 	resourceVersion := uint64(1000)
 	go func() {
 		deadline := time.Now().Add(time.Second)
 		for i := 0; time.Now().Before(deadline); i++ {
-			err = cacher.watchCache.Add(&examplev1.Pod{
+			err := cacher.watchCache.Add(&examplev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            fmt.Sprintf("pod-%d", i),
 					Namespace:       "ns",
@@ -612,7 +616,7 @@ func testCacherSendBookmarkEvents(t *testing.T, watchCacheEnabled, allowWatchBoo
 	lastObservedRV := uint64(0)
 	for {
 		select {
-		case event, ok := <-w.ResultChan():
+		case event, ok := <-aw.ResultChan():
 			if !ok {
 				t.Fatal("Unexpected closed")
 			}
@@ -700,9 +704,9 @@ func TestDispatchingBookmarkEventsWithConcurrentStop(t *testing.T) {
 		pred := storage.Everything
 		pred.AllowWatchBookmarks = true
 		ctx, _ := context.WithTimeout(context.Background(), time.Second)
-		w, err := cacher.Watch(ctx, "pods/ns", "999", pred)
-		if err != nil {
-			t.Fatalf("Failed to create watch: %v", err)
+		aw := cacher.Watch(ctx, "pods/ns", "999", pred)
+		if aw.GetFirstError() != nil {
+			t.Fatalf("Failed to create watch: %v", aw.GetFirstError())
 		}
 		bookmark := &watchCacheEvent{
 			Type:            watch.Bookmark,
@@ -722,24 +726,27 @@ func TestDispatchingBookmarkEventsWithConcurrentStop(t *testing.T) {
 		}()
 
 		go func() {
-			w.Stop()
+			aw.Stop()
 			wg.Done()
 		}()
 
 		done := make(chan struct{})
 		go func() {
-			for range w.ResultChan() {
+			for range aw.ResultChan() {
 			}
 			close(done)
 		}()
 
+		before := time.Now()
 		select {
 		case <-done:
+			after := time.Now()
+			t.Logf("Time elapsed %v\n", after.Sub(before))
 			break
-		case <-time.After(time.Second):
+		case <-time.After(1500 * time.Millisecond):
 			t.Fatal("receive result timeout")
 		}
-		w.Stop()
+		aw.Stop()
 		wg.Wait()
 	}
 }

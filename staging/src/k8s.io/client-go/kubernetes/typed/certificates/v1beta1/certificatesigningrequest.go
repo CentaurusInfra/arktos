@@ -46,15 +46,16 @@ type CertificateSigningRequestInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.CertificateSigningRequest, error)
 	List(opts v1.ListOptions) (*v1beta1.CertificateSigningRequestList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CertificateSigningRequest, err error)
 	CertificateSigningRequestExpansion
 }
 
 // certificateSigningRequests implements CertificateSigningRequestInterface
 type certificateSigningRequests struct {
-	client rest.Interface
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	te      string
 }
 
 // newCertificateSigningRequests returns a CertificateSigningRequests
@@ -64,8 +65,9 @@ func newCertificateSigningRequests(c *CertificatesV1beta1Client) *certificateSig
 
 func newCertificateSigningRequestsWithMultiTenancy(c *CertificatesV1beta1Client, tenant string) *certificateSigningRequests {
 	return &certificateSigningRequests{
-		client: c.RESTClient(),
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -102,18 +104,23 @@ func (c *certificateSigningRequests) List(opts v1.ListOptions) (result *v1beta1.
 }
 
 // Watch returns a watch.Interface that watches the requested certificateSigningRequests.
-func (c *certificateSigningRequests) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *certificateSigningRequests) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Resource("certificatesigningrequests").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Resource("certificatesigningrequests").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a certificateSigningRequest and creates it.  Returns the server's representation of the certificateSigningRequest, and an error, if there is any.

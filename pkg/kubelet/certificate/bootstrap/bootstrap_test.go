@@ -145,7 +145,7 @@ const (
 
 type fakeClient struct {
 	certificatesclient.CertificateSigningRequestInterface
-	watch       *watch.FakeWatcher
+	watch       watch.AggregatedWatchInterface
 	failureType failureType
 }
 
@@ -166,11 +166,15 @@ func (c *fakeClient) List(opts metav1.ListOptions) (*certificates.CertificateSig
 	return &certificates.CertificateSigningRequestList{}, nil
 }
 
-func (c *fakeClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	c.watch = watch.NewFakeWithChanSize(1, false)
-	c.watch.Add(c.generateCSR())
+func (c *fakeClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+	aggWatcher := watch.NewAggregatedWatcher()
+	watcher := watch.NewFakeWithChanSize(1, false)
+	watcher.Add(c.generateCSR())
+
+	aggWatcher.AddWatchInterface(watcher, nil)
+	c.watch = aggWatcher
 	c.watch.Stop()
-	return c.watch, nil
+	return c.watch
 }
 
 func (c *fakeClient) generateCSR() *certificates.CertificateSigningRequest {

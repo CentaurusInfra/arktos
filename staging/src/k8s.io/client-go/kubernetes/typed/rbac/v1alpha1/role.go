@@ -45,16 +45,17 @@ type RoleInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.Role, error)
 	List(opts v1.ListOptions) (*v1alpha1.RoleList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Role, err error)
 	RoleExpansion
 }
 
 // roles implements RoleInterface
 type roles struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newRoles returns a Roles
@@ -64,9 +65,10 @@ func newRoles(c *RbacV1alpha1Client, namespace string) *roles {
 
 func newRolesWithMultiTenancy(c *RbacV1alpha1Client, namespace string, tenant string) *roles {
 	return &roles{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -104,19 +106,24 @@ func (c *roles) List(opts v1.ListOptions) (result *v1alpha1.RoleList, err error)
 }
 
 // Watch returns a watch.Interface that watches the requested roles.
-func (c *roles) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *roles) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("roles").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("roles").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a role and creates it.  Returns the server's representation of the role, and an error, if there is any.

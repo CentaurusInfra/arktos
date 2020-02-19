@@ -128,27 +128,29 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		})
 	}
 	m := map[string]interface{}{
-		"type":                 t,
-		"inputType":            t,
-		"resultType":           t,
-		"package":              pkg,
-		"Package":              namer.IC(pkg),
-		"namespaced":           !tags.NonNamespaced && !tags.NonTenanted,
-		"tenanted":             tags.NonNamespaced && !tags.NonTenanted,
-		"clusterScoped":        tags.NonNamespaced && tags.NonTenanted,
-		"Group":                namer.IC(g.group),
-		"subresource":          false,
-		"subresourcePath":      "",
-		"GroupGoName":          g.groupGoName,
-		"Version":              namer.IC(g.version),
-		"DeleteOptions":        c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
-		"ListOptions":          c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
-		"GetOptions":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
-		"PatchType":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/types", Name: "PatchType"}),
-		"watchInterface":       c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
-		"RESTClientInterface":  c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
-		"schemeParameterCodec": c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
-		"DefaultTenant":        metav1.TenantDefault,
+		"type":                     t,
+		"inputType":                t,
+		"resultType":               t,
+		"package":                  pkg,
+		"Package":                  namer.IC(pkg),
+		"namespaced":               !tags.NonNamespaced && !tags.NonTenanted,
+		"tenanted":                 tags.NonNamespaced && !tags.NonTenanted,
+		"clusterScoped":            tags.NonNamespaced && tags.NonTenanted,
+		"Group":                    namer.IC(g.group),
+		"subresource":              false,
+		"subresourcePath":          "",
+		"GroupGoName":              g.groupGoName,
+		"Version":                  namer.IC(g.version),
+		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
+		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
+		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
+		"PatchType":                c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/types", Name: "PatchType"}),
+		"watchInterface":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
+		"aggregatedWatchInterface": c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "AggregatedWatchInterface"}),
+		"aggregatedWatcher":        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "NewAggregatedWatcher"}),
+		"RESTClientInterface":      c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
+		"schemeParameterCodec":     c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
+		"DefaultTenant":            metav1.TenantDefault,
 	}
 
 	sw.Do(getterComment, m)
@@ -334,7 +336,7 @@ var defaultVerbTemplates = map[string]string{
 	"deleteCollection": `DeleteCollection(options *$.DeleteOptions|raw$, listOptions $.ListOptions|raw$) error`,
 	"get":              `Get(name string, options $.GetOptions|raw$) (*$.resultType|raw$, error)`,
 	"list":             `List(opts $.ListOptions|raw$) (*$.resultType|raw$List, error)`,
-	"watch":            `Watch(opts $.ListOptions|raw$) ($.watchInterface|raw$, error)`,
+	"watch":            `Watch(opts $.ListOptions|raw$) $.aggregatedWatchInterface|raw$`,
 	"patch":            `Patch(name string, pt $.PatchType|raw$, data []byte, subresources ...string) (result *$.resultType|raw$, err error)`,
 }
 
@@ -378,6 +380,7 @@ var structNamespaceScoped = `
 // $.type|privatePlural$ implements $.type|public$Interface
 type $.type|privatePlural$ struct {
 	client $.RESTClientInterface|raw$
+	clients []$.RESTClientInterface|raw$
 	ns     string
 	te     string
 }
@@ -388,6 +391,7 @@ var structTenantScoped = `
 // $.type|privatePlural$ implements $.type|public$Interface
 type $.type|privatePlural$ struct {
 	client $.RESTClientInterface|raw$
+	clients []$.RESTClientInterface|raw$
 	te     string
 }
 `
@@ -397,6 +401,7 @@ var structClusterScoped = `
 // $.type|privatePlural$ implements $.type|public$Interface
 type $.type|privatePlural$ struct {
 	client $.RESTClientInterface|raw$
+	clients []$.RESTClientInterface|raw$
 }
 `
 
@@ -408,7 +413,8 @@ func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client, namespace string
 
 func new$.type|publicPlural$WithMultiTenancy(c *$.GroupGoName$$.Version$Client, namespace string, tenant string) *$.type|privatePlural$ {
 	return &$.type|privatePlural${
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 		ns:     namespace,
 		te:     tenant,
 	}
@@ -423,7 +429,8 @@ func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client) *$.type|privateP
 
 func new$.type|publicPlural$WithMultiTenancy(c *$.GroupGoName$$.Version$Client, tenant string) *$.type|privatePlural$ {
 	return &$.type|privatePlural${
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 		te:     tenant,
 	}
 }
@@ -433,7 +440,8 @@ var newStructClusterScoped = `
 // new$.type|publicPlural$ returns a $.type|publicPlural$
 func new$.type|publicPlural$(c *$.GroupGoName$$.Version$Client) *$.type|privatePlural$ {
 	return &$.type|privatePlural${
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 	}
 }
 `
@@ -650,20 +658,25 @@ func (c *$.type|privatePlural$) UpdateStatus($.type|private$ *$.type|raw$) (resu
 
 var watchTemplate = `
 // Watch returns a $.watchInterface|raw$ that watches the requested $.type|privatePlural$.
-func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) ($.watchInterface|raw$, error) {
+func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatchInterface|raw$ {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		$if .namespaced$Tenant(c.te).
-		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
-		Resource("$.type|resource$").
-		VersionedParams(&opts, $.schemeParameterCodec|raw$).
-		Timeout(timeout).
-		Watch()	
+	aggWatch := $.aggregatedWatcher|raw$()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			$if .namespaced$Tenant(c.te).
+			Namespace(c.ns).$end$
+			$if .tenanted$Tenant(c.te).$end$
+			Resource("$.type|resource$").
+			VersionedParams(&opts, $.schemeParameterCodec|raw$).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 `
 
