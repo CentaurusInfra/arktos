@@ -86,7 +86,7 @@ type objState struct {
 
 // New returns an etcd3 implementation of storage.Interface.
 func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool) storage.Interface {
-	return NewWithPartitionConfig(c, codec, prefix, transformer, pagingEnabled, nil )
+	return NewWithPartitionConfig(c, codec, prefix, transformer, pagingEnabled, nil)
 }
 
 // New returns an etcd3 implementation of storage.Interface with partition config

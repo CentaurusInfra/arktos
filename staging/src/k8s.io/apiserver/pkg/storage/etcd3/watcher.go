@@ -67,35 +67,35 @@ func TestOnlySetFatalOnDecodeError(b bool) {
 }
 
 type watcher struct {
-	client                  *clientv3.Client
-	codec                   runtime.Codec
-	versioner               storage.Versioner
-	transformer             value.Transformer
-	partitionConfig         map[string]storage.Interval
+	client          *clientv3.Client
+	codec           runtime.Codec
+	versioner       storage.Versioner
+	transformer     value.Transformer
+	partitionConfig map[string]storage.Interval
 }
 
 // watchChan implements watch.Interface.
 type watchChan struct {
-	watcher                 *watcher
-	key                     string
-	initialRev              int64
-	recursive               bool
-	internalPred            storage.SelectionPredicate
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	incomingEventChan       chan *event
-	resultChan              chan watch.Event
-	errChan                 chan error
-	partitionConfig         map[string]storage.Interval
+	watcher           *watcher
+	key               string
+	initialRev        int64
+	recursive         bool
+	internalPred      storage.SelectionPredicate
+	ctx               context.Context
+	cancel            context.CancelFunc
+	incomingEventChan chan *event
+	resultChan        chan watch.Event
+	errChan           chan error
+	partitionConfig   map[string]storage.Interval
 }
 
 func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfigMap map[string]storage.Interval) *watcher {
 	return &watcher{
-		client:                  client,
-		codec:                   codec,
-		versioner:               versioner,
-		transformer:             transformer,
-		partitionConfig:         partitionConfigMap,
+		client:          client,
+		codec:           codec,
+		versioner:       versioner,
+		transformer:     transformer,
+		partitionConfig: partitionConfigMap,
 	}
 }
 
@@ -117,15 +117,15 @@ func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bo
 
 func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) *watchChan {
 	wc := &watchChan{
-		watcher:                 w,
-		key:                     key,
-		initialRev:              rev,
-		recursive:               recursive,
-		internalPred:            pred,
-		incomingEventChan:       make(chan *event, incomingBufSize),
-		resultChan:              make(chan watch.Event, outgoingBufSize),
-		errChan:                 make(chan error, 1),
-		partitionConfig:         w.partitionConfig,
+		watcher:           w,
+		key:               key,
+		initialRev:        rev,
+		recursive:         recursive,
+		internalPred:      pred,
+		incomingEventChan: make(chan *event, incomingBufSize),
+		resultChan:        make(chan watch.Event, outgoingBufSize),
+		errChan:           make(chan error, 1),
+		partitionConfig:   w.partitionConfig,
 	}
 	if pred.Empty() {
 		// The filter doesn't filter out any object.
@@ -214,7 +214,7 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 
 	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
 
-	updatedKey, opt := GetKeyAndOptFromPartitionConfig( wc.key, wc.partitionConfig)
+	updatedKey, opt := GetKeyAndOptFromPartitionConfig(wc.key, wc.partitionConfig)
 	wc.key = updatedKey
 	if opt != nil {
 		opts = append(opts, opt)
@@ -261,7 +261,7 @@ func GetKeyAndOptFromPartitionConfig(key string, partitionConfig map[string]stor
 			// If the interval begin is not empty, update the key by adding the interval begin, such as [key+val.Begin, key + val.End)
 			if len(val.End) > 0 {
 				opt = clientv3.WithRange(key + val.End)
-			// If the interval begin is empty, update the key by adding the interval begin, such as [key+val.Begin, ∞)
+				// If the interval begin is empty, update the key by adding the interval begin, such as [key+val.Begin, ∞)
 			} else {
 				opt = clientv3.WithFromKey()
 			}
