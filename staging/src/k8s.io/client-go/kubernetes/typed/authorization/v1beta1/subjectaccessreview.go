@@ -37,8 +37,9 @@ type SubjectAccessReviewInterface interface {
 
 // subjectAccessReviews implements SubjectAccessReviewInterface
 type subjectAccessReviews struct {
-	client rest.Interface
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	te      string
 }
 
 // newSubjectAccessReviews returns a SubjectAccessReviews
@@ -48,7 +49,8 @@ func newSubjectAccessReviews(c *AuthorizationV1beta1Client) *subjectAccessReview
 
 func newSubjectAccessReviewsWithMultiTenancy(c *AuthorizationV1beta1Client, tenant string) *subjectAccessReviews {
 	return &subjectAccessReviews{
-		client: c.RESTClient(),
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }

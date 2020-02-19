@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -204,19 +205,19 @@ func (c *realRecyclerClient) WatchPod(name, namespace string, stopChannel chan s
 		Watch:         true,
 	}
 
-	podWatch, err := c.client.CoreV1().Pods(namespace).Watch(options)
-	if err != nil {
-		return nil, err
+	podWatch := c.client.CoreV1().Pods(namespace).Watch(options)
+	if podWatch.GetFirstError() != nil {
+		return nil, podWatch.GetFirstError()
 	}
 
 	eventSelector, _ := fields.ParseSelector("involvedObject.name=" + name)
-	eventWatch, err := c.client.CoreV1().Events(namespace).Watch(metav1.ListOptions{
+	eventWatch := c.client.CoreV1().Events(namespace).Watch(metav1.ListOptions{
 		FieldSelector: eventSelector.String(),
 		Watch:         true,
 	})
-	if err != nil {
+	if eventWatch.GetFirstError() != nil {
 		podWatch.Stop()
-		return nil, err
+		return nil, eventWatch.GetFirstError()
 	}
 
 	eventCh := make(chan watch.Event, 30)

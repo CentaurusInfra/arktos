@@ -645,7 +645,8 @@ func TestBootstrapping(t *testing.T) {
 	kubeConfig := &restclient.KubeConfig{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
 	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
-	watcher, err := clientset.RbacV1().ClusterRoles().Watch(metav1.ListOptions{ResourceVersion: "0"})
+	watcher := clientset.RbacV1().ClusterRoles().Watch(metav1.ListOptions{ResourceVersion: "0"})
+	err := watcher.GetFirstError()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -383,6 +383,7 @@ func TestEventf(t *testing.T) {
 			validateEvent(strconv.Itoa(index), actualEvent, item.expect, t)
 		}
 		logWatcher.Stop()
+		time.Sleep(1 * time.Second)
 	}
 	sinkWatcher.Stop()
 }

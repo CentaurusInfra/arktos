@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,45 +101,53 @@ func (rw *RetryWatcher) send(event watch.Event) bool {
 // doReceive returns true when it is done, false otherwise.
 // If it is not done the second return value holds the time to wait before calling it again.
 func (rw *RetryWatcher) doReceive() (bool, time.Duration) {
-	watcher, err := rw.watcherClient.Watch(metav1.ListOptions{
+	aggWatchers := rw.watcherClient.Watch(metav1.ListOptions{
 		ResourceVersion: rw.lastResourceVersion,
 	})
+
 	// We are very unlikely to hit EOF here since we are just establishing the call,
 	// but it may happen that the apiserver is just shutting down (e.g. being restarted)
 	// This is consistent with how it is handled for informers
-	switch err {
-	case nil:
-		break
-
-	case io.EOF:
-		// watch closed normally
-		return false, 0
-
-	case io.ErrUnexpectedEOF:
-		klog.V(1).Infof("Watch closed with unexpected EOF: %v", err)
-		return false, 0
-
-	default:
-		msg := "Watch failed: %v"
-		if net.IsProbableEOF(err) {
-			klog.V(5).Infof(msg, err)
-			// Retry
-			return false, 0
-		}
-
-		klog.Errorf(msg, err)
-		// Retry
-		return false, 0
-	}
-
-	if watcher == nil {
+	if aggWatchers == nil {
 		klog.Error("Watch returned nil watcher")
 		// Retry
 		return false, 0
 	}
 
-	ch := watcher.ResultChan()
-	defer watcher.Stop()
+	defer aggWatchers.Stop()
+	if len(aggWatchers.GetWatchers()) == 0 {
+		klog.Error("No watcher in aggregated watchers")
+		return false, 0
+	}
+
+	for _, err := range aggWatchers.GetErrors() {
+		switch err {
+		case nil:
+			break
+
+		case io.EOF:
+			// watch closed normally
+			return false, 0
+
+		case io.ErrUnexpectedEOF:
+			klog.V(1).Infof("Watch closed with unexpected EOF: %v", err)
+			return false, 0
+
+		default:
+			msg := "Watch failed: %v"
+			if net.IsProbableEOF(err) {
+				klog.V(5).Infof(msg, err)
+				// Retry
+				return false, 0
+			}
+
+			klog.Errorf(msg, err)
+			// Retry
+			return false, 0
+		}
+	}
+
+	ch := aggWatchers.ResultChan()
 
 	for {
 		select {

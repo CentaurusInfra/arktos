@@ -806,7 +806,8 @@ func TestUpdateNodeObjects(t *testing.T) {
 
 	for k := 0; k < watchers; k++ {
 		go func(lister int) {
-			w, err := c.Nodes().Watch(metav1.ListOptions{})
+			w := c.Nodes().Watch(metav1.ListOptions{})
+			err := w.GetFirstError()
 			if err != nil {
 				fmt.Printf("[watch:%d] error: %v", lister, err)
 				return

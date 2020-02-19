@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -162,12 +163,13 @@ func TestDynamicClientWatch(t *testing.T) {
 		t.Logf("Created event %#v", got.ObjectMeta)
 	}
 
-	w, err := dynamicClient.Resource(resource).Namespace("default").Watch(metav1.ListOptions{
+	w := dynamicClient.Resource(resource).Namespace("default").Watch(metav1.ListOptions{
 		ResourceVersion: rv1,
 		Watch:           true,
 		FieldSelector:   fields.OneTermEqualSelector("metadata.name", "event-9").String(),
 	})
 
+	err = w.GetFirstError()
 	if err != nil {
 		t.Fatalf("Failed watch: %v", err)
 	}

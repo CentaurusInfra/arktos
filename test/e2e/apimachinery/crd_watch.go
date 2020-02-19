@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -78,11 +79,11 @@ var _ = SIGDescribe("CustomResourceDefinition Watch", func() {
 			ns := ""
 			noxuResourceClient := newNamespacedCustomResourceClient(ns, f.DynamicClient, noxuDefinition)
 
-			watchA, err := watchCRWithName(noxuResourceClient, watchCRNameA)
-			framework.ExpectNoError(err, "failed to watch custom resource: %s", watchCRNameA)
+			watchA := watchCRWithName(noxuResourceClient, watchCRNameA)
+			framework.ExpectNoError(watchA.GetFirstError(), "failed to watch custom resource: %s", watchCRNameA)
 
-			watchB, err := watchCRWithName(noxuResourceClient, watchCRNameB)
-			framework.ExpectNoError(err, "failed to watch custom resource: %s", watchCRNameB)
+			watchB := watchCRWithName(noxuResourceClient, watchCRNameB)
+			framework.ExpectNoError(watchB.GetFirstError(), "failed to watch custom resource: %s", watchCRNameB)
 
 			testCrA := fixtures.NewNoxuInstance(ns, watchCRNameA)
 			testCrB := fixtures.NewNoxuInstance(ns, watchCRNameB)
@@ -114,7 +115,7 @@ var _ = SIGDescribe("CustomResourceDefinition Watch", func() {
 	})
 })
 
-func watchCRWithName(crdResourceClient dynamic.ResourceInterface, name string) (watch.Interface, error) {
+func watchCRWithName(crdResourceClient dynamic.ResourceInterface, name string) watch.AggregatedWatchInterface {
 	return crdResourceClient.Watch(
 		metav1.ListOptions{
 			FieldSelector:  "metadata.name=" + name,
