@@ -20,9 +20,8 @@ package watch
 import (
 	"fmt"
 	"github.com/grafov/bcast"
-	"sync"
-
 	"k8s.io/klog"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -87,28 +86,37 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 			for {
 				select {
 				case <-stopCh.Read:
-					w.Stop()
-					a.stopChGrp.Leave(stopCh)
-					if a.stopChGrp.MemberCount() == 0 {
-						close(a.aggChan)
-					}
+					a.closeWatcher(w, stopCh)
 					return
 				case signal, ok := <-w.ResultChan():
 					if !ok {
 						klog.V(4).Infof("watch channel closed for aggregated chan %#v.", a.aggChan)
-						a.stopChGrp.Leave(stopCh)
-						if a.stopChGrp.MemberCount() == 0 {
-							close(a.aggChan)
-						}
+						a.closeWatcher(w, stopCh)
 						return
 					} else {
 						klog.V(4).Infof("Get event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
 					}
-					a.aggChan <- signal
+
+					select {
+						case <-stopCh.Read:
+							a.closeWatcher(w, stopCh)
+							return
+						case a.aggChan <- signal:
+							klog.V(4).Infof("Sent event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
+					}
 				}
 			}
 		}
 	}(watcher, a)
+}
+
+func (a *AggregatedWatcher) closeWatcher(w Interface, stopCh *bcast.Member) {
+	w.Stop()
+	a.stopChGrp.Leave(stopCh)
+	if a.stopChGrp.MemberCount() == 0 {
+		close(a.aggChan)
+		//a.stopChGrp.Close()
+	}
 }
 
 func PrintEvent(signal Event) string {
