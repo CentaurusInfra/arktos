@@ -44,20 +44,22 @@ type StorageClassInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.StorageClass, error)
 	List(opts v1.ListOptions) (*v1beta1.StorageClassList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.StorageClass, err error)
 	StorageClassExpansion
 }
 
 // storageClasses implements StorageClassInterface
 type storageClasses struct {
-	client rest.Interface
+	client  rest.Interface
+	clients []rest.Interface
 }
 
 // newStorageClasses returns a StorageClasses
 func newStorageClasses(c *StorageV1beta1Client) *storageClasses {
 	return &storageClasses{
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 	}
 }
 
@@ -92,17 +94,22 @@ func (c *storageClasses) List(opts v1.ListOptions) (result *v1beta1.StorageClass
 }
 
 // Watch returns a watch.Interface that watches the requested storageClasses.
-func (c *storageClasses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *storageClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Resource("storageclasses").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Resource("storageclasses").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a storageClass and creates it.  Returns the server's representation of the storageClass, and an error, if there is any.

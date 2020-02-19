@@ -43,7 +43,7 @@ import (
 )
 
 type listObjectFunc func(string, string, metav1.ListOptions) (runtime.Object, error)
-type watchObjectFunc func(string, string, metav1.ListOptions) (watch.Interface, error)
+type watchObjectFunc func(string, string, metav1.ListOptions) watch.AggregatedWatchInterface
 type newObjectFunc func() runtime.Object
 
 // objectCacheItem is a single item stored in objectCache.
@@ -92,7 +92,7 @@ func (c *objectCache) newReflector(tenant, namespace, name string) *objectCacheI
 		options.FieldSelector = fieldSelector
 		return c.listObject(tenant, namespace, options)
 	}
-	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
+	watchFunc := func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 		options.FieldSelector = fieldSelector
 		return c.watchObject(tenant, namespace, options)
 	}

@@ -73,7 +73,7 @@ func NewFilteredFooInformerWithMultiTenancy(client versioned.Interface, namespac
 				}
 				return client.SamplecontrollerV1alpha1().FoosWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

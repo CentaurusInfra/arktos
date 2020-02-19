@@ -37,8 +37,9 @@ type TokenReviewInterface interface {
 
 // tokenReviews implements TokenReviewInterface
 type tokenReviews struct {
-	client rest.Interface
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	te      string
 }
 
 // newTokenReviews returns a TokenReviews
@@ -48,7 +49,8 @@ func newTokenReviews(c *AuthenticationV1beta1Client) *tokenReviews {
 
 func newTokenReviewsWithMultiTenancy(c *AuthenticationV1beta1Client, tenant string) *tokenReviews {
 	return &tokenReviews{
-		client: c.RESTClient(),
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }

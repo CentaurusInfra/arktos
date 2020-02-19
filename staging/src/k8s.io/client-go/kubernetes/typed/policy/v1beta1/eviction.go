@@ -37,9 +37,10 @@ type EvictionInterface interface {
 
 // evictions implements EvictionInterface
 type evictions struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newEvictions returns a Evictions
@@ -49,8 +50,9 @@ func newEvictions(c *PolicyV1beta1Client, namespace string) *evictions {
 
 func newEvictionsWithMultiTenancy(c *PolicyV1beta1Client, namespace string, tenant string) *evictions {
 	return &evictions{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }

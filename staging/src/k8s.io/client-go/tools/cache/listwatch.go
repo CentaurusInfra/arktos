@@ -38,7 +38,7 @@ type Lister interface {
 // Watcher is any object that knows how to start a watch on a resource.
 type Watcher interface {
 	// Watch should begin a watch at the specified version.
-	Watch(options metav1.ListOptions) (watch.Interface, error)
+	Watch(options metav1.ListOptions) watch.AggregatedWatchInterface
 }
 
 // Updater is to set the search conditions of resources for listers and watchers
@@ -58,7 +58,7 @@ type ListerWatcher interface {
 type ListFunc func(options metav1.ListOptions) (runtime.Object, error)
 
 // WatchFunc knows how to watch resources
-type WatchFunc func(options metav1.ListOptions) (watch.Interface, error)
+type WatchFunc func(options metav1.ListOptions) watch.AggregatedWatchInterface
 
 // UpdateFunc knows how to update search resource conditions
 type UpdateFunc func(options metav1.ListOptions)
@@ -77,7 +77,8 @@ type ListWatch struct {
 
 // Getter interface knows how to access Get method from RESTClient.
 type Getter interface {
-	Get() *restclient.Request
+	RESTClient() restclient.Interface
+	RESTClients() []restclient.Interface
 }
 
 // NewListWatchFromClient creates a new ListWatch from the specified client, resource, namespace and field selector.
@@ -101,7 +102,7 @@ func NewFilteredListWatchFromClient(c Getter, resource string, namespace string,
 func NewFilteredListWatchFromClientWithMultiTenancy(c Getter, resource string, namespace string, optionsModifier func(options *metav1.ListOptions), tenant string) *ListWatch {
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		optionsModifier(&options)
-		return c.Get().
+		return c.RESTClient().Get().
 			Tenant(tenant).
 			Namespace(namespace).
 			Resource(resource).
@@ -109,15 +110,21 @@ func NewFilteredListWatchFromClientWithMultiTenancy(c Getter, resource string, n
 			Do().
 			Get()
 	}
-	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
+	watchFunc := func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 		options.Watch = true
 		optionsModifier(&options)
-		return c.Get().
-			Tenant(tenant).
-			Namespace(namespace).
-			Resource(resource).
-			VersionedParams(&options, metav1.ParameterCodec).
-			Watch()
+
+		watchClient := watch.NewAggregatedWatcher()
+		for _, getter := range c.RESTClients() {
+			watcher, err := getter.Get().
+				Tenant(tenant).
+				Namespace(namespace).
+				Resource(resource).
+				VersionedParams(&options, metav1.ParameterCodec).
+				Watch()
+			watchClient.AddWatchInterface(watcher, err)
+		}
+		return watchClient
 	}
 	return &ListWatch{ListFunc: listFunc, WatchFunc: watchFunc}
 }
@@ -131,7 +138,7 @@ func (lw *ListWatch) List(options metav1.ListOptions) (runtime.Object, error) {
 }
 
 // Watch a set of apiserver resources
-func (lw *ListWatch) Watch(options metav1.ListOptions) (watch.Interface, error) {
+func (lw *ListWatch) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
 	return lw.WatchFunc(lw.appendOptions(options))
 }
 

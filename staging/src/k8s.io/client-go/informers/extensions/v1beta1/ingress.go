@@ -73,7 +73,7 @@ func NewFilteredIngressInformerWithMultiTenancy(client kubernetes.Interface, nam
 				}
 				return client.ExtensionsV1beta1().IngressesWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

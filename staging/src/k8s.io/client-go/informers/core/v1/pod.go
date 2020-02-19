@@ -73,7 +73,7 @@ func NewFilteredPodInformerWithMultiTenancy(client kubernetes.Interface, namespa
 				}
 				return client.CoreV1().PodsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

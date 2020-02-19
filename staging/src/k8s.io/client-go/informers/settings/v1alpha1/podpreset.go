@@ -73,7 +73,7 @@ func NewFilteredPodPresetInformerWithMultiTenancy(client kubernetes.Interface, n
 				}
 				return client.SettingsV1alpha1().PodPresetsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
