@@ -43,17 +43,19 @@ import (
 const (
 	tenant1 = "tenant1"
 	tenant2 = "tenant2"
+	tenant3 = "tenant3"
 
 	podDataParitionModel = "/%s/pods/, %s, %s\n"
 	rsDataParitionModel  = "/%s/replicasets/, %s, %s\n"
 
-	configFilename1 = "apiserver-0.config"
-	configFilename2 = "apiserver-1.config"
+	masterAddr1 = "192.168.10.6"
+	masterAddr2 = "192.168.10.8"
 )
 
-func setUpApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, clientset.Interface, *httptest.Server, framework.CloseFunc, clientset.Interface) {
-	prefix, configFilename1, configFilename2 := createApiServerDataPartitionFile(t)
-	masterConfig1, masterConfig2 := framework.NewIntegrationTestMasterConfigParition(prefix, configFilename1, configFilename2)
+func setUpTwoApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, clientset.Interface, string, *httptest.Server, framework.CloseFunc, clientset.Interface, string) {
+	prefix, configFilename1, configFilename2 := createTwoApiServersPartitionFiles(t)
+	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1)
+	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename2, masterAddr2)
 	_, s1, closeFn1 := framework.RunAMaster(masterConfig1)
 
 	// TODO - temporary change for current api server support - need to change after multiple api servers partition code is in place
@@ -71,11 +73,13 @@ func setUpApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, clien
 		t.Fatalf("Error in create clientset: %v", err)
 	}
 
-	return s1, closeFn1, clientSet1, s2, closeFn2, clientSet2
+	return s1, closeFn1, clientSet1, configFilename1, s2, closeFn2, clientSet2, configFilename2
 }
 
 func TestSetupMultipleApiServers(t *testing.T) {
-	s1, closeFn1, clientset1, s2, closeFn2, clientset2 := setUpApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
 	defer closeFn2()
 	t.Logf("server 1 %+v, clientset 2 %+v", s1, clientset1)
@@ -86,7 +90,6 @@ func TestSetupMultipleApiServers(t *testing.T) {
 	assert.NotNil(t, clientset1)
 	assert.NotNil(t, clientset2)
 	assert.NotEqual(t, s1.URL, s2.URL)
-	deleteApiServerDataPartitionFile(t)
 }
 
 func labelMap() map[string]string {
@@ -303,63 +306,11 @@ func startEventBroadCaster(t *testing.T, cs clientset.Interface) {
 	})
 }
 
-func createApiServerDataPartitionFile(t *testing.T) (prefix, configFilename1, configFilename2 string) {
-	prefix = path.Join(uuid.New(), "registry")
-
-	// partition 1
-	podData1 := fmt.Sprintf(podDataParitionModel, prefix, tenant1, tenant2)
-	rsData1 := fmt.Sprintf(rsDataParitionModel, prefix, tenant1, tenant2)
-
-	// const does not work here
-	file1, err := os.Create("apiserver-0.config")
-	if err != nil {
-		t.Fatalf("Unable to create api server partition file. error %v", err)
-	}
-	_, err = file1.WriteString(podData1)
-	if err != nil {
-		t.Fatalf("Unable to write api server partition file. error %v", err)
-	}
-
-	_, err = file1.WriteString(rsData1)
-	if err != nil {
-		t.Fatalf("Unable to write api server partition file. error %v", err)
-	}
-
-	// parition 2
-	podData2 := fmt.Sprintf(podDataParitionModel, prefix, tenant2, "tenant3")
-	rsData2 := fmt.Sprintf(rsDataParitionModel, prefix, tenant2, "tenant3")
-	file2, err := os.Create("apiserver-1.config")
-	if err != nil {
-		t.Fatalf("Unable to create api server partition file. error %v", err)
-	}
-	_, err = file2.WriteString(podData2)
-	if err != nil {
-		t.Fatalf("Unable to write api server partition file. error %v", err)
-	}
-
-	_, err = file2.WriteString(rsData2)
-	if err != nil {
-		t.Fatalf("Unable to write api server partition file. error %v", err)
-	}
-
-	return prefix, configFilename1, configFilename2
-}
-
-func deleteApiServerDataPartitionFile(t *testing.T) {
-	err := os.Remove(configFilename1)
-	if err != nil {
-		t.Fatalf("Unable to delete api server partition file. error %v", err)
-	}
-	err = os.Remove(configFilename2)
-	if err != nil {
-		t.Fatalf("Unable to delete api server partition file. error %v", err)
-	}
-}
-
 // Ideally, we should test all kinds - TODO - should be able to leverage generated test data
 func TestGetCanGetAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, s2, _, clientset2 := setUpApiservers(t)
-	//s1, closeFn1, clientset1, s2, closeFn2, clientset2 := setUpApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, _, clientset2, configFilename2 := setUpTwoApiservers(t)
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
 	//defer closeFn2()
 
@@ -416,11 +367,12 @@ func TestGetCanGetAlldata(t *testing.T) {
 	deletePod(t, clientset1, pod2)
 	deleteRS(t, clientset2, rs1)
 	deleteRS(t, clientset2, rs2)
-	deleteApiServerDataPartitionFile(t)
 }
 
 func TestListCanGetAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, _, _, clientset2 := setUpApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, _, _, clientset2, configFilename2 := setUpTwoApiservers(t)
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
 	//defer closeFn2()
 
@@ -484,11 +436,12 @@ func TestListCanGetAlldata(t *testing.T) {
 	deletePod(t, clientset1, pod2)
 	deleteRS(t, clientset2, rs1)
 	deleteRS(t, clientset2, rs2)
-	deleteApiServerDataPartitionFile(t)
 }
 
 func TestPostCanUpdateAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, s2, closeFn2, clientset2 := setUpApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
 	defer closeFn2()
 
@@ -544,11 +497,12 @@ func TestPostCanUpdateAlldata(t *testing.T) {
 	// tear down
 	deletePod(t, clientset1, pod1)
 	deletePod(t, clientset1, pod2)
-	deleteApiServerDataPartitionFile(t)
 }
 
 func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
-	_, closeFn1, clientset1, _, closeFn2, clientset2 := setUpApiservers(t)
+	_, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
 	defer closeFn2()
 
@@ -639,15 +593,15 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	// tear down
 	deleteRS(t, clientset1, rs1)
 	deleteRS(t, clientset1, rs2)
-	deleteApiServerDataPartitionFile(t)
 }
 
 // TODO - Update and re-enable after informer data is merged
 func _TestInformerCanGetAllData(t *testing.T) {
-	time.Sleep(10 * time.Second)
-	_, closeFn1, clientset1, _, _, clientset2 := setUpApiservers(t)
+	_, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
@@ -705,12 +659,12 @@ func _TestInformerCanGetAllData(t *testing.T) {
 	// tear down
 	deleteRS(t, clientset1, rs1)
 	deleteRS(t, clientset1, rs2)
-	deleteApiServerDataPartitionFile(t)
 }
 
 // Test apiserver sync data like ["registry/pods/", "registry/pods/tenant2")
 func TestPartitionWithLeftUnbounded(t *testing.T) {
-	_, closeFn, clientset:= setUpApiserver(t, "", tenant2 )
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", tenant2)
+	defer deleteSinglePartitionConfigFile(t, configFilename)
 	defer closeFn()
 
 	// create informer 1 from server 1
@@ -733,7 +687,7 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 	rs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
 	assert.NotNil(t, rs)
 
-	otherRs :=  createRS(t, clientset, "tenant3", namespace, "rs1", 1)
+	otherRs := createRS(t, clientset, tenant3, namespace, "rs1", 1)
 	assert.NotNil(t, otherRs)
 	assert.NotEqual(t, rs.UID, otherRs.UID)
 
@@ -777,12 +731,12 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 
 	// tear down
 	deleteRS(t, clientset, rs)
-	deletePartitionConfigFile(t)
 }
 
 // Test apiserver sync data like ["registry/pods/tenant2", "")
 func TestPartitionRightUnbounded(t *testing.T) {
-	_, closeFn, clientset:= setUpApiserver(t, tenant2, "" )
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, "")
+	defer deleteSinglePartitionConfigFile(t, configFilename)
 	defer closeFn()
 
 	// create informer 1 from server 1
@@ -805,7 +759,7 @@ func TestPartitionRightUnbounded(t *testing.T) {
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
 
-	otherRs :=  createRS(t, clientset, tenant1, namespace, "rs1", 1)
+	otherRs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
 	assert.NotNil(t, otherRs)
 	assert.NotEqual(t, rs.UID, otherRs.UID)
 
@@ -849,12 +803,12 @@ func TestPartitionRightUnbounded(t *testing.T) {
 
 	// tear down
 	deleteRS(t, clientset, rs)
-	deletePartitionConfigFile(t)
 }
 
 // Test apiserver sync data like ["registry/pods/tenant2", "registry/pods/tenant3")
 func TestPartitionLeftRightBounded(t *testing.T) {
-	_, closeFn, clientset:= setUpApiserver(t, tenant2,  "tenant3" )
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, tenant3)
+	defer deleteSinglePartitionConfigFile(t, configFilename)
 	defer closeFn()
 
 	// create informer 1 from server 1
@@ -877,7 +831,7 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
 
-	otherRs :=  createRS(t, clientset, "tenant3", namespace, "rs3", 1)
+	otherRs := createRS(t, clientset, tenant3, namespace, "rs3", 1)
 	assert.NotNil(t, otherRs)
 	assert.NotEqual(t, rs.UID, otherRs.UID)
 
@@ -921,29 +875,31 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 
 	// tear down
 	deleteRS(t, clientset, rs)
-	deletePartitionConfigFile(t)
 }
 
-func setUpApiserver(t *testing.T, begin, end string) (*httptest.Server, framework.CloseFunc, clientset.Interface) {
-	prefix, configFilename1 := createPartitionConfig(t, begin, end)
-	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1)
+func setUpSingleApiserver(t *testing.T, begin, end string) (*httptest.Server, framework.CloseFunc, clientset.Interface, string) {
+	prefix, configFilename := createSingleApiServerPartitionFile(t, begin, end)
+	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, "")
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	config := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s.URL})
 	clientSet, err := clientset.NewForConfig(config)
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}
-	return s, closeFn, clientSet
+	return s, closeFn, clientSet, configFilename
 }
 
-func createPartitionConfig(t *testing.T, begin, end string) (prefix, configFilename string) {
-	prefix = path.Join(uuid.New(), "registry")
+func generatedPrefix() string {
+	return path.Join(uuid.New(), "registry")
+}
 
+func createSinglePartitionConfig(t *testing.T, fileSuffix int, prefix, begin, end string) (configFilename string) {
 	podData := fmt.Sprintf(podDataParitionModel, prefix, begin, end)
 	rsData := fmt.Sprintf(rsDataParitionModel, prefix, begin, end)
 
 	// const does not work here
-	configFile, err := os.Create("apiserver-0.config")
+	configFilename = fmt.Sprintf("apiserver-%d.config", fileSuffix)
+	configFile, err := os.Create(configFilename)
 	if err != nil {
 		t.Fatalf("Unable to create api server partition file. error %v", err)
 	}
@@ -957,14 +913,24 @@ func createPartitionConfig(t *testing.T, begin, end string) (prefix, configFilen
 		t.Fatalf("Unable to write api server partition file. error %v", err)
 	}
 
-	return prefix, configFilename
+	return configFilename
 }
 
-func deletePartitionConfigFile(t *testing.T) {
-	err := os.Remove(configFilename1)
+func createSingleApiServerPartitionFile(t *testing.T, begin, end string) (prefix, configFilename string) {
+	prefix = generatedPrefix()
+	return prefix, createSinglePartitionConfig(t, 0, prefix, begin, end)
+}
+
+func createTwoApiServersPartitionFiles(t *testing.T) (prefix, configFilename1, configFilename2 string) {
+	prefix = generatedPrefix()
+	configFilename1 = createSinglePartitionConfig(t, 0, prefix, tenant1, tenant2)
+	configFilename2 = createSinglePartitionConfig(t, 1, prefix, tenant2, tenant3)
+	return prefix, configFilename1, configFilename2
+}
+
+func deleteSinglePartitionConfigFile(t *testing.T, configFilename string) {
+	err := os.Remove(configFilename)
 	if err != nil {
-		t.Fatalf("Unable to delete api server partition file. error %v", err)
+		t.Fatalf("Unable to delete api server partition file %s. error %v", configFilename, err)
 	}
 }
-
-

@@ -98,11 +98,11 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 					}
 
 					select {
-						case <-stopCh.Read:
-							a.closeWatcher(w, stopCh)
-							return
-						case a.aggChan <- signal:
-							klog.V(4).Infof("Sent event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
+					case <-stopCh.Read:
+						a.closeWatcher(w, stopCh)
+						return
+					case a.aggChan <- signal:
+						klog.V(4).Infof("Sent event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
 					}
 				}
 			}

@@ -241,21 +241,18 @@ func NewIntegrationTestMasterConfig() *master.Config {
 	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4")
 }
 
-// NewIntegrationTestMasterConfigParition returns two master config for api server partition tests.
-func NewIntegrationTestMasterConfigParition(prefix, configFilename1, configFilename2 string) (*master.Config, *master.Config) {
-	etcdOptions1 := DefaultEtcdOptions()
-	etcdOptions1.StorageConfig.Prefix = prefix
-	etcdOptions1.StorageConfig.PartitionConfigFilepath = configFilename1
-	masterConfigOptions1 := &MasterConfigOptions{EtcdOptions: etcdOptions1}
-	master1Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions1, "192.168.10.6")
+// NewIntegrationServerWithPartitionConfig returns master config for api server partition test
+func NewIntegrationServerWithPartitionConfig(prefix, configFilename string, masterAddr string) *master.Config {
+	etcdOptions := DefaultEtcdOptions()
+	etcdOptions.StorageConfig.Prefix = prefix
+	etcdOptions.StorageConfig.PartitionConfigFilepath = configFilename
+	masterConfigOptions := &MasterConfigOptions{EtcdOptions: etcdOptions}
+	if masterAddr == "" {
+		masterAddr = "192.168.10.6"
+	}
+	masterConfig := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions, masterAddr)
 
-	etcdOptions2 := DefaultEtcdOptions()
-	etcdOptions2.StorageConfig.Prefix = prefix
-	etcdOptions2.StorageConfig.PartitionConfigFilepath = configFilename2
-	masterConfigOptions2 := &MasterConfigOptions{EtcdOptions: etcdOptions2}
-	master2Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions2, "192.168.10.8")
-
-	return master1Config, master2Config
+	return masterConfig
 }
 
 // NewIntegrationTestMasterConfigWithOptions returns the master config appropriate for most integration tests
@@ -380,15 +377,3 @@ func (fakeLocalhost443Listener) Addr() net.Addr {
 		Port: 443,
 	}
 }
-
-// NewIntegrationServerWithPartitionConfig returns two master config for api server partition tests.
-func NewIntegrationServerWithPartitionConfig(prefix, configFilename string) (*master.Config) {
-	etcdOptions := DefaultEtcdOptions()
-	etcdOptions.StorageConfig.Prefix = prefix
-	etcdOptions.StorageConfig.PartitionConfigFilepath = configFilename
-	masterConfigOptions1 := &MasterConfigOptions{EtcdOptions: etcdOptions}
-	master1Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions1, "192.168.10.6")
-
-	return master1Config
-}
-
