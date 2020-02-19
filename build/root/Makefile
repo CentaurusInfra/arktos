@@ -92,6 +92,7 @@ all:
 else
 all: generated_files
 	hack/make-rules/build.sh $(WHAT)
+	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
 endif
 
 define GINKGO_HELP_INFO
@@ -158,7 +159,6 @@ update:
 else
 update: generated_files
 	CALLED_FROM_MAIN_MAKEFILE=1 hack/make-rules/update.sh
-	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
 endif
 
 define CHECK_TEST_HELP_INFO
@@ -557,6 +557,7 @@ generated_files:
 else
 generated_files:
 	$(MAKE) -f Makefile.generated_files $@ CALLED_FROM_MAIN_MAKEFILE=1
+	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
 endif
 
 define HELP_INFO

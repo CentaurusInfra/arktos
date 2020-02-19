@@ -30,10 +30,38 @@ LOGDIR=$TMPDIR
 LOGFILE=$LOGDIR/$LOGFILENAME
 EXIT_ERROR=0
 
+SED_CMD=""
+if [[ "$OSTYPE" == "darwin"* ]]
+then
+    SED_CMD=`which gsed`
+    if [ -z $SED_CMD ]
+    then
+        echo "Please install gnu-sed (brew install gnu-sed)"
+        exit 1
+    fi
+elif [[ "$OSTYPE" == "linux"* ]]
+then
+    SED_CMD=`which sed`
+    if [ -z $SED_CMD ]
+    then
+        echo "Please install sed"
+        exit 1
+    fi
+else
+    echo "Unsupported OS $OSTYPE"
+    exit 1
+fi
+
 display_usage() {
     echo "Usage: $0 <optional-arktos-repo-path> <optional-log-directory>"
     echo "       If optional Arktos repo path is provided, repo setup step will be skipped"
 }
+
+if [ ! -z $2 ]
+then
+    LOGDIR=$2
+    LOGFILE=$LOGDIR/$LOGFILENAME
+fi
 
 if [ ! -z $1 ]
 then
@@ -42,16 +70,22 @@ then
         display_usage
         exit 0
     else
-        echo "Running copyright check for repo: $1"
         REPODIRNAME=$1
-	LOGFILE=$REPODIRNAME/../$LOGFILENAME
+        if [ -z $2 ]
+        then
+	    LOGFILE=$REPODIRNAME/../$LOGFILENAME
+        fi
+        rm -f $LOGFILE
+        PROC1=`cat /proc/1/sched | head -n 1`
+        if [[ -z $PROC1 ]] || [[ $PROC1 != systemd* ]]
+        then
+            echo "WARN: Skipping copyright check for in-container build as git repo is not available"
+            echo "WARN: Skipping copyright check for in-container build as git repo is not available" >> $LOGFILE
+            exit 0
+        else
+            echo "Running copyright check for repo: $REPODIRNAME, logging to $LOGFILE"
+        fi
     fi
-fi
-
-if [ ! -z $2 ]
-then
-    LOGDIR=$2
-    LOGFILE=$LOGDIR/$LOGFILENAME
 fi
 
 clone_repo() {
@@ -93,11 +127,11 @@ get_modified_files_list() {
 
 replace_k8s_copyright_with_arktos_copyright() {
     local REPOFILE=$1
-    if [[ $REPOFILE = *.go ]]
+    if [[ $REPOFILE = *.go ]] || [[ $REPOFILE = *.proto ]]
     then
-        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_GO/" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_GO/" $REPOFILE
     else
-        sed -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_OTHER/" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/s/.*/$ARKTOS_COPYRIGHT_LINE_NEW_OTHER/" $REPOFILE
     fi
 }
 
@@ -129,11 +163,11 @@ check_and_add_arktos_copyright() {
 
 update_arktos_copyright() {
     local REPOFILE=$1
-    if [[ $REPOFILE = *.go ]]
+    if [[ $REPOFILE = *.go ]] || [[ $REPOFILE = *.proto ]]
     then
-        sed -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_GO" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_GO" $REPOFILE
     else
-        sed -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_OTHER" $REPOFILE
+        $SED_CMD -i "/$K8S_COPYRIGHT_MATCH/a $ARKTOS_COPYRIGHT_LINE_MODIFIED_OTHER" $REPOFILE
     fi
 }
 
@@ -167,7 +201,7 @@ verify_copied_file_copyright() {
         if [ $? -eq 0 ]
         then
             echo "WARN: Copied file $REPOFILE has both K8s and Arktos copyright. Patching." >> $LOGFILE
-            sed -i "/$ARKTOS_COPYRIGHT_MATCH/d" $REPOFILE
+            $SED_CMD -i "/$ARKTOS_COPYRIGHT_MATCH/d" $REPOFILE
         else
             echo "Copied file $REPOFILE has K8s copyright but not Arktos copyright. Skipping." >> $LOGFILE
         fi
@@ -181,7 +215,6 @@ verify_copied_file_copyright() {
 
 add_arktos_copyright() {
     echo "Inspecting copyright files, writing logs to $LOGFILE"
-    rm -f $LOGFILE
     local ADDED_FILELIST=$1
     local CHANGED_FILELIST=$2
     local COPIED_FILELIST=$3
