@@ -375,21 +375,21 @@ func testCheckStop(t *testing.T, i int, w watch.Interface) {
 
 func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 	for _, tc := range []struct {
-		name               string
-		key                string
-		partitionedConfig  map[string]storage.Interval
-		expectedKey        string
-		expectedOpt        clientv3.OpOption
+		name              string
+		key               string
+		partitionedConfig map[string]storage.Interval
+		expectedKey       string
+		expectedOpt       clientv3.OpOption
 	}{
 		{
 			name: "opt with interval beginning and end via key",
 			key:  "registry/pods/",
 			partitionedConfig: map[string]storage.Interval{
-				"registry/pods/": storage.Interval{
+				"registry/pods/": {
 					Begin: "tenant1",
 					End:   "tenant2",
 				},
-				"registry/pod/": storage.Interval{
+				"registry/pod/": {
 					Begin: "tenant3",
 					End:   "tenant4",
 				},
@@ -401,10 +401,10 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 			name: "opt with interval beginning only via key",
 			key:  "registry/deployment/",
 			partitionedConfig: map[string]storage.Interval{
-				"registry/deployment/": storage.Interval{
+				"registry/deployment/": {
 					Begin: "tenant1",
 				},
-				"registry/pod/": storage.Interval{
+				"registry/pod/": {
 					Begin: "tenant3",
 					End:   "tenant4",
 				},
@@ -416,10 +416,10 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 			name: "opt with interval end only via key",
 			key:  "registry/pods/",
 			partitionedConfig: map[string]storage.Interval{
-				"registry/pods/": storage.Interval{
+				"registry/pods/": {
 					End: "tenant",
 				},
-				"registry/pod/": storage.Interval{
+				"registry/pod/": {
 					Begin: "tenant3",
 					End:   "tenant4",
 				},
@@ -431,10 +431,10 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 			name: "opt without beginning and end",
 			key:  "registry/pods/",
 			partitionedConfig: map[string]storage.Interval{
-				"registry/po/": storage.Interval{
+				"registry/po/": {
 					End: "tenant",
 				},
-				"registry/pod/": storage.Interval{
+				"registry/pod/": {
 					Begin: "tenant3",
 					End:   "tenant4",
 				},
@@ -446,9 +446,8 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 			name: "opt with empty entry via key",
 			key:  "registry/replicaset/",
 			partitionedConfig: map[string]storage.Interval{
-				"registry/replicaset/": storage.Interval{
-				},
-				"registry/pod/": storage.Interval{
+				"registry/replicaset/": {},
+				"registry/pod/": {
 					Begin: "tenant3",
 					End:   "tenant4",
 				},
@@ -457,17 +456,15 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 			expectedOpt: nil,
 		},
 		{
-			name: "opt with empty config",
-			key:  "registry/demonset/",
-			partitionedConfig: map[string]storage.Interval{
-			},
-			expectedKey: "registry/demonset/",
-			expectedOpt: nil,
+			name:              "opt with empty config",
+			key:               "registry/demonset/",
+			partitionedConfig: map[string]storage.Interval{},
+			expectedKey:       "registry/demonset/",
+			expectedOpt:       nil,
 		},
-
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			updatedKey, opt := GetKeyAndOptFromPartitionConfig( tc.key, tc.partitionedConfig)
+			updatedKey, opt := GetKeyAndOptFromPartitionConfig(tc.key, tc.partitionedConfig)
 			if tc.expectedKey != updatedKey {
 				t.Fatalf("The key %s is not expected as %s", updatedKey, tc.expectedKey)
 			}
@@ -477,4 +474,3 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 		})
 	}
 }
-
