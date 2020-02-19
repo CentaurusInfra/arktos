@@ -73,7 +73,7 @@ func NewFilteredConfigMapInformerWithMultiTenancy(client kubernetes.Interface, n
 				}
 				return client.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

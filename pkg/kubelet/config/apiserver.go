@@ -32,10 +32,10 @@ import (
 
 // NewSourceApiserver creates a config source that watches and pulls from the apiserver.
 func NewSourceApiserver(c clientset.Interface, nodeName types.NodeName, updates chan<- interface{}) {
-	lw := cache.NewListWatchFromClient(c.CoreV1().RESTClient(), "pods", metav1.NamespaceAll, fields.OneTermEqualSelector(api.PodHostField, string(nodeName)))
+	lw := cache.NewListWatchFromClient(c.CoreV1(), "pods", metav1.NamespaceAll, fields.OneTermEqualSelector(api.PodHostField, string(nodeName)))
 	newSourceApiserverFromLW(lw, updates)
 
-	lwActions := cache.NewListWatchFromClient(c.CoreV1().RESTClient(), "actions", metav1.NamespaceAll,
+	lwActions := cache.NewListWatchFromClient(c.CoreV1(), "actions", metav1.NamespaceAll,
 		fields.OneTermEqualSelector(api.PodHostField, string(nodeName)))
 	newSourceApiserverFromLWActions(lwActions, updates)
 }

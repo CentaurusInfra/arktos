@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -589,9 +590,9 @@ func TestMultiWatch(t *testing.T) {
 				LabelSelector:   labels.Set{"watchlabel": name}.AsSelector().String(),
 				ResourceVersion: rv,
 			}
-			w, err := client.CoreV1().Pods("default").Watch(options)
-			if err != nil {
-				panic(fmt.Sprintf("watch error for %v: %v", name, err))
+			w := client.CoreV1().Pods("default").Watch(options)
+			if w.GetFirstError() != nil {
+				panic(fmt.Sprintf("watch error for %v: %v", name, w.GetFirstError()))
 			}
 			defer w.Stop()
 			watchesStarted.Done()

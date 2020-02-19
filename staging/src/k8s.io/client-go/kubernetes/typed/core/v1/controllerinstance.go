@@ -43,20 +43,22 @@ type ControllerInstanceInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ControllerInstance, error)
 	List(opts metav1.ListOptions) (*v1.ControllerInstanceList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ControllerInstance, err error)
 	ControllerInstanceExpansion
 }
 
 // controllerInstances implements ControllerInstanceInterface
 type controllerInstances struct {
-	client rest.Interface
+	client  rest.Interface
+	clients []rest.Interface
 }
 
 // newControllerInstances returns a ControllerInstances
 func newControllerInstances(c *CoreV1Client) *controllerInstances {
 	return &controllerInstances{
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 	}
 }
 
@@ -91,17 +93,22 @@ func (c *controllerInstances) List(opts metav1.ListOptions) (result *v1.Controll
 }
 
 // Watch returns a watch.Interface that watches the requested controllerInstances.
-func (c *controllerInstances) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *controllerInstances) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Resource("controllerinstances").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Resource("controllerinstances").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a controllerInstance and creates it.  Returns the server's representation of the controllerInstance, and an error, if there is any.

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -120,7 +121,8 @@ var _ = SIGDescribe("Generated clientset", func() {
 			LabelSelector:   selector,
 			ResourceVersion: pods.ListMeta.ResourceVersion,
 		}
-		w, err := podClient.Watch(options)
+		w := podClient.Watch(options)
+		err = w.GetFirstError()
 		if err != nil {
 			framework.Failf("Failed to set up watch: %v", err)
 		}
@@ -236,7 +238,8 @@ var _ = SIGDescribe("Generated clientset", func() {
 			LabelSelector:   selector,
 			ResourceVersion: cronJobs.ListMeta.ResourceVersion,
 		}
-		w, err := cronJobClient.Watch(options)
+		w := cronJobClient.Watch(options)
+		err = w.GetFirstError()
 		if err != nil {
 			framework.Failf("Failed to set up watch: %v", err)
 		}

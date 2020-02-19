@@ -106,13 +106,13 @@ func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec,
 // If recursive is false, it watches on given key.
 // If recursive is true, it watches any children and directories under the key, excluding the root key itself.
 // pred must be non-nil. Only if pred matches the change, it will be returned.
-func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) (watch.Interface, error) {
+func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
 	if recursive && !strings.HasSuffix(key, "/") {
 		key += "/"
 	}
 	wc := w.createWatchChan(ctx, key, rev, recursive, pred)
 	go wc.run()
-	return wc, nil
+	return watch.NewAggregatedWatcherWithOneWatch(wc, nil)
 }
 
 func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) *watchChan {

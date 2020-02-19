@@ -46,16 +46,17 @@ type PersistentVolumeClaimInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.PersistentVolumeClaim, error)
 	List(opts metav1.ListOptions) (*v1.PersistentVolumeClaimList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PersistentVolumeClaim, err error)
 	PersistentVolumeClaimExpansion
 }
 
 // persistentVolumeClaims implements PersistentVolumeClaimInterface
 type persistentVolumeClaims struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newPersistentVolumeClaims returns a PersistentVolumeClaims
@@ -65,9 +66,10 @@ func newPersistentVolumeClaims(c *CoreV1Client, namespace string) *persistentVol
 
 func newPersistentVolumeClaimsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *persistentVolumeClaims {
 	return &persistentVolumeClaims{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -105,19 +107,24 @@ func (c *persistentVolumeClaims) List(opts metav1.ListOptions) (result *v1.Persi
 }
 
 // Watch returns a watch.Interface that watches the requested persistentVolumeClaims.
-func (c *persistentVolumeClaims) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *persistentVolumeClaims) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("persistentvolumeclaims").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("persistentvolumeclaims").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a persistentVolumeClaim and creates it.  Returns the server's representation of the persistentVolumeClaim, and an error, if there is any.

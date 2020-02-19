@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -112,7 +113,7 @@ func (b *Broadcaster) blockQueue(f func()) {
 // Watch adds a new watcher to the list and returns an Interface for it.
 // Note: new watchers will only receive new events. They won't get an entire history
 // of previous events.
-func (m *Broadcaster) Watch() Interface {
+func (m *Broadcaster) Watch() AggregatedWatchInterface {
 	var w *broadcasterWatcher
 	m.blockQueue(func() {
 		m.lock.Lock()
@@ -127,14 +128,15 @@ func (m *Broadcaster) Watch() Interface {
 		}
 		m.watchers[id] = w
 	})
-	return w
+
+	return NewAggregatedWatcherWithOneWatch(w, nil)
 }
 
 // WatchWithPrefix adds a new watcher to the list and returns an Interface for it. It sends
 // queuedEvents down the new watch before beginning to send ordinary events from Broadcaster.
 // The returned watch will have a queue length that is at least large enough to accommodate
 // all of the items in queuedEvents.
-func (m *Broadcaster) WatchWithPrefix(queuedEvents []Event) Interface {
+func (m *Broadcaster) WatchWithPrefix(queuedEvents []Event) AggregatedWatchInterface {
 	var w *broadcasterWatcher
 	m.blockQueue(func() {
 		m.lock.Lock()
@@ -156,7 +158,7 @@ func (m *Broadcaster) WatchWithPrefix(queuedEvents []Event) Interface {
 			w.result <- e
 		}
 	})
-	return w
+	return NewAggregatedWatcherWithOneWatch(w, nil)
 }
 
 // stopWatching stops the given watcher and removes it from the list.

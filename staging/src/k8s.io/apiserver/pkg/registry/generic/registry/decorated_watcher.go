@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,16 +26,16 @@ import (
 )
 
 type decoratedWatcher struct {
-	w         watch.Interface
+	aw        watch.AggregatedWatchInterface
 	decorator ObjectFunc
 	cancel    context.CancelFunc
 	resultCh  chan watch.Event
 }
 
-func newDecoratedWatcher(w watch.Interface, decorator ObjectFunc) *decoratedWatcher {
+func newDecoratedWatcher(aw watch.AggregatedWatchInterface, decorator ObjectFunc) *decoratedWatcher {
 	ctx, cancel := context.WithCancel(context.Background())
 	d := &decoratedWatcher{
-		w:         w,
+		aw:        aw,
 		decorator: decorator,
 		cancel:    cancel,
 		resultCh:  make(chan watch.Event),
@@ -48,12 +49,13 @@ func (d *decoratedWatcher) run(ctx context.Context) {
 	var ok bool
 	for {
 		select {
-		case recv, ok = <-d.w.ResultChan():
+		case recv, ok = <-d.aw.ResultChan():
 			// The underlying channel may be closed after timeout.
 			if !ok {
 				d.cancel()
 				return
 			}
+
 			switch recv.Type {
 			case watch.Added, watch.Modified, watch.Deleted, watch.Bookmark:
 				err := d.decorator(recv.Object)
@@ -73,7 +75,7 @@ func (d *decoratedWatcher) run(ctx context.Context) {
 			case <-ctx.Done():
 			}
 		case <-ctx.Done():
-			d.w.Stop()
+			d.aw.Stop()
 			close(d.resultCh)
 			return
 		}

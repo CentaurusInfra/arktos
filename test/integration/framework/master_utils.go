@@ -143,7 +143,8 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 	closeFn := func() {
 		m.GenericAPIServer.RunPreShutdownHooks()
 		close(stopCh)
-		s.Close()
+		//s.Close()
+		s.CloseClientConnections()
 	}
 
 	if masterConfig == nil {

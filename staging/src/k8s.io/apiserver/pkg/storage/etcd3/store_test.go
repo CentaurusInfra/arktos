@@ -163,11 +163,11 @@ func TestCreateWithTTL(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	w, err := store.Watch(ctx, key, out.ResourceVersion, storage.Everything)
-	if err != nil {
-		t.Fatalf("Watch failed: %v", err)
+	aw := store.Watch(ctx, key, out.ResourceVersion, storage.Everything)
+	if aw.GetFirstError() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetFirstError())
 	}
-	testCheckEventType(t, watch.Deleted, w)
+	testCheckEventType(t, watch.Deleted, aw)
 }
 
 func TestCreateWithKeyExist(t *testing.T) {
@@ -512,11 +512,11 @@ func TestGuaranteedUpdateWithTTL(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	w, err := store.Watch(ctx, key, out.ResourceVersion, storage.Everything)
-	if err != nil {
-		t.Fatalf("Watch failed: %v", err)
+	aw := store.Watch(ctx, key, out.ResourceVersion, storage.Everything)
+	if aw.GetFirstError() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetFirstError())
 	}
-	testCheckEventType(t, watch.Deleted, w)
+	testCheckEventType(t, watch.Deleted, aw)
 }
 
 func TestGuaranteedUpdateChecksStoredData(t *testing.T) {
