@@ -1,4 +1,4 @@
-action: "36"
+action: "37"
 apiVersion: v1
 count: 1749009427
 eventTime: "2343-04-17T01:08:33.494361Z"
@@ -10,10 +10,11 @@ involvedObject:
   name: "27"
   namespace: "26"
   resourceVersion: "29"
+  tenant: "31"
   uid: ƗǸƢ6/ʕV
 kind: Event
 lastTimestamp: "2620-11-25T16:08:31Z"
-message: "32"
+message: "33"
 metadata:
   annotations:
     "10": "11"
@@ -48,22 +49,23 @@ metadata:
   selfLink: "6"
   tenant: "4"
   uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
-reason: "31"
+reason: "32"
 related:
-  apiVersion: "40"
-  fieldPath: "42"
-  kind: "37"
-  name: "39"
-  namespace: "38"
-  resourceVersion: "41"
+  apiVersion: "41"
+  fieldPath: "43"
+  kind: "38"
+  name: "40"
+  namespace: "39"
+  resourceVersion: "42"
+  tenant: "44"
   uid: ǡƏS$+½H
-reportingComponent: "43"
-reportingInstance: "44"
+reportingComponent: "45"
+reportingInstance: "46"
 series:
   count: 1970127545
   lastObservedTime: "1985-03-23T14:10:57.985776Z"
   state: 颋ǅ
 source:
-  component: "33"
-  host: "34"
-type: "35"
+  component: "34"
+  host: "35"
+type: "36"

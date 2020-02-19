@@ -202,7 +202,7 @@ func TestUntilWithSync(t *testing.T) {
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					select {}
 				},
-				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 					select {}
 				},
 			},
@@ -219,7 +219,7 @@ func TestUntilWithSync(t *testing.T) {
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					select {}
 				},
-				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 					select {}
 				},
 			},
@@ -241,7 +241,7 @@ func TestUntilWithSync(t *testing.T) {
 					ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 						return fakeclient.CoreV1().Secrets("").List(options)
 					},
-					WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 						return fakeclient.CoreV1().Secrets("").Watch(options)
 					},
 				}
@@ -271,7 +271,7 @@ func TestUntilWithSync(t *testing.T) {
 					ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 						return fakeclient.CoreV1().Secrets("").List(options)
 					},
-					WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 						return fakeclient.CoreV1().Secrets("").Watch(options)
 					},
 				}

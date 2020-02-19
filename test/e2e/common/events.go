@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,12 +52,11 @@ func ObserveNodeUpdateAfterAction(f *framework.Framework, nodeName string, nodeP
 				ls, err := f.ClientSet.CoreV1().Nodes().List(options)
 				return ls, err
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				// Signal parent goroutine that watching has begun.
 				defer informerStartedGuard.Do(func() { close(informerStartedChan) })
 				options.FieldSelector = nodeSelector.String()
-				w, err := f.ClientSet.CoreV1().Nodes().Watch(options)
-				return w, err
+				return f.ClientSet.CoreV1().Nodes().Watch(options)
 			},
 		},
 		&v1.Node{},
@@ -108,11 +108,10 @@ func ObserveEventAfterAction(f *framework.Framework, eventPredicate func(*v1.Eve
 				ls, err := f.ClientSet.CoreV1().Events(f.Namespace.Name).List(options)
 				return ls, err
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				// Signal parent goroutine that watching has begun.
 				defer informerStartedGuard.Do(func() { close(informerStartedChan) })
-				w, err := f.ClientSet.CoreV1().Events(f.Namespace.Name).Watch(options)
-				return w, err
+				return f.ClientSet.CoreV1().Events(f.Namespace.Name).Watch(options)
 			},
 		},
 		&v1.Event{},

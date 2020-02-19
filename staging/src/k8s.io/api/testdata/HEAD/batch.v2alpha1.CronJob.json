@@ -1187,7 +1187,8 @@
         "uid": "嵄箲Ů埞瞔ɏÊ锒e躜ƕ圊ž鲛",
         "apiVersion": "397",
         "resourceVersion": "398",
-        "fieldPath": "399"
+        "fieldPath": "399",
+        "tenant": "400"
       }
     ]
   }

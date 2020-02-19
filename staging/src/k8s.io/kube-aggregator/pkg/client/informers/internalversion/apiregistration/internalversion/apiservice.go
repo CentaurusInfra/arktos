@@ -63,7 +63,7 @@ func NewFilteredAPIServiceInformer(client internalclientset.Interface, resyncPer
 				}
 				return client.Apiregistration().APIServices().List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

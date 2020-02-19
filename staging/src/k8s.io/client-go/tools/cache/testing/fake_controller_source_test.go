@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -65,11 +66,11 @@ func TestRCNumber(t *testing.T) {
 	source.Modify(pod("foo"))
 	source.Modify(pod("foo"))
 
-	w, err := source.Watch(metav1.ListOptions{ResourceVersion: "1"})
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	aw := source.Watch(metav1.ListOptions{ResourceVersion: "1"})
+	if aw.GetFirstError() != nil {
+		t.Fatalf("Unexpected error: %v", aw.GetFirstError())
 	}
-	go consume(t, w, []string{"2", "3"}, wg)
+	go consume(t, aw, []string{"2", "3"}, wg)
 
 	list, err := source.List(metav1.ListOptions{})
 	if err != nil {
@@ -79,17 +80,17 @@ func TestRCNumber(t *testing.T) {
 		t.Errorf("wanted %v, got %v", e, a)
 	}
 
-	w2, err := source.Watch(metav1.ListOptions{ResourceVersion: "2"})
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	aw2 := source.Watch(metav1.ListOptions{ResourceVersion: "2"})
+	if aw2.GetFirstError() != nil {
+		t.Fatalf("Unexpected error: %v", aw2.GetFirstError())
 	}
-	go consume(t, w2, []string{"3"}, wg)
+	go consume(t, aw2, []string{"3"}, wg)
 
-	w3, err := source.Watch(metav1.ListOptions{ResourceVersion: "3"})
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	aw3 := source.Watch(metav1.ListOptions{ResourceVersion: "3"})
+	if aw3.GetFirstError() != nil {
+		t.Fatalf("Unexpected error: %v", aw3.GetFirstError())
 	}
-	go consume(t, w3, []string{}, wg)
+	go consume(t, aw3, []string{}, wg)
 	source.Shutdown()
 	wg.Wait()
 }

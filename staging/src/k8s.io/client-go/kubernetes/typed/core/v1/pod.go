@@ -46,16 +46,17 @@ type PodInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.Pod, error)
 	List(opts metav1.ListOptions) (*v1.PodList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Pod, err error)
 	PodExpansion
 }
 
 // pods implements PodInterface
 type pods struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newPods returns a Pods
@@ -65,9 +66,10 @@ func newPods(c *CoreV1Client, namespace string) *pods {
 
 func newPodsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *pods {
 	return &pods{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -105,19 +107,24 @@ func (c *pods) List(opts metav1.ListOptions) (result *v1.PodList, err error) {
 }
 
 // Watch returns a watch.Interface that watches the requested pods.
-func (c *pods) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *pods) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("pods").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("pods").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a pod and creates it.  Returns the server's representation of the pod, and an error, if there is any.

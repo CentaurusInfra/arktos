@@ -37,9 +37,10 @@ type LocalSubjectAccessReviewInterface interface {
 
 // localSubjectAccessReviews implements LocalSubjectAccessReviewInterface
 type localSubjectAccessReviews struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newLocalSubjectAccessReviews returns a LocalSubjectAccessReviews
@@ -49,8 +50,9 @@ func newLocalSubjectAccessReviews(c *AuthorizationV1beta1Client, namespace strin
 
 func newLocalSubjectAccessReviewsWithMultiTenancy(c *AuthorizationV1beta1Client, namespace string, tenant string) *localSubjectAccessReviews {
 	return &localSubjectAccessReviews{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }

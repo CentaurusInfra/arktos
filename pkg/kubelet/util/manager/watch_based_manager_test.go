@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,14 +40,14 @@ import (
 )
 
 func listSecret(fakeClient clientset.Interface) listObjectFunc {
-	return func(namespace string, opts metav1.ListOptions) (runtime.Object, error) {
-		return fakeClient.CoreV1().Secrets(namespace).List(opts)
+	return func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
+		return fakeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(opts)
 	}
 }
 
 func watchSecret(fakeClient clientset.Interface) watchObjectFunc {
-	return func(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-		return fakeClient.CoreV1().Secrets(namespace).Watch(opts)
+	return func(tenant, namespace string, opts metav1.ListOptions) watch.AggregatedWatchInterface {
+		return fakeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 }
 
@@ -61,6 +62,14 @@ func newSecretCache(fakeClient clientset.Interface) *objectCache {
 }
 
 func TestSecretCache(t *testing.T) {
+	testSecretCache(t, metav1.TenantDefault)
+}
+
+func TestSecretCacheWithMultiTenancy(t *testing.T) {
+	testSecretCache(t, "test-te")
+}
+
+func testSecretCache(t *testing.T, tenant string) {
 	fakeClient := &fake.Clientset{}
 
 	listReactor := func(a core.Action) (bool, runtime.Object, error) {
@@ -77,19 +86,19 @@ func TestSecretCache(t *testing.T) {
 
 	store := newSecretCache(fakeClient)
 
-	store.AddReference("ns", "name")
-	_, err := store.Get("ns", "name")
+	store.AddReference(tenant, "ns", "name")
+	_, err := store.Get(tenant, "ns", "name")
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("Expected NotFound error, got: %v", err)
 	}
 
 	// Eventually we should be able to read added secret.
 	secret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "ns", ResourceVersion: "125"},
+		ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "ns", Tenant: tenant, ResourceVersion: "125"},
 	}
 	fakeWatch.Add(secret)
 	getFn := func() (bool, error) {
-		object, err := store.Get("ns", "name")
+		object, err := store.Get(tenant, "ns", "name")
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, nil
@@ -97,7 +106,7 @@ func TestSecretCache(t *testing.T) {
 			return false, err
 		}
 		secret := object.(*v1.Secret)
-		if secret == nil || secret.Name != "name" || secret.Namespace != "ns" {
+		if secret == nil || secret.Name != "name" || secret.Namespace != "ns" || secret.Tenant != tenant {
 			return false, fmt.Errorf("unexpected secret: %v", secret)
 		}
 		return true, nil
@@ -109,7 +118,7 @@ func TestSecretCache(t *testing.T) {
 	// Eventually we should observer secret deletion.
 	fakeWatch.Delete(secret)
 	getFn = func() (bool, error) {
-		_, err := store.Get("ns", "name")
+		_, err := store.Get(tenant, "ns", "name")
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return true, nil
@@ -122,14 +131,22 @@ func TestSecretCache(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	store.DeleteReference("ns", "name")
-	_, err = store.Get("ns", "name")
+	store.DeleteReference(tenant, "ns", "name")
+	_, err = store.Get(tenant, "ns", "name")
 	if err == nil || !strings.Contains(err.Error(), "not registered") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
 
 func TestSecretCacheMultipleRegistrations(t *testing.T) {
+	testSecretCacheMultipleRegistrations(t, metav1.TenantDefault)
+}
+
+func TestSecretCacheMultipleRegistrationsWithMultiTenancy(t *testing.T) {
+	testSecretCacheMultipleRegistrations(t, "test-te")
+}
+
+func testSecretCacheMultipleRegistrations(t *testing.T, tenant string) {
 	fakeClient := &fake.Clientset{}
 
 	listReactor := func(a core.Action) (bool, runtime.Object, error) {
@@ -146,7 +163,7 @@ func TestSecretCacheMultipleRegistrations(t *testing.T) {
 
 	store := newSecretCache(fakeClient)
 
-	store.AddReference("ns", "name")
+	store.AddReference(tenant, "ns", "name")
 	// This should trigger List and Watch actions eventually.
 	actionsFn := func() (bool, error) {
 		actions := fakeClient.Actions()
@@ -167,15 +184,15 @@ func TestSecretCacheMultipleRegistrations(t *testing.T) {
 
 	// Next registrations shouldn't trigger any new actions.
 	for i := 0; i < 20; i++ {
-		store.AddReference("ns", "name")
-		store.DeleteReference("ns", "name")
+		store.AddReference(tenant, "ns", "name")
+		store.DeleteReference(tenant, "ns", "name")
 	}
 	actions := fakeClient.Actions()
 	assert.Equal(t, 2, len(actions), "unexpected actions: %#v", actions)
 
 	// Final delete also doesn't trigger any action.
-	store.DeleteReference("ns", "name")
-	_, err := store.Get("ns", "name")
+	store.DeleteReference(tenant, "ns", "name")
+	_, err := store.Get(tenant, "ns", "name")
 	if err == nil || !strings.Contains(err.Error(), "not registered") {
 		t.Errorf("unexpected error: %v", err)
 	}

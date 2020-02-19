@@ -63,7 +63,7 @@ func NewFilteredCustomResourceDefinitionInformer(client clientset.Interface, res
 				}
 				return client.ApiextensionsV1beta1().CustomResourceDefinitions().List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

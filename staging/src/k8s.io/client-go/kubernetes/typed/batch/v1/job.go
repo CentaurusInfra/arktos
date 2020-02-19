@@ -46,16 +46,17 @@ type JobInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.Job, error)
 	List(opts metav1.ListOptions) (*v1.JobList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Job, err error)
 	JobExpansion
 }
 
 // jobs implements JobInterface
 type jobs struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newJobs returns a Jobs
@@ -65,9 +66,10 @@ func newJobs(c *BatchV1Client, namespace string) *jobs {
 
 func newJobsWithMultiTenancy(c *BatchV1Client, namespace string, tenant string) *jobs {
 	return &jobs{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -105,19 +107,24 @@ func (c *jobs) List(opts metav1.ListOptions) (result *v1.JobList, err error) {
 }
 
 // Watch returns a watch.Interface that watches the requested jobs.
-func (c *jobs) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *jobs) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("jobs").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("jobs").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a job and creates it.  Returns the server's representation of the job, and an error, if there is any.

@@ -176,7 +176,7 @@ set -e
 # Do dudiligence to ensure containerd service and socket in a working state
 # Containerd service should be part of docker.io installation or apt-get install containerd for Ubuntu OS
 if ! sudo systemctl is-active --quiet containerd; then
-  echo "Containerd is required for Alkid"
+  echo "Containerd is required for Arktos"
   exit 1
 fi
 

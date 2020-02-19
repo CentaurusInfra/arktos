@@ -326,7 +326,7 @@ func (c *dynamicResourceClient) List(opts metav1.ListOptions) (*unstructured.Uns
 	return list, nil
 }
 
-func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	internalGV := schema.GroupVersions{
 		{Group: c.resource.Group, Version: runtime.APIVersionInternal},
 		// always include the legacy group as a decoding target to handle non-error `Status` return types
@@ -349,9 +349,14 @@ func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) (watch.Interface,
 	}
 
 	opts.Watch = true
-	return c.getRestClient().Get().AbsPath(c.makeURLSegments("")...).
-		SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).
-		WatchWithSpecificDecoders(wrappedDecoderFn, unstructured.UnstructuredJSONScheme)
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.client.clients {
+		watcher, err := client.Get().AbsPath(c.makeURLSegments("")...).
+			SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).
+			WatchWithSpecificDecoders(wrappedDecoderFn, unstructured.UnstructuredJSONScheme)
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 func (c *dynamicResourceClient) Patch(name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (*unstructured.Unstructured, error) {

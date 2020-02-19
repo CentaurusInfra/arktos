@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -463,8 +464,8 @@ var _ = utils.SIGDescribe("PersistentVolumes-local ", func() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				w, err := config.client.CoreV1().PersistentVolumes().Watch(metav1.ListOptions{})
-				framework.ExpectNoError(err)
+				w := config.client.CoreV1().PersistentVolumes().Watch(metav1.ListOptions{})
+				framework.ExpectNoError(w.GetFirstError())
 				if w == nil {
 					return
 				}

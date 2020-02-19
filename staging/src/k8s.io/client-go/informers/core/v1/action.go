@@ -72,7 +72,7 @@ func NewFilteredActionInformerWithMultiTenancy(client kubernetes.Interface, name
 				}
 				return client.CoreV1().ActionsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

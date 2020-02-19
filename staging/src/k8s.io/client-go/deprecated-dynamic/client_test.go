@@ -524,14 +524,14 @@ func TestWatch(t *testing.T) {
 		}
 		defer srv.Close()
 
-		watcher, err := cl.Resource(resource, tc.namespace).Watch(metav1.ListOptions{})
-		if err != nil {
-			t.Errorf("unexpected error when watching %q: %v", tc.name, err)
+		aw := cl.Resource(resource, tc.namespace).Watch(metav1.ListOptions{})
+		if aw.GetFirstError() != nil {
+			t.Errorf("unexpected error when watching %q: %v", tc.name, aw.GetFirstError())
 			continue
 		}
 
 		for _, want := range tc.events {
-			got := <-watcher.ResultChan()
+			got := <-aw.ResultChan()
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("Watch(%q) want: %v\ngot: %v", tc.name, want, got)
 			}

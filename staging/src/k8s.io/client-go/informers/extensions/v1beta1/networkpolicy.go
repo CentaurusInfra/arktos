@@ -73,7 +73,7 @@ func NewFilteredNetworkPolicyInformerWithMultiTenancy(client kubernetes.Interfac
 				}
 				return client.ExtensionsV1beta1().NetworkPoliciesWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
