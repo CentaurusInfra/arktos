@@ -73,7 +73,7 @@ func NewFilteredHorizontalPodAutoscalerInformerWithMultiTenancy(client kubernete
 				}
 				return client.AutoscalingV1().HorizontalPodAutoscalersWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

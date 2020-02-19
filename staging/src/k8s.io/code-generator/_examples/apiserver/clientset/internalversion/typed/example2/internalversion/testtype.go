@@ -46,16 +46,17 @@ type TestTypeInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*example2.TestType, error)
 	List(opts v1.ListOptions) (*example2.TestTypeList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *example2.TestType, err error)
 	TestTypeExpansion
 }
 
 // testTypes implements TestTypeInterface
 type testTypes struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newTestTypes returns a TestTypes
@@ -65,9 +66,10 @@ func newTestTypes(c *SecondExampleClient, namespace string) *testTypes {
 
 func newTestTypesWithMultiTenancy(c *SecondExampleClient, namespace string, tenant string) *testTypes {
 	return &testTypes{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -105,19 +107,24 @@ func (c *testTypes) List(opts v1.ListOptions) (result *example2.TestTypeList, er
 }
 
 // Watch returns a watch.Interface that watches the requested testTypes.
-func (c *testTypes) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *testTypes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("testtypes").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("testtypes").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a testType and creates it.  Returns the server's representation of the testType, and an error, if there is any.

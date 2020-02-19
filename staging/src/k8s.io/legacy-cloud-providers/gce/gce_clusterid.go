@@ -110,7 +110,7 @@ func (g *Cloud) watchClusterID(stop <-chan struct{}) {
 		},
 	}
 
-	listerWatcher := cache.NewListWatchFromClient(g.ClusterID.client.CoreV1().RESTClient(), "configmaps", UIDNamespace, fields.Everything())
+	listerWatcher := cache.NewListWatchFromClient(g.ClusterID.client.CoreV1(), "configmaps", UIDNamespace, fields.Everything())
 	var controller cache.Controller
 	g.ClusterID.store, controller = cache.NewInformer(newSingleObjectListerWatcher(listerWatcher, UIDConfigMapName), &v1.ConfigMap{}, updateFuncFrequency, mapEventHandler)
 
@@ -261,7 +261,7 @@ func (sow *singleObjListerWatcher) List(options metav1.ListOptions) (runtime.Obj
 	return sow.lw.List(options)
 }
 
-func (sow *singleObjListerWatcher) Watch(options metav1.ListOptions) (watch.Interface, error) {
+func (sow *singleObjListerWatcher) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
 	options.FieldSelector = "metadata.name=" + sow.objectName
 	return sow.lw.Watch(options)
 }

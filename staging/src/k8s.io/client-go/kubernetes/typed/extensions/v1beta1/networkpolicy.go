@@ -45,16 +45,17 @@ type NetworkPolicyInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.NetworkPolicy, error)
 	List(opts v1.ListOptions) (*v1beta1.NetworkPolicyList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.NetworkPolicy, err error)
 	NetworkPolicyExpansion
 }
 
 // networkPolicies implements NetworkPolicyInterface
 type networkPolicies struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newNetworkPolicies returns a NetworkPolicies
@@ -64,9 +65,10 @@ func newNetworkPolicies(c *ExtensionsV1beta1Client, namespace string) *networkPo
 
 func newNetworkPoliciesWithMultiTenancy(c *ExtensionsV1beta1Client, namespace string, tenant string) *networkPolicies {
 	return &networkPolicies{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -104,19 +106,24 @@ func (c *networkPolicies) List(opts v1.ListOptions) (result *v1beta1.NetworkPoli
 }
 
 // Watch returns a watch.Interface that watches the requested networkPolicies.
-func (c *networkPolicies) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *networkPolicies) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("networkpolicies").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("networkpolicies").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a networkPolicy and creates it.  Returns the server's representation of the networkPolicy, and an error, if there is any.

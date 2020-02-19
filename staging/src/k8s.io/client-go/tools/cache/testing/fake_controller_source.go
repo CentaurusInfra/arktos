@@ -223,12 +223,13 @@ func (f *FakePVCControllerSource) List(options metav1.ListOptions) (runtime.Obje
 
 // Watch returns a watch, which will be pre-populated with all changes
 // after resourceVersion.
-func (f *FakeControllerSource) Watch(options metav1.ListOptions) (watch.Interface, error) {
+func (f *FakeControllerSource) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
 	rc, err := strconv.Atoi(options.ResourceVersion)
+
 	if err != nil {
-		return nil, err
+		return watch.NewAggregatedWatcherWithOneWatch(nil, err)
 	}
 	if rc < len(f.changes) {
 		changes := []watch.Event{}
@@ -240,11 +241,11 @@ func (f *FakeControllerSource) Watch(options metav1.ListOptions) (watch.Interfac
 			// clients).
 			changes = append(changes, watch.Event{Type: c.Type, Object: c.Object.DeepCopyObject()})
 		}
-		return f.Broadcaster.WatchWithPrefix(changes), nil
+		return f.Broadcaster.WatchWithPrefix(changes)
 	} else if rc > len(f.changes) {
-		return nil, errors.New("resource version in the future not supported by this fake")
+		return watch.NewAggregatedWatcherWithOneWatch(nil, errors.New("resource version in the future not supported by this fake"))
 	}
-	return f.Broadcaster.Watch(), nil
+	return f.Broadcaster.Watch()
 }
 
 // Shutdown closes the underlying broadcaster, waiting for events to be

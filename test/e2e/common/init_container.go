@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -90,8 +91,8 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		}
 		e2elog.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(err, "error watching a pod")
+		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
 		defer cancel()
@@ -161,8 +162,8 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		}
 		e2elog.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(err, "error watching a pod")
+		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
 		defer cancel()
@@ -233,8 +234,8 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		}
 		e2elog.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(err, "error watching a pod")
+		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
 
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
@@ -351,8 +352,8 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		e2elog.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
 
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(err, "error watching a pod")
+		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
 
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)

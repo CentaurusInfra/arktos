@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -988,17 +989,21 @@ func (c fakeClient) Create(*certificates.CertificateSigningRequest) (*certificat
 	return &csrReply, nil
 }
 
-func (c fakeClient) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c fakeClient) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+	aggWatch := watch.NewAggregatedWatcher()
 	if c.failureType == watchError {
 		if c.err != nil {
-			return nil, c.err
+			aggWatch.AddWatchInterface(nil, c.err)
+			return aggWatch
 		}
-		return nil, fmt.Errorf("Watch error")
+		aggWatch.AddWatchInterface(nil, fmt.Errorf("Watch error"))
+		return aggWatch
 	}
-	return &fakeWatch{
+	aggWatch.AddWatchInterface(&fakeWatch{
 		failureType:    c.failureType,
 		certificatePEM: c.certificatePEM,
-	}, nil
+	}, nil)
+	return aggWatch
 }
 
 type fakeWatch struct {
