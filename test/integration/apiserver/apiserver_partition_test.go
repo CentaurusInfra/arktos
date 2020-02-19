@@ -308,11 +308,11 @@ func startEventBroadCaster(t *testing.T, cs clientset.Interface) {
 
 // Ideally, we should test all kinds - TODO - should be able to leverage generated test data
 func TestGetCanGetAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, _, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	defer closeFn2()
+	//defer closeFn2()
 
 	// create pods via 2 different api servers
 	pod1 := createPod(t, clientset1, tenant1, "te", "pod1")
@@ -370,11 +370,11 @@ func TestGetCanGetAlldata(t *testing.T) {
 }
 
 func TestListCanGetAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, _, _, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	defer closeFn2()
+	//defer closeFn2()
 
 	// create 2 pods in same tenant and namespace via different api server
 	namespace := "te"
@@ -597,7 +597,6 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 
 // TODO - Update and re-enable after informer data is merged
 func _TestInformerCanGetAllData(t *testing.T) {
-	time.Sleep(10 * time.Second)
 	_, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
