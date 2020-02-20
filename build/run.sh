@@ -42,5 +42,3 @@ kube::build::run_build_command "$@"
 if [[ ${KUBE_RUN_COPY_OUTPUT} =~ ^[yY]$ ]]; then
   kube::build::copy_output
 fi
-
-${KUBE_ROOT}/hack/arktos_copyright.sh ${KUBE_ROOT} ${KUBE_ROOT}/_output

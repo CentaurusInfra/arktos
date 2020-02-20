@@ -74,4 +74,6 @@ for t in ${BASH_TARGETS}; do
 	fi
 done
 
+${KUBE_ROOT}/hack/arktos_copyright.sh ${KUBE_ROOT} ${KUBE_ROOT}/_output
+
 echo -e "${color_green:?}Update scripts completed successfully${color_norm}"
