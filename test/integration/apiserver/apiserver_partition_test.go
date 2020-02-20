@@ -439,11 +439,11 @@ func TestListCanGetAlldata(t *testing.T) {
 }
 
 func TestPostCanUpdateAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, _, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	defer closeFn2()
+	//defer closeFn2()
 
 	// create pods via 2 different api servers
 	pod1 := createPod(t, clientset1, tenant1, "te", "pod1")
@@ -500,11 +500,11 @@ func TestPostCanUpdateAlldata(t *testing.T) {
 }
 
 func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
-	_, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	_, closeFn1, clientset1, configFilename1, _, _, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	defer closeFn2()
+	//defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
@@ -513,9 +513,16 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	informer1.Start(stopCh)
 	defer close(stopCh)
 
+	// create informer 2 from server 2
+	informer2 := informers.NewSharedInformerFactory(clientset2, resyncPeriod)
+	informer2.Start(stopCh)
+
 	startEventBroadCaster(t, clientset1)
+	startEventBroadCaster(t, clientset2)
 	informer1.WaitForCacheSync(stopCh)
+	informer2.WaitForCacheSync(stopCh)
 	go informer1.Apps().V1().ReplicaSets().Informer().Run(stopCh)
+	go informer2.Apps().V1().ReplicaSets().Informer().Run(stopCh)
 
 	namespace := "ns1"
 	rsClient1 := clientset1.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
@@ -535,103 +542,7 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	assert.NotNil(t, rs2)
 	assert.NotEqual(t, rs1.UID, rs2.UID)
 
-	// check data from different api servers
-	rs1Found := false
-	rs2Found := false
-	for {
-		select {
-		case event, ok := <-w1.ResultChan():
-			if !ok {
-				t.Fatalf("Failed to get replicaset from watch api server 1")
-			}
-			if event.Type == watch.Error {
-				t.Fatalf("Result channel get error event. %v", event)
-			}
-			meta, err := meta.Accessor(event.Object)
-			if err != nil {
-				t.Fatalf("Unable to understand watch event %#v", event)
-			}
-			assert.Equal(t, rs1.UID, meta.GetUID())
-			assert.Equal(t, rs1.HashKey, meta.GetHashKey())
-			assert.Equal(t, rs1.Name, meta.GetName())
-			assert.Equal(t, rs1.Namespace, meta.GetNamespace())
-			assert.Equal(t, rs1.Tenant, meta.GetTenant())
-			rs1Found = true
-
-		case event, ok := <-w2.ResultChan():
-			if !ok {
-				t.Fatalf("Failed to get replicaset from watch api server 2")
-			}
-			if event.Type == watch.Error {
-				t.Fatalf("Result channel get error event. %v", event)
-			}
-			meta, err := meta.Accessor(event.Object)
-			if err != nil {
-				t.Fatalf("Unable to understand watch event %#v", event)
-			}
-			assert.Equal(t, rs2.UID, meta.GetUID())
-			assert.Equal(t, rs2.HashKey, meta.GetHashKey())
-			assert.Equal(t, rs2.Name, meta.GetName())
-			assert.Equal(t, rs2.Namespace, meta.GetNamespace())
-			assert.Equal(t, rs2.Tenant, meta.GetTenant())
-			rs2Found = true
-
-		case <-time.After(10 * time.Second):
-			t.Fatalf("unable to get replicaset from watch api server 1")
-		}
-
-		if rs1Found && rs2Found {
-			break
-		}
-	}
-
-	assert.True(t, rs1Found)
-	assert.True(t, rs2Found)
-
-	// TODO - add more tests
-
-	// tear down
-	deleteRS(t, clientset1, rs1)
-	deleteRS(t, clientset1, rs2)
-}
-
-// TODO - Update and re-enable after informer data is merged
-func _TestInformerCanGetAllData(t *testing.T) {
-	_, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
-	defer deleteSinglePartitionConfigFile(t, configFilename2)
-	defer closeFn1()
-	defer closeFn2()
-
-	// create informer 1 from server 1
-	resyncPeriod := 12 * time.Hour
-	informer1 := informers.NewSharedInformerFactory(clientset1, resyncPeriod)
-	stopCh := make(chan struct{})
-	informer1.Start(stopCh)
-	defer close(stopCh)
-
-	startEventBroadCaster(t, clientset1)
-	informer1.WaitForCacheSync(stopCh)
-	go informer1.Apps().V1().ReplicaSets().Informer().Run(stopCh)
-
-	// create informer 2 from server 2
-	informer2 := informers.NewSharedInformerFactory(clientset2, resyncPeriod)
-	informer2.Start(stopCh)
-	startEventBroadCaster(t, clientset2)
-	informer2.WaitForCacheSync(stopCh)
-	go informer2.Apps().V1().ReplicaSets().Informer().Run(stopCh)
-
-	// create rs via 2 different api servers
-	namespace := "ns1"
-	rs1 := createRS(t, clientset1, tenant1, namespace, "rs1", 1)
-	rs2 := createRS(t, clientset2, tenant2, namespace, "rs2", 1)
-	klog.Infof("created replicaset 1 [%+v]", rs1)
-	klog.Infof("created replicaset 2 [%+v]", rs2)
-	assert.NotNil(t, rs1)
-	assert.NotNil(t, rs2)
-	assert.NotEqual(t, rs1.UID, rs2.UID)
-
-	//time.Sleep(10 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	// check data from different api servers
 	rslist1 := informer1.Apps().V1().ReplicaSets().Informer().GetIndexer().List()
@@ -644,21 +555,74 @@ func _TestInformerCanGetAllData(t *testing.T) {
 
 	// check rs1 in informer 1 list
 	assert.True(t, checkReplicaSetExistence2(rslist1, rs1))
-
-	// TODO - uncomment after informer data merged
-	// check rs2 in informer 1 list
-	//assert.True(t, checkReplicaSetExistence2(rslist1, rs2))
+	// check rs2 not in informer 1 list
+	assert.False(t, checkReplicaSetExistence2(rslist1, rs2))
 
 	// check rs2 in informer 2 list
 	assert.True(t, checkReplicaSetExistence2(rslist2, rs2))
 
-	// TODO - uncomment after informer data merged
-	// check rs1 in informer 2 list
-	//assert.True(t, checkReplicaSetExistence2(rslist2, rs1))
+	// check rs1 not in informer 2 list
+	assert.False(t, checkReplicaSetExistence2(rslist2, rs1))
 
 	// tear down
 	deleteRS(t, clientset1, rs1)
 	deleteRS(t, clientset1, rs2)
+}
+
+func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
+	prefix, configFilename1, configFilename2 := createTwoApiServersPartitionFiles(t)
+	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1)
+	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename2, masterAddr2)
+	_, s1, closeFn1 := framework.RunAMaster(masterConfig1)
+	_, s2, _ := framework.RunAMaster(masterConfig2)
+	kubeConfig1 := restclient.KubeConfig{Host: s1.URL}
+	kubeConfig2 := restclient.KubeConfig{Host: s2.URL}
+	aggConfig := restclient.NewAggregatedConfig(&kubeConfig1, &kubeConfig2)
+	aggClientSet, err := clientset.NewForConfig(aggConfig)
+	assert.Nil(t, err)
+
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+	defer deleteSinglePartitionConfigFile(t, configFilename2)
+	defer closeFn1()
+	//defer closeFn2()
+
+	// create informer 1 from aggregated clientset
+	resyncPeriod := 12 * time.Hour
+	informer1 := informers.NewSharedInformerFactory(aggClientSet, resyncPeriod)
+	stopCh := make(chan struct{})
+	informer1.Start(stopCh)
+	defer close(stopCh)
+
+	startEventBroadCaster(t, aggClientSet)
+	informer1.WaitForCacheSync(stopCh)
+	go informer1.Apps().V1().ReplicaSets().Informer().Run(stopCh)
+
+	// create rs via 2 different api servers
+	namespace := "ns1"
+	rs1 := createRS(t, aggClientSet, tenant1, namespace, "rs1", 1)
+	rs2 := createRS(t, aggClientSet, tenant2, namespace, "rs2", 1)
+	klog.Infof("created replicaset 1 [%+v]", rs1)
+	klog.Infof("created replicaset 2 [%+v]", rs2)
+	assert.NotNil(t, rs1)
+	assert.NotNil(t, rs2)
+	assert.NotEqual(t, rs1.UID, rs2.UID)
+
+	time.Sleep(10 * time.Second)
+
+	// check data from different api servers
+	rslist1 := informer1.Apps().V1().ReplicaSets().Informer().GetIndexer().List()
+	assert.NotNil(t, rslist1)
+	klog.Infof(" rs list 1 from informer 1 len %d, [%+v]", len(rslist1), rslist1)
+
+	// check rs1 in informer 1 list
+	assert.True(t, checkReplicaSetExistence2(rslist1, rs1))
+
+	// check rs2 in informer 1 list
+	assert.True(t, checkReplicaSetExistence2(rslist1, rs2))
+
+	// tear down
+	deleteRS(t, aggClientSet, rs1)
+	deleteRS(t, aggClientSet, rs2)
 }
 
 // Test apiserver sync data like ["registry/pods/", "registry/pods/tenant2")
