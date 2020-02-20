@@ -860,15 +860,15 @@ users:
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	if len(mergedConfig.AuthInfos) != 4  {
+	if len(mergedConfig.AuthInfos) != 4 {
 		t.Errorf("expected config.AuthInfos has 4 not %v user auth infos", len(mergedConfig.AuthInfos))
 	}
 
-	if len(mergedConfig.Clusters) != 2  {
+	if len(mergedConfig.Clusters) != 2 {
 		t.Errorf("expected config.Clusters has 2 not %v clusters", len(mergedConfig.Clusters))
 	}
 
-	if len(mergedConfig.Contexts) != 2  {
+	if len(mergedConfig.Contexts) != 2 {
 		t.Errorf("expected config.Contexts has 2 not %v contexts", len(mergedConfig.Contexts))
 	}
 }
@@ -910,11 +910,66 @@ users:
 		ExplicitPath: configFile.Name() + " nonexisting_file",
 	}
 
-	_, err  = loadingRules.Load()
+	_, err = loadingRules.Load()
 	if err == nil {
 		t.Fatalf("Expected error for missing command-line file, got none")
 	}
 	if !strings.Contains(err.Error(), "nonexisting_file") {
 		t.Fatalf("Expected error about 'nonexisting_file', got %s", err.Error())
+	}
+}
+
+func TestCommandLineMultipleConfigFile(t *testing.T) {
+	configFile1, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+	configFile2, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile2.Name())
+	configFile3, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile3.Name())
+	configFile4, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile4.Name())
+
+	WriteToFile(testConfigAlfa, configFile1.Name())
+	WriteToFile(testConfigBravo, configFile2.Name())
+	WriteToFile(testConfigCharlie, configFile3.Name())
+	WriteToFile(testConfigDelta, configFile4.Name())
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile1.Name() + " " + configFile2.Name() + " " + configFile3.Name() + " " + configFile4.Name(),
+	}
+
+	conf, err := loadingRules.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(conf.AuthInfos) != 4 {
+		t.Errorf("expected 4 auth infos")
+	}
+
+}
+
+func TestCommandLineMultipleConfigFileWithOneMissing(t *testing.T) {
+	configFile1, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+	configFile2, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile2.Name())
+	configFile3, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile3.Name())
+	configFile4, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile4.Name())
+
+	WriteToFile(testConfigAlfa, configFile1.Name())
+	WriteToFile(testConfigBravo, configFile2.Name())
+	WriteToFile(testConfigCharlie, configFile3.Name())
+	WriteToFile(testConfigDelta, configFile4.Name())
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile1.Name() + " bogus_file " + configFile2.Name() + " " + configFile3.Name() + " " + configFile4.Name(),
+	}
+
+	_, err := loadingRules.Load()
+	if err == nil {
+		t.Fatalf("Expected error for missing command-line file, got none")
+	}
+	if !strings.Contains(err.Error(), "bogus_file") {
+		t.Fatalf("Expected error about 'bogus_file', got %s", err.Error())
 	}
 }
