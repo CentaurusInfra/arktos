@@ -85,6 +85,22 @@ func TestRoundTrip(t *testing.T) {
 			err:           false,
 			expectArgs:    true,
 		},
+		{
+			name: "multiple kubeconfig",
+			inputFlags: func() *KubeletServer {
+				s := newKubeletServerOrDie()
+				s.KubeConfig = "c1.kubeconfig c2.kubeconfig"
+				return s
+			},
+			outputFlags: func() *KubeletServer {
+				s := newKubeletServerOrDie()
+				s.HealthzBindAddress = "c1.kubeconfig c2.kubeconfig"
+				return s
+			},
+			flagDefaulter: func(*pflag.FlagSet) {},
+			err:           false,
+			expectArgs:    true,
+		},
 	}
 	for _, testCase := range testCases {
 		modifiedFlags := testCase.inputFlags()
