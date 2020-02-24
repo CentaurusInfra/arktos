@@ -188,7 +188,7 @@ func (r *Reflector) Run(stopCh <-chan struct{}) {
 			for {
 				if err := r.ListAndWatch(stopCh); err != nil {
 					if err == errorResetRequested {
-						klog.Infof("Reset message received, redo ListAndWatch with resetCh")
+						klog.V(4).Infof("Reset message received, redo ListAndWatch with resetCh")
 						continue
 					}
 					utilruntime.HandleError(err)
@@ -250,7 +250,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			case <-stopCh:
 				return nil
 			default:
-				klog.Infof("ListAndWatchWithReset default fall through. bounds %+v", r.filterBounds)
+				klog.V(4).Infof("ListAndWatchWithReset default fall through. bounds %+v", r.filterBounds)
 			}
 		}
 
@@ -404,9 +404,9 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			if err == errorResetRequested {
 				select {
 				case cancelCh <- struct{}{}:
-					klog.Infof("Sent message to Resync cancelCh.")
+					klog.V(4).Infof("Sent message to Resync cancelCh.")
 				default:
-					klog.Infof("Resync cancelCh was closed.")
+					klog.V(4).Infof("Resync cancelCh was closed.")
 				}
 				return err
 			}
