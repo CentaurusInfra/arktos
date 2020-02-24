@@ -77,11 +77,11 @@ func setUpTwoApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, cl
 }
 
 func TestSetupMultipleApiServers(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, _, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	defer closeFn2()
+	//defer closeFn2()
 	t.Logf("server 1 %+v, clientset 2 %+v", s1, clientset1)
 	t.Logf("server 2 %+v, clientset 2 %+v", s2, clientset2)
 
