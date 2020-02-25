@@ -133,6 +133,7 @@ func NewCmdCreate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cob
 	o.PrintFlags.AddFlags(cmd)
 
 	// create subcommands
+	cmd.AddCommand(NewCmdCreateTenant(f, ioStreams))
 	cmd.AddCommand(NewCmdCreateNamespace(f, ioStreams))
 	cmd.AddCommand(NewCmdCreateQuota(f, ioStreams))
 	cmd.AddCommand(NewCmdCreateSecret(f, ioStreams))

@@ -1,6 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors.
-Copyright 2020 Authors of Arktos - file modified.
+Copyright 2020 Authors of Arktos.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,32 +28,32 @@ import (
 )
 
 var (
-	namespaceLong = templates.LongDesc(i18n.T(`
-		Create a namespace with the specified name.`))
+	tenantLong = templates.LongDesc(i18n.T(`
+		Create a tenant with the specified name.`))
 
-	namespaceExample = templates.Examples(i18n.T(`
-	  # Create a new namespace named my-namespace
-	  kubectl create namespace my-namespace`))
+	tenantExample = templates.Examples(i18n.T(`
+	  # Create a new tenant named my-tenant
+	  kubectl create tenant my-tenant`))
 )
 
-// NamespaceOpts is the options for 'create namespace' sub command
-type NamespaceOpts struct {
+// TenantOpts is the options for 'create namespace' sub command
+type TenantOpts struct {
 	CreateSubcommandOptions *CreateSubcommandOptions
 }
 
-// NewCmdCreateNamespace is a macro command to create a new namespace
-func NewCmdCreateNamespace(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
-	options := &NamespaceOpts{
+// NewCmdCreateTenant is a macro command to create a new tenant
+func NewCmdCreateTenant(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
+	options := &TenantOpts{
 		CreateSubcommandOptions: NewCreateSubcommandOptions(ioStreams),
 	}
 
 	cmd := &cobra.Command{
-		Use:                   "namespace NAME [--dry-run]",
+		Use:                   "tenant NAME [--dry-run]",
 		DisableFlagsInUseLine: true,
-		Aliases:               []string{"ns"},
-		Short:                 i18n.T("Create a namespace with the specified name"),
-		Long:                  namespaceLong,
-		Example:               namespaceExample,
+		Aliases:               []string{"te"},
+		Short:                 i18n.T("Create a tenant with the specified name"),
+		Long:                  tenantLong,
+		Example:               tenantExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(options.Complete(f, cmd, args))
 			cmdutil.CheckErr(options.Run())
@@ -65,13 +64,13 @@ func NewCmdCreateNamespace(f cmdutil.Factory, ioStreams genericclioptions.IOStre
 
 	cmdutil.AddApplyAnnotationFlags(cmd)
 	cmdutil.AddValidateFlags(cmd)
-	cmdutil.AddGeneratorFlags(cmd, generateversioned.NamespaceV1GeneratorName)
+	cmdutil.AddGeneratorFlags(cmd, generateversioned.TenantV1GeneratorName)
 
 	return cmd
 }
 
 // Complete completes all the required options
-func (o *NamespaceOpts) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
+func (o *TenantOpts) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	name, err := NameFromCommandArgs(cmd, args)
 	if err != nil {
 		return err
@@ -79,8 +78,8 @@ func (o *NamespaceOpts) Complete(f cmdutil.Factory, cmd *cobra.Command, args []s
 
 	var generator generate.StructuredGenerator
 	switch generatorName := cmdutil.GetFlagString(cmd, "generator"); generatorName {
-	case generateversioned.NamespaceV1GeneratorName:
-		generator = &generateversioned.NamespaceGeneratorV1{Name: name}
+	case generateversioned.TenantV1GeneratorName:
+		generator = &generateversioned.TenantGeneratorV1{Name: name}
 	default:
 		return errUnsupportedGenerator(cmd, generatorName)
 	}
@@ -88,7 +87,7 @@ func (o *NamespaceOpts) Complete(f cmdutil.Factory, cmd *cobra.Command, args []s
 	return o.CreateSubcommandOptions.Complete(f, cmd, args, generator)
 }
 
-// Run calls the CreateSubcommandOptions.Run in NamespaceOpts instance
-func (o *NamespaceOpts) Run() error {
+// Run calls the CreateSubcommandOptions.Run in TenantOpts instance
+func (o *TenantOpts) Run() error {
 	return o.CreateSubcommandOptions.Run()
 }

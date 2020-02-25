@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -59,6 +60,7 @@ const (
 	CronJobV2Alpha1GeneratorName            = "cronjob/v2alpha1"
 	CronJobV1Beta1GeneratorName             = "cronjob/v1beta1"
 	NamespaceV1GeneratorName                = "namespace/v1"
+	TenantV1GeneratorName                   = "tenant/v1"
 	ResourceQuotaV1GeneratorName            = "resourcequotas/v1"
 	SecretV1GeneratorName                   = "secret/v1"
 	SecretForDockerRegistryV1GeneratorName  = "secret-for-docker-registry/v1"
@@ -116,6 +118,10 @@ func DefaultGenerators(cmdName string) map[string]generate.Generator {
 	case "namespace":
 		generator = map[string]generate.Generator{
 			NamespaceV1GeneratorName: NamespaceGeneratorV1{},
+		}
+	case "tenant":
+		generator = map[string]generate.Generator{
+			TenantV1GeneratorName: TenantGeneratorV1{},
 		}
 	case "quota":
 		generator = map[string]generate.Generator{
