@@ -263,7 +263,7 @@ func GetKeyAndOptFromPartitionConfig(key string, partitionConfig map[string]stor
 				opt = clientv3.WithRange(key + val.End)
 				// If the interval begin is empty, update the key by adding the interval begin, such as [key+val.Begin, ∞)
 			} else {
-				opt = clientv3.WithFromKey()
+				opt = clientv3.WithRange(clientv3.GetPrefixRangeEnd(key))
 			}
 		} else {
 			// The interval begin is empty and the end is not empty. So that the key remains unchanged, such as [key, key + val.End)

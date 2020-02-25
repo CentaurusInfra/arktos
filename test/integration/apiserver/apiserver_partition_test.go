@@ -77,11 +77,11 @@ func setUpTwoApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, cl
 }
 
 func TestSetupMultipleApiServers(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, s2, _, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 	t.Logf("server 1 %+v, clientset 2 %+v", s1, clientset1)
 	t.Logf("server 2 %+v, clientset 2 %+v", s2, clientset2)
 
@@ -625,7 +625,7 @@ func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
 	deleteRS(t, aggClientSet, rs2)
 }
 
-// Test apiserver sync data like ["registry/pods/", "registry/pods/tenant2")
+// Test apiserver sync data like ["registry/replicasets/", "registry/replicasets/tenant2")
 func TestPartitionWithLeftUnbounded(t *testing.T) {
 	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", tenant2)
 	defer deleteSinglePartitionConfigFile(t, configFilename)
@@ -650,10 +650,17 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 
 	rs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
 	assert.NotNil(t, rs)
+	deleteRS(t, clientset, rs)
+
 
 	otherRs := createRS(t, clientset, tenant3, namespace, "rs1", 1)
 	assert.NotNil(t, otherRs)
 	assert.NotEqual(t, rs.UID, otherRs.UID)
+	deleteRS(t, clientset, otherRs)
+
+	pod := createPod(t, clientset, tenant1, namespace, "pod")
+	assert.NotNil(t, pod)
+	deletePod(t, clientset, pod)
 
 	// check data from different api servers
 	rsFound := false
@@ -682,6 +689,9 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 			if otherRs.UID == meta.GetUID() {
 				t.Fatalf("The api server should not sync other replicaset data")
 			}
+			if pod.UID == meta.GetUID() {
+				t.Fatalf("The api server should not sync other pods data")
+			}
 
 		case <-time.After(10 * time.Second):
 			t.Fatalf("unable to get replicaset from watch api server")
@@ -693,11 +703,10 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 	}
 	assert.True(t, rsFound)
 
-	// tear down
-	deleteRS(t, clientset, rs)
+
 }
 
-// Test apiserver sync data like ["registry/pods/tenant2", "")
+// Test apiserver sync data like ["registry/replicasets/tenant2", "")
 func TestPartitionRightUnbounded(t *testing.T) {
 	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, "")
 	defer deleteSinglePartitionConfigFile(t, configFilename)
@@ -722,10 +731,16 @@ func TestPartitionRightUnbounded(t *testing.T) {
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
+	deleteRS(t, clientset, rs)
 
 	otherRs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
 	assert.NotNil(t, otherRs)
 	assert.NotEqual(t, rs.UID, otherRs.UID)
+	deleteRS(t, clientset, otherRs)
+
+	pod := createPod(t, clientset, tenant2, namespace, "pod")
+	assert.NotNil(t, pod)
+	deletePod(t, clientset, pod)
 
 	// check data from different api servers
 	rsFound := false
@@ -754,7 +769,9 @@ func TestPartitionRightUnbounded(t *testing.T) {
 			if otherRs.UID == meta.GetUID() {
 				t.Fatalf("The api server should not sync other replicaset data")
 			}
-
+			if pod.UID == meta.GetUID() {
+				t.Fatalf("The api server should not sync other pods data")
+			}
 		case <-time.After(10 * time.Second):
 			t.Fatalf("unable to get replicaset from watch api server")
 		}
@@ -764,9 +781,6 @@ func TestPartitionRightUnbounded(t *testing.T) {
 		}
 	}
 	assert.True(t, rsFound)
-
-	// tear down
-	deleteRS(t, clientset, rs)
 }
 
 // Test apiserver sync data like ["registry/pods/tenant2", "registry/pods/tenant3")
@@ -839,6 +853,76 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 
 	// tear down
 	deleteRS(t, clientset, rs)
+}
+
+// Test apiserver sync data like ["registry/replicasets/", "registry/replicasets/")
+func TestPartitionUnBounded(t *testing.T) {
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", "")
+	defer deleteSinglePartitionConfigFile(t, configFilename)
+	defer closeFn()
+
+	// create informer 1 from server 1
+	resyncPeriod := 12 * time.Hour
+	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
+	stopCh := make(chan struct{})
+	informer.Start(stopCh)
+	defer close(stopCh)
+
+	startEventBroadCaster(t, clientset)
+	informer.WaitForCacheSync(stopCh)
+	go informer.Apps().V1().ReplicaSets().Informer().Run(stopCh)
+
+	namespace := "ns1"
+	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
+	w := rsClient.Watch(metav1.ListOptions{})
+	defer w.Stop()
+	assert.Nil(t, w.GetFirstError())
+
+	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
+	assert.NotNil(t, rs)
+	deleteRS(t, clientset, rs)
+
+	pod := createPod(t, clientset, tenant2, namespace, "pod")
+	assert.NotNil(t, pod)
+	deletePod(t, clientset, pod)
+
+	// check data from different api servers
+	rsFound := false
+	for {
+		select {
+		case event, ok := <-w.ResultChan():
+			if !ok {
+				t.Fatalf("Failed to get replicaset from watch api server")
+			}
+			if event.Type == watch.Error {
+				t.Fatalf("Result channel get error event. %v", event)
+			}
+			meta, err := meta.Accessor(event.Object)
+			if err != nil {
+				t.Fatalf("Unable to understand watch event %#v", event)
+			}
+
+			if rs.UID == meta.GetUID() {
+				rsFound = true
+				assert.Equal(t, rs.UID, meta.GetUID())
+				assert.Equal(t, rs.HashKey, meta.GetHashKey())
+				assert.Equal(t, rs.Name, meta.GetName())
+				assert.Equal(t, rs.Namespace, meta.GetNamespace())
+				assert.Equal(t, rs.Tenant, meta.GetTenant())
+			}
+
+			if pod.UID == meta.GetUID() {
+				t.Fatalf("The api server should not sync other pods data")
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("unable to get replicaset from watch api server")
+		}
+
+		if rsFound {
+			break
+		}
+	}
+	assert.True(t, rsFound)
 }
 
 func setUpSingleApiserver(t *testing.T, begin, end string) (*httptest.Server, framework.CloseFunc, clientset.Interface, string) {
