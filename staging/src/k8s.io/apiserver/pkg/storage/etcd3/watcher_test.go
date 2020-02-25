@@ -462,6 +462,42 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 			expectedKey:       "registry/demonset/",
 			expectedOpt:       nil,
 		},
+		{
+			name: "opt with left unbounded",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": {
+					Begin: "",
+					End:   "tenant2",
+				},
+			},
+			expectedKey: "registry/pods/",
+			expectedOpt: clientv3.WithRange("registry/pods/tenant2"),
+		},
+		{
+			name: "opt with right unbounded",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": {
+					Begin: "tenant2",
+					End:   "",
+				},
+			},
+			expectedKey: "registry/pods/tenant2",
+			expectedOpt: clientv3.WithRange("registry/pods0"),
+		},
+		{
+			name: "opt unbounded",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": {
+					Begin: "",
+					End:   "",
+				},
+			},
+			expectedKey: "registry/pods/",
+			expectedOpt: nil,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			updatedKey, opt := GetKeyAndOptFromPartitionConfig(tc.key, tc.partitionedConfig)
