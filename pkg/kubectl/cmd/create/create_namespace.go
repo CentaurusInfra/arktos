@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +37,7 @@ var (
 	  kubectl create namespace my-namespace`))
 )
 
-// NamespaceOpts is the options for 'create namespare' sub command
+// NamespaceOpts is the options for 'create namespace' sub command
 type NamespaceOpts struct {
 	CreateSubcommandOptions *CreateSubcommandOptions
 }

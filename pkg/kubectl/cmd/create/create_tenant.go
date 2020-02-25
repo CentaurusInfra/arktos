@@ -1,5 +1,5 @@
 /*
-Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ var (
 	  kubectl create tenant my-tenant`))
 )
 
-// TenantOpts is the options for 'create namespare' sub command
+// TenantOpts is the options for 'create namespace' sub command
 type TenantOpts struct {
 	CreateSubcommandOptions *CreateSubcommandOptions
 }
