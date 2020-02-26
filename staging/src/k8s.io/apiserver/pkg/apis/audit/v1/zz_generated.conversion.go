@@ -121,7 +121,16 @@ func autoConvert_v1_Event_To_audit_Event(in *Event, out *audit.Event, s conversi
 	if err := s.Convert(&in.User, &out.User, 0); err != nil {
 		return err
 	}
-	out.ImpersonatedUser = (*audit.UserInfo)(unsafe.Pointer(in.ImpersonatedUser))
+	if in.ImpersonatedUser != nil {
+		in, out := &in.ImpersonatedUser, &out.ImpersonatedUser
+		*out = new(audit.UserInfo)
+		// TODO: Inefficient conversion - can we improve it?
+		if err := s.Convert(*in, *out, 0); err != nil {
+			return err
+		}
+	} else {
+		out.ImpersonatedUser = nil
+	}
 	out.SourceIPs = *(*[]string)(unsafe.Pointer(&in.SourceIPs))
 	out.UserAgent = in.UserAgent
 	out.ObjectRef = (*audit.ObjectReference)(unsafe.Pointer(in.ObjectRef))
@@ -149,7 +158,16 @@ func autoConvert_audit_Event_To_v1_Event(in *audit.Event, out *Event, s conversi
 	if err := s.Convert(&in.User, &out.User, 0); err != nil {
 		return err
 	}
-	out.ImpersonatedUser = (*authenticationv1.UserInfo)(unsafe.Pointer(in.ImpersonatedUser))
+	if in.ImpersonatedUser != nil {
+		in, out := &in.ImpersonatedUser, &out.ImpersonatedUser
+		*out = new(authenticationv1.UserInfo)
+		// TODO: Inefficient conversion - can we improve it?
+		if err := s.Convert(*in, *out, 0); err != nil {
+			return err
+		}
+	} else {
+		out.ImpersonatedUser = nil
+	}
 	out.SourceIPs = *(*[]string)(unsafe.Pointer(&in.SourceIPs))
 	out.UserAgent = in.UserAgent
 	out.ObjectRef = (*ObjectReference)(unsafe.Pointer(in.ObjectRef))
@@ -169,7 +187,17 @@ func Convert_audit_Event_To_v1_Event(in *audit.Event, out *Event, s conversion.S
 
 func autoConvert_v1_EventList_To_audit_EventList(in *EventList, out *audit.EventList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]audit.Event)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]audit.Event, len(*in))
+		for i := range *in {
+			if err := Convert_v1_Event_To_audit_Event(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -180,7 +208,17 @@ func Convert_v1_EventList_To_audit_EventList(in *EventList, out *audit.EventList
 
 func autoConvert_audit_EventList_To_v1_EventList(in *audit.EventList, out *EventList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]Event)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]Event, len(*in))
+		for i := range *in {
+			if err := Convert_audit_Event_To_v1_Event(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 

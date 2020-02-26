@@ -158,6 +158,7 @@ func (a *Verifier) AuthenticateRequest(req *http.Request) (*authenticator.Respon
 	if err := a.verifySubject(req.TLS.PeerCertificates[0].Subject); err != nil {
 		return nil, false, err
 	}
+
 	return a.auth.AuthenticateRequest(req)
 }
 
@@ -186,10 +187,26 @@ var CommonNameUserConversion = UserConversionFunc(func(chain []*x509.Certificate
 	if len(chain[0].Subject.CommonName) == 0 {
 		return nil, false, nil
 	}
+
+	// one tenant per user
+	if (len(chain[0].Subject.Organization)>1) {
+		return nil, false, nil
+	}
+
+	if (len(chain[0].Subject.Organization)>0) {
+		return &authenticator.Response{
+			User: &user.DefaultInfo{
+				Name:   chain[0].Subject.CommonName,
+				Groups: chain[0].Subject.OrganizationalUnit,
+				Tenant: chain[0].Subject.Organization[0],
+			},
+		}, true, nil
+	}
+
 	return &authenticator.Response{
 		User: &user.DefaultInfo{
 			Name:   chain[0].Subject.CommonName,
-			Groups: chain[0].Subject.Organization,
+			Groups: chain[0].Subject.OrganizationalUnit,
 		},
 	}, true, nil
 })

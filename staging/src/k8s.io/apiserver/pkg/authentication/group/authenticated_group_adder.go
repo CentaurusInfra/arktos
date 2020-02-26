@@ -54,6 +54,7 @@ func (g *AuthenticatedGroupAdder) AuthenticateRequest(req *http.Request) (*authe
 	r.User = &user.DefaultInfo{
 		Name:   r.User.GetName(),
 		UID:    r.User.GetUID(),
+		Tenant: r.User.GetTenant(),
 		Groups: append(r.User.GetGroups(), user.AllAuthenticated),
 		Extra:  r.User.GetExtra(),
 	}

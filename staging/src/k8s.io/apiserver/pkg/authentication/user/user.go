@@ -22,6 +22,8 @@ type Info interface {
 	// GetName returns the name that uniquely identifies this user among all
 	// other active users.
 	GetName() string
+	// GetName returns the tenant that the user belongs to
+	GetTenant() string
 	// GetUID returns a unique value for a particular user that will change
 	// if the user is removed from the system and another user is added with
 	// the same name.
@@ -47,8 +49,13 @@ type Info interface {
 type DefaultInfo struct {
 	Name   string
 	UID    string
+	Tenant string
 	Groups []string
 	Extra  map[string][]string
+}
+
+func (i *DefaultInfo) GetTenant() string {
+	return i.Tenant
 }
 
 func (i *DefaultInfo) GetName() string {

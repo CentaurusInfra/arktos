@@ -35,6 +35,7 @@ func NewAuthenticator() authenticator.Request {
 		return &authenticator.Response{
 			User: &user.DefaultInfo{
 				Name:   anonymousUser,
+				Tenant: "system",
 				Groups: []string{unauthenticatedGroup},
 			},
 			Audiences: auds,

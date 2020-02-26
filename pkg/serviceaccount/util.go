@@ -50,6 +50,7 @@ func (sa *ServiceAccountInfo) UserInfo() user.Info {
 		Name:   apiserverserviceaccount.MakeUsername(sa.Namespace, sa.Name),
 		UID:    sa.UID,
 		Groups: apiserverserviceaccount.MakeGroupNames(sa.Namespace),
+		Tenant: "system",
 	}
 	if sa.PodName != "" && sa.PodUID != "" {
 		info.Extra = map[string][]string{

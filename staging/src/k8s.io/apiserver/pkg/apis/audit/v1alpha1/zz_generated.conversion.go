@@ -143,7 +143,16 @@ func autoConvert_v1alpha1_Event_To_audit_Event(in *Event, out *audit.Event, s co
 	if err := s.Convert(&in.User, &out.User, 0); err != nil {
 		return err
 	}
-	out.ImpersonatedUser = (*audit.UserInfo)(unsafe.Pointer(in.ImpersonatedUser))
+	if in.ImpersonatedUser != nil {
+		in, out := &in.ImpersonatedUser, &out.ImpersonatedUser
+		*out = new(audit.UserInfo)
+		// TODO: Inefficient conversion - can we improve it?
+		if err := s.Convert(*in, *out, 0); err != nil {
+			return err
+		}
+	} else {
+		out.ImpersonatedUser = nil
+	}
 	out.SourceIPs = *(*[]string)(unsafe.Pointer(&in.SourceIPs))
 	out.UserAgent = in.UserAgent
 	if in.ObjectRef != nil {
@@ -174,7 +183,16 @@ func autoConvert_audit_Event_To_v1alpha1_Event(in *audit.Event, out *Event, s co
 	if err := s.Convert(&in.User, &out.User, 0); err != nil {
 		return err
 	}
-	out.ImpersonatedUser = (*authenticationv1.UserInfo)(unsafe.Pointer(in.ImpersonatedUser))
+	if in.ImpersonatedUser != nil {
+		in, out := &in.ImpersonatedUser, &out.ImpersonatedUser
+		*out = new(authenticationv1.UserInfo)
+		// TODO: Inefficient conversion - can we improve it?
+		if err := s.Convert(*in, *out, 0); err != nil {
+			return err
+		}
+	} else {
+		out.ImpersonatedUser = nil
+	}
 	out.SourceIPs = *(*[]string)(unsafe.Pointer(&in.SourceIPs))
 	out.UserAgent = in.UserAgent
 	if in.ObjectRef != nil {
