@@ -528,6 +528,7 @@ type authenticationUserInfo v1beta1.UserInfo
 func (a *authenticationUserInfo) GetName() string     { return a.Username }
 func (a *authenticationUserInfo) GetUID() string      { return a.UID }
 func (a *authenticationUserInfo) GetGroups() []string { return a.Groups }
+func (a *authenticationUserInfo) GetTenant() string   { return a.Tenant }
 
 func (a *authenticationUserInfo) GetExtra() map[string][]string {
 	if a.Extra == nil {
