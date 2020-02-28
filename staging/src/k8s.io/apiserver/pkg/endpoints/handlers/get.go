@@ -65,6 +65,13 @@ func getResourceHandler(scope *RequestScope, getter getterFunc) http.HandlerFunc
 
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+
+		userInfo, _ := request.UserFrom(ctx)
+		tenant, err = normalizeObjectTenant(userInfo.GetTenant(), tenant)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
 		ctx = request.WithTenant(ctx, tenant)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)

@@ -100,6 +100,13 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+
+		userInfo, _ := request.UserFrom(ctx)
+		tenant, err = normalizeObjectTenant(userInfo.GetTenant(), tenant)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
 		ctx = request.WithTenant(ctx, tenant)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
@@ -149,7 +156,6 @@ func PatchResource(r rest.Patcher, scope *RequestScope, admit admission.Interfac
 			scope.Serializer.DecoderToVersion(s.Serializer, scope.HubGroupVersion),
 		)
 
-		userInfo, _ := request.UserFrom(ctx)
 		staticCreateAttributes := admission.NewAttributesRecord(
 			nil,
 			nil,

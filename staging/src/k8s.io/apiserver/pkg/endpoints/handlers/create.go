@@ -76,10 +76,17 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 		if err != nil {
 			scope.err(err, w, req)
 			return
-		}
+		}		
 
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+		
+		userInfo, _ := request.UserFrom(ctx)
+		tenant, err = normalizeObjectTenant(userInfo.GetTenant(), tenant)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
 		ctx = request.WithTenant(ctx, tenant)
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {
@@ -136,7 +143,6 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 		admit = admission.WithAudit(admit, ae)
 		audit.LogRequestObject(ae, obj, scope.Resource, scope.Subresource, scope.Serializer)
 
-		userInfo, _ := request.UserFrom(ctx)
 		admissionAttributes := admission.NewAttributesRecord(obj, nil, scope.Kind, tenant, namespace, name, scope.Resource, scope.Subresource, admission.Create, options, dryrun.IsDryRun(options.DryRun), userInfo)
 		if mutatingAdmission, ok := admit.(admission.MutationInterface); ok && mutatingAdmission.Handles(admission.Create) {
 			err = mutatingAdmission.Admit(admissionAttributes, scope)

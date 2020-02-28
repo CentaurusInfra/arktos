@@ -420,3 +420,21 @@ func parseTimeout(str string) time.Duration {
 func isDryRun(url *url.URL) bool {
 	return len(url.Query()["dryRun"]) != 0
 }
+
+// normalizeObjectTenant returns the tenant of the object based on what the user tenant is. 
+func normalizeObjectTenant(userTenant, objectTenant string) (string, error) {
+	if userTenant == "" {
+		return "", fmt.Errorf("The user Tenant is null")
+	}
+
+	if userTenant == "system" {
+		// for system user, we don't touch the tenant value in the objectMeta
+		return objectTenant, nil
+	}
+
+	if objectTenant != "" && objectTenant != userTenant {
+		return "", fmt.Errorf("User under tenant %s is not allowed to access object under tenant %s.", userTenant, objectTenant)
+	} 
+
+	return userTenant, nil
+}

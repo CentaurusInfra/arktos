@@ -67,8 +67,15 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 			return
 		}
 
-		ctx := req.Context()
+		ctx := req.Context()		
 		ctx = request.WithNamespace(ctx, namespace)
+
+		userInfo, _ := request.UserFrom(ctx)
+		tenant, err = normalizeObjectTenant(userInfo.GetTenant(), tenant)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
 		ctx = request.WithTenant(ctx, tenant)
 
 		ae := request.AuditEventFrom(ctx)
@@ -127,7 +134,6 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope *RequestSc
 
 		trace.Step("About to delete object from database")
 		wasDeleted := true
-		userInfo, _ := request.UserFrom(ctx)
 		staticAdmissionAttrs := admission.NewAttributesRecord(nil, nil, scope.Kind, tenant, namespace, name, scope.Resource, scope.Subresource, admission.Delete, options, dryrun.IsDryRun(options.DryRun), userInfo)
 		result, err := finishRequest(timeout, func() (runtime.Object, error) {
 			obj, deleted, err := r.Delete(ctx, name, rest.AdmissionToValidateObjectDeleteFunc(admit, staticAdmissionAttrs, scope), options)

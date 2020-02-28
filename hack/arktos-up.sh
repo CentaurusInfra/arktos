@@ -563,7 +563,7 @@ function generate_certs {
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' controller system:kube-controller-manager
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' workload-controller system:workload-controller-manager
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' scheduler  system:kube-scheduler
-    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' admin system:admin system:masters
+    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' admin qianchen:admin system:masters
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-apiserver kube-apiserver
 
     # Create matching certificates for kube-aggregator
@@ -704,7 +704,7 @@ EOF
       --tls-cert-file="${CERT_DIR}/serving-kube-apiserver.crt" \
       --tls-private-key-file="${CERT_DIR}/serving-kube-apiserver.key" \
       --insecure-bind-address="${API_HOST_IP}" \
-      --insecure-port=$insecureport \
+      --insecure-port=0 \
       --storage-backend="${STORAGE_BACKEND}" \
       --storage-media-type="${STORAGE_MEDIA_TYPE}" \
       --etcd-servers="http://${ETCD_HOST}:${ETCD_PORT}" \

@@ -70,6 +70,13 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
+
+		userInfo, _ := request.UserFrom(ctx)
+		tenant, err = normalizeObjectTenant(userInfo.GetTenant(), tenant)
+		if err != nil {
+			scope.err(err, w, req)
+			return
+		}
 		ctx = request.WithTenant(ctx, tenant)
 
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
@@ -129,7 +136,6 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 			return
 		}
 
-		userInfo, _ := request.UserFrom(ctx)
 		transformers := []rest.TransformFunc{}
 		if scope.FieldManager != nil {
 			transformers = append(transformers, func(_ context.Context, newObj, liveObj runtime.Object) (runtime.Object, error) {
