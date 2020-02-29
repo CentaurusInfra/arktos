@@ -243,7 +243,7 @@ function guess_built_binary_path {
 
 ### Allow user to supply the source directory.
 GO_OUT=${GO_OUT:-}
-while getopts "ho:O" OPTION
+while getopts "ho:OS" OPTION
 do
     case ${OPTION} in
         o)
@@ -257,6 +257,10 @@ do
                 echo "Could not guess the correct output directory to use."
                 exit 1
             fi
+            ;;
+        S)
+            echo "starting api server in secure mode"
+            SECURE_MODE="true"
             ;;
         h)
             usage
@@ -280,6 +284,7 @@ set +e
 
 API_PORT=${API_PORT:-8080}
 API_SECURE_PORT=${API_SECURE_PORT:-6443}
+SECURE_MODE=${SECURE_MODE:-"false"}
 
 # WARNING: For DNS to work on most setups you should export API_HOST as the docker0 ip address,
 API_HOST=${API_HOST:-"${lohostname}"}
@@ -589,6 +594,10 @@ function start_apiserver {
     # Increment ports to enable running muliple kube-apiserver simultaneously
     secureport="$(($1 + ${API_SECURE_PORT}))"
     insecureport="$(($1 + ${API_PORT}))"
+
+    if [ "${SECURE_MODE}" == "true" ] ; then
+      insecureport=0
+    fi
 
     # Increment logs to enable each kube-apiserver have own log files
     apiserverlog="kube-apiserver$1.log"
