@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -318,6 +319,7 @@ func autoConvert_v1_UserInfo_To_authentication_UserInfo(in *v1.UserInfo, out *au
 	out.UID = in.UID
 	out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
 	out.Extra = *(*map[string]authentication.ExtraValue)(unsafe.Pointer(&in.Extra))
+	out.Tenant = in.Tenant
 	return nil
 }
 
@@ -331,6 +333,7 @@ func autoConvert_authentication_UserInfo_To_v1_UserInfo(in *authentication.UserI
 	out.UID = in.UID
 	out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
 	out.Extra = *(*map[string]v1.ExtraValue)(unsafe.Pointer(&in.Extra))
+	out.Tenant = in.Tenant
 	return nil
 }
 
