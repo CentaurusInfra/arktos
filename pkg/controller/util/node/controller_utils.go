@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -164,6 +165,7 @@ func RecordNodeEvent(recorder record.EventRecorder, nodeName, nodeUID, eventtype
 		Name:      nodeName,
 		UID:       types.UID(nodeUID),
 		Namespace: "",
+		Tenant:    "",
 	}
 	klog.V(2).Infof("Recording %s event message for node %s", event, nodeName)
 	recorder.Eventf(ref, eventtype, reason, "Node %s event: %s", nodeName, event)
@@ -176,6 +178,7 @@ func RecordNodeStatusChange(recorder record.EventRecorder, node *v1.Node, newSta
 		Name:      node.Name,
 		UID:       node.UID,
 		Namespace: "",
+		Tenant:    "",
 	}
 	klog.V(2).Infof("Recording status change %s event message for node %s", newStatus, node.Name)
 	// TODO: This requires a transaction, either both node status is updated

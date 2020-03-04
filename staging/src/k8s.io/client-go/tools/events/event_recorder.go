@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,6 +67,10 @@ func (recorder *recorderImpl) Eventf(regarding runtime.Object, related runtime.O
 
 func (recorder *recorderImpl) makeEvent(refRegarding *v1.ObjectReference, refRelated *v1.ObjectReference, timestamp metav1.MicroTime, eventtype, reason, message string, reportingController string, reportingInstance string, action string) *v1beta1.Event {
 	t := metav1.Time{Time: recorder.clock.Now()}
+	tenant := refRegarding.Tenant
+	if tenant == "" {
+		tenant = metav1.TenantDefault
+	}
 	namespace := refRegarding.Namespace
 	if namespace == "" {
 		namespace = metav1.NamespaceSystem
@@ -74,6 +79,7 @@ func (recorder *recorderImpl) makeEvent(refRegarding *v1.ObjectReference, refRel
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%v.%x", refRegarding.Name, t.UnixNano()),
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		EventTime:           timestamp,
 		Series:              nil,
