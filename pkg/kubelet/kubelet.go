@@ -452,6 +452,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		Name:      string(nodeName),
 		UID:       types.UID(nodeName),
 		Namespace: "",
+		Tenant:    "",
 	}
 
 	containerRefManager := kubecontainer.NewRefManager()

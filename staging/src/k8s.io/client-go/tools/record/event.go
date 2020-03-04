@@ -331,16 +331,19 @@ func (recorder *recorderImpl) AnnotatedEventf(object runtime.Object, annotations
 
 func (recorder *recorderImpl) makeEvent(ref *v1.ObjectReference, annotations map[string]string, eventtype, reason, message string) *v1.Event {
 	t := metav1.Time{Time: recorder.clock.Now()}
+	tenant := ref.Tenant
+	if tenant == "" {
+		tenant = metav1.TenantDefault
+	}
 	namespace := ref.Namespace
 	if namespace == "" {
 		namespace = metav1.NamespaceDefault
 	}
 	return &v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
-			Namespace: namespace,
-			// the tenant value should be pulled from ObjectReference, after multi-tenancy change goes to event object reference
-			Tenant:      metav1.TenantDefault,
+			Name:        fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
+			Namespace:   namespace,
+			Tenant:      tenant,
 			Annotations: annotations,
 		},
 		InvolvedObject: *ref,

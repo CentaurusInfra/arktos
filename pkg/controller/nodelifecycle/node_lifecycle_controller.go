@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -290,7 +291,7 @@ func NewNodeLifecycleController(
 	klog.Infof("Sending events to api server.")
 	eventBroadcaster.StartRecordingToSink(
 		&v1core.EventSinkImpl{
-			Interface: v1core.New(kubeClient.CoreV1().RESTClient()).Events(""),
+			Interface: v1core.New(kubeClient.CoreV1().RESTClient()).EventsWithMultiTenancy("", ""),
 		})
 
 	if kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
