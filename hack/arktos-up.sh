@@ -566,6 +566,8 @@ function generate_certs {
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' admin system:admin system:masters
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-apiserver kube-apiserver
 
+    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' tenant qian:admin system:masters
+
     # Create matching certificates for kube-aggregator
     kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-aggregator api.kube-public.svc "${API_HOST}" "${API_HOST_IP}"
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header-ca auth-proxy system:auth-proxy
@@ -731,6 +733,7 @@ EOF
     # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" admin
     ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
+    ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-tenant.key" # make readable for kubectl
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
@@ -1264,6 +1267,7 @@ fi
 if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
   cluster/kubectl.sh config set-cluster local --server=https://${API_HOST_IP}:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
   cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
+  cluster/kubectl.sh config set-credentials tenant --client-key=/var/run/kubernetes/client-tenant.key --client-certificate=/var/run/kubernetes/client-tenant.crt
   cluster/kubectl.sh config set-context local --cluster=local --user=myself
   cluster/kubectl.sh config use-context local
 fi

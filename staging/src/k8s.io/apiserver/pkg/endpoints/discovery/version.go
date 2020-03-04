@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@ limitations under the License.
 package discovery
 
 import (
+	//"errors"
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
@@ -26,16 +28,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
+	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
 type APIResourceLister interface {
-	ListAPIResources() []metav1.APIResource
+	ListAPIResources(filter func(metav1.APIResource) bool) []metav1.APIResource
 }
 
-type APIResourceListerFunc func() []metav1.APIResource
+type APIResourceListerFunc func(filter func(metav1.APIResource) bool) []metav1.APIResource
 
-func (f APIResourceListerFunc) ListAPIResources() []metav1.APIResource {
-	return f()
+func (f APIResourceListerFunc) ListAPIResources(filter func(metav1.APIResource) bool) []metav1.APIResource {
+	return f(filter)
 }
 
 // APIVersionHandler creates a webservice serving the supported resources for the version
@@ -66,7 +69,7 @@ func (s *APIVersionHandler) AddToWebService(ws *restful.WebService) {
 	mediaTypes, _ := negotiation.MediaTypesForSerializer(s.serializer)
 	ws.Route(ws.GET("/").To(s.handle).
 		Doc("get available resources").
-		Operation("getAPIResources").
+		Operation("getAPIResources"). 
 		Produces(mediaTypes...).
 		Consumes(mediaTypes...).
 		Writes(metav1.APIResourceList{}))
@@ -78,6 +81,19 @@ func (s *APIVersionHandler) handle(req *restful.Request, resp *restful.Response)
 }
 
 func (s *APIVersionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+
+	filterFunc := func(resource metav1.APIResource) bool {
+		return resource.Tenanted 
+	}
+
+	ctx := req.Context()
+	requestor, exists := request.UserFrom(ctx)
+	// if we hit here and found that there is no requestor info in the request,
+	// it means that the authenticator allows it in, it is mostly we are in a dev environment
+	if !exists || requestor.GetTenant() == "system" {
+		filterFunc = nil
+	}
+
 	responsewriters.WriteObjectNegotiated(s.serializer, negotiation.DefaultEndpointRestrictions, schema.GroupVersion{}, w, req, http.StatusOK,
-		&metav1.APIResourceList{GroupVersion: s.groupVersion.String(), APIResources: s.apiResourceLister.ListAPIResources()})
+		&metav1.APIResourceList{GroupVersion: s.groupVersion.String(), APIResources: s.apiResourceLister.ListAPIResources(filterFunc)})
 }
