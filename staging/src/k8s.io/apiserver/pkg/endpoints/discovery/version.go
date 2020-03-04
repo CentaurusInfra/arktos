@@ -90,7 +90,7 @@ func (s *APIVersionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 	requestor, exists := request.UserFrom(ctx)
 	// if we hit here and found that there is no requestor info in the request,
 	// it means that the authenticator allows it in, it is mostly we are in a dev environment
-	if !exists || requestor.GetTenant() == "system" {
+	if !exists || requestor.GetTenant() == "" || requestor.GetTenant() == "system" {
 		filterFunc = nil
 	}
 
