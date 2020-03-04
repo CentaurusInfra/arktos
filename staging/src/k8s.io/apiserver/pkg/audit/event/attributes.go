@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -145,3 +146,6 @@ func (u user) GetExtra() map[string][]string {
 	}
 	return m
 }
+
+// GetName returns the user tenant
+func (u user) GetTenant() string { return u.Tenant }
