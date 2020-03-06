@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -186,10 +188,45 @@ var CommonNameUserConversion = UserConversionFunc(func(chain []*x509.Certificate
 	if len(chain[0].Subject.CommonName) == 0 {
 		return nil, false, nil
 	}
+
+	isNewformat := false
+	tenant := ""
+	if len(chain[0].Subject.Organization) > 0 {
+		parts := strings.Split(chain[0].Subject.Organization[0], ":")
+		if len(parts)>0 && parts[0] == "tenant" {
+			isNewformat = true
+			tenant = parts[1]
+		}
+	}
+
+	// backward compatible
+	// old format only uses /O
+	//if len(chain[0].Subject.OrganizationalUnit)==0 {
+	if !isNewformat {
+		parts := strings.Split(chain[0].Subject.CommonName, ":")
+		if len(parts)>1 {
+			tenant = parts[0]
+		}
+		return &authenticator.Response{
+			User: &user.DefaultInfo{
+				Name:   chain[0].Subject.CommonName,
+				Groups: chain[0].Subject.Organization,
+				Tenant: tenant,
+			},
+		}, true, nil
+	}
+
+	// new format uses both /O and /OU
+	// one and only tenant per user
+	if len(chain[0].Subject.Organization)!=1 {
+		return nil, false, nil
+	}
+
 	return &authenticator.Response{
 		User: &user.DefaultInfo{
 			Name:   chain[0].Subject.CommonName,
-			Groups: chain[0].Subject.Organization,
+			Groups: chain[0].Subject.OrganizationalUnit,
+			Tenant: tenant,
 		},
 	}, true, nil
 })

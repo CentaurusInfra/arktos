@@ -138,6 +138,9 @@ func (u user) GetUID() string { return u.UID }
 // GetGroups returns the user groups
 func (u user) GetGroups() []string { return u.Groups }
 
+// GetTenant returns the user tenant
+func (u user) GetTenant() string { return u.Tenant }
+
 // GetExtra returns the user extra data
 func (u user) GetExtra() map[string][]string {
 	m := map[string][]string{}
@@ -146,6 +149,3 @@ func (u user) GetExtra() map[string][]string {
 	}
 	return m
 }
-
-// GetName returns the user tenant
-func (u user) GetTenant() string { return u.Tenant }
