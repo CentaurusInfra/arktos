@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -528,6 +529,7 @@ type authenticationUserInfo v1beta1.UserInfo
 func (a *authenticationUserInfo) GetName() string     { return a.Username }
 func (a *authenticationUserInfo) GetUID() string      { return a.UID }
 func (a *authenticationUserInfo) GetGroups() []string { return a.Groups }
+func (a *authenticationUserInfo) GetTenant() string   { return a.Tenant }
 
 func (a *authenticationUserInfo) GetExtra() map[string][]string {
 	if a.Extra == nil {

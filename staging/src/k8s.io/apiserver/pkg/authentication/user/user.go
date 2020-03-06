@@ -17,6 +17,8 @@ limitations under the License.
 
 package user
 
+import "strings"
+
 // Info describes a user that has been authenticated to the system.
 type Info interface {
 	// GetName returns the name that uniquely identifies this user among all
@@ -40,6 +42,8 @@ type Info interface {
 	// In order to faithfully round-trip through an impersonation flow, these keys
 	// MUST be lowercase.
 	GetExtra() map[string][]string
+
+	GetTenant() string
 }
 
 // DefaultInfo provides a simple user information exchange object
@@ -49,6 +53,7 @@ type DefaultInfo struct {
 	UID    string
 	Groups []string
 	Extra  map[string][]string
+	Tenant string
 }
 
 func (i *DefaultInfo) GetName() string {
@@ -65,6 +70,20 @@ func (i *DefaultInfo) GetGroups() []string {
 
 func (i *DefaultInfo) GetExtra() map[string][]string {
 	return i.Extra
+}
+
+func (i *DefaultInfo) GetTenant() string {
+	if i.Tenant != "" {
+		return i.Tenant
+	}
+
+	parts := strings.Split(i.Name, ":")
+
+	if len(parts) < 2 {
+		return ""
+	} else {
+		return parts[0]
+	}
 }
 
 // well-known user and group names
