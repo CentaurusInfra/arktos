@@ -9,20 +9,40 @@ ready or notReady. As a result, the node status and node readiness management ne
 situations on the node, and the pod placement logic at the scheduler needs to be changed to ensure POD was scheduled to 
 a node with desired runtime service.
 
+Initially Arktos is currently implemented as "NodeReady requires ANY one of its runtime services ready" for best resource 
+utilization, i.e. the scheduler can schedule the pod to a node as long as its desired runtime service ready on the node.
+However, this implementation carries a drawback with PODs with cross workload type dependencies which can be described
+as followings:
+
+A cluster is setup and supports two runtime services, containerD and Arktos VM runtime,  and their corresponding workload
+types, i.e. Container workload type and VM workload type. The network agent, Alcor agent, was deployed as a cluster daemonset,
+which is running as container workload. All tenant level workload PODs, either containers or VMs will need Alcor's agent in
+order to have its network up. A pod can be scheduled to a node ONLY VM runtime ready. However, the pod cannot run because
+the network agent failed to setup the network for it.
+ 
+The following diagram illustrates the node status dependency, and cross workload type pod dependencies.
+
+![Design diagram](./Pod-dependency-cross-workload-types.PNG)
+
 This doc describes the proposal of the partial runtime readiness handling feature, including:
-1. Node readiness criteria with multiple runtime services on nodes
-2. Node runtime readiness state as part of the nodeStatus
+1. Node readiness criteria with multiple runtime services, with the Primary Runtime concept.
+2. Node runtime readiness state reported as part of the nodeStatus, nodeConditions.
 3. New scheduler predicate function for runtimeReadiness check
 
 ## Requirements, principles and terminologies
 ### Primary runtime of a cluster
-A primary runtime is the runtime service used for Kubernetes system daemon pods or pod with kube-system namespace. it is 
-usually a container runtime service given that the daemon runs as a process on the node. 
+A primary runtime is the runtime service used for Kubernetes system daemon pods, pod with kube-system namespace, or system
+workload that all other tenant workload pods rely on. In Arktos, the default primary runtime service is container workload 
+runtime service, because:
+
+1. Container workload is a simpler way to implement the daemonset pod than VM workload. 
+2. Currently Kubernetes daemonset pods are container based, default to container workload will make the migration to Arktos
+   more straightforward. 
 
 ### Runtime service state and state changes
 1. A Runtime service can be added or removed from a node
 2. A runtime service state can be at Ready, NotReady or Unknown; where Ready means both network and compute ready for 
-the runtime; NotReady means one of them or neither of them are ready in a particular runtime service. Unknown is the intial
+the runtime; NotReady means one of them or neither of them are ready in a particular runtime service. Unknown is the initial
 state of any given runtime services, and indicates state of a given runtime is not set due to various reasons, such as 
 error querying runtime service endpoint.
 3. A runtime service state change can be Ready->NotReady OR NotReady->Ready
@@ -37,11 +57,15 @@ N x node-status-update-period.  (Details to be defined)
 ## Goal and no-goals
 
 ### Goals
-1. A pod shall be scheduled to a node where the desired runtime service exists AND ready
+1. A pod shall be scheduled to a node where the desired runtime service exists AND ready per the node status at API server 
+   at the time when the POD is being scheduled.
+2. Runtime service statuses should be reported in a timely manner to avoid long delay of actual runtime status reported into
+   API server.
 
 ### No-goals
 1. Pod(workload) migration flow is not in scope
 2. Pod(workload) eviction flow is not in scope
+3. Handle runtime service failures is not in the scope
 
 ## Proposal
 
