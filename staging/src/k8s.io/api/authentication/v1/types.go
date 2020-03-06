@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -114,6 +115,8 @@ type UserInfo struct {
 	// Any additional information provided by the authenticator.
 	// +optional
 	Extra map[string]ExtraValue `json:"extra,omitempty" protobuf:"bytes,4,rep,name=extra"`
+
+	Tenant string `json:"tenant,omitempty" protobuf:"bytes,5,rep,name=tenant"`
 }
 
 // ExtraValue masks the value so protobuf can generate

@@ -178,5 +178,7 @@ message UserInfo {
   // Any additional information provided by the authenticator.
   // +optional
   map<string, ExtraValue> extra = 4;
+
+  optional string tenant = 5;
 }
 

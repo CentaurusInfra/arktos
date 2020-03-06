@@ -40,13 +40,14 @@ spec:
   token: "25"
 status:
   audiences:
-  - "32"
-  error: "33"
+  - "33"
+  error: "34"
   user:
     extra:
       "30":
       - "31"
     groups:
     - "29"
+    tenant: "32"
     uid: "28"
     username: "27"
