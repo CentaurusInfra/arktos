@@ -637,7 +637,7 @@ func TestBootstrapping(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 	masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-		superUser: {Name: "admin", Tenant: "system", Groups: []string{"system:masters"}},
+		superUser: {Name: "admin", Groups: []string{"system:masters"}},
 	}))
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()

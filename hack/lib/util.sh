@@ -459,7 +459,6 @@ function kube::util::create_client_certkey {
         SEP=","
         shift 1
     done
-    #groups+="${SEP}{\"O\":\"system\"}"
     ${sudo} /usr/bin/env bash -e <<EOF
     cd ${dest_dir}
     echo '{"CN":"${cn}","names":[${groups}],"hosts":[""],"key":{"algo":"rsa","size":2048}}' | ${CFSSL_BIN} gencert -ca=${ca}.crt -ca-key=${ca}.key -config=${ca}-config.json - | ${CFSSLJSON_BIN} -bare client-${id}
