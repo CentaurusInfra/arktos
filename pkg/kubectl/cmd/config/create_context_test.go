@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,11 +48,12 @@ func TestCreateContext(t *testing.T) {
 			"--cluster=cluster_nickname",
 			"--user=user_nickname",
 			"--namespace=namespace",
+			"--tenant=tenant",
 		},
 		expected: `Context "shaker-context" created.` + "\n",
 		expectedConfig: clientcmdapi.Config{
 			Contexts: map[string]*clientcmdapi.Context{
-				"shaker-context": {AuthInfo: "user_nickname", Cluster: "cluster_nickname", Namespace: "namespace"}},
+				"shaker-context": {AuthInfo: "user_nickname", Cluster: "cluster_nickname", Namespace: "namespace", Tenant: "tenant"}},
 		},
 	}
 	test.run(t)
@@ -59,8 +61,8 @@ func TestCreateContext(t *testing.T) {
 func TestModifyContext(t *testing.T) {
 	conf := clientcmdapi.Config{
 		Contexts: map[string]*clientcmdapi.Context{
-			"shaker-context": {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns"},
-			"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns"}}}
+			"shaker-context": {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns", Tenant: "sharker-tenant"},
+			"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns", Tenant: "sharker-tenant"}}}
 	test := createContextTest{
 		testContext: "shaker-context",
 		description: "Testing for modify a already exist context",
@@ -70,12 +72,13 @@ func TestModifyContext(t *testing.T) {
 			"--cluster=cluster_nickname",
 			"--user=user_nickname",
 			"--namespace=namespace",
+			"--tenant=new-tenant",
 		},
 		expected: `Context "shaker-context" modified.` + "\n",
 		expectedConfig: clientcmdapi.Config{
 			Contexts: map[string]*clientcmdapi.Context{
-				"shaker-context": {AuthInfo: "user_nickname", Cluster: "cluster_nickname", Namespace: "namespace"},
-				"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns"}}},
+				"shaker-context": {AuthInfo: "user_nickname", Cluster: "cluster_nickname", Namespace: "namespace", Tenant: "new-tenant"},
+				"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns", Tenant: "sharker-tenant"}}},
 	}
 	test.run(t)
 }
@@ -84,8 +87,8 @@ func TestModifyCurrentContext(t *testing.T) {
 	conf := clientcmdapi.Config{
 		CurrentContext: "shaker-context",
 		Contexts: map[string]*clientcmdapi.Context{
-			"shaker-context": {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns"},
-			"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns"}}}
+			"shaker-context": {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns", Tenant: "sharker-tenant"},
+			"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns", Tenant: "sharker-tenant"}}}
 	test := createContextTest{
 		testContext: "shaker-context",
 		description: "Testing for modify a current context",
@@ -96,12 +99,13 @@ func TestModifyCurrentContext(t *testing.T) {
 			"--cluster=cluster_nickname",
 			"--user=user_nickname",
 			"--namespace=namespace",
+			"--tenant=new-tenant",
 		},
 		expected: `Context "shaker-context" modified.` + "\n",
 		expectedConfig: clientcmdapi.Config{
 			Contexts: map[string]*clientcmdapi.Context{
-				"shaker-context": {AuthInfo: "user_nickname", Cluster: "cluster_nickname", Namespace: "namespace"},
-				"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns"}}},
+				"shaker-context": {AuthInfo: "user_nickname", Cluster: "cluster_nickname", Namespace: "namespace", Tenant: "new-tenant"},
+				"not-this":       {AuthInfo: "blue-user", Cluster: "big-cluster", Namespace: "saw-ns", Tenant: "sharker-tenant"}}},
 	}
 	test.run(t)
 }
@@ -140,7 +144,7 @@ func (test createContextTest) run(t *testing.T) {
 		expectContext := test.expectedConfig.Contexts[test.testContext]
 		actualContext := config.Contexts[test.testContext]
 		if expectContext.AuthInfo != actualContext.AuthInfo || expectContext.Cluster != actualContext.Cluster ||
-			expectContext.Namespace != actualContext.Namespace {
+			expectContext.Namespace != actualContext.Namespace || expectContext.Tenant != actualContext.Tenant {
 			t.Errorf("Fail in %q:\n expected Context %v\n but found %v in kubeconfig\n", test.description, expectContext, actualContext)
 		}
 	}

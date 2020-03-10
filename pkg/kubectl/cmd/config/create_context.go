@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,6 +39,7 @@ type createContextOptions struct {
 	cluster      cliflag.StringFlag
 	authInfo     cliflag.StringFlag
 	namespace    cliflag.StringFlag
+	tenant       cliflag.StringFlag
 }
 
 var (
@@ -56,7 +58,7 @@ func NewCmdConfigSetContext(out io.Writer, configAccess clientcmd.ConfigAccess) 
 	options := &createContextOptions{configAccess: configAccess}
 
 	cmd := &cobra.Command{
-		Use:                   fmt.Sprintf("set-context [NAME | --current] [--%v=cluster_nickname] [--%v=user_nickname] [--%v=namespace]", clientcmd.FlagClusterName, clientcmd.FlagAuthInfoName, clientcmd.FlagNamespace),
+		Use:                   fmt.Sprintf("set-context [NAME | --current] [--%v=cluster_nickname] [--%v=user_nickname] [--%v=namespace] [--%v=tenant]", clientcmd.FlagClusterName, clientcmd.FlagAuthInfoName, clientcmd.FlagNamespace, clientcmd.FlagTenant),
 		DisableFlagsInUseLine: true,
 		Short:                 i18n.T("Sets a context entry in kubeconfig"),
 		Long:                  createContextLong,
@@ -77,6 +79,7 @@ func NewCmdConfigSetContext(out io.Writer, configAccess clientcmd.ConfigAccess) 
 	cmd.Flags().Var(&options.cluster, clientcmd.FlagClusterName, clientcmd.FlagClusterName+" for the context entry in kubeconfig")
 	cmd.Flags().Var(&options.authInfo, clientcmd.FlagAuthInfoName, clientcmd.FlagAuthInfoName+" for the context entry in kubeconfig")
 	cmd.Flags().Var(&options.namespace, clientcmd.FlagNamespace, clientcmd.FlagNamespace+" for the context entry in kubeconfig")
+	cmd.Flags().Var(&options.tenant, clientcmd.FlagTenant, clientcmd.FlagTenant+" for the context entry in kubeconfig")
 
 	return cmd
 }
@@ -125,6 +128,9 @@ func (o *createContextOptions) modifyContext(existingContext clientcmdapi.Contex
 	}
 	if o.namespace.Provided() {
 		modifiedContext.Namespace = o.namespace.Value()
+	}
+	if o.tenant.Provided() {
+		modifiedContext.Tenant = o.tenant.Value()
 	}
 
 	return modifiedContext
