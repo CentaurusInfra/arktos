@@ -15,20 +15,22 @@ Please refer to other design documents in the "multi-tenancy" document directory
 
 ### Tenant Spaces & System Space
 
-API Server stores all API Resources and manages the access to these resources. Another layer of separation is needed if we want all tenants to have their own API resources without worrying about name conflicts.
+API Server stores all API Resources and manages the access to these resources. Another layer of separation is needed if we want tenants to have their own API resources without worrying about name conflicts.
 
 We achieve this by implementing a new concept "space". A space is pretty much a virtual cluster. It contains both namespace-scoped resources and cluster-scoped resources. 
 
-When a tenant is initialized, by default a space with the same tenant name is created. 
+When a tenant is initialized, by default a space with the name of the tenant is created. 
 
 Below are some examples resources in a space for tenant "t1":
 
 >- **/api/v1/tenants/t1/namespaces/default/pods/pod1**
 >- **/api/v1/tenants/t1/persistentvolumes/pv1**
 
-All the original API resources form the **system space**, which by default is only accessible to system tenant users.
+As we can see, spaces provides an extra layer of resource separation. Under a certain space, a tenant can freely create their own resources like namespaces or PVs. They don't need to worry about naming conflicts.
 
-Example resources of system space:
+If an API resource is not under any tenant space, then it's in the **system space**. There is only one system space in the whole cluster, which by default is only accessible to system tenant users.
+
+Example resources in the system space:
 
 >- **/api/v1/namespaces/default/pods/pod1**
 >- **/api/v1/persistentvolumes/pv1**

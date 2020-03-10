@@ -14,12 +14,14 @@ Network isolation is achieved with a new API object: network:
 
 * Every pod is associated with a certain network object. If not specified it will be associated to a default network object, which is created when a space is initialized. 
 * A pod can only communicate with pods within the same network.
-* Every network has its own DNS server. The DNS server pod is automatically created when a new network object is created.
+* Every network has its own DNS service. An associated DNS service is automatically created when a new network object is created. (**tbd: decide when to deploy the actual DNS server pods**)
 
 
 ### Network Object
 
-A network object contains its type, and type-specific configurations. For now there are two types defined: flat and vpc.
+A network object contains its type, and type-specific configurations. It's a not namespace-scoped object, so that one network object can be shared by applications in multiple namespaces in a same space.
+
+The "type" field is the only mandatory field in a network object. For now there are two types defined: flat and vpc.
 
 A command-line parameter named "default-network-template-path" of tenant controller will decide which default network will be created for a new space.
 
@@ -76,7 +78,7 @@ spec:
 ```
 
 
-When a pod is attached to a certain network and it wants to specify subnet or IP, it needs to be specified in pod fields. If they are set on a flat network, it will be ignored by the flat network controller (since it does nothing for pods):
+When a pod is attached to a certain network and it wants to specify subnet or IP, it needs to be specified in pod fields:
 
 ```yaml
 apiVersion: v1
@@ -95,20 +97,22 @@ spec:
       ip: 192.168.0.12
 ```
 
+If these settings are set on a pod attached to a flat network, the settings will be ignored by the flat network controller and also the corresponding CNI plugins. 
+
 (**TBD: for a flat network, can we automatically limit its communication scope to that network?**)
 
 
 ### Network Controller
 
-A network controller watches its interested network objects based on network type.
+A network controller watches its interesting network objects based on network type.
 
 A flat network controller only initializes the DNS service and deployment for a new network, and also deletes them when a network object is removed. It doesn't do anything else.
 
-A VPC network controller will call VPC service provider to allocate ports for newly created pods and deallocate ports when pods are deleted, in addition to the DNS service initialize and removal that's done in flat network controller. 
+A VPC network controller will call VPC service provider to allocate ports for newly created pods and deallocate ports when pods are deleted, in addition to the DNS service initialization and removal that's done in flat network controller. 
 
 ### DNS
 
-Each network has its own DNS service, which only contains the DNS entries pods in that that network, regardless of network type. 
+Each network has its own DNS service, which only contains the DNS entries of pods in that that network, regardless of network type. 
 
 The reasons that DNS service is per-network instead of per-space are:
 

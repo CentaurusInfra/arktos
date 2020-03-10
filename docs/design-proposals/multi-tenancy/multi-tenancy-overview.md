@@ -8,7 +8,7 @@ This document gives an overview of the multi-tenancy design in Arktos, including
 
 ## Motivation
 
-Kubernetes provides a solution for automating deployment, scaling, and operations of application containers across clusters of hosts. However, it does not have support multi-tenancy. There is no explicit “tenant” concept in the system, and there is no resource isolation, usage isolation or performance isolation for different tenants.
+Kubernetes provides a solution for automating deployment, scaling, and operations of application containers across clusters of hosts. However, it does not support multi-tenancy. There is no explicit “tenant” concept in the system, and there is no resource isolation, usage isolation or performance isolation for different tenants.
 
 Arktos is evolved from Kubernetes. The motivation of Arktos multi-tenancy is to enable multiple organizations or teams to safely share a physical Arktos cluster, where there could be no trust among these organizations or teams. 
 
@@ -25,9 +25,9 @@ Since Arktos aims to support the scenarios of no tenant trust, Arktos multi-tena
 
 The following functionality requirements are derived from the above discussion:
 
-* **Isolation**: tenants should be strongly isolated from each other. They are not aware of the existence of others at all. One tenant cannot access another tenant's resources or impact other tenants' performance. 
-* **Autonomy**: tenants should be able to perform management work within their own scope without turning to cluster operators. Example management work includes managing quota, roles, clusterRoles, service accounts, etc. 
-* **Manageability**: cluster operators should be able to manage these tenants and enforce some policies across all tenants.
+* **Isolation**: by default tenants should be strongly isolated from each other. They are not aware of the existence of other tenants at all. One tenant cannot access another tenant's resources or impact other tenants' performance. However, cross-tenant access is allowed if tenant admins set custom authorization policies.
+* **Autonomy**: tenant admins should be able to perform management work within their own tenant without turning to cluster admins. Such work includes managing quota/roles/clusterRoles/service accounts and so on inside their own tenant. 
+* **Manageability**: cluster operators should be able to manage tenants in an easy way and be able to enforce some common policies across all tenants.
 * **Compatibility**: API compatibility should be kept as much as possible, so that existing tools can continue to run.
 
 ## Design Overview
@@ -36,7 +36,7 @@ Below is a top view of how Arktos works in a cloud environment:
 
 ![top view]( https://github.com/futurewei-cloud/arktos/docs/design-proposals/images/multi-tenancy-overview1.png "top view")
 
-The IAM service in the diagram can be any IAM service that supports a basic "tenant-user" concept model. Optionally, it provides additional concepts like roles or projects.
+The IAM service in the diagram can be any IAM service that supports a basic "tenant-user" model, where the authentication result includes a user name and the tenant name that the user belongs to. Optionally, the IAM service can provide additional properties like roles or projects.
 
 If we drill down into an Arktos cluster, it looks like this:
 ![top view]( https://github.com/futurewei-cloud/arktos/docs/design-proposals/images/multi-tenancy-overview2.png "cluster view")
@@ -55,7 +55,7 @@ By retrieving tenant credential from API request and automatically filling in th
 
 ### API Server
 
-* Implement tenant space "/tenants/{tenant}/resources"
+* Add an additional layer in API resource url: "/tenants/{tenant}/resources"
 * Support short path for tenant space resources in endpoint handler.
 * Add a new API object "tenant" in system space.
 * Add a new API object "network" which can be in any space.
@@ -64,9 +64,9 @@ By retrieving tenant credential from API request and automatically filling in th
 * Add tenantName in ObjectMeta type.
 * Modify bearer authenticator to extract tenant information.
 * Modify RBAC authorizer to check cross-tenant access, and skip clusterRoles not in the tenant scope.
-* API Discovery: return different resource G/V/K for the specific user
-* API Discovery: not return unavailable resource G/V/K like nodes, daemonSets
-* API Access: validate if the specified resources G/V/K is available for the given user
+* API Discovery: return different resource G/V/K for different tenants as they may have installed different CRDs.
+* API Discovery: do not return prohibited resources like nodes or daemonSets for non-system tenants.
+* API Access: validate if the specified resources G/V/K is available a given tenant.
 
 ### Scheduler
 * Use tenant.ALL to list/watch all resources.
@@ -92,12 +92,12 @@ By retrieving tenant credential from API request and automatically filling in th
 ### Kubectl
 * Support CRUDW of the new API resource: api/v1/tenants.
 
-For existing resources, whether they are in system space or tenant spaces, client-go will read the tenant information from kube-config file and transparently put it into URL path. So far no changes related to this are foreseen in Kubectl. 
+For existing resources, whether they are in system space or tenant spaces, client-go will read the target space information from kube-config file and transparently put it into URL path. So far no changes related to this are foreseen in Kubectl. 
 
 ### Client-go
 
 * Support the tenant parameter for API calls: tenant.XXX, tenant.ALL.
-* P2: Parse the target tenant from Kube-config file and uses it in all API calls if a space is not explicitly specified.
+* Parse the target space from Kube-config file and uses it in all API calls if a space is not explicitly specified as API parameters.
 
 
 ## Execution Plan
