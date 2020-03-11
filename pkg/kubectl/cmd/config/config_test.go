@@ -796,9 +796,10 @@ func TestAdditionalContext(t *testing.T) {
 	context.Cluster = "some-cluster"
 	context.AuthInfo = "some-user"
 	context.Namespace = "different-namespace"
+	context.Tenant = "another-tenant"
 	expectedConfig.Contexts["different-context"] = context
 	test := configCommandTest{
-		args:           []string{"set-context", "different-context", "--" + clientcmd.FlagClusterName + "=some-cluster", "--" + clientcmd.FlagAuthInfoName + "=some-user", "--" + clientcmd.FlagNamespace + "=different-namespace"},
+		args:           []string{"set-context", "different-context", "--" + clientcmd.FlagClusterName + "=some-cluster", "--" + clientcmd.FlagAuthInfoName + "=some-user", "--" + clientcmd.FlagNamespace + "=different-namespace", "--" + clientcmd.FlagTenant + "=another-tenant"},
 		startingConfig: newRedFederalCowHammerConfig(),
 		expectedConfig: expectedConfig,
 	}
@@ -810,10 +811,11 @@ func TestMergeExistingContext(t *testing.T) {
 	expectedConfig := newRedFederalCowHammerConfig()
 	context := expectedConfig.Contexts["federal-context"]
 	context.Namespace = "hammer"
+	context.Tenant = "jimmy"
 	expectedConfig.Contexts["federal-context"] = context
 
 	test := configCommandTest{
-		args:           []string{"set-context", "federal-context", "--" + clientcmd.FlagNamespace + "=hammer"},
+		args:           []string{"set-context", "federal-context", "--" + clientcmd.FlagNamespace + "=hammer", "--" + clientcmd.FlagTenant + "=jimmy"},
 		startingConfig: newRedFederalCowHammerConfig(),
 		expectedConfig: expectedConfig,
 	}
