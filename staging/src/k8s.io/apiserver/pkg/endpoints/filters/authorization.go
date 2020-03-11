@@ -102,6 +102,8 @@ func GetAuthorizerAttributes(ctx context.Context) (authorizer.Attributes, error)
 	attribs.Subresource = requestInfo.Subresource
 	attribs.Namespace = requestInfo.Namespace
 	attribs.Name = requestInfo.Name
+	attribs.Tenant = requestInfo.Tenant
+
 
 	return &attribs, nil
 }
