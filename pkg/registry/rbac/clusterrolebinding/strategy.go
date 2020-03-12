@@ -52,7 +52,7 @@ func (strategy) NamespaceScoped() bool {
 
 //TenantScoped is false as it is cluster-scoped
 func (strategy) TenantScoped() bool {
-	return false
+	return true
 }
 
 // AllowCreateOnUpdate is true for ClusterRoleBindings.
