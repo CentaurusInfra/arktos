@@ -34,12 +34,12 @@ The following functionality requirements are derived from the above discussion:
 
 Below is a top view of how Arktos works in a cloud environment:
 
-![top view]( https://github.com/futurewei-cloud/arktos/docs/design-proposals/images/multi-tenancy-overview1.png "top view")
+![top view]( images/multi-tenancy-overview1.png "top view")
 
 The IAM service in the diagram can be any IAM service that supports a basic "tenant-user" model, where the authentication result includes a user name and the tenant name that the user belongs to. Optionally, the IAM service can provide additional properties like roles or projects.
 
 If we drill down into an Arktos cluster, it looks like this:
-![top view]( https://github.com/futurewei-cloud/arktos/docs/design-proposals/images/multi-tenancy-overview2.png "cluster view")
+![top view]( images/multi-tenancy-overview2.png "cluster view")
 
 A cluster is divided into control plane and data plane:
 
