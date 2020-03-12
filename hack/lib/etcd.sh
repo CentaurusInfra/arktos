@@ -136,3 +136,12 @@ kube::etcd::install() {
     kube::log::info "export PATH=\"$(pwd)/etcd:\${PATH}\""
   )
 }
+
+kube::etcd::add_member() {
+  hostname=$1
+  urlAddress=$2
+
+  kube::log::info "add a member $hostname at $urlAddress to the current etcd cluster"
+  etcdctl member add $hostname $urlAddress
+}
+
