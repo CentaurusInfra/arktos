@@ -31,8 +31,8 @@ var _ authorizer.Attributes = &attributes{}
 // attributes implements the authorizer attributes interface
 // with event data. This is used for enforced audit backends
 type attributes struct {
-	event *audit.Event
-	path  string
+	event  *audit.Event
+	path   string
 	Tenant string
 }
 
@@ -127,7 +127,7 @@ func (a *attributes) GetPath() string {
 	return a.path
 }
 
-// GetTenant returns the tenant 
+// GetTenant returns the tenant
 func (a *attributes) GetTenant() string {
 	return a.Tenant
 }

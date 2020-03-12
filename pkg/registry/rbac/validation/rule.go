@@ -26,6 +26,7 @@ import (
 	"k8s.io/klog"
 
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
@@ -184,9 +185,13 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 		if !visitor(nil, nil, err) {
 			return
 		}
-	} else if userTenant == "system" {
+	} else {
 		sourceDescriber := &clusterRoleBindingDescriber{}
 		for _, clusterRoleBinding := range clusterRoleBindings {
+			if userTenant != metav1.TenantSystem &&
+				userTenant != clusterRoleBinding.Tenant {
+				continue
+			}
 			subjectIndex, applies := appliesTo(user, clusterRoleBinding.Subjects, "")
 			if !applies {
 				continue
@@ -218,9 +223,11 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 			for _, roleBinding := range roleBindings {
 
 				// verify user tenant matches rolebinding tenant
-				// "to remove check for default later when rolebinding can 
+				// "to remove check for default later when rolebinding can
 				// be created with any tenant
-				if (userTenant != roleBinding.GetTenant() && roleBinding.GetTenant() != "default") {
+				if userTenant != roleBinding.GetTenant() &&
+					roleBinding.GetTenant() != metav1.TenantDefault &&
+					roleBinding.GetTenant() != metav1.TenantSystem {
 					continue
 				}
 

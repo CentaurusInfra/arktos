@@ -104,6 +104,5 @@ func GetAuthorizerAttributes(ctx context.Context) (authorizer.Attributes, error)
 	attribs.Name = requestInfo.Name
 	attribs.Tenant = requestInfo.Tenant
 
-
 	return &attribs, nil
 }

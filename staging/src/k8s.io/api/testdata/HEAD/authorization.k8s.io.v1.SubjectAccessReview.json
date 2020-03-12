@@ -51,27 +51,28 @@
       "version": "28",
       "resource": "29",
       "subresource": "30",
-      "name": "31"
+      "name": "31",
+      "tenant": "32"
     },
     "nonResourceAttributes": {
-      "path": "32",
-      "verb": "33"
+      "path": "33",
+      "verb": "34"
     },
-    "user": "34",
+    "user": "35",
     "groups": [
-      "35"
+      "36"
     ],
     "extra": {
-      "36": [
-  "37"
+      "37": [
+  "38"
 ]
     },
-    "uid": "38"
+    "uid": "39"
   },
   "status": {
     "allowed": false,
     "denied": true,
-    "reason": "39",
-    "evaluationError": "40"
+    "reason": "40",
+    "evaluationError": "41"
   }
 }

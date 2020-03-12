@@ -66,6 +66,7 @@ var map_ResourceAttributes = map[string]string{
 	"resource":    "Resource is one of the existing resource types.  \"*\" means all.",
 	"subresource": "Subresource is one of the existing resource types.  \"\" means none.",
 	"name":        "Name is the name of the resource being requested for a \"get\" or deleted for a \"delete\". \"\" (empty) means all.",
+	"tenant":      "Tenant is the tenent of the resource being request",
 }
 
 func (ResourceAttributes) SwaggerDoc() map[string]string {

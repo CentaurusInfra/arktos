@@ -103,7 +103,7 @@ type AttributesRecord struct {
 	Name            string
 	ResourceRequest bool
 	Path            string
-	Tenant		string
+	Tenant          string
 }
 
 func (a AttributesRecord) GetUser() user.Info {
