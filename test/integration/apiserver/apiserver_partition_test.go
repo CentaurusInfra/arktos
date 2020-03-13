@@ -654,7 +654,6 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 	assert.NotNil(t, rs)
 	deleteRS(t, clientset, rs)
 
-
 	otherRs := createRS(t, clientset, tenant3, namespace, "rs1", 1)
 	assert.NotNil(t, otherRs)
 	assert.NotEqual(t, rs.UID, otherRs.UID)
@@ -704,7 +703,6 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 		}
 	}
 	assert.True(t, rsFound)
-
 
 }
 
