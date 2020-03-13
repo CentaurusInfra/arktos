@@ -173,7 +173,6 @@ pluginConfig:
 		t.Fatal(err)
 	}
 
-
 	// multiple kubeconfig
 	kubeconfig1 := filepath.Join(tmpDir, "c1.kubeconfig")
 	if err := ioutil.WriteFile(kubeconfig1, []byte(fmt.Sprintf(`
