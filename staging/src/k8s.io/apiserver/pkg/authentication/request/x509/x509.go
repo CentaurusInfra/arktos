@@ -22,8 +22,8 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"net/http"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -193,7 +193,7 @@ var CommonNameUserConversion = UserConversionFunc(func(chain []*x509.Certificate
 	tenant := ""
 	if len(chain[0].Subject.Organization) > 0 {
 		parts := strings.Split(chain[0].Subject.Organization[0], ":")
-		if len(parts)>0 && parts[0] == "tenant" {
+		if len(parts) > 0 && parts[0] == "tenant" {
 			isNewformat = true
 			tenant = parts[1]
 		}
@@ -204,7 +204,7 @@ var CommonNameUserConversion = UserConversionFunc(func(chain []*x509.Certificate
 	//if len(chain[0].Subject.OrganizationalUnit)==0 {
 	if !isNewformat {
 		parts := strings.Split(chain[0].Subject.CommonName, ":")
-		if len(parts)>1 {
+		if len(parts) > 1 {
 			tenant = parts[0]
 		}
 		return &authenticator.Response{
@@ -218,7 +218,7 @@ var CommonNameUserConversion = UserConversionFunc(func(chain []*x509.Certificate
 
 	// new format uses both /O and /OU
 	// one and only tenant per user
-	if len(chain[0].Subject.Organization)!=1 {
+	if len(chain[0].Subject.Organization) != 1 {
 		return nil, false, nil
 	}
 
