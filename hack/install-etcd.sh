@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,43 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+LOG_DIR=${LOG_DIR:-"/tmp"}
+
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
-kube::etcd::install
+# There are following commands to run the script
+# hack/install-etcd.sh to install an etcd cluster
+# hack/install-etcd.sh start to add etcd to path and start the etcd cluster
+# hack/install-etcd.sh add member-name url-address, for example, hack/install-etcd.sh add etcd1 http://10.0.0.1:2379
+if [ $# -lt 1 ] ; then
+    kube::etcd::install
+else
+  echo "The current operation is $1"
+  case $1 in
+    add)
+      if [ -n "$2" ]  && [ -n "$3" ]; then
+        kube::etcd::add_member $2 $3
+      fi
+      ;;
+    start)
+      # install etcd if necessary
+      if ! [[ $(which etcd) ]]; then
+        if ! [ -f "${KUBE_ROOT}/third_party/etcd/etcd" ]; then
+           echo "cannot find etcd locally. will install one."
+           ${KUBE_ROOT}/hack/install-etcd.sh
+        fi
+        export PATH=$PATH:${KUBE_ROOT}/third_party/etcd
+      fi
+      echo "Starting etcd"
+      export ETCD_LOGFILE=${LOG_DIR}/etcd.log
+      kube::etcd::start
+      ;;
+    validate)
+      kube::etcd::validate
+      ;;
+    *)
+      echo "Unknown operation"
+      ;;
+  esac
+fi
