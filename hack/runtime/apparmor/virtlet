@@ -48,6 +48,8 @@ profile virtlet flags=(attach_disconnected) {
   /var/lib/libvirt/*.sock rw,
   /var/lib/virtlet/** rwk,
   /var/lib/kubelet/pods/** rw,
+  /var/lib/containerd/** rw,
+  /run/secrets/kubernetes.io/** rw,
   /var/log/pods/** rw,
   /{var/,}tmp/{,**} rw,
 
@@ -68,6 +70,13 @@ profile virtlet flags=(attach_disconnected) {
   /run/virtlet-diag.sock rw,
   /run/netns/ rw,
   /run/netns/* rw,
+
+  /run/mount/* rw,
+
+  /bin/mount rwix,
+  /bin/mount/** wrcix,
+  /dev/mapper/** rw,
+  /proc/devices r,
 
   /sys/class/net/ r,
   /sys/devices/pci*/*/*/ r,
