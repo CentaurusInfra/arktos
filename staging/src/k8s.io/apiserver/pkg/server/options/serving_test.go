@@ -54,6 +54,7 @@ func setUp(t *testing.T) server.Config {
 	codecs := serializer.NewCodecFactory(scheme)
 
 	config := server.NewConfig(codecs)
+	config.Authentication = server.AuthenticationInfo{Authenticator: server.InsecureSuperuser{}}
 
 	return *config
 }

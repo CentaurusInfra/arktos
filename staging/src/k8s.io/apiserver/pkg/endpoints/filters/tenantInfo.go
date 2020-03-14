@@ -17,6 +17,7 @@ limitations under the License.
 package filters
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -33,14 +34,8 @@ func WithTenantInfo(handler http.Handler) http.Handler {
 		tenantInRequestor := ""
 		requestor, exists := request.UserFrom(ctx)
 		if !exists || requestor.GetTenant() == metav1.TenantNone {
-			//TODO: raise an error if code goes here
-			//temporarily set the tenant to the omni-potent "system" tenant to make the tests pass
-			// Tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
-			tenantInRequestor = metav1.TenantSystem
-
-			// The following should be uncommented after the test changes
-			/* responsewriters.InternalError(w, req, errors.New("The user tenant for the request cannot be identfied."))
-			return */
+			responsewriters.InternalError(w, req, errors.New("The user tenant for the request cannot be identfied."))
+			return
 		} else {
 			tenantInRequestor = requestor.GetTenant()
 		}

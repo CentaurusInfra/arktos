@@ -39,6 +39,7 @@ func TestNewWithDelegate(t *testing.T) {
 	delegateConfig.PublicAddress = net.ParseIP("192.168.10.4")
 	delegateConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	delegateConfig.LoopbackClientConfig = rest.CreateEmptyConfig()
+	delegateConfig.Authentication = AuthenticationInfo{Authenticator: InsecureSuperuser{}}
 	clientset := fake.NewSimpleClientset()
 	if clientset == nil {
 		t.Fatal("unable to create fake client set")
@@ -71,6 +72,7 @@ func TestNewWithDelegate(t *testing.T) {
 	wrappingConfig.PublicAddress = net.ParseIP("192.168.10.4")
 	wrappingConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	wrappingConfig.LoopbackClientConfig = rest.CreateEmptyConfig()
+	wrappingConfig.Authentication = AuthenticationInfo{Authenticator: InsecureSuperuser{}}
 
 	wrappingConfig.HealthzChecks = append(wrappingConfig.HealthzChecks, healthz.NamedCheck("wrapping-health", func(r *http.Request) error {
 		return fmt.Errorf("wrapping failed healthcheck")
