@@ -9,16 +9,17 @@ ready or notReady. As a result, the node status and node readiness management ne
 situations on the node, and the pod placement logic at the scheduler needs to be changed to ensure POD was scheduled to 
 a node with desired runtime service.
 
-Initially Arktos is currently implemented as "NodeReady requires ANY one of its runtime services ready" for best resource 
+Arktos is currently implemented as "NodeReady when ANY one of its runtime services is ready" for best resource 
 utilization, i.e. the scheduler can schedule the pod to a node as long as its desired runtime service ready on the node.
-However, this implementation carries a drawback with PODs with cross workload type dependencies which can be described
-as followings:
+However, this implementation carries a drawback where pods have cross workload type dependencies. Consider a case with 
+Alcor network agent below:
 
-A cluster is setup and supports two runtime services, containerD and Arktos VM runtime,  and their corresponding workload
-types, i.e. Container workload type and VM workload type. The network agent, Alcor agent, was deployed as a cluster daemonset,
-which is running as container workload. All tenant level workload PODs, either containers or VMs will need Alcor's agent in
-order to have its network up. A pod can be scheduled to a node ONLY VM runtime ready. However, the pod cannot run because
-the network agent failed to setup the network for it.
+A cluster is setup with two runtime services, containerD and Arktos VM runtime, for container and VM workload types 
+respectively. The network agent of the cluster, i.e. Alcor agent, is deployed as a container workload daemonset on each
+nodes as long as the containerD runtime service is ready.
+
+Some nodes can be set as "Ready" with VM runtime service ready, even the Alcor network agent is not deployed on them. 
+As a result, a VM pod can be scheduled onto them. However the VM will not run due to the network agent not exist.
  
 The following diagram illustrates the node status dependency, and cross workload type pod dependencies.
 
