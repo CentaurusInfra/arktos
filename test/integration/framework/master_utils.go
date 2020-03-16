@@ -55,6 +55,10 @@ import (
 	"k8s.io/kubernetes/pkg/version"
 )
 
+const (
+	testTenant string = "fake-tenant"
+)
+
 // Config is a struct of configuration directives for NewMasterComponents.
 type Config struct {
 	// If nil, a default is used, partially filled configs will not get populated.
@@ -79,6 +83,7 @@ func alwaysEmpty(req *http.Request) (*authauthenticator.Response, bool, error) {
 	return &authauthenticator.Response{
 		User: &user.DefaultInfo{
 			Name: "",
+			Tenant: testTenant,
 		},
 	}, true, nil
 }
@@ -172,6 +177,7 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 		Name:   user.APIServerUser,
 		UID:    uuid.NewRandom().String(),
 		Groups: []string{user.SystemPrivilegedGroup},
+		Tenant: testTenant,
 	}
 
 	tokenAuthenticator := authenticatorfactory.NewFromTokens(tokens)
@@ -315,6 +321,7 @@ func NewMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
 	genericConfig := genericapiserver.NewConfig(legacyscheme.Codecs)
 	kubeVersion := version.Get()
 	genericConfig.Version = &kubeVersion
+	genericConfig.Authentication = genericapiserver.AuthenticationInfo{Authenticator: genericapiserver.InsecureSuperuser{}}
 	genericConfig.Authorization.Authorizer = authorizerfactory.NewAlwaysAllowAuthorizer()
 
 	// TODO: get rid of these tests or port them to secure serving

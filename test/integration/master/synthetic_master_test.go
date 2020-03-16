@@ -56,6 +56,7 @@ import (
 const (
 	AliceToken string = "abc123" // username: alice.  Present in token file.
 	BobToken   string = "xyz987" // username: bob.  Present in token file.
+	testTenant string = "fake-tenant"
 )
 
 type allowAliceAuthorizer struct{}
@@ -151,8 +152,8 @@ func initStatusForbiddenMasterCongfig() *master.Config {
 func initUnauthorizedMasterCongfig() *master.Config {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	tokenAuthenticator := tokentest.New()
-	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "alice", UID: "1"}
-	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "bob", UID: "2"}
+	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "alice", UID: "1", Tenant: testTenant}
+	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "bob", UID: "2", Tenant: testTenant}
 	masterConfig.GenericConfig.Authentication.Authenticator = group.NewGroupAdder(bearertoken.New(tokenAuthenticator), []string{user.AllAuthenticated})
 	masterConfig.GenericConfig.Authorization.Authorizer = allowAliceAuthorizer{}
 	return masterConfig

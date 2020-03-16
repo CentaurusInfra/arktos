@@ -522,17 +522,17 @@ func TestRBAC(t *testing.T) {
 		masterConfig := framework.NewIntegrationTestMasterConfig()
 		masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 		masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-			superUser:                          {Name: "admin", Groups: []string{"system:masters"}},
-			"any-rolebinding-writer":           {Name: "any-rolebinding-writer"},
-			"any-rolebinding-writer-namespace": {Name: "any-rolebinding-writer-namespace"},
-			"bob":                              {Name: "bob"},
-			"job-writer":                       {Name: "job-writer"},
-			"job-writer-namespace":             {Name: "job-writer-namespace"},
-			"nonescalating-rolebinding-writer": {Name: "nonescalating-rolebinding-writer"},
-			"pod-reader":                       {Name: "pod-reader"},
-			"limitrange-updater":               {Name: "limitrange-updater"},
-			"limitrange-patcher":               {Name: "limitrange-patcher"},
-			"user-with-no-permissions":         {Name: "user-with-no-permissions"},
+			superUser:                          {Name: "admin", Groups: []string{"system:masters"}, Tenant: testTenant},
+			"any-rolebinding-writer":           {Name: "any-rolebinding-writer", Tenant: testTenant},
+			"any-rolebinding-writer-namespace": {Name: "any-rolebinding-writer-namespace", Tenant: testTenant},
+			"bob":                              {Name: "bob", Tenant: testTenant},
+			"job-writer":                       {Name: "job-writer", Tenant: testTenant},
+			"job-writer-namespace":             {Name: "job-writer-namespace", Tenant: testTenant},
+			"nonescalating-rolebinding-writer": {Name: "nonescalating-rolebinding-writer", Tenant: testTenant},
+			"pod-reader":                       {Name: "pod-reader", Tenant: testTenant},
+			"limitrange-updater":               {Name: "limitrange-updater", Tenant: testTenant},
+			"limitrange-patcher":               {Name: "limitrange-patcher", Tenant: testTenant},
+			"user-with-no-permissions":         {Name: "user-with-no-permissions", Tenant: testTenant},
 		}))
 		masterConfig.GenericConfig.OpenAPIConfig = framework.DefaultOpenAPIConfig()
 		_, s, closeFn := framework.RunAMaster(masterConfig)
@@ -637,7 +637,7 @@ func TestBootstrapping(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 	masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-		superUser: {Name: "admin", Groups: []string{"system:masters"}},
+		superUser: {Name: "admin", Groups: []string{"system:masters"}, Tenant: testTenant},
 	}))
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
@@ -700,7 +700,7 @@ func TestDiscoveryUpgradeBootstrapping(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 	masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-		superUser: {Name: "admin", Groups: []string{"system:masters"}},
+		superUser: {Name: "admin", Groups: []string{"system:masters"}, Tenant: testTenant},
 	}))
 	_, s, tearDownFn := framework.RunAMaster(masterConfig)
 

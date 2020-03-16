@@ -54,6 +54,8 @@ import (
 	"k8s.io/kubernetes/pkg/auth/authorizer/abac"
 	"k8s.io/kubernetes/test/integration"
 	"k8s.io/kubernetes/test/integration/framework"
+	//"k8s.io/apiserver/pkg/server"
+	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 )
 
 const (
@@ -64,8 +66,8 @@ const (
 
 func getTestTokenAuth() authenticator.Request {
 	tokenAuthenticator := tokentest.New()
-	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "alice", UID: "1"}
-	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "bob", UID: "2"}
+	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "fake-tenant:alice", UID: "1"}
+	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "fake-tenant:bob", UID: "2"}
 	return group.NewGroupAdder(bearertoken.New(tokenAuthenticator), []string{user.AllAuthenticated})
 }
 
@@ -516,6 +518,14 @@ func TestAuthModeAlwaysDeny(t *testing.T) {
 	for _, r := range getTestRequests(ns.Name) {
 		bodyBytes := bytes.NewReader([]byte(r.body))
 		req, err := http.NewRequest(r.verb, s.URL+r.URL, bodyBytes)
+
+		system_user := &user.DefaultInfo{
+			Name:   "fake-user",
+			Tenant: metav1.TenantSystem,
+		}
+	
+		req.WithContext(apirequest.WithUser(req.Context(), system_user))
+
 		if err != nil {
 			t.Logf("case %v", r)
 			t.Fatalf("unexpected error: %v", err)
@@ -540,7 +550,7 @@ func TestAuthModeAlwaysDeny(t *testing.T) {
 type allowAliceAuthorizer struct{}
 
 func (allowAliceAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
-	if a.GetUser() != nil && a.GetUser().GetName() == "alice" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" {
 		return authorizer.DecisionAllow, "", nil
 	}
 	return authorizer.DecisionNoOpinion, "I can't allow that.  Go ask alice.", nil
@@ -707,14 +717,14 @@ type impersonateAuthorizer struct{}
 // alice can't act as anyone and bob can't do anything but act-as someone
 func (impersonateAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
 	// alice can impersonate service accounts and do other actions
-	if a.GetUser() != nil && a.GetUser().GetName() == "alice" && a.GetVerb() == "impersonate" && a.GetResource() == "serviceaccounts" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" && a.GetVerb() == "impersonate" && a.GetResource() == "serviceaccounts" {
 		return authorizer.DecisionAllow, "", nil
 	}
-	if a.GetUser() != nil && a.GetUser().GetName() == "alice" && a.GetVerb() != "impersonate" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" && a.GetVerb() != "impersonate" {
 		return authorizer.DecisionAllow, "", nil
 	}
 	// bob can impersonate anyone, but that it
-	if a.GetUser() != nil && a.GetUser().GetName() == "bob" && a.GetVerb() == "impersonate" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:bob" && a.GetVerb() == "impersonate" {
 		return authorizer.DecisionAllow, "", nil
 	}
 	// service accounts can do everything
@@ -772,7 +782,7 @@ func TestImpersonateIsForbidden(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-		req.Header.Set("Impersonate-User", "alice")
+		req.Header.Set("Impersonate-User", "fake-tenant:alice")
 		func() {
 			resp, err := transport.RoundTrip(req)
 			defer resp.Body.Close()
@@ -797,7 +807,7 @@ func TestImpersonateIsForbidden(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-		req.Header.Set("Impersonate-User", "bob")
+		req.Header.Set("Impersonate-User", "fake-tenant:bob")
 
 		func() {
 			resp, err := transport.RoundTrip(req)
@@ -1261,9 +1271,9 @@ func newTestWebhookTokenAuthServer() *httptest.Server {
 		var username, uid string
 		authenticated := false
 		if review.Spec.Token == AliceToken {
-			authenticated, username, uid = true, "alice", "1"
+			authenticated, username, uid = true, "fake-tenant:alice", "1"
 		} else if review.Spec.Token == BobToken {
-			authenticated, username, uid = true, "bob", "2"
+			authenticated, username, uid = true, "fake-tenant:bob", "2"
 		}
 
 		resp := struct {
