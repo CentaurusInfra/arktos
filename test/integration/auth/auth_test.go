@@ -523,7 +523,7 @@ func TestAuthModeAlwaysDeny(t *testing.T) {
 			Name:   "fake-user",
 			Tenant: metav1.TenantSystem,
 		}
-	
+
 		req.WithContext(apirequest.WithUser(req.Context(), system_user))
 
 		if err != nil {

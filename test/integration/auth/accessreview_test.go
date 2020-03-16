@@ -54,7 +54,7 @@ func (sarAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, st
 func alwaysAlice(req *http.Request) (*authenticator.Response, bool, error) {
 	return &authenticator.Response{
 		User: &user.DefaultInfo{
-			Name: "alice",
+			Name:   "alice",
 			Tenant: testTenant,
 		},
 	}, true, nil

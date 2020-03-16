@@ -82,7 +82,7 @@ func (alwaysAllow) Authorize(requestAttributes authorizer.Attributes) (authorize
 func alwaysEmpty(req *http.Request) (*authauthenticator.Response, bool, error) {
 	return &authauthenticator.Response{
 		User: &user.DefaultInfo{
-			Name: "",
+			Name:   "",
 			Tenant: testTenant,
 		},
 	}, true, nil
