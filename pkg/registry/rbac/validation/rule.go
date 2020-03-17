@@ -106,6 +106,7 @@ type RoleGetter interface {
 
 type RoleBindingLister interface {
 	ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error)
+	ListRoleBindingsWithMultiTenancy(tenant, namespace string) ([]*rbacv1.RoleBinding, error)
 }
 
 type ClusterRoleGetter interface {
@@ -114,6 +115,7 @@ type ClusterRoleGetter interface {
 
 type ClusterRoleBindingLister interface {
 	ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error)
+	ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error)
 }
 
 func (r *DefaultRuleResolver) RulesFor(user user.Info, namespace string) ([]rbacv1.PolicyRule, error) {
@@ -181,73 +183,85 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 
 	userTenant := user.GetTenant()
 
-	if clusterRoleBindings, err := r.clusterRoleBindingLister.ListClusterRoleBindings(); err != nil {
-		if !visitor(nil, nil, err) {
+	var targetClusterRoleBindings []*rbacv1.ClusterRoleBinding
+	// REMOVE userTenant empty when bearer token tenant
+	// validation is done: https://github.com/futurewei-cloud/arktos/issues/38
+	// in rbac_test.go integration tests are using bearer tokens without tenants
+	targetTenants := []string{"", metav1.TenantSystem}
+	if userTenant != metav1.TenantSystem && userTenant != "" {
+		targetTenants = append(targetTenants, userTenant)
+	}
+	for _, tenant := range targetTenants {
+		if bindings, err := r.clusterRoleBindingLister.ListClusterRoleBindingsWithMultiTenancy(tenant); err != nil {
+			if !visitor(nil, nil, err) {
+				return
+			}
+		} else {
+			targetClusterRoleBindings = append(targetClusterRoleBindings, bindings...)
+		}
+	}
+
+	sourceDescriber := &clusterRoleBindingDescriber{}
+	for _, clusterRoleBinding := range targetClusterRoleBindings {
+		subjectIndex, applies := appliesTo(user, clusterRoleBinding.Subjects, "")
+		if !applies {
+			continue
+		}
+		rules, err := r.GetRoleReferenceRules(clusterRoleBinding.RoleRef, "")
+		if err != nil {
+			if !visitor(nil, nil, err) {
+				return
+			}
+			continue
+		}
+		sourceDescriber.binding = clusterRoleBinding
+		sourceDescriber.subject = &clusterRoleBinding.Subjects[subjectIndex]
+		for i := range rules {
+			if !visitor(sourceDescriber, &rules[i], nil) {
+				return
+			}
+		}
+	}
+
+	if len(namespace) > 0 {
+		// get role bindings from userTenat, system tenant and default tenant
+		var targetRoleBindings []*rbacv1.RoleBinding
+		targetTenants := []string{metav1.TenantDefault, metav1.TenantSystem}
+		if userTenant != metav1.TenantSystem && userTenant != metav1.TenantDefault {
+			targetTenants = append(targetTenants, userTenant)
+		}
+		for _, tenant := range targetTenants {
+			if bindings, err := r.roleBindingLister.ListRoleBindingsWithMultiTenancy(tenant, namespace); err != nil {
+				if !visitor(nil, nil, err) {
+					return
+				}
+			} else {
+				targetRoleBindings = append(targetRoleBindings, bindings...)
+			}
+		}
+
+		if len(targetRoleBindings)==0 {
 			return
 		}
-	} else {
-		sourceDescriber := &clusterRoleBindingDescriber{}
-		for _, clusterRoleBinding := range clusterRoleBindings {
-			if userTenant != metav1.TenantSystem &&
-				userTenant != clusterRoleBinding.Tenant {
-				continue
-			}
-			subjectIndex, applies := appliesTo(user, clusterRoleBinding.Subjects, "")
+		sourceDescriber := &roleBindingDescriber{}
+		for _, roleBinding := range targetRoleBindings {
+
+			subjectIndex, applies := appliesTo(user, roleBinding.Subjects, namespace)
 			if !applies {
 				continue
 			}
-			rules, err := r.GetRoleReferenceRules(clusterRoleBinding.RoleRef, "")
+			rules, err := r.GetRoleReferenceRules(roleBinding.RoleRef, namespace)
 			if err != nil {
 				if !visitor(nil, nil, err) {
 					return
 				}
 				continue
 			}
-			sourceDescriber.binding = clusterRoleBinding
-			sourceDescriber.subject = &clusterRoleBinding.Subjects[subjectIndex]
+			sourceDescriber.binding = roleBinding
+			sourceDescriber.subject = &roleBinding.Subjects[subjectIndex]
 			for i := range rules {
 				if !visitor(sourceDescriber, &rules[i], nil) {
 					return
-				}
-			}
-		}
-	}
-
-	if len(namespace) > 0 {
-		if roleBindings, err := r.roleBindingLister.ListRoleBindings(namespace); err != nil {
-			if !visitor(nil, nil, err) {
-				return
-			}
-		} else {
-			sourceDescriber := &roleBindingDescriber{}
-			for _, roleBinding := range roleBindings {
-
-				// verify user tenant matches rolebinding tenant
-				// "to remove check for default later when rolebinding can
-				// be created with any tenant
-				if userTenant != roleBinding.GetTenant() &&
-					roleBinding.GetTenant() != metav1.TenantDefault &&
-					roleBinding.GetTenant() != metav1.TenantSystem {
-					continue
-				}
-
-				subjectIndex, applies := appliesTo(user, roleBinding.Subjects, namespace)
-				if !applies {
-					continue
-				}
-				rules, err := r.GetRoleReferenceRules(roleBinding.RoleRef, namespace)
-				if err != nil {
-					if !visitor(nil, nil, err) {
-						return
-					}
-					continue
-				}
-				sourceDescriber.binding = roleBinding
-				sourceDescriber.subject = &roleBinding.Subjects[subjectIndex]
-				for i := range rules {
-					if !visitor(sourceDescriber, &rules[i], nil) {
-						return
-					}
 				}
 			}
 		}
@@ -372,6 +386,34 @@ func (r *StaticRoles) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding,
 	return roleBindingList, nil
 }
 
+func (r *StaticRoles) ListRoleBindingsWithMultiTenancy(tenant, namespace string) ([]*rbacv1.RoleBinding, error) {
+	if len(namespace) == 0 {
+		return nil, errors.New("must provide namespace when listing role bindings")
+	}
+
+	var roleBindingList []*rbacv1.RoleBinding
+	for _, roleBinding := range r.roleBindings {
+		if roleBinding.Namespace != namespace || roleBinding.Tenant != tenant {
+			continue
+		}
+		// TODO(ericchiang): need to implement label selectors?
+		roleBindingList = append(roleBindingList, roleBinding)
+	}
+	return roleBindingList, nil
+}
+
 func (r *StaticRoles) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
 	return r.clusterRoleBindings, nil
+}
+
+func (r *StaticRoles) ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error) {
+	clusterRoleBindingList := []*rbacv1.ClusterRoleBinding{}
+	for _, clusterRoleBinding := range r.clusterRoleBindings{
+		if clusterRoleBinding.Tenant != tenant {
+			continue
+		}
+		// TODO(ericchiang): need to implement label selectors?
+		clusterRoleBindingList = append(clusterRoleBindingList, clusterRoleBinding)
+	}
+	return clusterRoleBindingList, nil
 }

@@ -215,6 +215,10 @@ func (l *RoleBindingLister) ListRoleBindings(namespace string) ([]*rbacv1.RoleBi
 	return l.Lister.RoleBindings(namespace).List(labels.Everything())
 }
 
+func (l *RoleBindingLister) ListRoleBindingsWithMultiTenancy(tenant, namespace string) ([]*rbacv1.RoleBinding, error) {
+	return l.Lister.RoleBindingsWithMultiTenancy(namespace, tenant).List(labels.Everything())
+}
+
 type ClusterRoleGetter struct {
 	Lister rbaclisters.ClusterRoleLister
 }
@@ -230,3 +234,8 @@ type ClusterRoleBindingLister struct {
 func (l *ClusterRoleBindingLister) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
 	return l.Lister.List(labels.Everything())
 }
+
+func (l *ClusterRoleBindingLister) ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error) {
+	return l.Lister.ClusterRoleBindingsWithMultiTenancy(tenant).List(labels.Everything())
+}
+
