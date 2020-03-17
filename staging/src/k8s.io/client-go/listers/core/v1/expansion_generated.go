@@ -43,6 +43,10 @@ type ConfigMapNamespaceListerExpansion interface{}
 // ControllerInstanceLister.
 type ControllerInstanceListerExpansion interface{}
 
+// DataPartitionConfigListerExpansion allows custom methods to be added to
+// DataPartitionConfigLister.
+type DataPartitionConfigListerExpansion interface{}
+
 // EndpointsListerExpansion allows custom methods to be added to
 // EndpointsLister.
 type EndpointsListerExpansion interface{}
