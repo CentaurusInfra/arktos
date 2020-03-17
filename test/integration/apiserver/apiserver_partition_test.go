@@ -499,7 +499,6 @@ func TestPostCanUpdateAlldata(t *testing.T) {
 	deletePod(t, clientset1, pod2)
 }
 
-/*
 func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	_, closeFn1, clientset1, configFilename1, _, _, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
@@ -569,7 +568,6 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	deleteRS(t, clientset1, rs1)
 	deleteRS(t, clientset1, rs2)
 }
-*/
 
 func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
 	prefix, configFilename1, configFilename2 := createTwoApiServersPartitionFiles(t)
