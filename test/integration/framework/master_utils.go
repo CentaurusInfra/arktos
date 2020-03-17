@@ -333,6 +333,7 @@ func NewMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
 			KubeletClientConfig:     kubeletclient.KubeletClientConfig{Port: 10250},
 			APIServerServicePort:    443,
 			MasterCount:             1,
+			ServiceGroupId:          "0",
 		},
 	}
 }

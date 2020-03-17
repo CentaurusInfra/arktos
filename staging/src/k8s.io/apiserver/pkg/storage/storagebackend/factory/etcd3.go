@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apiserver/pkg/storage/datapartition"
 	"path"
 	"strings"
 	"sync"
@@ -203,11 +204,13 @@ func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, e
 		transformer = value.IdentityTransformer
 	}
 
+	updatePartitionChGrp := datapartition.GetDataPartitionUpdateChGrp()
+	updatePartitionCh := updatePartitionChGrp.Join()
 	if c.PartitionConfigFilepath != "" {
 		configMap, _ := parseConfig(c.PartitionConfigFilepath)
-		return etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap), destroyFunc, nil
+		return etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap, updatePartitionCh), destroyFunc, nil
 	}
-	return etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging), destroyFunc, nil
+	return etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging, updatePartitionCh), destroyFunc, nil
 }
 
 // Each line in the config needs to contain three part: keyName, start, end
