@@ -59,7 +59,7 @@ func (v *version) ClusterRoles() ClusterRoleInformer {
 
 // ClusterRoleBindings returns a ClusterRoleBindingInformer.
 func (v *version) ClusterRoleBindings() ClusterRoleBindingInformer {
-	return &clusterRoleBindingInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &clusterRoleBindingInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // Roles returns a RoleInformer.

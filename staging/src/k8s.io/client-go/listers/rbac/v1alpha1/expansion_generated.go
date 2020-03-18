@@ -31,6 +31,10 @@ type ClusterRoleTenantListerExpansion interface{}
 // ClusterRoleBindingLister.
 type ClusterRoleBindingListerExpansion interface{}
 
+// ClusterRoleBindingTenantListerExpansion allows custom methods to be added to
+// ClusterRoleBindingTenantLister.
+type ClusterRoleBindingTenantListerExpansion interface{}
+
 // RoleListerExpansion allows custom methods to be added to
 // RoleLister.
 type RoleListerExpansion interface{}

@@ -51,7 +51,11 @@ func (c *RbacV1Client) ClusterRolesWithMultiTenancy(tenant string) ClusterRoleIn
 }
 
 func (c *RbacV1Client) ClusterRoleBindings() ClusterRoleBindingInterface {
-	return newClusterRoleBindings(c)
+	return newClusterRoleBindingsWithMultiTenancy(c, "default")
+}
+
+func (c *RbacV1Client) ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingInterface {
+	return newClusterRoleBindingsWithMultiTenancy(c, tenant)
 }
 
 func (c *RbacV1Client) Roles(namespace string) RoleInterface {

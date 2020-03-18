@@ -38,8 +38,11 @@ func (c *FakeRbacV1alpha1) ClusterRolesWithMultiTenancy(tenant string) v1alpha1.
 }
 
 func (c *FakeRbacV1alpha1) ClusterRoleBindings() v1alpha1.ClusterRoleBindingInterface {
+	return &FakeClusterRoleBindings{c, "default"}
+}
 
-	return &FakeClusterRoleBindings{c}
+func (c *FakeRbacV1alpha1) ClusterRoleBindingsWithMultiTenancy(tenant string) v1alpha1.ClusterRoleBindingInterface {
+	return &FakeClusterRoleBindings{c, tenant}
 }
 
 func (c *FakeRbacV1alpha1) Roles(namespace string) v1alpha1.RoleInterface {
