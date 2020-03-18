@@ -26,7 +26,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
-func GetTenantedUserInfo(tenant string) user.Info {
+func getTenantedUserInfo(tenant string) user.Info {
 	return &user.DefaultInfo{Name: "fake-user", Tenant: tenant}
 }
 
@@ -52,8 +52,7 @@ func run(t *testing.T, testCase tenantInfoTestCase) {
 	handler.ServeHTTP(w, req)
 
 	if w.Code != testCase.ExepctedRespCode {
-		// if response code is wrong, we don't need to check tbe requestInfo
-		t.Fatalf("Test Case %q: expected response code %v, but got %v", testCase.Name, w.Code, testCase.ExepctedRespCode)
+		t.Errorf("Test Case %q: expected response code %v, but got %v", testCase.Name, w.Code, testCase.ExepctedRespCode)
 	}
 
 	ctx := req.Context()
@@ -65,8 +64,6 @@ func run(t *testing.T, testCase tenantInfoTestCase) {
 
 func TestTenantInfoRequest(t *testing.T) {
 	testCases := []tenantInfoTestCase{
-		// uncomment the next two test case when the following issue is solved:
-		// Tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
 		{
 			Name:             "empty user info triggers Internal error",
 			Url:              "/api/v1/namespaces/default/pods",
@@ -77,42 +74,42 @@ func TestTenantInfoRequest(t *testing.T) {
 		{
 			Name:             "empty tenant in user info triggers Internal error",
 			Url:              "/api/v1/namespaces/default/pods",
-			UserInfo:         GetTenantedUserInfo(""),
+			UserInfo:         getTenantedUserInfo(metav1.TenantNone),
 			ExepctedRespCode: 500,
 			ExpectedTenant:   "",
 		},
 		{
 			Name:             "system tenant user does not change tenant in request info",
 			Url:              "/api/v1/tenants/aaa/namespaces/default/pods",
-			UserInfo:         GetTenantedUserInfo(metav1.TenantSystem),
+			UserInfo:         getTenantedUserInfo(metav1.TenantSystem),
 			ExepctedRespCode: 200,
 			ExpectedTenant:   "aaa",
 		},
 		{
 			Name:             "system tenant user does not change empty tenant in request info",
 			Url:              "/api/v1/namespaces/default/pods",
-			UserInfo:         GetTenantedUserInfo(metav1.TenantSystem),
+			UserInfo:         getTenantedUserInfo(metav1.TenantSystem),
 			ExepctedRespCode: 200,
 			ExpectedTenant:   "",
 		},
 		{
 			Name:             "short path: for regular tenant user, empty tenant in request info is set to the user tenant",
 			Url:              "/api/v1/namespaces/default/pods",
-			UserInfo:         GetTenantedUserInfo("regular-user"),
+			UserInfo:         getTenantedUserInfo("regular-user"),
 			ExepctedRespCode: 200,
 			ExpectedTenant:   "regular-user",
 		},
 		{
 			Name:             "for a regular tenant user, tenant in request info is NOT changed if set - 1",
 			Url:              "/api/v1/tenants/regular-user/namespaces/default/pods",
-			UserInfo:         GetTenantedUserInfo("regular-user"),
+			UserInfo:         getTenantedUserInfo("regular-user"),
 			ExepctedRespCode: 200,
 			ExpectedTenant:   "regular-user",
 		},
 		{
 			Name:             "for a regular tenant user, tenant in request info is NOT changed if set - 2",
 			Url:              "/api/v1/tenants/another-user/namespaces/default/pods",
-			UserInfo:         GetTenantedUserInfo("regular-user"),
+			UserInfo:         getTenantedUserInfo("regular-user"),
 			ExepctedRespCode: 200,
 			ExpectedTenant:   "another-user",
 		},
