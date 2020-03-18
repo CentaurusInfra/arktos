@@ -115,7 +115,7 @@ func TestCrossGroupStorageWithMultiTenancy(t *testing.T) {
 			var (
 				clients       = map[schema.GroupVersionResource]dynamic.ResourceInterface{}
 				versionedData = map[schema.GroupVersionResource]*unstructured.Unstructured{}
-				watches       = map[schema.GroupVersionResource]watch.Interface{}
+				watches       = map[schema.GroupVersionResource]watch.AggregatedWatchInterface{}
 			)
 			for _, resource := range resources {
 				clients[resource.Mapping.Resource] = master.Dynamic.Resource(resource.Mapping.Resource).NamespaceWithMultiTenancy(namespace, tenant)
@@ -123,7 +123,8 @@ func TestCrossGroupStorageWithMultiTenancy(t *testing.T) {
 				if err != nil {
 					t.Fatalf("error finding resource via %s: %v", resource.Mapping.Resource.GroupVersion().String(), err)
 				}
-				watches[resource.Mapping.Resource], err = clients[resource.Mapping.Resource].Watch(metav1.ListOptions{ResourceVersion: actual.GetResourceVersion()})
+				watches[resource.Mapping.Resource] = clients[resource.Mapping.Resource].Watch(metav1.ListOptions{ResourceVersion: actual.GetResourceVersion()})
+				err = watches[resource.Mapping.Resource].GetFirstError()
 				if err != nil {
 					t.Fatalf("error opening watch via %s: %v", resource.Mapping.Resource.GroupVersion().String(), err)
 				}

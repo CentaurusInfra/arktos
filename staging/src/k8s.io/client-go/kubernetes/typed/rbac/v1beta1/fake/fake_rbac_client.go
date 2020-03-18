@@ -30,8 +30,11 @@ type FakeRbacV1beta1 struct {
 }
 
 func (c *FakeRbacV1beta1) ClusterRoles() v1beta1.ClusterRoleInterface {
+	return &FakeClusterRoles{c, "default"}
+}
 
-	return &FakeClusterRoles{c}
+func (c *FakeRbacV1beta1) ClusterRolesWithMultiTenancy(tenant string) v1beta1.ClusterRoleInterface {
+	return &FakeClusterRoles{c, tenant}
 }
 
 func (c *FakeRbacV1beta1) ClusterRoleBindings() v1beta1.ClusterRoleBindingInterface {

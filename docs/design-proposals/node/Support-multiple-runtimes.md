@@ -2,10 +2,10 @@
 # Multiple CRI runtime endpoint support in Arktos node agent
 
 ## Motivation
-Arktos is a unified compute platform to support both container and virtual machine workloads and to provide superior 
-resource allocation efficiency in the cluster, in addition to support large scale cluster. Therefore, the Arktos node 
-agent needs to support both virtual machine and container runtime services, not only for containerizing applications 
-that used to run on virtual machines, but also to support those workloads in a native way, which, in our opinions, should
+Arktos is a unified compute platform to support both container and virtual machine based workloads and at the same time provides superior 
+resource allocation efficiency in the cluster along with support for large scale cluster environment. Therefore, Arktos node 
+agent needs to support both virtual machine and container runtime services, not only for containerized applications 
+which typically run within virtual machines, but also to support those workloads in a native way, which, in our opinion, should
 have the following characteristics:
 
 1. Both virtual machine and container workloads are first class citizens and can be directly provisioned from the 
@@ -16,42 +16,39 @@ have the following characteristics:
 4. Node agent be able to maintain/manage the life cycle of the workload types, query the workloads from the underlying
    runtime services, despite of agent rebooting situations.
 
-For more information on the design for natively support of multiple runtimes and workloads, please refer to the 
-"Multiple runtime and workload types support in Arktos node agent" document. 
-
-This spec describes the proposal for the phase 1,, to extend the current Kubernetes to support multiple runtime services by 
+This spec describes the proposal for the phase 1, to extend the current Kubernetes to support multiple runtime services by 
 extending the current GenericRuntimeManager type and runtime manager interfaces.
 
 ### Related works
-Kubernetes RuntimeClass feature is introduced in Kubernetes release 1.12 and mature to beta in Kubernetes release 1.14.
+Kubernetes RuntimeClass feature was originally introduced in Kubernetes release 1.12 and has matured to beta in Kubernetes release 1.14.
 It allows cluster admins to provide RuntimeClasses to expose the multiple configurations of the CRI runtime service and
-the POD (workload) to specify the desired configuration to run the containers specified in the POD. It is also opened 
-the ways for dynamic scheduling logic for a POD to node with the specific runtime configurations. However the 
+the POD (workload) to specify the desired configuration to run the containers specified in the POD. It also opened 
+up ways for dynamic scheduling logic for a POD to node with the specific runtime configurations. However the 
 runtimeClass is designed merely for containers and depends on CRI implementations and configurations. It does not fit the
-requirements for Arktos to support virtual machine runtime service natively.
+requirements for Arktos in order to support virtual machine runtime service natively.
 
-Mirantis CRI Proxy, along with its CRI implementation(Virtlet) provides a way run multiple CRI implementations on 
+Mirantis CRI Proxy, along with its CRI implementation(Virtlet) provides a way to run multiple CRI implementations on 
 the node. Essentially it provides a layer between the node agent and multiple CRI implementations. By intercepting the 
 gRPC call from node agent, the CRI proxy redirect the CRI request to the desired CRI service and returns the response to 
 the node agent. It provides a decent way to run multiple CRI services at the node without change the Kubelet internal 
-logic. However, the CRI proxy has a few limits that cannot fit the Arktos's requirements:
+logic. However, the CRI proxy has few limitations which do not meet Arktos's requirements:
 
 1. It is designed merely for CRI implementation, with all the internal logic in Kubelet, it will be hard support virtual 
-   runtime services natively
+   machine runtime services natively
 2. Extra latency due to extra layer of interposes communications
 3. Additional maintenance and management cost at the node
 
 ## Goal and no-goals
 
 ### Goals
-1. Provide initial work to satisfy the characteristic of natively support multiple workload types, by allows multiple
+1. Provide initial work to satisfy the characteristics of natively supporting multiple workload types, by allowing multiple
    runtime endpoints configured by Cluster Admins and POD can choose desired runtime service to run
 2. Legacy cluster(Kubelet commandline) should continue to work with the code change
 3. Legacy applications(without the runtimeServiceName) should continue to work in Arktos cluster
 
 ## Proposal
 
-It is proposed to expand the current GenericRuntimeManager in Kubelet with a set of runtime management interfaces to 
+It is proposed to enhance the current GenericRuntimeManager implementation in Kubelet with a set of runtime management interfaces to 
 "late-bind" the runtime service with particular pod/workload. A few key design points are listed below:
 
 1. GenericRuntimeManager type implements the RuntimeManager interface methods for late-binding POD and runtime service
@@ -59,10 +56,10 @@ It is proposed to expand the current GenericRuntimeManager in Kubelet with a set
     per POD creation and termination. The runtime manager GETTER interface will retrieve runtime service for a pod 
     from the cache, and if not found, then query the runtime service.
 3. Node runtime state UP means all runtime services are up and ready (network and compute), ERROR is anyone of them failed.
-4. Node status report status for all runtime services
+4. Node status reports status for all runtime services
 5. The same approach applies to the imageService as well.
    
-The diagram below illustrate the API calls with the multiple runtime support at the Kubelet, including:
+The diagram below illustrate the API calls with the multiple runtime support at the Kubelet level, this includes:
 1. workload(pod) orchestration APIs, e.g. CreatePodSandbox, CreateContainer etc
 2. workload(pod) status and runtime state, version related APIs
 3. workload(pod) resource consumption update API

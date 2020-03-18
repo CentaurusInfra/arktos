@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,6 +67,42 @@ func TestGetReferenceRefVersion(t *testing.T) {
 			}
 			if test.expectedRefVersion != ref.APIVersion {
 				t.Errorf("expected %q, got %q", test.expectedRefVersion, ref.APIVersion)
+			}
+		})
+	}
+}
+
+func TestGetReferenceObjectMeta(t *testing.T) {
+	tests := []struct {
+		name              string
+		input             *TestRuntimeObj
+		expectedTenant    string
+		expectedNamespace string
+	}{
+		{
+			name: "tenant from ObjectMeta",
+			input: &TestRuntimeObj{
+				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "test-ns", Name: "pod1", SelfLink: "/api/v1/tenatns/test-te/namespaces/test-ns/pods/pod1"},
+			},
+			expectedTenant:    "test-te",
+			expectedNamespace: "test-ns",
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypes(schema.GroupVersion{Group: "this", Version: "is ignored"}, &TestRuntimeObj{})
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ref, err := GetReference(scheme, test.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.expectedTenant != ref.Tenant {
+				t.Errorf("expected tenant %q, got %q", test.expectedTenant, ref.Tenant)
+			}
+			if test.expectedNamespace != ref.Namespace {
+				t.Errorf("expected namespace %q, got %q", test.expectedNamespace, ref.Namespace)
 			}
 		})
 	}

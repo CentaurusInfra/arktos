@@ -63,7 +63,7 @@ func NewFilteredCSINodeInformer(client kubernetes.Interface, resyncPeriod time.D
 				}
 				return client.StorageV1beta1().CSINodes().List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +53,7 @@ func newAdapter(k8s clientset.Interface, cloud *gce.Cloud) *adapter {
 	ret.recorder = broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloudCIDRAllocator"})
 	klog.V(0).Infof("Sending events to api server.")
 	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{
-		Interface: k8s.CoreV1().Events(""),
+		Interface: k8s.CoreV1().EventsWithMultiTenancy("", ""),
 	})
 
 	return ret

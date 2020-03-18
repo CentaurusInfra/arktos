@@ -333,7 +333,7 @@ the actions as illustrated below:
 ```
 // NewSourceApiserver creates a config source that watches and pulls from the apiserver.
 func NewSourceApiserver(c clientset.Interface, nodeName types.NodeName, updates chan<- interface{}) {
-        lwActions := cache.NewListWatchFromClient(c.CoreV1().RESTClient(), "actions", metav1.NamespaceAll, fields.Everything())
+        lwActions := cache.NewListWatchFromClient(c.CoreV1(), "actions", metav1.NamespaceAll, fields.Everything())
         newSourceApiserverFromLWActions(lwActions, updates)
 }
 

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,7 +46,7 @@ func NewPodStore(c clientset.Interface, namespace string, label labels.Selector,
 			obj, err := c.CoreV1().Pods(namespace).List(options)
 			return runtime.Object(obj), err
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.LabelSelector = label.String()
 			options.FieldSelector = field.String()
 			return c.CoreV1().Pods(namespace).Watch(options)

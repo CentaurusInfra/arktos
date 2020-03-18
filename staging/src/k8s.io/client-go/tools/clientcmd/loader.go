@@ -176,15 +176,18 @@ func (rules *ClientConfigLoadingRules) Load() (*clientcmdapi.Config, error) {
 
 	kubeConfigFiles := []string{}
 
-	// Make sure a file we were explicitly told to use exists
-	if len(rules.ExplicitPath) > 0 {
-		if _, err := os.Stat(rules.ExplicitPath); os.IsNotExist(err) {
-			return nil, err
-		}
-		kubeConfigFiles = append(kubeConfigFiles, rules.ExplicitPath)
+	kubeconfigarray := strings.Split(rules.ExplicitPath, " ")
+	for _, kubeconfigitem := range kubeconfigarray {
+		// Make sure a file we were explicitly told to use exists
+		if len(kubeconfigitem) > 0 {
+			if _, err := os.Stat(kubeconfigitem); os.IsNotExist(err) {
+				return nil, err
+			}
+			kubeConfigFiles = append(kubeConfigFiles, kubeconfigitem)
 
-	} else {
-		kubeConfigFiles = append(kubeConfigFiles, rules.Precedence...)
+		} else {
+			kubeConfigFiles = append(kubeConfigFiles, rules.Precedence...)
+		}
 	}
 
 	kubeconfigs := []*clientcmdapi.Config{}

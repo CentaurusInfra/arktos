@@ -368,8 +368,8 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "Role"),
 		},
 		gvr("rbac.authorization.k8s.io", "v1alpha1", "clusterroles"): {
-			Stub:             `{"metadata": {"name": "crole1"}, "rules": [{"nonResourceURLs": ["/version"], "verbs": ["get"]}]}`,
-			ExpectedEtcdPath: "/registry/clusterroles/crole1",
+			Stub:             `{"metadata": {"name": "crole1", "tenant": "` + tenant + `"}, "rules": [{"nonResourceURLs": ["/version"], "verbs": ["get"]}]}`,
+			ExpectedEtcdPath: "/registry/clusterroles/" + tenant + "/crole1",
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "ClusterRole"),
 		},
 		gvr("rbac.authorization.k8s.io", "v1alpha1", "rolebindings"): {
@@ -378,8 +378,8 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "RoleBinding"),
 		},
 		gvr("rbac.authorization.k8s.io", "v1alpha1", "clusterrolebindings"): {
-			Stub:             `{"metadata": {"name": "croleb1"}, "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "somecr"}, "subjects": [{"apiVersion": "rbac.authorization.k8s.io/v1alpha1", "kind": "Group", "name": "system:authenticated"}]}`,
-			ExpectedEtcdPath: "/registry/clusterrolebindings/croleb1",
+			Stub:             `{"metadata": {"name": "croleb1", "tenant": "` + tenant + `"}, "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "somecr"}, "subjects": [{"apiVersion": "rbac.authorization.k8s.io/v1alpha1", "kind": "Group", "name": "system:authenticated"}]}`,
+			ExpectedEtcdPath: "/registry/clusterrolebindings/" + tenant + "/croleb1",
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "ClusterRoleBinding"),
 		},
 		// --
@@ -391,8 +391,8 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "Role"),
 		},
 		gvr("rbac.authorization.k8s.io", "v1beta1", "clusterroles"): {
-			Stub:             `{"metadata": {"name": "crole2"}, "rules": [{"nonResourceURLs": ["/version"], "verbs": ["get"]}]}`,
-			ExpectedEtcdPath: "/registry/clusterroles/crole2",
+			Stub:             `{"metadata": {"name": "crole2", "tenant": "` + tenant + `"}, "rules": [{"nonResourceURLs": ["/version"], "verbs": ["get"]}]}`,
+			ExpectedEtcdPath: "/registry/clusterroles/" + tenant + "/crole2",
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "ClusterRole"),
 		},
 		gvr("rbac.authorization.k8s.io", "v1beta1", "rolebindings"): {
@@ -401,8 +401,8 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "RoleBinding"),
 		},
 		gvr("rbac.authorization.k8s.io", "v1beta1", "clusterrolebindings"): {
-			Stub:             `{"metadata": {"name": "croleb2"}, "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "somecr"}, "subjects": [{"apiVersion": "rbac.authorization.k8s.io/v1alpha1", "kind": "Group", "name": "system:authenticated"}]}`,
-			ExpectedEtcdPath: "/registry/clusterrolebindings/croleb2",
+			Stub:             `{"metadata": {"name": "croleb2", "tenant": "` + tenant + `"}, "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "somecr"}, "subjects": [{"apiVersion": "rbac.authorization.k8s.io/v1alpha1", "kind": "Group", "name": "system:authenticated"}]}`,
+			ExpectedEtcdPath: "/registry/clusterrolebindings/" + tenant + "/croleb2",
 			ExpectedGVK:      gvkP("rbac.authorization.k8s.io", "v1", "ClusterRoleBinding"),
 		},
 		// --
@@ -413,16 +413,16 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			ExpectedEtcdPath: "/registry/roles/" + tenant + "/" + namespace + "/role3",
 		},
 		gvr("rbac.authorization.k8s.io", "v1", "clusterroles"): {
-			Stub:             `{"metadata": {"name": "crole3"}, "rules": [{"nonResourceURLs": ["/version"], "verbs": ["get"]}]}`,
-			ExpectedEtcdPath: "/registry/clusterroles/crole3",
+			Stub:             `{"metadata": {"name": "crole3", "tenant": "` + tenant + `"}, "rules": [{"nonResourceURLs": ["/version"], "verbs": ["get"]}]}`,
+			ExpectedEtcdPath: "/registry/clusterroles/" + tenant + "/crole3",
 		},
 		gvr("rbac.authorization.k8s.io", "v1", "rolebindings"): {
 			Stub:             `{"metadata": {"name": "roleb3"}, "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "somecr"}, "subjects": [{"apiVersion": "rbac.authorization.k8s.io/v1alpha1", "kind": "Group", "name": "system:authenticated"}]}`,
 			ExpectedEtcdPath: "/registry/rolebindings/" + tenant + "/" + namespace + "/roleb3",
 		},
 		gvr("rbac.authorization.k8s.io", "v1", "clusterrolebindings"): {
-			Stub:             `{"metadata": {"name": "croleb3"}, "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "somecr"}, "subjects": [{"apiVersion": "rbac.authorization.k8s.io/v1alpha1", "kind": "Group", "name": "system:authenticated"}]}`,
-			ExpectedEtcdPath: "/registry/clusterrolebindings/croleb3",
+			Stub:             `{"metadata": {"name": "croleb3", "tenant": "` + tenant + `"}, "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "somecr"}, "subjects": [{"apiVersion": "rbac.authorization.k8s.io/v1alpha1", "kind": "Group", "name": "system:authenticated"}]}`,
+			ExpectedEtcdPath: "/registry/clusterrolebindings/" + tenant + "/croleb3",
 		},
 		// --
 

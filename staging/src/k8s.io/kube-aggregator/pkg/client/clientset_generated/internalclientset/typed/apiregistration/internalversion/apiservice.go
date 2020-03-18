@@ -45,20 +45,22 @@ type APIServiceInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*apiregistration.APIService, error)
 	List(opts v1.ListOptions) (*apiregistration.APIServiceList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *apiregistration.APIService, err error)
 	APIServiceExpansion
 }
 
 // aPIServices implements APIServiceInterface
 type aPIServices struct {
-	client rest.Interface
+	client  rest.Interface
+	clients []rest.Interface
 }
 
 // newAPIServices returns a APIServices
 func newAPIServices(c *ApiregistrationClient) *aPIServices {
 	return &aPIServices{
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 	}
 }
 
@@ -93,17 +95,22 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 }
 
 // Watch returns a watch.Interface that watches the requested aPIServices.
-func (c *aPIServices) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *aPIServices) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Resource("apiservices").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Resource("apiservices").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a aPIService and creates it.  Returns the server's representation of the aPIService, and an error, if there is any.

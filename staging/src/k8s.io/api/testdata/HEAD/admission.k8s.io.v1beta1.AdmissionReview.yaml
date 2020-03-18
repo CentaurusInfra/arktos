@@ -51,30 +51,31 @@ request:
       - "22"
     groups:
     - "20"
+    tenant: "23"
     uid: "19"
     username: "18"
 response:
   allowed: false
   auditAnnotations:
-    "30": "31"
+    "31": "32"
   patch: fQ==
   patchType: -Ǐ忄*齧獚敆Ȏțê
   status:
     code: 153738858
     details:
       causes:
-      - field: "29"
-        message: "28"
+      - field: "30"
+        message: "29"
         reason: 颋ǅ
-      group: "26"
-      kind: "27"
-      name: "25"
+      group: "27"
+      kind: "28"
+      name: "26"
       retryAfterSeconds: 1001983654
       uid: Ƣ6/ʕVŚ(ĿȊ甞
-    message: "24"
+    message: "25"
     metadata:
       resourceVersion: "71208173751669476"
       selfLink: (湗Ć]ʪƬ滈憴Uą飋ī
     reason: Hr鯹)晿<o,c鮽ort昍řČ扷5Ɨ
-    status: "23"
+    status: "24"
   uid: 輂]¨&桰]]æȌ殸2爟¼ªov鈶

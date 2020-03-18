@@ -109,7 +109,7 @@ func TestEventf(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    "qux",
 			UID:       "bar",
 		},
 	}
@@ -118,7 +118,7 @@ func TestEventf(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    "qux",
 			UID:       "differentUid",
 		},
 	}
@@ -150,12 +150,13 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[2]",
@@ -166,7 +167,7 @@ func TestEventf(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -179,12 +180,13 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 				},
@@ -194,7 +196,7 @@ func TestEventf(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:""}): type: 'Normal' reason: 'Killed' some other verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"", Tenant:"qux"}): type: 'Normal' reason: 'Killed' some other verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -207,12 +209,13 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[2]",
@@ -223,7 +226,7 @@ func TestEventf(t *testing.T) {
 				Count:   2,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: true,
 		},
 		{
@@ -236,12 +239,13 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "differentUid",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[3]",
@@ -252,7 +256,7 @@ func TestEventf(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -265,12 +269,13 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[2]",
@@ -281,7 +286,7 @@ func TestEventf(t *testing.T) {
 				Count:   3,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: true,
 		},
 		{
@@ -294,12 +299,13 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "differentUid",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[3]",
@@ -310,7 +316,7 @@ func TestEventf(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]", Tenant:"qux"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -323,12 +329,13 @@ func TestEventf(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "differentUid",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[3]",
@@ -339,7 +346,7 @@ func TestEventf(t *testing.T) {
 				Count:   2,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]", Tenant:"qux"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
 			expectUpdate: true,
 		},
 	}
@@ -383,6 +390,7 @@ func TestEventf(t *testing.T) {
 			validateEvent(strconv.Itoa(index), actualEvent, item.expect, t)
 		}
 		logWatcher.Stop()
+		time.Sleep(1 * time.Second)
 	}
 	sinkWatcher.Stop()
 }
@@ -542,7 +550,7 @@ func TestLotsOfEvents(t *testing.T) {
 func TestEventfNoNamespace(t *testing.T) {
 	testPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:   metav1.TenantDefault,
+			Tenant:   "qux",
 			SelfLink: "/api/version/pods/foo",
 			Name:     "foo",
 			UID:      "bar",
@@ -572,12 +580,13 @@ func TestEventfNoNamespace(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[2]",
@@ -588,7 +597,7 @@ func TestEventfNoNamespace(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: false,
 		},
 	}
@@ -644,7 +653,7 @@ func TestMultiSinkCache(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    "qux",
 			UID:       "bar",
 		},
 	}
@@ -653,7 +662,7 @@ func TestMultiSinkCache(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    "qux",
 			UID:       "differentUid",
 		},
 	}
@@ -685,12 +694,13 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[2]",
@@ -701,7 +711,7 @@ func TestMultiSinkCache(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -714,12 +724,13 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 				},
@@ -729,7 +740,7 @@ func TestMultiSinkCache(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:""}): type: 'Normal' reason: 'Killed' some other verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"", Tenant:"qux"}): type: 'Normal' reason: 'Killed' some other verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -742,12 +753,13 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[2]",
@@ -758,7 +770,7 @@ func TestMultiSinkCache(t *testing.T) {
 				Count:   2,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: true,
 		},
 		{
@@ -771,12 +783,13 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "differentUid",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[3]",
@@ -787,7 +800,7 @@ func TestMultiSinkCache(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -800,12 +813,13 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "bar",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[2]",
@@ -816,7 +830,7 @@ func TestMultiSinkCache(t *testing.T) {
 				Count:   3,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"bar", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[2]", Tenant:"qux"}): type: 'Normal' reason: 'Started' some verbose message: 1`,
 			expectUpdate: true,
 		},
 		{
@@ -829,12 +843,13 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "differentUid",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[3]",
@@ -845,7 +860,7 @@ func TestMultiSinkCache(t *testing.T) {
 				Count:   1,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]", Tenant:"qux"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
 			expectUpdate: false,
 		},
 		{
@@ -858,12 +873,13 @@ func TestMultiSinkCache(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "baz",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    "qux",
 				},
 				InvolvedObject: v1.ObjectReference{
 					Kind:       "Pod",
 					Name:       "foo",
 					Namespace:  "baz",
+					Tenant:     "qux",
 					UID:        "differentUid",
 					APIVersion: "version",
 					FieldPath:  "spec.containers[3]",
@@ -874,7 +890,7 @@ func TestMultiSinkCache(t *testing.T) {
 				Count:   2,
 				Type:    v1.EventTypeNormal,
 			},
-			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
+			expectLog:    `Event(v1.ObjectReference{Kind:"Pod", Namespace:"baz", Name:"foo", UID:"differentUid", APIVersion:"version", ResourceVersion:"", FieldPath:"spec.containers[3]", Tenant:"qux"}): type: 'Normal' reason: 'Stopped' some verbose message: 1`,
 			expectUpdate: true,
 		},
 	}

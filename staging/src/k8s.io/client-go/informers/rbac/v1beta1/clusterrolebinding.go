@@ -63,7 +63,7 @@ func NewFilteredClusterRoleBindingInformer(client kubernetes.Interface, resyncPe
 				}
 				return client.RbacV1beta1().ClusterRoleBindings().List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

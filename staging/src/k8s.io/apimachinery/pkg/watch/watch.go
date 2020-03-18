@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,9 +19,9 @@ package watch
 
 import (
 	"fmt"
-	"sync"
-
+	"github.com/grafov/bcast"
 	"k8s.io/klog"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -35,6 +36,129 @@ type Interface interface {
 	// or Stop() is called, this channel will be closed, in which case the
 	// watch should be completely cleaned up.
 	ResultChan() <-chan Event
+}
+
+type AggregatedWatchInterface interface {
+	Stop()
+	ResultChan() <-chan Event
+
+	AddWatchInterface(Interface, error)
+	GetErrors() []error
+	GetFirstError() error
+	GetWatchers() []Interface
+}
+
+type AggregatedWatcher struct {
+	sync.Mutex
+	watchers  []Interface
+	errs      []error
+	aggChan   chan Event
+	stopped   bool
+	stopChGrp *bcast.Group
+}
+
+func NewAggregatedWatcher() *AggregatedWatcher {
+	a := &AggregatedWatcher{
+		watchers:  make([]Interface, 0),
+		errs:      make([]error, 0),
+		aggChan:   make(chan Event),
+		stopped:   false,
+		stopChGrp: bcast.NewGroup(),
+	}
+	go a.stopChGrp.Broadcast(0)
+
+	return a
+}
+
+func NewAggregatedWatcherWithOneWatch(watcher Interface, err error) *AggregatedWatcher {
+	a := NewAggregatedWatcher()
+	a.AddWatchInterface(watcher, err)
+	return a
+}
+
+func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
+	a.watchers = append(a.watchers, watcher)
+	a.errs = append(a.errs, err)
+
+	go func(w Interface, a *AggregatedWatcher) {
+		if w != nil {
+			stopCh := a.stopChGrp.Join()
+			for {
+				select {
+				case <-stopCh.Read:
+					a.closeWatcher(w, stopCh)
+					return
+				case signal, ok := <-w.ResultChan():
+					if !ok {
+						klog.V(4).Infof("watch channel closed for aggregated chan %#v.", a.aggChan)
+						a.closeWatcher(w, stopCh)
+						return
+					} else {
+						//klog.V(5).Infof("Get event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
+					}
+
+					select {
+					case <-stopCh.Read:
+						a.closeWatcher(w, stopCh)
+						return
+					case a.aggChan <- signal:
+						//klog.V(5).Infof("Sent event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
+					}
+				}
+			}
+		}
+	}(watcher, a)
+}
+
+func (a *AggregatedWatcher) closeWatcher(w Interface, stopCh *bcast.Member) {
+	w.Stop()
+	a.stopChGrp.Leave(stopCh)
+	if a.stopChGrp.MemberCount() == 0 {
+		close(a.aggChan)
+		a.stopChGrp.Close()
+	}
+}
+
+func PrintEvent(signal Event) string {
+	message := ""
+	message += fmt.Sprintf("Type: %v;", signal.Type)
+	message += fmt.Sprintf("Object [%#v]", signal.Object)
+
+	return message
+}
+
+func (a *AggregatedWatcher) Stop() {
+	a.Lock()
+	defer a.Unlock()
+	if !a.stopped {
+		a.stopped = true
+		go func() {
+			a.stopChGrp.Send("Stop all watch channels")
+		}()
+	}
+}
+
+func (a *AggregatedWatcher) ResultChan() <-chan Event {
+	return a.aggChan
+}
+
+func (a *AggregatedWatcher) GetErrors() []error {
+	return a.errs
+}
+
+// Tmp solution for client can handles only 1 error
+func (a *AggregatedWatcher) GetFirstError() error {
+	for _, err := range a.errs {
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *AggregatedWatcher) GetWatchers() []Interface {
+	return a.watchers
 }
 
 // EventType defines the possible types of events.

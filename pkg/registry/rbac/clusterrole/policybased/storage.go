@@ -52,7 +52,7 @@ func (r *Storage) NamespaceScoped() bool {
 }
 
 func (r *Storage) TenantScoped() bool {
-	return false
+	return true
 }
 
 func (r *Storage) StorageVersion() runtime.GroupVersioner {

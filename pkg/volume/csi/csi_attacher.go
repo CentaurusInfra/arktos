@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -165,7 +166,8 @@ func (c *csiAttacher) waitForVolumeAttachmentInternal(volumeHandle, attachID str
 		return attachID, nil
 	}
 
-	watcher, err := c.k8s.StorageV1().VolumeAttachments().Watch(meta.SingleObject(meta.ObjectMeta{Name: attachID, ResourceVersion: attach.ResourceVersion}))
+	watcher := c.k8s.StorageV1().VolumeAttachments().Watch(meta.SingleObject(meta.ObjectMeta{Name: attachID, ResourceVersion: attach.ResourceVersion}))
+	err = watcher.GetFirstError()
 	if err != nil {
 		return "", fmt.Errorf("watch error:%v for volume %v", err, volumeHandle)
 	}
@@ -488,7 +490,8 @@ func (c *csiAttacher) waitForVolumeDetachmentInternal(volumeHandle, attachID str
 		return errors.New(detachErr.Message)
 	}
 
-	watcher, err := c.k8s.StorageV1().VolumeAttachments().Watch(meta.SingleObject(meta.ObjectMeta{Name: attachID, ResourceVersion: attach.ResourceVersion}))
+	watcher := c.k8s.StorageV1().VolumeAttachments().Watch(meta.SingleObject(meta.ObjectMeta{Name: attachID, ResourceVersion: attach.ResourceVersion}))
+	err = watcher.GetFirstError()
 	if err != nil {
 		return fmt.Errorf("watch error:%v for volume %v", err, volumeHandle)
 	}

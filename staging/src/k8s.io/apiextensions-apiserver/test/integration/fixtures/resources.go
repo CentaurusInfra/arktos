@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -330,10 +331,10 @@ func isWatchCachePrimed(crd *apiextensionsv1beta1.CustomResourceDefinition, dyna
 	// events for all versions here, we make sure that the head of the cache is passed those events and they will not being
 	// delivered to any future watch with resourceVersion=0.
 	for _, v := range versions {
-		noxuWatch, err := resourceClientForVersion(crd, dynamicClientSet, ns, v).Watch(
+		noxuWatch := resourceClientForVersion(crd, dynamicClientSet, ns, v).Watch(
 			metav1.ListOptions{ResourceVersion: createdInstance.GetResourceVersion()})
-		if err != nil {
-			return false, err
+		if noxuWatch.GetFirstError() != nil {
+			return false, noxuWatch.GetFirstError()
 		}
 		defer noxuWatch.Stop()
 

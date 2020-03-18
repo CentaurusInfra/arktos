@@ -1,11 +1,11 @@
 ---
 name: Failing Test
-about: Report test failures in Kubernetes CI jobs
+about: Report test failures in Arktos CI jobs
 labels: kind/failing-test
 
 ---
 
-<!-- Please only use this template for submitting reports about failing tests in Kubernetes CI jobs -->
+<!-- Please only use this template for submitting reports about failing tests in Arktos CI jobs -->
 
 **Which jobs are failing**:
 

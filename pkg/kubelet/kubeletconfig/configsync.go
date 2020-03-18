@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -241,9 +242,15 @@ func makeEvent(nodeName, eventtype, reason, message string) *apiv1.Event {
 		Name:      nodeName,
 		UID:       types.UID(nodeName),
 		Namespace: "",
+		Tenant:    "",
 	}
 
 	t := metav1.Time{Time: time.Now()}
+	tenant := ref.Tenant
+	if tenant == "" {
+		tenant = metav1.TenantDefault
+	}
+
 	namespace := ref.Namespace
 	if namespace == "" {
 		namespace = metav1.NamespaceDefault
@@ -252,6 +259,7 @@ func makeEvent(nodeName, eventtype, reason, message string) *apiv1.Event {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		InvolvedObject: ref,
 		Reason:         reason,

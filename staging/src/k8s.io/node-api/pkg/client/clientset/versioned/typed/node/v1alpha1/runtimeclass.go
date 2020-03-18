@@ -44,20 +44,22 @@ type RuntimeClassInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.RuntimeClass, error)
 	List(opts v1.ListOptions) (*v1alpha1.RuntimeClassList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.RuntimeClass, err error)
 	RuntimeClassExpansion
 }
 
 // runtimeClasses implements RuntimeClassInterface
 type runtimeClasses struct {
-	client rest.Interface
+	client  rest.Interface
+	clients []rest.Interface
 }
 
 // newRuntimeClasses returns a RuntimeClasses
 func newRuntimeClasses(c *NodeV1alpha1Client) *runtimeClasses {
 	return &runtimeClasses{
-		client: c.RESTClient(),
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
 	}
 }
 
@@ -92,17 +94,22 @@ func (c *runtimeClasses) List(opts v1.ListOptions) (result *v1alpha1.RuntimeClas
 }
 
 // Watch returns a watch.Interface that watches the requested runtimeClasses.
-func (c *runtimeClasses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *runtimeClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Resource("runtimeclasses").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Resource("runtimeclasses").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a runtimeClass and creates it.  Returns the server's representation of the runtimeClass, and an error, if there is any.

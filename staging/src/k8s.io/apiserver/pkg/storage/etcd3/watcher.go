@@ -40,6 +40,8 @@ const (
 	// We have set a buffer in order to reduce times of context switches.
 	incomingBufSize = 100
 	outgoingBufSize = 100
+	// To be compatible with system resources, its tenant is set as default
+	systemTenant = "default/"
 )
 
 // fatalOnDecodeError is used during testing to panic the server if watcher encounters a decoding error
@@ -67,35 +69,35 @@ func TestOnlySetFatalOnDecodeError(b bool) {
 }
 
 type watcher struct {
-	client                  *clientv3.Client
-	codec                   runtime.Codec
-	versioner               storage.Versioner
-	transformer             value.Transformer
-	partitionConfig         map[string]storage.Interval
+	client          *clientv3.Client
+	codec           runtime.Codec
+	versioner       storage.Versioner
+	transformer     value.Transformer
+	partitionConfig map[string]storage.Interval
 }
 
 // watchChan implements watch.Interface.
 type watchChan struct {
-	watcher                 *watcher
-	key                     string
-	initialRev              int64
-	recursive               bool
-	internalPred            storage.SelectionPredicate
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	incomingEventChan       chan *event
-	resultChan              chan watch.Event
-	errChan                 chan error
-	partitionConfig         map[string]storage.Interval
+	watcher           *watcher
+	key               string
+	initialRev        int64
+	recursive         bool
+	internalPred      storage.SelectionPredicate
+	ctx               context.Context
+	cancel            context.CancelFunc
+	incomingEventChan chan *event
+	resultChan        chan watch.Event
+	errChan           chan error
+	keyRange          keyRange
 }
 
 func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfigMap map[string]storage.Interval) *watcher {
 	return &watcher{
-		client:                  client,
-		codec:                   codec,
-		versioner:               versioner,
-		transformer:             transformer,
-		partitionConfig:         partitionConfigMap,
+		client:          client,
+		codec:           codec,
+		versioner:       versioner,
+		transformer:     transformer,
+		partitionConfig: partitionConfigMap,
 	}
 }
 
@@ -106,26 +108,31 @@ func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec,
 // If recursive is false, it watches on given key.
 // If recursive is true, it watches any children and directories under the key, excluding the root key itself.
 // pred must be non-nil. Only if pred matches the change, it will be returned.
-func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) (watch.Interface, error) {
+func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
 	if recursive && !strings.HasSuffix(key, "/") {
 		key += "/"
 	}
-	wc := w.createWatchChan(ctx, key, rev, recursive, pred)
-	go wc.run()
-	return wc, nil
+	res := watch.NewAggregatedWatcher()
+	keyRanges := GetKeyAndOptFromPartitionConfig(key, w.partitionConfig)
+	for _, kr := range keyRanges {
+		wc := w.createWatchChan(ctx, key, rev, recursive, pred, kr)
+		go wc.run()
+		res.AddWatchInterface(wc, nil)
+	}
+	return res
 }
 
-func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) *watchChan {
+func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate, kr keyRange) *watchChan {
 	wc := &watchChan{
-		watcher:                 w,
-		key:                     key,
-		initialRev:              rev,
-		recursive:               recursive,
-		internalPred:            pred,
-		incomingEventChan:       make(chan *event, incomingBufSize),
-		resultChan:              make(chan watch.Event, outgoingBufSize),
-		errChan:                 make(chan error, 1),
-		partitionConfig:         w.partitionConfig,
+		watcher:           w,
+		key:               key,
+		initialRev:        rev,
+		recursive:         recursive,
+		internalPred:      pred,
+		incomingEventChan: make(chan *event, incomingBufSize),
+		resultChan:        make(chan watch.Event, outgoingBufSize),
+		errChan:           make(chan error, 1),
+		keyRange:          kr,
 	}
 	if pred.Empty() {
 		// The filter doesn't filter out any object.
@@ -137,6 +144,7 @@ func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, re
 
 func (wc *watchChan) run() {
 	watchClosedCh := make(chan struct{})
+
 	go wc.startWatching(watchClosedCh)
 
 	var resultChanWG sync.WaitGroup
@@ -214,13 +222,11 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 
 	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
 
-	updatedKey, opt := GetKeyAndOptFromPartitionConfig( wc.key, wc.partitionConfig)
-	wc.key = updatedKey
-	if opt != nil {
-		opts = append(opts, opt)
+	if wc.keyRange.begin != "" && wc.keyRange.end != "" {
+		wc.key = wc.keyRange.begin
+		opts = append(opts, clientv3.WithRange(wc.keyRange.end))
+		klog.V(3).Infof("The updated key range wc.key=%v, wc.withRange=%v ", wc.key, wc.keyRange.end)
 	}
-
-	klog.V(3).Infof("Updated wc.key=%v and the opts is %+v", wc.key, opts)
 
 	wch := wc.watcher.client.Watch(wc.ctx, wc.key, opts...)
 	for wres := range wch {
@@ -241,6 +247,7 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 			wc.sendEvent(parsedEvent)
 		}
 	}
+
 	// When we come to this point, it's only possible that client side ends the watch.
 	// e.g. cancel the context, close the client.
 	// If this watch chan is broken and context isn't cancelled, other goroutines will still hang.
@@ -251,29 +258,44 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 //  getKeyAndOptFromPartitionConfig does:
 // - update the watchChan key by adding interval begin / end
 // - create the opts by adding opened range end or range beginning if either of them applies
-func GetKeyAndOptFromPartitionConfig(key string, partitionConfig map[string]storage.Interval) (string, clientv3.OpOption) {
-	updatedKey := key
-	opt := clientv3.OpOption(nil)
+func GetKeyAndOptFromPartitionConfig(key string, partitionConfig map[string]storage.Interval) []keyRange {
+
+	var res []keyRange
+
 	if val, ok := partitionConfig[key]; ok {
+		updatedKey := key
+		updatedEnd := key
 		// The interval end is not empty.
 		if len(val.Begin) > 0 {
 			updatedKey += val.Begin
 			// If the interval begin is not empty, update the key by adding the interval begin, such as [key+val.Begin, key + val.End)
 			if len(val.End) > 0 {
-				opt = clientv3.WithRange(key + val.End)
-			// If the interval begin is empty, update the key by adding the interval begin, such as [key+val.Begin, ∞)
+				updatedEnd = key + val.End
+				// If the interval begin is empty, update the key by adding the interval begin, such as [key+val.Begin, ∞)
 			} else {
-				opt = clientv3.WithFromKey()
+				updatedEnd = clientv3.GetPrefixRangeEnd(key)
 			}
 		} else {
 			// The interval begin is empty and the end is not empty. So that the key remains unchanged, such as [key, key + val.End)
 			if len(val.End) > 0 {
-				opt = clientv3.WithRange(key + val.End)
+				updatedEnd = key + val.End
 			}
 			// If the begin and the end  are both empty, there is no need to add options.
 		}
+
+		if updatedKey != updatedEnd {
+			res = append(res, keyRange{updatedKey, updatedEnd})
+			systemTenantKey := key + systemTenant
+			if systemTenantKey < updatedKey || systemTenantKey >= updatedEnd {
+				res = append(res, keyRange{systemTenantKey, clientv3.GetPrefixRangeEnd(systemTenantKey)})
+			}
+		} else if updatedKey == key {
+			res = append(res, keyRange{key, ""})
+		}
+	} else {
+		res = append(res, keyRange{key, ""})
 	}
-	return updatedKey, opt
+	return res
 }
 
 // processEvent processes events from etcd watcher and sends results to resultChan.
@@ -455,4 +477,8 @@ func decodeObj(codec runtime.Codec, versioner storage.Versioner, data []byte, re
 		return nil, fmt.Errorf("failure to version api object (%d) %#v: %v", rev, obj, err)
 	}
 	return obj, nil
+}
+
+type keyRange struct {
+	begin, end string
 }

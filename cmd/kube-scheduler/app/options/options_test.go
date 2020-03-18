@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -171,6 +172,55 @@ pluginConfig:
 `, configKubeconfig)), os.FileMode(0600)); err != nil {
 		t.Fatal(err)
 	}
+
+	// multiple kubeconfig
+	kubeconfig1 := filepath.Join(tmpDir, "c1.kubeconfig")
+	if err := ioutil.WriteFile(kubeconfig1, []byte(fmt.Sprintf(`
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: %s
+  name: default
+contexts:
+- context:
+    cluster: default
+    user: default
+  name: default
+current-context: default
+users:
+- name: default
+  user:
+    username: c1
+`, server.URL)), os.FileMode(0600)); err != nil {
+		t.Fatal(err)
+	}
+
+	kubeconfig2 := filepath.Join(tmpDir, "c2.kubeconfig")
+	if err := ioutil.WriteFile(kubeconfig2, []byte(fmt.Sprintf(`
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: %s
+  name: default
+contexts:
+- context:
+    cluster: default
+    user: default
+  name: default
+current-context: default
+users:
+- name: default
+  user:
+    username: c2
+`, server.URL)), os.FileMode(0600)); err != nil {
+		t.Fatal(err)
+	}
+
+	multipleconfig := kubeconfig1 + " " + kubeconfig2
 
 	// Insulate this test from picking up in-cluster config when run inside a pod
 	// We can't assume we have permissions to write to /var/run/secrets/... from a unit test to mock in-cluster config for testing
@@ -432,6 +482,65 @@ pluginConfig:
 			name:          "no config",
 			options:       &Options{},
 			expectedError: "no configuration has been provided",
+		},
+		{
+			name: "multiplekubeconfigs",
+			options: &Options{
+				ComponentConfig: func() kubeschedulerconfig.KubeSchedulerConfiguration {
+					cfg, _ := newDefaultComponentConfig()
+					cfg.ClientConnection.Kubeconfig = multipleconfig
+					return *cfg
+				}(),
+				SecureServing: (&apiserveroptions.SecureServingOptions{
+					ServerCert: apiserveroptions.GeneratableKeyCert{
+						CertDirectory: "/a/b/c",
+						PairName:      "kube-scheduler",
+					},
+					HTTP2MaxStreamsPerConnection: 47,
+				}).WithLoopback(),
+				Authentication: &apiserveroptions.DelegatingAuthenticationOptions{
+					CacheTTL:   10 * time.Second,
+					ClientCert: apiserveroptions.ClientCertAuthenticationOptions{},
+					RequestHeader: apiserveroptions.RequestHeaderAuthenticationOptions{
+						UsernameHeaders:     []string{"x-remote-user"},
+						GroupHeaders:        []string{"x-remote-group"},
+						ExtraHeaderPrefixes: []string{"x-remote-extra-"},
+					},
+					RemoteKubeConfigFileOptional: true,
+				},
+				Authorization: &apiserveroptions.DelegatingAuthorizationOptions{
+					AllowCacheTTL:                10 * time.Second,
+					DenyCacheTTL:                 10 * time.Second,
+					RemoteKubeConfigFileOptional: true,
+					AlwaysAllowPaths:             []string{"/healthz"}, // note: this does not match /healthz/ or /healthz/*
+				},
+			},
+			expectedUsername: "c1",
+			expectedConfig: kubeschedulerconfig.KubeSchedulerConfiguration{
+				SchedulerName:                  "default-scheduler",
+				AlgorithmSource:                kubeschedulerconfig.SchedulerAlgorithmSource{Provider: &defaultSource},
+				HardPodAffinitySymmetricWeight: 1,
+				HealthzBindAddress:             "", // defaults empty when not running from config file
+				MetricsBindAddress:             "", // defaults empty when not running from config file
+				LeaderElection: kubeschedulerconfig.KubeSchedulerLeaderElectionConfiguration{
+					LeaderElectionConfiguration: componentbaseconfig.LeaderElectionConfiguration{
+						LeaderElect:   true,
+						LeaseDuration: metav1.Duration{Duration: 15 * time.Second},
+						RenewDeadline: metav1.Duration{Duration: 10 * time.Second},
+						RetryPeriod:   metav1.Duration{Duration: 2 * time.Second},
+						ResourceLock:  "endpoints",
+					},
+					LockObjectNamespace: "kube-system",
+					LockObjectName:      "kube-scheduler",
+				},
+				ClientConnection: componentbaseconfig.ClientConnectionConfiguration{
+					Kubeconfig:  multipleconfig,
+					QPS:         50,
+					Burst:       100,
+					ContentType: "application/vnd.kubernetes.protobuf",
+				},
+				BindTimeoutSeconds: &defaultBindTimeoutSeconds,
+			},
 		},
 	}
 

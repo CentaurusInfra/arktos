@@ -2,6 +2,7 @@
 
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -495,7 +496,7 @@ func newInformerWatchPod(f *framework.Framework, mutex *sync.Mutex, watchTimes m
 				obj, err := f.ClientSet.CoreV1().Pods(ns).List(options)
 				return runtime.Object(obj), err
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				options.LabelSelector = labels.SelectorFromSet(labels.Set{"type": podType}).String()
 				return f.ClientSet.CoreV1().Pods(ns).Watch(options)
 			},

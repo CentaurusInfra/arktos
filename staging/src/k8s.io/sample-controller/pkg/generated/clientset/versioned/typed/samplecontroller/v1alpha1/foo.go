@@ -46,16 +46,17 @@ type FooInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.Foo, error)
 	List(opts v1.ListOptions) (*v1alpha1.FooList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Foo, err error)
 	FooExpansion
 }
 
 // foos implements FooInterface
 type foos struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newFoos returns a Foos
@@ -65,9 +66,10 @@ func newFoos(c *SamplecontrollerV1alpha1Client, namespace string) *foos {
 
 func newFoosWithMultiTenancy(c *SamplecontrollerV1alpha1Client, namespace string, tenant string) *foos {
 	return &foos{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -105,19 +107,24 @@ func (c *foos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
 }
 
 // Watch returns a watch.Interface that watches the requested foos.
-func (c *foos) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *foos) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("foos").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("foos").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a foo and creates it.  Returns the server's representation of the foo, and an error, if there is any.

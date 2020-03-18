@@ -87,8 +87,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err := f.PodClient().Get(pod.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-pod")
 
-		podChan, err := f.PodClient().Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for pods")
+		podChan := f.PodClient().Watch(watchOptions)
+		framework.ExpectNoError(podChan.GetFirstError(), "failed to create watch for pods")
 		podChan.Stop()
 
 		f.PodClient().Update(pod.Name, updatePod)
@@ -212,8 +212,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err = f.ClientSet.AppsV1().Deployments(namespace).Get(d.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-deployment")
 
-		deploymentChan, err := f.ClientSet.AppsV1().Deployments(namespace).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for deployments")
+		deploymentChan := f.ClientSet.AppsV1().Deployments(namespace).Watch(watchOptions)
+		framework.ExpectNoError(deploymentChan.GetFirstError(), "failed to create watch for deployments")
 		deploymentChan.Stop()
 
 		_, err = f.ClientSet.AppsV1().Deployments(namespace).Update(d)
@@ -345,8 +345,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err = f.ClientSet.CoreV1().ConfigMaps(namespace).Get(configMap.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-configmap")
 
-		configMapChan, err := f.ClientSet.CoreV1().ConfigMaps(namespace).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for config maps")
+		configMapChan := f.ClientSet.CoreV1().ConfigMaps(namespace).Watch(watchOptions)
+		framework.ExpectNoError(configMapChan.GetFirstError(), "failed to create watch for config maps")
 		configMapChan.Stop()
 
 		_, err = f.ClientSet.CoreV1().ConfigMaps(namespace).Update(configMap)
@@ -477,8 +477,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err = f.ClientSet.CoreV1().Secrets(namespace).Get(secret.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-secret")
 
-		secretChan, err := f.ClientSet.CoreV1().Secrets(namespace).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for secrets")
+		secretChan := f.ClientSet.CoreV1().Secrets(namespace).Watch(watchOptions)
+		framework.ExpectNoError(secretChan.GetFirstError(), "failed to create watch for secrets")
 		secretChan.Stop()
 
 		_, err = f.ClientSet.CoreV1().Secrets(namespace).Update(secret)

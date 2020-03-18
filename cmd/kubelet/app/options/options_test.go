@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,6 +80,22 @@ func TestRoundTrip(t *testing.T) {
 			outputFlags: func() *KubeletServer {
 				s := newKubeletServerOrDie()
 				s.HealthzBindAddress = ""
+				return s
+			},
+			flagDefaulter: func(*pflag.FlagSet) {},
+			err:           false,
+			expectArgs:    true,
+		},
+		{
+			name: "multiple kubeconfig",
+			inputFlags: func() *KubeletServer {
+				s := newKubeletServerOrDie()
+				s.KubeConfig = "c1.kubeconfig c2.kubeconfig"
+				return s
+			},
+			outputFlags: func() *KubeletServer {
+				s := newKubeletServerOrDie()
+				s.HealthzBindAddress = "c1.kubeconfig c2.kubeconfig"
 				return s
 			},
 			flagDefaulter: func(*pflag.FlagSet) {},

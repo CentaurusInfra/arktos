@@ -71,7 +71,7 @@ type NetworkController struct {
 func NewNetworkController(podInformer coreinformers.PodInformer, kubeClient clientset.Interface) *NetworkController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
 
 	nc := &NetworkController{
 		kubeClient:      kubeClient,

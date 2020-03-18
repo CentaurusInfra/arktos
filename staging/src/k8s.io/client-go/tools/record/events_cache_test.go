@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,11 +29,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/diff"
 )
 
-func makeObjectReference(kind, name, namespace string) v1.ObjectReference {
+func makeObjectReference(kind, name, namespace, tenant string) v1.ObjectReference {
 	return v1.ObjectReference{
 		Kind:       kind,
 		Name:       name,
 		Namespace:  namespace,
+		Tenant:     tenant,
 		UID:        "C934D34AFB20242",
 		APIVersion: "version",
 		FieldPath:  "spec.containers{mycontainer}",
@@ -73,7 +75,8 @@ func makeUniqueEvents(num int) []v1.Event {
 		message := strings.Join([]string{"message", string(i)}, "-")
 		name := strings.Join([]string{"pod", string(i)}, "-")
 		namespace := strings.Join([]string{"ns", string(i)}, "-")
-		involvedObject := makeObjectReference(kind, name, namespace)
+		tenant := strings.Join([]string{"tenant", string(i)}, "-")
+		involvedObject := makeObjectReference(kind, name, namespace, tenant)
 		events = append(events, makeEvent(reason, message, involvedObject))
 	}
 	return events
@@ -129,9 +132,9 @@ func validateEvent(messagePrefix string, actualEvent *v1.Event, expectedEvent *v
 
 // TestEventAggregatorByReasonFunc ensures that two events are aggregated if they vary only by event.message
 func TestEventAggregatorByReasonFunc(t *testing.T) {
-	event1 := makeEvent("end-of-world", "it was fun", makeObjectReference("Pod", "pod1", "other"))
-	event2 := makeEvent("end-of-world", "it was awful", makeObjectReference("Pod", "pod1", "other"))
-	event3 := makeEvent("nevermind", "it was a bug", makeObjectReference("Pod", "pod1", "other"))
+	event1 := makeEvent("end-of-world", "it was fun", makeObjectReference("Pod", "pod1", "other", "test-tenant"))
+	event2 := makeEvent("end-of-world", "it was awful", makeObjectReference("Pod", "pod1", "other", "test-tenant"))
+	event3 := makeEvent("nevermind", "it was a bug", makeObjectReference("Pod", "pod1", "other", "test-tenant"))
 
 	aggKey1, localKey1 := EventAggregatorByReasonFunc(&event1)
 	aggKey2, localKey2 := EventAggregatorByReasonFunc(&event2)
@@ -151,7 +154,7 @@ func TestEventAggregatorByReasonFunc(t *testing.T) {
 // TestEventAggregatorByReasonMessageFunc validates the proper output for an aggregate message
 func TestEventAggregatorByReasonMessageFunc(t *testing.T) {
 	expectedPrefix := "(combined from similar events): "
-	event1 := makeEvent("end-of-world", "it was fun", makeObjectReference("Pod", "pod1", "other"))
+	event1 := makeEvent("end-of-world", "it was fun", makeObjectReference("Pod", "pod1", "other", "test-tenant"))
 	actual := EventAggregatorByReasonMessageFunc(&event1)
 	if !strings.HasPrefix(actual, expectedPrefix) {
 		t.Errorf("Expected %v to begin with prefix %v", actual, expectedPrefix)
@@ -160,10 +163,10 @@ func TestEventAggregatorByReasonMessageFunc(t *testing.T) {
 
 // TestEventCorrelator validates proper counting, aggregation of events
 func TestEventCorrelator(t *testing.T) {
-	firstEvent := makeEvent("first", "i am first", makeObjectReference("Pod", "my-pod", "my-ns"))
-	duplicateEvent := makeEvent("duplicate", "me again", makeObjectReference("Pod", "my-pod", "my-ns"))
-	uniqueEvent := makeEvent("unique", "snowflake", makeObjectReference("Pod", "my-pod", "my-ns"))
-	similarEvent := makeEvent("similar", "similar message", makeObjectReference("Pod", "my-pod", "my-ns"))
+	firstEvent := makeEvent("first", "i am first", makeObjectReference("Pod", "my-pod", "my-ns", "my-tenant"))
+	duplicateEvent := makeEvent("duplicate", "me again", makeObjectReference("Pod", "my-pod", "my-ns", "my-tenant"))
+	uniqueEvent := makeEvent("unique", "snowflake", makeObjectReference("Pod", "my-pod", "my-ns", "my-tenant"))
+	similarEvent := makeEvent("similar", "similar message", makeObjectReference("Pod", "my-pod", "my-ns", "my-tenant"))
 	similarEvent.InvolvedObject.FieldPath = "spec.containers{container1}"
 	aggregateEvent := makeEvent(similarEvent.Reason, EventAggregatorByReasonMessageFunc(&similarEvent), similarEvent.InvolvedObject)
 	similarButDifferentContainerEvent := similarEvent

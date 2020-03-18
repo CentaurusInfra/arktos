@@ -45,16 +45,17 @@ type ServiceAccountInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ServiceAccount, error)
 	List(opts metav1.ListOptions) (*v1.ServiceAccountList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ServiceAccount, err error)
 	ServiceAccountExpansion
 }
 
 // serviceAccounts implements ServiceAccountInterface
 type serviceAccounts struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newServiceAccounts returns a ServiceAccounts
@@ -64,9 +65,10 @@ func newServiceAccounts(c *CoreV1Client, namespace string) *serviceAccounts {
 
 func newServiceAccountsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *serviceAccounts {
 	return &serviceAccounts{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -104,19 +106,24 @@ func (c *serviceAccounts) List(opts metav1.ListOptions) (result *v1.ServiceAccou
 }
 
 // Watch returns a watch.Interface that watches the requested serviceAccounts.
-func (c *serviceAccounts) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *serviceAccounts) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("serviceaccounts").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("serviceaccounts").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a serviceAccount and creates it.  Returns the server's representation of the serviceAccount, and an error, if there is any.

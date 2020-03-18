@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -73,5 +74,7 @@ for t in ${BASH_TARGETS}; do
 		fi
 	fi
 done
+
+${KUBE_ROOT}/hack/arktos_copyright.sh ${KUBE_ROOT} ${KUBE_ROOT}/_output
 
 echo -e "${color_green:?}Update scripts completed successfully${color_norm}"

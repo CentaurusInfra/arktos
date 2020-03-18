@@ -2,6 +2,7 @@
 
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -78,6 +79,7 @@ func (cm *containerManagerImpl) enforceNodeAllocatableCgroups() error {
 		Name:      cm.nodeInfo.Name,
 		UID:       types.UID(cm.nodeInfo.Name),
 		Namespace: "",
+		Tenant:    "",
 	}
 
 	// If Node Allocatable is enforced on a node that has not been drained or is updated on an existing node to a lower value,

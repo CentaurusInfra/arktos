@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,8 +55,8 @@ func NewTriggerTimeTracker() *TriggerTimeTracker {
 
 // endpointsKey is a key uniquely identifying an Endpoints object.
 type endpointsKey struct {
-	// namespace, name composing a namespaced name - an unique identifier of every Endpoints object.
-	namespace, name string
+	// tenant, namespace, name composing a namespaced name - an unique identifier of every Endpoints object.
+	tenant, namespace, name string
 }
 
 // endpointsState represents a state of an Endpoints object that is known to this util.
@@ -80,9 +81,9 @@ type endpointsState struct {
 // shouldn't be called concurrently for the same key! This contract is fulfilled in the current
 // implementation of the endpoints controller.
 func (t *TriggerTimeTracker) ComputeEndpointsLastChangeTriggerTime(
-	namespace, name string, service *v1.Service, pods []*v1.Pod) time.Time {
+	tenant, namespace, name string, service *v1.Service, pods []*v1.Pod) time.Time {
 
-	key := endpointsKey{namespace: namespace, name: name}
+	key := endpointsKey{tenant: tenant, namespace: namespace, name: name}
 	// As there won't be any concurrent calls for the same key, we need to guard access only to the
 	// endpointsStates map.
 	t.mutex.Lock()
@@ -130,8 +131,8 @@ func (t *TriggerTimeTracker) ComputeEndpointsLastChangeTriggerTime(
 }
 
 // DeleteEndpoints deletes endpoints state stored in this util.
-func (t *TriggerTimeTracker) DeleteEndpoints(namespace, name string) {
-	key := endpointsKey{namespace: namespace, name: name}
+func (t *TriggerTimeTracker) DeleteEndpoints(tenant, namespace, name string) {
+	key := endpointsKey{tenant: tenant, namespace: namespace, name: name}
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	delete(t.endpointsStates, key)
