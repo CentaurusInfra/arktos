@@ -150,6 +150,9 @@ type RuntimeManager interface {
 	// Get all runtime services supported on the node
 	GetAllRuntimeServices() ([]internalapi.RuntimeService, error)
 
+	// Get the primary runtime service for the Arktos cluster
+	GetPrimaryRuntimeService() (internalapi.RuntimeService, error)
+
 	// Get all image services supported on the node
 	GetAllImageServices() ([]internalapi.ImageManagerService, error)
 
