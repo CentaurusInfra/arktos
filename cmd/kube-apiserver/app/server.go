@@ -362,11 +362,11 @@ func CreateKubeAPIServerConfig(
 		},
 	}
 
-	 config.ExtraConfig.DataPartitionManager = datapartition.GetDataPartitionConfigManager()
-	 if config.ExtraConfig.DataPartitionManager == nil {
-		 config.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
-			 config.ExtraConfig.ServiceGroupId, config.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
-	 }
+	config.ExtraConfig.DataPartitionManager = datapartition.GetDataPartitionConfigManager()
+	if config.ExtraConfig.DataPartitionManager == nil {
+		config.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
+			config.ExtraConfig.ServiceGroupId, config.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
+	}
 
 	if nodeTunneler != nil {
 		// Use the nodeTunneler's dialer to connect to the kubelet

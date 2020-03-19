@@ -19,6 +19,7 @@ package framework
 
 import (
 	"flag"
+	"k8s.io/apiserver/pkg/storage/datapartition"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -119,8 +120,13 @@ func DefaultOpenAPIConfig() *openapicommon.Config {
 	return openAPIConfig
 }
 
+
+func startMasterOrDieWithDataPartition(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
+	return startMasterOrDie(masterConfig, incomingServer, masterReceiver, true)
+}
+
 // startMasterOrDie starts a kubernetes master and an httpserver to handle api requests
-func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
+func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver, withDataPartition bool) (*master.Master, *httptest.Server, CloseFunc) {
 	var m *master.Master
 	var s *httptest.Server
 
@@ -194,6 +200,11 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 	}
 
 	masterConfig.ExtraConfig.VersionedInformers = informers.NewSharedInformerFactory(clientset, masterConfig.GenericConfig.LoopbackClientConfig.GetConfig().Timeout)
+	if withDataPartition {
+		masterConfig.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
+			masterConfig.ExtraConfig.ServiceGroupId, masterConfig.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
+	}
+
 	m, err = masterConfig.Complete().New(genericapiserver.NewEmptyDelegate())
 	if err != nil {
 		closeFn()
@@ -347,12 +358,20 @@ func RunAMaster(masterConfig *master.Config) (*master.Master, *httptest.Server, 
 		masterConfig = NewMasterConfig()
 		masterConfig.GenericConfig.EnableProfiling = true
 	}
-	return startMasterOrDie(masterConfig, nil, nil)
+	return startMasterOrDie(masterConfig, nil, nil, false)
+}
+
+func RunAMasterWithDataPartition(masterConfig *master.Config) (*master.Master, *httptest.Server, CloseFunc) {
+	if masterConfig == nil {
+		masterConfig = NewMasterConfig()
+		masterConfig.GenericConfig.EnableProfiling = true
+	}
+	return startMasterOrDieWithDataPartition(masterConfig, nil, nil)
 }
 
 // RunAMasterUsingServer starts up a master using the provided config on the specified server.
 func RunAMasterUsingServer(masterConfig *master.Config, s *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
-	return startMasterOrDie(masterConfig, s, masterReceiver)
+	return startMasterOrDie(masterConfig, s, masterReceiver, false)
 }
 
 // SharedEtcd creates a storage config for a shared etcd instance, with a unique prefix.

@@ -110,13 +110,13 @@ func (m *DataPartitionConfigManager) syncDataPartition() error {
 	if err != nil {
 		klog.Fatalf("Error in getting data partition configurations: %v", err)
 	}
-	klog.V(3).Infof("==== Api server data partitions all [%#v]", paritions)
+	klog.V(3).Infof("Api server data partitions all [%#v]", paritions)
 
 	for _, partition := range paritions {
 		if partition.ServiceGroupId == m.ServiceGroupId {
 			m.DataPartitionConfig = *partition
 			m.isDataPartitionInitialized = true
-			klog.Infof("==== Current api server data partition [%#v]", m.DataPartitionConfig)
+			klog.Infof("Current api server data partition [%#v]", m.DataPartitionConfig)
 			break
 		}
 	}

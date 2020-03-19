@@ -78,7 +78,7 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 			testData, hasTest := etcdStorageData[gvResource]
 
 			if !hasTest {
-				t.Fatalf("no test data for %s.  Please add a test for your new type to GetEtcdStorageData().", gvResource)
+				t.Fatalf("no test data for %s.  Please add a test for your new type to GetEtcdStorageDataForNamespace() and GetEtcdStorageDataForNamespaceWithMultiTenancy().", gvResource)
 			}
 
 			if len(testData.ExpectedEtcdPath) == 0 {

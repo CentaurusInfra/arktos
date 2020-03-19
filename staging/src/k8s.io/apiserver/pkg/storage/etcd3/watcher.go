@@ -147,13 +147,15 @@ func (w *watcher) run(ctx context.Context, key string, rev int64, recursive bool
 				}
 
 				dataPartition, _ := data.(corev1.DataPartitionConfig)
-				klog.V(3).Infof("Reset data partition begin. watch key %s, New partition [%+v].", key, dataPartition)
+				//klog.V(4).Infof("Reset data partition begin. watch key %s, New partition [%+v].",
+				//	key, dataPartition.StartTenant, dataPartition.IsStartTenantValid, dataPartition.EndTenant, dataPartition.IsEndTenantValid)
 				for _, wc := range wcs {
 					wc.Stop()
 				}
 
 				w.updatePartitionConfig(dataPartition)
-				klog.V(3).Infof("Reset data partition DONE. watch key %s, New partition [%+v]", key, dataPartition)
+				klog.V(4).Infof("Reset data partition DONE. watch key %s, New partition [%+v]",
+					key, dataPartition.StartTenant, dataPartition.IsStartTenantValid, dataPartition.EndTenant, dataPartition.IsEndTenantValid)
 			}
 		}
 	}
@@ -383,14 +385,6 @@ func (wc *watchChan) processEvent(wg *sync.WaitGroup) {
 			return
 		}
 	}
-}
-
-func PrintEvent(e *event) string {
-	message := ""
-	message += fmt.Sprintf("Key: %v;", e.key)
-	message += fmt.Sprintf("Rev: %v", e.rev)
-
-	return message
 }
 
 func (wc *watchChan) filter(obj runtime.Object) bool {
