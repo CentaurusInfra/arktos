@@ -43,11 +43,19 @@ type RbacV1Client struct {
 }
 
 func (c *RbacV1Client) ClusterRoles() ClusterRoleInterface {
-	return newClusterRoles(c)
+	return newClusterRolesWithMultiTenancy(c, "default")
+}
+
+func (c *RbacV1Client) ClusterRolesWithMultiTenancy(tenant string) ClusterRoleInterface {
+	return newClusterRolesWithMultiTenancy(c, tenant)
 }
 
 func (c *RbacV1Client) ClusterRoleBindings() ClusterRoleBindingInterface {
-	return newClusterRoleBindings(c)
+	return newClusterRoleBindingsWithMultiTenancy(c, "default")
+}
+
+func (c *RbacV1Client) ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingInterface {
+	return newClusterRoleBindingsWithMultiTenancy(c, tenant)
 }
 
 func (c *RbacV1Client) Roles(namespace string) RoleInterface {

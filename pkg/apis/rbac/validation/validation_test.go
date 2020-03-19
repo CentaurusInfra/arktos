@@ -30,7 +30,7 @@ var testTenant = "test-te"
 func TestValidateClusterRoleBinding(t *testing.T) {
 	errs := ValidateClusterRoleBinding(
 		&rbac.ClusterRoleBinding{
-			ObjectMeta: metav1.ObjectMeta{Name: "master"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "master"},
 			RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "ClusterRole", Name: "valid"},
 			Subjects: []rbac.Subject{
 				{Name: "validsaname", APIGroup: "", Namespace: "foo", Kind: rbac.ServiceAccountKind},
@@ -50,7 +50,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 	}{
 		"bad group": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: "rbac.GroupName", Kind: "ClusterRole", Name: "valid"},
 			},
 			T: field.ErrorTypeNotSupported,
@@ -58,7 +58,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"bad kind": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Type", Name: "valid"},
 			},
 			T: field.ErrorTypeNotSupported,
@@ -66,7 +66,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"reference role": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "Role", Name: "valid"},
 			},
 			T: field.ErrorTypeNotSupported,
@@ -74,7 +74,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"zero-length name": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "ClusterRole", Name: "valid"},
 			},
 			T: field.ErrorTypeRequired,
@@ -82,7 +82,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"bad role": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "default"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "default"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "ClusterRole"},
 			},
 			T: field.ErrorTypeRequired,
@@ -90,7 +90,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"bad subject kind": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "master"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "master"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "ClusterRole", Name: "valid"},
 				Subjects:   []rbac.Subject{{Name: "subject"}},
 			},
@@ -99,7 +99,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"bad subject name": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "master"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "master"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "ClusterRole", Name: "valid"},
 				Subjects:   []rbac.Subject{{Namespace: "foo", Name: "subject:bad", Kind: rbac.ServiceAccountKind}},
 			},
@@ -108,7 +108,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"missing SA namespace": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "master"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "master"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "ClusterRole", Name: "valid"},
 				Subjects:   []rbac.Subject{{Name: "good", Kind: rbac.ServiceAccountKind}},
 			},
@@ -117,7 +117,7 @@ func TestValidateClusterRoleBinding(t *testing.T) {
 		},
 		"missing subject name": {
 			A: rbac.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "master"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "master"},
 				RoleRef:    rbac.RoleRef{APIGroup: rbac.GroupName, Kind: "ClusterRole", Name: "valid"},
 				Subjects:   []rbac.Subject{{Namespace: "foo", Kind: rbac.ServiceAccountKind}},
 			},
@@ -404,7 +404,8 @@ func TestValidateRoleValidRoleNoNamespace(t *testing.T) {
 	ValidateClusterRoleTest{
 		role: rbac.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "default",
+				Tenant: testTenant,
+				Name:   "default",
 			},
 		},
 		wantErr: false,
@@ -415,7 +416,8 @@ func TestValidateRoleNonResourceURL(t *testing.T) {
 	ValidateClusterRoleTest{
 		role: rbac.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "default",
+				Tenant: testTenant,
+				Name:   "default",
 			},
 			Rules: []rbac.PolicyRule{
 				{
@@ -454,7 +456,8 @@ func TestValidateRoleNonResourceURLNoVerbs(t *testing.T) {
 	ValidateClusterRoleTest{
 		role: rbac.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "default",
+				Tenant: testTenant,
+				Name:   "default",
 			},
 			Rules: []rbac.PolicyRule{
 				{

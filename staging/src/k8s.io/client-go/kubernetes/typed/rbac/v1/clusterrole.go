@@ -34,6 +34,7 @@ import (
 // A group's client should implement this interface.
 type ClusterRolesGetter interface {
 	ClusterRoles() ClusterRoleInterface
+	ClusterRolesWithMultiTenancy(tenant string) ClusterRoleInterface
 }
 
 // ClusterRoleInterface has methods to work with ClusterRole resources.
@@ -53,13 +54,19 @@ type ClusterRoleInterface interface {
 type clusterRoles struct {
 	client  rest.Interface
 	clients []rest.Interface
+	te      string
 }
 
 // newClusterRoles returns a ClusterRoles
 func newClusterRoles(c *RbacV1Client) *clusterRoles {
+	return newClusterRolesWithMultiTenancy(c, "default")
+}
+
+func newClusterRolesWithMultiTenancy(c *RbacV1Client, tenant string) *clusterRoles {
 	return &clusterRoles{
 		client:  c.RESTClient(),
 		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -67,6 +74,7 @@ func newClusterRoles(c *RbacV1Client) *clusterRoles {
 func (c *clusterRoles) Get(name string, options metav1.GetOptions) (result *v1.ClusterRole, err error) {
 	result = &v1.ClusterRole{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("clusterroles").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -84,6 +92,7 @@ func (c *clusterRoles) List(opts metav1.ListOptions) (result *v1.ClusterRoleList
 	}
 	result = &v1.ClusterRoleList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("clusterroles").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -103,6 +112,7 @@ func (c *clusterRoles) Watch(opts metav1.ListOptions) watch.AggregatedWatchInter
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.clients {
 		watcher, err := client.Get().
+			Tenant(c.te).
 			Resource("clusterroles").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -116,6 +126,7 @@ func (c *clusterRoles) Watch(opts metav1.ListOptions) watch.AggregatedWatchInter
 func (c *clusterRoles) Create(clusterRole *v1.ClusterRole) (result *v1.ClusterRole, err error) {
 	result = &v1.ClusterRole{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("clusterroles").
 		Body(clusterRole).
 		Do().
@@ -128,6 +139,7 @@ func (c *clusterRoles) Create(clusterRole *v1.ClusterRole) (result *v1.ClusterRo
 func (c *clusterRoles) Update(clusterRole *v1.ClusterRole) (result *v1.ClusterRole, err error) {
 	result = &v1.ClusterRole{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("clusterroles").
 		Name(clusterRole.Name).
 		Body(clusterRole).
@@ -140,6 +152,7 @@ func (c *clusterRoles) Update(clusterRole *v1.ClusterRole) (result *v1.ClusterRo
 // Delete takes name of the clusterRole and deletes it. Returns an error if one occurs.
 func (c *clusterRoles) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("clusterroles").
 		Name(name).
 		Body(options).
@@ -154,6 +167,7 @@ func (c *clusterRoles) DeleteCollection(options *metav1.DeleteOptions, listOptio
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("clusterroles").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -166,6 +180,7 @@ func (c *clusterRoles) DeleteCollection(options *metav1.DeleteOptions, listOptio
 func (c *clusterRoles) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterRole, err error) {
 	result = &v1.ClusterRole{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("clusterroles").
 		SubResource(subresources...).
 		Name(name).

@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,9 +23,17 @@ package v1alpha1
 // ClusterRoleLister.
 type ClusterRoleListerExpansion interface{}
 
+// ClusterRoleTenantListerExpansion allows custom methods to be added to
+// ClusterRoleTenantLister.
+type ClusterRoleTenantListerExpansion interface{}
+
 // ClusterRoleBindingListerExpansion allows custom methods to be added to
 // ClusterRoleBindingLister.
 type ClusterRoleBindingListerExpansion interface{}
+
+// ClusterRoleBindingTenantListerExpansion allows custom methods to be added to
+// ClusterRoleBindingTenantLister.
+type ClusterRoleBindingTenantListerExpansion interface{}
 
 // RoleListerExpansion allows custom methods to be added to
 // RoleLister.
