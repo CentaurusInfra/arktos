@@ -73,6 +73,8 @@ type ServerRunOptions struct {
 	ServiceAccountSigningKeyFile     string
 	ServiceAccountIssuer             serviceaccount.TokenGenerator
 	ServiceAccountTokenMaxExpiration time.Duration
+
+	ServiceGroupId string
 }
 
 // NewServerRunOptions creates a new ServerRunOptions object with default parameters

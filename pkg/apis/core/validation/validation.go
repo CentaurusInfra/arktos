@@ -206,6 +206,9 @@ var ValidateReplicationControllerName = apimachineryvalidation.NameIsDNSSubdomai
 // trailing dashes are allowed.
 var ValidateServiceName = apimachineryvalidation.NameIsDNS1035Label
 
+// ValidateDataPartitionName can be used to check whether given data partition name is valid.
+var ValidateDataPartitionName = apimachineryvalidation.NameIsDNSSubdomain
+
 // ValidateNodeName can be used to check whether the given node name is valid.
 // Prefix indicates this name will be used as part of generation, in which case
 // trailing dashes are allowed.
@@ -4163,6 +4166,21 @@ func ValidateServiceUpdate(service, oldService *core.Service) field.ErrorList {
 func ValidateServiceStatusUpdate(service, oldService *core.Service) field.ErrorList {
 	allErrs := ValidateObjectMetaUpdate(&service.ObjectMeta, &oldService.ObjectMeta, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateLoadBalancerStatus(&service.Status.LoadBalancer, field.NewPath("status", "loadBalancer"))...)
+	return allErrs
+}
+
+func ValidateDataPartitionConfig(dataPartitionConfig *core.DataPartitionConfig) field.ErrorList {
+	allErrs := ValidateObjectMeta(&dataPartitionConfig.ObjectMeta, false, false, ValidateDataPartitionName, field.NewPath("metadata"))
+	return allErrs
+}
+
+func ValidateDataPartitionConfigUpdate(newDataPartitionConfig *core.DataPartitionConfig, oldDataPartitionConfig *core.DataPartitionConfig) field.ErrorList {
+	allErrs := ValidateObjectMeta(&newDataPartitionConfig.ObjectMeta, false, false, ValidateDataPartitionName, field.NewPath("metadata"))
+	if newDataPartitionConfig.Name != oldDataPartitionConfig.Name {
+		klog.Infof("Intended to update data partition config name. Not allowed. new name [%v], old name [%v]", newDataPartitionConfig.Name, oldDataPartitionConfig.Name)
+		nameDiff := diff.ObjectDiff(newDataPartitionConfig.Name, oldDataPartitionConfig.Name)
+		allErrs = append(allErrs, field.Forbidden(field.NewPath("Name"), fmt.Sprintf("Update data configuration name is not allowed. %v", nameDiff)))
+	}
 	return allErrs
 }
 
