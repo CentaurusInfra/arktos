@@ -30,8 +30,11 @@ type FakeApiextensionsV1beta1 struct {
 }
 
 func (c *FakeApiextensionsV1beta1) CustomResourceDefinitions() v1beta1.CustomResourceDefinitionInterface {
+	return &FakeCustomResourceDefinitions{c, "default"}
+}
 
-	return &FakeCustomResourceDefinitions{c}
+func (c *FakeApiextensionsV1beta1) CustomResourceDefinitionsWithMultiTenancy(tenant string) v1beta1.CustomResourceDefinitionInterface {
+	return &FakeCustomResourceDefinitions{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
