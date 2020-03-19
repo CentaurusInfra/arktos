@@ -31,8 +31,9 @@ var _ authorizer.Attributes = &attributes{}
 // attributes implements the authorizer attributes interface
 // with event data. This is used for enforced audit backends
 type attributes struct {
-	event *audit.Event
-	path  string
+	event  *audit.Event
+	path   string
+	Tenant string
 }
 
 // NewAttributes returns a new attributes struct and parsed request uri
@@ -124,6 +125,11 @@ func (a *attributes) IsResourceRequest() bool {
 // GetPath returns the path uri accessed
 func (a *attributes) GetPath() string {
 	return a.path
+}
+
+// GetTenant returns the tenant
+func (a *attributes) GetTenant() string {
+	return a.Tenant
 }
 
 // user represents the event user

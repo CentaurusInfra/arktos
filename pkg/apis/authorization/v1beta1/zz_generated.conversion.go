@@ -253,6 +253,7 @@ func autoConvert_v1beta1_ResourceAttributes_To_authorization_ResourceAttributes(
 	out.Resource = in.Resource
 	out.Subresource = in.Subresource
 	out.Name = in.Name
+	out.Tenant = in.Tenant
 	return nil
 }
 
@@ -269,6 +270,7 @@ func autoConvert_authorization_ResourceAttributes_To_v1beta1_ResourceAttributes(
 	out.Resource = in.Resource
 	out.Subresource = in.Subresource
 	out.Name = in.Name
+	out.Tenant = in.Tenant
 	return nil
 }
 

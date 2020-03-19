@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -87,6 +88,8 @@ type ResourceAttributes struct {
 	Subresource string
 	// Name is the name of the resource being requested for a "get" or deleted for a "delete". "" (empty) means all.
 	Name string
+	// Tenant is the tenant of the resource being request
+	Tenant string
 }
 
 // NonResourceAttributes includes the authorization attributes available for non-resource requests to the Authorizer interface
