@@ -171,6 +171,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1().ConfigMaps().Informer()}, nil
 	case corev1.SchemeGroupVersion.WithResource("controllerinstances"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1().ControllerInstances().Informer()}, nil
+	case corev1.SchemeGroupVersion.WithResource("datapartitionconfigs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1().DataPartitionConfigs().Informer()}, nil
 	case corev1.SchemeGroupVersion.WithResource("endpoints"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1().Endpoints().Informer()}, nil
 	case corev1.SchemeGroupVersion.WithResource("events"):

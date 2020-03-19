@@ -85,6 +85,8 @@ type APIServiceSpec struct {
 
 	// leaving this here so everyone remembers why proto index 6 is skipped
 	// Priority int64 `json:"priority" protobuf:"varint,6,opt,name=priority"`
+
+	ServiceGroupId string `json:"serviceGroupId,omitempty" protobuf:"bytes,9,opt,name=serviceGroupId"`
 }
 
 // ConditionStatus indicates the status of a condition (true, false, or unknown).

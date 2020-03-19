@@ -24,6 +24,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apiserver/pkg/storage/datapartition"
 	"net"
 	"net/http"
 	"net/url"
@@ -178,7 +179,7 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 		return nil, err
 	}
 
-	kubeAPIServer, err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, admissionPostStartHook)
+	kubeAPIServer, err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, admissionPostStartHook, stopCh)
 	if err != nil {
 		return nil, err
 	}
@@ -212,13 +213,14 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 }
 
 // CreateKubeAPIServer creates and wires a workable kube-apiserver
-func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer genericapiserver.DelegationTarget, admissionPostStartHook genericapiserver.PostStartHookFunc) (*master.Master, error) {
+func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer genericapiserver.DelegationTarget, admissionPostStartHook genericapiserver.PostStartHookFunc, stopCh <-chan struct{}) (*master.Master, error) {
 	kubeAPIServer, err := kubeAPIServerConfig.Complete().New(delegateAPIServer)
 	if err != nil {
 		return nil, err
 	}
 
 	kubeAPIServer.GenericAPIServer.AddPostStartHookOrDie("start-kube-apiserver-admission-initializer", admissionPostStartHook)
+	go kubeAPIServerConfig.ExtraConfig.DataPartitionManager.Run(stopCh)
 
 	return kubeAPIServer, nil
 }
@@ -351,12 +353,19 @@ func CreateKubeAPIServerConfig(
 
 			EndpointReconcilerType: reconcilers.Type(s.EndpointReconcilerType),
 			MasterCount:            s.MasterCount,
+			ServiceGroupId:         s.ServiceGroupId,
 
 			ServiceAccountIssuer:        s.ServiceAccountIssuer,
 			ServiceAccountMaxExpiration: s.ServiceAccountTokenMaxExpiration,
 
 			VersionedInformers: versionedInformers,
 		},
+	}
+
+	config.ExtraConfig.DataPartitionManager = datapartition.GetDataPartitionConfigManager()
+	if config.ExtraConfig.DataPartitionManager == nil {
+		config.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
+			config.ExtraConfig.ServiceGroupId, config.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
 	}
 
 	if nodeTunneler != nil {
@@ -629,6 +638,10 @@ func Complete(s *options.ServerRunOptions) (completedServerRunOptions, error) {
 			}
 		}
 	}
+
+	// service group - for data partition
+	// TODO - read service group id from commandline config
+	s.ServiceGroupId = "0"
 	options.ServerRunOptions = s
 	return options, nil
 }

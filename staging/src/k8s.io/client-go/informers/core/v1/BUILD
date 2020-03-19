@@ -12,6 +12,7 @@ go_library(
         "componentstatus.go",
         "configmap.go",
         "controllerinstance.go",
+        "datapartitionconfig.go",
         "endpoints.go",
         "event.go",
         "interface.go",

@@ -63,6 +63,7 @@ go_library(
     importmap = "k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/storage/etcd3",
     importpath = "k8s.io/apiserver/pkg/storage/etcd3",
     deps = [
+        "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/meta:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/conversion:go_default_library",
@@ -78,6 +79,7 @@ go_library(
         "//vendor/github.com/coreos/etcd/clientv3:go_default_library",
         "//vendor/github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes:go_default_library",
         "//vendor/github.com/coreos/etcd/mvcc/mvccpb:go_default_library",
+        "//vendor/github.com/grafov/bcast:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
         "//vendor/k8s.io/utils/trace:go_default_library",
     ],

@@ -121,6 +121,7 @@ zz_generated_*_test.go
 
 # Just in time generated data in the source, should never be committed
 /test/e2e/generated/bindata.go
+/cmd/kube-apiserver/app/testing/testdata/*
 
 # This file used by some vendor repos (e.g. github.com/go-openapi/...) to store secret variables and should not be ignored
 !\.drone\.sec

@@ -510,6 +510,28 @@ func (DaemonEndpoint) SwaggerDoc() map[string]string {
 	return map_DaemonEndpoint
 }
 
+var map_DataPartitionConfig = map[string]string{
+	"":                   "DataPartitionConfig contains api server data partition configurations. Name in ObjectMeta is used for identitification",
+	"startTenant":        "Start tenant is inclusive",
+	"isStartTenantValid": "Whether this is an open end start",
+	"endTenant":          "End tenant is exclusive",
+	"isEndTenantValid":   "Whether this is an open end end",
+	"serviceGroupId":     "Which service group is using this data configuration",
+}
+
+func (DataPartitionConfig) SwaggerDoc() map[string]string {
+	return map_DataPartitionConfig
+}
+
+var map_DataPartitionConfigList = map[string]string{
+	"":      "DataPartitionConfigList is a list of data partition configurations that api server data partition use",
+	"items": "List of data partition configuration",
+}
+
+func (DataPartitionConfigList) SwaggerDoc() map[string]string {
+	return map_DataPartitionConfigList
+}
+
 var map_DownwardAPIProjection = map[string]string{
 	"":      "Represents downward API info for projecting into a projected volume. Note that this is identical to a downwardAPI volume source without the default mode.",
 	"items": "Items is a list of DownwardAPIVolume file",
