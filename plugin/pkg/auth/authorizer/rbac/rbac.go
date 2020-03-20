@@ -238,4 +238,3 @@ func (l *ClusterRoleBindingLister) ListClusterRoleBindings() ([]*rbacv1.ClusterR
 func (l *ClusterRoleBindingLister) ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error) {
 	return l.Lister.ClusterRoleBindingsWithMultiTenancy(tenant).List(labels.Everything())
 }
-

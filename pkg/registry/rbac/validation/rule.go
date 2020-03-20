@@ -240,7 +240,7 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 			}
 		}
 
-		if len(targetRoleBindings)==0 {
+		if len(targetRoleBindings) == 0 {
 			return
 		}
 		sourceDescriber := &roleBindingDescriber{}
@@ -408,7 +408,7 @@ func (r *StaticRoles) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, e
 
 func (r *StaticRoles) ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error) {
 	clusterRoleBindingList := []*rbacv1.ClusterRoleBinding{}
-	for _, clusterRoleBinding := range r.clusterRoleBindings{
+	for _, clusterRoleBinding := range r.clusterRoleBindings {
 		if clusterRoleBinding.Tenant != tenant {
 			continue
 		}
