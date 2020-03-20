@@ -96,6 +96,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CustomAction{},
 		&Action{},
 		&ActionList{},
+		&DataPartitionConfig{},
+		&DataPartitionConfigList{},
 	)
 
 	// Add common types

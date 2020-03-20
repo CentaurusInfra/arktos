@@ -31,6 +31,7 @@ go_library(
         "//pkg/registry/core/componentstatus:go_default_library",
         "//pkg/registry/core/configmap/storage:go_default_library",
         "//pkg/registry/core/controllerinstance/storage:go_default_library",
+        "//pkg/registry/core/datapartition/storage:go_default_library",
         "//pkg/registry/core/endpoint/storage:go_default_library",
         "//pkg/registry/core/event/storage:go_default_library",
         "//pkg/registry/core/limitrange/storage:go_default_library",

@@ -100,6 +100,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CustomAction{},
 		&Action{},
 		&ActionList{},
+		&DataPartitionConfig{},
+		&DataPartitionConfigList{},
 	)
 
 	return nil

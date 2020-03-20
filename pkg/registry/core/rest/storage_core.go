@@ -48,6 +48,7 @@ import (
 	"k8s.io/kubernetes/pkg/registry/core/componentstatus"
 	configmapstore "k8s.io/kubernetes/pkg/registry/core/configmap/storage"
 	controllerstore "k8s.io/kubernetes/pkg/registry/core/controllerinstance/storage"
+	datapartitionstore "k8s.io/kubernetes/pkg/registry/core/datapartition/storage"
 	endpointsstore "k8s.io/kubernetes/pkg/registry/core/endpoint/storage"
 	eventstore "k8s.io/kubernetes/pkg/registry/core/event/storage"
 	limitrangestore "k8s.io/kubernetes/pkg/registry/core/limitrange/storage"
@@ -139,6 +140,8 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 
 	endpointsStorage := endpointsstore.NewREST(restOptionsGetter)
 
+	dataPartitionStorage := datapartitionstore.NewREST(restOptionsGetter)
+
 	nodeStorage, err := nodestore.NewStorage(restOptionsGetter, c.KubeletClientConfig, c.ProxyTransport)
 	if err != nil {
 		return LegacyRESTStorage{}, genericapiserver.APIGroupInfo{}, err
@@ -216,7 +219,8 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 		"services/proxy":  serviceRestProxy,
 		"services/status": serviceStatusStorage,
 
-		"endpoints": endpointsStorage,
+		"endpoints":            endpointsStorage,
+		"datapartitionconfigs": dataPartitionStorage,
 
 		"nodes":        nodeStorage.Node,
 		"nodes/status": nodeStorage.Status,

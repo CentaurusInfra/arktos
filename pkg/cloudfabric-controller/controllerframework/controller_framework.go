@@ -184,7 +184,7 @@ func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 			break
 		case updatedType, ok := <-c.controllerInstanceUpdateCh.Read:
 			if !ok {
-				klog.Errorf("Unexpected controller instance update message")
+				klog.Error("Unexpected controller instance update message")
 				return
 			}
 			klog.Infof("Got controller instance update massage. Updated Controller Type %s, current controller instance type %s, key %d", updatedType, c.controllerType, c.controllerKey)

@@ -27,6 +27,8 @@ type ConfigMapExpansion interface{}
 
 type ControllerInstanceExpansion interface{}
 
+type DataPartitionConfigExpansion interface{}
+
 type EndpointsExpansion interface{}
 
 type LimitRangeExpansion interface{}
