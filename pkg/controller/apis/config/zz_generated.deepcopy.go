@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -127,6 +128,7 @@ func (in *KubeControllerManagerConfiguration) DeepCopyInto(out *KubeControllerMa
 	out.ResourceQuotaController = in.ResourceQuotaController
 	out.SAController = in.SAController
 	out.ServiceController = in.ServiceController
+	out.TenantController = in.TenantController
 	out.TTLAfterFinishedController = in.TTLAfterFinishedController
 	return
 }

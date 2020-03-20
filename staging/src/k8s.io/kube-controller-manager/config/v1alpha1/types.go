@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -144,6 +145,9 @@ type KubeControllerManagerConfiguration struct {
 	// ServiceControllerConfiguration holds configuration for ServiceController
 	// related features.
 	ServiceController ServiceControllerConfiguration
+	// TenantControllerConfiguration holds configuration for TenantController
+	// related features.
+	TenantController TenantControllerConfiguration `json:"tenantController,omitempty"`
 	// TTLAfterFinishedControllerConfiguration holds configuration for
 	// TTLAfterFinishedController related features.
 	TTLAfterFinishedController TTLAfterFinishedControllerConfiguration
@@ -439,6 +443,16 @@ type ServiceControllerConfiguration struct {
 	// allowed to sync concurrently. Larger number = more responsive service
 	// management, but more CPU (and network) load.
 	ConcurrentServiceSyncs int32
+}
+
+// TenantControllerConfiguration contains elements describing TenantController.
+type TenantControllerConfiguration struct {
+	// TenantSyncPeriod is the period for syncing tenant life-cycle
+	// updates.
+	TenantSyncPeriod metav1.Duration `json:"tenantSyncPeriod,omitempty"`
+	// concurrentTenantSyncs is the number of tenant objects that are
+	// allowed to sync concurrently.
+	ConcurrentTenantSyncs int32 `json:"concurrentTenantSyncs,omitempty"`
 }
 
 // TTLAfterFinishedControllerConfiguration contains elements describing TTLAfterFinishedController.
