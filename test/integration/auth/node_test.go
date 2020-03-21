@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -68,8 +69,8 @@ func TestNodeAuthorizer(t *testing.T) {
 		t.Fatal(err)
 	}
 	tokenFile.WriteString(strings.Join([]string{
-		fmt.Sprintf(`%s,admin,uid1,"system:masters"`, tokenMaster),
-		fmt.Sprintf(`%s,unknown,uid2,"system:nodes"`, tokenNodeUnknown),
+		fmt.Sprintf(`%s,system:admin,uid1,"system:masters"`, tokenMaster),
+		fmt.Sprintf(`%s,system:unknown,uid2,"system:nodes"`, tokenNodeUnknown),
 		fmt.Sprintf(`%s,system:node:node1,uid3,"system:nodes"`, tokenNode1),
 		fmt.Sprintf(`%s,system:node:node2,uid4,"system:nodes"`, tokenNode2),
 	}, "\n"))

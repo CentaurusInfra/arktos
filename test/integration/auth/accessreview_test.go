@@ -35,6 +35,10 @@ import (
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
+const (
+	testTenant string = metav1.TenantSystem
+)
+
 // Inject into master an authorizer that uses user info.
 // TODO(etune): remove this test once a more comprehensive built-in authorizer is implemented.
 type sarAuthorizer struct{}
@@ -50,7 +54,8 @@ func (sarAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, st
 func alwaysAlice(req *http.Request) (*authenticator.Response, bool, error) {
 	return &authenticator.Response{
 		User: &user.DefaultInfo{
-			Name: "alice",
+			Name:   "alice",
+			Tenant: testTenant,
 		},
 	}, true, nil
 }
@@ -151,7 +156,7 @@ func TestSelfSubjectAccessReview(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authentication.Authenticator = authenticator.RequestFunc(func(req *http.Request) (*authenticator.Response, bool, error) {
 		return &authenticator.Response{
-			User: &user.DefaultInfo{Name: username},
+			User: &user.DefaultInfo{Name: username, Tenant: testTenant},
 		}, true, nil
 	})
 	masterConfig.GenericConfig.Authorization.Authorizer = sarAuthorizer{}

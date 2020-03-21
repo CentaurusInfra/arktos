@@ -71,7 +71,7 @@ func TestServiceAccountAutoCreateWithMultiTenancy(t *testing.T) {
 }
 
 func testServiceAccountAutoCreate(t *testing.T, tenant string) {
-	c, _, stopFunc, err := startServiceAccountTestServer(t)
+	c, _, stopFunc, err := startServiceAccountTestServer(t, tenant)
 	defer stopFunc()
 	if err != nil {
 		t.Fatalf("failed to setup ServiceAccounts server: %v", err)
@@ -116,7 +116,7 @@ func TestServiceAccountTokenAutoCreateWithMultiTenancy(t *testing.T) {
 }
 
 func testServiceAccountTokenAutoCreate(t *testing.T, tenant string) {
-	c, _, stopFunc, err := startServiceAccountTestServer(t)
+	c, _, stopFunc, err := startServiceAccountTestServer(t, tenant)
 	defer stopFunc()
 	if err != nil {
 		t.Fatalf("failed to setup ServiceAccounts server: %v", err)
@@ -222,7 +222,7 @@ func TestServiceAccountTokenAutoMountWithMultiTenancy(t *testing.T) {
 }
 
 func testServiceAccountTokenAutoMount(t *testing.T, tenant string) {
-	c, _, stopFunc, err := startServiceAccountTestServer(t)
+	c, _, stopFunc, err := startServiceAccountTestServer(t, tenant)
 	defer stopFunc()
 	if err != nil {
 		t.Fatalf("failed to setup ServiceAccounts server: %v", err)
@@ -313,7 +313,7 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 }*/
 
 func testServiceAccountTokenAuthentication(t *testing.T, tenant string) {
-	c, config, stopFunc, err := startServiceAccountTestServer(t)
+	c, config, stopFunc, err := startServiceAccountTestServer(t, tenant)
 	defer stopFunc()
 	if err != nil {
 		t.Fatalf("failed to setup ServiceAccounts server: %v", err)
@@ -395,7 +395,7 @@ func testServiceAccountTokenAuthentication(t *testing.T, tenant string) {
 
 // startServiceAccountTestServer returns a started server
 // It is the responsibility of the caller to ensure the returned stopFunc is called
-func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclient.Config, func(), error) {
+func startServiceAccountTestServer(t *testing.T, tenant string) (*clientset.Clientset, restclient.Config, func(), error) {
 	// Listener
 	h := &framework.MasterHolder{Initialized: make(chan struct{})}
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -420,8 +420,12 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 	// 1. A token authenticator that maps the rootToken to the "root" user
 	// 2. A ServiceAccountToken authenticator that validates ServiceAccount tokens
 	rootTokenAuth := authenticator.TokenFunc(func(ctx context.Context, token string) (*authenticator.Response, bool, error) {
+		userTenant := tenant
+		if tenant == metav1.TenantDefault {
+			userTenant = metav1.TenantSystem
+		}
 		if token == rootToken {
-			return &authenticator.Response{User: &user.DefaultInfo{Name: rootUserName}}, true, nil
+			return &authenticator.Response{User: &user.DefaultInfo{Name: rootUserName, Tenant: userTenant}}, true, nil
 		}
 		return nil, false, nil
 	})
