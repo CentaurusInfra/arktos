@@ -52,6 +52,7 @@ import (
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
+	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	ttlcontroller "k8s.io/kubernetes/pkg/controller/ttl"
 	"k8s.io/kubernetes/pkg/controller/ttlafterfinished"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
@@ -344,6 +345,28 @@ func startNamespaceController(ctx ControllerContext) (http.Handler, bool, error)
 	}
 	namespaceKubeClient := clientset.NewForConfigOrDie(nsKubeconfigs)
 	return startModifiedNamespaceController(ctx, namespaceKubeClient, nsKubeconfigs)
+}
+
+func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
+	// tenant controller will be even more chatty than namespace controller when doing cleanups.
+	// but tenant deletion probably doesn't have to be very quick. For now we keep the same
+	// QPS/Burst settings as namespace controller. After we implement tenant cleanup, We will
+	// adjust these if there are feedback on the duration of tenant cleanup
+	tnKubeConfigs := ctx.ClientBuilder.ConfigOrDie("tenant-controller")
+	for _, tnKubeConfig := range tnKubeConfigs.GetAllConfigs() {
+		tnKubeConfig.QPS *= 20
+		tnKubeConfig.Burst *= 100
+	}
+	tenantKubeClient := clientset.NewForConfigOrDie(tnKubeConfigs)
+
+	tenantController := tenantcontroller.NewTenantController(
+		tenantKubeClient,
+		ctx.InformerFactory.Core().V1().Tenants(),
+		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
+	)
+	go tenantController.Run(int(ctx.ComponentConfig.TenantController.ConcurrentTenantSyncs), ctx.Stop)
+
+	return nil, true, nil
 }
 
 func startModifiedNamespaceController(ctx ControllerContext, namespaceKubeClient clientset.Interface, nsKubeconfig *restclient.Config) (http.Handler, bool, error) {

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,6 +48,7 @@ import (
 	resourcequotaconfig "k8s.io/kubernetes/pkg/controller/resourcequota/config"
 	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
+	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
 	ttlafterfinishedconfig "k8s.io/kubernetes/pkg/controller/ttlafterfinished/config"
 	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
 	persistentvolumeconfig "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config"
@@ -135,6 +137,8 @@ func TestAddFlags(t *testing.T) {
 		"--bind-address=192.168.4.21",
 		"--secure-port=10001",
 		"--concurrent-ttl-after-finished-syncs=8",
+		"--concurrent-tenant-syncs=20",
+		"--tenant-sync-period=10m",
 	}
 	fs.Parse(args)
 	// Sort GCIgnoredResources because it's built from a map, which means the
@@ -318,6 +322,12 @@ func TestAddFlags(t *testing.T) {
 			&serviceaccountconfig.SAControllerConfiguration{
 				ServiceAccountKeyFile:  "/service-account-private-key",
 				ConcurrentSATokenSyncs: 10,
+			},
+		},
+		TenantController: &TenantControllerOptions{
+			&tenantconfig.TenantControllerConfiguration{
+				TenantSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
+				ConcurrentTenantSyncs: 20,
 			},
 		},
 		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{

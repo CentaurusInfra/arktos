@@ -120,7 +120,6 @@ func DefaultOpenAPIConfig() *openapicommon.Config {
 	return openAPIConfig
 }
 
-
 func startMasterOrDieWithDataPartition(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
 	return startMasterOrDie(masterConfig, incomingServer, masterReceiver, true)
 }

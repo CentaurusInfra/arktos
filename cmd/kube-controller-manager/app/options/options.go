@@ -78,6 +78,7 @@ type KubeControllerManagerOptions struct {
 	ReplicationController            *ReplicationControllerOptions
 	ResourceQuotaController          *ResourceQuotaControllerOptions
 	SAController                     *SAControllerOptions
+	TenantController                 *TenantControllerOptions
 	TTLAfterFinishedController       *TTLAfterFinishedControllerOptions
 
 	SecureServing *apiserveroptions.SecureServingOptionsWithLoopback
@@ -157,6 +158,9 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		SAController: &SAControllerOptions{
 			&componentConfig.SAController,
 		},
+		TenantController: &TenantControllerOptions{
+			&componentConfig.TenantController,
+		},
 		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{
 			&componentConfig.TTLAfterFinishedController,
 		},
@@ -232,6 +236,7 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.ReplicationController.AddFlags(fss.FlagSet("replicationcontroller"))
 	s.ResourceQuotaController.AddFlags(fss.FlagSet("resourcequota controller"))
 	s.SAController.AddFlags(fss.FlagSet("serviceaccount controller"))
+	s.TenantController.AddFlags(fss.FlagSet("tenant controller"))
 	s.TTLAfterFinishedController.AddFlags(fss.FlagSet("ttl-after-finished controller"))
 
 	fs := fss.FlagSet("misc")
@@ -307,6 +312,9 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.ServiceController.ApplyTo(&c.ComponentConfig.ServiceController); err != nil {
 		return err
 	}
+	if err := s.TenantController.ApplyTo(&c.ComponentConfig.TenantController); err != nil {
+		return err
+	}
 	if err := s.TTLAfterFinishedController.ApplyTo(&c.ComponentConfig.TTLAfterFinishedController); err != nil {
 		return err
 	}
@@ -358,6 +366,7 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.ResourceQuotaController.Validate()...)
 	errs = append(errs, s.SAController.Validate()...)
 	errs = append(errs, s.ServiceController.Validate()...)
+	errs = append(errs, s.TenantController.Validate()...)
 	errs = append(errs, s.TTLAfterFinishedController.Validate()...)
 	errs = append(errs, s.SecureServing.Validate()...)
 	errs = append(errs, s.InsecureServing.Validate()...)
