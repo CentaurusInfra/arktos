@@ -41,9 +41,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/group"
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
+	"k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/tokentest"
 	clientset "k8s.io/client-go/kubernetes"
 	clienttypedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -56,12 +58,13 @@ import (
 const (
 	AliceToken string = "abc123" // username: alice.  Present in token file.
 	BobToken   string = "xyz987" // username: bob.  Present in token file.
+	testTenant string = "fake-tenant"
 )
 
 type allowAliceAuthorizer struct{}
 
 func (allowAliceAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
-	if a.GetUser() != nil && a.GetUser().GetName() == "alice" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" {
 		return authorizer.DecisionAllow, "", nil
 	}
 	return authorizer.DecisionNoOpinion, "I can't allow that.  Go ask alice.", nil
@@ -144,6 +147,7 @@ func TestEmptyList(t *testing.T) {
 
 func initStatusForbiddenMasterCongfig() *master.Config {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
+	masterConfig.GenericConfig.Authentication = server.AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 	masterConfig.GenericConfig.Authorization.Authorizer = authorizerfactory.NewAlwaysDenyAuthorizer()
 	return masterConfig
 }
@@ -151,8 +155,8 @@ func initStatusForbiddenMasterCongfig() *master.Config {
 func initUnauthorizedMasterCongfig() *master.Config {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	tokenAuthenticator := tokentest.New()
-	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "alice", UID: "1"}
-	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "bob", UID: "2"}
+	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "fake-tenant:alice", UID: "1"}
+	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "fake-tenant:bob", UID: "2"}
 	masterConfig.GenericConfig.Authentication.Authenticator = group.NewGroupAdder(bearertoken.New(tokenAuthenticator), []string{user.AllAuthenticated})
 	masterConfig.GenericConfig.Authorization.Authorizer = allowAliceAuthorizer{}
 	return masterConfig
@@ -181,7 +185,7 @@ func TestStatus(t *testing.T) {
 			statusCode:   http.StatusForbidden,
 			reqPath:      "/apis",
 			reason:       "Forbidden",
-			message:      `forbidden: User "" cannot get path "/apis": Everything is forbidden.`,
+			message:      `forbidden: User "fake-user" cannot get path "/apis": Everything is forbidden.`,
 		},
 		{
 			name:         "401",

@@ -15,6 +15,7 @@ go_test(
         "authorization_test.go",
         "impersonation_test.go",
         "requestinfo_test.go",
+        "tenantinfo_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
@@ -47,7 +48,7 @@ go_library(
         "doc.go",
         "impersonation.go",
         "requestinfo.go",
-        "tenantInfo.go",
+        "tenantinfo.go",
     ],
     importmap = "k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/endpoints/filters",
     importpath = "k8s.io/apiserver/pkg/endpoints/filters",

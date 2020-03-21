@@ -21,6 +21,7 @@ filegroup(
         "//staging/src/k8s.io/apiserver/pkg/authentication/group:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/authentication/request/anonymous:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/authentication/request/bearertoken:all-srcs",
+        "//staging/src/k8s.io/apiserver/pkg/authentication/request/fakeuser:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/authentication/request/headerrequest:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/authentication/request/union:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/authentication/request/websocket:all-srcs",
