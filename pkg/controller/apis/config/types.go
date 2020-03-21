@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +36,7 @@ import (
 	resourcequotaconfig "k8s.io/kubernetes/pkg/controller/resourcequota/config"
 	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
+	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
 	ttlafterfinishedconfig "k8s.io/kubernetes/pkg/controller/ttlafterfinished/config"
 	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
 	persistentvolumeconfig "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config"
@@ -106,6 +108,9 @@ type KubeControllerManagerConfiguration struct {
 	// ServiceControllerConfiguration holds configuration for ServiceController
 	// related features.
 	ServiceController serviceconfig.ServiceControllerConfiguration
+	// TenantControllerConfiguration holds configuration for TenantController
+	// related features.
+	TenantController tenantconfig.TenantControllerConfiguration
 	// TTLAfterFinishedControllerConfiguration holds configuration for
 	// TTLAfterFinishedController related features.
 	TTLAfterFinishedController ttlafterfinishedconfig.TTLAfterFinishedControllerConfiguration

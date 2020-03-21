@@ -378,6 +378,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["vmpod"] = startVMPodController
 	controllers["resourcequota"] = startResourceQuotaController
 	controllers["namespace"] = startNamespaceController
+	controllers["tenant"] = startTenantController
 	controllers["serviceaccount"] = startServiceAccountController
 	controllers["garbagecollector"] = startGarbageCollectorController
 	controllers["daemonset"] = startDaemonSetController
