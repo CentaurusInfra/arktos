@@ -182,6 +182,9 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 
 	clientConfig := restclient.AnonymousClientConfig(b.ClientConfig)
 	restclient.AddUserAgent(clientConfig, username)
+	for _, config := range clientConfig.GetAllConfigs() {
+		config.BearerToken = token
+	}
 
 	// Try token review first
 	tokenReview := &v1authenticationapi.TokenReview{Spec: v1authenticationapi.TokenReviewSpec{Token: token}}
@@ -203,8 +206,6 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 	clientConfigCopy := *clientConfig
 
 	for _, config := range clientConfigCopy.GetAllConfigs() {
-		config.BearerToken = token
-
 		config.NegotiatedSerializer = legacyscheme.Codecs
 		client, err := restclient.UnversionedRESTClientFor(config)
 		if err != nil {
