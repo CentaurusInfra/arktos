@@ -43,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/discovery"
 	restclient "k8s.io/client-go/rest"
@@ -54,6 +55,7 @@ func setUp(t *testing.T) server.Config {
 	codecs := serializer.NewCodecFactory(scheme)
 
 	config := server.NewConfig(codecs)
+	config.Authentication = server.AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 
 	return *config
 }

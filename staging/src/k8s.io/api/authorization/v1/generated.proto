@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -107,6 +108,10 @@ message ResourceAttributes {
   // Name is the name of the resource being requested for a "get" or deleted for a "delete". "" (empty) means all.
   // +optional
   optional string name = 7;
+
+  // Tenant is the tenent of the resource being request
+  // +optional
+  optional string tenant = 8;
 }
 
 // ResourceRule is the list of actions the subject is allowed to perform on resources. The list ordering isn't significant,

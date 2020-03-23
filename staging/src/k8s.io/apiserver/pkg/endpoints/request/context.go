@@ -88,6 +88,14 @@ func WithNamespace(parent context.Context, namespace string) context.Context {
 	return WithValue(parent, namespaceKey, namespace)
 }
 
+// WithTenantAndNamespace returns a copy of parent in which the tenant and namespace value are set
+func WithTenantAndNamespace(parent context.Context, tenant, namespace string) context.Context {
+	return WithValue(
+		WithValue(parent, namespaceKey, namespace),
+		tenantKey,
+		tenant)
+}
+
 // NamespaceFrom returns the value of the namespace key on the ctx
 func NamespaceFrom(ctx context.Context) (string, bool) {
 	namespace, ok := ctx.Value(namespaceKey).(string)

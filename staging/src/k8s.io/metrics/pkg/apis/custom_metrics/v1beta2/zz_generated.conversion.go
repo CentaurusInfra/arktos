@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -163,7 +164,17 @@ func Convert_custom_metrics_MetricValue_To_v1beta2_MetricValue(in *custommetrics
 
 func autoConvert_v1beta2_MetricValueList_To_custom_metrics_MetricValueList(in *MetricValueList, out *custommetrics.MetricValueList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]custommetrics.MetricValue)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]custommetrics.MetricValue, len(*in))
+		for i := range *in {
+			if err := Convert_v1beta2_MetricValue_To_custom_metrics_MetricValue(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -174,7 +185,17 @@ func Convert_v1beta2_MetricValueList_To_custom_metrics_MetricValueList(in *Metri
 
 func autoConvert_custom_metrics_MetricValueList_To_v1beta2_MetricValueList(in *custommetrics.MetricValueList, out *MetricValueList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]MetricValue)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]MetricValue, len(*in))
+		for i := range *in {
+			if err := Convert_custom_metrics_MetricValue_To_v1beta2_MetricValue(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 

@@ -13,6 +13,7 @@ go_library(
         "configmap.go",
         "controllerinstance.go",
         "core_client.go",
+        "datapartitionconfig.go",
         "doc.go",
         "endpoints.go",
         "event.go",

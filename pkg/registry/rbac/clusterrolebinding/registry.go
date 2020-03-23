@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,6 +57,19 @@ func (s *storage) ListClusterRoleBindings(ctx context.Context, options *metainte
 	return ret, nil
 }
 
+func (s *storage) ListClusterRoleBindingsWithMultiTenancy(ctx context.Context, options *metainternalversion.ListOptions) (*rbacv1.ClusterRoleBindingList, error) {
+	obj, err := s.List(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := &rbacv1.ClusterRoleBindingList{}
+	if err := rbacv1helpers.Convert_rbac_ClusterRoleBindingList_To_v1_ClusterRoleBindingList(obj.(*rbac.ClusterRoleBindingList), ret, nil); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
 // AuthorizerAdapter adapts the registry to the authorizer interface
 type AuthorizerAdapter struct {
 	Registry Registry
@@ -67,7 +81,20 @@ func (a AuthorizerAdapter) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBindi
 		return nil, err
 	}
 
-	ret := []*rbacv1.ClusterRoleBinding{}
+	var ret []*rbacv1.ClusterRoleBinding
+	for i := range list.Items {
+		ret = append(ret, &list.Items[i])
+	}
+	return ret, nil
+}
+
+func (a AuthorizerAdapter) ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error) {
+	list, err := a.Registry.ListClusterRoleBindings(genericapirequest.WithTenant(genericapirequest.NewContext(), tenant), &metainternalversion.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*rbacv1.ClusterRoleBinding
 	for i := range list.Items {
 		ret = append(ret, &list.Items[i])
 	}

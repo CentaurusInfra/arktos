@@ -69,6 +69,7 @@ go_library(
         "//pkg/controller/service:go_default_library",
         "//pkg/controller/serviceaccount:go_default_library",
         "//pkg/controller/statefulset:go_default_library",
+        "//pkg/controller/tenant:go_default_library",
         "//pkg/controller/ttl:go_default_library",
         "//pkg/controller/ttlafterfinished:go_default_library",
         "//pkg/controller/vmpod:go_default_library",
