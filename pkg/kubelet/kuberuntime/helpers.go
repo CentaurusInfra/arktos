@@ -345,7 +345,7 @@ func buildRuntimeServicesMapFromAgentCommandArgs(remoteRuntimeEndpoints string) 
 		}
 
 		runtimeServices[name] = &runtimeService{name,
-			workloadType, endpointUrl, rs, true}
+			workloadType, endpointUrl, rs, true, true}
 		imageServices[name] = &imageService{name,
 			workloadType, endpointUrl, is, true}
 
@@ -370,13 +370,20 @@ func buildRuntimeServicesMapFromAgentCommandArgs(remoteRuntimeEndpoints string) 
 		}
 
 		setDefault := false
+		setPrimry := false
+
 		if workloadType == containerWorkloadType && firstContainerType == true ||
 			workloadType == vmworkloadType && firstVmType == true {
 			setDefault = true
 		}
 
+		// Consider first container runtime as primary that must be ready for the node ready condition
+		if workloadType == containerWorkloadType && firstContainerType == true {
+			setPrimry = true
+		}
+
 		runtimeServices[name] = &runtimeService{name,
-			workloadType, endpointUrl, rs, setDefault}
+			workloadType, endpointUrl, rs, setDefault, setPrimry}
 		imageServices[name] = &imageService{name,
 			workloadType, endpointUrl, is, setDefault}
 
