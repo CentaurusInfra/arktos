@@ -36,6 +36,11 @@ func NewFakeRuntimeManager(runtimeService internalapi.RuntimeService, imageServi
 	}
 }
 
+// Get the primary runtime service for the Arktos cluster
+func (m *FakeRuntimeManager) GetPrimaryRuntimeService() (internalapi.RuntimeService, error) {
+	return m.RuntimeService, nil
+}
+
 // GetRuntimeServiceByPod returns the runtime service for a given pod.
 func (m *FakeRuntimeManager) GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error) {
 	return m.RuntimeService, nil
