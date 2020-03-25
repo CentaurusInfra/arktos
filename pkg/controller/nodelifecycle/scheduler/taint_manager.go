@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -173,7 +174,7 @@ func NewNoExecuteTaintManager(c clientset.Interface, getPod GetPodFunc, getNode 
 	eventBroadcaster.StartLogging(klog.Infof)
 	if c != nil {
 		klog.V(0).Infof("Sending events to api server.")
-		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: c.CoreV1().Events("")})
+		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: c.CoreV1().EventsWithMultiTenancy("", "")})
 	} else {
 		klog.Fatalf("kubeClient is nil when starting NodeController")
 	}

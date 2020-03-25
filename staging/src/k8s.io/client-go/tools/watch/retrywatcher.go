@@ -115,36 +115,35 @@ func (rw *RetryWatcher) doReceive() (bool, time.Duration) {
 	}
 
 	defer aggWatchers.Stop()
-	if len(aggWatchers.GetWatchers()) == 0 {
+	if aggWatchers.GetWatchersCount() == 0 {
 		klog.Error("No watcher in aggregated watchers")
 		return false, 0
 	}
 
-	for _, err := range aggWatchers.GetErrors() {
-		switch err {
-		case nil:
-			break
+	err := aggWatchers.GetFirstError()
+	switch err {
+	case nil:
+		break
 
-		case io.EOF:
-			// watch closed normally
-			return false, 0
+	case io.EOF:
+		// watch closed normally
+		return false, 0
 
-		case io.ErrUnexpectedEOF:
-			klog.V(1).Infof("Watch closed with unexpected EOF: %v", err)
-			return false, 0
+	case io.ErrUnexpectedEOF:
+		klog.V(1).Infof("Watch closed with unexpected EOF: %v", err)
+		return false, 0
 
-		default:
-			msg := "Watch failed: %v"
-			if net.IsProbableEOF(err) {
-				klog.V(5).Infof(msg, err)
-				// Retry
-				return false, 0
-			}
-
-			klog.Errorf(msg, err)
+	default:
+		msg := "Watch failed: %v"
+		if net.IsProbableEOF(err) {
+			klog.V(5).Infof(msg, err)
 			// Retry
 			return false, 0
 		}
+
+		klog.Errorf(msg, err)
+		// Retry
+		return false, 0
 	}
 
 	ch := aggWatchers.ResultChan()

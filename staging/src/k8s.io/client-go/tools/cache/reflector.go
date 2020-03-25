@@ -234,11 +234,11 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	klog.V(5).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
 	var resourceVersion string
 
-	// Explicitly set "" as resource version - it's fine for the List()
+	// Explicitly set "0" as resource version - it's fine for the List()
 	// to be served from cache and potentially be delayed relative to
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
 	// When ResourceVersion is empty, list will get from api server cache
-	options := metav1.ListOptions{ResourceVersion: ""}
+	options := metav1.ListOptions{ResourceVersion: "0"}
 
 	if len(r.filterBounds) > 0 {
 		if r.hasInitBounds() {
@@ -373,31 +373,29 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
 		aggregatedWatcher := r.listerWatcher.Watch(options)
-		errs := aggregatedWatcher.GetErrors()
-		for _, err := range errs {
-			if err != nil {
-				switch err {
-				case io.EOF:
-					// watch closed normally
-				case io.ErrUnexpectedEOF:
-					klog.V(1).Infof("%s: Watch for %v closed with unexpected EOF: %v", r.name, r.expectedType, err)
-				default:
-					utilruntime.HandleError(fmt.Errorf("%s: Failed to watch %v: %v", r.name, r.expectedType, err))
-				}
-				// If this is "connection refused" error, it means that most likely apiserver is not responsive.
-				// It doesn't make sense to re-list all objects because most likely we will be able to restart
-				// watch where we ended.
-				// If that's the case wait and resend watch request.
-				if urlError, ok := err.(*url.Error); ok {
-					if opError, ok := urlError.Err.(*net.OpError); ok {
-						if errno, ok := opError.Err.(syscall.Errno); ok && errno == syscall.ECONNREFUSED {
-							time.Sleep(time.Second)
-							continue
-						}
+		err := aggregatedWatcher.GetFirstError()
+		if err != nil {
+			switch err {
+			case io.EOF:
+				// watch closed normally
+			case io.ErrUnexpectedEOF:
+				klog.V(1).Infof("%s: Watch for %v closed with unexpected EOF: %v", r.name, r.expectedType, err)
+			default:
+				utilruntime.HandleError(fmt.Errorf("%s: Failed to watch %v: %v", r.name, r.expectedType, err))
+			}
+			// If this is "connection refused" error, it means that most likely apiserver is not responsive.
+			// It doesn't make sense to re-list all objects because most likely we will be able to restart
+			// watch where we ended.
+			// If that's the case wait and resend watch request.
+			if urlError, ok := err.(*url.Error); ok {
+				if opError, ok := urlError.Err.(*net.OpError); ok {
+					if errno, ok := opError.Err.(syscall.Errno); ok && errno == syscall.ECONNREFUSED {
+						time.Sleep(time.Second)
+						continue
 					}
 				}
-				return nil
 			}
+			return nil
 		}
 
 		if err := r.watchHandler(aggregatedWatcher, &resourceVersion, resyncerrc, stopCh); err != nil {

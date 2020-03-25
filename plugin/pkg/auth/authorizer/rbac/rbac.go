@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,6 +74,13 @@ func (v *authorizingVisitor) visit(source fmt.Stringer, rule *rbacv1.PolicyRule,
 
 func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (authorizer.Decision, string, error) {
 	ruleCheckingVisitor := &authorizingVisitor{requestAttributes: requestAttributes}
+
+	userTenant := requestAttributes.GetUser().GetTenant()
+	if userTenant != "system" && userTenant != requestAttributes.GetTenant() {
+		klog.Infof("user tenant '%v' does not match the requested tenant space '%v'",
+			userTenant, requestAttributes.GetTenant())
+		return authorizer.DecisionDeny, ruleCheckingVisitor.reason, nil
+	}
 
 	r.authorizationRuleResolver.VisitRulesFor(requestAttributes.GetUser(), requestAttributes.GetNamespace(), ruleCheckingVisitor.visit)
 	if ruleCheckingVisitor.allowed {
@@ -207,6 +215,10 @@ func (l *RoleBindingLister) ListRoleBindings(namespace string) ([]*rbacv1.RoleBi
 	return l.Lister.RoleBindings(namespace).List(labels.Everything())
 }
 
+func (l *RoleBindingLister) ListRoleBindingsWithMultiTenancy(tenant, namespace string) ([]*rbacv1.RoleBinding, error) {
+	return l.Lister.RoleBindingsWithMultiTenancy(namespace, tenant).List(labels.Everything())
+}
+
 type ClusterRoleGetter struct {
 	Lister rbaclisters.ClusterRoleLister
 }
@@ -221,4 +233,8 @@ type ClusterRoleBindingLister struct {
 
 func (l *ClusterRoleBindingLister) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
 	return l.Lister.List(labels.Everything())
+}
+
+func (l *ClusterRoleBindingLister) ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error) {
+	return l.Lister.ClusterRoleBindingsWithMultiTenancy(tenant).List(labels.Everything())
 }

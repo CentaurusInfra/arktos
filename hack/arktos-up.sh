@@ -607,7 +607,9 @@ function start_apiserver {
     configsuffix="$(($1 + 1))"
     configfilepath="${PARTITION_CONFIG_DIR}apiserver${configsuffix}.config"
     ${CONTROLPLANE_SUDO} rm -f  $configfilepath
+    ${CONTROLPLANE_SUDO} cp hack/apiserver.config $configfilepath
     echo "Creating apiserver partition config file  $configfilepath..."
+
     previous=tenant$(($1+1))
     if [[ $1 -eq 0 ]]; then
       previous=
@@ -616,10 +618,7 @@ function start_apiserver {
     if [[ "$(($1 + 1))" -eq "${APISERVER_NUMBER}" ]]; then
       partition_end=
     fi
-
-    cat << EOF | ${CONTROLPLANE_SUDO}  tee -a $configfilepath
-/registry/pods/,$previous,$partition_end
-EOF
+    ${CONTROLPLANE_SUDO}  sed -i "s/tenant_begin,tenant_end/${previous},${partition_end}/gi"  $configfilepath
     security_admission=""
     if [[ -n "${DENY_SECURITY_CONTEXT_ADMISSION}" ]]; then
       security_admission=",SecurityContextDeny"

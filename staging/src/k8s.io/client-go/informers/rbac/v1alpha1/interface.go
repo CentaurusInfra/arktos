@@ -54,12 +54,12 @@ func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace s
 
 // ClusterRoles returns a ClusterRoleInformer.
 func (v *version) ClusterRoles() ClusterRoleInformer {
-	return &clusterRoleInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &clusterRoleInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // ClusterRoleBindings returns a ClusterRoleBindingInformer.
 func (v *version) ClusterRoleBindings() ClusterRoleBindingInformer {
-	return &clusterRoleBindingInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &clusterRoleBindingInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // Roles returns a RoleInformer.

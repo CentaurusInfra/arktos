@@ -24,7 +24,7 @@ func TestStrategy_Scope(t *testing.T) {
 	if Strategy.NamespaceScoped() {
 		t.Error("clusterrole strategy should not be namespace scoped")
 	}
-	if Strategy.TenantScoped() {
-		t.Error("clusterrole strategy must not be tenant scoped")
+	if !Strategy.TenantScoped() {
+		t.Error("clusterrole strategy must be tenant scoped")
 	}
 }

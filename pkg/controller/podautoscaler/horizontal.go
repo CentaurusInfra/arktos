@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,7 +110,7 @@ func NewHorizontalController(
 ) *HorizontalController {
 	broadcaster := record.NewBroadcaster()
 	broadcaster.StartLogging(klog.Infof)
-	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: evtNamespacer.Events("")})
+	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: evtNamespacer.EventsWithMultiTenancy("", "")})
 	recorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "horizontal-pod-autoscaler"})
 
 	hpaController := &HorizontalController{

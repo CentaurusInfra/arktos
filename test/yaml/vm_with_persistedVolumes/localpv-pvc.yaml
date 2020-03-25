@@ -1,0 +1,54 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  tenant: default
+  namespace: default
+  name: local-block-pv
+spec:
+  capacity:
+    storage: 4000M
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  volumeMode: Block
+  local:
+    # set up with:
+    # dd if=/dev/zero of=/rawtest bs=512K count=8000 && ln -s $(losetup -f /rawtest --show) /dev/rootdev
+    path: /dev/rootdev
+  claimRef:
+    name: local-block-pvc
+    namespace: default
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: extraRuntime
+          operator: In
+          values:
+          - virtlet
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  tenant: default
+  namespace: default
+  name: local-block-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Block
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 4000M
+

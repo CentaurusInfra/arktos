@@ -18,8 +18,8 @@ limitations under the License.
 package kubelet
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,8 +30,9 @@ import (
 	"k8s.io/kubernetes/test/integration/framework"
 	"testing"
 )
+
 func createClientSet(t *testing.T) (*kubernetes.Clientset, *kubeapiservertesting.TestServer, *kubeapiservertesting.TestServer, error) {
-	instanceOptions := &kubeapiservertesting.TestServerInstanceOptions{DisableStorageCleanup: true,}
+	instanceOptions := &kubeapiservertesting.TestServerInstanceOptions{DisableStorageCleanup: true}
 	sharedEtcd := framework.SharedEtcd()
 
 	server1 := kubeapiservertesting.StartTestServerOrDie(t, instanceOptions, nil, sharedEtcd)
@@ -60,12 +61,11 @@ func TestCreating(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-
 	if _, err := client.CoreV1().Namespaces().Create((&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}})); err != nil {
 		t.Fatal(err)
 	}
-    var res *v1.Namespace
-	if res, err = client.CoreV1().Namespaces().Get(testNamespace,metav1.GetOptions{}); err != nil{
+	var res *v1.Namespace
+	if res, err = client.CoreV1().Namespaces().Get(testNamespace, metav1.GetOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if res == nil {
@@ -84,7 +84,7 @@ func TestListing(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var list *v1.NamespaceList
-	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil{
+	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	itemLen := len(list.Items)
@@ -93,11 +93,11 @@ func TestListing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil{
+	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
-	if itemLen != len(list.Items) - 1 {
+	if itemLen != len(list.Items)-1 {
 		t.Fatalf("The list is not increased after the namespace %s failed to create.", testNamespace)
 	}
 }
@@ -113,7 +113,7 @@ func TestDeleting(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var list *v1.NamespaceList
-	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil{
+	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	itemLen := len(list.Items)
@@ -122,11 +122,11 @@ func TestDeleting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil{
+	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
-	if itemLen != len(list.Items) - 1 {
+	if itemLen != len(list.Items)-1 {
 		t.Fatalf("The list is not increased after the namespace %s failed to create.", testNamespace)
 	}
 
@@ -134,7 +134,7 @@ func TestDeleting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil{
+	if list, err = client.CoreV1().Namespaces().List(metav1.ListOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -159,7 +159,7 @@ func TestUpdating(t *testing.T) {
 	}
 
 	var res *v1.Namespace
-	if res, err = client.CoreV1().Namespaces().Get(testNamespace,metav1.GetOptions{}); err != nil{
+	if res, err = client.CoreV1().Namespaces().Get(testNamespace, metav1.GetOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -190,7 +190,7 @@ func TestPatching(t *testing.T) {
 	}
 
 	var res *v1.Namespace
-	if res, err = client.CoreV1().Namespaces().Get(testNamespace,metav1.GetOptions{}); err != nil{
+	if res, err = client.CoreV1().Namespaces().Get(testNamespace, metav1.GetOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	oldData, err := json.Marshal(res)
@@ -210,11 +210,10 @@ func TestPatching(t *testing.T) {
 	if _, err := client.CoreV1().Namespaces().Patch(string(testNamespace), types.StrategicMergePatchType, patchBytes, "status"); err != nil {
 		t.Fatal(err)
 	}
-	if res, err = client.CoreV1().Namespaces().Get(testNamespace,metav1.GetOptions{}); err != nil{
+	if res, err = client.CoreV1().Namespaces().Get(testNamespace, metav1.GetOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if res.GenerateName != updatedGeneratedName {
 		t.Fatalf("The generated name %s has not been patched to.", updatedGeneratedName)
 	}
 }
-

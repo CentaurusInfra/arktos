@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -586,7 +587,6 @@ func TestX509(t *testing.T) {
 			ExpectOK:       true,
 			ExpectErr:      false,
 		},
-
 		"custom conversion error": {
 			Opts:  getDefaultVerifyOptions(t),
 			Certs: getCerts(t, clientCNCert),

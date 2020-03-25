@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
@@ -39,6 +40,7 @@ func TestNewWithDelegate(t *testing.T) {
 	delegateConfig.PublicAddress = net.ParseIP("192.168.10.4")
 	delegateConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	delegateConfig.LoopbackClientConfig = rest.CreateEmptyConfig()
+	delegateConfig.Authentication = AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 	clientset := fake.NewSimpleClientset()
 	if clientset == nil {
 		t.Fatal("unable to create fake client set")
@@ -71,6 +73,7 @@ func TestNewWithDelegate(t *testing.T) {
 	wrappingConfig.PublicAddress = net.ParseIP("192.168.10.4")
 	wrappingConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	wrappingConfig.LoopbackClientConfig = rest.CreateEmptyConfig()
+	wrappingConfig.Authentication = AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 
 	wrappingConfig.HealthzChecks = append(wrappingConfig.HealthzChecks, healthz.NamedCheck("wrapping-health", func(r *http.Request) error {
 		return fmt.Errorf("wrapping failed healthcheck")

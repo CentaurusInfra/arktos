@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,6 +72,7 @@ func TestEventSeriesf(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    "qux",
 			UID:       "bar",
 		},
 	}
@@ -89,6 +91,7 @@ func TestEventSeriesf(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    "qux",
 		},
 		EventTime:           metav1.MicroTime{time.Now()},
 		ReportingController: "eventTest",
@@ -215,6 +218,7 @@ func TestFinishSeries(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    "qux",
 			UID:       "bar",
 		},
 	}
@@ -287,6 +291,7 @@ func TestRefreshExistingEventSeries(t *testing.T) {
 			SelfLink:  "/api/version/pods/foo",
 			Name:      "foo",
 			Namespace: "baz",
+			Tenant:    "qux",
 			UID:       "bar",
 		},
 	}

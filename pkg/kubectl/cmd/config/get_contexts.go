@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -158,7 +159,7 @@ func (o GetContextsOptions) RunGetContexts() error {
 }
 
 func printContextHeaders(out io.Writer, nameOnly bool) error {
-	columnNames := []string{"CURRENT", "NAME", "CLUSTER", "AUTHINFO", "NAMESPACE"}
+	columnNames := []string{"CURRENT", "NAME", "CLUSTER", "AUTHINFO", "NAMESPACE", "TENANT"}
 	if nameOnly {
 		columnNames = columnNames[:1]
 	}
@@ -175,6 +176,6 @@ func printContext(name string, context *clientcmdapi.Context, w io.Writer, nameO
 	if current {
 		prefix = "*"
 	}
-	_, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", prefix, name, context.Cluster, context.AuthInfo, context.Namespace)
+	_, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", prefix, name, context.Cluster, context.AuthInfo, context.Namespace, context.Tenant)
 	return err
 }

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,8 +31,9 @@ var _ authorizer.Attributes = &attributes{}
 // attributes implements the authorizer attributes interface
 // with event data. This is used for enforced audit backends
 type attributes struct {
-	event *audit.Event
-	path  string
+	event  *audit.Event
+	path   string
+	Tenant string
 }
 
 // NewAttributes returns a new attributes struct and parsed request uri
@@ -125,6 +127,11 @@ func (a *attributes) GetPath() string {
 	return a.path
 }
 
+// GetTenant returns the tenant
+func (a *attributes) GetTenant() string {
+	return a.Tenant
+}
+
 // user represents the event user
 type user audit.UserInfo
 
@@ -136,6 +143,9 @@ func (u user) GetUID() string { return u.UID }
 
 // GetGroups returns the user groups
 func (u user) GetGroups() []string { return u.Groups }
+
+// GetTenant returns the user tenant
+func (u user) GetTenant() string { return u.Tenant }
 
 // GetExtra returns the user extra data
 func (u user) GetExtra() map[string][]string {

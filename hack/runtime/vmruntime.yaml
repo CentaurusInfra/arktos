@@ -12,9 +12,9 @@ spec:
     metadata:
       annotations:
         # the apparmor related annotations will be replaced IF cluster is running under apparmor enabled env
-        apparmorlibvirtname: apparmorlibvirtvalue
-        apparmorvmsname: apparmorvmsvalue
-        apparmorvirtletname: apparmorvirtletvalue
+        container.apparmor.security.beta.kubernetes.io/libvirt: localhost/libvirtd
+        container.apparmor.security.beta.kubernetes.io/vms: localhost/vms
+        container.apparmor.security.beta.kubernetes.io/virtlet: localhost/virtlet
       name: virtlet
       labels:
         runtime: virtlet
@@ -323,6 +323,8 @@ metadata:
   namespace: kube-system
 data:
   disable_kvm: "y"
+  loglevel: "4"
+  raw_devices: "sd*"
 ---
 apiVersion: v1
 kind: Secret

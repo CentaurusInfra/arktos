@@ -122,7 +122,7 @@ func StartTestServer(t *testing.T, stopCh <-chan struct{}, setup TestServerSetup
 	if setup.ModifyServerConfig != nil {
 		setup.ModifyServerConfig(kubeAPIServerConfig)
 	}
-	kubeAPIServer, err := app.CreateKubeAPIServer(kubeAPIServerConfig, genericapiserver.NewEmptyDelegate(), admissionPostStartHook)
+	kubeAPIServer, err := app.CreateKubeAPIServer(kubeAPIServerConfig, genericapiserver.NewEmptyDelegate(), admissionPostStartHook, stopCh)
 	if err != nil {
 		t.Fatal(err)
 	}

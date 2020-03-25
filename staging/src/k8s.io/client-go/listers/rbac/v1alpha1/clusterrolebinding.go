@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +30,9 @@ import (
 type ClusterRoleBindingLister interface {
 	// List lists all ClusterRoleBindings in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.ClusterRoleBinding, err error)
+	// ClusterRoleBindings returns an object that can list and get ClusterRoleBindings.
+	ClusterRoleBindings() ClusterRoleBindingTenantLister
+	ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingTenantLister
 	// Get retrieves the ClusterRoleBinding from the index for a given name.
 	Get(name string) (*v1alpha1.ClusterRoleBinding, error)
 	ClusterRoleBindingListerExpansion
@@ -55,6 +59,55 @@ func (s *clusterRoleBindingLister) List(selector labels.Selector) (ret []*v1alph
 // Get retrieves the ClusterRoleBinding from the index for a given name.
 func (s *clusterRoleBindingLister) Get(name string) (*v1alpha1.ClusterRoleBinding, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1alpha1.Resource("clusterrolebinding"), name)
+	}
+	return obj.(*v1alpha1.ClusterRoleBinding), nil
+}
+
+// ClusterRoleBindings returns an object that can list and get ClusterRoleBindings.
+func (s *clusterRoleBindingLister) ClusterRoleBindings() ClusterRoleBindingTenantLister {
+	return clusterRoleBindingTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *clusterRoleBindingLister) ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingTenantLister {
+	return clusterRoleBindingTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// ClusterRoleBindingTenantLister helps list and get ClusterRoleBindings.
+type ClusterRoleBindingTenantLister interface {
+	// List lists all ClusterRoleBindings in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1alpha1.ClusterRoleBinding, err error)
+	// Get retrieves the ClusterRoleBinding from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1alpha1.ClusterRoleBinding, error)
+	ClusterRoleBindingTenantListerExpansion
+}
+
+// clusterRoleBindingTenantLister implements the ClusterRoleBindingTenantLister
+// interface.
+type clusterRoleBindingTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all ClusterRoleBindings in the indexer for a given tenant.
+func (s clusterRoleBindingTenantLister) List(selector labels.Selector) (ret []*v1alpha1.ClusterRoleBinding, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1alpha1.ClusterRoleBinding))
+	})
+	return ret, err
+}
+
+// Get retrieves the ClusterRoleBinding from the indexer for a given tenant and name.
+func (s clusterRoleBindingTenantLister) Get(name string) (*v1alpha1.ClusterRoleBinding, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

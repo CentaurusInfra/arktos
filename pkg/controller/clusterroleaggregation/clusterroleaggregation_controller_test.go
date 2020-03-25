@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,13 +51,13 @@ func TestSyncClusterRole(t *testing.T) {
 	}
 	role := func(name string, labels map[string]string, rules []rbacv1.PolicyRule) *rbacv1.ClusterRole {
 		return &rbacv1.ClusterRole{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},
+			ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels, Tenant: metav1.TenantDefault},
 			Rules:      rules,
 		}
 	}
 	combinedRole := func(selectors []map[string]string, rules ...[]rbacv1.PolicyRule) *rbacv1.ClusterRole {
 		ret := &rbacv1.ClusterRole{
-			ObjectMeta:      metav1.ObjectMeta{Name: "combined"},
+			ObjectMeta:      metav1.ObjectMeta{Name: "combined", Tenant: metav1.TenantDefault},
 			AggregationRule: &rbacv1.AggregationRule{},
 		}
 		for _, selector := range selectors {

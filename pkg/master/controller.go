@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,6 +46,8 @@ import (
 
 const kubernetesServiceName = "kubernetes"
 
+//var KubeApiServerEndpointName = "apiservice.1"
+
 // Controller is the controller manager for the core bootstrap Kubernetes
 // controller loops, which manage creating the "kubernetes" service, the
 // "default", "kube-system" and "kube-public" namespaces, and provide the IP
@@ -78,6 +81,8 @@ type Controller struct {
 	ExtraEndpointPorts        []corev1.EndpointPort
 	PublicServicePort         int
 	KubernetesServiceNodePort int
+
+	DataPartitionConfig []corev1.DataPartitionConfig
 
 	runner *async.Runner
 }
@@ -143,6 +148,7 @@ func (c *Controller) Start() {
 	}
 
 	// Reconcile during first run removing itself until server is ready.
+	//endpointPorts := createEndpointPortSpec(c.PublicServicePort, KubeApiServerEndpointName, c.ExtraEndpointPorts)
 	endpointPorts := createEndpointPortSpec(c.PublicServicePort, "https", c.ExtraEndpointPorts)
 	if err := c.EndpointReconciler.RemoveEndpoints(kubernetesServiceName, c.PublicIP, endpointPorts); err != nil {
 		klog.Errorf("Unable to remove old endpoints from kubernetes service: %v", err)
@@ -169,6 +175,7 @@ func (c *Controller) Stop() {
 	if c.runner != nil {
 		c.runner.Stop()
 	}
+	//endpointPorts := createEndpointPortSpec(c.PublicServicePort, KubeApiServerEndpointName, c.ExtraEndpointPorts)
 	endpointPorts := createEndpointPortSpec(c.PublicServicePort, "https", c.ExtraEndpointPorts)
 	finishedReconciling := make(chan struct{})
 	go func() {
@@ -230,10 +237,12 @@ func (c *Controller) UpdateKubernetesService(reconcile bool) error {
 		return err
 	}
 
+	//servicePorts, serviceType := createPortAndServiceSpec(c.ServicePort, c.PublicServicePort, c.KubernetesServiceNodePort, KubeApiServerEndpointName, c.ExtraServicePorts)
 	servicePorts, serviceType := createPortAndServiceSpec(c.ServicePort, c.PublicServicePort, c.KubernetesServiceNodePort, "https", c.ExtraServicePorts)
 	if err := c.CreateOrUpdateMasterServiceIfNeeded(kubernetesServiceName, c.ServiceIP, servicePorts, serviceType, reconcile); err != nil {
 		return err
 	}
+	//endpointPorts := createEndpointPortSpec(c.PublicServicePort, KubeApiServerEndpointName, c.ExtraEndpointPorts)
 	endpointPorts := createEndpointPortSpec(c.PublicServicePort, "https", c.ExtraEndpointPorts)
 	if err := c.EndpointReconciler.ReconcileEndpoints(kubernetesServiceName, c.PublicIP, endpointPorts, reconcile); err != nil {
 		return err

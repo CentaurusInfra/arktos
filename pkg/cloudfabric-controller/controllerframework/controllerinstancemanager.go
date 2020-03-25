@@ -76,7 +76,7 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage("job_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
@@ -121,13 +121,13 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 		cim.deleteControllerInstance(newControllerInstance)
 		return
 	}
-	klog.Infof("Received event for NEW controller instance %v. CIM %v", newControllerInstance.Name, cim.instanceId)
+	klog.V(3).Infof("Received event for NEW controller instance %v. CIM %v", newControllerInstance.Name, cim.instanceId)
 
 	cim.mux.Lock()
-	klog.Infof("mux acquired addControllerInstance. CIM %v", cim.instanceId)
+	klog.V(4).Infof("mux acquired addControllerInstance. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
+		klog.V(4).Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
 	}()
 
 	if cim.currentControllers == nil {
@@ -140,7 +140,7 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 		existingInstance, ok1 := existingInstancesForType[newControllerInstance.Name]
 		if ok1 {
 			cim.updateControllerInstance(&existingInstance, newControllerInstance)
-			klog.Infof("Got existing controller instance %s in AddFunc. CIM %v", newControllerInstance.Name, cim.instanceId)
+			klog.V(4).Infof("Got existing controller instance %s in AddFunc. CIM %v", newControllerInstance.Name, cim.instanceId)
 			return
 		}
 	}
@@ -165,7 +165,7 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 		}
 
 		if newRev < oldRev {
-			klog.Infof("Got staled controller instance %s in UpdateFunc. Existing Version %s, new instance version %s. CIM %v",
+			klog.V(3).Infof("Got staled controller instance %s in UpdateFunc. Existing Version %s, new instance version %s. CIM %v",
 				oldControllerInstance.Name, oldControllerInstance.ResourceVersion, curControllerInstance.ResourceVersion, cim.instanceId)
 			return
 		}
@@ -195,7 +195,7 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 
 	if curControllerInstance.WorkloadNum != oldControllerInstance.WorkloadNum || curControllerInstance.IsLocked != oldControllerInstance.IsLocked ||
 		curControllerInstance.ControllerKey != oldControllerInstance.ControllerKey {
-		klog.Infof("Notify controller instance %v was updated. CIM %v", curControllerInstance.Name, cim.instanceId)
+		klog.V(4).Infof("Notify controller instance %v was updated. CIM %v", curControllerInstance.Name, cim.instanceId)
 		cim.notifyHandler(curControllerInstance)
 	}
 }
@@ -215,12 +215,12 @@ func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) 
 		}
 	}
 
-	klog.Infof("Received event for delete controller instance %v. CIM %v", controllerinstance.Name, cim.instanceId)
+	klog.V(3).Infof("Received event for delete controller instance %v. CIM %v", controllerinstance.Name, cim.instanceId)
 	cim.mux.Lock()
-	klog.Infof("mux acquired deleteControllerInstance. CIM %v", cim.instanceId)
+	klog.V(4).Infof("mux acquired deleteControllerInstance. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux released deleteControllerInstance. CIM %v", cim.instanceId)
+		klog.V(4).Infof("mux released deleteControllerInstance. CIM %v", cim.instanceId)
 	}()
 
 	if l, ok := cim.currentControllers[controllerinstance.ControllerType]; ok {
@@ -261,17 +261,17 @@ func (cim *ControllerInstanceManager) ListControllerInstances(controllerType str
 
 func (cim *ControllerInstanceManager) syncControllerInstances() error {
 	cim.mux.Lock()
-	klog.Infof("mux acquired syncControllerInstances. CIM %v", cim.instanceId)
+	klog.V(4).Infof("mux acquired syncControllerInstances. CIM %v", cim.instanceId)
 	defer func() {
 		cim.mux.Unlock()
-		klog.Infof("mux released syncControllerInstances. CIM %v", cim.instanceId)
+		klog.V(4).Infof("mux released syncControllerInstances. CIM %v", cim.instanceId)
 	}()
 
 	controllerInstanceList, err := cim.kubeClient.CoreV1().ControllerInstances().List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	klog.Infof("Found %d of controller instances from registry. CIM %v", len(controllerInstanceList.Items), cim.instanceId)
+	klog.V(3).Infof("Found %d of controller instances from registry. CIM %v", len(controllerInstanceList.Items), cim.instanceId)
 
 	for _, controllerInstance := range controllerInstanceList.Items {
 		controllersByType, ok := cim.currentControllers[controllerInstance.ControllerType]

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,7 +76,7 @@ func NewCloudNodeLifecycleController(
 	eventBroadcaster.StartLogging(klog.Infof)
 
 	klog.Info("Sending events to api server")
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
 
 	if kubeClient == nil {
 		return nil, errors.New("kubernetes client is nil")
@@ -184,6 +185,7 @@ func (c *CloudNodeLifecycleController) MonitorNodes() {
 			Name:      node.Name,
 			UID:       types.UID(node.UID),
 			Namespace: "",
+			Tenant:    "",
 		}
 
 		c.recorder.Eventf(ref, v1.EventTypeNormal,

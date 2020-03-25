@@ -34,6 +34,7 @@ import (
 // A group's client should implement this interface.
 type ClusterRoleBindingsGetter interface {
 	ClusterRoleBindings() ClusterRoleBindingInterface
+	ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingInterface
 }
 
 // ClusterRoleBindingInterface has methods to work with ClusterRoleBinding resources.
@@ -53,13 +54,19 @@ type ClusterRoleBindingInterface interface {
 type clusterRoleBindings struct {
 	client  rest.Interface
 	clients []rest.Interface
+	te      string
 }
 
 // newClusterRoleBindings returns a ClusterRoleBindings
 func newClusterRoleBindings(c *RbacV1Client) *clusterRoleBindings {
+	return newClusterRoleBindingsWithMultiTenancy(c, "default")
+}
+
+func newClusterRoleBindingsWithMultiTenancy(c *RbacV1Client, tenant string) *clusterRoleBindings {
 	return &clusterRoleBindings{
 		client:  c.RESTClient(),
 		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -67,6 +74,7 @@ func newClusterRoleBindings(c *RbacV1Client) *clusterRoleBindings {
 func (c *clusterRoleBindings) Get(name string, options metav1.GetOptions) (result *v1.ClusterRoleBinding, err error) {
 	result = &v1.ClusterRoleBinding{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("clusterrolebindings").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -84,6 +92,7 @@ func (c *clusterRoleBindings) List(opts metav1.ListOptions) (result *v1.ClusterR
 	}
 	result = &v1.ClusterRoleBindingList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("clusterrolebindings").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -103,6 +112,7 @@ func (c *clusterRoleBindings) Watch(opts metav1.ListOptions) watch.AggregatedWat
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.clients {
 		watcher, err := client.Get().
+			Tenant(c.te).
 			Resource("clusterrolebindings").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -116,6 +126,7 @@ func (c *clusterRoleBindings) Watch(opts metav1.ListOptions) watch.AggregatedWat
 func (c *clusterRoleBindings) Create(clusterRoleBinding *v1.ClusterRoleBinding) (result *v1.ClusterRoleBinding, err error) {
 	result = &v1.ClusterRoleBinding{}
 	err = c.client.Post().
+		Tenant(c.te).
 		Resource("clusterrolebindings").
 		Body(clusterRoleBinding).
 		Do().
@@ -128,6 +139,7 @@ func (c *clusterRoleBindings) Create(clusterRoleBinding *v1.ClusterRoleBinding) 
 func (c *clusterRoleBindings) Update(clusterRoleBinding *v1.ClusterRoleBinding) (result *v1.ClusterRoleBinding, err error) {
 	result = &v1.ClusterRoleBinding{}
 	err = c.client.Put().
+		Tenant(c.te).
 		Resource("clusterrolebindings").
 		Name(clusterRoleBinding.Name).
 		Body(clusterRoleBinding).
@@ -140,6 +152,7 @@ func (c *clusterRoleBindings) Update(clusterRoleBinding *v1.ClusterRoleBinding) 
 // Delete takes name of the clusterRoleBinding and deletes it. Returns an error if one occurs.
 func (c *clusterRoleBindings) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("clusterrolebindings").
 		Name(name).
 		Body(options).
@@ -154,6 +167,7 @@ func (c *clusterRoleBindings) DeleteCollection(options *metav1.DeleteOptions, li
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("clusterrolebindings").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -166,6 +180,7 @@ func (c *clusterRoleBindings) DeleteCollection(options *metav1.DeleteOptions, li
 func (c *clusterRoleBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterRoleBinding, err error) {
 	result = &v1.ClusterRoleBinding{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("clusterrolebindings").
 		SubResource(subresources...).
 		Name(name).
