@@ -61,14 +61,18 @@ import (
 	kubeversion "k8s.io/kubernetes/pkg/version"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 )
 
 // setUp is a convience function for setting up for (most) tests.
 func setUp(t *testing.T) (*etcdtesting.EtcdTestServer, Config, *assert.Assertions) {
 	server, storageConfig := etcdtesting.NewUnsecuredEtcd3TestClientServer(t)
+	apiserverConfig := genericapiserver.NewConfig(legacyscheme.Codecs)
+	apiserverConfig.Authentication = genericapiserver.AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 
 	config := &Config{
-		GenericConfig: genericapiserver.NewConfig(legacyscheme.Codecs),
+		GenericConfig: apiserverConfig,
+
 		ExtraConfig: ExtraConfig{
 			APIResourceConfigSource: DefaultAPIResourceConfigSource(),
 			APIServerServicePort:    443,

@@ -44,10 +44,12 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apiserver/pkg/apis/example"
 	examplev1 "k8s.io/apiserver/pkg/apis/example/v1"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
+	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/client-go/informers"
@@ -130,6 +132,7 @@ func setUp(t *testing.T) (Config, *assert.Assertions) {
 	config.PublicAddress = net.ParseIP("192.168.10.4")
 	config.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	config.LoopbackClientConfig = restclient.CreateEmptyConfig()
+	config.Authentication = AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 
 	clientset := fake.NewSimpleClientset()
 	if clientset == nil {
@@ -152,6 +155,15 @@ func newMaster(t *testing.T) (*GenericAPIServer, Config, *assert.Assertions) {
 		t.Fatalf("Error in bringing up the server: %v", err)
 	}
 	return s, config, assert
+}
+
+func newRequestWithUserInfo(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	return req.WithContext(request.WithUser(req.Context(), fakeuser.FakeRegularUserInfo)), nil
 }
 
 // TestNew verifies that the New function returns a GenericAPIServer
@@ -415,7 +427,7 @@ func TestCustomHandlerChain(t *testing.T) {
 		protected, called = false, false
 
 		var w io.Reader
-		req, err := http.NewRequest("GET", test.path, w)
+		req, err := newRequestWithUserInfo("GET", test.path, w)
 		if err != nil {
 			t.Errorf("%d: Unexpected http error: %v", i, err)
 			continue
@@ -461,7 +473,7 @@ func TestNotRestRoutesHaveAuth(t *testing.T) {
 		{"/version"},
 	} {
 		resp := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", test.route, nil)
+		req, _ := newRequestWithUserInfo("GET", test.route, nil)
 		s.Handler.ServeHTTP(resp, req)
 		if resp.Code != 200 {
 			t.Errorf("route %q expected to work: code %d", test.route, resp.Code)

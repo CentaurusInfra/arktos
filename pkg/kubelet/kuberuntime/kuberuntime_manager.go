@@ -88,6 +88,10 @@ type runtimeService struct {
 	endpointUrl  string
 	serviceApi   internalapi.RuntimeService
 	isDefault    bool
+	// primary runtime service the runtime service for cluster daemonset workload types
+	// default to container runtime service
+	// from runtime's perspective, nodeReady when the primary runtime service ready on the node
+	isPrimary    bool
 }
 
 type imageService struct {
@@ -387,6 +391,17 @@ func (m *kubeGenericRuntimeManager) GetDefaultRuntimeServiceForWorkload(workload
 	}
 
 	return nil, fmt.Errorf("cannot find default runtime service for worload type: %s", workloadType)
+}
+
+func (m *kubeGenericRuntimeManager) GetPrimaryRuntimeService() (internalapi.RuntimeService, error) {
+	for _, service := range m.runtimeServices {
+		if service.isPrimary {
+			klog.V(4).Infof("Got primary runtime service [%v]", service.serviceApi)
+			return service.serviceApi, nil
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find primary runtime service")
 }
 
 // Retrieve the image service for a POD with the POD SPEC

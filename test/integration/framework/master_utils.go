@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	authauthenticator "k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	authenticatorunion "k8s.io/apiserver/pkg/authentication/request/union"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
@@ -56,6 +57,10 @@ import (
 	"k8s.io/kubernetes/pkg/version"
 )
 
+const (
+	testTenant string = "fake-tenant"
+)
+
 // Config is a struct of configuration directives for NewMasterComponents.
 type Config struct {
 	// If nil, a default is used, partially filled configs will not get populated.
@@ -75,11 +80,12 @@ func (alwaysAllow) Authorize(requestAttributes authorizer.Attributes) (authorize
 	return authorizer.DecisionAllow, "always allow", nil
 }
 
-// alwaysEmpty simulates "no authentication" for old tests
+// alwaysEmpty simulates old tests where user name is empty
 func alwaysEmpty(req *http.Request) (*authauthenticator.Response, bool, error) {
 	return &authauthenticator.Response{
 		User: &user.DefaultInfo{
-			Name: "",
+			Name:   "",
+			Tenant: testTenant,
 		},
 	}, true, nil
 }
@@ -119,7 +125,6 @@ func DefaultOpenAPIConfig() *openapicommon.Config {
 
 	return openAPIConfig
 }
-
 
 func startMasterOrDieWithDataPartition(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
 	return startMasterOrDie(masterConfig, incomingServer, masterReceiver, true)
@@ -178,6 +183,7 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 		Name:   user.APIServerUser,
 		UID:    uuid.NewRandom().String(),
 		Groups: []string{user.SystemPrivilegedGroup},
+		Tenant: testTenant,
 	}
 
 	tokenAuthenticator := authenticatorfactory.NewFromTokens(tokens)
@@ -326,6 +332,7 @@ func NewMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
 	genericConfig := genericapiserver.NewConfig(legacyscheme.Codecs)
 	kubeVersion := version.Get()
 	genericConfig.Version = &kubeVersion
+	genericConfig.Authentication = genericapiserver.AuthenticationInfo{Authenticator: fakeuser.FakeSuperUser{}}
 	genericConfig.Authorization.Authorizer = authorizerfactory.NewAlwaysAllowAuthorizer()
 
 	// TODO: get rid of these tests or port them to secure serving
