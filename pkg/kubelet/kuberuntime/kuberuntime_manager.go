@@ -91,7 +91,7 @@ type runtimeService struct {
 	// primary runtime service the runtime service for cluster daemonset workload types
 	// default to container runtime service
 	// from runtime's perspective, nodeReady when the primary runtime service ready on the node
-	isPrimary    bool
+	isPrimary bool
 }
 
 type imageService struct {
