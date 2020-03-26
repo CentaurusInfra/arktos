@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,9 +40,14 @@ func GetPodQOS(pod *core.Pod) core.PodQOSClass {
 	limits := core.ResourceList{}
 	zeroQuantity := resource.MustParse("0")
 	isGuaranteed := true
-	for _, container := range pod.Spec.Containers {
+
+	defer func() {
+		pod.Spec.WorkloadInfo = nil
+	}()
+
+	for _, workload := range pod.Spec.Workloads() {
 		// process requests
-		for name, quantity := range container.Resources.Requests {
+		for name, quantity := range workload.Resources.Requests {
 			if !isSupportedQoSComputeResource(name) {
 				continue
 			}
@@ -57,7 +63,7 @@ func GetPodQOS(pod *core.Pod) core.PodQOSClass {
 		}
 		// process limits
 		qosLimitsFound := sets.NewString()
-		for name, quantity := range container.Resources.Limits {
+		for name, quantity := range workload.Resources.Limits {
 			if !isSupportedQoSComputeResource(name) {
 				continue
 			}
