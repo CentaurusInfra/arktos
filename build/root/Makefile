@@ -92,7 +92,6 @@ all:
 else
 all: generated_files
 	hack/make-rules/build.sh $(WHAT)
-	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
 endif
 
 define GINKGO_HELP_INFO
