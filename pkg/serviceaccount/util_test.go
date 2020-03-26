@@ -31,6 +31,7 @@ func TestIsServiceAccountToken(t *testing.T) {
 			Namespace:       "default",
 			UID:             "23456",
 			ResourceVersion: "1",
+			Tenant:          "tenant",
 			Annotations: map[string]string{
 				v1.ServiceAccountNameKey: "default",
 				v1.ServiceAccountUIDKey:  "12345",
@@ -50,6 +51,7 @@ func TestIsServiceAccountToken(t *testing.T) {
 			Namespace:       "default",
 			UID:             "23456",
 			ResourceVersion: "1",
+			Tenant:          "tenant",
 			Annotations: map[string]string{
 				v1.ServiceAccountNameKey: "default",
 				v1.ServiceAccountUIDKey:  "12345",
@@ -64,6 +66,17 @@ func TestIsServiceAccountToken(t *testing.T) {
 			UID:             "12345",
 			Namespace:       "default",
 			ResourceVersion: "1",
+			Tenant:          "tenant",
+		},
+	}
+
+	saInsTenantNotEqual := &v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "default",
+			UID:             "12345",
+			Namespace:       "default",
+			ResourceVersion: "1",
+			Tenant:          "another_tenant",
 		},
 	}
 
@@ -73,6 +86,7 @@ func TestIsServiceAccountToken(t *testing.T) {
 			UID:             "12345",
 			Namespace:       "default",
 			ResourceVersion: "1",
+			Tenant:          "tenant",
 		},
 	}
 
@@ -82,6 +96,7 @@ func TestIsServiceAccountToken(t *testing.T) {
 			UID:             "67890",
 			Namespace:       "default",
 			ResourceVersion: "1",
+			Tenant:          "tenant",
 		},
 	}
 
@@ -94,6 +109,11 @@ func TestIsServiceAccountToken(t *testing.T) {
 			secret: secretIns,
 			sa:     saIns,
 			expect: true,
+		},
+		"service account tenant not match": {
+			secret: secretIns,
+			sa:     saInsTenantNotEqual,
+			expect: false,
 		},
 		"service account name not equal": {
 			secret: secretIns,
