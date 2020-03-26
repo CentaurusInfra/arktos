@@ -23,6 +23,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/kubelet/container"
+	"strconv"
 )
 
 // VM related annotations in current virtlet release
@@ -111,6 +112,10 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 		cpod.Annotations[NICsKeyName] = string(s)
 	}
 
+	if vcpuCount := getVCpuCountForVm(pod.Spec.VirtualMachine); vcpuCount != 0 {
+		cpod.Annotations[vcpuCountAnnotationKeyName] = strconv.FormatInt(vcpuCount, 10)
+	}
+
 	// create a container per the virtlet requirements
 	if cpod.Spec.Containers == nil {
 		cpod.Spec.Containers = []v1.Container{}
@@ -132,6 +137,18 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 	pod.Status = cpod.Status
 
 	return cpod
+}
+
+// Libvirt guestOS cpu resource doc:
+// https://libvirt.org/docs/libvirt-appdev-guide-python/en-US/html/libvirt_application_development_guide_using_python-Guest_Domains-Domain_Config-Memory_CPU.html
+// Libvirt VM domain vcpus specifies the limit of number of vcpus the guest OS can have
+// Arktos vm runtime doesn't support guest OS vcpu reset currently, the VM workload should be classified as Guaranteed
+// resource model.
+// API validation should enforce this when accepting the VM POD to avoid resource level misalignment since scheduler uses
+// requested resources in its Predicate function
+//
+func getVCpuCountForVm(vmSpec *v1.VirtualMachine) int64 {
+	return vmSpec.Resources.Limits.Cpu().Value()
 }
 
 //TODO: remove the debug function once the feature is stabilized
