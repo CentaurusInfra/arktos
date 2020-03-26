@@ -218,7 +218,6 @@ func autoConvert_v1_APIServiceSpec_To_apiregistration_APIServiceSpec(in *APIServ
 	out.CABundle = *(*[]byte)(unsafe.Pointer(&in.CABundle))
 	out.GroupPriorityMinimum = in.GroupPriorityMinimum
 	out.VersionPriority = in.VersionPriority
-	out.ServiceGroupId = in.ServiceGroupId
 	return nil
 }
 
@@ -243,7 +242,6 @@ func autoConvert_apiregistration_APIServiceSpec_To_v1_APIServiceSpec(in *apiregi
 	out.CABundle = *(*[]byte)(unsafe.Pointer(&in.CABundle))
 	out.GroupPriorityMinimum = in.GroupPriorityMinimum
 	out.VersionPriority = in.VersionPriority
-	out.ServiceGroupId = in.ServiceGroupId
 	return nil
 }
 

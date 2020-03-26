@@ -1190,6 +1190,10 @@ message EndpointSubset {
   // Port numbers available on the related IP addresses.
   // +optional
   repeated EndpointPort ports = 3;
+
+  // The service group id of the api server cluster
+  // +optional
+  optional string serviceGroupId = 4;
 }
 
 // Endpoints is a collection of endpoints that implement the actual service. Example:
