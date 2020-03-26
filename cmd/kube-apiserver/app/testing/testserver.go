@@ -136,6 +136,7 @@ func StartTestServer(t Logger, instanceOptions *TestServerInstanceOptions, custo
 
 	s.ServiceClusterIPRange.IP = net.IPv4(10, 0, 0, 0)
 	s.ServiceClusterIPRange.Mask = net.CIDRMask(16, 32)
+	s.ServiceGroupId = "10"
 	s.Etcd.StorageConfig = *storageConfig
 	s.APIEnablement.RuntimeConfig.Set("api/all=true")
 

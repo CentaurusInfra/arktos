@@ -239,6 +239,7 @@ func AddHandlers(h printers.PrintHandler) {
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Endpoints", Type: "string", Description: apiv1.Endpoints{}.SwaggerDoc()["subsets"]},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
+		{Name: "ServiceGroupId", Type: "string", Description: "The service group id of the api server cluster"},
 	}
 	h.TableHandler(endpointColumnDefinitions, printEndpoints)
 	h.TableHandler(endpointColumnDefinitions, printEndpointsList)
@@ -512,6 +513,20 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(volumeAttachmentColumnDefinitions, printVolumeAttachment)
 	h.TableHandler(volumeAttachmentColumnDefinitions, printVolumeAttachmentList)
+}
+
+func formatServiceGroupId(endpoints *api.Endpoints) string {
+	if len(endpoints.Subsets) == 0 {
+		return "<none>"
+	}
+
+	list := []string{}
+	for i := range endpoints.Subsets {
+		ss := &endpoints.Subsets[i]
+		list = append(list, ss.ServiceGroupId)
+	}
+	ret := strings.Join(list, ",")
+	return ret
 }
 
 // Pass ports=nil for all ports.
@@ -1198,7 +1213,7 @@ func printEndpoints(obj *api.Endpoints, options printers.PrintOptions) ([]metav1
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
-	row.Cells = append(row.Cells, obj.Name, formatEndpoints(obj, nil), translateTimestampSince(obj.CreationTimestamp))
+	row.Cells = append(row.Cells, obj.Name, formatEndpoints(obj, nil), translateTimestampSince(obj.CreationTimestamp), formatServiceGroupId(obj))
 	return []metav1beta1.TableRow{row}, nil
 }
 

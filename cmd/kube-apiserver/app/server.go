@@ -639,9 +639,10 @@ func Complete(s *options.ServerRunOptions) (completedServerRunOptions, error) {
 		}
 	}
 
-	// service group - for data partition
-	// TODO - read service group id from commandline config
-	s.ServiceGroupId = "0"
+	if s.ServiceGroupId == "" {
+		s.ServiceGroupId = "0"
+		klog.Warning("Set service group id to default value 0.")
+	}
 	options.ServerRunOptions = s
 	return options, nil
 }

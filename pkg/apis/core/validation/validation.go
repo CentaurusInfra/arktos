@@ -5378,6 +5378,9 @@ func validateEndpointSubsets(subsets []core.EndpointSubset, fldPath *field.Path)
 		for port := range ss.Ports {
 			allErrs = append(allErrs, validateEndpointPort(&ss.Ports[port], len(ss.Ports) > 1, idxPath.Child("ports").Index(port))...)
 		}
+		if len(ss.ServiceGroupId) > 0 {
+			allErrs = append(allErrs, ValidateDNS1123Label(ss.ServiceGroupId, fldPath.Child("servicegroupid"))...)
+		}
 	}
 
 	return allErrs

@@ -82,8 +82,6 @@ type APIServiceSpec struct {
 	// version, then minor version. An example sorted list of versions:
 	// v10, v2, v1, v11beta2, v10beta3, v3beta1, v12alpha1, v11alpha2, foo1, foo10.
 	VersionPriority int32
-
-	ServiceGroupId string
 }
 
 // ConditionStatus indicates the status of a condition (true, false, or unknown).
