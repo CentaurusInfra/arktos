@@ -484,12 +484,12 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 		// k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
 		gvr("apiextensions.k8s.io", "v1beta1", "customresourcedefinitions"): {
 			Stub:             `{"metadata": {"name": "openshiftwebconsoleconfigs.webconsole.operator.openshift.io"},"spec": {"scope": "Cluster","group": "webconsole.operator.openshift.io","version": "v1alpha1","names": {"kind": "OpenShiftWebConsoleConfig","plural": "openshiftwebconsoleconfigs","singular": "openshiftwebconsoleconfig"}}}`,
-			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/" + "openshiftwebconsoleconfigs.webconsole.operator.openshift.io",
+			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/" + tenant + "/openshiftwebconsoleconfigs.webconsole.operator.openshift.io",
 		},
 		//tenant-scope CRD
 		gvr("apiextensions.k8s.io", "v1beta1", "customresourcedefinitions"): {
 			Stub:             `{"metadata": {"name": "gryffindors.hogwarts.io"},"spec": {"scope": "Tenant","group": "hogwarts.io","version": "v1alpha1","names": {"kind": "gryffindor","plural": "gryffindors","singular": "gryffindor"}}}`,
-			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/gryffindors.hogwarts.io",
+			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/" + tenant + "/gryffindors.hogwarts.io",
 		},
 		gvr("cr.bar.com", "v1", "foos"): {
 			Stub:             `{"kind": "Foo", "apiVersion": "cr.bar.com/v1", "metadata": {"name": "cr1foo"}, "color": "blue"}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper

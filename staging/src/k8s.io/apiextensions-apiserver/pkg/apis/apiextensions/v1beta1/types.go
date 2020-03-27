@@ -349,7 +349,6 @@ type CustomResourceDefinitionStatus struct {
 const CustomResourceCleanupFinalizer = "customresourcecleanup.apiextensions.k8s.io"
 
 // +genclient
-// +genclient:nonTenanted
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
