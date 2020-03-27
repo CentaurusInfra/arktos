@@ -3641,6 +3641,10 @@ type EndpointSubset struct {
 	Addresses         []EndpointAddress
 	NotReadyAddresses []EndpointAddress
 	Ports             []EndpointPort
+
+	// The service group id of the api server cluster
+	// +optional
+	ServiceGroupId string
 }
 
 // EndpointAddress is a tuple that describes single IP address.

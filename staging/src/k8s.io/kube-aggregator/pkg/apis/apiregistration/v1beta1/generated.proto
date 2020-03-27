@@ -113,10 +113,6 @@ message APIServiceSpec {
   // version, then minor version. An example sorted list of versions:
   // v10, v2, v1, v11beta2, v10beta3, v3beta1, v12alpha1, v11alpha2, foo1, foo10.
   optional int32 versionPriority = 8;
-
-  // leaving this here so everyone remembers why proto index 6 is skipped
-  // Priority int64 `json:"priority" protobuf:"varint,6,opt,name=priority"`
-  optional string serviceGroupId = 9;
 }
 
 // APIServiceStatus contains derived information about an API server

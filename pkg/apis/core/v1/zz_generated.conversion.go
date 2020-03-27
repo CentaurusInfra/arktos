@@ -3764,6 +3764,7 @@ func autoConvert_v1_EndpointSubset_To_core_EndpointSubset(in *v1.EndpointSubset,
 	out.Addresses = *(*[]core.EndpointAddress)(unsafe.Pointer(&in.Addresses))
 	out.NotReadyAddresses = *(*[]core.EndpointAddress)(unsafe.Pointer(&in.NotReadyAddresses))
 	out.Ports = *(*[]core.EndpointPort)(unsafe.Pointer(&in.Ports))
+	out.ServiceGroupId = in.ServiceGroupId
 	return nil
 }
 
@@ -3776,6 +3777,7 @@ func autoConvert_core_EndpointSubset_To_v1_EndpointSubset(in *core.EndpointSubse
 	out.Addresses = *(*[]v1.EndpointAddress)(unsafe.Pointer(&in.Addresses))
 	out.NotReadyAddresses = *(*[]v1.EndpointAddress)(unsafe.Pointer(&in.NotReadyAddresses))
 	out.Ports = *(*[]v1.EndpointPort)(unsafe.Pointer(&in.Ports))
+	out.ServiceGroupId = in.ServiceGroupId
 	return nil
 }
 

@@ -601,6 +601,7 @@ var map_EndpointSubset = map[string]string{
 	"addresses":         "IP addresses which offer the related ports that are marked as ready. These endpoints should be considered safe for load balancers and clients to utilize.",
 	"notReadyAddresses": "IP addresses which offer the related ports but are not currently marked as ready because they have not yet finished starting, have recently failed a readiness check, or have recently failed a liveness check.",
 	"ports":             "Port numbers available on the related IP addresses.",
+	"serviceGroupId":    "The service group id of the api server cluster",
 }
 
 func (EndpointSubset) SwaggerDoc() map[string]string {

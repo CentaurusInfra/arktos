@@ -143,6 +143,8 @@ AUDIT_POLICY_FILE=${AUDIT_POLICY_FILE:-""}
 
 # Kube-apiserver instance number
 APISERVER_NUMBER=${APISERVER_NUMBER:-"1"}
+# Kube-apiserver service group id
+APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-"1"}
 
 # sanity check for OpenStack provider
 if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
@@ -659,6 +661,11 @@ function start_apiserver {
         node_port_range="--service-node-port-range=${NODE_PORT_RANGE}"
     fi
 
+    service_group_id=""
+    if [[ "${APISERVER_SERVICEGROUPID}" != "" ]]; then
+      service_group_id="--service-group-id=${APISERVER_SERVICEGROUPID}"
+    fi
+
     if [[ "${REUSE_CERTS}" != true ]]; then
       # Create Certs
       generate_certs
@@ -717,6 +724,7 @@ EOF
       --requestheader-allowed-names=system:auth-proxy \
       --proxy-client-cert-file="${CERT_DIR}/client-auth-proxy.crt" \
       --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
+      ${service_group_id} \
       --partition-config="${configfilepath}" \
       --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
     APISERVER_PID=$!

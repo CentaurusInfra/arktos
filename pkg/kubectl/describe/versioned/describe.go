@@ -2539,6 +2539,9 @@ func describeEndpoints(ep *corev1.Endpoints, events *corev1.EventList) (string, 
 		w.Write(LEVEL_0, "Subsets:\n")
 		for i := range ep.Subsets {
 			subset := &ep.Subsets[i]
+			if len(subset.ServiceGroupId) > 0 {
+				w.Write(LEVEL_1, "Service Group Id:\t%s\n", subset.ServiceGroupId)
+			}
 
 			addresses := make([]string, 0, len(subset.Addresses))
 			for _, addr := range subset.Addresses {

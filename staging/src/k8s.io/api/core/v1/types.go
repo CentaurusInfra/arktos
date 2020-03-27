@@ -4094,6 +4094,9 @@ type EndpointSubset struct {
 	// Port numbers available on the related IP addresses.
 	// +optional
 	Ports []EndpointPort `json:"ports,omitempty" protobuf:"bytes,3,rep,name=ports"`
+	// The service group id of the api server cluster
+	// +optional
+	ServiceGroupId string `json:"serviceGroupId,omitempty" protobuf:"bytes,4,opt,name=serviceGroupId"`
 }
 
 // EndpointAddress is a tuple that describes single IP address.

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,9 +36,9 @@ type EndpointReconciler interface {
 	//  * All apiservers MUST use ReconcileEndpoints and only ReconcileEndpoints to manage the
 	//      endpoints for their {rw, ro} services.
 	//  * ReconcileEndpoints is called periodically from all apiservers.
-	ReconcileEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error
+	ReconcileEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error
 	// RemoveEndpoints removes this apiserver's lease.
-	RemoveEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort) error
+	RemoveEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort) error
 	// StopReconciling turns any later ReconcileEndpoints call into a noop.
 	StopReconciling()
 }
