@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"strings"
 
@@ -60,14 +62,31 @@ func NewCSV(path string) (*PasswordAuthenticator, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(record) < 3 {
+		size := len(record)
+		if size < 3 ||
+			(size == 3 && len(record[2]) == 0) {
 			return nil, fmt.Errorf("password file '%s' must have at least 3 columns (password, user name, user uid), found %d", path, len(record))
 		}
+
+		if size > 3 &&
+			record[size-1] == "" &&
+			record[size-2] == "" {
+			return nil, fmt.Errorf("token file '%s' is expected to specify tenant but it doesn't, found %d", path, len(record))
+		}
+
+		tenant := metav1.TenantSystem
+		// check for comma in the last record
+		if size >= 3 &&
+			record[size-1] != "" &&
+			record[size-2] == "" {
+			tenant = record[size-1]
+		}
+
 		obj := &userPasswordInfo{
-			info:     &user.DefaultInfo{Name: record[1], UID: record[2]},
+			info:     &user.DefaultInfo{Name: record[1], UID: record[2], Tenant: tenant},
 			password: record[0],
 		}
-		if len(record) >= 4 {
+		if len(record) > 3 && len(record[3]) != 0 {
 			obj.info.Groups = strings.Split(record[3], ",")
 		}
 		recordNum++

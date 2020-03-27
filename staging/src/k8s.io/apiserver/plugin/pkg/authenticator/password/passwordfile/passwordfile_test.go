@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +36,11 @@ password4,user4,uid4,"group2"
 password5,user5,uid5,group5
 password6,user6,uid6,group5,otherdata
 password7,user7,uid7,"group1,group2",otherdata
+password11,user11,uid11,,tenant11
+password12,user12,uid12,"group1",,tenant12
+password13,user13,uid13,group1,,tenant13
+password14,user14,uid14,"group1,group2",,tenant14
+password15,user15,uid15,"group1,group2",otherdata,,tenant15
 `)
 	if err != nil {
 		t.Fatalf("unable to read passwordfile: %v", err)
@@ -50,13 +56,13 @@ password7,user7,uid7,"group1,group2",otherdata
 		{
 			Username: "user1",
 			Password: "password1",
-			User:     &user.DefaultInfo{Name: "user1", UID: "uid1"},
+			User:     &user.DefaultInfo{Name: "user1", UID: "uid1", Tenant: "system"},
 			Ok:       true,
 		},
 		{
 			Username: "user2",
 			Password: "password2",
-			User:     &user.DefaultInfo{Name: "user2", UID: "uid2"},
+			User:     &user.DefaultInfo{Name: "user2", UID: "uid2", Tenant: "system"},
 			Ok:       true,
 		},
 		{
@@ -70,31 +76,31 @@ password7,user7,uid7,"group1,group2",otherdata
 		{
 			Username: "user3",
 			Password: "password3",
-			User:     &user.DefaultInfo{Name: "user3", UID: "uid3", Groups: []string{"group1", "group2"}},
+			User:     &user.DefaultInfo{Name: "user3", UID: "uid3", Groups: []string{"group1", "group2"}, Tenant: "system"},
 			Ok:       true,
 		},
 		{
 			Username: "user4",
 			Password: "password4",
-			User:     &user.DefaultInfo{Name: "user4", UID: "uid4", Groups: []string{"group2"}},
+			User:     &user.DefaultInfo{Name: "user4", UID: "uid4", Groups: []string{"group2"}, Tenant: "system"},
 			Ok:       true,
 		},
 		{
 			Username: "user5",
 			Password: "password5",
-			User:     &user.DefaultInfo{Name: "user5", UID: "uid5", Groups: []string{"group5"}},
+			User:     &user.DefaultInfo{Name: "user5", UID: "uid5", Groups: []string{"group5"}, Tenant: "system"},
 			Ok:       true,
 		},
 		{
 			Username: "user6",
 			Password: "password6",
-			User:     &user.DefaultInfo{Name: "user6", UID: "uid6", Groups: []string{"group5"}},
+			User:     &user.DefaultInfo{Name: "user6", UID: "uid6", Groups: []string{"group5"}, Tenant: "system"},
 			Ok:       true,
 		},
 		{
 			Username: "user7",
 			Password: "password7",
-			User:     &user.DefaultInfo{Name: "user7", UID: "uid7", Groups: []string{"group1", "group2"}},
+			User:     &user.DefaultInfo{Name: "user7", UID: "uid7", Groups: []string{"group1", "group2"}, Tenant: "system"},
 			Ok:       true,
 		},
 		{
@@ -108,6 +114,36 @@ password7,user7,uid7,"group1,group2",otherdata
 		{
 			Username: "user8",
 			Password: "password8",
+		},
+		{
+			Username: "user11",
+			Password: "password11",
+			User:     &user.DefaultInfo{Name: "user11", UID: "uid11", Tenant: "tenant11"},
+			Ok:       true,
+		},
+		{
+			Username: "user12",
+			Password: "password12",
+			User:     &user.DefaultInfo{Name: "user12", UID: "uid12", Groups: []string{"group1"}, Tenant: "tenant12"},
+			Ok:       true,
+		},
+		{
+			Username: "user13",
+			Password: "password13",
+			User:     &user.DefaultInfo{Name: "user13", UID: "uid13", Groups: []string{"group1"}, Tenant: "tenant13"},
+			Ok:       true,
+		},
+		{
+			Username: "user14",
+			Password: "password14",
+			User:     &user.DefaultInfo{Name: "user14", UID: "uid14", Groups: []string{"group1", "group2"}, Tenant: "tenant14"},
+			Ok:       true,
+		},
+		{
+			Username: "user15",
+			Password: "password15",
+			User:     &user.DefaultInfo{Name: "user15", UID: "uid15", Groups: []string{"group1", "group2"}, Tenant: "tenant15"},
+			Ok:       true,
 		},
 	}
 	for i, testCase := range testCases {
@@ -135,6 +171,16 @@ password2,user2,uid2
 password3,user3
 password4
 `); err == nil {
+		t.Fatalf("unexpected non error")
+	}
+}
+
+func TestBadPasswordFileMissingRequiredTenant(t *testing.T) {
+	_, err := newWithContents(t, `
+password1,user1,uid1
+password2,user2,,
+`)
+	if err == nil {
 		t.Fatalf("unexpected non error")
 	}
 }
