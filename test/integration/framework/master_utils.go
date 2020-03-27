@@ -255,11 +255,11 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 
 // NewIntegrationTestMasterConfig returns the master config appropriate for most integration tests.
 func NewIntegrationTestMasterConfig() *master.Config {
-	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4")
+	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4", "0")
 }
 
 // NewIntegrationServerWithPartitionConfig returns master config for api server partition test
-func NewIntegrationServerWithPartitionConfig(prefix, configFilename string, masterAddr string) *master.Config {
+func NewIntegrationServerWithPartitionConfig(prefix, configFilename string, masterAddr string, serviceGroupId string) *master.Config {
 	etcdOptions := DefaultEtcdOptions()
 	etcdOptions.StorageConfig.Prefix = prefix
 	etcdOptions.StorageConfig.PartitionConfigFilepath = configFilename
@@ -267,7 +267,7 @@ func NewIntegrationServerWithPartitionConfig(prefix, configFilename string, mast
 	if masterAddr == "" {
 		masterAddr = "192.168.10.6"
 	}
-	masterConfig := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions, masterAddr)
+	masterConfig := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions, masterAddr, serviceGroupId)
 
 	return masterConfig
 }
@@ -275,15 +275,16 @@ func NewIntegrationServerWithPartitionConfig(prefix, configFilename string, mast
 // NewIntegrationTestMasterConfigWithOptions returns the master config appropriate for most integration tests
 // configured with the provided options.
 func NewIntegrationTestMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
-	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4")
+	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4", "0")
 }
 
 // NewIntegrationTestMasterConfigWithOptionsAndIp returns the master config for most integration tests
 // configured with the provided options and master ip address
-func NewIntegrationTestMasterConfigWithOptionsAndIp(opts *MasterConfigOptions, masterIpAddr string) *master.Config {
+func NewIntegrationTestMasterConfigWithOptionsAndIp(opts *MasterConfigOptions, masterIpAddr string, serviceGroupId string) *master.Config {
 	masterConfig := NewMasterConfigWithOptions(opts)
 	masterConfig.GenericConfig.PublicAddress = net.ParseIP(masterIpAddr)
 	masterConfig.ExtraConfig.APIResourceConfigSource = master.DefaultAPIResourceConfigSource()
+	masterConfig.ExtraConfig.ServiceGroupId = serviceGroupId
 
 	// TODO: get rid of these tests or port them to secure serving
 	masterConfig.GenericConfig.SecureServing = &genericapiserver.SecureServingInfo{Listener: fakeLocalhost443Listener{}}

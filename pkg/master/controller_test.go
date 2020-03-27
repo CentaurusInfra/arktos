@@ -395,7 +395,7 @@ func TestReconcileEndpoints(t *testing.T) {
 			fakeClient = fake.NewSimpleClientset(test.endpoints)
 		}
 		reconciler := reconcilers.NewMasterCountEndpointReconciler(test.additionalMasters+1, fakeClient.CoreV1())
-		err := reconciler.ReconcileEndpoints(test.serviceName, net.ParseIP(test.ip), test.endpointPorts, true)
+		err := reconciler.ReconcileEndpoints(test.serviceName, "", net.ParseIP(test.ip), test.endpointPorts, true)
 		if err != nil {
 			t.Errorf("case %q: unexpected error: %v", test.testName, err)
 		}
@@ -437,7 +437,334 @@ func TestReconcileEndpoints(t *testing.T) {
 		}
 
 	}
+}
 
+func TestReconcileEndpointsWithServiceGroup(t *testing.T) {
+	ns := metav1.NamespaceDefault
+	te := metav1.TenantDefault
+	om := func(name string) metav1.ObjectMeta {
+		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}
+	}
+	reconcile_tests := []struct {
+		testName          string
+		serviceName       string
+		serviceGroupId    string
+		ip                string
+		endpointPorts     []corev1.EndpointPort
+		additionalMasters int
+		endpoints         *corev1.EndpointsList
+		expectUpdate      *corev1.Endpoints // nil means none expected
+		expectCreate      *corev1.Endpoints // nil means none expected
+	}{
+		{
+			testName:       "no existing endpoints",
+			serviceName:    "foo",
+			ip:             "1.2.3.4",
+			serviceGroupId: "0",
+			endpointPorts:  []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			endpoints:      nil,
+			expectCreate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses:      []corev1.EndpointAddress{{IP: "1.2.3.4"}},
+					Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					ServiceGroupId: "0",
+				}},
+			},
+		},
+		{
+			testName:       "existing endpoints satisfy",
+			serviceName:    "foo",
+			serviceGroupId: "1",
+			ip:             "1.2.3.4",
+			endpointPorts:  []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses:      []corev1.EndpointAddress{{IP: "1.2.3.4"}},
+						Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+						ServiceGroupId: "1",
+					}},
+				}},
+			},
+		},
+		{
+			testName:       "existing endpoints satisfy but too many",
+			serviceName:    "foo",
+			serviceGroupId: "2",
+			ip:             "1.2.3.4",
+			endpointPorts:  []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses:      []corev1.EndpointAddress{{IP: "1.2.3.4"}, {IP: "4.3.2.1"}},
+						Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+						ServiceGroupId: "2",
+					}},
+				}},
+			},
+			expectUpdate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses:      []corev1.EndpointAddress{{IP: "1.2.3.4"}},
+					Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					ServiceGroupId: "2",
+				}},
+			},
+		},
+		{
+			testName:          "existing endpoints satisfy but too many + extra masters",
+			serviceName:       "foo",
+			serviceGroupId:    "a",
+			ip:                "1.2.3.4",
+			endpointPorts:     []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			additionalMasters: 3,
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses: []corev1.EndpointAddress{
+							{IP: "1.2.3.4"},
+							{IP: "4.3.2.1"},
+							{IP: "4.3.2.2"},
+							{IP: "4.3.2.3"},
+							{IP: "4.3.2.4"},
+						},
+						Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+						ServiceGroupId: "a",
+					}},
+				}},
+			},
+			expectUpdate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses: []corev1.EndpointAddress{
+						{IP: "1.2.3.4"},
+						{IP: "4.3.2.2"},
+						{IP: "4.3.2.3"},
+						{IP: "4.3.2.4"},
+					},
+					Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					ServiceGroupId: "a",
+				}},
+			},
+		},
+		{
+			testName:          "existing endpoints satisfy but too many + extra masters + delete first",
+			serviceName:       "foo",
+			serviceGroupId:    "0",
+			ip:                "4.3.2.4",
+			endpointPorts:     []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			additionalMasters: 3,
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses: []corev1.EndpointAddress{
+							{IP: "1.2.3.4"},
+							{IP: "4.3.2.1"},
+							{IP: "4.3.2.2"},
+							{IP: "4.3.2.3"},
+							{IP: "4.3.2.4"},
+						},
+						Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+						ServiceGroupId: "0",
+					}},
+				}},
+			},
+			expectUpdate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses: []corev1.EndpointAddress{
+						{IP: "4.3.2.1"},
+						{IP: "4.3.2.2"},
+						{IP: "4.3.2.3"},
+						{IP: "4.3.2.4"},
+					},
+					Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					ServiceGroupId: "0",
+				}},
+			},
+		},
+		{
+			testName:          "existing endpoints satisfy but too many + extra masters + not in service group",
+			serviceName:       "foo",
+			serviceGroupId:    "0",
+			ip:                "4.3.2.5",
+			endpointPorts:     []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			additionalMasters: 3,
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses: []corev1.EndpointAddress{
+							{IP: "1.2.3.4"},
+							{IP: "4.3.2.1"},
+							{IP: "4.3.2.2"},
+							{IP: "4.3.2.3"},
+							{IP: "4.3.2.4"},
+						},
+						Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+						ServiceGroupId: "10",
+					}},
+				}},
+			},
+			expectUpdate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses: []corev1.EndpointAddress{
+						{IP: "4.3.2.5"},
+					},
+					Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					ServiceGroupId: "0",
+				}, {
+					Addresses: []corev1.EndpointAddress{
+						{IP: "1.2.3.4"},
+						{IP: "4.3.2.1"},
+						{IP: "4.3.2.2"},
+						{IP: "4.3.2.3"},
+						{IP: "4.3.2.4"},
+					},
+					Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					ServiceGroupId: "10",
+				}},
+			},
+		},
+		{
+			testName:          "existing endpoints satisfy and endpoint addresses length less than master count",
+			serviceName:       "foo",
+			serviceGroupId:    "A",
+			ip:                "4.3.2.2",
+			endpointPorts:     []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			additionalMasters: 3,
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses: []corev1.EndpointAddress{
+							{IP: "4.3.2.1"},
+							{IP: "4.3.2.2"},
+						},
+						Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+						ServiceGroupId: "A",
+					}},
+				}},
+			},
+			expectUpdate: nil,
+		},
+		{
+			testName:          "existing endpoints current IP missing and address length less than master count",
+			serviceName:       "foo",
+			serviceGroupId:    "",
+			ip:                "4.3.2.2",
+			endpointPorts:     []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			additionalMasters: 3,
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses: []corev1.EndpointAddress{
+							{IP: "4.3.2.1"},
+						},
+						Ports: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					}},
+				}},
+			},
+			expectUpdate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses: []corev1.EndpointAddress{
+						{IP: "4.3.2.1"},
+						{IP: "4.3.2.2"},
+					},
+					Ports: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+				}},
+			},
+		},
+		{
+			testName:       "existing endpoints wrong name",
+			serviceName:    "foo",
+			serviceGroupId: "0",
+			ip:             "1.2.3.4",
+			endpointPorts:  []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("bar"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses:      []corev1.EndpointAddress{{IP: "1.2.3.4"}},
+						Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+						ServiceGroupId: "0",
+					}},
+				}},
+			},
+			expectCreate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses:      []corev1.EndpointAddress{{IP: "1.2.3.4"}},
+					Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					ServiceGroupId: "0",
+				}},
+			},
+		},
+	}
+	for _, test := range reconcile_tests {
+		fakeClient := fake.NewSimpleClientset()
+		if test.endpoints != nil {
+			fakeClient = fake.NewSimpleClientset(test.endpoints)
+		}
+		reconciler := reconcilers.NewMasterCountEndpointReconciler(test.additionalMasters+1, fakeClient.CoreV1())
+		err := reconciler.ReconcileEndpoints(test.serviceName, test.serviceGroupId, net.ParseIP(test.ip), test.endpointPorts, true)
+		if err != nil {
+			t.Errorf("case %q: unexpected error: %v", test.testName, err)
+		}
+
+		updates := []core.UpdateAction{}
+		for _, action := range fakeClient.Actions() {
+			if action.GetVerb() != "update" {
+				continue
+			}
+			updates = append(updates, action.(core.UpdateAction))
+		}
+		if test.expectUpdate != nil {
+			if len(updates) != 1 {
+				t.Errorf("case %q: unexpected updates: %v", test.testName, updates)
+			} else if e, a := test.expectUpdate, updates[0].GetObject(); !reflect.DeepEqual(e, a) {
+				t.Errorf("case %q: expected update:\n%#v\ngot:\n%#v\n", test.testName, e, a)
+			}
+		}
+		if test.expectUpdate == nil && len(updates) > 0 {
+			t.Errorf("case %q: no update expected, yet saw: %v", test.testName, updates)
+		}
+
+		creates := []core.CreateAction{}
+		for _, action := range fakeClient.Actions() {
+			if action.GetVerb() != "create" {
+				continue
+			}
+			creates = append(creates, action.(core.CreateAction))
+		}
+		if test.expectCreate != nil {
+			if len(creates) != 1 {
+				t.Errorf("case %q: unexpected creates: %v", test.testName, creates)
+			} else if e, a := test.expectCreate, creates[0].GetObject(); !reflect.DeepEqual(e, a) {
+				t.Errorf("case %q: expected create:\n%#v\ngot:\n%#v\n", test.testName, e, a)
+			}
+		}
+		if test.expectCreate == nil && len(creates) > 0 {
+			t.Errorf("case %q: no create expected, yet saw: %v", test.testName, creates)
+		}
+
+	}
+}
+
+func TestNonReconcileEndpoints(t *testing.T) {
+	ns := metav1.NamespaceDefault
+	te := metav1.TenantDefault
+	om := func(name string) metav1.ObjectMeta {
+		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}
+	}
 	non_reconcile_tests := []struct {
 		testName          string
 		serviceName       string
@@ -513,7 +840,7 @@ func TestReconcileEndpoints(t *testing.T) {
 			fakeClient = fake.NewSimpleClientset(test.endpoints)
 		}
 		reconciler := reconcilers.NewMasterCountEndpointReconciler(test.additionalMasters+1, fakeClient.CoreV1())
-		err := reconciler.ReconcileEndpoints(test.serviceName, net.ParseIP(test.ip), test.endpointPorts, false)
+		err := reconciler.ReconcileEndpoints(test.serviceName, "", net.ParseIP(test.ip), test.endpointPorts, false)
 		if err != nil {
 			t.Errorf("case %q: unexpected error: %v", test.testName, err)
 		}

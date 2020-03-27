@@ -69,7 +69,7 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			ExpectedEtcdPath: "/registry/pods/" + tenant + "/" + namespace + "/pod1",
 		},
 		gvr("", "v1", "endpoints"): {
-			Stub:             `{"metadata": {"name": "ep1name"}, "subsets": [{"addresses": [{"hostname": "bar-001", "ip": "192.168.3.1"}], "ports": [{"port": 8000}]}]}`,
+			Stub:             `{"metadata": {"name": "ep1name"}, "subsets": [{"addresses": [{"hostname": "bar-001", "ip": "192.168.3.1"}], "ports": [{"port": 8000}], "serviceGroupId": "1"}]}`,
 			ExpectedEtcdPath: "/registry/services/endpoints/" + tenant + "/" + namespace + "/ep1name",
 		},
 		gvr("", "v1", "resourcequotas"): {

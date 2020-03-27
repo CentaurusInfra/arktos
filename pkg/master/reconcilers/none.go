@@ -34,12 +34,12 @@ func NewNoneEndpointReconciler() EndpointReconciler {
 }
 
 // ReconcileEndpoints noop reconcile
-func (r *noneEndpointReconciler) ReconcileEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
+func (r *noneEndpointReconciler) ReconcileEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
 	return nil
 }
 
 // RemoveEndpoints noop reconcile
-func (r *noneEndpointReconciler) RemoveEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort) error {
+func (r *noneEndpointReconciler) RemoveEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort) error {
 	return nil
 }
 

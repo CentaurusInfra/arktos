@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@ import (
 	"encoding/hex"
 	"hash"
 	"sort"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,18 +34,27 @@ import (
 // representation, and then repacks that into the canonical layout.  This
 // ensures that code which operates on these objects can rely on the common
 // form for things like comparison.  The result is a newly allocated slice.
-func RepackSubsets(subsets []v1.EndpointSubset) []v1.EndpointSubset {
+// An api server should only update EndpointAddress related to itself, so there should be only one serviceGroupId
+func RepackSubsets(subsets []v1.EndpointSubset, serivceGroupId string) []v1.EndpointSubset {
+	// Support for api service partitioning and clustering.
+	// Here only update EndpointSubset belongs to current service group id
+	// There is no need to repack subsets for other service group id
+	subsetsRelated, subsetsNotRelated := GetRelatedSubsets(subsets, serivceGroupId)
+	if len(subsetsRelated) == 0 {
+		return subsets
+	}
+
 	// First map each unique port definition to the sets of hosts that
 	// offer it.
 	allAddrs := map[addressKey]*v1.EndpointAddress{}
 	portToAddrReadyMap := map[v1.EndpointPort]addressSet{}
-	for i := range subsets {
-		if len(subsets[i].Ports) == 0 {
+	for i := range subsetsRelated {
+		if len(subsetsRelated[i].Ports) == 0 {
 			// Don't discard endpoints with no ports defined, use a sentinel.
-			mapAddressesByPort(&subsets[i], v1.EndpointPort{Port: -1}, allAddrs, portToAddrReadyMap)
+			mapAddressesByPort(&subsetsRelated[i], v1.EndpointPort{Port: -1}, allAddrs, portToAddrReadyMap)
 		} else {
-			for _, port := range subsets[i].Ports {
-				mapAddressesByPort(&subsets[i], port, allAddrs, portToAddrReadyMap)
+			for _, port := range subsetsRelated[i].Ports {
+				mapAddressesByPort(&subsetsRelated[i], port, allAddrs, portToAddrReadyMap)
 			}
 		}
 	}
@@ -79,11 +90,37 @@ func RepackSubsets(subsets []v1.EndpointSubset) []v1.EndpointSubset {
 				notReadyAddrs = append(notReadyAddrs, *addr)
 			}
 		}
-		final = append(final, v1.EndpointSubset{Addresses: readyAddrs, NotReadyAddresses: notReadyAddrs, Ports: ports})
+		ss := v1.EndpointSubset{Addresses: readyAddrs, NotReadyAddresses: notReadyAddrs, Ports: ports}
+		if serivceGroupId != "" {
+			ss.ServiceGroupId = serivceGroupId
+		}
+		final = append(final, ss)
+	}
+	// Add not related subsets
+	for i := range subsetsNotRelated {
+		final = append(final, subsetsNotRelated[i])
 	}
 
 	// Finally, sort it.
 	return SortSubsets(final)
+}
+
+func GetRelatedSubsets(subsets []v1.EndpointSubset, serviceGroupId string) (subsetsRelated []v1.EndpointSubset, subsetsNotRelated []v1.EndpointSubset) {
+	for i := range subsets {
+		if subsets[i].ServiceGroupId == serviceGroupId {
+			subsetsRelated = append(subsetsRelated, subsets[i])
+		} else {
+			subsetsNotRelated = append(subsetsNotRelated, subsets[i])
+		}
+	}
+
+	return subsetsRelated, subsetsNotRelated
+}
+
+func AddNotRelatedSubsets(e *v1.Endpoints, subsetsNotRelated []v1.EndpointSubset) {
+	for i := range subsetsNotRelated {
+		e.Subsets = append(e.Subsets, subsetsNotRelated[i])
+	}
 }
 
 // The sets of hosts must be de-duped, using IP+UID as the key.
@@ -197,12 +234,21 @@ func SortSubsets(subsets []v1.EndpointSubset) []v1.EndpointSubset {
 		sort.Sort(portsByHash(ss.Ports))
 	}
 	sort.Sort(subsetsByHash(subsets))
+	sort.Sort(subsetsByServiceGroupId(subsets))
 	return subsets
 }
 
 func hashObject(hasher hash.Hash, obj interface{}) []byte {
 	hashutil.DeepHashObject(hasher, obj)
 	return hasher.Sum(nil)
+}
+
+type subsetsByServiceGroupId []v1.EndpointSubset
+
+func (sg subsetsByServiceGroupId) Len() int      { return len(sg) }
+func (sg subsetsByServiceGroupId) Swap(i, j int) { sg[i], sg[j] = sg[j], sg[i] }
+func (sg subsetsByServiceGroupId) Less(i, j int) bool {
+	return strings.Compare(sg[i].ServiceGroupId, sg[j].ServiceGroupId) < 0
 }
 
 type subsetsByHash []v1.EndpointSubset

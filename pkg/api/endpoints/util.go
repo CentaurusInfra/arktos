@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@ import (
 	"encoding/hex"
 	"hash"
 	"sort"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -33,6 +35,35 @@ import (
 // ensures that code which operates on these objects can rely on the common
 // form for things like comparison.  The result is a newly allocated slice.
 func RepackSubsets(subsets []api.EndpointSubset) []api.EndpointSubset {
+	serviceGroupIdToSubsetsMap := make(map[string][]api.EndpointSubset)
+	serviceGroupIds := make([]string, 0)
+	for i := range subsets {
+		serviceGroupId := subsets[i].ServiceGroupId
+		if _, isOK := serviceGroupIdToSubsetsMap[serviceGroupId]; !isOK {
+			serviceGroupIdToSubsetsMap[serviceGroupId] = make([]api.EndpointSubset, 0)
+			serviceGroupIds = append(serviceGroupIds, serviceGroupId)
+		}
+		serviceGroupIdToSubsetsMap[serviceGroupId] = append(serviceGroupIdToSubsetsMap[serviceGroupId], subsets[i])
+	}
+
+	// get sorted service group ids
+	sort.Strings(serviceGroupIds)
+
+	// repack endpoint subsets based on service group ids
+	repackedSS := []api.EndpointSubset{}
+	for i := range serviceGroupIds {
+		serviceGroupId := serviceGroupIds[i]
+		ss := serviceGroupIdToSubsetsMap[serviceGroupId]
+		newSS := repackSubsetsForServiceGroup(ss, serviceGroupId)
+		for i := range newSS {
+			repackedSS = append(repackedSS, newSS[i])
+		}
+	}
+
+	return repackedSS
+}
+
+func repackSubsetsForServiceGroup(subsets []api.EndpointSubset, serviceGroupId string) []api.EndpointSubset {
 	// First map each unique port definition to the sets of hosts that
 	// offer it.
 	allAddrs := map[addressKey]*api.EndpointAddress{}
@@ -79,7 +110,11 @@ func RepackSubsets(subsets []api.EndpointSubset) []api.EndpointSubset {
 				notReadyAddrs = append(notReadyAddrs, *addr)
 			}
 		}
-		final = append(final, api.EndpointSubset{Addresses: readyAddrs, NotReadyAddresses: notReadyAddrs, Ports: ports})
+		ss := api.EndpointSubset{Addresses: readyAddrs, NotReadyAddresses: notReadyAddrs, Ports: ports}
+		if serviceGroupId != "" {
+			ss.ServiceGroupId = serviceGroupId
+		}
+		final = append(final, ss)
 	}
 
 	// Finally, sort it.
@@ -196,7 +231,16 @@ func SortSubsets(subsets []api.EndpointSubset) []api.EndpointSubset {
 		sort.Sort(portsByHash(ss.Ports))
 	}
 	sort.Sort(subsetsByHash(subsets))
+	sort.Sort(subsetsByServiceGroupId(subsets))
 	return subsets
+}
+
+type subsetsByServiceGroupId []api.EndpointSubset
+
+func (sg subsetsByServiceGroupId) Len() int      { return len(sg) }
+func (sg subsetsByServiceGroupId) Swap(i, j int) { sg[i], sg[j] = sg[j], sg[i] }
+func (sg subsetsByServiceGroupId) Less(i, j int) bool {
+	return strings.Compare(sg[i].ServiceGroupId, sg[j].ServiceGroupId) < 0
 }
 
 func hashObject(hasher hash.Hash, obj interface{}) []byte {

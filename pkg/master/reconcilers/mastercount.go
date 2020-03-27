@@ -61,7 +61,7 @@ func NewMasterCountEndpointReconciler(masterCount int, endpointClient corev1clie
 //  * All apiservers MUST know and agree on the number of apiservers expected
 //      to be running (c.masterCount).
 //  * ReconcileEndpoints is called periodically from all apiservers.
-func (r *masterCountEndpointReconciler) ReconcileEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
+func (r *masterCountEndpointReconciler) ReconcileEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
 	r.reconcilingLock.Lock()
 	defer r.reconcilingLock.Unlock()
 
@@ -79,25 +79,32 @@ func (r *masterCountEndpointReconciler) ReconcileEndpoints(serviceName string, i
 			},
 		}
 	}
+
 	if errors.IsNotFound(err) {
 		// Simply create non-existing endpoints for the service.
 		e.Subsets = []corev1.EndpointSubset{{
-			Addresses: []corev1.EndpointAddress{{IP: ip.String()}},
-			Ports:     endpointPorts,
+			Addresses:      []corev1.EndpointAddress{{IP: ip.String()}},
+			Ports:          endpointPorts,
+			ServiceGroupId: serviceGroupId,
 		}}
 		_, err = r.endpointClient.Endpoints(metav1.NamespaceDefault).Create(e)
 		return err
 	}
 
+	// each api service only reconcile endpoints that is related to its own service group
+	subsetsRelated, subsetsNotRelated := endpointsv1.GetRelatedSubsets(e.Subsets, serviceGroupId)
+
 	// First, determine if the endpoint is in the format we expect (one
 	// subset, ports matching endpointPorts, N IP addresses).
-	formatCorrect, ipCorrect, portsCorrect := checkEndpointSubsetFormat(e, ip.String(), endpointPorts, r.masterCount, reconcilePorts)
+	formatCorrect, ipCorrect, portsCorrect := checkEndpointSubsetFormat(subsetsRelated, ip.String(), endpointPorts, r.masterCount, reconcilePorts)
 	if !formatCorrect {
 		// Something is egregiously wrong, just re-make the endpoints record.
 		e.Subsets = []corev1.EndpointSubset{{
-			Addresses: []corev1.EndpointAddress{{IP: ip.String()}},
-			Ports:     endpointPorts,
+			Addresses:      []corev1.EndpointAddress{{IP: ip.String()}},
+			Ports:          endpointPorts,
+			ServiceGroupId: serviceGroupId,
 		}}
+		endpointsv1.AddNotRelatedSubsets(e, subsetsNotRelated)
 		klog.Warningf("Resetting endpoints for master service %q to %#v", serviceName, e)
 		_, err = r.endpointClient.Endpoints(metav1.NamespaceDefault).Update(e)
 		return err
@@ -106,11 +113,11 @@ func (r *masterCountEndpointReconciler) ReconcileEndpoints(serviceName string, i
 		return nil
 	}
 	if !ipCorrect {
+		e.Subsets = subsetsRelated
 		// We *always* add our own IP address.
 		e.Subsets[0].Addresses = append(e.Subsets[0].Addresses, corev1.EndpointAddress{IP: ip.String()})
-
 		// Lexicographic order is retained by this step.
-		e.Subsets = endpointsv1.RepackSubsets(e.Subsets)
+		e.Subsets = endpointsv1.RepackSubsets(e.Subsets, serviceGroupId)
 
 		// If too many IP addresses, remove the ones lexicographically after our
 		// own IP address.  Given the requirements stated at the top of
@@ -134,12 +141,13 @@ func (r *masterCountEndpointReconciler) ReconcileEndpoints(serviceName string, i
 		// Reset ports.
 		e.Subsets[0].Ports = endpointPorts
 	}
+	endpointsv1.AddNotRelatedSubsets(e, subsetsNotRelated)
 	klog.Warningf("Resetting endpoints for master service %q to %v", serviceName, e)
 	_, err = r.endpointClient.Endpoints(metav1.NamespaceDefault).Update(e)
 	return err
 }
 
-func (r *masterCountEndpointReconciler) RemoveEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort) error {
+func (r *masterCountEndpointReconciler) RemoveEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort) error {
 	r.reconcilingLock.Lock()
 	defer r.reconcilingLock.Unlock()
 
@@ -152,15 +160,19 @@ func (r *masterCountEndpointReconciler) RemoveEndpoints(serviceName string, ip n
 		return err
 	}
 
-	// Remove our IP from the list of addresses
-	new := []corev1.EndpointAddress{}
-	for _, addr := range e.Subsets[0].Addresses {
-		if addr.IP != ip.String() {
-			new = append(new, addr)
+	// Remove our IP from the list of addresses - only delete when service group id match
+	for i, ss := range e.Subsets {
+		if e.Subsets[i].ServiceGroupId == serviceGroupId {
+			newEpAddresses := []corev1.EndpointAddress{}
+			for _, addr := range ss.Addresses {
+				if addr.IP != ip.String() {
+					newEpAddresses = append(newEpAddresses, addr)
+				}
+			}
+			e.Subsets[i].Addresses = newEpAddresses
 		}
 	}
-	e.Subsets[0].Addresses = new
-	e.Subsets = endpointsv1.RepackSubsets(e.Subsets)
+	e.Subsets = endpointsv1.RepackSubsets(e.Subsets, serviceGroupId)
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := r.endpointClient.Endpoints(metav1.NamespaceDefault).Update(e)
 		return err
@@ -182,11 +194,11 @@ func (r *masterCountEndpointReconciler) StopReconciling() {
 //     of addresses is less than or equal to the master count.
 // * portsCorrect is true when endpoint ports exactly match provided ports.
 //     portsCorrect is only evaluated when reconcilePorts is set to true.
-func checkEndpointSubsetFormat(e *corev1.Endpoints, ip string, ports []corev1.EndpointPort, count int, reconcilePorts bool) (formatCorrect bool, ipCorrect bool, portsCorrect bool) {
-	if len(e.Subsets) != 1 {
+func checkEndpointSubsetFormat(ss []corev1.EndpointSubset, ip string, ports []corev1.EndpointPort, count int, reconcilePorts bool) (formatCorrect bool, ipCorrect bool, portsCorrect bool) {
+	if len(ss) != 1 {
 		return false, false, false
 	}
-	sub := &e.Subsets[0]
+	sub := &ss[0]
 	portsCorrect = true
 	if reconcilePorts {
 		if len(sub.Ports) != len(ports) {
@@ -200,7 +212,7 @@ func checkEndpointSubsetFormat(e *corev1.Endpoints, ip string, ports []corev1.En
 		}
 	}
 	for _, addr := range sub.Addresses {
-		if addr.IP == ip {
+		if addr.IP == ip { 
 			ipCorrect = len(sub.Addresses) <= count
 			break
 		}
