@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +36,11 @@ token4,user4,uid4,"group2"
 token5,user5,uid5,group5
 token6,user6,uid6,group5,otherdata
 token7,user7,uid7,"group1,group2",otherdata
+token11,user11,uid11,,tenant11
+token12,user12,uid12,"group1",,tenant12
+token13,user13,uid13,group1,,tenant13
+token14,user14,uid14,"group1,group2",,tenant14
+token15,user15,uid15,"group1,group2",otherdata,,tenant15
 `)
 	if err != nil {
 		t.Fatalf("unable to read tokenfile: %v", err)
@@ -48,41 +54,66 @@ token7,user7,uid7,"group1,group2",otherdata
 	}{
 		{
 			Token: "token1",
-			User:  &user.DefaultInfo{Name: "user1", UID: "uid1"},
+			User:  &user.DefaultInfo{Name: "user1", UID: "uid1", Tenant: "system"},
 			Ok:    true,
 		},
 		{
 			Token: "token2",
-			User:  &user.DefaultInfo{Name: "user2", UID: "uid2"},
+			User:  &user.DefaultInfo{Name: "user2", UID: "uid2", Tenant: "system"},
 			Ok:    true,
 		},
 		{
 			Token: "token3",
-			User:  &user.DefaultInfo{Name: "user3", UID: "uid3", Groups: []string{"group1", "group2"}},
+			User:  &user.DefaultInfo{Name: "user3", UID: "uid3", Tenant: "system", Groups: []string{"group1", "group2"}},
 			Ok:    true,
 		},
 		{
 			Token: "token4",
-			User:  &user.DefaultInfo{Name: "user4", UID: "uid4", Groups: []string{"group2"}},
+			User:  &user.DefaultInfo{Name: "user4", UID: "uid4", Tenant: "system", Groups: []string{"group2"}},
 			Ok:    true,
 		},
 		{
 			Token: "token5",
-			User:  &user.DefaultInfo{Name: "user5", UID: "uid5", Groups: []string{"group5"}},
+			User:  &user.DefaultInfo{Name: "user5", UID: "uid5", Tenant: "system", Groups: []string{"group5"}},
 			Ok:    true,
 		},
 		{
 			Token: "token6",
-			User:  &user.DefaultInfo{Name: "user6", UID: "uid6", Groups: []string{"group5"}},
+			User:  &user.DefaultInfo{Name: "user6", UID: "uid6", Tenant: "system", Groups: []string{"group5"}},
 			Ok:    true,
 		},
 		{
 			Token: "token7",
-			User:  &user.DefaultInfo{Name: "user7", UID: "uid7", Groups: []string{"group1", "group2"}},
+			User:  &user.DefaultInfo{Name: "user7", UID: "uid7", Tenant: "system", Groups: []string{"group1", "group2"}},
 			Ok:    true,
 		},
 		{
 			Token: "token8",
+		},
+		{
+			Token: "token11",
+			User:  &user.DefaultInfo{Name: "user11", UID: "uid11", Tenant: "tenant11"},
+			Ok:    true,
+		},
+		{
+			Token: "token12",
+			User:  &user.DefaultInfo{Name: "user12", UID: "uid12", Groups: []string{"group1"}, Tenant: "tenant12"},
+			Ok:    true,
+		},
+		{
+			Token: "token13",
+			User:  &user.DefaultInfo{Name: "user13", UID: "uid13", Groups: []string{"group1"}, Tenant: "tenant13"},
+			Ok:    true,
+		},
+		{
+			Token: "token14",
+			User:  &user.DefaultInfo{Name: "user14", UID: "uid14", Groups: []string{"group1", "group2"}, Tenant: "tenant14"},
+			Ok:    true,
+		},
+		{
+			Token: "token15",
+			User:  &user.DefaultInfo{Name: "user15", UID: "uid15", Groups: []string{"group1", "group2"}, Tenant: "tenant15"},
+			Ok:    true,
 		},
 	}
 	for i, testCase := range testCases {
@@ -104,6 +135,26 @@ token7,user7,uid7,"group1,group2",otherdata
 		case err != nil && !testCase.Err:
 			t.Errorf("%d: unexpected error: %v", i, err)
 		}
+	}
+}
+
+func TestBadTokenFileMissingRequiredTenant(t *testing.T) {
+	_, err := newWithContents(t, `
+token1,user1,uid1
+token2,user2,,
+`)
+	if err == nil {
+		t.Fatalf("unexpected non error")
+	}
+}
+
+func TestEmptyUidTokenFile(t *testing.T) {
+	_, err := newWithContents(t, `
+token1,user1,uid1
+token2,user2,
+`)
+	if err == nil {
+		t.Fatalf("unexpected non error")
 	}
 }
 
