@@ -500,7 +500,7 @@ func (e *EndpointController) syncService(key string) error {
 			}
 		}
 	}
-	subsets = endpoints.RepackSubsets(subsets)
+	subsets = endpoints.RepackSubsets(subsets, "")
 
 	// See if there's actually an update here.
 	currentEndpoints, err := e.endpointsLister.EndpointsWithMultiTenancy(service.Namespace, service.Tenant).Get(service.Name)

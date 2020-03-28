@@ -3641,6 +3641,10 @@ type EndpointSubset struct {
 	Addresses         []EndpointAddress
 	NotReadyAddresses []EndpointAddress
 	Ports             []EndpointPort
+
+	// The service group id of the api server cluster
+	// +optional
+	ServiceGroupId string
 }
 
 // EndpointAddress is a tuple that describes single IP address.
@@ -5245,4 +5249,43 @@ type ControllerInstanceList struct {
 
 	// List of controller instance
 	Items []ControllerInstance
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DataPartitionConfig contains data partition configuration instance with name
+type DataPartitionConfig struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+
+	// Start tenant is inclusive
+	StartTenant string
+
+	// Whether this is an open end start
+	IsStartTenantValid bool
+
+	// End tenant is exclusive
+	EndTenant string
+
+	// Whether this is an open end end
+	IsEndTenantValid bool
+
+	// Which service group is using this data configuration
+	ServiceGroupId string
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DataPartitionConfigList holds the data partition configuration list
+type DataPartitionConfigList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	// List of data partition configuration
+	Items []DataPartitionConfig
 }

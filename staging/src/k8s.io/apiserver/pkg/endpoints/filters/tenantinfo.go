@@ -17,7 +17,7 @@ limitations under the License.
 package filters
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,51 +25,47 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
-// WithTenantInfo set the tenant in the requestInfo based on the user info from the authentication result.
+// WithTenantInfo set the tenant in the requestInfo for short-path requests based on the user info from the authentication result.
 func WithTenantInfo(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		requestInfo, exists := request.RequestInfoFrom(ctx)
-		tenantInRequestor := ""
+
 		requestor, exists := request.UserFrom(ctx)
-		if !exists || requestor.GetTenant() == metav1.TenantNone {
-			//TODO: raise an error if code goes here
-			//temporarily set the tenant to the omni-potent "system" tenant to make the tests pass
-			// Tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
-			tenantInRequestor = metav1.TenantSystem
-
-			// The following should be uncommented after the test changes
-			/* responsewriters.InternalError(w, req, errors.New("The user tenant for the request cannot be identfied."))
-			return */
-		} else {
-			tenantInRequestor = requestor.GetTenant()
-		}
-
-		tenant, err := normalizeTenant(tenantInRequestor, requestInfo.Tenant)
-		if err != nil {
-			responsewriters.InternalError(w, req, err)
+		if !exists {
+			responsewriters.InternalError(w, req, errors.New("The user info is missing."))
 			return
 		}
 
-		requestInfo.Tenant = tenant
+		tenantInRequestor := requestor.GetTenant()
+		if tenantInRequestor == metav1.TenantNone {
+			// temporary workaround
+			// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
+			tenantInRequestor = metav1.TenantSystem
+			//responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
+			//return
+		}
+
+		requestInfo, exists := request.RequestInfoFrom(ctx)
+		if !exists {
+			responsewriters.InternalError(w, req, errors.New("The request info is missing."))
+			return
+		}
+
+		requestInfo.Tenant = normalizeTenant(tenantInRequestor, requestInfo.Tenant)
 		req = req.WithContext(request.WithRequestInfo(ctx, requestInfo))
 
 		handler.ServeHTTP(w, req)
 	})
 }
 
-// normalizeObjectTenant returns the tenant of the object based on what the user tenant is.
-func normalizeTenant(userTenant, objectTenant string) (string, error) {
-	if userTenant == metav1.TenantNone {
-		return "", fmt.Errorf("The user Tenant is null")
-	}
-
+// normalizeObjectTenant decides what the object tenant should be based on what the user tenant is.
+func normalizeTenant(userTenant, objectTenant string) string {
 	// for a reqeust from a regular user, if the tenant in the object is empty, use the tenant from user info
 	// this is what we call "shor-path", which allows users to use traditional Kubernets API in the multi-tenancy Arktos
 	if objectTenant == metav1.TenantNone && userTenant != metav1.TenantSystem {
-		return userTenant, nil
+		return userTenant
 	}
 
 	// in the other cases, we continue to use the tenant in the request info
-	return objectTenant, nil
+	return objectTenant
 }

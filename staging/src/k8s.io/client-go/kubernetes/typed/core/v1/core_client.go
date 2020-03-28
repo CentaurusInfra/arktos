@@ -35,6 +35,7 @@ type CoreV1Interface interface {
 	ComponentStatusesGetter
 	ConfigMapsGetter
 	ControllerInstancesGetter
+	DataPartitionConfigsGetter
 	EndpointsGetter
 	EventsGetter
 	LimitRangesGetter
@@ -79,6 +80,10 @@ func (c *CoreV1Client) ConfigMapsWithMultiTenancy(namespace string, tenant strin
 
 func (c *CoreV1Client) ControllerInstances() ControllerInstanceInterface {
 	return newControllerInstances(c)
+}
+
+func (c *CoreV1Client) DataPartitionConfigs() DataPartitionConfigInterface {
+	return newDataPartitionConfigs(c)
 }
 
 func (c *CoreV1Client) Endpoints(namespace string) EndpointsInterface {

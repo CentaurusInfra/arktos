@@ -4094,6 +4094,9 @@ type EndpointSubset struct {
 	// Port numbers available on the related IP addresses.
 	// +optional
 	Ports []EndpointPort `json:"ports,omitempty" protobuf:"bytes,3,rep,name=ports"`
+	// The service group id of the api server cluster
+	// +optional
+	ServiceGroupId string `json:"serviceGroupId,omitempty" protobuf:"bytes,4,opt,name=serviceGroupId"`
 }
 
 // EndpointAddress is a tuple that describes single IP address.
@@ -5943,4 +5946,43 @@ type ControllerInstanceList struct {
 
 	// List of controller instance
 	Items []ControllerInstance `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DataPartitionConfig contains api server data partition configurations. Name in ObjectMeta is used for identitification
+type DataPartitionConfig struct {
+	metav1.TypeMeta `json:",inline"`
+
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Start tenant is inclusive
+	StartTenant string `json:"startTenant" protobuf:"bytes,2,opt,name=startTenant"`
+
+	// Whether this is an open end start
+	IsStartTenantValid bool `json:"isStartTenantValid,omitempty" protobuf:"varint,3,opt,name=isStartTenantValid"`
+
+	// End tenant is exclusive
+	EndTenant string `json:"endTenant" protobuf:"bytes,4,opt,name=endTenant"`
+
+	// Whether this is an open end end
+	IsEndTenantValid bool `json:"isEndTenantValid,omitempty" protobuf:"varint,5,opt,name=isEndTenantValid"`
+
+	// Which service group is using this data configuration
+	ServiceGroupId string `json:"serviceGroupId" protobuf:"bytes,6,opt,name=serviceGroupId"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DataPartitionConfigList is a list of data partition configurations that api server data partition use
+type DataPartitionConfigList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of data partition configuration
+	Items []DataPartitionConfig `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
 }

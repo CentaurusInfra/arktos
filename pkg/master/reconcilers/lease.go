@@ -24,6 +24,7 @@ https://github.com/openshift/origin/blob/bb340c5dd5ff72718be86fb194dedc0faed7f4c
 
 import (
 	"fmt"
+	endpointsv1 "k8s.io/kubernetes/pkg/api/v1/endpoints"
 	"net"
 	"path"
 	"sync"
@@ -39,16 +40,15 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	endpointsv1 "k8s.io/kubernetes/pkg/api/v1/endpoints"
 )
 
 // Leases is an interface which assists in managing the set of active masters
 type Leases interface {
-	// ListLeases retrieves a list of the current master IPs
-	ListLeases() ([]string, error)
+	// ListLeases retrieves a list of the current master (IP, ServiceGroupId)
+	ListLeases(serviceGroupId string) ([]string, error)
 
 	// UpdateLease adds or refreshes a master's lease
-	UpdateLease(ip string) error
+	UpdateLease(ip string, serviceGroupId string) error
 
 	// RemoveLease removes a master's lease
 	RemoveLease(ip string) error
@@ -62,32 +62,40 @@ type storageLeases struct {
 
 var _ Leases = &storageLeases{}
 
-// ListLeases retrieves a list of the current master IPs from storage
-func (s *storageLeases) ListLeases() ([]string, error) {
-	ipInfoList := &corev1.EndpointsList{}
-	if err := s.storage.List(apirequest.NewDefaultContext(), s.baseKey, "0", storage.Everything, ipInfoList); err != nil {
+// ListLeases retrieves a list of the current master IPs of this service group from storage
+func (s *storageLeases) ListLeases(serviceGroupId string) ([]string, error) {
+	epList := &corev1.EndpointsList{}
+	if err := s.storage.List(apirequest.NewDefaultContext(), s.baseKey, "0", storage.Everything, epList); err != nil {
 		return nil, err
 	}
 
-	ipList := make([]string, len(ipInfoList.Items))
-	for i, ip := range ipInfoList.Items {
-		ipList[i] = ip.Subsets[0].Addresses[0].IP
+	ipList := make([]string, 0)
+	for _, item := range epList.Items {
+		subsets := item.Subsets
+		for _, ss := range subsets {
+			if ss.ServiceGroupId == serviceGroupId {
+				for _, epAddress := range ss.Addresses {
+					ipList = append(ipList, epAddress.IP)
+				}
+			}
+		}
 	}
 
-	klog.V(6).Infof("Current master IPs listed in storage are %v", ipList)
+	klog.V(6).Infof("Current master IPs listed in storage for service group %s are %v", serviceGroupId, ipList)
 
 	return ipList, nil
 }
 
 // UpdateLease resets the TTL on a master IP in storage
-func (s *storageLeases) UpdateLease(ip string) error {
+func (s *storageLeases) UpdateLease(ip string, serviceGroupId string) error {
 	key := path.Join(s.baseKey, ip)
 	return s.storage.GuaranteedUpdate(apirequest.NewDefaultContext(), key, &corev1.Endpoints{}, true, nil, func(input kruntime.Object, respMeta storage.ResponseMeta) (kruntime.Object, *uint64, *uint64, error) {
 		// just make sure we've got the right IP set, and then refresh the TTL
 		existing := input.(*corev1.Endpoints)
 		existing.Subsets = []corev1.EndpointSubset{
 			{
-				Addresses: []corev1.EndpointAddress{{IP: ip}},
+				Addresses:      []corev1.EndpointAddress{{IP: ip}},
+				ServiceGroupId: serviceGroupId,
 			},
 		}
 
@@ -143,7 +151,7 @@ func NewLeaseEndpointReconciler(endpointClient corev1client.EndpointsGetter, mas
 // expire. ReconcileEndpoints will notice that the endpoints object is
 // different from the directory listing, and update the endpoints object
 // accordingly.
-func (r *leaseEndpointReconciler) ReconcileEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
+func (r *leaseEndpointReconciler) ReconcileEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
 	r.reconcilingLock.Lock()
 	defer r.reconcilingLock.Unlock()
 
@@ -154,16 +162,17 @@ func (r *leaseEndpointReconciler) ReconcileEndpoints(serviceName string, ip net.
 	// Refresh the TTL on our key, independently of whether any error or
 	// update conflict happens below. This makes sure that at least some of
 	// the masters will add our endpoint.
-	if err := r.masterLeases.UpdateLease(ip.String()); err != nil {
+	if err := r.masterLeases.UpdateLease(ip.String(), serviceGroupId); err != nil {
 		return err
 	}
 
-	return r.doReconcile(serviceName, endpointPorts, reconcilePorts)
+	return r.doReconcile(serviceName, serviceGroupId, endpointPorts, reconcilePorts)
 }
 
-func (r *leaseEndpointReconciler) doReconcile(serviceName string, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
+func (r *leaseEndpointReconciler) doReconcile(serviceName string, serviceGroupId string, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
 	e, err := r.endpointClient.Endpoints(corev1.NamespaceDefault).Get(serviceName, metav1.GetOptions{})
 	shouldCreate := false
+	//klog.Infof("Get endpoints for service [%v] [%+v]. Error [%v]", serviceName, e, err)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
@@ -179,7 +188,7 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, endpointPorts 
 	}
 
 	// ... and the list of master IP keys from etcd
-	masterIPs, err := r.masterLeases.ListLeases()
+	masterIPs, err := r.masterLeases.ListLeases(serviceGroupId)
 	if err != nil {
 		return err
 	}
@@ -191,8 +200,11 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, endpointPorts 
 		return fmt.Errorf("no master IPs were listed in storage, refusing to erase all endpoints for the kubernetes service")
 	}
 
+	// each api service only reconcile endpoints that is related to its own service group
+	subsetsRelated, subsetsNotRelated := endpointsv1.GetRelatedSubsets(e.Subsets, serviceGroupId)
+
 	// Next, we compare the current list of endpoints with the list of master IP keys
-	formatCorrect, ipCorrect, portsCorrect := checkEndpointSubsetFormatWithLease(e, masterIPs, endpointPorts, reconcilePorts)
+	formatCorrect, ipCorrect, portsCorrect := checkEndpointSubsetFormatWithLease(subsetsRelated, masterIPs, endpointPorts, reconcilePorts)
 	if formatCorrect && ipCorrect && portsCorrect {
 		return nil
 	}
@@ -200,26 +212,28 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, endpointPorts 
 	if !formatCorrect {
 		// Something is egregiously wrong, just re-make the endpoints record.
 		e.Subsets = []corev1.EndpointSubset{{
-			Addresses: []corev1.EndpointAddress{},
-			Ports:     endpointPorts,
+			Addresses:      []corev1.EndpointAddress{},
+			Ports:          endpointPorts,
+			ServiceGroupId: serviceGroupId,
 		}}
 	}
 
 	if !formatCorrect || !ipCorrect {
 		// repopulate the addresses according to the expected IPs from etcd
 		e.Subsets[0].Addresses = make([]corev1.EndpointAddress, len(masterIPs))
-		for ind, ip := range masterIPs {
-			e.Subsets[0].Addresses[ind] = corev1.EndpointAddress{IP: ip}
+		for i, ip := range masterIPs {
+			e.Subsets[0].Addresses[i] = corev1.EndpointAddress{IP: ip}
 		}
-
 		// Lexicographic order is retained by this step.
-		e.Subsets = endpointsv1.RepackSubsets(e.Subsets)
+		e.Subsets = endpointsv1.RepackSubsets(e.Subsets, serviceGroupId)
 	}
 
 	if !portsCorrect {
 		// Reset ports.
 		e.Subsets[0].Ports = endpointPorts
 	}
+
+	endpointsv1.AddNotRelatedSubsets(e, subsetsNotRelated)
 
 	klog.Warningf("Resetting endpoints for master service %q to %v", serviceName, masterIPs)
 	if shouldCreate {
@@ -240,11 +254,13 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, endpointPorts 
 // * ipsCorrect when the addresses in the endpoints match the expected addresses list
 // * portsCorrect is true when endpoint ports exactly match provided ports.
 //     portsCorrect is only evaluated when reconcilePorts is set to true.
-func checkEndpointSubsetFormatWithLease(e *corev1.Endpoints, expectedIPs []string, ports []corev1.EndpointPort, reconcilePorts bool) (formatCorrect bool, ipsCorrect bool, portsCorrect bool) {
-	if len(e.Subsets) != 1 {
+// EndpointSubset should have the same service group id
+func checkEndpointSubsetFormatWithLease(ss []corev1.EndpointSubset, expectedIPs []string, ports []corev1.EndpointPort, reconcilePorts bool) (formatCorrect bool, ipsCorrect bool, portsCorrect bool) {
+	if len(ss) != 1 {
 		return false, false, false
 	}
-	sub := &e.Subsets[0]
+
+	sub := &ss[0]
 	portsCorrect = true
 	if reconcilePorts {
 		if len(sub.Ports) != len(ports) {
@@ -285,12 +301,12 @@ func checkEndpointSubsetFormatWithLease(e *corev1.Endpoints, expectedIPs []strin
 	return true, ipsCorrect, portsCorrect
 }
 
-func (r *leaseEndpointReconciler) RemoveEndpoints(serviceName string, ip net.IP, endpointPorts []corev1.EndpointPort) error {
+func (r *leaseEndpointReconciler) RemoveEndpoints(serviceName string, serviceGroupId string, ip net.IP, endpointPorts []corev1.EndpointPort) error {
 	if err := r.masterLeases.RemoveLease(ip.String()); err != nil {
 		return err
 	}
 
-	return r.doReconcile(serviceName, endpointPorts, true)
+	return r.doReconcile(serviceName, serviceGroupId, endpointPorts, true)
 }
 
 func (r *leaseEndpointReconciler) StopReconciling() {

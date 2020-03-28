@@ -23,6 +23,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
@@ -50,12 +51,14 @@ const (
 
 	masterAddr1 = "192.168.10.6"
 	masterAddr2 = "192.168.10.8"
+
+	kubernetesServiceName = "kubernetes"
 )
 
 func setUpTwoApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, clientset.Interface, string, *httptest.Server, framework.CloseFunc, clientset.Interface, string) {
 	prefix, configFilename1, configFilename2 := createTwoApiServersPartitionFiles(t)
-	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1)
-	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename2, masterAddr2)
+	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1, "0")
+	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename2, masterAddr2, "1")
 	_, s1, closeFn1 := framework.RunAMaster(masterConfig1)
 
 	// TODO - temporary change for current api server support - need to change after multiple api servers partition code is in place
@@ -298,6 +301,25 @@ func checkReplicaSetExistence2(existingRSs []interface{}, searchRSs ...*apps.Rep
 	return true
 }
 
+func checkReplicaSetExistence3(existingRSs []*apps.ReplicaSet, searchRSs ...*apps.ReplicaSet) bool {
+	for _, rsToSearch := range searchRSs {
+		isFound := false
+		for _, rs := range existingRSs {
+			if rs.HashKey == rsToSearch.HashKey && rs.UID == rsToSearch.UID &&
+				rs.Tenant == rsToSearch.Tenant && rs.Namespace == rsToSearch.Namespace && rs.Name == rsToSearch.Name {
+				isFound = true
+				break
+			}
+		}
+
+		if !isFound {
+			return false
+		}
+	}
+
+	return true
+}
+
 func startEventBroadCaster(t *testing.T, cs clientset.Interface) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -308,11 +330,11 @@ func startEventBroadCaster(t *testing.T, cs clientset.Interface) {
 
 // Ideally, we should test all kinds - TODO - should be able to leverage generated test data
 func TestGetCanGetAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, s2, _, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 
 	// create pods via 2 different api servers
 	pod1 := createPod(t, clientset1, tenant1, "te", "pod1")
@@ -370,11 +392,11 @@ func TestGetCanGetAlldata(t *testing.T) {
 }
 
 func TestListCanGetAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, _, _, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 
 	// create 2 pods in same tenant and namespace via different api server
 	namespace := "te"
@@ -439,11 +461,11 @@ func TestListCanGetAlldata(t *testing.T) {
 }
 
 func TestPostCanUpdateAlldata(t *testing.T) {
-	s1, closeFn1, clientset1, configFilename1, s2, _, clientset2, configFilename2 := setUpTwoApiservers(t)
+	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 
 	// create pods via 2 different api servers
 	pod1 := createPod(t, clientset1, tenant1, "te", "pod1")
@@ -499,13 +521,12 @@ func TestPostCanUpdateAlldata(t *testing.T) {
 	deletePod(t, clientset1, pod2)
 }
 
-/*
 func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
-	_, closeFn1, clientset1, configFilename1, _, _, clientset2, configFilename2 := setUpTwoApiservers(t)
+	_, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
@@ -569,14 +590,13 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	deleteRS(t, clientset1, rs1)
 	deleteRS(t, clientset1, rs2)
 }
-*/
 
 func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
 	prefix, configFilename1, configFilename2 := createTwoApiServersPartitionFiles(t)
-	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1)
-	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename2, masterAddr2)
+	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1, "0")
+	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename2, masterAddr2, "1")
 	_, s1, closeFn1 := framework.RunAMaster(masterConfig1)
-	_, s2, _ := framework.RunAMaster(masterConfig2)
+	_, s2, closeFn2 := framework.RunAMaster(masterConfig2)
 	kubeConfig1 := restclient.KubeConfig{Host: s1.URL}
 	kubeConfig2 := restclient.KubeConfig{Host: s2.URL}
 	aggConfig := restclient.NewAggregatedConfig(&kubeConfig1, &kubeConfig2)
@@ -586,7 +606,7 @@ func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 	defer deleteSinglePartitionConfigFile(t, configFilename2)
 	defer closeFn1()
-	//defer closeFn2()
+	defer closeFn2()
 
 	// create informer 1 from aggregated clientset
 	resyncPeriod := 12 * time.Hour
@@ -629,7 +649,7 @@ func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
 
 // Test apiserver sync data like ["registry/replicasets/", "registry/replicasets/tenant2")
 func TestPartitionWithLeftUnbounded(t *testing.T) {
-	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", tenant2)
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", tenant2, "0")
 	defer deleteSinglePartitionConfigFile(t, configFilename)
 	defer closeFn()
 
@@ -708,7 +728,7 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 
 // Test apiserver sync data like ["registry/replicasets/tenant2", "")
 func TestPartitionRightUnbounded(t *testing.T) {
-	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, "")
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, "", "0")
 	defer deleteSinglePartitionConfigFile(t, configFilename)
 	defer closeFn()
 
@@ -785,7 +805,7 @@ func TestPartitionRightUnbounded(t *testing.T) {
 
 // Test apiserver sync data like ["registry/pods/tenant2", "registry/pods/tenant3")
 func TestPartitionLeftRightBounded(t *testing.T) {
-	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, tenant3)
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, tenant3, "0")
 	defer deleteSinglePartitionConfigFile(t, configFilename)
 	defer closeFn()
 
@@ -857,7 +877,7 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 
 // Test apiserver sync data like ["registry/replicasets/", "registry/replicasets/")
 func TestPartitionUnBounded(t *testing.T) {
-	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", "")
+	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", "", "0")
 	defer deleteSinglePartitionConfigFile(t, configFilename)
 	defer closeFn()
 
@@ -925,9 +945,292 @@ func TestPartitionUnBounded(t *testing.T) {
 	assert.True(t, rsFound)
 }
 
-func setUpSingleApiserver(t *testing.T, begin, end string) (*httptest.Server, framework.CloseFunc, clientset.Interface, string) {
+// Both use partition manager. Can only run sequentially as DP manager is singleton
+func TestAPIServerPartitionWithPartitionManager(t *testing.T) {
+	testDataPartitionReset(t)
+	testOneApiServerCluster(t)
+}
+
+func testDataPartitionReset(t *testing.T) {
+	// set up one api server
+	serviceGroupId := "10"
+
+	prefix, configFilename := createSingleApiServerPartitionFile(t, "A", "z")
+	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, "", serviceGroupId)
+	_, s, closeFn := framework.RunAMasterWithDataPartition(masterConfig)
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go masterConfig.ExtraConfig.DataPartitionManager.Run(stopCh)
+	config := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s.URL})
+	clientSet, err := clientset.NewForConfig(config)
+	if err != nil {
+		t.Fatalf("Error in create clientset: %v", err)
+	}
+
+	defer deleteSinglePartitionConfigFile(t, configFilename)
+	defer closeFn()
+
+	// create informer from server
+	resyncPeriod := 20 * time.Second
+	informerFactory := informers.NewSharedInformerFactory(clientSet, resyncPeriod)
+	informerFactory.Start(stopCh)
+
+	startEventBroadCaster(t, clientSet)
+	informerFactory.WaitForCacheSync(stopCh)
+	rsInformer := informerFactory.Apps().V1().ReplicaSets()
+	rsLister := rsInformer.Lister()
+	go rsInformer.Informer().Run(stopCh)
+
+	informerFactory.WaitForCacheSync(stopCh)
+
+	namespace := "ns1"
+	rsClient1 := clientSet.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
+	w1 := rsClient1.Watch(metav1.ListOptions{})
+	defer w1.Stop()
+	assert.Nil(t, w1.GetFirstError())
+
+	// create rs with tenant in data partition
+	rs1 := createRS(t, clientSet, tenant1, namespace, "rs1", 1)
+	assert.NotNil(t, rs1)
+
+	// create rs with tenant not in data partition
+	rs2 := createRS(t, clientSet, "zzz", namespace, "rs2", 1)
+	assert.NotNil(t, rs2)
+
+	time.Sleep(5 * time.Second)
+
+	// check data from api servers
+	rslist1, err := rsLister.ReplicaSetsWithMultiTenancy(rs1.Namespace, rs1.Tenant).List(labels.Everything())
+	assert.Nil(t, err)
+	assert.NotNil(t, rslist1)
+
+	rslist2, err := rsLister.ReplicaSetsWithMultiTenancy(rs2.Namespace, rs2.Tenant).List(labels.Everything())
+	assert.Nil(t, err)
+	assert.True(t, rslist2 == nil || len(rslist2) == 0)
+
+	// check rs1 in informer list
+	assert.True(t, checkReplicaSetExistence3(rslist1, rs1))
+
+	// check rs2 NOT in informer 1 list
+	assert.False(t, checkReplicaSetExistence3(rslist2, rs2))
+
+	// update data partition for api server to [tenant2, zzzz)
+	dpConfigData := &v1.DataPartitionConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "partition-10",
+		},
+		StartTenant:        "tenant2",
+		IsStartTenantValid: true,
+		EndTenant:          "zzzz",
+		IsEndTenantValid:   true,
+		ServiceGroupId:     serviceGroupId,
+	}
+	dpConfig, err := clientSet.CoreV1().DataPartitionConfigs().Create(dpConfigData)
+	assert.Nil(t, err)
+	assert.Equal(t, dpConfig.Name, dpConfigData.Name)
+	assert.Equal(t, dpConfig.ServiceGroupId, dpConfigData.ServiceGroupId)
+	assert.Equal(t, dpConfig.StartTenant, dpConfigData.StartTenant)
+	assert.Equal(t, dpConfig.EndTenant, dpConfigData.EndTenant)
+	assert.Equal(t, dpConfig.IsStartTenantValid, dpConfigData.IsStartTenantValid)
+	assert.Equal(t, dpConfig.IsEndTenantValid, dpConfigData.IsEndTenantValid)
+
+	// wait for population as resync is 30 second
+	time.Sleep(35 * time.Second)
+
+	// Get list again
+	rslist3, err := rsLister.ReplicaSetsWithMultiTenancy(rs2.Namespace, rs2.Tenant).List(labels.Everything())
+	t.Logf("rs list 3 [%#v]", rslist3)
+
+	// check rs1 NOT in informer 1 list - is already in cache.
+	// No cache invalidation now - waiting for compact
+	//assert.False(t, checkReplicaSetExistence(rslist3, rs1))
+
+	// check rs2 in informer 1 list
+	assert.True(t, checkReplicaSetExistence3(rslist3, rs2))
+}
+
+func testOneApiServerCluster(t *testing.T) {
+	serviceGroupId := "10"
+	masterCount := 2
+
+	// 1. set up api server 1
+	prefix, configFilename := createSingleApiServerPartitionFile(t, "A", "z")
+	defer deleteSinglePartitionConfigFile(t, configFilename)
+	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, masterAddr1, serviceGroupId)
+	masterConfig1.ExtraConfig.MasterCount = masterCount
+	_, s1, closeFn1 := framework.RunAMaster(masterConfig1)
+	defer closeFn1()
+	stopCh1 := make(chan struct{})
+	defer close(stopCh1)
+	//go masterConfig1.ExtraConfig.DataPartitionManager.Run(stopCh1)
+	config1 := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s1.URL})
+	clientSet1, err := clientset.NewForConfig(config1)
+	if err != nil {
+		t.Fatalf("Error in create clientset 1: %v", err)
+	}
+
+	// create informer from server 1
+	resyncPeriod := 30 * time.Second
+	informerFactory1 := informers.NewSharedInformerFactory(clientSet1, resyncPeriod)
+	informerFactory1.Start(stopCh1)
+
+	startEventBroadCaster(t, clientSet1)
+	informerFactory1.WaitForCacheSync(stopCh1)
+	rsInformer1 := informerFactory1.Apps().V1().ReplicaSets()
+	rsLister1 := rsInformer1.Lister()
+	go rsInformer1.Informer().Run(stopCh1)
+
+	informerFactory1.WaitForCacheSync(stopCh1)
+
+	// 2. set up api server 2 with different ip in same service group
+	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, masterAddr2, serviceGroupId)
+	masterConfig2.ExtraConfig.MasterCount = masterCount
+	_, s2, closeFn2 := framework.RunAMaster(masterConfig2)
+	defer closeFn2()
+	stopCh2 := make(chan struct{})
+	defer close(stopCh2)
+	config2 := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s2.URL})
+	clientSet2, err := clientset.NewForConfig(config2)
+	if err != nil {
+		t.Fatalf("Error in create clientset 2: %v", err)
+	}
+
+	// create informer from server 2
+	informerFactory2 := informers.NewSharedInformerFactory(clientSet2, resyncPeriod)
+	informerFactory2.Start(stopCh2)
+
+	startEventBroadCaster(t, clientSet2)
+	informerFactory2.WaitForCacheSync(stopCh2)
+	rsInformer2 := informerFactory2.Apps().V1().ReplicaSets()
+	rsLister2 := rsInformer2.Lister()
+	go rsInformer2.Informer().Run(stopCh2)
+
+	informerFactory2.WaitForCacheSync(stopCh2)
+
+	// 3. create replicaset
+	namespace := "ns1"
+	rsClient1 := clientSet1.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
+	w1 := rsClient1.Watch(metav1.ListOptions{})
+	defer w1.Stop()
+	assert.Nil(t, w1.GetFirstError())
+
+	// create rs with tenant in data partition
+	rs1 := createRS(t, clientSet1, tenant1, namespace, "rs1", 1)
+	assert.NotNil(t, rs1)
+
+	// create rs with tenant not in data partition
+	rs2 := createRS(t, clientSet1, "zzz", namespace, "rs2", 1)
+	assert.NotNil(t, rs2)
+
+	time.Sleep(2 * time.Second)
+
+	// 4.1. check data from api servers 1
+	rslist11, err := rsLister1.ReplicaSetsWithMultiTenancy(rs1.Namespace, rs1.Tenant).List(labels.Everything())
+	assert.Nil(t, err)
+	assert.NotNil(t, rslist11)
+
+	rslist12, err := rsLister1.ReplicaSetsWithMultiTenancy(rs2.Namespace, rs2.Tenant).List(labels.Everything())
+	assert.Nil(t, err)
+	assert.True(t, rslist12 == nil || len(rslist12) == 0)
+
+	// check rs1 in informer list
+	assert.True(t, checkReplicaSetExistence3(rslist11, rs1))
+
+	// 4.2. check data from api servers 2
+	rslist21, err := rsLister2.ReplicaSetsWithMultiTenancy(rs1.Namespace, rs1.Tenant).List(labels.Everything())
+	assert.Nil(t, err)
+	assert.NotNil(t, rslist21)
+
+	rslist22, err := rsLister2.ReplicaSetsWithMultiTenancy(rs2.Namespace, rs2.Tenant).List(labels.Everything())
+	assert.Nil(t, err)
+	assert.True(t, rslist22 == nil || len(rslist22) == 0)
+
+	// check rs1 in informer list
+	assert.True(t, checkReplicaSetExistence3(rslist21, rs1))
+
+	// 5. check master lease in storage
+	endpointClient := clientv1core.NewForConfigOrDie(masterConfig1.GenericConfig.LoopbackClientConfig)
+	e, err := endpointClient.Endpoints(v1.NamespaceDefault).Get(kubernetesServiceName, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.NotNil(t, e)
+	assert.Equal(t, 1, len(e.Subsets))
+	assert.Equal(t, serviceGroupId, e.Subsets[0].ServiceGroupId)
+	assert.Equal(t, 2, len(e.Subsets[0].Addresses))
+	assert.Equal(t, masterAddr1, e.Subsets[0].Addresses[0].IP)
+	assert.Equal(t, masterAddr2, e.Subsets[0].Addresses[1].IP)
+
+	// tear down
+	deleteRS(t, clientSet1, rs1)
+	deleteRS(t, clientSet1, rs2)
+}
+
+// Cannot test data partition as DP manager is singleton - needs to test in e2e tests
+func TestTwoApiServerCluster(t *testing.T) {
+	serviceGroup1Id := "1"
+	serviceGroup2Id := "2"
+	masterCount := 3
+
+	// 1. set up api server 1 with serviceGroup1Id
+	prefix, configFilename1 := createSingleApiServerPartitionFile(t, "A", "m")
+	defer deleteSinglePartitionConfigFile(t, configFilename1)
+
+	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1, serviceGroup1Id)
+	masterConfig1.ExtraConfig.MasterCount = masterCount
+	_, _, closeFn1 := framework.RunAMaster(masterConfig1)
+	defer closeFn1()
+
+	// 2. set up api server 2 with serviceGroup2Id
+	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr2, serviceGroup2Id)
+	masterConfig2.ExtraConfig.MasterCount = masterCount
+	_, _, closeFn2 := framework.RunAMaster(masterConfig2)
+	defer closeFn2()
+
+	// 3. set up api server 3 with serviceGroup1Id
+	masterAddr3 := "172.10.10.1"
+	masterConfig3 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr3, serviceGroup1Id)
+	masterConfig3.ExtraConfig.MasterCount = masterCount
+	_, _, closeFn3 := framework.RunAMaster(masterConfig3)
+	defer closeFn3()
+
+	// 4. set up api server 4 with serviceGroup2Id
+	masterAddr4 := "100.1.1.10"
+	masterConfig4 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr4, serviceGroup2Id)
+	masterConfig4.ExtraConfig.MasterCount = masterCount
+	_, _, closeFn4 := framework.RunAMaster(masterConfig4)
+	defer closeFn4()
+
+	// 5. set up api server with serviceGroup2Id
+	masterAddr5 := "100.1.1.9"
+	masterConfig5 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr5, serviceGroup2Id)
+	masterConfig5.ExtraConfig.MasterCount = masterCount
+	_, _, closeFn5 := framework.RunAMaster(masterConfig5)
+	defer closeFn5()
+
+	time.Sleep(5 * time.Second)
+
+	// 5. check master lease in storage
+	endpointClient := clientv1core.NewForConfigOrDie(masterConfig1.GenericConfig.LoopbackClientConfig)
+	e, err := endpointClient.Endpoints(v1.NamespaceDefault).Get(kubernetesServiceName, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.NotNil(t, e)
+	t.Logf("endpoints [%+v]", e.Subsets)
+	assert.Equal(t, 2, len(e.Subsets))
+	assert.Equal(t, serviceGroup1Id, e.Subsets[0].ServiceGroupId)
+	assert.Equal(t, serviceGroup2Id, e.Subsets[1].ServiceGroupId)
+
+	assert.Equal(t, 2, len(e.Subsets[0].Addresses))
+	assert.Equal(t, masterAddr3, e.Subsets[0].Addresses[0].IP)
+	assert.Equal(t, masterAddr1, e.Subsets[0].Addresses[1].IP)
+
+	assert.Equal(t, 3, len(e.Subsets[1].Addresses))
+	assert.Equal(t, masterAddr4, e.Subsets[1].Addresses[0].IP)
+	assert.Equal(t, masterAddr5, e.Subsets[1].Addresses[1].IP)
+	assert.Equal(t, masterAddr2, e.Subsets[1].Addresses[2].IP)
+}
+
+func setUpSingleApiserver(t *testing.T, begin, end string, serviceGroupId string) (*httptest.Server, framework.CloseFunc, clientset.Interface, string) {
 	prefix, configFilename := createSingleApiServerPartitionFile(t, begin, end)
-	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, "")
+	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, "", serviceGroupId)
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	config := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s.URL})
 	clientSet, err := clientset.NewForConfig(config)

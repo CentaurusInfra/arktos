@@ -21,6 +21,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/grafov/bcast"
+	corev1 "k8s.io/api/core/v1"
 	"os"
 	"strconv"
 	"strings"
@@ -69,11 +71,12 @@ func TestOnlySetFatalOnDecodeError(b bool) {
 }
 
 type watcher struct {
-	client          *clientv3.Client
-	codec           runtime.Codec
-	versioner       storage.Versioner
-	transformer     value.Transformer
-	partitionConfig map[string]storage.Interval
+	client            *clientv3.Client
+	codec             runtime.Codec
+	versioner         storage.Versioner
+	transformer       value.Transformer
+	partitionConfig   map[string]storage.Interval
+	updatePartitionCh *bcast.Member
 }
 
 // watchChan implements watch.Interface.
@@ -91,13 +94,14 @@ type watchChan struct {
 	keyRange          keyRange
 }
 
-func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfigMap map[string]storage.Interval) *watcher {
+func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec, versioner storage.Versioner, transformer value.Transformer, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) *watcher {
 	return &watcher{
-		client:          client,
-		codec:           codec,
-		versioner:       versioner,
-		transformer:     transformer,
-		partitionConfig: partitionConfigMap,
+		client:            client,
+		codec:             codec,
+		versioner:         versioner,
+		transformer:       transformer,
+		partitionConfig:   partitionConfigMap,
+		updatePartitionCh: updatePartitionCh,
 	}
 }
 
@@ -109,17 +113,69 @@ func newWatcherWithPartitionConfig(client *clientv3.Client, codec runtime.Codec,
 // If recursive is true, it watches any children and directories under the key, excluding the root key itself.
 // pred must be non-nil. Only if pred matches the change, it will be returned.
 func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	//klog.Infof("========= watcher watch key %s", key)
 	if recursive && !strings.HasSuffix(key, "/") {
 		key += "/"
 	}
-	res := watch.NewAggregatedWatcher()
-	keyRanges := GetKeyAndOptFromPartitionConfig(key, w.partitionConfig)
-	for _, kr := range keyRanges {
-		wc := w.createWatchChan(ctx, key, rev, recursive, pred, kr)
-		go wc.run()
-		res.AddWatchInterface(wc, nil)
-	}
+
+	res := watch.NewAggregatedWatcherWithReset(ctx)
+	//klog.Infof("Created aggregated watch channel %#v for key %s", res.ResultChan(), key)
+	go w.run(ctx, key, rev, recursive, pred, res)
 	return res
+}
+
+func (w *watcher) run(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate, res *watch.AggregatedWatcher) {
+	for {
+		keyRanges := GetKeyAndOptFromPartitionConfig(key, w.partitionConfig)
+		wcs := make([]*watchChan, 0)
+
+		for _, kr := range keyRanges {
+			wc := w.createWatchChan(ctx, key, rev, recursive, pred, kr)
+			wcs = append(wcs, wc)
+			go wc.run()
+			res.AddWatchInterface(wc, nil)
+		}
+
+		if w.updatePartitionCh == nil {
+			return
+		} else {
+			select {
+			case data, ok := <-w.updatePartitionCh.Read:
+				if !ok {
+					klog.Fatalf("Channel closed for data partition update. key %s", key)
+					return
+				}
+
+				dataPartition, _ := data.(corev1.DataPartitionConfig)
+				for _, wc := range wcs {
+					wc.Stop()
+				}
+
+				w.updatePartitionConfig(dataPartition)
+				klog.V(4).Infof("Reset data partition DONE. watch key %s, New partition [%+v]", key, dataPartition)
+			}
+		}
+	}
+}
+
+func (w *watcher) updatePartitionConfig(dp corev1.DataPartitionConfig) {
+	startTenant := ""
+	if dp.IsStartTenantValid {
+		startTenant = dp.StartTenant
+	}
+	endTenant := ""
+	if dp.IsEndTenantValid {
+		endTenant = dp.EndTenant
+	}
+
+	interval := storage.Interval{
+		Begin: startTenant,
+		End:   endTenant,
+	}
+
+	for k := range w.partitionConfig {
+		w.partitionConfig[k] = interval
+	}
 }
 
 func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate, kr keyRange) *watchChan {
@@ -144,7 +200,6 @@ func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, re
 
 func (wc *watchChan) run() {
 	watchClosedCh := make(chan struct{})
-
 	go wc.startWatching(watchClosedCh)
 
 	var resultChanWG sync.WaitGroup
@@ -175,6 +230,8 @@ func (wc *watchChan) run() {
 	// we need to wait until resultChan wouldn't be used anymore
 	resultChanWG.Wait()
 	close(wc.resultChan)
+
+	klog.V(3).Infof("Result channel closed for key %s, range %+v", wc.key, wc.keyRange)
 }
 
 func (wc *watchChan) Stop() {

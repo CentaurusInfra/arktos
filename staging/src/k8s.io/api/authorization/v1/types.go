@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,6 +110,9 @@ type ResourceAttributes struct {
 	// Name is the name of the resource being requested for a "get" or deleted for a "delete". "" (empty) means all.
 	// +optional
 	Name string `json:"name,omitempty" protobuf:"bytes,7,opt,name=name"`
+	// Tenant is the tenent of the resource being request
+	// +optional
+	Tenant string `json:"tenant,omitempty" protobuf:"bytes,8,opt,name=tenant"`
 }
 
 // NonResourceAttributes includes the authorization attributes available for non-resource requests to the Authorizer interface

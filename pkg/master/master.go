@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +19,7 @@ package master
 
 import (
 	"fmt"
+	"k8s.io/apiserver/pkg/storage/datapartition"
 	"net"
 	"net/http"
 	"reflect"
@@ -156,6 +158,11 @@ type ExtraConfig struct {
 	// Number of masters running; all masters must be started with the
 	// same value for this field. (Numbers > 1 currently untested.)
 	MasterCount int
+
+	// Service Group Id for this service instance; service group id is mapped to data partition
+	ServiceGroupId       string
+	DataPartitionConfig  apiv1.DataPartitionConfig
+	DataPartitionManager *datapartition.DataPartitionConfigManager
 
 	// MasterEndpointReconcileTTL sets the time to live in seconds of an
 	// endpoint record recorded by each master. The endpoints are checked at an

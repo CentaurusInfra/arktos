@@ -45,6 +45,7 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/net:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/endpoints/handlers/negotiation:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/endpoints/request:go_default_library",
         "//vendor/github.com/emicklei/go-restful:go_default_library",
     ],
 )

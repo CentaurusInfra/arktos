@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,6 +46,8 @@ import (
 
 const kubernetesServiceName = "kubernetes"
 
+//var KubeApiServerEndpointName = "apiservice.1"
+
 // Controller is the controller manager for the core bootstrap Kubernetes
 // controller loops, which manage creating the "kubernetes" service, the
 // "default", "kube-system" and "kube-public" namespaces, and provide the IP
@@ -78,6 +81,8 @@ type Controller struct {
 	ExtraEndpointPorts        []corev1.EndpointPort
 	PublicServicePort         int
 	KubernetesServiceNodePort int
+
+	ServiceGroupId string
 
 	runner *async.Runner
 }
@@ -122,6 +127,7 @@ func (c *completedConfig) NewBootstrapController(legacyRESTStorage corerest.Lega
 		ExtraEndpointPorts:        c.ExtraConfig.ExtraEndpointPorts,
 		PublicServicePort:         publicServicePort,
 		KubernetesServiceNodePort: c.ExtraConfig.KubernetesServiceNodePort,
+		ServiceGroupId:            c.ExtraConfig.ServiceGroupId,
 	}
 }
 
@@ -143,8 +149,9 @@ func (c *Controller) Start() {
 	}
 
 	// Reconcile during first run removing itself until server is ready.
+	//endpointPorts := createEndpointPortSpec(c.PublicServicePort, KubeApiServerEndpointName, c.ExtraEndpointPorts)
 	endpointPorts := createEndpointPortSpec(c.PublicServicePort, "https", c.ExtraEndpointPorts)
-	if err := c.EndpointReconciler.RemoveEndpoints(kubernetesServiceName, c.PublicIP, endpointPorts); err != nil {
+	if err := c.EndpointReconciler.RemoveEndpoints(kubernetesServiceName, c.ServiceGroupId, c.PublicIP, endpointPorts); err != nil {
 		klog.Errorf("Unable to remove old endpoints from kubernetes service: %v", err)
 	}
 
@@ -169,13 +176,14 @@ func (c *Controller) Stop() {
 	if c.runner != nil {
 		c.runner.Stop()
 	}
+	//endpointPorts := createEndpointPortSpec(c.PublicServicePort, KubeApiServerEndpointName, c.ExtraEndpointPorts)
 	endpointPorts := createEndpointPortSpec(c.PublicServicePort, "https", c.ExtraEndpointPorts)
 	finishedReconciling := make(chan struct{})
 	go func() {
 		defer close(finishedReconciling)
-		klog.Infof("Shutting down kubernetes service endpoint reconciler")
+		klog.Infof("Shutting down kubernetes service endpoint reconciler. service group id %s", c.ServiceGroupId)
 		c.EndpointReconciler.StopReconciling()
-		if err := c.EndpointReconciler.RemoveEndpoints(kubernetesServiceName, c.PublicIP, endpointPorts); err != nil {
+		if err := c.EndpointReconciler.RemoveEndpoints(kubernetesServiceName, c.ServiceGroupId, c.PublicIP, endpointPorts); err != nil {
 			klog.Error(err)
 		}
 	}()
@@ -227,15 +235,21 @@ func (c *Controller) UpdateKubernetesService(reconcile bool) error {
 	// stop polling and start watching.
 	// TODO: add endpoints of all replicas, not just the elected master.
 	if err := createNamespaceIfNeeded(c.NamespaceClient, metav1.NamespaceDefault); err != nil {
+		//klog.Infof("UpdateKubernetesService: createNamespaceIfNeeded error %err", err)
 		return err
 	}
 
+	//servicePorts, serviceType := createPortAndServiceSpec(c.ServicePort, c.PublicServicePort, c.KubernetesServiceNodePort, KubeApiServerEndpointName, c.ExtraServicePorts)
 	servicePorts, serviceType := createPortAndServiceSpec(c.ServicePort, c.PublicServicePort, c.KubernetesServiceNodePort, "https", c.ExtraServicePorts)
 	if err := c.CreateOrUpdateMasterServiceIfNeeded(kubernetesServiceName, c.ServiceIP, servicePorts, serviceType, reconcile); err != nil {
+		//klog.Infof("UpdateKubernetesService: CreateOrUpdateMasterServiceIfNeeded error %err", err)
 		return err
 	}
+	//endpointPorts := createEndpointPortSpec(c.PublicServicePort, KubeApiServerEndpointName, c.ExtraEndpointPorts)
 	endpointPorts := createEndpointPortSpec(c.PublicServicePort, "https", c.ExtraEndpointPorts)
-	if err := c.EndpointReconciler.ReconcileEndpoints(kubernetesServiceName, c.PublicIP, endpointPorts, reconcile); err != nil {
+	//klog.Infof("UpdateKubernetesService: ReconcileEndpoints: servicename [%s], service group id [%s], publicIP [%+v], endpoint ports [%+v], reconcile [%v]", kubernetesServiceName, c.ServiceGroupId, c.PublicIP, endpointPorts, reconcile)
+	if err := c.EndpointReconciler.ReconcileEndpoints(kubernetesServiceName, c.ServiceGroupId, c.PublicIP, endpointPorts, reconcile); err != nil {
+		//klog.Infof("UpdateKubernetesService: ReconcileEndpoints error %v", err)
 		return err
 	}
 	return nil

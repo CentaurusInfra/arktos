@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@ import (
 	"os"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/klog"
@@ -61,8 +63,17 @@ func NewCSV(path string) (*TokenAuthenticator, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(record) < 3 {
+
+		size := len(record)
+		if size < 3 ||
+			(size == 3 && len(record[2]) == 0) {
 			return nil, fmt.Errorf("token file '%s' must have at least 3 columns (token, user name, user uid), found %d", path, len(record))
+		}
+
+		if size > 3 &&
+			record[size-1] == "" &&
+			record[size-2] == "" {
+			return nil, fmt.Errorf("token file '%s' is expected to specify tenant but it doesn't, found %d", path, len(record))
 		}
 
 		recordNum++
@@ -71,16 +82,25 @@ func NewCSV(path string) (*TokenAuthenticator, error) {
 			continue
 		}
 
+		tenant := metav1.TenantSystem
+		// check for comma in the last record
+		if size >= 3 &&
+			record[size-1] != "" &&
+			record[size-2] == "" {
+			tenant = record[size-1]
+		}
+
 		obj := &user.DefaultInfo{
-			Name: record[1],
-			UID:  record[2],
+			Name:   record[1],
+			UID:    record[2],
+			Tenant: tenant,
 		}
 		if _, exist := tokens[record[0]]; exist {
 			klog.Warningf("duplicate token has been found in token file '%s', record number '%d'", path, recordNum)
 		}
 		tokens[record[0]] = obj
 
-		if len(record) >= 4 {
+		if len(record) > 3 && len(record[3]) != 0 {
 			obj.Groups = strings.Split(record[3], ",")
 		}
 	}

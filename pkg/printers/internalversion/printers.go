@@ -203,6 +203,18 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(serviceColumnDefinitions, printService)
 	h.TableHandler(serviceColumnDefinitions, printServiceList)
 
+	dataPartitionConfigColumnDefinition := []metav1.TableColumnDefinition{
+		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "StartTenant", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["startTenant"]},
+		{Name: "IsStartTenantValid", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["isStartTenantValid"]},
+		{Name: "EndTenant", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["endTenant"]},
+		{Name: "IsEndTenantValid", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["isEndTenantValid"]},
+		{Name: "ServiceGroupId", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["serviceGroupId"]},
+	}
+
+	h.TableHandler(dataPartitionConfigColumnDefinition, printDataPartition)
+	h.TableHandler(dataPartitionConfigColumnDefinition, printDataPartitionList)
+
 	ingressColumnDefinitions := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Hosts", Type: "string", Description: "Hosts that incoming requests are matched against before the ingress rule"},
@@ -227,6 +239,7 @@ func AddHandlers(h printers.PrintHandler) {
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Endpoints", Type: "string", Description: apiv1.Endpoints{}.SwaggerDoc()["subsets"]},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
+		{Name: "ServiceGroupId", Type: "string", Description: "The service group id of the api server cluster"},
 	}
 	h.TableHandler(endpointColumnDefinitions, printEndpoints)
 	h.TableHandler(endpointColumnDefinitions, printEndpointsList)
@@ -500,6 +513,20 @@ func AddHandlers(h printers.PrintHandler) {
 	}
 	h.TableHandler(volumeAttachmentColumnDefinitions, printVolumeAttachment)
 	h.TableHandler(volumeAttachmentColumnDefinitions, printVolumeAttachmentList)
+}
+
+func formatServiceGroupId(endpoints *api.Endpoints) string {
+	if len(endpoints.Subsets) == 0 {
+		return "<none>"
+	}
+
+	list := []string{}
+	for i := range endpoints.Subsets {
+		ss := &endpoints.Subsets[i]
+		list = append(list, ss.ServiceGroupId)
+	}
+	ret := strings.Join(list, ",")
+	return ret
 }
 
 // Pass ports=nil for all ports.
@@ -1046,6 +1073,31 @@ func printServiceList(list *api.ServiceList, options printers.PrintOptions) ([]m
 	return rows, nil
 }
 
+func printDataPartition(obj *api.DataPartitionConfig, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	row := metav1beta1.TableRow{
+		Object: runtime.RawExtension{Object: obj},
+	}
+	row.Cells = append(row.Cells, obj.Name)
+	row.Cells = append(row.Cells, obj.StartTenant)
+	row.Cells = append(row.Cells, obj.IsStartTenantValid)
+	row.Cells = append(row.Cells, obj.EndTenant)
+	row.Cells = append(row.Cells, obj.IsEndTenantValid)
+	row.Cells = append(row.Cells, obj.ServiceGroupId)
+	return []metav1beta1.TableRow{row}, nil
+}
+
+func printDataPartitionList(list *api.DataPartitionConfigList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	rows := make([]metav1beta1.TableRow, 0, len(list.Items))
+	for i := range list.Items {
+		r, err := printDataPartition(&list.Items[i], options)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, r...)
+	}
+	return rows, nil
+}
+
 func formatHosts(rules []networking.IngressRule) string {
 	list := []string{}
 	max := 3
@@ -1161,7 +1213,7 @@ func printEndpoints(obj *api.Endpoints, options printers.PrintOptions) ([]metav1
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
-	row.Cells = append(row.Cells, obj.Name, formatEndpoints(obj, nil), translateTimestampSince(obj.CreationTimestamp))
+	row.Cells = append(row.Cells, obj.Name, formatEndpoints(obj, nil), translateTimestampSince(obj.CreationTimestamp), formatServiceGroupId(obj))
 	return []metav1beta1.TableRow{row}, nil
 }
 

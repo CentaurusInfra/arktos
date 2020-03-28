@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,6 +40,7 @@ import (
 	resourcequotaconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/resourcequota/config/v1alpha1"
 	serviceconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/service/config/v1alpha1"
 	serviceaccountconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/serviceaccount/config/v1alpha1"
+	tenantconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/tenant/config/v1alpha1"
 	ttlafterfinishedconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/ttlafterfinished/config/v1alpha1"
 	attachdetachconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config/v1alpha1"
 	persistentvolumeconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config/v1alpha1"
@@ -99,6 +101,8 @@ func SetDefaults_KubeControllerManagerConfiguration(obj *kubectrlmgrconfigv1alph
 	serviceconfigv1alpha1.RecommendedDefaultServiceControllerConfiguration(&obj.ServiceController)
 	// Use the default RecommendedDefaultSAControllerConfiguration options
 	serviceaccountconfigv1alpha1.RecommendedDefaultSAControllerConfiguration(&obj.SAController)
+	// Use the default RecommendedDefaultTenantControllerConfiguration options
+	tenantconfigv1alpha1.RecommendedDefaultTenantControllerConfiguration(&obj.TenantController)
 	// Use the default RecommendedDefaultTTLAfterFinishedControllerConfiguration options
 	ttlafterfinishedconfigv1alpha1.RecommendedDefaultTTLAfterFinishedControllerConfiguration(&obj.TTLAfterFinishedController)
 	// Use the default RecommendedDefaultPersistentVolumeBinderControllerConfiguration options

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,6 +54,9 @@ type ServerRunOptions struct {
 	MaxRequestBodyBytes       int64
 	TargetRAMMB               int
 	EnableInfightQuotaHandler bool
+
+	// Set api server service group id - used for data partition
+	ServiceGroupId string
 }
 
 func NewServerRunOptions() *ServerRunOptions {

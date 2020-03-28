@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,8 +80,8 @@ func newClusterRoleBinding(roleName string, subjects ...string) *rbacv1.ClusterR
 	return r
 }
 
-func newRoleBinding(namespace, roleName string, bindType uint16, subjects ...string) *rbacv1.RoleBinding {
-	r := &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Namespace: namespace}}
+func newRoleBinding(namespace, tenant, roleName string, bindType uint16, subjects ...string) *rbacv1.RoleBinding {
+	r := &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Tenant: tenant}}
 
 	switch bindType {
 	case bindToRole:
@@ -114,15 +115,17 @@ type defaultAttributes struct {
 	subresource string
 	namespace   string
 	apiGroup    string
+	tenant      string
 }
 
 func (d *defaultAttributes) String() string {
-	return fmt.Sprintf("user=(%s), groups=(%s), verb=(%s), resource=(%s), namespace=(%s), apiGroup=(%s)",
-		d.user, strings.Split(d.groups, ","), d.verb, d.resource, d.namespace, d.apiGroup)
+	return fmt.Sprintf("user=(%s), groups=(%s), verb=(%s), resource=(%s), namespace=(%s), apiGroup=(%s), tenant=(%s)",
+		d.user, strings.Split(d.groups, ","), d.verb, d.resource, d.namespace, d.apiGroup, d.tenant)
 }
 
 func (d *defaultAttributes) GetUser() user.Info {
-	return &user.DefaultInfo{Name: d.user, Groups: strings.Split(d.groups, ",")}
+	// using the same tenant as the request tenant
+	return &user.DefaultInfo{Name: d.user, Tenant: d.tenant, Groups: strings.Split(d.groups, ",")}
 }
 func (d *defaultAttributes) GetVerb() string         { return d.verb }
 func (d *defaultAttributes) IsReadOnly() bool        { return d.verb == "get" || d.verb == "watch" }
@@ -134,6 +137,7 @@ func (d *defaultAttributes) GetAPIGroup() string     { return d.apiGroup }
 func (d *defaultAttributes) GetAPIVersion() string   { return "" }
 func (d *defaultAttributes) IsResourceRequest() bool { return true }
 func (d *defaultAttributes) GetPath() string         { return "" }
+func (d *defaultAttributes) GetTenant() string       { return d.tenant }
 
 func TestAuthorizer(t *testing.T) {
 	tests := []struct {
@@ -150,20 +154,20 @@ func TestAuthorizer(t *testing.T) {
 				newClusterRole("admin", newRule("*", "*", "*", "*")),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "admin", bindToClusterRole, "User:admin", "Group:admins"),
+				newRoleBinding("ns1", "system", "admin", bindToClusterRole, "User:admin", "Group:admins"),
 			},
 			shouldPass: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "Pods", "", "ns1", ""},
-				&defaultAttributes{"admin", "", "watch", "Pods", "", "ns1", ""},
-				&defaultAttributes{"admin", "group1", "watch", "Foobar", "", "ns1", ""},
-				&defaultAttributes{"joe", "admins", "watch", "Foobar", "", "ns1", ""},
-				&defaultAttributes{"joe", "group1,admins", "watch", "Foobar", "", "ns1", ""},
+				&defaultAttributes{"admin", "", "get", "Pods", "", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "watch", "Pods", "", "ns1", "", "system"},
+				&defaultAttributes{"admin", "group1", "watch", "Foobar", "", "ns1", "", "system"},
+				&defaultAttributes{"joe", "admins", "watch", "Foobar", "", "ns1", "", "system"},
+				&defaultAttributes{"joe", "group1,admins", "watch", "Foobar", "", "ns1", "", "system"},
 			},
 			shouldFail: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "GET", "Pods", "", "ns2", ""},
-				&defaultAttributes{"admin", "", "GET", "Nodes", "", "", ""},
-				&defaultAttributes{"admin", "admins", "GET", "Pods", "", "ns2", ""},
-				&defaultAttributes{"admin", "admins", "GET", "Nodes", "", "", ""},
+				&defaultAttributes{"admin", "", "GET", "Pods", "", "ns2", "", "system"},
+				&defaultAttributes{"admin", "", "GET", "Nodes", "", "", "", "system"},
+				&defaultAttributes{"admin", "admins", "GET", "Pods", "", "ns2", "", "system"},
+				&defaultAttributes{"admin", "admins", "GET", "Nodes", "", "", "", "system"},
 			},
 		},
 		{
@@ -179,32 +183,32 @@ func TestAuthorizer(t *testing.T) {
 				newClusterRoleBinding("non-resource-url-prefix", "User:prefixed", "Group:prefixed"),
 			},
 			shouldPass: []authorizer.Attributes{
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo"}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin"}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin"}, Verb: "watch", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}}, Verb: "watch", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: "system"}, Verb: "get", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: "system"}, Verb: "get", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: "system"}, Verb: "get", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: "system"}, Verb: "get", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: "system"}, Verb: "watch", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: "system"}, Verb: "watch", Path: "/apis"},
 
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed"}, Verb: "get", Path: "/apis/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}}, Verb: "get", Path: "/apis/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed"}, Verb: "get", Path: "/apis/v1/foobar"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}}, Verb: "get", Path: "/apis/v1/foorbar"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: "system"}, Verb: "get", Path: "/apis/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: "system"}, Verb: "get", Path: "/apis/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: "system"}, Verb: "get", Path: "/apis/v1/foobar"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: "system"}, Verb: "get", Path: "/apis/v1/foorbar"},
 			},
 			shouldFail: []authorizer.Attributes{
 				// wrong verb
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo"}, Verb: "watch", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}}, Verb: "watch", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: "system"}, Verb: "watch", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: "system"}, Verb: "watch", Path: "/apis"},
 
 				// wrong path
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo"}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin"}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: "system"}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: "system"}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: "system"}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: "system"}, Verb: "get", Path: "/api/v1"},
 
 				// not covered by prefix
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed"}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: "system"}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: "system"}, Verb: "get", Path: "/api/v1"},
 			},
 		},
 		{
@@ -213,13 +217,13 @@ func TestAuthorizer(t *testing.T) {
 				newClusterRole("admin", newRule("*", "*", "pods", "*")),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "admin", bindToClusterRole, "User:admin", "Group:admins"),
+				newRoleBinding("ns1", "system", "admin", bindToClusterRole, "User:admin", "Group:admins"),
 			},
 			shouldPass: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", ""},
+				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", "", "system"},
 			},
 			shouldFail: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", ""},
+				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", "", "system"},
 			},
 		},
 		{
@@ -231,16 +235,16 @@ func TestAuthorizer(t *testing.T) {
 				),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "admin", bindToClusterRole, "User:admin", "Group:admins"),
+				newRoleBinding("ns1", "system", "admin", bindToClusterRole, "User:admin", "Group:admins"),
 			},
 			shouldPass: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", ""},
-				&defaultAttributes{"admin", "", "get", "pods", "scale", "ns1", ""},
-				&defaultAttributes{"admin", "", "get", "deployments", "scale", "ns1", ""},
-				&defaultAttributes{"admin", "", "get", "anything", "scale", "ns1", ""},
+				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "pods", "scale", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "deployments", "scale", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "anything", "scale", "ns1", "", "system"},
 			},
 			shouldFail: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", ""},
+				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", "", "system"},
 			},
 		},
 	}

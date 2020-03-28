@@ -1028,6 +1028,35 @@ message DaemonEndpoint {
   optional int32 Port = 1;
 }
 
+// DataPartitionConfig contains api server data partition configurations. Name in ObjectMeta is used for identitification
+message DataPartitionConfig {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // Start tenant is inclusive
+  optional string startTenant = 2;
+
+  // Whether this is an open end start
+  optional bool isStartTenantValid = 3;
+
+  // End tenant is exclusive
+  optional string endTenant = 4;
+
+  // Whether this is an open end end
+  optional bool isEndTenantValid = 5;
+
+  // Which service group is using this data configuration
+  optional string serviceGroupId = 6;
+}
+
+// DataPartitionConfigList is a list of data partition configurations that api server data partition use
+message DataPartitionConfigList {
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  // List of data partition configuration
+  repeated DataPartitionConfig items = 2;
+}
+
 // Represents downward API info for projecting into a projected volume.
 // Note that this is identical to a downwardAPI volume source without the default
 // mode.
@@ -1161,6 +1190,10 @@ message EndpointSubset {
   // Port numbers available on the related IP addresses.
   // +optional
   repeated EndpointPort ports = 3;
+
+  // The service group id of the api server cluster
+  // +optional
+  optional string serviceGroupId = 4;
 }
 
 // Endpoints is a collection of endpoints that implement the actual service. Example:

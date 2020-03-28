@@ -33,6 +33,8 @@ type Interface interface {
 	ConfigMaps() ConfigMapInformer
 	// ControllerInstances returns a ControllerInstanceInformer.
 	ControllerInstances() ControllerInstanceInformer
+	// DataPartitionConfigs returns a DataPartitionConfigInformer.
+	DataPartitionConfigs() DataPartitionConfigInformer
 	// Endpoints returns a EndpointsInformer.
 	Endpoints() EndpointsInformer
 	// Events returns a EventInformer.
@@ -100,6 +102,11 @@ func (v *version) ConfigMaps() ConfigMapInformer {
 // ControllerInstances returns a ControllerInstanceInformer.
 func (v *version) ControllerInstances() ControllerInstanceInformer {
 	return &controllerInstanceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// DataPartitionConfigs returns a DataPartitionConfigInformer.
+func (v *version) DataPartitionConfigs() DataPartitionConfigInformer {
+	return &dataPartitionConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Endpoints returns a EndpointsInformer.

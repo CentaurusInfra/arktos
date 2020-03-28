@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grafov/bcast"
 	"path"
 	"reflect"
 	"strings"
@@ -85,20 +86,20 @@ type objState struct {
 }
 
 // New returns an etcd3 implementation of storage.Interface.
-func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool) storage.Interface {
-	return NewWithPartitionConfig(c, codec, prefix, transformer, pagingEnabled, nil)
+func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, updatePartitionCh *bcast.Member) storage.Interface {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil, updatePartitionCh)
 }
 
 // New returns an etcd3 implementation of storage.Interface with partition config
-func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigMap map[string]storage.Interval) storage.Interface {
-	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfigMap)
+func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) storage.Interface {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfigMap, updatePartitionCh)
 }
 
-func newStore(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer) *store {
-	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil)
+func newStore(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, updatePartitionCh *bcast.Member) *store {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil, updatePartitionCh)
 }
 
-func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfigMap map[string]storage.Interval) *store {
+func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) *store {
 	versioner := etcd.APIObjectVersioner{}
 	result := &store{
 		client:        c,
@@ -110,7 +111,7 @@ func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec r
 		// no-op for default prefix of '/registry'.
 		// keeps compatibility with etcd2 impl for custom prefixes that don't start with '/'
 		pathPrefix:   path.Join("/", prefix),
-		watcher:      newWatcherWithPartitionConfig(c, codec, versioner, transformer, partitionConfigMap),
+		watcher:      newWatcherWithPartitionConfig(c, codec, versioner, transformer, partitionConfigMap, updatePartitionCh),
 		leaseManager: newDefaultLeaseManager(c),
 	}
 	return result
@@ -689,11 +690,13 @@ func growSlice(v reflect.Value, maxCapacity int, sizes ...int) {
 
 // Watch implements storage.Interface.Watch.
 func (s *store) Watch(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	//klog.Infof("=====etcd3 store watch key %s", key)
 	return s.watch(ctx, key, resourceVersion, pred, false)
 }
 
 // WatchList implements storage.Interface.WatchList.
 func (s *store) WatchList(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	//klog.Infof("=====etcd3 store watchlist key %s", key)
 	return s.watch(ctx, key, resourceVersion, pred, true)
 }
 
