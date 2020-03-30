@@ -212,7 +212,7 @@ func checkEndpointSubsetFormat(ss []corev1.EndpointSubset, ip string, ports []co
 		}
 	}
 	for _, addr := range sub.Addresses {
-		if addr.IP == ip { 
+		if addr.IP == ip {
 			ipCorrect = len(sub.Addresses) <= count
 			break
 		}
