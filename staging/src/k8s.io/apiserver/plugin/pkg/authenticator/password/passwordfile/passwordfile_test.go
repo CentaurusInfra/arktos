@@ -20,6 +20,7 @@ package passwordfile
 import (
 	"context"
 	"io/ioutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"reflect"
 	"testing"
@@ -56,13 +57,13 @@ password15,user15,uid15,"group1,group2",otherdata,,tenant15
 		{
 			Username: "user1",
 			Password: "password1",
-			User:     &user.DefaultInfo{Name: "user1", UID: "uid1", Tenant: "system"},
+			User:     &user.DefaultInfo{Name: "user1", UID: "uid1", Tenant: metav1.TenantSystem},
 			Ok:       true,
 		},
 		{
 			Username: "user2",
 			Password: "password2",
-			User:     &user.DefaultInfo{Name: "user2", UID: "uid2", Tenant: "system"},
+			User:     &user.DefaultInfo{Name: "user2", UID: "uid2", Tenant: metav1.TenantSystem},
 			Ok:       true,
 		},
 		{
@@ -76,31 +77,31 @@ password15,user15,uid15,"group1,group2",otherdata,,tenant15
 		{
 			Username: "user3",
 			Password: "password3",
-			User:     &user.DefaultInfo{Name: "user3", UID: "uid3", Groups: []string{"group1", "group2"}, Tenant: "system"},
+			User:     &user.DefaultInfo{Name: "user3", UID: "uid3", Groups: []string{"group1", "group2"}, Tenant: metav1.TenantSystem},
 			Ok:       true,
 		},
 		{
 			Username: "user4",
 			Password: "password4",
-			User:     &user.DefaultInfo{Name: "user4", UID: "uid4", Groups: []string{"group2"}, Tenant: "system"},
+			User:     &user.DefaultInfo{Name: "user4", UID: "uid4", Groups: []string{"group2"}, Tenant: metav1.TenantSystem},
 			Ok:       true,
 		},
 		{
 			Username: "user5",
 			Password: "password5",
-			User:     &user.DefaultInfo{Name: "user5", UID: "uid5", Groups: []string{"group5"}, Tenant: "system"},
+			User:     &user.DefaultInfo{Name: "user5", UID: "uid5", Groups: []string{"group5"}, Tenant: metav1.TenantSystem},
 			Ok:       true,
 		},
 		{
 			Username: "user6",
 			Password: "password6",
-			User:     &user.DefaultInfo{Name: "user6", UID: "uid6", Groups: []string{"group5"}, Tenant: "system"},
+			User:     &user.DefaultInfo{Name: "user6", UID: "uid6", Groups: []string{"group5"}, Tenant: metav1.TenantSystem},
 			Ok:       true,
 		},
 		{
 			Username: "user7",
 			Password: "password7",
-			User:     &user.DefaultInfo{Name: "user7", UID: "uid7", Groups: []string{"group1", "group2"}, Tenant: "system"},
+			User:     &user.DefaultInfo{Name: "user7", UID: "uid7", Groups: []string{"group1", "group2"}, Tenant: metav1.TenantSystem},
 			Ok:       true,
 		},
 		{
