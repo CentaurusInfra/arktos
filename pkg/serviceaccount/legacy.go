@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@ func LegacyClaims(serviceAccount v1.ServiceAccount, secret v1.Secret) (*jwt.Clai
 			ServiceAccountName: serviceAccount.Name,
 			ServiceAccountUID:  string(serviceAccount.UID),
 			SecretName:         secret.Name,
+			Tenant:             secret.Tenant,
 		}
 }
 
@@ -46,6 +48,7 @@ type legacyPrivateClaims struct {
 	ServiceAccountUID  string `json:"kubernetes.io/serviceaccount/service-account.uid"`
 	SecretName         string `json:"kubernetes.io/serviceaccount/secret.name"`
 	Namespace          string `json:"kubernetes.io/serviceaccount/namespace"`
+	Tenant             string `json:"kubernetes.io/serviceaccount/tenant"`
 }
 
 func NewLegacyValidator(lookup bool, getter ServiceAccountTokenGetter) Validator {
@@ -77,6 +80,10 @@ func (v *legacyValidator) Validate(tokenData string, public *jwt.Claims, private
 	if len(namespace) == 0 {
 		return nil, errors.New("namespace claim is missing")
 	}
+	tenant := private.Tenant
+	if len(tenant) == 0 {
+		return nil, errors.New("tenant claim is missing")
+	}
 	secretName := private.SecretName
 	if len(secretName) == 0 {
 		return nil, errors.New("secretName claim is missing")
@@ -97,9 +104,9 @@ func (v *legacyValidator) Validate(tokenData string, public *jwt.Claims, private
 
 	if v.lookup {
 		// Make sure token hasn't been invalidated by deletion of the secret
-		secret, err := v.getter.GetSecret(namespace, secretName)
+		secret, err := v.getter.GetSecretWithMultiTenancy(tenant, namespace, secretName)
 		if err != nil {
-			klog.V(4).Infof("Could not retrieve token %s/%s for service account %s/%s: %v", namespace, secretName, namespace, serviceAccountName, err)
+			klog.V(4).Infof("Could not retrieve secret %s/%s/%s for service account %s/%s/%s: %v", tenant, namespace, secretName, tenant, namespace, serviceAccountName, err)
 			return nil, errors.New("Token has been invalidated")
 		}
 		if secret.DeletionTimestamp != nil {
@@ -112,9 +119,9 @@ func (v *legacyValidator) Validate(tokenData string, public *jwt.Claims, private
 		}
 
 		// Make sure service account still exists (name and UID)
-		serviceAccount, err := v.getter.GetServiceAccount(namespace, serviceAccountName)
+		serviceAccount, err := v.getter.GetServiceAccountWithMultiTenancy(tenant, namespace, serviceAccountName)
 		if err != nil {
-			klog.V(4).Infof("Could not retrieve service account %s/%s: %v", namespace, serviceAccountName, err)
+			klog.V(4).Infof("Could not retrieve service account %s/%s/%s: %v", tenant, namespace, serviceAccountName, err)
 			return nil, err
 		}
 		if serviceAccount.DeletionTimestamp != nil {
@@ -131,6 +138,7 @@ func (v *legacyValidator) Validate(tokenData string, public *jwt.Claims, private
 		Namespace: private.Namespace,
 		Name:      private.ServiceAccountName,
 		UID:       private.ServiceAccountUID,
+		Tenant:    private.Tenant,
 	}, nil
 }
 
