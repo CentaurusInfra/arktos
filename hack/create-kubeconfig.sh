@@ -21,58 +21,79 @@ set -o pipefail
 LOG_DIR=${LOG_DIR:-"/tmp"}
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 CERT_DIR=${CERT_DIR:-"/var/run/kubernetes"}
-CERT_ROOTNAME=${CERT_ROOTNAME:-"host"}
 
 source "${KUBE_ROOT}/hack/lib/util.sh"
+
+display_usage() {
+  echo "The script can be run with the following formats:"
+  echo "hack/create-kubeconfig.sh command filepath to create a command of building new kubeconfig filepath from default admin.kubeconfig"
+  echo "hack/create-kubeconfig.sh command filepath1 filepath2 to create a command of building a new kubeconfig filepath2 from the specified kubeconfig filepath1"
+  echo "hack/create-kubeconfig.sh create server, certificate-authority-data client-certificate-data client-key-data filepath to the command generated to build a new kubeconfig filepath"
+}
 
 # Ensure CERT_DIR is created for crt/key and kubeconfig
 mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
 CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-
 # There are following commands to run the script
 # hack/create-kubeconfig.sh is to create a kubeconfig giving the following params
 # hack/create-kubeconfig.sh extract key is to extract content from an existing kubeconfig.
 if [ $# -lt 1 ] ; then
-  if [ -z "${KUBECONFIG_SERVER}" ]; then
-    echo "KUBECONFIG_SERVER has not been set"
-    exit 1
-  fi
-  if [ -z "${KUBECONFIG_CA}" ]; then
-    echo "KUBECONFIG_CA has not been set"
-    exit 1
-  fi
-  if [ -z "${KUBECONFIG_CERT}" ]; then
-    echo "KUBECONFIG_CERT has not been set"
-    exit 1
-  fi
-  if [ -z "${KUBECONFIG_KEY}" ]; then
-    echo "KUBECONFIG_KEY has not been set"
-    exit 1
-  fi
-  server=${KUBECONFIG_SERVER}
-  protocal="$(cut -d':' -f1 <<<"$server")"
-  url="$(cut -d':' -f2<<<"$server")"
-  ports="$(cut -d':' -f3<<<"$server")"
-  port="$(cut -d'/' -f1<<<"$ports")"
-
-  ${CONTROLPLANE_SUDO}  sh -c 'echo ${KUBECONFIG_CA}   | base64 -d > ${CERT_DIR}/ca-${CERT_ROOTNAME}.crt'
-  ${CONTROLPLANE_SUDO}  sh -c 'echo ${KUBECONFIG_CERT} | base64 -d > ${CERT_DIR}/client-${CERT_ROOTNAME}.crt'
-  ${CONTROLPLANE_SUDO}  sh -c 'echo ${KUBECONFIG_KEY}  | base64 -d > ${CERT_DIR}/client-${CERT_ROOTNAME}.key'
-
-  kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "ca-${CERT_ROOTNAME}.crt" "$protocal:$url" $port ${CERT_ROOTNAME}
-
+  display_usage
 else
-  echo "The current operation is $1"
   case $1 in
     extract)
-      echo "Here is $2"
-      echo "${CERT_DIR}/admin.kubeconfig"
       if [ -n "$2" ]; then
         ${CONTROLPLANE_SUDO} grep $2 ${CERT_DIR}/admin.kubeconfig | awk '{print $2}'
       fi
       ;;
+    command)
+      filepath=${CERT_DIR}/admin.kubeconfig
+      newfilepath=${CERT_DIR}/new.kubeconfig
+      if [[ $# -eq 2 ]] ; then
+         newfilepath=$2
+      elif [[ $# -eq 3 ]] ; then
+         filepath=$2
+         newfilepath=$3
+      else 
+         display_usage
+         exit 0
+      fi
+      host="$(${CONTROLPLANE_SUDO} grep server $filepath | awk '{print $2}')"
+      ca="$(${CONTROLPLANE_SUDO} grep certificate-authority-data $filepath | awk '{print $2}')"
+      cert="$(${CONTROLPLANE_SUDO} grep client-certificate-data $filepath | awk '{print $2}')"
+      key="$(${CONTROLPLANE_SUDO} grep client-key-data $filepath | awk '{print $2}')"
+      echo "hack/create-kubeconfig.sh create $host $ca $cert $key $newfilepath"
+      ;;
+    create)
+      if [[ $# -ne 6 ]] ; then
+        display_usage
+      else 
+        cat <<EOF |  ${CONTROLPLANE_SUDO} tee -a $6
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: $3  
+    server: $2
+  name: local-up-cluster
+contexts:
+- context:
+    cluster: local-up-cluster
+    user: local-up-cluster
+  name: local-up-cluster
+current-context: local-up-cluster
+kind: Config
+preferences: {}
+users:
+- name: local-up-cluster
+  user:
+    client-certificate-data: $4
+    client-key-data: $5
+EOF
+     fi
+       ;;
     *)
-      echo "Unknown operation"
+      display_usage
       ;;
   esac
 fi
+
