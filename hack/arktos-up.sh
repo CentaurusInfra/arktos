@@ -18,6 +18,10 @@ PARTITION_CONFIG_DIR=${PARTITION_CONFIG_DIR:-"/var/run/kubernetes/"}
 
 VIRTLET_METADATA_DIR=${VIRTLET_METADATA_DIR:-"/var/lib/virtlet"}
 VIRTLET_LOG_DIR=${VIRTLET_LOG_DIR:-"/var/log/virtlet"}
+VIRTLET_DEPLOYMENT_FILES_DIR=${VIRTLET_DEPLOYMENT_FILES_DIR:-"/tmp"}
+
+# Default to vm-runtime master branch for now till we have a release and versioning setup
+VIRTLET_DEPLOYMENT_FILES_SRC=${VIRTLET_DEPLOYMENT_FILES_SRC:-"https://raw.githubusercontent.com/futurewei-cloud/arktos-vm-runtime/master/deploy"}
 
 APPARMOR_ENABLED=${APPARMOR_ENABLED:-""}
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
@@ -185,37 +189,6 @@ fi
 if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   echo "Containerd socket file check failed. Please check containerd socket file path"
   exit 1
-fi
-
-if [ "${APPARMOR_ENABLED}" == "true" ]; then
-  echo "Config test env under apparmor enabled host"
-  # Start AppArmor service before we have scripts to configure it properly
-  if ! sudo stemctl is-active --quiet apparmor; then
-    echo "Starting Apparmor service"
-    sudo systemctl start apparmor
-  fi
-
-  # install runtime apparmor profiles and reload apparmor
-  echo "Intalling arktos runtime apparmor profiles"
-  APPARMOR_PROFILE_DIR=${KUBE_ROOT}/hack/runtime/apparmor
-  cp ${APPARMOR_PROFILE_DIR}/libvirt-qemu /etc/apparmor.d/abstractions/
-  sudo install -m 0644 ${APPARMOR_PROFILE_DIR}/libvirtd ${APPARMOR_PROFILE_DIR}/virtlet ${APPARMOR_PROFILE_DIR}/vms -t /etc/apparmor.d/
-  sudo apparmor_parser -r /etc/apparmor.d/libvirtd
-  sudo apparmor_parser -r /etc/apparmor.d/virtlet
-  sudo apparmor_parser -r /etc/apparmor.d/vms
-  echo "Completed"
-  echo "Setting annotations for the runtime daemonset"
-  sed -i 's+apparmorlibvirtname+container.apparmor.security.beta.kubernetes.io/libvirt+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorlibvirtvalue+localhost/libvirtd+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvmsname+container.apparmor.security.beta.kubernetes.io/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvmsvalue+localhost/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvirtletname+container.apparmor.security.beta.kubernetes.io/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvirtletvalue+localhost/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  echo "Completed"
-else
-  # TODO: FIXME: if likely, one can move back to apparmor disabled env, the yaml needs reset or re-checkout	
-  echo "Stopping Apparmor service"
-  sudo systemctl stop apparmor
 fi
 
 # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
@@ -1250,9 +1223,9 @@ while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3
 
 cluster/kubectl.sh label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file hack/runtime/images.yaml
+cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
-cluster/kubectl.sh create -f hack/runtime/vmruntime.yaml
+cluster/kubectl.sh create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
 cluster/kubectl.sh get ds --namespace kube-system
 
