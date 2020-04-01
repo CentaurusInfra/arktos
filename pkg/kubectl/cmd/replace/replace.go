@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -231,7 +232,7 @@ func (o *ReplaceOptions) Run() error {
 		}
 
 		// Serialize the object with the annotation applied.
-		obj, err := resource.NewHelper(info.Client, info.Mapping).Replace(info.Namespace, info.Name, true, info.Object)
+		obj, err := resource.NewHelper(info.Clients, info.Mapping).Replace(info.Namespace, info.Name, true, info.Object)
 		if err != nil {
 			return cmdutil.AddSourceToErr("replacing", info.Source, err)
 		}
@@ -321,7 +322,7 @@ func (o *ReplaceOptions) forceReplace() error {
 			klog.V(4).Infof("error recording current command: %v", err)
 		}
 
-		obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, nil)
+		obj, err := resource.NewHelper(info.Clients, info.Mapping).Create(info.Namespace, true, info.Object, nil)
 		if err != nil {
 			return err
 		}

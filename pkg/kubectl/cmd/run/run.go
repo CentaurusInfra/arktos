@@ -707,7 +707,8 @@ func (o *RunOptions) createGeneratedObject(f cmdutil.Factory, cmd *cobra.Command
 		if err != nil {
 			return nil, err
 		}
-		actualObj, err = resource.NewHelper(client, mapping).Create(namespace, false, obj, nil)
+		// creating an object is a single client job
+		actualObj, err = resource.NewHelper([]resource.RESTClient{client}, mapping).Create(namespace, false, obj, nil)
 		if err != nil {
 			return nil, err
 		}

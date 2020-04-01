@@ -22,6 +22,10 @@ LOG_DIR=${LOG_DIR:-"/tmp"}
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 CERT_DIR=${CERT_DIR:-"/var/run/kubernetes"}
 
+# Kube-apiserver service group id
+APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-"1"}
+CLUSTER_UP_NAME="service_group_${APISERVER_SERVICEGROUPID}"
+
 source "${KUBE_ROOT}/hack/lib/util.sh"
 
 display_usage() {
@@ -74,17 +78,17 @@ clusters:
 - cluster:
     certificate-authority-data: $3  
     server: $2
-  name: local-up-cluster
+  name: $CLUSTER_UP_NAME
 contexts:
 - context:
-    cluster: local-up-cluster
-    user: local-up-cluster
-  name: local-up-cluster
-current-context: local-up-cluster
+    cluster: $CLUSTER_UP_NAME
+    user: $CLUSTER_UP_NAME
+  name: $CLUSTER_UP_NAME
+current-context: $CLUSTER_UP_NAME
 kind: Config
 preferences: {}
 users:
-- name: local-up-cluster
+- name: $CLUSTER_UP_NAME
   user:
     client-certificate-data: $4
     client-key-data: $5

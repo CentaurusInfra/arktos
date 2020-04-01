@@ -329,7 +329,7 @@ func (o *DeleteOptions) DeleteResult(r *resource.Result) error {
 }
 
 func (o *DeleteOptions) deleteResource(info *resource.Info, deleteOptions *metav1.DeleteOptions) (runtime.Object, error) {
-	deleteResponse, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptionsWithMultiTenancy(info.Tenant, info.Namespace, info.Name, deleteOptions)
+	deleteResponse, err := resource.NewHelper(info.Clients, info.Mapping).DeleteWithOptionsWithMultiTenancy(info.Tenant, info.Namespace, info.Name, deleteOptions)
 	if err != nil {
 		return nil, cmdutil.AddSourceToErr("deleting", info.Source, err)
 	}
