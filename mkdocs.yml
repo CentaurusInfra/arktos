@@ -1,0 +1,33 @@
+site_name: Arktos
+docs_dir: 'docs'
+site_dir: '.tmp/documentation'
+repo_url: https://github.com/futurewei-cloud/arktos
+theme:
+    name: readthedocs
+    highlightjs: true
+    hljs_languages:
+        - yaml
+nav:
+    - Home: 'user-guide/README.md'
+    - 'Getting Started':
+        - Contributing: 'user-guide/CONTRIBUTING.md'
+        - Multi-node Setup Guide: 'setup-guide/multi-node-dev-cluster.md'
+        - Roadmap: 'user-guide/Arktos-Release-Notes.md'
+    - 'Multi-Tenancy':
+        - Multi-Tenancy Design Overview: 'design-proposals/multi-tenancy/multi-tenancy-overview.md'
+        - Multi-Tenancy API Resource Model: 'design-proposals/multi-tenancy/multi-tenancy-api-resource-model.md'
+        - Multi-Tenancy Access Control: 'design-proposals/multi-tenancy/multi-tenancy-access-control.md'
+        - Multi-Tenancy Scheduler and Controllers: 'design-proposals/multi-tenancy/multi-tenancy-schduler-agent-and-controllers.md'
+        - Multi-Tenancy Networking: 'design-proposals/multi-tenancy/network.md'
+    - 'Scalability':
+        - Controller Scalability: 'design-proposals/controller/scaleout-framework/ControllerFramework.md'
+        - Multiple API Server Data Partitioning: 'design-proposals/apiserver/apiserverpartitioning.md'
+
+    - 'Unified VM/Container':
+        - Support for Multi Runtimes in Agent: 'design-proposals/node/Support-multiple-runtimes.md'
+        - VPC Support for VMs and Containers: 'design-proposals/network/NICAndVPCSupportInArktos.md'
+        - Action APIs to Support VM-specific Lifecycle Events: 'design-proposals/apiserver/Action-API-design.md'
+        - Common Abstract Between VM and Container: 'design-proposals/apiserver/VM-Container-Common.md'
+    - 'Document':
+        - Current Works and Next: 'slides/arktos_current_work_and_next.pdf'
+        - Arktos Overview and Demo at KubeCon 2019: 'slides/kubecon2019_na_booth_demo.pptx'
