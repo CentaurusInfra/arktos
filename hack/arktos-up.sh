@@ -20,8 +20,8 @@ VIRTLET_METADATA_DIR=${VIRTLET_METADATA_DIR:-"/var/lib/virtlet"}
 VIRTLET_LOG_DIR=${VIRTLET_LOG_DIR:-"/var/log/virtlet"}
 VIRTLET_DEPLOYMENT_FILES_DIR=${VIRTLET_DEPLOYMENT_FILES_DIR:-"/tmp"}
 
-# Default to vm-runtime master branch for now till we have a release and versioning setup
-VIRTLET_DEPLOYMENT_FILES_SRC=${VIRTLET_DEPLOYMENT_FILES_SRC:-"https://raw.githubusercontent.com/futurewei-cloud/arktos-vm-runtime/master/deploy"}
+# Default to current arktos-vm-runtime release-330 branch
+VIRTLET_DEPLOYMENT_FILES_SRC=${VIRTLET_DEPLOYMENT_FILES_SRC:-"https://raw.githubusercontent.com/futurewei-cloud/arktos-vm-runtime/release-330/deploy"}
 
 APPARMOR_ENABLED=${APPARMOR_ENABLED:-""}
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
