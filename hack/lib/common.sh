@@ -55,33 +55,40 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
+# Get runtime deployment files
+echo "Getting runtime deployment files"
+wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/libvirt-qemu  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/libvirt-qemu
+wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/libvirtd  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/libvirtd
+wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/virtlet  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/virtlet
+wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/vms  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/vms
+wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml  ${VIRTLET_DEPLOYMENT_FILES_SRC}/data/virtlet-ds.yaml
+wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml  ${VIRTLET_DEPLOYMENT_FILES_SRC}/images.yaml
+
 if [ "${APPARMOR_ENABLED}" == "true" ]; then
   echo "Config test env under apparmor enabled host"
   # Start AppArmor service before we have scripts to configure it properly
-  if ! sudo stemctl is-active --quiet apparmor; then
+  if ! sudo systemctl is-active --quiet apparmor; then
     echo "Starting Apparmor service"
     sudo systemctl start apparmor
   fi
 
   # install runtime apparmor profiles and reload apparmor
-  echo "Intalling arktos runtime apparmor profiles"
-  APPARMOR_PROFILE_DIR=${KUBE_ROOT}/hack/runtime/apparmor
-  cp ${APPARMOR_PROFILE_DIR}/libvirt-qemu /etc/apparmor.d/abstractions/
-  sudo install -m 0644 ${APPARMOR_PROFILE_DIR}/libvirtd ${APPARMOR_PROFILE_DIR}/virtlet ${APPARMOR_PROFILE_DIR}/vms -t /etc/apparmor.d/
+  echo "Installing arktos runtime apparmor profiles"
+  cp ${VIRTLET_DEPLOYMENT_FILES_DIR}/libvirt-qemu /etc/apparmor.d/abstractions/
+  sudo install -m 0644 ${VIRTLET_DEPLOYMENT_FILES_DIR}/libvirtd ${VIRTLET_DEPLOYMENT_FILES_DIR}/virtlet ${VIRTLET_DEPLOYMENT_FILES_DIR}/vms -t /etc/apparmor.d/
   sudo apparmor_parser -r /etc/apparmor.d/libvirtd
   sudo apparmor_parser -r /etc/apparmor.d/virtlet
   sudo apparmor_parser -r /etc/apparmor.d/vms
   echo "Completed"
   echo "Setting annotations for the runtime daemonset"
-  sed -i 's+apparmorlibvirtname+container.apparmor.security.beta.kubernetes.io/libvirt+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorlibvirtvalue+localhost/libvirtd+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvmsname+container.apparmor.security.beta.kubernetes.io/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvmsvalue+localhost/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvirtletname+container.apparmor.security.beta.kubernetes.io/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvirtletvalue+localhost/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
+  sed -i 's+apparmorlibvirtname+container.apparmor.security.beta.kubernetes.io/libvirt+g' ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+  sed -i 's+apparmorlibvirtvalue+localhost/libvirtd+g' ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+  sed -i 's+apparmorvmsname+container.apparmor.security.beta.kubernetes.io/vms+g' ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+  sed -i 's+apparmorvmsvalue+localhost/vms+g' ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+  sed -i 's+apparmorvirtletname+container.apparmor.security.beta.kubernetes.io/virtlet+g' ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+  sed -i 's+apparmorvirtletvalue+localhost/virtlet+g' ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
   echo "Completed"
 else
-  # TODO: FIXME: if likely, one can move back to apparmor disabled env, the yaml needs reset or re-checkout
   echo "Stopping Apparmor service"
   sudo systemctl stop apparmor
 fi
