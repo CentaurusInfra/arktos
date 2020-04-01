@@ -51,20 +51,21 @@ Today we announce the v0.1 release of Arktos.
 
 ### Features Added
 1. Multi-tenancy Features
-     1. Tenancy short-path support#50 
-     2. Add Tenant Controller #124 
-     3. Tenancy-aware token Authenticator #129 
+     1. Tenancy short-path support 
+     2. Add Tenant Controller  
+     3. Tenancy-aware token Authenticator 
      4. Tenancy-aware Cert Authenticator 
-     5. Tenancy-aware RBAC Authorizer #20  
-     6. Tenancy in kubeconfig context #69 
+     5. Tenancy-aware RBAC Authorizer   
+     6. Tenancy in kubeconfig context
      7. Stabilization on multi-tenancy API Model  
-     8. More test and workaround fixes Added  #92  
+     8. More test and workaround fixes Added   
 
 2. Scalability Features
-     1. Multiple API Server Data Partitioning #105 
-     2. Endpoints consolidation changes for api server data parition #65 
-     3. Automatically set up test environments for data partitioned environment #62 
+     1. Multiple API Server Data Partitioning  
+     2. Endpoints consolidation changes for api server data parition 
+     3. Automatically set up test environments for data partitioned environment 
      4. Workload Controller Manager running in parallel with Kube Controller Manager. Replicaset controller and deployment controller are running in Worload Controller Manager and can have multiple instances 
+     5. Added kube-up and start-kubemark for AWS 
      
 3. Unifed VM/containers
      1. Add support for primary runtime 
