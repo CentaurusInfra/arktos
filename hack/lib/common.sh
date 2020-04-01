@@ -441,6 +441,7 @@ function kube::common::test_apiserver_off {
         fi
     fi
 
+
     if ! curl --silent -k -g "${API_HOST}:${API_SECURE_PORT}" ; then
         echo "API SERVER secure port is free, proceeding..."
     else
@@ -457,7 +458,6 @@ function kube::common::start_workload_controller_manager {
        kubeconfigfilepaths=$@
     fi
     echo "The kubeconfig has been set ${kubeconfigfilepaths}"
-
     WORKLOAD_CONTROLLER_LOG=${LOG_DIR}/workload-controller-manager.log
     ${CONTROLPLANE_SUDO} "${GO_OUT}/workload-controller-manager" \
       --v="${LOG_LEVEL}" \
@@ -465,3 +465,61 @@ function kube::common::start_workload_controller_manager {
       "${controller_config_arg[@]}" >"${WORKLOAD_CONTROLLER_LOG}" 2>&1 &
     WORKLOAD_CTLRMGR_PID=$!
 }
+
+function kube::common::start_controller_manager {
+    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    kubeconfigfilepaths="${CERT_DIR}/controller.kubeconfig"
+    if [[ $# -gt 1 ]] ; then
+       kubeconfigfilepaths=$@
+    fi
+
+    node_cidr_args=()
+    if [[ "${NET_PLUGIN}" == "kubenet" ]]; then
+      node_cidr_args=("--allocate-node-cidrs=true" "--cluster-cidr=10.1.0.0/16")
+    fi
+
+    cloud_config_arg=("--cloud-provider=${CLOUD_PROVIDER}" "--cloud-config=${CLOUD_CONFIG}")
+    if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
+      cloud_config_arg=("--cloud-provider=external")
+      cloud_config_arg+=("--external-cloud-volume-plugin=${CLOUD_PROVIDER}")
+      cloud_config_arg+=("--cloud-config=${CLOUD_CONFIG}")
+    fi
+    CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
+    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
+      --v="${LOG_LEVEL}" \
+      --vmodule="${LOG_SPEC}" \
+      --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
+      --root-ca-file="${ROOT_CA_FILE}" \
+      --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
+      --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
+      --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
+      ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
+      --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
+      --feature-gates="${FEATURE_GATES}" \
+      "${cloud_config_arg[@]}" \
+      --kubeconfig "${kubeconfigfilepaths}" \
+      --use-service-account-credentials \
+      --controllers="${KUBE_CONTROLLERS}" \
+      --leader-elect=false \
+      --cert-dir="${CERT_DIR}" \
+      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
+    CTLRMGR_PID=$!
+}
+
+function kube::common::start_kubescheduler {
+    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    kubeconfigfilepaths="${CERT_DIR}/scheduler.kubeconfig"
+    if [[ $# -gt 1 ]] ; then
+       kubeconfigfilepaths=$@
+    fi
+    SCHEDULER_LOG=${LOG_DIR}/kube-scheduler.log
+    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-scheduler \
+      --v="${LOG_LEVEL}" \
+      --leader-elect=false \
+      --kubeconfig "${kubeconfigfilepaths}" \
+      --feature-gates="${FEATURE_GATES}" \
+      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
+    SCHEDULER_PID=$!
+}
+
+

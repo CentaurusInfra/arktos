@@ -449,7 +449,6 @@ cleanup()
 
   exit 0
 }
-
 # Check if all processes are still running. Prints a warning once each time
 # a process dies unexpectedly.
 function healthcheck {
@@ -740,61 +739,6 @@ EOF
     ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/controllerconfig.json"
 }
 
-function start_controller_manager {
-    node_cidr_args=()
-    if [[ "${NET_PLUGIN}" == "kubenet" ]]; then
-      node_cidr_args=("--allocate-node-cidrs=true" "--cluster-cidr=10.1.0.0/16")
-    fi
-
-    cloud_config_arg=("--cloud-provider=${CLOUD_PROVIDER}" "--cloud-config=${CLOUD_CONFIG}")
-    if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
-      cloud_config_arg=("--cloud-provider=external")
-      cloud_config_arg+=("--external-cloud-volume-plugin=${CLOUD_PROVIDER}")
-      cloud_config_arg+=("--cloud-config=${CLOUD_CONFIG}")
-    fi
-
-    CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
-      --v="${LOG_LEVEL}" \
-      --vmodule="${LOG_SPEC}" \
-      --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
-      --root-ca-file="${ROOT_CA_FILE}" \
-      --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
-      --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
-      --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
-      ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
-      --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
-      --feature-gates="${FEATURE_GATES}" \
-      "${cloud_config_arg[@]}" \
-      --kubeconfig "${CERT_DIR}"/controller.kubeconfig \
-      --use-service-account-credentials \
-      --controllers="${KUBE_CONTROLLERS}" \
-      --leader-elect=false \
-      --cert-dir="${CERT_DIR}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
-    CTLRMGR_PID=$!
-}
-
-function start_workload_controller_manager {
-    controller_config_arg=("--controllerconfig=${WORKLOAD_CONTROLLER_CONFIG_PATH}")
-
-    kubeconfigfilepaths="${CERT_DIR}/workload-controller.kubeconfig"
-
-    if [ "${APISERVER_NUMBER}" > "1" ]; then
-        kubeconfigfilepaths=""
-        for ((i=0; i<=$((APISERVER_NUMBER - 1)) ; i++)); do
-          kubeconfigfilepaths+="${CERT_DIR}/workload-controller$i.kubeconfig "
-        done
-    fi
-
-    WORKLOAD_CONTROLLER_LOG=${LOG_DIR}/workload-controller-manager.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/workload-controller-manager" \
-      --v="${LOG_LEVEL}" \
-      --kubeconfig "$kubeconfigfilepaths" \
-      "${controller_config_arg[@]}" >"${WORKLOAD_CONTROLLER_LOG}" 2>&1 &
-    WORKLOAD_CTLRMGR_PID=$!
-}
-
 function start_cloud_controller_manager {
     if [ -z "${CLOUD_CONFIG}" ]; then
       echo "CLOUD_CONFIG cannot be empty!"
@@ -967,18 +911,6 @@ EOF
       --config=/tmp/kube-proxy.yaml \
       --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
     PROXY_PID=$!
-}
-
-function start_kubescheduler {
-
-    SCHEDULER_LOG=${LOG_DIR}/kube-scheduler.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-scheduler \
-      --v="${LOG_LEVEL}" \
-      --leader-elect=false \
-      --kubeconfig "${CERT_DIR}"/scheduler.kubeconfig \
-      --feature-gates="${FEATURE_GATES}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
-    SCHEDULER_PID=$!
 }
 
 function start_kubedns {
@@ -1174,15 +1106,15 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
 
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
 
-  start_controller_manager
-  start_workload_controller_manager
+  kube::common::start_controller_manager
+  kube::common::start_workload_controller_manager
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
   fi
   if [[ "${START_MODE}" != "nokubeproxy" ]]; then
     start_kubeproxy
   fi
-  start_kubescheduler
+  kube::common::start_kubescheduler
   start_kubedns
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
