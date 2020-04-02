@@ -19,6 +19,7 @@ package clientcmd
 
 import (
 	"io"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sync"
 
 	"k8s.io/klog"
@@ -37,8 +38,8 @@ type DeferredLoadingClientConfig struct {
 	overrides      *ConfigOverrides
 	fallbackReader io.Reader
 
-	clientConfig ClientConfig
-	loadingLock  sync.Mutex
+	clientConfigs []ClientConfig
+	loadingLock   sync.Mutex
 
 	// provided for testing
 	icc InClusterConfig
@@ -60,61 +61,82 @@ func NewInteractiveDeferredLoadingClientConfig(loader ClientConfigLoader, overri
 	return &DeferredLoadingClientConfig{loader: loader, overrides: overrides, icc: &inClusterClientConfig{overrides: overrides}, fallbackReader: fallbackReader}
 }
 
-func (config *DeferredLoadingClientConfig) createClientConfig() (ClientConfig, error) {
-	if config.clientConfig == nil {
+func (config *DeferredLoadingClientConfig) createClientConfig() ([]ClientConfig, error) {
+	if len(config.clientConfigs) == 0 {
 		config.loadingLock.Lock()
 		defer config.loadingLock.Unlock()
 
-		if config.clientConfig == nil {
-			mergedConfig, err := config.loader.Load()
+		if len(config.clientConfigs) == 0 {
+			mergedConfigs, err := config.loader.Load()
 			if err != nil {
 				return nil, err
 			}
 
-			var mergedClientConfig ClientConfig
-			if config.fallbackReader != nil {
-				mergedClientConfig = NewInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides, config.fallbackReader, config.loader)
-			} else {
-				mergedClientConfig = NewNonInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides, config.loader)
+			for _, mergedConfig := range mergedConfigs {
+				var mergedClientConfig ClientConfig
+				if config.fallbackReader != nil {
+					mergedClientConfig = NewInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides, config.fallbackReader, config.loader)
+				} else {
+					mergedClientConfig = NewNonInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides, config.loader)
+				}
+				//config.clientConfig = mergedClientConfig
+				config.clientConfigs = append(config.clientConfigs, mergedClientConfig)
 			}
-
-			config.clientConfig = mergedClientConfig
 		}
 	}
 
-	return config.clientConfig, nil
+	return config.clientConfigs, nil
 }
 
-func (config *DeferredLoadingClientConfig) RawConfig() (clientcmdapi.Config, error) {
-	mergedConfig, err := config.createClientConfig()
-	if err != nil {
-		return clientcmdapi.Config{}, err
+func (c *DeferredLoadingClientConfig) RawConfig() ([]clientcmdapi.Config, error) {
+	mergedConfigs, err := c.createClientConfig()
+	if err != nil || len(mergedConfigs) == 0 {
+		return []clientcmdapi.Config{}, err
 	}
 
-	return mergedConfig.RawConfig()
+	errlist := []error{}
+	configReturns := []clientcmdapi.Config{}
+	for _, mergedConfig := range mergedConfigs {
+		configs, err := mergedConfig.RawConfig()
+		if err != nil {
+			errlist = append(errlist, err)
+		} else {
+			for _, config := range configs {
+				configReturns = append(configReturns, config)
+			}
+		}
+	}
+
+	return configReturns, utilerrors.NewAggregate(errlist)
 }
 
 // ClientConfig implements ClientConfig
 func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, error) {
-	mergedClientConfig, err := config.createClientConfig()
-	if err != nil {
+	mergedClientConfigs, err := config.createClientConfig()
+	if err != nil || len(mergedClientConfigs) == 0 {
 		return nil, err
 	}
 
-	// load the configuration and return on non-empty errors and if the
-	// content differs from the default config
-	mergedConfig, err := mergedClientConfig.ClientConfig()
-	switch {
-	case err != nil:
-		if !IsEmptyConfig(err) {
-			// return on any error except empty config
-			return nil, err
-		}
-	case mergedConfig != nil:
-		// the configuration is valid, but if this is equal to the defaults we should try
-		// in-cluster configuration
-		if !config.loader.IsDefaultConfig(mergedConfig.GetConfig()) {
-			return mergedConfig, nil
+	var mergedConfigs *restclient.Config
+	for _, mergedClientConfig := range mergedClientConfigs {
+		// load the configuration and return on non-empty errors and if the
+		// content differs from the default config
+		mergedConfigs, err = mergedClientConfig.ClientConfig()
+
+		switch {
+		case err != nil:
+			if !IsEmptyConfig(err) {
+				// return on any error except empty config
+				return nil, err
+			}
+		case mergedConfigs != nil:
+			// the configuration is valid, but if this is equal to the defaults we should try
+			// in-cluster configuration
+			for _, configToCheck := range mergedConfigs.GetAllConfigs() {
+				if !config.loader.IsDefaultConfig(configToCheck) {
+					return mergedConfigs, nil
+				}
+			}
 		}
 	}
 
@@ -125,16 +147,18 @@ func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, e
 	}
 
 	// return the result of the merged client config
-	return mergedConfig, err
+	return mergedConfigs, err
 }
 
 // Tenant implements KubeConfig
 func (config *DeferredLoadingClientConfig) Tenant() (string, bool, error) {
-	mergedKubeConfig, err := config.createClientConfig()
-	if err != nil {
+	mergedKubeConfigs, err := config.createClientConfig()
+	if err != nil || len(mergedKubeConfigs) == 0 {
 		return "", false, err
 	}
 
+	// TODO - verify single kubeconfig is enough
+	mergedKubeConfig := mergedKubeConfigs[0]
 	te, overridden, err := mergedKubeConfig.Tenant()
 	// if we get an error and it is not empty config, or if the merged config defined an explicit tenant, or
 	// if in-cluster config is not possible, return immediately
@@ -152,11 +176,11 @@ func (config *DeferredLoadingClientConfig) Tenant() (string, bool, error) {
 		// if we got a default tenant, determine whether it was explicit or implicit
 		if raw, err := mergedKubeConfig.RawConfig(); err == nil {
 			// determine the current context
-			currentContext := raw.CurrentContext
+			currentContext := raw[0].CurrentContext
 			if config.overrides != nil && len(config.overrides.CurrentContext) > 0 {
 				currentContext = config.overrides.CurrentContext
 			}
-			if context := raw.Contexts[currentContext]; context != nil && len(context.Tenant) > 0 {
+			if context := raw[0].Contexts[currentContext]; context != nil && len(context.Tenant) > 0 {
 				return te, false, nil
 			}
 		}
@@ -170,11 +194,13 @@ func (config *DeferredLoadingClientConfig) Tenant() (string, bool, error) {
 
 // Namespace implements KubeConfig
 func (config *DeferredLoadingClientConfig) Namespace() (string, bool, error) {
-	mergedKubeConfig, err := config.createClientConfig()
-	if err != nil {
+	mergedKubeConfigs, err := config.createClientConfig()
+	if err != nil || len(mergedKubeConfigs) == 0 {
 		return "", false, err
 	}
 
+	// TODO - verify single kubeconfig is enough
+	mergedKubeConfig := mergedKubeConfigs[0]
 	ns, overridden, err := mergedKubeConfig.Namespace()
 	// if we get an error and it is not empty config, or if the merged config defined an explicit namespace, or
 	// if in-cluster config is not possible, return immediately
@@ -192,11 +218,11 @@ func (config *DeferredLoadingClientConfig) Namespace() (string, bool, error) {
 		// if we got a default namespace, determine whether it was explicit or implicit
 		if raw, err := mergedKubeConfig.RawConfig(); err == nil {
 			// determine the current context
-			currentContext := raw.CurrentContext
+			currentContext := raw[0].CurrentContext
 			if config.overrides != nil && len(config.overrides.CurrentContext) > 0 {
 				currentContext = config.overrides.CurrentContext
 			}
-			if context := raw.Contexts[currentContext]; context != nil && len(context.Namespace) > 0 {
+			if context := raw[0].Contexts[currentContext]; context != nil && len(context.Namespace) > 0 {
 				return ns, false, nil
 			}
 		}

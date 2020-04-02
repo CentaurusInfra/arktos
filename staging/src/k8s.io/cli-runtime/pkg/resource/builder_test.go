@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -982,7 +983,7 @@ func TestRequestModifier(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			req := i[0].Client.Get()
+			req := i[0].GetClient().Get()
 			if got != req {
 				t.Fatalf("request was not received by modifier: %#v", req)
 			}
@@ -1499,7 +1500,7 @@ func TestListObjectWithDifferentVersions(t *testing.T) {
 
 func TestWatch(t *testing.T) {
 	_, svc := testData()
-	w, err := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
+	aw := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
 		"/namespaces/test/services?fieldSelector=metadata.name%3Dredis-master&resourceVersion=12&watch=true": watchBody(watch.Event{
 			Type:   watch.Added,
 			Object: &svc.Items[0],
@@ -1509,12 +1510,12 @@ func TestWatch(t *testing.T) {
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-service.yaml"}}).Flatten().
 		Do().Watch("12")
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if aw.GetFirstError() != nil {
+		t.Fatalf("unexpected error: %v", aw.GetFirstError())
 	}
 
-	defer w.Stop()
-	ch := w.ResultChan()
+	defer aw.Stop()
+	ch := aw.ResultChan()
 	select {
 	case obj := <-ch:
 		if obj.Type != watch.Added {
@@ -1531,13 +1532,13 @@ func TestWatch(t *testing.T) {
 }
 
 func TestWatchMultipleError(t *testing.T) {
-	_, err := newDefaultBuilder().
+	aw := newDefaultBuilder().
 		NamespaceParam("test").DefaultNamespace().
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-controller.yaml"}}).Flatten().
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-controller.yaml"}}).Flatten().
 		Do().Watch("")
 
-	if err == nil {
+	if aw.GetFirstError() == nil {
 		t.Fatalf("unexpected non-error")
 	}
 }

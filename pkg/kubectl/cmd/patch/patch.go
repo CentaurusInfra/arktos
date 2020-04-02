@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -217,7 +218,8 @@ func (o *PatchOptions) RunPatch() error {
 				return err
 			}
 
-			helper := resource.NewHelper(client, mapping)
+			// patch is single client task
+			helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
 			patchedObj, err := helper.Patch(namespace, name, patchType, patchBytes, nil)
 			if err != nil {
 				return err

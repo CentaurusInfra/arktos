@@ -113,7 +113,7 @@ func NewDefaultAuthenticationInfoResolver(kubeconfigFile string) (Authentication
 		return nil, err
 	}
 
-	return &defaultAuthenticationInfoResolver{kubeconfig: clientConfig}, nil
+	return &defaultAuthenticationInfoResolver{kubeconfig: clientConfig[0]}, nil
 }
 
 func (c *defaultAuthenticationInfoResolver) ClientConfigFor(server string) (*rest.Config, error) {

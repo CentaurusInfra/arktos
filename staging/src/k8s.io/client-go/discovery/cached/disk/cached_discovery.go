@@ -219,6 +219,12 @@ func (d *CachedDiscoveryClient) RESTClient() restclient.Interface {
 	return d.delegate.RESTClient()
 }
 
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (d *CachedDiscoveryClient) RESTClients() []restclient.Interface {
+	return d.delegate.RESTClients()
+}
+
 // ServerPreferredResources returns the supported resources with the version preferred by the
 // server.
 func (d *CachedDiscoveryClient) ServerPreferredResources() ([]*metav1.APIResourceList, error) {

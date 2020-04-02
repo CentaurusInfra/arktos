@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -156,5 +157,9 @@ func (c *FakeDiscovery) OpenAPISchema() (*openapi_v2.Document, error) {
 // RESTClient returns a RESTClient that is used to communicate with API server
 // by this client implementation.
 func (c *FakeDiscovery) RESTClient() restclient.Interface {
+	return nil
+}
+
+func (c *FakeDiscovery) RESTClients() []restclient.Interface {
 	return nil
 }
