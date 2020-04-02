@@ -52,6 +52,107 @@ const (
 	testKubeletHostname = "127.0.0.1"
 )
 
+func TestGetCurrentRuntimeReadiness(t *testing.T) {
+	zeroTime := metav1.NewTime(time.Time{})
+	checkTime := metav1.NewTime(time.Date(2019, 10, 24, 0, 0, 0, 0, time.UTC))
+	recordEventFunc := func (eventType string, event string) {}
+
+	cases := []struct {
+		name string
+		currentStatus, expectedStatus v1.NodeCondition
+		runtimeServiceStatus map[string]bool
+	} {
+		{
+			name: "readiness-keeps-ready",
+			currentStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionTrue,
+				Reason: "fake runtime turned on",
+				LastTransitionTime: zeroTime,
+				LastHeartbeatTime: zeroTime,
+			},
+			runtimeServiceStatus: map[string]bool{
+				"fake": true,
+			},
+			expectedStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionTrue,
+				Reason: "fake runtime turned on",
+				LastTransitionTime: zeroTime,
+				LastHeartbeatTime: zeroTime,
+			},
+		},
+		{
+			name: "readiness-keeps-not-ready",
+			currentStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionFalse,
+				Reason: "fake runtime turned off",
+				LastTransitionTime: zeroTime,
+				LastHeartbeatTime: zeroTime,
+			},
+			runtimeServiceStatus: map[string]bool{
+				"fake": false,
+			},
+			expectedStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionFalse,
+				Reason: "fake runtime turned off",
+				LastTransitionTime: zeroTime,
+				LastHeartbeatTime: zeroTime,
+			},
+		},
+		{
+			name: "readiness-changes-to-ready",
+			currentStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionFalse,
+				LastTransitionTime: zeroTime,
+				LastHeartbeatTime: zeroTime,
+			},
+			runtimeServiceStatus: map[string]bool{
+				"fake": true,
+			},
+			expectedStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionTrue,
+				Reason: "At least one fake runtime is ready",
+				LastTransitionTime: checkTime,
+				LastHeartbeatTime: zeroTime,
+			},
+		},
+		{
+			name: "readiness-changes-to-not-ready",
+			currentStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionTrue,
+				LastTransitionTime: zeroTime,
+				LastHeartbeatTime: zeroTime,
+			},
+			runtimeServiceStatus: map[string]bool{
+				"fake": false,
+			},
+			expectedStatus: v1.NodeCondition{
+				Type:   "fake",
+				Status: v1.ConditionFalse,
+				Reason: "None of fake runtime is ready",
+				LastTransitionTime: checkTime,
+				LastHeartbeatTime: zeroTime,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			runtimeCondition := c.currentStatus
+			newRuntimeCondition := getCurrentRuntimeReadiness(&runtimeCondition, "fake", c.runtimeServiceStatus, recordEventFunc, checkTime)
+			if *newRuntimeCondition != c.expectedStatus {
+				t.Fatalf("%q failed: \n\texpecting %v; \n\t      got %v", c.name, &c.expectedStatus, newRuntimeCondition)
+			}
+		})
+	}
+}
+
 // TODO(mtaufen): below is ported from the old kubelet_node_status_test.go code, potentially add more test coverage for NodeAddress setter in future
 func TestNodeAddress(t *testing.T) {
 	cases := []struct {
