@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -278,7 +279,7 @@ func (obj InfoObject) Merged() (runtime.Object, error) {
 			Force:  &obj.ForceConflicts,
 			DryRun: []string{metav1.DryRunAll},
 		}
-		return resource.NewHelper(obj.Info.Client, obj.Info.Mapping).Patch(
+		return resource.NewHelper(obj.Info.Clients, obj.Info.Mapping).Patch(
 			obj.Info.Namespace,
 			obj.Info.Name,
 			types.ApplyPatchType,
@@ -290,7 +291,7 @@ func (obj InfoObject) Merged() (runtime.Object, error) {
 	// Build the patcher, and then apply the patch with dry-run, unless the object doesn't exist, in which case we need to create it.
 	if obj.Live() == nil {
 		// Dry-run create if the object doesn't exist.
-		return resource.NewHelper(obj.Info.Client, obj.Info.Mapping).Create(
+		return resource.NewHelper(obj.Info.Clients, obj.Info.Mapping).Create(
 			obj.Info.Namespace,
 			true,
 			obj.LocalObj,
@@ -317,7 +318,7 @@ func (obj InfoObject) Merged() (runtime.Object, error) {
 	// We plan on replacing this with server-side apply when it becomes available.
 	patcher := &apply.Patcher{
 		Mapping:         obj.Info.Mapping,
-		Helper:          resource.NewHelper(obj.Info.Client, obj.Info.Mapping),
+		Helper:          resource.NewHelper(obj.Info.Clients, obj.Info.Mapping),
 		Overwrite:       true,
 		BackOff:         clockwork.NewRealClock(),
 		ServerDryRun:    true,

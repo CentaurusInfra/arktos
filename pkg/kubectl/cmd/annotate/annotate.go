@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -290,7 +291,8 @@ func (o AnnotateOptions) RunAnnotate() error {
 			if err != nil {
 				return err
 			}
-			helper := resource.NewHelper(client, mapping)
+			// annotate is single client job
+			helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
 
 			if createdPatch {
 				outputObj, err = helper.Patch(namespace, name, types.MergePatchType, patchBytes, nil)

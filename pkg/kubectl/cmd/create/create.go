@@ -334,7 +334,7 @@ func RunEditOnCreate(f cmdutil.Factory, printFlags *genericclioptions.PrintFlags
 
 // createAndRefresh creates an object from input info and refreshes info with that object
 func createAndRefresh(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, nil)
+	obj, err := resource.NewHelper(info.Clients, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, nil)
 	if err != nil {
 		return err
 	}

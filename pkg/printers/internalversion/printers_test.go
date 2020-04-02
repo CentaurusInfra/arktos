@@ -2074,8 +2074,8 @@ func TestPrintDeployment(t *testing.T) {
 					UnavailableReplicas: 4,
 				},
 			},
-			"test1   0/5   2     1     0s\n",
-			"test1   0/5   2     1     0s    fake-container1,fake-container2   fake-image1,fake-image2   foo=bar\n",
+			"test1   0     0/5   2     1     0s\n",
+			"test1   0     0/5   2     1     0s    fake-container1,fake-container2   fake-image1,fake-image2   foo=bar\n",
 		},
 	}
 

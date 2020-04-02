@@ -359,6 +359,7 @@ func AddHandlers(h printers.PrintHandler) {
 
 	deploymentColumnDefinitions := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "HashKey", Type: "integer", Description: metav1.ObjectMeta{}.SwaggerDoc()["hashKey"]},
 		{Name: "Ready", Type: "string", Description: "Number of the pod with ready state"},
 		{Name: "Up-to-date", Type: "string", Description: extensionsv1beta1.DeploymentStatus{}.SwaggerDoc()["updatedReplicas"]},
 		{Name: "Available", Type: "string", Description: extensionsv1beta1.DeploymentStatus{}.SwaggerDoc()["availableReplicas"]},
@@ -1738,7 +1739,7 @@ func printDeployment(obj *apps.Deployment, options printers.PrintOptions) ([]met
 		// this shouldn't happen if LabelSelector passed validation
 		return nil, err
 	}
-	row.Cells = append(row.Cells, obj.Name, fmt.Sprintf("%d/%d", int64(readyReplicas), int64(desiredReplicas)), int64(updatedReplicas), int64(availableReplicas), age)
+	row.Cells = append(row.Cells, obj.Name, obj.HashKey, fmt.Sprintf("%d/%d", int64(readyReplicas), int64(desiredReplicas)), int64(updatedReplicas), int64(availableReplicas), age)
 	if options.Wide {
 		containers, images := layoutContainerCells(containers)
 		row.Cells = append(row.Cells, containers, images, selector.String())

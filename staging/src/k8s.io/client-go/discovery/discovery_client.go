@@ -20,6 +20,7 @@ package discovery
 import (
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"net/url"
 	"sort"
 	"strings"
@@ -55,6 +56,7 @@ const (
 // Keep only one rest client for discovery for now
 type DiscoveryInterface interface {
 	RESTClient() restclient.Interface
+	RESTClients() []restclient.Interface
 	ServerGroupsInterface
 	ServerResourcesInterface
 	ServerVersionInterface
@@ -130,7 +132,7 @@ type OpenAPISchemaInterface interface {
 // DiscoveryClient implements the functions that discover server-supported API groups,
 // versions and resources.
 type DiscoveryClient struct {
-	restClient restclient.Interface
+	restClients []restclient.Interface
 
 	LegacyPrefix string
 }
@@ -157,7 +159,7 @@ func apiVersionsToAPIGroup(apiVersions *metav1.APIVersions) (apiGroup metav1.API
 func (d *DiscoveryClient) ServerGroups() (apiGroupList *metav1.APIGroupList, err error) {
 	// Get the groupVersions exposed at /api
 	v := &metav1.APIVersions{}
-	err = d.restClient.Get().AbsPath(d.LegacyPrefix).Do().Into(v)
+	err = d.RESTClient().Get().AbsPath(d.LegacyPrefix).Do().Into(v)
 	apiGroup := metav1.APIGroup{}
 	if err == nil && len(v.Versions) != 0 {
 		apiGroup = apiVersionsToAPIGroup(v)
@@ -168,7 +170,7 @@ func (d *DiscoveryClient) ServerGroups() (apiGroupList *metav1.APIGroupList, err
 
 	// Get the groupVersions exposed at /apis
 	apiGroupList = &metav1.APIGroupList{}
-	err = d.restClient.Get().AbsPath("/apis").Do().Into(apiGroupList)
+	err = d.RESTClient().Get().AbsPath("/apis").Do().Into(apiGroupList)
 	if err != nil && !errors.IsNotFound(err) && !errors.IsForbidden(err) {
 		return nil, err
 	}
@@ -198,7 +200,7 @@ func (d *DiscoveryClient) ServerResourcesForGroupVersion(groupVersion string) (r
 	resources = &metav1.APIResourceList{
 		GroupVersion: groupVersion,
 	}
-	err = d.restClient.Get().AbsPath(url.String()).Do().Into(resources)
+	err = d.RESTClient().Get().AbsPath(url.String()).Do().Into(resources)
 	if err != nil {
 		// ignore 403 or 404 error to be compatible with an v1.0 server.
 		if groupVersion == "v1" && (errors.IsNotFound(err) || errors.IsForbidden(err)) {
@@ -407,7 +409,7 @@ func ServerPreferredNamespacedResources(d DiscoveryInterface) ([]*metav1.APIReso
 
 // ServerVersion retrieves and parses the server's version (git version).
 func (d *DiscoveryClient) ServerVersion() (*version.Info, error) {
-	body, err := d.restClient.Get().AbsPath("/version").Do().Raw()
+	body, err := d.RESTClient().Get().AbsPath("/version").Do().Raw()
 	if err != nil {
 		return nil, err
 	}
@@ -421,12 +423,12 @@ func (d *DiscoveryClient) ServerVersion() (*version.Info, error) {
 
 // OpenAPISchema fetches the open api schema using a rest client and parses the proto.
 func (d *DiscoveryClient) OpenAPISchema() (*openapi_v2.Document, error) {
-	data, err := d.restClient.Get().AbsPath("/openapi/v2").SetHeader("Accept", mimePb).Do().Raw()
+	data, err := d.RESTClient().Get().AbsPath("/openapi/v2").SetHeader("Accept", mimePb).Do().Raw()
 	if err != nil {
 		if errors.IsForbidden(err) || errors.IsNotFound(err) || errors.IsNotAcceptable(err) {
 			// single endpoint not found/registered in old server, try to fetch old endpoint
 			// TODO: remove this when kubectl/client-go don't work with 1.9 server
-			data, err = d.restClient.Get().AbsPath("/swagger-2.0.0.pb-v1").Do().Raw()
+			data, err = d.RESTClient().Get().AbsPath("/swagger-2.0.0.pb-v1").Do().Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -478,12 +480,21 @@ func setDiscoveryDefaults(configs *restclient.Config) error {
 // NewDiscoveryClientForConfig creates a new DiscoveryClient for the given config. This client
 // can be used to discover supported resources in the API server.
 func NewDiscoveryClientForConfig(c *restclient.Config) (*DiscoveryClient, error) {
-	config := restclient.CopyConfigs(c)
-	if err := setDiscoveryDefaults(config); err != nil {
+	configs := restclient.CopyConfigs(c)
+	if err := setDiscoveryDefaults(configs); err != nil {
 		return nil, err
 	}
-	client, err := restclient.UnversionedRESTClientFor(config.GetConfig())
-	return &DiscoveryClient{restClient: client, LegacyPrefix: "/api"}, err
+
+	clients := make([]restclient.Interface, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		client, err := restclient.UnversionedRESTClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		clients[i] = client
+	}
+
+	return &DiscoveryClient{restClients: clients, LegacyPrefix: "/api"}, nil
 }
 
 // NewDiscoveryClientForConfigOrDie creates a new DiscoveryClient for the given config. If
@@ -499,7 +510,7 @@ func NewDiscoveryClientForConfigOrDie(c *restclient.Config) *DiscoveryClient {
 
 // NewDiscoveryClient returns  a new DiscoveryClient for the given RESTClient.
 func NewDiscoveryClient(c restclient.Interface) *DiscoveryClient {
-	return &DiscoveryClient{restClient: c, LegacyPrefix: "/api"}
+	return &DiscoveryClient{restClients: []restclient.Interface{c}, LegacyPrefix: "/api"}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
@@ -508,5 +519,25 @@ func (d *DiscoveryClient) RESTClient() restclient.Interface {
 	if d == nil {
 		return nil
 	}
-	return d.restClient
+	max := len(d.restClients)
+	if max == 0 {
+		return nil
+	}
+	if max == 1 {
+		return d.restClients[0]
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	ran := rand.IntnRange(0, max-1)
+	return d.restClients[ran]
+}
+
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (d *DiscoveryClient) RESTClients() []restclient.Interface {
+	if d == nil {
+		return nil
+	}
+
+	return d.restClients
 }

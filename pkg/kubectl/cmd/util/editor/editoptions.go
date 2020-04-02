@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -499,7 +500,9 @@ func (o *EditOptions) annotationPatch(update *resource.Info) error {
 	if err != nil {
 		return err
 	}
-	helper := resource.NewHelper(client, mapping)
+
+	// edit is single client job
+	helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
 	_, err = helper.Patch(o.CmdNamespace, update.Name, patchType, patch, nil)
 	if err != nil {
 		return err
@@ -629,7 +632,7 @@ func (o *EditOptions) visitToPatch(originalInfos []*resource.Info, patchVisitor 
 			fmt.Fprintf(o.Out, "Patch: %s\n", string(patch))
 		}
 
-		patched, err := resource.NewHelper(info.Client, info.Mapping).Patch(info.Namespace, info.Name, patchType, patch, nil)
+		patched, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, patchType, patch, nil)
 		if err != nil {
 			fmt.Fprintln(o.ErrOut, results.addError(err, info))
 			return nil

@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -52,8 +53,8 @@ const (
 // Watchable describes a resource that can be watched for changes that occur on the server,
 // beginning after the provided resource version.
 type Watchable interface {
-	Watch(resourceVersion string) (watch.Interface, error)
-	WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error)
+	Watch(resourceVersion string) watch.AggregatedWatchInterface
+	WatchWithMultiTenancy(resourceVersion string) watch.AggregatedWatchInterface
 }
 
 // ResourceMapping allows an object to return the resource mapping associated with
@@ -66,7 +67,7 @@ type ResourceMapping interface {
 // of an already completed REST call.
 type Info struct {
 	// Client will only be present if this builder was not local
-	Client RESTClient
+	Clients []RESTClient
 	// Mapping will only be present if this builder was not local
 	Mapping *meta.RESTMapping
 
@@ -95,6 +96,20 @@ type Info struct {
 	Tenant string
 }
 
+func (i *Info) GetClient() RESTClient {
+	max := len(i.Clients)
+	if max == 1 {
+		return i.Clients[0]
+	}
+
+	if max > 1 {
+		rand.Seed(time.Now().UnixNano())
+		ran := rand.IntnRange(0, max-1)
+		return i.Clients[ran]
+	}
+	return nil
+}
+
 // Visit implements Visitor
 func (i *Info) Visit(fn VisitorFunc) error {
 	return fn(i, nil)
@@ -102,10 +117,10 @@ func (i *Info) Visit(fn VisitorFunc) error {
 
 // Get retrieves the object from the Namespace and Name fields
 func (i *Info) Get() (err error) {
-	obj, err := NewHelper(i.Client, i.Mapping).Get(i.Namespace, i.Name, i.Export)
+	obj, err := NewHelper(i.Clients, i.Mapping).Get(i.Namespace, i.Name, i.Export)
 	if err != nil {
 		if errors.IsNotFound(err) && len(i.Namespace) > 0 && i.Namespace != metav1.NamespaceDefault && i.Namespace != metav1.NamespaceAll {
-			err2 := i.Client.Get().AbsPath("api", "v1", "namespaces", i.Namespace).Do().Error()
+			err2 := i.GetClient().Get().AbsPath("api", "v1", "namespaces", i.Namespace).Do().Error()
 			if err2 != nil && errors.IsNotFound(err2) {
 				return err2
 			}
@@ -119,11 +134,11 @@ func (i *Info) Get() (err error) {
 
 // Get retrieves the object from the tenant, Namespace and Name fields
 func (i *Info) GetWithMultiTenancy() (err error) {
-	obj, err := NewHelper(i.Client, i.Mapping).GetWithMultiTenancy(i.Tenant, i.Namespace, i.Name, i.Export)
+	obj, err := NewHelper(i.Clients, i.Mapping).GetWithMultiTenancy(i.Tenant, i.Namespace, i.Name, i.Export)
 	if err != nil {
 		if errors.IsNotFound(err) && len(i.Namespace) > 0 && i.Namespace != metav1.NamespaceDefault && i.Namespace != metav1.NamespaceAll &&
 			len(i.Tenant) > 0 && i.Tenant != metav1.TenantDefault && i.Tenant != metav1.TenantAll {
-			err2 := i.Client.Get().AbsPath("api", "v1", "tenants", i.Tenant, "namespaces", i.Namespace).Do().Error()
+			err2 := i.GetClient().Get().AbsPath("api", "v1", "tenants", i.Tenant, "namespaces", i.Namespace).Do().Error()
 			if err2 != nil && errors.IsNotFound(err2) {
 				return err2
 			}
@@ -222,13 +237,13 @@ func (i *Info) Scope() meta.RESTScopeName {
 }
 
 // Watch returns server changes to this object after it was retrieved.
-func (i *Info) Watch(resourceVersion string) (watch.Interface, error) {
-	return NewHelper(i.Client, i.Mapping).WatchSingle(i.Namespace, i.Name, resourceVersion)
+func (i *Info) Watch(resourceVersion string) watch.AggregatedWatchInterface {
+	return NewHelper(i.Clients, i.Mapping).WatchSingle(i.Namespace, i.Name, resourceVersion)
 }
 
 // Watch returns server changes to this object after it was retrieved.
-func (i *Info) WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
-	return NewHelper(i.Client, i.Mapping).WatchSingleWithMultiTenancy(i.Tenant, i.Namespace, i.Name, resourceVersion)
+func (i *Info) WatchWithMultiTenancy(resourceVersion string) watch.AggregatedWatchInterface {
+	return NewHelper(i.Clients, i.Mapping).WatchSingleWithMultiTenancy(i.Tenant, i.Namespace, i.Name, resourceVersion)
 }
 
 // ResourceMapping returns the mapping for this resource and implements ResourceMapping
@@ -819,7 +834,7 @@ func RetrieveLazy(info *Info, err error) error {
 
 // CreateAndRefresh creates an object from input info and refreshes info with that object
 func CreateAndRefresh(info *Info) error {
-	obj, err := NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, nil)
+	obj, err := NewHelper(info.Clients, info.Mapping).Create(info.Namespace, true, info.Object, nil)
 	if err != nil {
 		return err
 	}
@@ -829,7 +844,7 @@ func CreateAndRefresh(info *Info) error {
 
 // CreateAndRefresh creates an object from input info and refreshes info with that object
 func CreateAndRefreshWithMultiTenancy(info *Info) error {
-	obj, err := NewHelper(info.Client, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, nil)
+	obj, err := NewHelper(info.Clients, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, nil)
 	if err != nil {
 		return err
 	}
