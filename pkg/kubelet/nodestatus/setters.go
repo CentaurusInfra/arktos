@@ -612,6 +612,10 @@ func getCurrentRuntimeReadiness(runtimeCondition *v1.NodeCondition, workloadType
 	statusSet := false
 	for _, status := range runtimeServiceStatus {
 		if status == true {
+			if runtimeCondition.Status == v1.ConditionTrue {
+				// runtime was already ready; no change
+				return runtimeCondition
+			}
 			runtimeCondition.Status = v1.ConditionTrue
 			runtimeCondition.Reason = fmt.Sprintf("At least one %s runtime is ready", workloadType)
 			recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is ready", runtimeCondition.Type))
@@ -621,6 +625,12 @@ func getCurrentRuntimeReadiness(runtimeCondition *v1.NodeCondition, workloadType
 	}
 
 	if statusSet != true {
+		if runtimeCondition.Status == v1.ConditionFalse {
+			// runtime was not ready; no change
+			// update to reason is omitted as it is unessential
+			// todo: update reason field if it really makes sense
+			return runtimeCondition
+		}
 		runtimeCondition.Status = v1.ConditionFalse
 		runtimeCondition.Reason = fmt.Sprintf("None of %s runtime is ready", workloadType)
 		recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is not ready", runtimeCondition.Type))
