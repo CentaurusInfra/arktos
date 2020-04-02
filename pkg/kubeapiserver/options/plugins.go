@@ -38,6 +38,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/nodetaint"
 	"k8s.io/kubernetes/plugin/pkg/admission/podnodeselector"
 	"k8s.io/kubernetes/plugin/pkg/admission/podpreset"
+	"k8s.io/kubernetes/plugin/pkg/admission/podresourceallocation"
 	"k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction"
 	podpriority "k8s.io/kubernetes/plugin/pkg/admission/priority"
 	"k8s.io/kubernetes/plugin/pkg/admission/resourcequota"
@@ -89,6 +90,7 @@ var AllOrderedPlugins = []string{
 	resize.PluginName,                       // PersistentVolumeClaimResize
 	mutatingwebhook.PluginName,              // MutatingAdmissionWebhook
 	validatingwebhook.PluginName,            // ValidatingAdmissionWebhook
+	podresourceallocation.PluginName,        // PodResourceAllocation
 	resourcequota.PluginName,                // ResourceQuota
 	deny.PluginName,                         // AlwaysDeny
 }
@@ -115,6 +117,7 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	podnodeselector.Register(plugins)
 	podpreset.Register(plugins)
 	podtolerationrestriction.Register(plugins)
+	podresourceallocation.Register(plugins)
 	resourcequota.Register(plugins)
 	podsecuritypolicy.Register(plugins)
 	podpriority.Register(plugins)
@@ -136,6 +139,7 @@ func DefaultOffAdmissionPlugins() sets.String {
 		defaulttolerationseconds.PluginName,     //DefaultTolerationSeconds
 		mutatingwebhook.PluginName,              //MutatingAdmissionWebhook
 		validatingwebhook.PluginName,            //ValidatingAdmissionWebhook
+		podresourceallocation.PluginName,        //PodResourceAllocation
 		resourcequota.PluginName,                //ResourceQuota
 		storageobjectinuseprotection.PluginName, //StorageObjectInUseProtection
 	)
