@@ -112,16 +112,29 @@ func (c *DeferredLoadingClientConfig) RawConfig() ([]clientcmdapi.Config, error)
 
 // ClientConfig implements ClientConfig
 func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, error) {
-	mergedClientConfigs, err := config.createClientConfig()
-	if err != nil || len(mergedClientConfigs) == 0 {
+	createdClientConfigs, err := config.createClientConfig()
+	if err != nil || len(createdClientConfigs) == 0 {
 		return nil, err
 	}
 
-	var mergedConfigs *restclient.Config
-	for _, mergedClientConfig := range mergedClientConfigs {
+	klog.V(6).Infof("createdClientConfigs len %d", len(createdClientConfigs))
+	var returnConfigs *restclient.Config
+	var returnConfig *restclient.Config
+	isDefault := true
+	for _, createdClientConfig := range createdClientConfigs {
 		// load the configuration and return on non-empty errors and if the
 		// content differs from the default config
-		mergedConfigs, err = mergedClientConfig.ClientConfig()
+		returnConfig, err = createdClientConfig.ClientConfig()
+
+		if returnConfig != nil {
+			for _, configToAdd := range returnConfig.GetAllConfigs() {
+				if returnConfigs == nil {
+					returnConfigs = restclient.NewAggregatedConfig(configToAdd)
+				} else {
+					returnConfigs.AddConfig(configToAdd)
+				}
+			}
+		}
 
 		switch {
 		case err != nil:
@@ -129,15 +142,20 @@ func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, e
 				// return on any error except empty config
 				return nil, err
 			}
-		case mergedConfigs != nil:
+		case returnConfig != nil:
 			// the configuration is valid, but if this is equal to the defaults we should try
 			// in-cluster configuration
-			for _, configToCheck := range mergedConfigs.GetAllConfigs() {
+			for _, configToCheck := range returnConfig.GetAllConfigs() {
 				if !config.loader.IsDefaultConfig(configToCheck) {
-					return mergedConfigs, nil
+					isDefault = false
 				}
 			}
 		}
+	}
+
+	if !isDefault {
+		klog.V(6).Infof("return configs len %d", len(returnConfigs.GetAllConfigs()))
+		return returnConfigs, nil
 	}
 
 	// check for in-cluster configuration and use it
@@ -147,7 +165,10 @@ func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, e
 	}
 
 	// return the result of the merged client config
-	return mergedConfigs, err
+	if returnConfigs != nil {
+		klog.V(6).Infof("return configs len %d", len(returnConfigs.GetAllConfigs()))
+	}
+	return returnConfigs, err
 }
 
 // Tenant implements KubeConfig

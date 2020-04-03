@@ -223,8 +223,11 @@ func TestInClusterConfig(t *testing.T) {
 		if test.icc.called != test.checkedICC {
 			t.Errorf("%s: unexpected in-cluster-config call %t", name, test.icc.called)
 		}
-		if err != test.err || cfg != test.result {
-			t.Errorf("%s: unexpected result: %v %#v", name, err, cfg)
+		if err != test.err {
+			t.Errorf("%s: Got err [%v], expected err [%v]", name, err, test.err)
+		}
+		if cfg != nil && test.result == nil || cfg == nil && test.result != nil || cfg != nil && test.result != nil && cfg.ToString() != test.result.ToString() {
+			t.Errorf("%s: unexpected result [%#v]", name, cfg)
 		}
 	}
 }
