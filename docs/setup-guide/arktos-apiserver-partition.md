@@ -48,8 +48,14 @@ $ ./hack/arktos-apiserver-partition.sh start_apiserver <ETCD server ip>
 ```
 $ cd $GOPATH/src/arktos
 $ ./hack/create-kubeconfig.sh command <path to where you want to generate kubeconfig file>
+$ ./hack/create-kubeconfig.sh command <path to where you want to copy kubeconfig file from> <path to where you want to generate kubeconfig file>
 # Copy generated print out from the above command and run it in shell
 ```
+If the path to where you want to copy kubeconfig file from is not specified, it will generate the command based on the kubeconfig file /var/run/kubernetes/admin.config. In the directory /var/run/kubernetes/, there are several kubeconfig files, such as controller.kubeconfig, scheduler.kubeconfig,... If we want to get kubeconfig for kube scheduler to run in client hosts, we might run 
+```
+ ./hack/create-kubeconfig.sh command /var/run/kubernetes/scheduler.kubeconfig  <path to where you want to generate kubeconfig file>
+```
+
 . Copy both kubeconfig files into the hosts where you want to access api servers
 
 ### Run workload controller managers with multiple apiserver configs
@@ -67,6 +73,16 @@ $ ./hack/arktos-apiserver-partition.sh start_kube_controller_manager kubeconfig_
 $ ./hack/arktos-apiserver-partition.sh start_kube_scheduler kubeconfig_target_filepath1 kubeconfig_target_filepath2 kubeconfig_target_filepath3, ...
 ```
 
+### Run the kubelet with multiple apiserver configs
+```
+$ ./hack/arktos-apiserver-partition.sh start_kubelet kubeconfig_target_filepath1 kubeconfig_target_filepath2 kubeconfig_target_filepath3, ...
+```
+
+### Run the kube proxy with multiple apiserver configs
+```
+$ ./hack/arktos-apiserver-partition.sh start_kube_proxy kubeconfig_target_filepath1 kubeconfig_target_filepath2 kubeconfig_target_filepath3, ...
+```
+
 ### Skip building steps
 Copy existing binaries to a folder, for example, /home/ubuntu/output/
 Run the following commands to skip building
@@ -75,6 +91,7 @@ $ export BINARY_DIR=/home/ubuntu/output/
 $ bash ./hack/arktos-apiserver-partition.sh start_XXX ...
 ```
 Note: make sure to add the last "/".
+
 
 ## Testing Senario
 
