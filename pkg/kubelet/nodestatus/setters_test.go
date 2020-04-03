@@ -67,7 +67,7 @@ func TestRuntimeServiceCondition(t *testing.T) {
 		expectedConditions []v1.NodeCondition
 	}{
 		{
-			desc: "fresh empty node status should get valid conditions once set",
+			desc: "fresh empty node status should get unknown conditions",
 			node: &v1.Node{
 				Status: v1.NodeStatus{
 					Conditions: []v1.NodeCondition{
@@ -76,11 +76,11 @@ func TestRuntimeServiceCondition(t *testing.T) {
 			},
 			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
 				return map[string] map[string]bool{
-					"vm": {"fake-vm": true},
 				}, nil
 			},
 			expectedConditions: []v1.NodeCondition{
-				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionTrue, "At least one vm runtime is ready", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionUnknown, "", "",  zeroTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionUnknown, "", "",  zeroTime, checkTime),
 			},
 		},
 		{

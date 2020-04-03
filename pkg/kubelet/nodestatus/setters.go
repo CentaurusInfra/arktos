@@ -579,19 +579,21 @@ func RuntimeServiceCondition(nowFunc func() time.Time, // typically Kubelet.cloc
 			// Update the heartbeat time
 			condition.LastHeartbeatTime = currentTime
 
-			if runtimeIsReady(runtimeStatus) {
-				if condition.Status != v1.ConditionTrue {
-					condition.Status = v1.ConditionTrue
-					condition.Reason = fmt.Sprintf("At least one %s runtime is ready", workloadType)
+			if runtimeStatus != nil {
+				if runtimeIsReady(runtimeStatus) {
+					if condition.Status != v1.ConditionTrue {
+						condition.Status = v1.ConditionTrue
+						condition.Reason = fmt.Sprintf("At least one %s runtime is ready", workloadType)
+						condition.LastTransitionTime = currentTime
+						recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is ready", conditionType))
+					}
+				} else if condition.Status != v1.ConditionFalse {
+					condition.Status = v1.ConditionFalse
+					condition.Status = v1.ConditionFalse
+					condition.Reason = fmt.Sprintf("None of %s runtime is ready", workloadType)
 					condition.LastTransitionTime = currentTime
-					recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is ready", conditionType))
+					recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is not ready", conditionType))
 				}
-			} else if condition.Status != v1.ConditionFalse {
-				condition.Status = v1.ConditionFalse
-				condition.Status = v1.ConditionFalse
-				condition.Reason = fmt.Sprintf("None of %s runtime is ready", workloadType)
-				condition.LastTransitionTime = currentTime
-				recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is not ready", conditionType))
 			}
 
 			if newCondition {
@@ -599,12 +601,8 @@ func RuntimeServiceCondition(nowFunc func() time.Time, // typically Kubelet.cloc
 			}
 		}
 
-		if containerRuntimeStatus != nil {
-			subConditionSetter(node, v1.NodeContainerRuntimeReady, "container", containerRuntimeStatus)
-		}
-		if vmRuntimeStatus != nil {
-			subConditionSetter(node, v1.NodeVmRuntimeReady, "vm", vmRuntimeStatus)
-		}
+		subConditionSetter(node, v1.NodeContainerRuntimeReady, "container", containerRuntimeStatus)
+		subConditionSetter(node, v1.NodeVmRuntimeReady, "vm", vmRuntimeStatus)
 		return nil
 	}
 }
