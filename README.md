@@ -68,6 +68,10 @@ cluster/kubectl.sh get nodes
 
 For more complicated cluster setups, please refer to [Arktos Cluster Setup Guide](https://github.com/futurewei-cloud/arktos/blob/master/docs/setup-guide/multi-node-dev-cluster.md).   
 
+## Setup Data Partitioned Arktos Environment
+
+[Data Partitioned Arktos Environment Setting Up Guid](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instruction on how to set up Arktos cluster with data partition
+
 ## Documents and Support
 
 The [design document folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals/) contains the detailed design of already implemented features, and also some thoughts for planned features.
