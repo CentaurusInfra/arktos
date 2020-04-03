@@ -44,43 +44,70 @@ $ ./hack/arktos-apiserver-partition.sh start_apiserver <ETCD server ip>
 ```
 
 ### Get kubeconfig from master servers to client host
-. On 1st and 2nd api server hosts, run the following command and get kubeconfig file that connects to the api server
+On 1st and 2nd api server hosts, run the following command and get kubeconfig file that connects to the api server
+
+. Create a folder for kubeconfig
+```
+$ mkdir -p /home/ubuntu/kubeconfig
+```
+. Get kubeconfig files used by Kube Controller Manager, Workload Controller Manager, and Kubectl
 ```
 $ cd $GOPATH/src/arktos
-$ ./hack/create-kubeconfig.sh command <path to where you want to generate kubeconfig file>
-$ ./hack/create-kubeconfig.sh command <path to where you want to copy kubeconfig file from> <path to where you want to generate kubeconfig file>
+$ ./hack/create-kubeconfig.sh command /home/ubuntu/kubeconfig/kubeconfig-<apiserver#>.config
 # Copy generated print out from the above command and run it in shell
 ```
-If the path to where you want to copy kubeconfig file from is not specified, it will generate the command based on the kubeconfig file /var/run/kubernetes/admin.config. In the directory /var/run/kubernetes/, there are several kubeconfig files, such as controller.kubeconfig, scheduler.kubeconfig,... If we want to get kubeconfig for kube scheduler to run in client hosts, we might run 
+. Get kubeconfig files used by Scheduler 
 ```
- ./hack/create-kubeconfig.sh command /var/run/kubernetes/scheduler.kubeconfig  <path to where you want to generate kubeconfig file>
+$ ./hack/create-kubeconfig.sh command /var/run/kubernetes/scheduler.kubeconfig /home/ubuntu/kubeconfig/scheduler-<apiserver#>.kubeconfig
+# Copy generated print out from the above command and run it in shell
+```
+. Get kubeconfig files used by Kubelet
+```
+$ ./hack/create-kubeconfig.sh command /var/run/kubernetes/kubelet.kubeconfig  /home/ubuntu/kubeconfig/kubelet-<apiserver#>.kubeconfig
+# Copy generated print out from the above command and run it in shell
+```
+. Get kubeconfig files used by KubeProxy
+```
+$ ./hack/create-kubeconfig.sh command /var/run/kubernetes/kube-proxy.kubeconfig /home/ubuntu/kubeconfig/kube-proxy-<apiserver#>.kubeconfig
+# Copy generated print out from the above command and run it in shell
 ```
 
-. Copy both kubeconfig files into the hosts where you want to access api servers
+. Copy both kubeconfig files into the hosts where you want to access api servers. Expected kubeconfig files as listed below:
+```
+-rw-r--r--  1 root   root    6078 Apr  3 21:46 kubeconfig-1.config
+-rw-r--r--  1 root   root   12146 Apr  3 22:01 kubeconfig-2.config
+-rw-r--r--  1 root   root    6106 Apr  3 21:51 kubelet-1.kubeconfig
+-rw-r--r--  1 root   root    6097 Apr  3 22:01 kubelet-2.kubeconfig
+-rw-r--r--  1 root   root    6082 Apr  3 21:52 kube-proxy-1.kubeconfig
+-rw-r--r--  1 root   root    6081 Apr  3 22:01 kube-proxy-2.kubeconfig
+-rw-r--r--  1 root   root    6054 Apr  3 21:50 scheduler-1.kubeconfig
+-rw-r--r--  1 root   root    6053 Apr  3 22:01 scheduler-2.kubeconfig
+```
 
 ### Run workload controller managers with multiple apiserver configs
+Kill existing workload controller manager first. Make sure delete controller instance from etcd, otherwise, it takes 5 minutes to discover the instance is dead.
 ```
-$ ./hack/arktos-apiserver-partition.sh start_workload_controller_manager <kubeconfig_filepath1> <kubeconfig_filepath2> ... <kubeconfig_filepathn>
+$ ./hack/arktos-apiserver-partition.sh start_workload_controller_manager /home/ubuntu/kubeconfig/kubeconfig-1.config /home/ubuntu/kubeconfig/kubeconfig-2.config
 ```
 
 ### Run kube controller managers with multiple apiserver configs
 ```
-$ ./hack/arktos-apiserver-partition.sh start_kube_controller_manager kubeconfig_target_filepath1 kubeconfig_target_filepath2 kubeconfig_target_filepath3, ...
+$ ./hack/arktos-apiserver-partition.sh start_kube_controller_manager /home/ubuntu/kubeconfig/kubeconfig-1.config /home/ubuntu/kubeconfig/kubeconfig-2.config
 ```
 
 ### Run the kube scheduler with multiple apiserver configs
 ```
-$ ./hack/arktos-apiserver-partition.sh start_kube_scheduler kubeconfig_target_filepath1 kubeconfig_target_filepath2 kubeconfig_target_filepath3, ...
+$ ./hack/arktos-apiserver-partition.sh start_kube_scheduler /home/ubuntu/kubeconfig/scheduler-1.config /home/ubuntu/kubeconfig/scheduler-2.config
 ```
 
 ### Run the kubelet with multiple apiserver configs
 ```
-$ ./hack/arktos-apiserver-partition.sh start_kubelet kubeconfig_target_filepath1 kubeconfig_target_filepath2 kubeconfig_target_filepath3, ...
+$ ./hack/arktos-apiserver-partition.sh start_kubelet /home/ubuntu/kubeconfig/kubelet-1.config /home/ubuntu/kubeconfig/kubelet-2.config
 ```
 
 ### Run the kube proxy with multiple apiserver configs
 ```
-$ ./hack/arktos-apiserver-partition.sh start_kube_proxy kubeconfig_target_filepath1 kubeconfig_target_filepath2 kubeconfig_target_filepath3, ...
+$ ./hack/arktos-apiserver-partition.sh start_kube_proxy /home/ubuntu/kubeconfig/kube-proxy-1.config /home/ubuntu/kubeconfig/kube-proxy-2.config
 ```
 
 ### Skip building steps
