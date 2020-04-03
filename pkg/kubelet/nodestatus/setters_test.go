@@ -80,7 +80,6 @@ func TestRuntimeServiceCondition(t *testing.T) {
 				}, nil
 			},
 			expectedConditions: []v1.NodeCondition{
-				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionFalse, "None of container runtime is ready", "",  checkTime, checkTime),
 				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionTrue, "At least one vm runtime is ready", "",  checkTime, checkTime),
 			},
 		},

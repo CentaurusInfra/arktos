@@ -599,8 +599,12 @@ func RuntimeServiceCondition(nowFunc func() time.Time, // typically Kubelet.cloc
 			}
 		}
 
-		subConditionSetter(node, v1.NodeContainerRuntimeReady, "container", containerRuntimeStatus)
-		subConditionSetter(node, v1.NodeVmRuntimeReady, "vm", vmRuntimeStatus)
+		if containerRuntimeStatus != nil {
+			subConditionSetter(node, v1.NodeContainerRuntimeReady, "container", containerRuntimeStatus)
+		}
+		if vmRuntimeStatus != nil {
+			subConditionSetter(node, v1.NodeVmRuntimeReady, "vm", vmRuntimeStatus)
+		}
 		return nil
 	}
 }
