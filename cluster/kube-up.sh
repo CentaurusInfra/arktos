@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -75,5 +76,9 @@ fi
 echo -e "Done, listing cluster services:\n" >&2
 "${KUBE_ROOT}/cluster/kubectl.sh" cluster-info
 echo
+
+if [[ "${KUBERNETES_PROVIDER:-gce}" == "aws" ]]; then
+  echo "Kubernetes master AWS Internal IP is ${MASTER_INTERNAL_IP}"
+fi
 
 exit 0
