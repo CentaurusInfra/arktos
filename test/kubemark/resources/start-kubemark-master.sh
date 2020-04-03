@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2015 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +25,10 @@ set -o pipefail
 # Define key path variables.
 KUBE_ROOT="/home/kubernetes"
 KUBE_BINDIR="${KUBE_ROOT}/kubernetes/server/bin"
+
+if [[ -z "${CLOUD_PROVIDER}" ]]; then
+  CLOUD_PROVIDER="gce"
+fi
 
 function config-ip-firewall {
   echo "Configuring IP firewall rules"
@@ -258,7 +263,7 @@ function load-docker-images {
 function compute-kubelet-params {
 	local params="${KUBELET_TEST_ARGS:-}"
 	params+=" --cgroup-root=/"
-	params+=" --cloud-provider=gce"
+	params+=" --cloud-provider=${CLOUD_PROVIDER}"
 	params+=" --pod-manifest-path=/etc/kubernetes/manifests"
 	if [[ -n "${KUBELET_PORT:-}" ]]; then
 		params+=" --port=${KUBELET_PORT}"
@@ -711,7 +716,13 @@ create-addonmanager-kubeconfig
 # Mount master PD for etcd and create symbolic links to it.
 {
 	main_etcd_mount_point="/mnt/disks/master-pd"
-	mount-pd "google-master-pd" "${main_etcd_mount_point}"
+	if [[ "${CLOUD_PROVIDER}" = "aws" ]]; then
+		main_etcd_mount_point="/mnt/master-pd"
+		echo "For AWS, master-pd should already be mounted by bootstrap script"
+		#TODO: Verify that it is already mounted
+	else
+		mount-pd "google-master-pd" "${main_etcd_mount_point}"
+	fi
 	# Contains all the data stored in etcd.
 	mkdir -p "${main_etcd_mount_point}/var/etcd"
 	chmod 700 "${main_etcd_mount_point}/var/etcd"
