@@ -79,8 +79,8 @@ func TestRuntimeServiceCondition(t *testing.T) {
 				}, nil
 			},
 			expectedConditions: []v1.NodeCondition{
-				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionUnknown, "", "",  zeroTime, checkTime),
-				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionUnknown, "", "",  zeroTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionUnknown, "", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionUnknown, "", "",  checkTime, checkTime),
 			},
 		},
 		{
@@ -88,8 +88,8 @@ func TestRuntimeServiceCondition(t *testing.T) {
 			node: &v1.Node{
 				Status: v1.NodeStatus{
 					Conditions: []v1.NodeCondition{
-						makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "", zeroTime, zeroTime),
 						makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "", zeroTime, zeroTime),
+						makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "", zeroTime, zeroTime),
 					},
 				},
 			},
@@ -100,8 +100,8 @@ func TestRuntimeServiceCondition(t *testing.T) {
 				}, nil
 			},
 			expectedConditions: []v1.NodeCondition{
-				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "",  zeroTime, checkTime),
 				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "",  zeroTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "",  zeroTime, checkTime),
 			},
 		},
 		{
@@ -134,9 +134,7 @@ func TestRuntimeServiceCondition(t *testing.T) {
 				t.Fatalf("unexpected error: #{err}")
 			}
 
-			if !apiequality.Semantic.DeepEqual(c.expectedConditions, c.node.Status.Conditions) {
-				t.Fatalf("%q failed: \nexpecting %v, \n      got %v", c.desc, c.expectedConditions, c.node.Status.Conditions)
-			}
+			assert.True(t, apiequality.Semantic.DeepEqual(c.expectedConditions, c.node.Status.Conditions), "%s", diff.ObjectDiff(c.expectedConditions, c.node.Status.Conditions))
 		})
 	}
 }
