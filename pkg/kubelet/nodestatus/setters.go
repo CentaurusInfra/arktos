@@ -536,109 +536,83 @@ func RuntimeServiceCondition(nowFunc func() time.Time, // typically Kubelet.cloc
 ) Setter {
 	return func(node *v1.Node) error {
 		currentTime := metav1.NewTime(nowFunc())
-		var containerRuntimeCondition *v1.NodeCondition
-		var vmRuntimeCondition *v1.NodeCondition
-
-		// Check if node runtime ready condition already exists and if it does, just pick it up for update.
-		for i := range node.Status.Conditions {
-			if node.Status.Conditions[i].Type == v1.NodeContainerRuntimeReady {
-				containerRuntimeCondition = &node.Status.Conditions[i]
-			}
-			if node.Status.Conditions[i].Type == v1.NodeVmRuntimeReady {
-				vmRuntimeCondition = &node.Status.Conditions[i]
-			}
-		}
-
-		newContainerCondition := false
-		newVmCondition := false
-
-		// If the NodeMemoryPressure condition doesn't exist, create one
-		if vmRuntimeCondition == nil {
-			vmRuntimeCondition = &v1.NodeCondition{
-				Type:   v1.NodeVmRuntimeReady,
-				Status: v1.ConditionUnknown,
-			}
-			newVmCondition = true
-		}
-
-		if containerRuntimeCondition == nil {
-			containerRuntimeCondition = &v1.NodeCondition{
-				Type:   v1.NodeContainerRuntimeReady,
-				Status: v1.ConditionUnknown,
-			}
-			newContainerCondition = true
-		}
-
-		// Update the heartbeat time
-		containerRuntimeCondition.LastHeartbeatTime = currentTime
-		vmRuntimeCondition.LastHeartbeatTime = currentTime
-
 		runtimeStatuses, err := runtimeServiceStateFunc()
 		if err != nil {
 			return err
 		}
 
+		// todo: we may need to lower log level to reduce unimportant logging data in production
 		klog.Infof("runtime service status map: %v", runtimeStatuses)
 
-		// get the runtime status by workload types
+		// get the runtime status of container & vm
+		var containerRuntimeStatus, vmRuntimeStatus map[string]bool
 		for workloadType, runtimeServicesStatus := range runtimeStatuses {
-			klog.Infof("runtime service [%s] map: [%v]", workloadType, runtimeServicesStatus)
 			switch {
 			case workloadType == "container":
-				containerRuntimeCondition = getCurrentRuntimeReadiness(containerRuntimeCondition, workloadType, runtimeServicesStatus,
-					recordEventFunc, currentTime)
-
+				containerRuntimeStatus = runtimeServicesStatus
 			case workloadType == "vm":
-				vmRuntimeCondition = getCurrentRuntimeReadiness(vmRuntimeCondition, workloadType, runtimeServicesStatus,
-					recordEventFunc, currentTime)
+				vmRuntimeStatus = runtimeServicesStatus
 			}
 		}
 
-		if newVmCondition {
-			vmRuntimeCondition.LastTransitionTime = currentTime
-			node.Status.Conditions = append(node.Status.Conditions, *vmRuntimeCondition)
+		subConditionSetter := func(node *v1.Node, conditionType v1.NodeConditionType, workloadType string, runtimeStatus map[string]bool) {
+			var condition *v1.NodeCondition
+
+			// Check if node runtime ready condition already exists and if it does, just pick it up for update.
+			for i := range node.Status.Conditions {
+				if node.Status.Conditions[i].Type == conditionType {
+					condition = &node.Status.Conditions[i]
+				}
+			}
+
+			newCondition := false
+			// If the specified condition doesn't exist, create one
+			if condition == nil {
+				condition = &v1.NodeCondition{
+					Type:   conditionType,
+					Status: v1.ConditionUnknown,
+				}
+
+				newCondition = true
+			}
+
+			// Update the heartbeat time
+			condition.LastHeartbeatTime = currentTime
+
+			if runtimeIsReady(runtimeStatus) {
+				if condition.Status != v1.ConditionTrue {
+					condition.Status = v1.ConditionTrue
+					condition.Reason = fmt.Sprintf("At least one %s runtime is ready", workloadType)
+					condition.LastTransitionTime = currentTime
+					recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is ready", conditionType))
+				}
+			} else if condition.Status != v1.ConditionFalse {
+				condition.Status = v1.ConditionFalse
+				condition.Status = v1.ConditionFalse
+				condition.Reason = fmt.Sprintf("None of %s runtime is ready", workloadType)
+				condition.LastTransitionTime = currentTime
+				recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is not ready", conditionType))
+			}
+
+			if newCondition {
+				node.Status.Conditions = append(node.Status.Conditions, *condition)
+			}
 		}
-		if newContainerCondition {
-			containerRuntimeCondition.LastTransitionTime = currentTime
-			node.Status.Conditions = append(node.Status.Conditions, *containerRuntimeCondition)
-		}
+
+		subConditionSetter(node, v1.NodeContainerRuntimeReady, "container", containerRuntimeStatus)
+		subConditionSetter(node, v1.NodeVmRuntimeReady, "vm", vmRuntimeStatus)
 		return nil
 	}
 }
 
-func getCurrentRuntimeReadiness(runtimeCondition *v1.NodeCondition, workloadType string,
-	runtimeServiceStatus map[string]bool, recordEventFunc func(eventType, event string),
-	currentTime metav1.Time) *v1.NodeCondition {
-	statusSet := false
+func runtimeIsReady(runtimeServiceStatus map[string]bool) bool {
 	for _, status := range runtimeServiceStatus {
 		if status == true {
-			if runtimeCondition.Status == v1.ConditionTrue {
-				// runtime was already ready; no change
-				return runtimeCondition
-			}
-			runtimeCondition.Status = v1.ConditionTrue
-			runtimeCondition.Reason = fmt.Sprintf("At least one %s runtime is ready", workloadType)
-			recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is ready", runtimeCondition.Type))
-			statusSet = true
-			break
+			return true
 		}
 	}
 
-	if statusSet != true {
-		if runtimeCondition.Status == v1.ConditionFalse {
-			// runtime was not ready; no change
-			// update to reason is omitted as it is unessential
-			// todo: update reason field if it really makes sense
-			return runtimeCondition
-		}
-		runtimeCondition.Status = v1.ConditionFalse
-		runtimeCondition.Reason = fmt.Sprintf("None of %s runtime is ready", workloadType)
-		recordEventFunc(v1.EventTypeNormal, fmt.Sprintf("%s is not ready", runtimeCondition.Type))
-	}
-
-	runtimeCondition.LastTransitionTime = currentTime
-
-	return runtimeCondition
+	return false
 }
 
 // MemoryPressureCondition returns a Setter that updates the v1.NodeMemoryPressure condition on the node.

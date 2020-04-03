@@ -52,102 +52,91 @@ const (
 	testKubeletHostname = "127.0.0.1"
 )
 
-func TestGetCurrentRuntimeReadiness(t *testing.T) {
-	zeroTime := metav1.NewTime(time.Time{})
-	checkTime := metav1.NewTime(time.Date(2019, 10, 24, 0, 0, 0, 0, time.UTC))
-	recordEventFunc := func (eventType string, event string) {}
 
-	cases := []struct {
-		name string
-		currentStatus, expectedStatus v1.NodeCondition
-		runtimeServiceStatus map[string]bool
-	} {
+
+func TestRuntimeServiceCondition(t *testing.T) {
+	zeroTime := time.Time{}
+	checkTime := time.Date(2019, 10, 24, 0, 0, 0, 0, time.UTC)
+	recordEventFunc := func(eventType, event string) {}
+	nowFunc := func() time.Time { return checkTime }
+
+	cases := []struct{
+		desc string
+		node *v1.Node
+		runtimeServiceStateFunc func() (map[string]map[string]bool, error)
+		expectedConditions []v1.NodeCondition
+	}{
 		{
-			name: "readiness-keeps-ready",
-			currentStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionTrue,
-				Reason: "fake runtime turned on",
-				LastTransitionTime: zeroTime,
-				LastHeartbeatTime: zeroTime,
+			desc: "fresh empty node status should get valid conditions once set",
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+					},
+				},
 			},
-			runtimeServiceStatus: map[string]bool{
-				"fake": true,
+			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
+				return map[string] map[string]bool{
+					"vm": {"fake-vm": true},
+				}, nil
 			},
-			expectedStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionTrue,
-				Reason: "fake runtime turned on",
-				LastTransitionTime: zeroTime,
-				LastHeartbeatTime: zeroTime,
+			expectedConditions: []v1.NodeCondition{
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionFalse, "None of container runtime is ready", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionTrue, "At least one vm runtime is ready", "",  checkTime, checkTime),
 			},
 		},
 		{
-			name: "readiness-keeps-not-ready",
-			currentStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionFalse,
-				Reason: "fake runtime turned off",
-				LastTransitionTime: zeroTime,
-				LastHeartbeatTime: zeroTime,
+			desc: "condition should keep the same except for LastHeartbeatTime",
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "", zeroTime, zeroTime),
+						makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "", zeroTime, zeroTime),
+					},
+				},
 			},
-			runtimeServiceStatus: map[string]bool{
-				"fake": false,
+			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
+				return map[string] map[string]bool{
+					"container": { "fake-container": true },
+					"vm": {"fake-vm": false},
+				}, nil
 			},
-			expectedStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionFalse,
-				Reason: "fake runtime turned off",
-				LastTransitionTime: zeroTime,
-				LastHeartbeatTime: zeroTime,
-			},
-		},
-		{
-			name: "readiness-changes-to-ready",
-			currentStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionFalse,
-				LastTransitionTime: zeroTime,
-				LastHeartbeatTime: zeroTime,
-			},
-			runtimeServiceStatus: map[string]bool{
-				"fake": true,
-			},
-			expectedStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionTrue,
-				Reason: "At least one fake runtime is ready",
-				LastTransitionTime: checkTime,
-				LastHeartbeatTime: zeroTime,
+			expectedConditions: []v1.NodeCondition{
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "",  zeroTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "",  zeroTime, checkTime),
 			},
 		},
 		{
-			name: "readiness-changes-to-not-ready",
-			currentStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionTrue,
-				LastTransitionTime: zeroTime,
-				LastHeartbeatTime: zeroTime,
+			desc: "condition should all change",
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "", zeroTime, zeroTime),
+						makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "", zeroTime, zeroTime),
+					},
+				},
 			},
-			runtimeServiceStatus: map[string]bool{
-				"fake": false,
+			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
+				return map[string] map[string]bool{
+					"container": { "fake-container": false },
+					"vm": {"fake-vm": true},
+				}, nil
 			},
-			expectedStatus: v1.NodeCondition{
-				Type:   "fake",
-				Status: v1.ConditionFalse,
-				Reason: "None of fake runtime is ready",
-				LastTransitionTime: checkTime,
-				LastHeartbeatTime: zeroTime,
+			expectedConditions: []v1.NodeCondition{
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionFalse, "None of container runtime is ready", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionTrue, "At least one vm runtime is ready", "",  checkTime, checkTime),
 			},
 		},
 	}
 
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			runtimeCondition := c.currentStatus
-			newRuntimeCondition := getCurrentRuntimeReadiness(&runtimeCondition, "fake", c.runtimeServiceStatus, recordEventFunc, checkTime)
-			if *newRuntimeCondition != c.expectedStatus {
-				t.Fatalf("%q failed: \n\texpecting %v; \n\t      got %v", c.name, &c.expectedStatus, newRuntimeCondition)
+		t.Run(c.desc, func(t *testing.T) {
+			setter := RuntimeServiceCondition(nowFunc, c.runtimeServiceStateFunc, recordEventFunc)
+			if err := setter(c.node); err != nil {
+				t.Fatalf("unexpected error: #{err}")
+			}
+
+			if !apiequality.Semantic.DeepEqual(c.expectedConditions, c.node.Status.Conditions) {
+				t.Fatalf("%q failed: \nexpecting %v, \n      got %v", c.desc, c.expectedConditions, c.node.Status.Conditions)
 			}
 		})
 	}
@@ -1814,6 +1803,17 @@ func makeDiskPressureCondition(pressure bool, transition, heartbeat time.Time) *
 		Status:             v1.ConditionFalse,
 		Reason:             "KubeletHasNoDiskPressure",
 		Message:            "kubelet has no disk pressure",
+		LastTransitionTime: metav1.NewTime(transition),
+		LastHeartbeatTime:  metav1.NewTime(heartbeat),
+	}
+}
+
+func makeRuntimeServiceCondition(typ v1.NodeConditionType, status v1.ConditionStatus, reason, message string,  transition, heartbeat time.Time) v1.NodeCondition {
+	return v1.NodeCondition{
+		Type:               typ,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
 		LastTransitionTime: metav1.NewTime(transition),
 		LastHeartbeatTime:  metav1.NewTime(heartbeat),
 	}
