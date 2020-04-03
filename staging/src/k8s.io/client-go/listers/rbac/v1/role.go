@@ -59,7 +59,7 @@ func (s *roleLister) Roles(namespace string) RoleNamespaceLister {
 	return roleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
 }
 
-func (s *roleLister) RolesWithMultiTenancy(namespace string, tenant string) RoleNamespaceLister {
+func (s *roleLister) RolesWithMultiTenancy(tenant, namespace string) RoleNamespaceLister {
 	return roleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: tenant}
 }
 
