@@ -21,7 +21,7 @@ nav:
         - Multi-Tenancy Networking: 'design-proposals/multi-tenancy/network.md'
     - 'Scalability':
         - Controller Scalability: 'design-proposals/controller/scaleout-framework/ControllerFramework.md'
-        - Multiple API Server Data Partitioning: 'design-proposals/apiserver/apiserverpartitioning.md'
+        - API Server Data Partition: 'design-proposals/apiserver/Data-Partition-Design.md'
 
     - 'Unified VM/Container':
         - Support for Multi Runtimes in Agent: 'design-proposals/node/Support-multiple-runtimes.md'
