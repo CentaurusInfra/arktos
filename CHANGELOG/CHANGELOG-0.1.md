@@ -1,4 +1,4 @@
-## Release Summary
+# Release Summary
 
 This release is the first release of the project. It includes the following new components:
 
@@ -8,7 +8,7 @@ This release is the first release of the project. It includes the following new 
 * API Server with Multi-Tenancy and Unified Pod Support
 * Arktos VM Runtime Server
 
-## Key Features or Improvements:
+# Key Features or Improvements:
 
 * Multi-tenancy
 	* Introduce a new layer “tenant” before “namespace” in API resource URL schema, to provide a clear and isolated resource hierarchy for tenants.
@@ -27,5 +27,8 @@ This release is the first release of the project. It includes the following new 
 	* Arktos integration with Mizar.
 
 * Scalability
-	* Partitioned and scalable controller managers with active-active support.
-	* API Server Partitioning (in progress).
+	* Implement a controller framework that supports multiple controller instances running in active-active mode.
+	* Add a new component "workload controller manager" to host controllers migrated to the new framework. In this release it includes replicaset controller and deployment controller.
+	* Support preliminary workload auto rebalancing based on the number of controller instances that are currently running.
+	* Implement filter by range in API server to support multiple controller instances without increasing traffic.
+	* API Server data partitioning (partial support).
