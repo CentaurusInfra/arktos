@@ -70,7 +70,7 @@ For more complicated cluster setups, please refer to [Arktos Cluster Setup Guide
 
 ## Setup Data Partitioned Arktos Environment
 
-[Data Partitioned Arktos Environment Setting Up Guid](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instruction on how to set up Arktos cluster with data partition
+[Data Partitioned Arktos Environment Setting Up Guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instruction on how to set up Arktos cluster with data partition
 
 ## Documents and Support
 

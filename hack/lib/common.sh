@@ -522,4 +522,171 @@ function kube::common::start_kubescheduler {
     SCHEDULER_PID=$!
 }
 
+function kube::common::start_kubelet {
+    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    kubeconfigfilepaths="${CERT_DIR}/kubelet.kubeconfig"
+    if [[ $# -gt 1 ]] ; then
+       kubeconfigfilepaths=$@
+    fi
+    KUBELET_LOG=${LOG_DIR}/kubelet.log
+    mkdir -p "${POD_MANIFEST_PATH}" &>/dev/null || sudo mkdir -p "${POD_MANIFEST_PATH}"
+
+    cloud_config_arg=("--cloud-provider=${CLOUD_PROVIDER}" "--cloud-config=${CLOUD_CONFIG}")
+    if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
+       cloud_config_arg=("--cloud-provider=external")
+       cloud_config_arg+=("--provider-id=$(hostname)")
+    fi
+
+    mkdir -p "/var/lib/kubelet" &>/dev/null || sudo mkdir -p "/var/lib/kubelet"
+    # Enable dns
+    if [[ "${ENABLE_CLUSTER_DNS}" = true ]]; then
+      if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
+        dns_args=("--cluster-dns=${LOCAL_DNS_IP}" "--cluster-domain=${DNS_DOMAIN}")
+      else
+        dns_args=("--cluster-dns=${DNS_SERVER_IP}" "--cluster-domain=${DNS_DOMAIN}")
+      fi
+    else
+      # To start a private DNS server set ENABLE_CLUSTER_DNS and
+      # DNS_SERVER_IP/DOMAIN. This will at least provide a working
+      # DNS server for real world hostnames.
+      dns_args=("--cluster-dns=8.8.8.8")
+    fi
+    net_plugin_args=()
+    if [[ -n "${NET_PLUGIN}" ]]; then
+      net_plugin_args=("--network-plugin=${NET_PLUGIN}")
+    fi
+
+    auth_args=()
+    if [[ "${KUBELET_AUTHORIZATION_WEBHOOK:-}" != "false" ]]; then
+      auth_args+=("--authorization-mode=Webhook")
+    fi
+    if [[ "${KUBELET_AUTHENTICATION_WEBHOOK:-}" != "false" ]]; then
+      auth_args+=("--authentication-token-webhook")
+    fi
+    if [[ -n "${CLIENT_CA_FILE:-}" ]]; then
+      auth_args+=("--client-ca-file=${CLIENT_CA_FILE}")
+    else
+      auth_args+=("--client-ca-file=${CERT_DIR}/client-ca.crt")
+    fi
+
+    cni_conf_dir_args=()
+    if [[ -n "${CNI_CONF_DIR}" ]]; then
+      cni_conf_dir_args=("--cni-conf-dir=${CNI_CONF_DIR}")
+    fi
+
+    cni_bin_dir_args=()
+    if [[ -n "${CNI_BIN_DIR}" ]]; then
+      cni_bin_dir_args=("--cni-bin-dir=${CNI_BIN_DIR}")
+    fi
+
+    container_runtime_endpoint_args=()
+    if [[ -n "${CONTAINER_RUNTIME_ENDPOINT}" ]]; then
+      container_runtime_endpoint_args=("--container-runtime-endpoint=${CONTAINER_RUNTIME_ENDPOINT}")
+    fi
+
+    image_service_endpoint_args=()
+    if [[ -n "${IMAGE_SERVICE_ENDPOINT}" ]]; then
+      image_service_endpoint_args=("--image-service-endpoint=${IMAGE_SERVICE_ENDPOINT}")
+    fi
+
+    # shellcheck disable=SC2206
+    all_kubelet_flags=(
+      "--v=${LOG_LEVEL}"
+      "--vmodule=${LOG_SPEC}"
+      "--chaos-chance=${CHAOS_CHANCE}"
+      "--container-runtime=${CONTAINER_RUNTIME}"
+      "--hostname-override=${HOSTNAME_OVERRIDE}"
+      "${cloud_config_arg[@]}"
+      "--address=0.0.0.0"
+      --kubeconfig "${kubeconfigfilepaths}"
+      "--feature-gates=${FEATURE_GATES}"
+      "--cpu-cfs-quota=${CPU_CFS_QUOTA}"
+      "--enable-controller-attach-detach=${ENABLE_CONTROLLER_ATTACH_DETACH}"
+      "--cgroups-per-qos=${CGROUPS_PER_QOS}"
+      "--cgroup-driver=${CGROUP_DRIVER}"
+      "--cgroup-root=${CGROUP_ROOT}"
+      "--eviction-hard=${EVICTION_HARD}"
+      "--eviction-soft=${EVICTION_SOFT}"
+      "--eviction-pressure-transition-period=${EVICTION_PRESSURE_TRANSITION_PERIOD}"
+      "--pod-manifest-path=${POD_MANIFEST_PATH}"
+      "--fail-swap-on=${FAIL_SWAP_ON}"
+      ${auth_args[@]+"${auth_args[@]}"}
+      ${dns_args[@]+"${dns_args[@]}"}
+      ${cni_conf_dir_args[@]+"${cni_conf_dir_args[@]}"}
+      ${cni_bin_dir_args[@]+"${cni_bin_dir_args[@]}"}
+      ${net_plugin_args[@]+"${net_plugin_args[@]}"}
+      ${container_runtime_endpoint_args[@]+"${container_runtime_endpoint_args[@]}"}
+      ${image_service_endpoint_args[@]+"${image_service_endpoint_args[@]}"}
+      "--runtime-request-timeout=${RUNTIME_REQUEST_TIMEOUT}"
+      "--port=${KUBELET_PORT}"
+      ${KUBELET_FLAGS}
+    )
+
+    if [[ "${REUSE_CERTS}" != true ]]; then
+        kube::common::generate_kubelet_certs
+    fi
+
+    # shellcheck disable=SC2024
+    sudo -E "${GO_OUT}/hyperkube" kubelet "${all_kubelet_flags[@]}" >"${KUBELET_LOG}" 2>&1 &
+    KUBELET_PID=$!
+
+    # Quick check that kubelet is running.
+    if [ -n "${KUBELET_PID}" ] && ps -p ${KUBELET_PID} > /dev/null; then
+      echo "kubelet ( ${KUBELET_PID} ) is running."
+    else
+      cat "${KUBELET_LOG}" ; exit 1
+    fi
+}
+
+function kube::common::start_kubeproxy {
+    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    kubeconfigfilepaths="${CERT_DIR}/kube-proxy.kubeconfig"
+    if [[ $# -gt 1 ]] ; then
+       kubeconfigfilepaths=$@
+    fi
+
+    PROXY_LOG=${LOG_DIR}/kube-proxy.log
+
+    cat <<EOF > /tmp/kube-proxy.yaml
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+clientConnection:
+  kubeconfig: ${kubeconfigfilepaths}
+hostnameOverride: ${HOSTNAME_OVERRIDE}
+mode: ${KUBE_PROXY_MODE}
+EOF
+    if [[ -n ${FEATURE_GATES} ]]; then
+      echo "featureGates:"
+      # Convert from foo=true,bar=false to
+      #   foo: true
+      #   bar: false
+      for gate in $(echo "${FEATURE_GATES}" | tr ',' ' '); do
+        echo "${gate}" | ${SED} -e 's/\(.*\)=\(.*\)/  \1: \2/'
+      done
+    fi >>/tmp/kube-proxy.yaml
+
+    if [[ "${REUSE_CERTS}" != true ]]; then
+        kube::common::generate_kubeproxy_certs
+    fi
+
+    # shellcheck disable=SC2024
+    sudo "${GO_OUT}/hyperkube" kube-proxy \
+      --v="${LOG_LEVEL}" \
+      --config=/tmp/kube-proxy.yaml \
+      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
+    PROXY_PID=$!
+}
+
+function kube::common::generate_kubelet_certs {
+    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
+}
+
+function kube::common::generate_kubeproxy_certs {
+    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
+    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
+}
+
 

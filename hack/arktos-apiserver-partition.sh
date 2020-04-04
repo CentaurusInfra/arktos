@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 # Copyright 2020 Authors of Arktos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +18,6 @@
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
-
-# Kube-apiserver partitioned by tenant
 
 BINARY_DIR=${BINARY_DIR:-}
 
@@ -162,6 +161,46 @@ function start_kube_scheduler {
   fi
   echo "starting scheduler"
   kube::common::start_kubescheduler $@
+
+}
+
+function start_kubelet {
+  kill_process kubelet
+  # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
+  mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
+
+  # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
+  kube::util::ensure-gnu-sed
+
+  build_binary kubelet hyperkube
+  kube::common::set_service_accounts
+
+  ### IF the user didn't supply an output/ for the build... Then we detect.
+  if [ "${GO_OUT}" == "" ]; then
+    kube::common::detect_binary
+  fi
+  echo "starting kubelet"
+  kube::common::start_kubelet $@
+
+}
+
+function start_kube_proxy {
+  kill_process kube-proxy
+  # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
+  mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
+
+  # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
+  kube::util::ensure-gnu-sed
+
+  build_binary kube-proxy hyperkube
+  kube::common::set_service_accounts
+
+  ### IF the user didn't supply an output/ for the build... Then we detect.
+  if [ "${GO_OUT}" == "" ]; then
+    kube::common::detect_binary
+  fi
+  echo "starting kube-proxy"
+  kube::common::start_kubeproxy $@
 
 }
 
