@@ -51,25 +51,43 @@ Today we announce the v0.1 release of Arktos.
 
 ### Features Added
 1. Multi-tenancy Features
-     1. Tenancy short-path support 
+     1. Tenancy short-path support
      2. Add Tenant Controller  
      3. Tenancy-aware token Authenticator 
      4. Tenancy-aware Cert Authenticator 
-     5. Tenancy-aware RBAC Authorizer   
-     6. Tenancy in kubeconfig context
+     5. Tenancy-aware RBAC Authorizer  
+     6. Tenancy in kubeconfig context  
      7. Stabilization on multi-tenancy API Model  
-     8. More test and workaround fixes Added   
+     8. More test and workaround fixes Added  
 
 2. Scalability Features
-     1. Multiple API Server Data Partitioning  
-     2. Endpoints consolidation changes for api server data parition 
-     3. Automatically set up test environments for data partitioned environment 
-     4. Workload Controller Manager running in parallel with Kube Controller Manager. Replicaset controller and deployment controller are running in Worload Controller Manager and can have multiple instances 
-     5. Added kube-up and start-kubemark for AWS 
+     1. API Server Data Partitioning
+     2. Active-active controller framework - new Kubernetes master component: Workload Controller Manager
+     3. Set up test environments for data partitioned environment 
+     4. Add kube-up and start-kubemark for AWS
      
 3. Unifed VM/containers
      1. Add support for primary runtime 
      2. Add volume driver for OpenStack Cinder 
-     3. Fix issues on VM pod vCPU settings 
+     3. Fix issues related to VM pod vCPU settings 
+   
+4. Documentation
+   1. New documentation readthedocs page
+
+### Known Issues
+
+   1. Create new tenant make events related to the tenant populated to all api servers
+   2. Performance testing: Scheduling Throughput is one fourth of pre-arktos
+   3. AWS: Register kubemark master as a node
+   4. AWS: Start-kubemark failed to run without sudo password
+   5. Get coredns working with kubeadm
+   6. AWS: Add workload-controller-manager to aws kube-up and start-kubemark
+
+### Future Releases 
+   1. Performance test result  
+   2. ETCD partitioning
+   3. Intelligent scheduling
+   4. In-place resource update
+   5. QoS enforcement
 
 
