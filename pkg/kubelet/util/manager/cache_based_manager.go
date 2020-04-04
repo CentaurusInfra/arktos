@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,10 +37,11 @@ import (
 // GetObjectTTLFunc defines a function to get value of TTL.
 type GetObjectTTLFunc func() (time.Duration, bool)
 
-// GetObjectFunc defines a function to get object with a given namespace and name.
-type GetObjectFunc func(string, string, metav1.GetOptions) (runtime.Object, error)
+// GetObjectFunc defines a function to get object with a given tenant, namespace and name.
+type GetObjectFunc func(string, string, string, metav1.GetOptions) (runtime.Object, error)
 
 type objectKey struct {
+	tenant    string
 	namespace string
 	name      string
 }
@@ -90,8 +92,8 @@ func isObjectOlder(newObject, oldObject runtime.Object) bool {
 	return newVersion < oldVersion
 }
 
-func (s *objectStore) AddReference(namespace, name string) {
-	key := objectKey{namespace: namespace, name: name}
+func (s *objectStore) AddReference(tenant, namespace, name string) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name}
 
 	// AddReference is called from RegisterPod, thus it needs to be efficient.
 	// Thus Add() is only increasing refCount and generation of a given object.
@@ -112,8 +114,8 @@ func (s *objectStore) AddReference(namespace, name string) {
 	item.data = nil
 }
 
-func (s *objectStore) DeleteReference(namespace, name string) {
-	key := objectKey{namespace: namespace, name: name}
+func (s *objectStore) DeleteReference(tenant, namespace, name string) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -152,8 +154,8 @@ func (s *objectStore) isObjectFresh(data *objectData) bool {
 	return s.clock.Now().Before(data.lastUpdateTime.Add(objectTTL))
 }
 
-func (s *objectStore) Get(namespace, name string) (runtime.Object, error) {
-	key := objectKey{namespace: namespace, name: name}
+func (s *objectStore) Get(tenant, namespace, name string) (runtime.Object, error) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name}
 
 	data := func() *objectData {
 		s.lock.Lock()
@@ -168,7 +170,7 @@ func (s *objectStore) Get(namespace, name string) (runtime.Object, error) {
 		return item.data
 	}()
 	if data == nil {
-		return nil, fmt.Errorf("object %q/%q not registered", namespace, name)
+		return nil, fmt.Errorf("object %q/%q/%q not registered", tenant, namespace, name)
 	}
 
 	// After updating data in objectStore, lock the data, fetch object if
@@ -184,7 +186,7 @@ func (s *objectStore) Get(namespace, name string) (runtime.Object, error) {
 			util.FromApiserverCache(&opts)
 		}
 
-		object, err := s.getObject(namespace, name, opts)
+		object, err := s.getObject(tenant, namespace, name, opts)
 		if err != nil && !apierrors.IsNotFound(err) && data.object == nil && data.err == nil {
 			// Couldn't fetch the latest object, but there is no cached data to return.
 			// Return the fetch result instead.
@@ -214,8 +216,8 @@ type cacheBasedManager struct {
 	registeredPods map[objectKey]*v1.Pod
 }
 
-func (c *cacheBasedManager) GetObject(namespace, name string) (runtime.Object, error) {
-	return c.objectStore.Get(namespace, name)
+func (c *cacheBasedManager) GetObject(tenant, namespace, name string) (runtime.Object, error) {
+	return c.objectStore.Get(tenant, namespace, name)
 }
 
 func (c *cacheBasedManager) RegisterPod(pod *v1.Pod) {
@@ -223,10 +225,10 @@ func (c *cacheBasedManager) RegisterPod(pod *v1.Pod) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for name := range names {
-		c.objectStore.AddReference(pod.Namespace, name)
+		c.objectStore.AddReference(pod.Tenant, pod.Namespace, name)
 	}
 	var prev *v1.Pod
-	key := objectKey{namespace: pod.Namespace, name: pod.Name}
+	key := objectKey{tenant: pod.Tenant, namespace: pod.Namespace, name: pod.Name}
 	prev = c.registeredPods[key]
 	c.registeredPods[key] = pod
 	if prev != nil {
@@ -236,21 +238,21 @@ func (c *cacheBasedManager) RegisterPod(pod *v1.Pod) {
 			// names and prev need to have their ref counts decremented. Any that
 			// are only in prev need to be completely removed. This unconditional
 			// call takes care of both cases.
-			c.objectStore.DeleteReference(prev.Namespace, name)
+			c.objectStore.DeleteReference(prev.Tenant, prev.Namespace, name)
 		}
 	}
 }
 
 func (c *cacheBasedManager) UnregisterPod(pod *v1.Pod) {
 	var prev *v1.Pod
-	key := objectKey{namespace: pod.Namespace, name: pod.Name}
+	key := objectKey{tenant: pod.Tenant, namespace: pod.Namespace, name: pod.Name}
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	prev = c.registeredPods[key]
 	delete(c.registeredPods, key)
 	if prev != nil {
 		for name := range c.getReferencedObjects(prev) {
-			c.objectStore.DeleteReference(prev.Namespace, name)
+			c.objectStore.DeleteReference(prev.Tenant, prev.Namespace, name)
 		}
 	}
 }

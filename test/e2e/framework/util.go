@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -652,13 +653,13 @@ func WaitForNamespacesDeleted(c clientset.Interface, namespaces []string, timeou
 }
 
 func waitForServiceAccountInNamespace(c clientset.Interface, ns, serviceAccountName string, timeout time.Duration) error {
-	w, err := c.CoreV1().ServiceAccounts(ns).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: serviceAccountName}))
-	if err != nil {
-		return err
+	aggWatch := c.CoreV1().ServiceAccounts(ns).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: serviceAccountName}))
+	if aggWatch.GetFirstError() != nil {
+		return aggWatch.GetFirstError()
 	}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.UntilWithoutRetry(ctx, w, conditions.ServiceAccountHasSecrets)
+	_, err := watchtools.UntilWithoutRetry(ctx, aggWatch, conditions.ServiceAccountHasSecrets)
 	return err
 }
 
@@ -1139,13 +1140,13 @@ func WaitForRCToStabilize(c clientset.Interface, ns, name string, timeout time.D
 		"metadata.name":      name,
 		"metadata.namespace": ns,
 	}.AsSelector().String()}
-	w, err := c.CoreV1().ReplicationControllers(ns).Watch(options)
-	if err != nil {
-		return err
+	aggWatcher := c.CoreV1().ReplicationControllers(ns).Watch(options)
+	if aggWatcher.GetFirstError() != nil {
+		return aggWatcher.GetFirstError()
 	}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.UntilWithoutRetry(ctx, w, func(event watch.Event) (bool, error) {
+	_, err := watchtools.UntilWithoutRetry(ctx, aggWatcher, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Deleted:
 			return false, apierrs.NewNotFound(schema.GroupResource{Resource: "replicationcontrollers"}, "")
@@ -1334,7 +1335,8 @@ type ClientConfigGetter func() (*restclient.Config, error)
 func LoadConfig() (*restclient.Config, error) {
 	if TestContext.NodeE2E {
 		// This is a node e2e test, apply the node e2e configuration
-		return &restclient.Config{Host: TestContext.Host}, nil
+		kubeConfig := &restclient.KubeConfig{Host: TestContext.Host}
+		return restclient.NewAggregatedConfig(kubeConfig), nil
 	}
 	c, err := RestclientConfig(TestContext.KubeContext)
 	if err != nil {
@@ -2828,9 +2830,9 @@ func (rt *extractRT) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // headersForConfig extracts any http client logic necessary for the provided
 // config.
-func headersForConfig(c *restclient.Config, url *url.URL) (http.Header, error) {
+func headersForConfig(kubeConfig *restclient.KubeConfig, url *url.URL) (http.Header, error) {
 	extract := &extractRT{}
-	rt, err := restclient.HTTPWrappersForConfig(c, extract)
+	rt, err := restclient.HTTPWrappersForConfig(kubeConfig, extract)
 	if err != nil {
 		return nil, err
 	}
@@ -2842,8 +2844,8 @@ func headersForConfig(c *restclient.Config, url *url.URL) (http.Header, error) {
 
 // OpenWebSocketForURL constructs a websocket connection to the provided URL, using the client
 // config, with the specified protocols.
-func OpenWebSocketForURL(url *url.URL, config *restclient.Config, protocols []string) (*websocket.Conn, error) {
-	tlsConfig, err := restclient.TLSConfigFor(config)
+func OpenWebSocketForURL(url *url.URL, kubeConfig *restclient.KubeConfig, protocols []string) (*websocket.Conn, error) {
+	tlsConfig, err := restclient.TLSConfigFor(kubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create tls config: %v", err)
 	}
@@ -2852,7 +2854,7 @@ func OpenWebSocketForURL(url *url.URL, config *restclient.Config, protocols []st
 	} else {
 		url.Scheme = "ws"
 	}
-	headers, err := headersForConfig(config, url)
+	headers, err := headersForConfig(kubeConfig, url)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load http headers: %v", err)
 	}

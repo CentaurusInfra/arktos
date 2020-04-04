@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,11 +59,11 @@ type controller struct {
 	leaseDurationSeconds       int32
 	renewInterval              time.Duration
 	clock                      clock.Clock
-	onRepeatedHeartbeatFailure func()
+	onRepeatedHeartbeatFailure []func()
 }
 
 // NewController constructs and returns a controller
-func NewController(clock clock.Clock, client clientset.Interface, holderIdentity string, leaseDurationSeconds int32, onRepeatedHeartbeatFailure func()) Controller {
+func NewController(clock clock.Clock, client clientset.Interface, holderIdentity string, leaseDurationSeconds int32, onRepeatedHeartbeatFailure []func()) Controller {
 	var leaseClient coordclientset.LeaseInterface
 	if client != nil {
 		leaseClient = client.CoordinationV1beta1().Leases(corev1.NamespaceNodeLease)
@@ -148,7 +149,9 @@ func (c *controller) retryUpdateLease(base *coordv1beta1.Lease) {
 		}
 		klog.Errorf("failed to update node lease, error: %v", err)
 		if i > 0 && c.onRepeatedHeartbeatFailure != nil {
-			c.onRepeatedHeartbeatFailure()
+			for _, failureFn := range c.onRepeatedHeartbeatFailure {
+				failureFn()
+			}
 		}
 	}
 	klog.Errorf("failed %d attempts to update node lease, will retry after %v", maxUpdateRetries, c.renewInterval)

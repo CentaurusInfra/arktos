@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,13 +37,14 @@ func TestGracefulShutdown(t *testing.T) {
 	tearDownOnce := sync.Once{}
 	defer tearDownOnce.Do(server.TearDownFn)
 
-	transport, err := rest.TransportFor(server.ClientConfig)
+	config := server.ClientConfig.GetConfig()
+	transport, err := rest.TransportFor(config)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	client := http.Client{Transport: transport}
 
-	req, body, err := newBlockingRequest("POST", server.ClientConfig.Host+"/api/v1/namespaces")
+	req, body, err := newBlockingRequest("POST", config.Host+"/api/v1/namespaces")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +66,7 @@ func TestGracefulShutdown(t *testing.T) {
 	}
 
 	t.Logf("server should answer")
-	resp, err := client.Get(server.ClientConfig.Host + "/")
+	resp, err := client.Get(config.Host + "/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +77,7 @@ func TestGracefulShutdown(t *testing.T) {
 
 	t.Logf("server should fail new requests")
 	if err := wait.Poll(time.Millisecond*100, wait.ForeverTestTimeout, func() (done bool, err error) {
-		resp, err := client.Get(server.ClientConfig.Host + "/")
+		resp, err := client.Get(config.Host + "/")
 		if err != nil {
 			return true, nil
 		}

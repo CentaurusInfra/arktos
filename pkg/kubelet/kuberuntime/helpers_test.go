@@ -447,8 +447,8 @@ func TestBuildRuntimeServiceMap(t *testing.T) {
 			"arktos formatted endpoints, vm and container with same endpoint",
 			"containerRuntime,container," + fakeRuntimeEndpoint + ";" + "vmRuntime,vm," + fakeRuntimeEndpoint,
 			map[string]*runtimeService{
-				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
-				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint, nil, true},
+				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true, true},
+				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint, nil, true, false},
 			},
 			map[string]*imageService{
 				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
@@ -460,8 +460,8 @@ func TestBuildRuntimeServiceMap(t *testing.T) {
 			"arktos formatted endpoints, vm and container with different endpoints",
 			"containerRuntime,container," + fakeRuntimeEndpoint + ";" + "vmRuntime,vm," + fakeRuntimeEndpoint2,
 			map[string]*runtimeService{
-				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
-				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint2, nil, true},
+				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true, true},
+				"vmRuntime":        {"vmRuntime", "vm", fakeRuntimeEndpoint2, nil, true, false},
 			},
 			map[string]*imageService{
 				"containerRuntime": {"containerRuntime", "container", fakeRuntimeEndpoint, nil, true},
@@ -496,7 +496,7 @@ func TestBuildRuntimeServiceMap(t *testing.T) {
 func makeExpectedRuntimeServiceForLegacyEndpoint(endpoint string) map[string]*runtimeService {
 	runtime, _ := remote.NewRemoteRuntimeService(endpoint, runtimeRequestTimeout)
 	return map[string]*runtimeService{
-		"default": {"default", "container", endpoint, runtime, true},
+		"default": {"default", "container", endpoint, runtime, true, true},
 	}
 }
 func makeExpectedImageServiceForLegacyEndpoint(endpoint string) map[string]*imageService {

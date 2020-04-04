@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,6 +49,12 @@ var (
 		# Print the supported non-namespaced resources
 		kubectl api-resources --namespaced=false
 
+		# Print the supported tenant-scope resources
+		kubectl api-resources --tenanted=true
+
+		# Print the supported non-tenant-scope resources
+		kubectl api-resources --tenanted=false
+
 		# Print the supported API Resources with specific APIGroup
 		kubectl api-resources --api-group=extensions`)
 )
@@ -61,6 +68,7 @@ type APIResourceOptions struct {
 	Verbs      []string
 	NoHeaders  bool
 	Cached     bool
+	Tenanted   bool
 
 	genericclioptions.IOStreams
 }
@@ -76,6 +84,7 @@ func NewAPIResourceOptions(ioStreams genericclioptions.IOStreams) *APIResourceOp
 	return &APIResourceOptions{
 		IOStreams:  ioStreams,
 		Namespaced: true,
+		Tenanted:   true,
 	}
 }
 
@@ -100,6 +109,7 @@ func NewCmdAPIResources(f cmdutil.Factory, ioStreams genericclioptions.IOStreams
 
 	cmd.Flags().StringVar(&o.APIGroup, "api-group", o.APIGroup, "Limit to resources in the specified API group.")
 	cmd.Flags().BoolVar(&o.Namespaced, "namespaced", o.Namespaced, "If false, non-namespaced resources will be returned, otherwise returning namespaced resources by default.")
+	cmd.Flags().BoolVar(&o.Tenanted, "tenanted", o.Tenanted, "If false, non-tenanted resources will be returned, otherwise returning tenanted resources by default.")
 	cmd.Flags().StringSliceVar(&o.Verbs, "verbs", o.Verbs, "Limit to resources that support the specified verbs.")
 	cmd.Flags().BoolVar(&o.Cached, "cached", o.Cached, "Use the cached list of resources if available.")
 	return cmd
@@ -147,6 +157,7 @@ func (o *APIResourceOptions) RunAPIResources(cmd *cobra.Command, f cmdutil.Facto
 
 	groupChanged := cmd.Flags().Changed("api-group")
 	nsChanged := cmd.Flags().Changed("namespaced")
+	tenantChanged := cmd.Flags().Changed("tenanted")
 
 	for _, list := range lists {
 		if len(list.APIResources) == 0 {
@@ -166,6 +177,10 @@ func (o *APIResourceOptions) RunAPIResources(cmd *cobra.Command, f cmdutil.Facto
 			}
 			// filter namespaced
 			if nsChanged && o.Namespaced != resource.Namespaced {
+				continue
+			}
+			// filter tenanted
+			if tenantChanged && o.Tenanted != resource.Tenanted {
 				continue
 			}
 			// filter to resources that support the specified verbs
@@ -197,20 +212,22 @@ func (o *APIResourceOptions) RunAPIResources(cmd *cobra.Command, f cmdutil.Facto
 				errs = append(errs, err)
 			}
 		case "wide":
-			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\t%v\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\t%s\t%v\n",
 				r.APIResource.Name,
 				strings.Join(r.APIResource.ShortNames, ","),
 				r.APIGroup,
+				r.APIResource.Tenanted,
 				r.APIResource.Namespaced,
 				r.APIResource.Kind,
 				r.APIResource.Verbs); err != nil {
 				errs = append(errs, err)
 			}
 		case "":
-			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\t%s\n",
 				r.APIResource.Name,
 				strings.Join(r.APIResource.ShortNames, ","),
 				r.APIGroup,
+				r.APIResource.Tenanted,
 				r.APIResource.Namespaced,
 				r.APIResource.Kind); err != nil {
 				errs = append(errs, err)
@@ -225,7 +242,7 @@ func (o *APIResourceOptions) RunAPIResources(cmd *cobra.Command, f cmdutil.Facto
 }
 
 func printContextHeaders(out io.Writer, output string) error {
-	columnNames := []string{"NAME", "SHORTNAMES", "APIGROUP", "NAMESPACED", "KIND"}
+	columnNames := []string{"NAME", "SHORTNAMES", "APIGROUP", "TENANTED", "NAMESPACED", "KIND"}
 	if output == "wide" {
 		columnNames = append(columnNames, "VERBS")
 	}

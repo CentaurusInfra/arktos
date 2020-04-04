@@ -35,6 +35,7 @@ type CoreV1Interface interface {
 	ComponentStatusesGetter
 	ConfigMapsGetter
 	ControllerInstancesGetter
+	DataPartitionConfigsGetter
 	EndpointsGetter
 	EventsGetter
 	LimitRangesGetter
@@ -79,6 +80,10 @@ func (c *CoreV1Client) ConfigMapsWithMultiTenancy(namespace string, tenant strin
 
 func (c *CoreV1Client) ControllerInstances() ControllerInstanceInterface {
 	return newControllerInstances(c)
+}
+
+func (c *CoreV1Client) DataPartitionConfigs() DataPartitionConfigInterface {
+	return newDataPartitionConfigs(c)
 }
 
 func (c *CoreV1Client) Endpoints(namespace string) EndpointsInterface {
@@ -195,16 +200,20 @@ func (c *CoreV1Client) Tenants() TenantInterface {
 
 // NewForConfig creates a new CoreV1Client for the given config.
 func NewForConfig(c *rest.Config) (*CoreV1Client, error) {
-	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
-	client, err := rest.RESTClientFor(&config)
-	if err != nil {
+	configs := rest.CopyConfigs(c)
+	if err := setConfigDefaults(configs); err != nil {
 		return nil, err
 	}
 
-	clients := []rest.Interface{client}
+	clients := make([]rest.Interface, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		client, err := rest.RESTClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		clients[i] = client
+	}
+
 	return &CoreV1Client{clients}, nil
 }
 
@@ -224,14 +233,17 @@ func New(c rest.Interface) *CoreV1Client {
 	return &CoreV1Client{clients}
 }
 
-func setConfigDefaults(config *rest.Config) error {
+func setConfigDefaults(configs *rest.Config) error {
 	gv := v1.SchemeGroupVersion
-	config.GroupVersion = &gv
-	config.APIPath = "/api"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
-	if config.UserAgent == "" {
-		config.UserAgent = rest.DefaultKubernetesUserAgent()
+	for _, config := range configs.GetAllConfigs() {
+		config.GroupVersion = &gv
+		config.APIPath = "/api"
+		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+		if config.UserAgent == "" {
+			config.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
 	}
 
 	return nil

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -136,8 +137,10 @@ var newClientsetForConfigTemplate = `
 // NewForConfig creates a new Clientset for the given config.
 func NewForConfig(c *$.Config|raw$) (*Clientset, error) {
 	configShallowCopy := *c
-	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
-		configShallowCopy.RateLimiter = $.flowcontrolNewTokenBucketRateLimiter|raw$(configShallowCopy.QPS, configShallowCopy.Burst)
+	for _, configCopy := range configShallowCopy.GetAllConfigs() {
+		if configCopy.RateLimiter == nil && configCopy.QPS > 0 {
+			configCopy.RateLimiter = $.flowcontrolNewTokenBucketRateLimiter|raw$(configCopy.QPS, configCopy.Burst)
+		}
 	}
 	var cs Clientset
 	var err error

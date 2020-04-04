@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,7 +76,7 @@ func NewEndpointController(podInformer coreinformers.PodInformer, serviceInforme
 	endpointsInformer coreinformers.EndpointsInformer, client clientset.Interface) *EndpointController {
 	broadcaster := record.NewBroadcaster()
 	broadcaster.StartLogging(klog.Infof)
-	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
+	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy("", "")})
 	recorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "endpoint-controller"})
 
 	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
@@ -206,7 +207,7 @@ func (e *EndpointController) addPod(obj interface{}) {
 	pod := obj.(*v1.Pod)
 	services, err := e.getPodServiceMemberships(pod)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Unable to get pod %s/%s's service memberships: %v", pod.Namespace, pod.Name, err))
+		utilruntime.HandleError(fmt.Errorf("Unable to get pod %s/%s/%s's service memberships: %v", pod.Tenant, pod.Namespace, pod.Name, err))
 		return
 	}
 	for key := range services {
@@ -220,6 +221,7 @@ func podToEndpointAddress(pod *v1.Pod) *v1.EndpointAddress {
 		NodeName: &pod.Spec.NodeName,
 		TargetRef: &v1.ObjectReference{
 			Kind:            "Pod",
+			Tenant:          pod.ObjectMeta.Tenant,
 			Namespace:       pod.ObjectMeta.Namespace,
 			Name:            pod.ObjectMeta.Name,
 			UID:             pod.ObjectMeta.UID,
@@ -297,14 +299,14 @@ func (e *EndpointController) updatePod(old, cur interface{}) {
 
 	services, err := e.getPodServiceMemberships(newPod)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Unable to get pod %v/%v's service memberships: %v", newPod.Namespace, newPod.Name, err))
+		utilruntime.HandleError(fmt.Errorf("Unable to get pod %v/%v/%v's service memberships: %v", newPod.Tenant, newPod.Namespace, newPod.Name, err))
 		return
 	}
 
 	if labelsChanged {
 		oldServices, err := e.getPodServiceMemberships(oldPod)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("Unable to get pod %v/%v's service memberships: %v", oldPod.Namespace, oldPod.Name, err))
+			utilruntime.HandleError(fmt.Errorf("Unable to get pod %v/%v/%v's service memberships: %v", oldPod.Tenant, oldPod.Namespace, oldPod.Name, err))
 			return
 		}
 		services = determineNeededServiceUpdates(oldServices, services, podChangedFlag)
@@ -341,7 +343,7 @@ func (e *EndpointController) deletePod(obj interface{}) {
 		utilruntime.HandleError(fmt.Errorf("Tombstone contained object that is not a Pod: %#v", obj))
 		return
 	}
-	klog.V(4).Infof("Enqueuing services of deleted pod %s/%s having final state unrecorded", pod.Namespace, pod.Name)
+	klog.V(4).Infof("Enqueuing services of deleted pod %s/%s/%s having final state unrecorded", pod.Tenant, pod.Namespace, pod.Name)
 	e.addPod(pod)
 }
 
@@ -401,22 +403,22 @@ func (e *EndpointController) syncService(key string) error {
 		klog.V(4).Infof("Finished syncing service %q endpoints. (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	service, err := e.serviceLister.Services(namespace).Get(name)
+	service, err := e.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
 	if err != nil {
 		// Delete the corresponding endpoint, as the service has been deleted.
 		// TODO: Please note that this will delete an endpoint when a
 		// service is deleted. However, if we're down at the time when
 		// the service is deleted, we will miss that deletion, so this
 		// doesn't completely solve the problem. See #6877.
-		err = e.client.CoreV1().Endpoints(namespace).Delete(name, nil)
+		err = e.client.CoreV1().EndpointsWithMultiTenancy(namespace, tenant).Delete(name, nil)
 		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
-		e.triggerTimeTracker.DeleteEndpoints(namespace, name)
+		e.triggerTimeTracker.DeleteEndpoints(tenant, namespace, name)
 		return nil
 	}
 
@@ -427,7 +429,7 @@ func (e *EndpointController) syncService(key string) error {
 	}
 
 	klog.V(5).Infof("About to update endpoints for service %q", key)
-	pods, err := e.podLister.Pods(service.Namespace).List(labels.Set(service.Spec.Selector).AsSelectorPreValidated())
+	pods, err := e.podLister.PodsWithMultiTenancy(service.Namespace, service.Tenant).List(labels.Set(service.Spec.Selector).AsSelectorPreValidated())
 	if err != nil {
 		// Since we're getting stuff from a local cache, it is
 		// basically impossible to get this error.
@@ -449,7 +451,7 @@ func (e *EndpointController) syncService(key string) error {
 	// time tracker gets updated even if the sync turns out to be no-op and we don't update the
 	// endpoints object.
 	endpointsLastChangeTriggerTime := e.triggerTimeTracker.
-		ComputeEndpointsLastChangeTriggerTime(namespace, name, service, pods)
+		ComputeEndpointsLastChangeTriggerTime(tenant, namespace, name, service, pods)
 
 	subsets := []v1.EndpointSubset{}
 	var totalReadyEps int
@@ -457,18 +459,18 @@ func (e *EndpointController) syncService(key string) error {
 
 	for _, pod := range pods {
 		if len(pod.Status.PodIP) == 0 {
-			klog.V(5).Infof("Failed to find an IP for pod %s/%s", pod.Namespace, pod.Name)
+			klog.V(5).Infof("Failed to find an IP for pod %s/%s/%s", pod.Tenant, pod.Namespace, pod.Name)
 			continue
 		}
 		if !tolerateUnreadyEndpoints && pod.DeletionTimestamp != nil {
-			klog.V(5).Infof("Pod is being deleted %s/%s", pod.Namespace, pod.Name)
+			klog.V(5).Infof("Pod is being deleted %s/%s/%s", pod.Tenant, pod.Namespace, pod.Name)
 			continue
 		}
 
 		epa := *podToEndpointAddress(pod)
 
 		hostname := pod.Spec.Hostname
-		if len(hostname) > 0 && pod.Spec.Subdomain == service.Name && service.Namespace == pod.Namespace {
+		if len(hostname) > 0 && pod.Spec.Subdomain == service.Name && service.Namespace == pod.Namespace && service.Tenant == pod.Tenant {
 			epa.Hostname = hostname
 		}
 
@@ -486,7 +488,7 @@ func (e *EndpointController) syncService(key string) error {
 				portProto := servicePort.Protocol
 				portNum, err := podutil.FindPort(pod, servicePort)
 				if err != nil {
-					klog.V(4).Infof("Failed to find port for service %s/%s: %v", service.Namespace, service.Name, err)
+					klog.V(4).Infof("Failed to find port for service %s/%s/%s: %v", service.Tenant, service.Namespace, service.Name, err)
 					continue
 				}
 
@@ -498,10 +500,10 @@ func (e *EndpointController) syncService(key string) error {
 			}
 		}
 	}
-	subsets = endpoints.RepackSubsets(subsets)
+	subsets = endpoints.RepackSubsets(subsets, "")
 
 	// See if there's actually an update here.
-	currentEndpoints, err := e.endpointsLister.Endpoints(service.Namespace).Get(service.Name)
+	currentEndpoints, err := e.endpointsLister.EndpointsWithMultiTenancy(service.Namespace, service.Tenant).Get(service.Name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			currentEndpoints = &v1.Endpoints{
@@ -520,7 +522,7 @@ func (e *EndpointController) syncService(key string) error {
 	if !createEndpoints &&
 		apiequality.Semantic.DeepEqual(currentEndpoints.Subsets, subsets) &&
 		apiequality.Semantic.DeepEqual(currentEndpoints.Labels, service.Labels) {
-		klog.V(5).Infof("endpoints are equal for %s/%s, skipping update", service.Namespace, service.Name)
+		klog.V(5).Infof("endpoints are equal for %s/%s/%s, skipping update", service.Tenant, service.Namespace, service.Name)
 		return nil
 	}
 	newEndpoints := currentEndpoints.DeepCopy()
@@ -537,13 +539,13 @@ func (e *EndpointController) syncService(key string) error {
 		delete(newEndpoints.Annotations, v1.EndpointsLastChangeTriggerTime)
 	}
 
-	klog.V(4).Infof("Update endpoints for %v/%v, ready: %d not ready: %d", service.Namespace, service.Name, totalReadyEps, totalNotReadyEps)
+	klog.V(4).Infof("Update endpoints for %v/%v/%v, ready: %d not ready: %d", service.Tenant, service.Namespace, service.Name, totalReadyEps, totalNotReadyEps)
 	if createEndpoints {
 		// No previous endpoints, create them
-		_, err = e.client.CoreV1().Endpoints(service.Namespace).Create(newEndpoints)
+		_, err = e.client.CoreV1().EndpointsWithMultiTenancy(service.Namespace, service.Tenant).Create(newEndpoints)
 	} else {
 		// Pre-existing
-		_, err = e.client.CoreV1().Endpoints(service.Namespace).Update(newEndpoints)
+		_, err = e.client.CoreV1().EndpointsWithMultiTenancy(service.Namespace, service.Tenant).Update(newEndpoints)
 	}
 	if err != nil {
 		if createEndpoints && errors.IsForbidden(err) {
@@ -555,9 +557,9 @@ func (e *EndpointController) syncService(key string) error {
 		}
 
 		if createEndpoints {
-			e.eventRecorder.Eventf(newEndpoints, v1.EventTypeWarning, "FailedToCreateEndpoint", "Failed to create endpoint for service %v/%v: %v", service.Namespace, service.Name, err)
+			e.eventRecorder.Eventf(newEndpoints, v1.EventTypeWarning, "FailedToCreateEndpoint", "Failed to create endpoint for service %v/%v/%v: %v", service.Tenant, service.Namespace, service.Name, err)
 		} else {
-			e.eventRecorder.Eventf(newEndpoints, v1.EventTypeWarning, "FailedToUpdateEndpoint", "Failed to update endpoint %v/%v: %v", service.Namespace, service.Name, err)
+			e.eventRecorder.Eventf(newEndpoints, v1.EventTypeWarning, "FailedToUpdateEndpoint", "Failed to update endpoint %v/%v/%v: %v", service.Tenant, service.Namespace, service.Name, err)
 		}
 
 		return err
@@ -610,7 +612,7 @@ func addEndpointSubset(subsets []v1.EndpointSubset, pod *v1.Pod, epa v1.Endpoint
 		})
 		readyEps++
 	} else if shouldPodBeInEndpoints(pod) {
-		klog.V(5).Infof("Pod is out of service: %s/%s", pod.Namespace, pod.Name)
+		klog.V(5).Infof("Pod is out of service: %s/%s/%s", pod.Tenant, pod.Namespace, pod.Name)
 		subsets = append(subsets, v1.EndpointSubset{
 			NotReadyAddresses: []v1.EndpointAddress{epa},
 			Ports:             ports,

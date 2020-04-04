@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -509,6 +510,28 @@ func (DaemonEndpoint) SwaggerDoc() map[string]string {
 	return map_DaemonEndpoint
 }
 
+var map_DataPartitionConfig = map[string]string{
+	"":                   "DataPartitionConfig contains api server data partition configurations. Name in ObjectMeta is used for identitification",
+	"startTenant":        "Start tenant is inclusive",
+	"isStartTenantValid": "Whether this is an open end start",
+	"endTenant":          "End tenant is exclusive",
+	"isEndTenantValid":   "Whether this is an open end end",
+	"serviceGroupId":     "Which service group is using this data configuration",
+}
+
+func (DataPartitionConfig) SwaggerDoc() map[string]string {
+	return map_DataPartitionConfig
+}
+
+var map_DataPartitionConfigList = map[string]string{
+	"":      "DataPartitionConfigList is a list of data partition configurations that api server data partition use",
+	"items": "List of data partition configuration",
+}
+
+func (DataPartitionConfigList) SwaggerDoc() map[string]string {
+	return map_DataPartitionConfigList
+}
+
 var map_DownwardAPIProjection = map[string]string{
 	"":      "Represents downward API info for projecting into a projected volume. Note that this is identical to a downwardAPI volume source without the default mode.",
 	"items": "Items is a list of DownwardAPIVolume file",
@@ -578,6 +601,7 @@ var map_EndpointSubset = map[string]string{
 	"addresses":         "IP addresses which offer the related ports that are marked as ready. These endpoints should be considered safe for load balancers and clients to utilize.",
 	"notReadyAddresses": "IP addresses which offer the related ports but are not currently marked as ready because they have not yet finished starting, have recently failed a readiness check, or have recently failed a liveness check.",
 	"ports":             "Port numbers available on the related IP addresses.",
+	"serviceGroupId":    "The service group id of the api server cluster",
 }
 
 func (EndpointSubset) SwaggerDoc() map[string]string {

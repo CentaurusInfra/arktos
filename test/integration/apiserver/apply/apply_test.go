@@ -50,7 +50,8 @@ func setup(t *testing.T, groupVersions ...schema.GroupVersion) (*httptest.Server
 	masterConfig.GenericConfig.OpenAPIConfig = framework.DefaultOpenAPIConfig()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 
-	clientSet, err := clientset.NewForConfig(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(restclient.NewAggregatedConfig(kubeConfig))
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}

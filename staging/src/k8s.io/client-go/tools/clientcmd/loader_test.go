@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -165,11 +166,12 @@ func TestConflictingCurrentContext(t *testing.T) {
 		Precedence:   []string{envVarFile.Name()},
 	}
 
-	mergedConfig, err := loadingRules.Load()
+	mergedConfigs, err := loadingRules.Load()
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
+	mergedConfig := mergedConfigs[0]
 	if mergedConfig.CurrentContext != mockCommandLineConfig.CurrentContext {
 		t.Errorf("expected %v, got %v", mockCommandLineConfig.CurrentContext, mergedConfig.CurrentContext)
 	}
@@ -412,32 +414,25 @@ func TestResolveRelativePaths(t *testing.T) {
 		Precedence: []string{configFile1, configFile2},
 	}
 
-	mergedConfig, err := loadingRules.Load()
+	mergedConfigs, err := loadingRules.Load()
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
+	mergedConfig := mergedConfigs[0]
 	foundClusterCount := 0
 	for key, cluster := range mergedConfig.Clusters {
 		if key == "relative-server-1" {
 			foundClusterCount++
 			matchStringArg(path.Join(configDir1, pathResolutionConfig1.Clusters["relative-server-1"].CertificateAuthority), cluster.CertificateAuthority, t)
 		}
-		if key == "relative-server-2" {
-			foundClusterCount++
-			matchStringArg(path.Join(configDir2, pathResolutionConfig2.Clusters["relative-server-2"].CertificateAuthority), cluster.CertificateAuthority, t)
-		}
 		if key == "absolute-server-1" {
 			foundClusterCount++
 			matchStringArg(pathResolutionConfig1.Clusters["absolute-server-1"].CertificateAuthority, cluster.CertificateAuthority, t)
 		}
-		if key == "absolute-server-2" {
-			foundClusterCount++
-			matchStringArg(pathResolutionConfig2.Clusters["absolute-server-2"].CertificateAuthority, cluster.CertificateAuthority, t)
-		}
 	}
-	if foundClusterCount != 4 {
-		t.Errorf("Expected 4 clusters, found %v: %v", foundClusterCount, mergedConfig.Clusters)
+	if foundClusterCount != 2 {
+		t.Errorf("Expected 2 clusters, found %v: %v", foundClusterCount, mergedConfig.Clusters)
 	}
 
 	foundAuthInfoCount := 0
@@ -447,20 +442,10 @@ func TestResolveRelativePaths(t *testing.T) {
 			matchStringArg(path.Join(configDir1, pathResolutionConfig1.AuthInfos["relative-user-1"].ClientCertificate), authInfo.ClientCertificate, t)
 			matchStringArg(path.Join(configDir1, pathResolutionConfig1.AuthInfos["relative-user-1"].ClientKey), authInfo.ClientKey, t)
 		}
-		if key == "relative-user-2" {
-			foundAuthInfoCount++
-			matchStringArg(path.Join(configDir2, pathResolutionConfig2.AuthInfos["relative-user-2"].ClientCertificate), authInfo.ClientCertificate, t)
-			matchStringArg(path.Join(configDir2, pathResolutionConfig2.AuthInfos["relative-user-2"].ClientKey), authInfo.ClientKey, t)
-		}
 		if key == "absolute-user-1" {
 			foundAuthInfoCount++
 			matchStringArg(pathResolutionConfig1.AuthInfos["absolute-user-1"].ClientCertificate, authInfo.ClientCertificate, t)
 			matchStringArg(pathResolutionConfig1.AuthInfos["absolute-user-1"].ClientKey, authInfo.ClientKey, t)
-		}
-		if key == "absolute-user-2" {
-			foundAuthInfoCount++
-			matchStringArg(pathResolutionConfig2.AuthInfos["absolute-user-2"].ClientCertificate, authInfo.ClientCertificate, t)
-			matchStringArg(pathResolutionConfig2.AuthInfos["absolute-user-2"].ClientKey, authInfo.ClientKey, t)
 		}
 		if key == "relative-cmd-1" {
 			foundAuthInfoCount++
@@ -475,10 +460,42 @@ func TestResolveRelativePaths(t *testing.T) {
 			matchStringArg(pathResolutionConfig1.AuthInfos[key].Exec.Command, authInfo.Exec.Command, t)
 		}
 	}
-	if foundAuthInfoCount != 7 {
-		t.Errorf("Expected 7 users, found %v: %v", foundAuthInfoCount, mergedConfig.AuthInfos)
+	if foundAuthInfoCount != 5 {
+		t.Errorf("Expected 5 users, found %v: %v", foundAuthInfoCount, mergedConfig.AuthInfos)
 	}
 
+	mergedConfig = mergedConfigs[1]
+	foundClusterCount = 0
+	for key, cluster := range mergedConfig.Clusters {
+		if key == "relative-server-2" {
+			foundClusterCount++
+			matchStringArg(path.Join(configDir2, pathResolutionConfig2.Clusters["relative-server-2"].CertificateAuthority), cluster.CertificateAuthority, t)
+		}
+		if key == "absolute-server-2" {
+			foundClusterCount++
+			matchStringArg(pathResolutionConfig2.Clusters["absolute-server-2"].CertificateAuthority, cluster.CertificateAuthority, t)
+		}
+	}
+	if foundClusterCount != 2 {
+		t.Errorf("Expected 2 clusters, found %v: %v", foundClusterCount, mergedConfig.Clusters)
+	}
+
+	foundAuthInfoCount = 0
+	for key, authInfo := range mergedConfig.AuthInfos {
+		if key == "relative-user-2" {
+			foundAuthInfoCount++
+			matchStringArg(path.Join(configDir2, pathResolutionConfig2.AuthInfos["relative-user-2"].ClientCertificate), authInfo.ClientCertificate, t)
+			matchStringArg(path.Join(configDir2, pathResolutionConfig2.AuthInfos["relative-user-2"].ClientKey), authInfo.ClientKey, t)
+		}
+		if key == "absolute-user-2" {
+			foundAuthInfoCount++
+			matchStringArg(pathResolutionConfig2.AuthInfos["absolute-user-2"].ClientCertificate, authInfo.ClientCertificate, t)
+			matchStringArg(pathResolutionConfig2.AuthInfos["absolute-user-2"].ClientKey, authInfo.ClientKey, t)
+		}
+	}
+	if foundAuthInfoCount != 2 {
+		t.Errorf("Expected 2 users, found %v: %v", foundAuthInfoCount, mergedConfig.AuthInfos)
+	}
 }
 
 func TestMigratingFile(t *testing.T) {
@@ -590,8 +607,8 @@ func Example_noMergingOnExplicitPaths() {
 		Precedence:   []string{envVarFile.Name()},
 	}
 
-	mergedConfig, err := loadingRules.Load()
-
+	mergedConfigs, err := loadingRules.Load()
+	mergedConfig := mergedConfigs[0]
 	json, err := runtime.Encode(clientcmdlatest.Codec, mergedConfig)
 	if err != nil {
 		fmt.Printf("Unexpected error: %v", err)
@@ -623,7 +640,9 @@ func Example_noMergingOnExplicitPaths() {
 	//     token: red-token
 }
 
-func Example_mergingSomeWithConflict() {
+// New kubeconfig file loading does not support merging multiple config files
+// Skip this test
+func _Example_mergingSomeWithConflict() {
 	commandLineFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(commandLineFile.Name())
 	envVarFile, _ := ioutil.TempFile("", "")
@@ -636,9 +655,8 @@ func Example_mergingSomeWithConflict() {
 		Precedence: []string{commandLineFile.Name(), envVarFile.Name()},
 	}
 
-	mergedConfig, err := loadingRules.Load()
-
-	json, err := runtime.Encode(clientcmdlatest.Codec, mergedConfig)
+	mergedConfigs, err := loadingRules.Load()
+	json, err := runtime.Encode(clientcmdlatest.Codec, mergedConfigs[0])
 	if err != nil {
 		fmt.Printf("Unexpected error: %v", err)
 	}
@@ -676,7 +694,9 @@ func Example_mergingSomeWithConflict() {
 	//     token: yellow-token
 }
 
-func Example_mergingEverythingNoConflicts() {
+// New kubeconfig file loading does not support merging multiple config files
+// Skip this test
+func _Example_mergingEverythingNoConflicts() {
 	commandLineFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(commandLineFile.Name())
 	envVarFile, _ := ioutil.TempFile("", "")
@@ -695,9 +715,8 @@ func Example_mergingEverythingNoConflicts() {
 		Precedence: []string{commandLineFile.Name(), envVarFile.Name(), currentDirFile.Name(), homeDirFile.Name()},
 	}
 
-	mergedConfig, err := loadingRules.Load()
-
-	json, err := runtime.Encode(clientcmdlatest.Codec, mergedConfig)
+	mergedConfigs, err := loadingRules.Load()
+	json, err := runtime.Encode(clientcmdlatest.Codec, mergedConfigs[0])
 	if err != nil {
 		fmt.Printf("Unexpected error: %v", err)
 	}
@@ -785,5 +804,207 @@ func TestDeduplicate(t *testing.T) {
 		if !reflect.DeepEqual(get, testCase.expect) {
 			t.Errorf("expect: %v, get: %v", testCase.expect, get)
 		}
+	}
+}
+
+func TestMutilpleConfigfiles(t *testing.T) {
+	configFile1, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+	configFile2, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+
+	err := ioutil.WriteFile(configFile1.Name(), []byte(`
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    api-version: v1
+    server: https://kubernetes.default.svc:443
+    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  name: kubeconfig-cluster1
+contexts:
+- context:
+    cluster: kubeconfig-cluster1
+    namespace: default
+    user: kubeconfig-user1
+  name: kubeconfig-context1
+current-context: kubeconfig-context1
+users:
+- name: kubeconfig-user1
+  user:
+    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+- name: kubeconfig-user2
+  user:
+    tokenFile: /var/run/secrets/test.example.com/serviceaccount/token
+`), os.FileMode(0755))
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	err = ioutil.WriteFile(configFile2.Name(), []byte(`
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    api-version: v1
+    server: https://kubernetes.default.svc:443
+    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  name: kubeconfig-cluster2
+contexts:
+- context:
+    cluster: kubeconfig-cluster
+    namespace: default
+    user: kubeconfig-user3
+  name: kubeconfig-context2
+current-context: kubeconfig-context
+users:
+- name: kubeconfig-user3
+  user:
+    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+- name: kubeconfig-user4
+  user:
+    tokenFile: /var/run/secrets/test.example.com/serviceaccount/token
+`), os.FileMode(0755))
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile1.Name() + " " + configFile2.Name(),
+	}
+
+	mergedConfigs, err := loadingRules.Load()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if len(mergedConfigs) != 2 {
+		t.Fatalf("Expected 2 merged config. got %v", len(mergedConfigs))
+	}
+	if len(mergedConfigs[0].AuthInfos) != 2 {
+		t.Errorf("expected config.AuthInfos has 2 not %v user auth infos", len(mergedConfigs[0].AuthInfos))
+	}
+	if len(mergedConfigs[1].AuthInfos) != 2 {
+		t.Errorf("expected config.AuthInfos has 2 not %v user auth infos", len(mergedConfigs[1].AuthInfos))
+	}
+
+	if len(mergedConfigs[0].Clusters) != 1 {
+		t.Errorf("expected config.Clusters has 1 not %v clusters", len(mergedConfigs[0].Clusters))
+	}
+	if len(mergedConfigs[1].Clusters) != 1 {
+		t.Errorf("expected config.Clusters has 1 not %v clusters", len(mergedConfigs[1].Clusters))
+	}
+
+	if len(mergedConfigs[0].Contexts) != 1 {
+		t.Errorf("expected config.Contexts has 1 not %v contexts", len(mergedConfigs[0].Contexts))
+	}
+	if len(mergedConfigs[1].Contexts) != 1 {
+		t.Errorf("expected config.Contexts has 1 not %v contexts", len(mergedConfigs[1].Contexts))
+	}
+}
+
+func TestExistingAndNonExistingConfigFile(t *testing.T) {
+	configFile, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile.Name())
+
+	err := ioutil.WriteFile(configFile.Name(), []byte(`
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    api-version: v1
+    server: https://kubernetes.default.svc:443
+    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  name: kubeconfig-cluster1
+contexts:
+- context:
+    cluster: kubeconfig-cluster1
+    namespace: default
+    user: kubeconfig-user1
+  name: kubeconfig-context1
+current-context: kubeconfig-context1
+users:
+- name: kubeconfig-user1
+  user:
+    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+- name: kubeconfig-user2
+  user:
+    tokenFile: /var/run/secrets/test.example.com/serviceaccount/token
+`), os.FileMode(0755))
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	fmt.Printf("%v", configFile.Name())
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile.Name() + " nonexisting_file",
+	}
+
+	_, err = loadingRules.Load()
+	if err == nil {
+		t.Fatalf("Expected error for missing command-line file, got none")
+	}
+	if !strings.Contains(err.Error(), "nonexisting_file") {
+		t.Fatalf("Expected error about 'nonexisting_file', got %s", err.Error())
+	}
+}
+
+func TestCommandLineMultipleConfigFile(t *testing.T) {
+	configFile1, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+	configFile2, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile2.Name())
+	configFile3, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile3.Name())
+	configFile4, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile4.Name())
+
+	WriteToFile(testConfigAlfa, configFile1.Name())
+	WriteToFile(testConfigBravo, configFile2.Name())
+	WriteToFile(testConfigCharlie, configFile3.Name())
+	WriteToFile(testConfigDelta, configFile4.Name())
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile1.Name() + " " + configFile2.Name() + " " + configFile3.Name() + " " + configFile4.Name(),
+	}
+
+	conf, err := loadingRules.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(conf) != 4 {
+		t.Fatalf("expected 4 client configs")
+	}
+	for i := 0; i < 4; i++ {
+		if len(conf[i].AuthInfos) != 1 {
+			t.Errorf("expected 1 auth infos")
+		}
+	}
+}
+
+func TestCommandLineMultipleConfigFileWithOneMissing(t *testing.T) {
+	configFile1, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile1.Name())
+	configFile2, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile2.Name())
+	configFile3, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile3.Name())
+	configFile4, _ := ioutil.TempFile("", "")
+	defer os.Remove(configFile4.Name())
+
+	WriteToFile(testConfigAlfa, configFile1.Name())
+	WriteToFile(testConfigBravo, configFile2.Name())
+	WriteToFile(testConfigCharlie, configFile3.Name())
+	WriteToFile(testConfigDelta, configFile4.Name())
+	loadingRules := ClientConfigLoadingRules{
+		ExplicitPath: configFile1.Name() + " bogus_file " + configFile2.Name() + " " + configFile3.Name() + " " + configFile4.Name(),
+	}
+
+	_, err := loadingRules.Load()
+	if err == nil {
+		t.Fatalf("Expected error for missing command-line file, got none")
+	}
+	if !strings.Contains(err.Error(), "bogus_file") {
+		t.Fatalf("Expected error about 'bogus_file', got %s", err.Error())
 	}
 }

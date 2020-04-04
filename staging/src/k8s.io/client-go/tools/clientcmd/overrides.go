@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,6 +64,7 @@ type ContextOverrideFlags struct {
 	ClusterName  FlagInfo
 	AuthInfoName FlagInfo
 	Namespace    FlagInfo
+	Tenant       FlagInfo
 }
 
 // ClusterOverride holds the flag names to be used for binding command line flags for Cluster objects
@@ -156,6 +158,7 @@ const (
 	FlagUsername         = "username"
 	FlagPassword         = "password"
 	FlagTimeout          = "request-timeout"
+	FlagTenant           = "tenant"
 )
 
 // RecommendedConfigOverrideFlags is a convenience method to return recommended flag names prefixed with a string of your choosing
@@ -198,6 +201,7 @@ func RecommendedContextOverrideFlags(prefix string) ContextOverrideFlags {
 		ClusterName:  FlagInfo{prefix + FlagClusterName, "", "", "The name of the kubeconfig cluster to use"},
 		AuthInfoName: FlagInfo{prefix + FlagAuthInfoName, "", "", "The name of the kubeconfig user to use"},
 		Namespace:    FlagInfo{prefix + FlagNamespace, "n", "", "If present, the namespace scope for this CLI request"},
+		Tenant:       FlagInfo{prefix + FlagTenant, "t", "", "If present, the tenant(also referred as space) for this CLI request"},
 	}
 }
 
@@ -232,6 +236,7 @@ func BindClusterFlags(clusterInfo *clientcmdapi.Cluster, flags *pflag.FlagSet, f
 func BindContextFlags(contextInfo *clientcmdapi.Context, flags *pflag.FlagSet, flagNames ContextOverrideFlags) {
 	flagNames.ClusterName.BindStringFlag(flags, &contextInfo.Cluster)
 	flagNames.AuthInfoName.BindStringFlag(flags, &contextInfo.AuthInfo)
+	flagNames.Tenant.BindStringFlag(flags, &contextInfo.Tenant)
 	flagNames.Namespace.BindTransformingStringFlag(flags, &contextInfo.Namespace, RemoveNamespacesPrefix)
 }
 

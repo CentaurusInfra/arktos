@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,7 +44,7 @@ func TestListTimeout(t *testing.T) {
 			return &http.Response{StatusCode: http.StatusNotFound, Body: ioutil.NopCloser(&bytes.Buffer{})}, nil
 		}),
 	}
-	clientConfig := &rest.Config{
+	clientConfig := &rest.KubeConfig{
 		APIPath: "/apis",
 		ContentConfig: rest.ContentConfig{
 			NegotiatedSerializer: scheme.Codecs,

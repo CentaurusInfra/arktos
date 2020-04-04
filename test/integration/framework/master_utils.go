@@ -19,6 +19,7 @@ package framework
 
 import (
 	"flag"
+	"k8s.io/apiserver/pkg/storage/datapartition"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -32,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	authauthenticator "k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	authenticatorunion "k8s.io/apiserver/pkg/authentication/request/union"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
@@ -55,6 +57,10 @@ import (
 	"k8s.io/kubernetes/pkg/version"
 )
 
+const (
+	testTenant string = "fake-tenant"
+)
+
 // Config is a struct of configuration directives for NewMasterComponents.
 type Config struct {
 	// If nil, a default is used, partially filled configs will not get populated.
@@ -74,11 +80,12 @@ func (alwaysAllow) Authorize(requestAttributes authorizer.Attributes) (authorize
 	return authorizer.DecisionAllow, "always allow", nil
 }
 
-// alwaysEmpty simulates "no authentication" for old tests
+// alwaysEmpty simulates old tests where user name is empty
 func alwaysEmpty(req *http.Request) (*authauthenticator.Response, bool, error) {
 	return &authauthenticator.Response{
 		User: &user.DefaultInfo{
-			Name: "",
+			Name:   "",
+			Tenant: testTenant,
 		},
 	}, true, nil
 }
@@ -119,8 +126,12 @@ func DefaultOpenAPIConfig() *openapicommon.Config {
 	return openAPIConfig
 }
 
+func startMasterOrDieWithDataPartition(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
+	return startMasterOrDie(masterConfig, incomingServer, masterReceiver, true)
+}
+
 // startMasterOrDie starts a kubernetes master and an httpserver to handle api requests
-func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
+func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver, withDataPartition bool) (*master.Master, *httptest.Server, CloseFunc) {
 	var m *master.Master
 	var s *httptest.Server
 
@@ -143,7 +154,8 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 	closeFn := func() {
 		m.GenericAPIServer.RunPreShutdownHooks()
 		close(stopCh)
-		s.Close()
+		//s.Close()
+		s.CloseClientConnections()
 	}
 
 	if masterConfig == nil {
@@ -153,17 +165,25 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 
 	// set the loopback client config
 	if masterConfig.GenericConfig.LoopbackClientConfig == nil {
-		masterConfig.GenericConfig.LoopbackClientConfig = &restclient.Config{QPS: 50, Burst: 100, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		kubeConfig := &restclient.KubeConfig{QPS: 50, Burst: 100, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		masterConfig.GenericConfig.LoopbackClientConfig = restclient.NewAggregatedConfig(kubeConfig)
 	}
-	masterConfig.GenericConfig.LoopbackClientConfig.Host = s.URL
 
 	privilegedLoopbackToken := uuid.NewRandom().String()
+
+	// TODO - performance test pick up multiple api server partition
+	for _, config := range masterConfig.GenericConfig.LoopbackClientConfig.GetAllConfigs() {
+		config.Host = s.URL
+		config.BearerToken = privilegedLoopbackToken
+	}
+
 	// wrap any available authorizer
 	tokens := make(map[string]*user.DefaultInfo)
 	tokens[privilegedLoopbackToken] = &user.DefaultInfo{
 		Name:   user.APIServerUser,
 		UID:    uuid.NewRandom().String(),
 		Groups: []string{user.SystemPrivilegedGroup},
+		Tenant: testTenant,
 	}
 
 	tokenAuthenticator := authenticatorfactory.NewFromTokens(tokens)
@@ -180,14 +200,17 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 		masterConfig.GenericConfig.Authorization.Authorizer = alwaysAllow{}
 	}
 
-	masterConfig.GenericConfig.LoopbackClientConfig.BearerToken = privilegedLoopbackToken
-
 	clientset, err := clientset.NewForConfig(masterConfig.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		klog.Fatal(err)
 	}
 
-	masterConfig.ExtraConfig.VersionedInformers = informers.NewSharedInformerFactory(clientset, masterConfig.GenericConfig.LoopbackClientConfig.Timeout)
+	masterConfig.ExtraConfig.VersionedInformers = informers.NewSharedInformerFactory(clientset, masterConfig.GenericConfig.LoopbackClientConfig.GetConfig().Timeout)
+	if withDataPartition {
+		masterConfig.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
+			masterConfig.ExtraConfig.ServiceGroupId, masterConfig.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
+	}
+
 	m, err = masterConfig.Complete().New(genericapiserver.NewEmptyDelegate())
 	if err != nil {
 		closeFn()
@@ -203,7 +226,7 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 	m.GenericAPIServer.PrepareRun()
 	m.GenericAPIServer.RunPostStartHooks(stopCh)
 
-	cfg := *masterConfig.GenericConfig.LoopbackClientConfig
+	cfg := *masterConfig.GenericConfig.LoopbackClientConfig.GetConfig()
 	cfg.ContentConfig.GroupVersion = &schema.GroupVersion{}
 	privilegedClient, err := restclient.RESTClientFor(&cfg)
 	if err != nil {
@@ -232,38 +255,36 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 
 // NewIntegrationTestMasterConfig returns the master config appropriate for most integration tests.
 func NewIntegrationTestMasterConfig() *master.Config {
-	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4")
+	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4", "0")
 }
 
-// NewIntegrationTestMasterConfigParition returns two master config for api server partition tests.
-func NewIntegrationTestMasterConfigParition(prefix, configFilename1, configFilename2 string) (*master.Config, *master.Config) {
-	etcdOptions1 := DefaultEtcdOptions()
-	etcdOptions1.StorageConfig.Prefix = prefix
-	etcdOptions1.StorageConfig.PartitionConfigFilepath = configFilename1
-	masterConfigOptions1 := &MasterConfigOptions{EtcdOptions: etcdOptions1}
-	master1Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions1, "192.168.10.6")
+// NewIntegrationServerWithPartitionConfig returns master config for api server partition test
+func NewIntegrationServerWithPartitionConfig(prefix, configFilename string, masterAddr string, serviceGroupId string) *master.Config {
+	etcdOptions := DefaultEtcdOptions()
+	etcdOptions.StorageConfig.Prefix = prefix
+	etcdOptions.StorageConfig.PartitionConfigFilepath = configFilename
+	masterConfigOptions := &MasterConfigOptions{EtcdOptions: etcdOptions}
+	if masterAddr == "" {
+		masterAddr = "192.168.10.6"
+	}
+	masterConfig := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions, masterAddr, serviceGroupId)
 
-	etcdOptions2 := DefaultEtcdOptions()
-	etcdOptions2.StorageConfig.Prefix = prefix
-	etcdOptions2.StorageConfig.PartitionConfigFilepath = configFilename2
-	masterConfigOptions2 := &MasterConfigOptions{EtcdOptions: etcdOptions2}
-	master2Config := NewIntegrationTestMasterConfigWithOptionsAndIp(masterConfigOptions2, "192.168.10.8")
-
-	return master1Config, master2Config
+	return masterConfig
 }
 
 // NewIntegrationTestMasterConfigWithOptions returns the master config appropriate for most integration tests
 // configured with the provided options.
 func NewIntegrationTestMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
-	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4")
+	return NewIntegrationTestMasterConfigWithOptionsAndIp(&MasterConfigOptions{}, "192.168.10.4", "0")
 }
 
 // NewIntegrationTestMasterConfigWithOptionsAndIp returns the master config for most integration tests
 // configured with the provided options and master ip address
-func NewIntegrationTestMasterConfigWithOptionsAndIp(opts *MasterConfigOptions, masterIpAddr string) *master.Config {
+func NewIntegrationTestMasterConfigWithOptionsAndIp(opts *MasterConfigOptions, masterIpAddr string, serviceGroupId string) *master.Config {
 	masterConfig := NewMasterConfigWithOptions(opts)
 	masterConfig.GenericConfig.PublicAddress = net.ParseIP(masterIpAddr)
 	masterConfig.ExtraConfig.APIResourceConfigSource = master.DefaultAPIResourceConfigSource()
+	masterConfig.ExtraConfig.ServiceGroupId = serviceGroupId
 
 	// TODO: get rid of these tests or port them to secure serving
 	masterConfig.GenericConfig.SecureServing = &genericapiserver.SecureServingInfo{Listener: fakeLocalhost443Listener{}}
@@ -312,6 +333,7 @@ func NewMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
 	genericConfig := genericapiserver.NewConfig(legacyscheme.Codecs)
 	kubeVersion := version.Get()
 	genericConfig.Version = &kubeVersion
+	genericConfig.Authentication = genericapiserver.AuthenticationInfo{Authenticator: fakeuser.FakeSuperUser{}}
 	genericConfig.Authorization.Authorizer = authorizerfactory.NewAlwaysAllowAuthorizer()
 
 	// TODO: get rid of these tests or port them to secure serving
@@ -330,6 +352,7 @@ func NewMasterConfigWithOptions(opts *MasterConfigOptions) *master.Config {
 			KubeletClientConfig:     kubeletclient.KubeletClientConfig{Port: 10250},
 			APIServerServicePort:    443,
 			MasterCount:             1,
+			ServiceGroupId:          "0",
 		},
 	}
 }
@@ -343,12 +366,20 @@ func RunAMaster(masterConfig *master.Config) (*master.Master, *httptest.Server, 
 		masterConfig = NewMasterConfig()
 		masterConfig.GenericConfig.EnableProfiling = true
 	}
-	return startMasterOrDie(masterConfig, nil, nil)
+	return startMasterOrDie(masterConfig, nil, nil, false)
+}
+
+func RunAMasterWithDataPartition(masterConfig *master.Config) (*master.Master, *httptest.Server, CloseFunc) {
+	if masterConfig == nil {
+		masterConfig = NewMasterConfig()
+		masterConfig.GenericConfig.EnableProfiling = true
+	}
+	return startMasterOrDieWithDataPartition(masterConfig, nil, nil)
 }
 
 // RunAMasterUsingServer starts up a master using the provided config on the specified server.
 func RunAMasterUsingServer(masterConfig *master.Config, s *httptest.Server, masterReceiver MasterReceiver) (*master.Master, *httptest.Server, CloseFunc) {
-	return startMasterOrDie(masterConfig, s, masterReceiver)
+	return startMasterOrDie(masterConfig, s, masterReceiver, false)
 }
 
 // SharedEtcd creates a storage config for a shared etcd instance, with a unique prefix.

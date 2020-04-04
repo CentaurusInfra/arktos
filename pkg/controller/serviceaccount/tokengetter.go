@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,22 +42,34 @@ func NewGetterFromClient(c clientset.Interface, secretLister v1listers.SecretLis
 }
 
 func (c clientGetter) GetServiceAccount(namespace, name string) (*v1.ServiceAccount, error) {
-	if serviceAccount, err := c.serviceAccountLister.ServiceAccounts(namespace).Get(name); err == nil {
-		return serviceAccount, nil
-	}
-	return c.client.CoreV1().ServiceAccounts(namespace).Get(name, metav1.GetOptions{})
+	return c.GetServiceAccountWithMultiTenancy(metav1.TenantDefault, namespace, name)
 }
 
 func (c clientGetter) GetPod(namespace, name string) (*v1.Pod, error) {
-	if pod, err := c.podLister.Pods(namespace).Get(name); err == nil {
-		return pod, nil
-	}
-	return c.client.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	return c.GetPodWithMultiTenancy(metav1.TenantDefault, namespace, name)
 }
 
 func (c clientGetter) GetSecret(namespace, name string) (*v1.Secret, error) {
-	if secret, err := c.secretLister.Secrets(namespace).Get(name); err == nil {
+	return c.GetSecretWithMultiTenancy(metav1.TenantDefault, namespace, name)
+}
+
+func (c clientGetter) GetServiceAccountWithMultiTenancy(tenant, namespace, name string) (*v1.ServiceAccount, error) {
+	if serviceAccount, err := c.serviceAccountLister.ServiceAccountsWithMultiTenancy(namespace, tenant).Get(name); err == nil {
+		return serviceAccount, nil
+	}
+	return c.client.CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
+}
+
+func (c clientGetter) GetPodWithMultiTenancy(tenant, namespace, name string) (*v1.Pod, error) {
+	if pod, err := c.podLister.PodsWithMultiTenancy(namespace, tenant).Get(name); err == nil {
+		return pod, nil
+	}
+	return c.client.CoreV1().PodsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
+}
+
+func (c clientGetter) GetSecretWithMultiTenancy(tenant, namespace, name string) (*v1.Secret, error) {
+	if secret, err := c.secretLister.SecretsWithMultiTenancy(namespace, tenant).Get(name); err == nil {
 		return secret, nil
 	}
-	return c.client.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	return c.client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }

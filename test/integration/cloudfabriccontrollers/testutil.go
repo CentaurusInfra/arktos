@@ -88,13 +88,14 @@ func rmSetupMaster(t *testing.T) (*httptest.Server, framework.CloseFunc) {
 }
 
 func RmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.ControllerInstanceManager, *replicaset.ReplicaSetController, informers.SharedInformerFactory, clientset.Interface) {
-	config := restclient.Config{Host: s.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: s.URL}
+	configs := restclient.NewAggregatedConfig(&kubeConfig)
+	clientSet, err := clientset.NewForConfig(configs)
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}
 	resyncPeriod := 12 * time.Hour
-	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "rs-informers")), resyncPeriod)
+	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "rs-informers")), resyncPeriod)
 
 	// controller instance manager set up
 	cim := controller.GetControllerInstanceManager()
@@ -103,7 +104,7 @@ func RmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.Cont
 		go cimUpdateChGrp.Broadcast(0)
 		cim = controller.NewControllerInstanceManager(
 			informers.Core().V1().ControllerInstances(),
-			clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "controller-instance-manager")),
+			clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "controller-instance-manager")),
 			cimUpdateChGrp,
 		)
 	}
@@ -125,7 +126,7 @@ func RmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.Cont
 	rsc := replicaset.NewReplicaSetController(
 		rsInformer,
 		podInformer,
-		clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "replicaset-controller")),
+		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "replicaset-controller")),
 		replicaset.BurstReplicas,
 		cimUpdateCh,
 		rsResetChGrp,

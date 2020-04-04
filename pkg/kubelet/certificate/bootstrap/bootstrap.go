@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,7 +61,7 @@ func LoadClientConfig(kubeconfigPath, bootstrapPath, certDir string) (certConfig
 			return nil, nil, fmt.Errorf("unable to load kubeconfig: %v", err)
 		}
 		klog.V(2).Infof("No bootstrapping requested, will use kubeconfig")
-		return clientConfig, restclient.CopyConfig(clientConfig), nil
+		return clientConfig, restclient.CopyConfigs(clientConfig), nil
 	}
 
 	store, err := certificate.NewFileStore("kubelet-client", certDir, certDir, "", "")
@@ -80,7 +81,7 @@ func LoadClientConfig(kubeconfigPath, bootstrapPath, certDir string) (certConfig
 			return nil, nil, fmt.Errorf("unable to load kubeconfig: %v", err)
 		}
 		klog.V(2).Infof("Current kubeconfig file contents are still valid, no bootstrap necessary")
-		return clientConfig, restclient.CopyConfig(clientConfig), nil
+		return clientConfig, restclient.CopyConfigs(clientConfig), nil
 	}
 
 	bootstrapClientConfig, err := loadRESTClientConfig(bootstrapPath)
@@ -88,15 +89,18 @@ func LoadClientConfig(kubeconfigPath, bootstrapPath, certDir string) (certConfig
 		return nil, nil, fmt.Errorf("unable to load bootstrap kubeconfig: %v", err)
 	}
 
-	clientConfig := restclient.AnonymousClientConfig(bootstrapClientConfig)
+	clientConfigs := restclient.AnonymousClientConfig(bootstrapClientConfig)
 	pemPath := store.CurrentPath()
-	clientConfig.KeyFile = pemPath
-	clientConfig.CertFile = pemPath
-	if err := writeKubeconfigFromBootstrapping(clientConfig, kubeconfigPath, pemPath); err != nil {
+
+	for _, clientConfig := range clientConfigs.GetAllConfigs() {
+		clientConfig.KeyFile = pemPath
+		clientConfig.CertFile = pemPath
+	}
+	if err := writeKubeconfigFromBootstrapping(clientConfigs, kubeconfigPath, pemPath); err != nil {
 		return nil, nil, err
 	}
 	klog.V(2).Infof("Use the bootstrap credentials to request a cert, and set kubeconfig to point to the certificate dir")
-	return bootstrapClientConfig, clientConfig, nil
+	return bootstrapClientConfig, clientConfigs, nil
 }
 
 // LoadClientCert requests a client cert for kubelet if the kubeconfigPath file does not exist.
@@ -116,12 +120,12 @@ func LoadClientCert(kubeconfigPath, bootstrapPath, certDir string, nodeName type
 
 	klog.V(2).Info("Using bootstrap kubeconfig to generate TLS client cert, key and kubeconfig file")
 
-	bootstrapClientConfig, err := loadRESTClientConfig(bootstrapPath)
+	bootstrapClientConfigs, err := loadRESTClientConfig(bootstrapPath)
 	if err != nil {
 		return fmt.Errorf("unable to load bootstrap kubeconfig: %v", err)
 	}
 
-	bootstrapClient, err := certificatesv1beta1.NewForConfig(bootstrapClientConfig)
+	bootstrapClients, err := certificatesv1beta1.NewForConfig(bootstrapClientConfigs)
 	if err != nil {
 		return fmt.Errorf("unable to create certificates signing request client: %v", err)
 	}
@@ -154,11 +158,15 @@ func LoadClientCert(kubeconfigPath, bootstrapPath, certDir string, nodeName type
 		}
 	}
 
-	if err := waitForServer(*bootstrapClientConfig, 1*time.Minute); err != nil {
-		klog.Warningf("Error waiting for apiserver to come up: %v", err)
+	// TODO - put into go routine for parallelization
+	for _, bootStrapClientConfig := range bootstrapClientConfigs.GetAllConfigs() {
+		if err := waitForServer(*bootStrapClientConfig, 1*time.Minute); err != nil {
+			klog.Warningf("Error waiting for apiserver to come up: %v", err)
+		}
 	}
 
-	certData, err := requestNodeCertificate(bootstrapClient.CertificateSigningRequests(), keyData, nodeName)
+	// TODO - certData may not be used for array. Check and update later
+	certData, err := requestNodeCertificate(bootstrapClients.CertificateSigningRequests(), keyData, nodeName)
 	if err != nil {
 		return err
 	}
@@ -169,41 +177,48 @@ func LoadClientCert(kubeconfigPath, bootstrapPath, certDir string, nodeName type
 		klog.V(2).Infof("failed cleaning up private key file %q: %v", privKeyPath, err)
 	}
 
-	return writeKubeconfigFromBootstrapping(bootstrapClientConfig, kubeconfigPath, store.CurrentPath())
+	return writeKubeconfigFromBootstrapping(bootstrapClientConfigs, kubeconfigPath, store.CurrentPath())
 }
 
-func writeKubeconfigFromBootstrapping(bootstrapClientConfig *restclient.Config, kubeconfigPath, pemPath string) error {
+func writeKubeconfigFromBootstrapping(bootstrapClientConfigs *restclient.Config, kubeconfigPath, pemPath string) error {
 	// Get the CA data from the bootstrap client config.
-	caFile, caData := bootstrapClientConfig.CAFile, []byte{}
-	if len(caFile) == 0 {
-		caData = bootstrapClientConfig.CAData
+	for _, bootstrapClientConfig := range bootstrapClientConfigs.GetAllConfigs() {
+		caFile, caData := bootstrapClientConfig.CAFile, []byte{}
+		if len(caFile) == 0 {
+			caData = bootstrapClientConfig.CAData
+		}
+
+		// Build resulting kubeconfig.
+		kubeconfigData := clientcmdapi.Config{
+			// Define a cluster stanza based on the bootstrap kubeconfig.
+			Clusters: map[string]*clientcmdapi.Cluster{"default-cluster": {
+				Server:                   bootstrapClientConfig.Host,
+				InsecureSkipTLSVerify:    bootstrapClientConfig.Insecure,
+				CertificateAuthority:     caFile,
+				CertificateAuthorityData: caData,
+			}},
+			// Define auth based on the obtained client cert.
+			AuthInfos: map[string]*clientcmdapi.AuthInfo{"default-auth": {
+				ClientCertificate: pemPath,
+				ClientKey:         pemPath,
+			}},
+			// Define a context that connects the auth info and cluster, and set it as the default
+			Contexts: map[string]*clientcmdapi.Context{"default-context": {
+				Cluster:   "default-cluster",
+				AuthInfo:  "default-auth",
+				Namespace: "default",
+			}},
+			CurrentContext: "default-context",
+		}
+
+		// Marshal to disk
+		err := clientcmd.WriteToFile(kubeconfigData, kubeconfigPath)
+		if err != nil {
+			return err
+		}
 	}
 
-	// Build resulting kubeconfig.
-	kubeconfigData := clientcmdapi.Config{
-		// Define a cluster stanza based on the bootstrap kubeconfig.
-		Clusters: map[string]*clientcmdapi.Cluster{"default-cluster": {
-			Server:                   bootstrapClientConfig.Host,
-			InsecureSkipTLSVerify:    bootstrapClientConfig.Insecure,
-			CertificateAuthority:     caFile,
-			CertificateAuthorityData: caData,
-		}},
-		// Define auth based on the obtained client cert.
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{"default-auth": {
-			ClientCertificate: pemPath,
-			ClientKey:         pemPath,
-		}},
-		// Define a context that connects the auth info and cluster, and set it as the default
-		Contexts: map[string]*clientcmdapi.Context{"default-context": {
-			Cluster:   "default-cluster",
-			AuthInfo:  "default-auth",
-			Namespace: "default",
-		}},
-		CurrentContext: "default-context",
-	}
-
-	// Marshal to disk
-	return clientcmd.WriteToFile(kubeconfigData, kubeconfigPath)
+	return nil
 }
 
 func loadRESTClientConfig(kubeconfig string) (*restclient.Config, error) {
@@ -215,8 +230,8 @@ func loadRESTClientConfig(kubeconfig string) (*restclient.Config, error) {
 	}
 	// Flatten the loaded data to a particular restclient.Config based on the current context.
 	return clientcmd.NewNonInteractiveClientConfig(
-		*loadedConfig,
-		loadedConfig.CurrentContext,
+		*loadedConfig[0],
+		loadedConfig[0].CurrentContext,
 		&clientcmd.ConfigOverrides{},
 		loader,
 	).ClientConfig()
@@ -233,35 +248,37 @@ func isClientConfigStillValid(kubeconfigPath string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error reading existing bootstrap kubeconfig %s: %v", kubeconfigPath, err)
 	}
-	bootstrapClientConfig, err := loadRESTClientConfig(kubeconfigPath)
+	bootstrapClientConfigs, err := loadRESTClientConfig(kubeconfigPath)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Unable to read existing bootstrap client config: %v", err))
 		return false, nil
 	}
-	transportConfig, err := bootstrapClientConfig.TransportConfig()
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Unable to load transport configuration from existing bootstrap client config: %v", err))
-		return false, nil
-	}
-	// has side effect of populating transport config data fields
-	if _, err := transport.TLSConfigFor(transportConfig); err != nil {
-		utilruntime.HandleError(fmt.Errorf("Unable to load TLS configuration from existing bootstrap client config: %v", err))
-		return false, nil
-	}
-	certs, err := certutil.ParseCertsPEM(transportConfig.TLS.CertData)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Unable to load TLS certificates from existing bootstrap client config: %v", err))
-		return false, nil
-	}
-	if len(certs) == 0 {
-		utilruntime.HandleError(fmt.Errorf("Unable to read TLS certificates from existing bootstrap client config: %v", err))
-		return false, nil
-	}
-	now := time.Now()
-	for _, cert := range certs {
-		if now.After(cert.NotAfter) {
-			utilruntime.HandleError(fmt.Errorf("Part of the existing bootstrap client certificate is expired: %s", cert.NotAfter))
+	for _, bootstrapClientConfig := range bootstrapClientConfigs.GetAllConfigs() {
+		transportConfig, err := bootstrapClientConfig.TransportConfig()
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("Unable to load transport configuration from existing bootstrap client config: %v", err))
 			return false, nil
+		}
+		// has side effect of populating transport config data fields
+		if _, err := transport.TLSConfigFor(transportConfig); err != nil {
+			utilruntime.HandleError(fmt.Errorf("Unable to load TLS configuration from existing bootstrap client config: %v", err))
+			return false, nil
+		}
+		certs, err := certutil.ParseCertsPEM(transportConfig.TLS.CertData)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("Unable to load TLS certificates from existing bootstrap client config: %v", err))
+			return false, nil
+		}
+		if len(certs) == 0 {
+			utilruntime.HandleError(fmt.Errorf("Unable to read TLS certificates from existing bootstrap client config: %v", err))
+			return false, nil
+		}
+		now := time.Now()
+		for _, cert := range certs {
+			if now.After(cert.NotAfter) {
+				utilruntime.HandleError(fmt.Errorf("Part of the existing bootstrap client certificate is expired: %s", cert.NotAfter))
+				return false, nil
+			}
 		}
 	}
 	return true, nil
@@ -276,7 +293,7 @@ func verifyKeyData(data []byte) bool {
 	return err == nil
 }
 
-func waitForServer(cfg restclient.Config, deadline time.Duration) error {
+func waitForServer(cfg restclient.KubeConfig, deadline time.Duration) error {
 	cfg.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 	cfg.Timeout = 1 * time.Second
 	cli, err := restclient.UnversionedRESTClientFor(&cfg)

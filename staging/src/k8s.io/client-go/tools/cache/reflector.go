@@ -188,7 +188,7 @@ func (r *Reflector) Run(stopCh <-chan struct{}) {
 			for {
 				if err := r.ListAndWatch(stopCh); err != nil {
 					if err == errorResetRequested {
-						klog.Infof("Reset message received, redo ListAndWatch with resetCh")
+						klog.V(4).Infof("Reset message received, redo ListAndWatch with resetCh")
 						continue
 					}
 					utilruntime.HandleError(err)
@@ -234,11 +234,11 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	klog.V(5).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
 	var resourceVersion string
 
-	// Explicitly set "" as resource version - it's fine for the List()
+	// Explicitly set "0" as resource version - it's fine for the List()
 	// to be served from cache and potentially be delayed relative to
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
 	// When ResourceVersion is empty, list will get from api server cache
-	options := metav1.ListOptions{ResourceVersion: ""}
+	options := metav1.ListOptions{ResourceVersion: "0"}
 
 	if len(r.filterBounds) > 0 {
 		if r.hasInitBounds() {
@@ -250,7 +250,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			case <-stopCh:
 				return nil
 			default:
-				klog.Infof("ListAndWatchWithReset default fall through. bounds %+v", r.filterBounds)
+				klog.V(4).Infof("ListAndWatchWithReset default fall through. bounds %+v", r.filterBounds)
 			}
 		}
 
@@ -372,7 +372,8 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		if len(r.filterBounds) > 0 {
 			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
-		w, err := r.listerWatcher.Watch(options)
+		aggregatedWatcher := r.listerWatcher.Watch(options)
+		err := aggregatedWatcher.GetFirstError()
 		if err != nil {
 			switch err {
 			case io.EOF:
@@ -397,13 +398,13 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			return nil
 		}
 
-		if err := r.watchHandler(w, &resourceVersion, resyncerrc, stopCh); err != nil {
+		if err := r.watchHandler(aggregatedWatcher, &resourceVersion, resyncerrc, stopCh); err != nil {
 			if err == errorResetRequested {
 				select {
 				case cancelCh <- struct{}{}:
-					klog.Infof("Sent message to Resync cancelCh.")
+					klog.V(4).Infof("Sent message to Resync cancelCh.")
 				default:
-					klog.Infof("Resync cancelCh was closed.")
+					klog.V(4).Infof("Resync cancelCh was closed.")
 				}
 				return err
 			}
@@ -430,7 +431,7 @@ func (r *Reflector) syncWith(items []runtime.Object, resourceVersion string) err
 }
 
 // watchHandler watches w and keeps *resourceVersion up to date.
-func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
+func (r *Reflector) watchHandler(w watch.AggregatedWatchInterface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
 	start := r.clock.Now()
 	eventCount := 0
 

@@ -342,7 +342,9 @@ func testSyncReplicaSetDormancy(t *testing.T, tenant string) {
 	}
 	testServer := httptest.NewServer(&fakeHandler)
 	defer testServer.Close()
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	configs := restclient.NewAggregatedConfig(kubeConfig)
+	client := clientset.NewForConfigOrDie(configs)
 
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})

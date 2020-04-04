@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,7 +76,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 	staticRoles1 := StaticRoles{
 		roles: []*rbacv1.Role{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1", Name: "readthings"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1", Name: "readthings", Tenant: metav1.TenantSystem},
 				Rules:      []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
 			},
 		},
@@ -91,7 +92,10 @@ func TestDefaultRuleResolver(t *testing.T) {
 		},
 		roleBindings: []*rbacv1.RoleBinding{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "namespace1",
+					Tenant:    metav1.TenantSystem,
+				},
 				Subjects: []rbacv1.Subject{
 					{Kind: rbacv1.UserKind, Name: "foobar"},
 					{Kind: rbacv1.GroupKind, Name: "group1"},
@@ -101,6 +105,9 @@ func TestDefaultRuleResolver(t *testing.T) {
 		},
 		clusterRoleBindings: []*rbacv1.ClusterRoleBinding{
 			{
+				ObjectMeta: metav1.ObjectMeta{
+					Tenant: metav1.TenantSystem,
+				},
 				Subjects: []rbacv1.Subject{
 					{Kind: rbacv1.UserKind, Name: "admin"},
 					{Kind: rbacv1.GroupKind, Name: "admin"},
@@ -119,26 +126,37 @@ func TestDefaultRuleResolver(t *testing.T) {
 		effectiveRules []rbacv1.PolicyRule
 	}{
 		{
-			StaticRoles:    staticRoles1,
-			user:           &user.DefaultInfo{Name: "foobar"},
+			StaticRoles: staticRoles1,
+			user: &user.DefaultInfo{
+				Name:   "foobar",
+				Tenant: metav1.TenantSystem,
+			},
 			namespace:      "namespace1",
 			effectiveRules: []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
 		},
 		{
-			StaticRoles:    staticRoles1,
-			user:           &user.DefaultInfo{Name: "foobar"},
+			StaticRoles: staticRoles1,
+			user: &user.DefaultInfo{
+				Name:   "foobar",
+				Tenant: metav1.TenantSystem,
+			},
 			namespace:      "namespace2",
 			effectiveRules: nil,
 		},
 		{
 			StaticRoles: staticRoles1,
 			// Same as above but without a namespace. Only cluster rules should apply.
-			user:           &user.DefaultInfo{Name: "foobar", Groups: []string{"admin"}},
+			user: &user.DefaultInfo{
+				Name:   "foobar",
+				Groups: []string{"admin"},
+				Tenant: metav1.TenantSystem},
 			effectiveRules: []rbacv1.PolicyRule{ruleAdmin},
 		},
 		{
-			StaticRoles:    staticRoles1,
-			user:           &user.DefaultInfo{},
+			StaticRoles: staticRoles1,
+			user: &user.DefaultInfo{
+				Tenant: metav1.TenantSystem,
+			},
 			effectiveRules: nil,
 		},
 	}

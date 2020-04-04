@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -136,6 +137,10 @@ var _ discovery.DiscoveryInterface = &fakeDiscoveryClient{}
 
 func (c *fakeDiscoveryClient) RESTClient() restclient.Interface {
 	return &fake.RESTClient{}
+}
+
+func (c *fakeDiscoveryClient) RESTClients() []restclient.Interface {
+	return []restclient.Interface{&fake.RESTClient{}}
 }
 
 func (c *fakeDiscoveryClient) ServerGroups() (*metav1.APIGroupList, error) {

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -163,8 +164,9 @@ func TestSetWithPathPrefixIntoExistingStruct(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expectedHost := "http://cow.org:8080/foo/baz"
-	if expectedHost != dcc.Host {
-		t.Fatalf("expected client.Config.Host = %q instead of %q", expectedHost, dcc.Host)
+	kubeConfig := dcc.GetConfig()
+	if expectedHost != kubeConfig.Host {
+		t.Fatalf("expected client.Config.Host = %q instead of %q", expectedHost, kubeConfig.Host)
 	}
 }
 
@@ -794,9 +796,10 @@ func TestAdditionalContext(t *testing.T) {
 	context.Cluster = "some-cluster"
 	context.AuthInfo = "some-user"
 	context.Namespace = "different-namespace"
+	context.Tenant = "another-tenant"
 	expectedConfig.Contexts["different-context"] = context
 	test := configCommandTest{
-		args:           []string{"set-context", "different-context", "--" + clientcmd.FlagClusterName + "=some-cluster", "--" + clientcmd.FlagAuthInfoName + "=some-user", "--" + clientcmd.FlagNamespace + "=different-namespace"},
+		args:           []string{"set-context", "different-context", "--" + clientcmd.FlagClusterName + "=some-cluster", "--" + clientcmd.FlagAuthInfoName + "=some-user", "--" + clientcmd.FlagNamespace + "=different-namespace", "--" + clientcmd.FlagTenant + "=another-tenant"},
 		startingConfig: newRedFederalCowHammerConfig(),
 		expectedConfig: expectedConfig,
 	}
@@ -808,10 +811,11 @@ func TestMergeExistingContext(t *testing.T) {
 	expectedConfig := newRedFederalCowHammerConfig()
 	context := expectedConfig.Contexts["federal-context"]
 	context.Namespace = "hammer"
+	context.Tenant = "jimmy"
 	expectedConfig.Contexts["federal-context"] = context
 
 	test := configCommandTest{
-		args:           []string{"set-context", "federal-context", "--" + clientcmd.FlagNamespace + "=hammer"},
+		args:           []string{"set-context", "federal-context", "--" + clientcmd.FlagNamespace + "=hammer", "--" + clientcmd.FlagTenant + "=jimmy"},
 		startingConfig: newRedFederalCowHammerConfig(),
 		expectedConfig: expectedConfig,
 	}

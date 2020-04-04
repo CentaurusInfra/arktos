@@ -73,7 +73,7 @@ func NewFilteredRoleBindingInformerWithMultiTenancy(client kubernetes.Interface,
 				}
 				return client.RbacV1beta1().RoleBindingsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,20 +41,21 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *cronjob.Contro
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, server, closeFn := framework.RunAMaster(masterConfig)
 
-	config := restclient.Config{Host: server.URL}
-	clientSet, err := clientset.NewForConfig(&config)
+	kubeConfig := restclient.KubeConfig{Host: server.URL}
+	configs := restclient.NewAggregatedConfig(&kubeConfig)
+	clientSet, err := clientset.NewForConfig(configs)
 	if err != nil {
 		t.Fatalf("Error creating clientset: %v", err)
 	}
 	resyncPeriod := 12 * time.Hour
-	informerSet := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "cronjob-informers")), resyncPeriod)
+	informerSet := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "cronjob-informers")), resyncPeriod)
 	cjc, err := cronjob.NewController(clientSet)
 	if err != nil {
 		t.Fatalf("Error creating CronJob controller: %v", err)
 	}
 	jc := job.NewJobController(informerSet.Core().V1().Pods(), informerSet.Batch().V1().Jobs(), clientSet)
 
-	return server, closeFn, cjc, jc, informerSet, clientSet, config
+	return server, closeFn, cjc, jc, informerSet, clientSet, *configs
 }
 
 func newCronJob(name, namespace, schedule string) *batchv1beta1.CronJob {

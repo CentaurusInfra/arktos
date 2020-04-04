@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apiserver/pkg/storage/datapartition"
 	"net"
 	"net/http"
 	"net/url"
@@ -177,7 +179,7 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 		return nil, err
 	}
 
-	kubeAPIServer, err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, admissionPostStartHook)
+	kubeAPIServer, err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, admissionPostStartHook, stopCh)
 	if err != nil {
 		return nil, err
 	}
@@ -211,13 +213,14 @@ func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan
 }
 
 // CreateKubeAPIServer creates and wires a workable kube-apiserver
-func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer genericapiserver.DelegationTarget, admissionPostStartHook genericapiserver.PostStartHookFunc) (*master.Master, error) {
+func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer genericapiserver.DelegationTarget, admissionPostStartHook genericapiserver.PostStartHookFunc, stopCh <-chan struct{}) (*master.Master, error) {
 	kubeAPIServer, err := kubeAPIServerConfig.Complete().New(delegateAPIServer)
 	if err != nil {
 		return nil, err
 	}
 
 	kubeAPIServer.GenericAPIServer.AddPostStartHookOrDie("start-kube-apiserver-admission-initializer", admissionPostStartHook)
+	go kubeAPIServerConfig.ExtraConfig.DataPartitionManager.Run(stopCh)
 
 	return kubeAPIServer, nil
 }
@@ -350,12 +353,19 @@ func CreateKubeAPIServerConfig(
 
 			EndpointReconcilerType: reconcilers.Type(s.EndpointReconcilerType),
 			MasterCount:            s.MasterCount,
+			ServiceGroupId:         s.ServiceGroupId,
 
 			ServiceAccountIssuer:        s.ServiceAccountIssuer,
 			ServiceAccountMaxExpiration: s.ServiceAccountTokenMaxExpiration,
 
 			VersionedInformers: versionedInformers,
 		},
+	}
+
+	config.ExtraConfig.DataPartitionManager = datapartition.GetDataPartitionConfigManager()
+	if config.ExtraConfig.DataPartitionManager == nil {
+		config.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
+			config.ExtraConfig.ServiceGroupId, config.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
 	}
 
 	if nodeTunneler != nil {
@@ -432,7 +442,9 @@ func buildGenericConfig(
 	// Since not every generic apiserver has to support protobufs, we
 	// cannot default to it in generic apiserver and need to explicitly
 	// set it in kube-apiserver.
-	genericConfig.LoopbackClientConfig.ContentConfig.ContentType = "application/vnd.kubernetes.protobuf"
+	// TODO - api server connect to single ETCD for now
+	config := genericConfig.LoopbackClientConfig.GetConfig()
+	config.ContentConfig.ContentType = "application/vnd.kubernetes.protobuf"
 
 	kubeClientConfig := genericConfig.LoopbackClientConfig
 	clientgoExternalClient, err := clientgoclientset.NewForConfig(kubeClientConfig)
@@ -462,7 +474,7 @@ func buildGenericConfig(
 		LoopbackClientConfig: genericConfig.LoopbackClientConfig,
 		CloudConfigFile:      s.CloudProvider.CloudConfigFile,
 	}
-	serviceResolver = buildServiceResolver(s.EnableAggregatorRouting, genericConfig.LoopbackClientConfig.Host, versionedInformers)
+	serviceResolver = buildServiceResolver(s.EnableAggregatorRouting, config.Host, versionedInformers)
 
 	authInfoResolverWrapper := webhook.NewDefaultAuthenticationInfoResolverWrapper(proxyTransport, genericConfig.LoopbackClientConfig)
 
@@ -625,6 +637,11 @@ func Complete(s *options.ServerRunOptions) (completedServerRunOptions, error) {
 				delete(s.APIEnablement.RuntimeConfig, key)
 			}
 		}
+	}
+
+	if s.ServiceGroupId == "" {
+		s.ServiceGroupId = "0"
+		klog.Warning("Set service group id to default value 0.")
 	}
 	options.ServerRunOptions = s
 	return options, nil

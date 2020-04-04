@@ -395,25 +395,29 @@ func (c *dynamicResourceClient) List(opts metav1.ListOptions) (*unstructured.Uns
 	return list, nil
 }
 
-func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+	aggWatch := watch.NewAggregatedWatcher()
+
 	switch {
 	case len(c.tenant) == 0 && len(c.namespace) == 0:
-		return c.client.Fake.
-			InvokesWatch(testing.NewRootWatchAction(c.resource, opts))
+		aggWatch.AddWatchInterface(c.client.Fake.
+			InvokesWatch(testing.NewRootWatchAction(c.resource, opts)))
 
 	case len(c.tenant) > 0 && len(c.namespace) == 0:
-		return c.client.Fake.
-			InvokesWatch(testing.NewTenantWatchAction(c.resource, opts, c.tenant))
+		aggWatch.AddWatchInterface(c.client.Fake.
+			InvokesWatch(testing.NewTenantWatchAction(c.resource, opts, c.tenant)))
 
 	case len(c.tenant) > 0 && len(c.namespace) > 0:
-		return c.client.Fake.
-			InvokesWatch(testing.NewWatchActionWithMultiTenancy(c.resource, c.namespace, opts, c.tenant))
+		aggWatch.AddWatchInterface(c.client.Fake.
+			InvokesWatch(testing.NewWatchActionWithMultiTenancy(c.resource, c.namespace, opts, c.tenant)))
 
 	case len(c.tenant) == 0 && len(c.namespace) > 0:
-		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
+		aggWatch.AddWatchInterface(nil, fmt.Errorf("namespace is not-empty but tenant is empty"))
+	default:
+		panic("math broke")
 	}
 
-	panic("math broke")
+	return aggWatch
 }
 
 // TODO: opts are currently ignored.

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,15 +75,19 @@ func clientForToken(user string) *http.Client {
 }
 
 func clientsetForToken(user string, config *restclient.Config) (clientset.Interface, clientset.Interface) {
-	configCopy := *config
-	configCopy.BearerToken = user
-	return clientset.NewForConfigOrDie(&configCopy), clientset.NewForConfigOrDie(&configCopy)
+	configCopys := restclient.CopyConfigs(config)
+	for _, configCopy := range configCopys.GetAllConfigs() {
+		configCopy.BearerToken = user
+	}
+	return clientset.NewForConfigOrDie(configCopys), clientset.NewForConfigOrDie(configCopys)
 }
 
 func crdClientsetForToken(user string, config *restclient.Config) apiextensionsclient.Interface {
-	configCopy := *config
-	configCopy.BearerToken = user
-	return apiextensionsclient.NewForConfigOrDie(&configCopy)
+	configCopys := restclient.CopyConfigs(config)
+	for _, configCopy := range configCopys.GetAllConfigs() {
+		configCopy.BearerToken = user
+	}
+	return apiextensionsclient.NewForConfigOrDie(configCopys)
 }
 
 type testRESTOptionsGetter struct {
@@ -195,7 +200,7 @@ var (
   "subjects": [{
     "apiGroup": "rbac.authorization.k8s.io",
     "kind": "User",
-    "name": "admin"
+    "name": "system:admin"
   }]
 }`
 
@@ -290,7 +295,7 @@ var (
 func TestRBAC(t *testing.T) {
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, genericfeatures.ServerSideApply, true)()
 
-	superUser := "admin/system:masters"
+	superUser := "system:admin/system:masters"
 
 	tests := []struct {
 		bootstrapRoles bootstrapRoles
@@ -313,7 +318,7 @@ func TestRBAC(t *testing.T) {
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "read-pods"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "pod-reader"},
+							{Kind: "User", Name: "system:pod-reader"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "read-pods"},
 					},
@@ -331,8 +336,8 @@ func TestRBAC(t *testing.T) {
 				{"bob", "GET", "", "pods", "", "", "", http.StatusForbidden},
 				{"bob", "GET", "", "pods", "pod-namespace", "a", "", http.StatusForbidden},
 
-				{"pod-reader", "GET", "", "pods", "", "", "", http.StatusOK},
-				{"pod-reader", "POST", "", "pods", "pod-namespace", "", aPod, http.StatusForbidden},
+				{"system:pod-reader", "GET", "", "pods", "", "", "", http.StatusOK},
+				{"system:pod-reader", "POST", "", "pods", "pod-namespace", "", aPod, http.StatusForbidden},
 			},
 		},
 		{
@@ -358,41 +363,41 @@ func TestRBAC(t *testing.T) {
 				clusterRoleBindings: []rbacapi.ClusterRoleBinding{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "write-jobs"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "job-writer"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:job-writer"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "write-jobs"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "create-rolebindings"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "job-writer"},
-							{Kind: "User", Name: "nonescalating-rolebinding-writer"},
-							{Kind: "User", Name: "any-rolebinding-writer"},
+							{Kind: "User", Name: "system:job-writer"},
+							{Kind: "User", Name: "system:nonescalating-rolebinding-writer"},
+							{Kind: "User", Name: "system:any-rolebinding-writer"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "create-rolebindings"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "bind-any-clusterrole"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "any-rolebinding-writer"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:any-rolebinding-writer"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "bind-any-clusterrole"},
 					},
 				},
 				roleBindings: []rbacapi.RoleBinding{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "write-jobs", Namespace: "job-namespace"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "job-writer-namespace"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:job-writer-namespace"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "write-jobs"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "create-rolebindings", Namespace: "job-namespace"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "job-writer-namespace"},
-							{Kind: "User", Name: "any-rolebinding-writer-namespace"},
+							{Kind: "User", Name: "system:job-writer-namespace"},
+							{Kind: "User", Name: "system:any-rolebinding-writer-namespace"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "create-rolebindings"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "bind-any-clusterrole", Namespace: "job-namespace"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "any-rolebinding-writer-namespace"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:any-rolebinding-writer-namespace"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "bind-any-clusterrole"},
 					},
 				},
@@ -402,43 +407,43 @@ func TestRBAC(t *testing.T) {
 				{superUser, "POST", "", "namespaces", "", "", jobNamespace, http.StatusCreated},
 				{superUser, "POST", "", "namespaces", "", "", forbiddenNamespace, http.StatusCreated},
 
-				{"user-with-no-permissions", "POST", "batch", "jobs", "job-namespace", "", aJob, http.StatusForbidden},
-				{"user-with-no-permissions", "GET", "batch", "jobs", "job-namespace", "pi", "", http.StatusForbidden},
+				{"system:user-with-no-permissions", "POST", "batch", "jobs", "job-namespace", "", aJob, http.StatusForbidden},
+				{"system:user-with-no-permissions", "GET", "batch", "jobs", "job-namespace", "pi", "", http.StatusForbidden},
 
 				// job-writer-namespace cannot write to the "forbidden-namespace"
-				{"job-writer-namespace", "GET", "batch", "jobs", "forbidden-namespace", "", "", http.StatusForbidden},
-				{"job-writer-namespace", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusForbidden},
-				{"job-writer-namespace", "POST", "batch", "jobs", "forbidden-namespace", "", aJob, http.StatusForbidden},
-				{"job-writer-namespace", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusForbidden},
+				{"system:job-writer-namespace", "GET", "batch", "jobs", "forbidden-namespace", "", "", http.StatusForbidden},
+				{"system:job-writer-namespace", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusForbidden},
+				{"system:job-writer-namespace", "POST", "batch", "jobs", "forbidden-namespace", "", aJob, http.StatusForbidden},
+				{"system:job-writer-namespace", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusForbidden},
 
 				// job-writer can write to any namespace
-				{"job-writer", "GET", "batch", "jobs", "forbidden-namespace", "", "", http.StatusOK},
-				{"job-writer", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusNotFound},
-				{"job-writer", "POST", "batch", "jobs", "forbidden-namespace", "", aJob, http.StatusCreated},
-				{"job-writer", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusOK},
+				{"system:job-writer", "GET", "batch", "jobs", "forbidden-namespace", "", "", http.StatusOK},
+				{"system:job-writer", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusNotFound},
+				{"system:job-writer", "POST", "batch", "jobs", "forbidden-namespace", "", aJob, http.StatusCreated},
+				{"system:job-writer", "GET", "batch", "jobs", "forbidden-namespace", "pi", "", http.StatusOK},
 
-				{"job-writer-namespace", "GET", "batch", "jobs", "job-namespace", "", "", http.StatusOK},
-				{"job-writer-namespace", "GET", "batch", "jobs", "job-namespace", "pi", "", http.StatusNotFound},
-				{"job-writer-namespace", "POST", "batch", "jobs", "job-namespace", "", aJob, http.StatusCreated},
-				{"job-writer-namespace", "GET", "batch", "jobs", "job-namespace", "pi", "", http.StatusOK},
+				{"system:job-writer-namespace", "GET", "batch", "jobs", "job-namespace", "", "", http.StatusOK},
+				{"system:job-writer-namespace", "GET", "batch", "jobs", "job-namespace", "pi", "", http.StatusNotFound},
+				{"system:job-writer-namespace", "POST", "batch", "jobs", "job-namespace", "", aJob, http.StatusCreated},
+				{"system:job-writer-namespace", "GET", "batch", "jobs", "job-namespace", "pi", "", http.StatusOK},
 
 				// cannot bind role anywhere
-				{"user-with-no-permissions", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
+				{"system:user-with-no-permissions", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
 				// can only bind role in namespace where they have explicit bind permission
-				{"any-rolebinding-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "forbidden-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
+				{"system:any-rolebinding-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "forbidden-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
 				// can only bind role in namespace where they have covering permissions
-				{"job-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "forbidden-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
-				{"job-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusCreated},
+				{"system:job-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "forbidden-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
+				{"system:job-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusCreated},
 				{superUser, "DELETE", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "pi", "", http.StatusOK},
 				// can bind role in any namespace where they have covering permissions
-				{"job-writer", "POST", "rbac.authorization.k8s.io", "rolebindings", "forbidden-namespace", "", writeJobsRoleBinding, http.StatusCreated},
+				{"system:job-writer", "POST", "rbac.authorization.k8s.io", "rolebindings", "forbidden-namespace", "", writeJobsRoleBinding, http.StatusCreated},
 				{superUser, "DELETE", "rbac.authorization.k8s.io", "rolebindings", "forbidden-namespace", "pi", "", http.StatusOK},
 				// cannot bind role because they don't have covering permissions
-				{"nonescalating-rolebinding-writer", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
+				{"system:nonescalating-rolebinding-writer", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusForbidden},
 				// can bind role because they have explicit bind permission
-				{"any-rolebinding-writer", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusCreated},
+				{"system:any-rolebinding-writer", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusCreated},
 				{superUser, "DELETE", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "pi", "", http.StatusOK},
-				{"any-rolebinding-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusCreated},
+				{"system:any-rolebinding-writer-namespace", "POST", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "", writeJobsRoleBinding, http.StatusCreated},
 				{superUser, "DELETE", "rbac.authorization.k8s.io", "rolebindings", "job-namespace", "pi", "", http.StatusOK},
 			},
 		},
@@ -460,7 +465,7 @@ func TestRBAC(t *testing.T) {
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "update-limitranges"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "limitrange-updater"},
+							{Kind: "User", Name: "system:limitrange-updater"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "update-limitranges"},
 					},
@@ -470,10 +475,10 @@ func TestRBAC(t *testing.T) {
 				// Create the namespace used later in the test
 				{superUser, "POST", "", "namespaces", "", "", limitRangeNamespace, http.StatusCreated},
 
-				{"limitrange-updater", "PUT", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusForbidden},
+				{"system:limitrange-updater", "PUT", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusForbidden},
 				{superUser, "PUT", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusCreated},
 				{superUser, "PUT", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusOK},
-				{"limitrange-updater", "PUT", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusOK},
+				{"system:limitrange-updater", "PUT", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusOK},
 			},
 		},
 		{
@@ -494,7 +499,7 @@ func TestRBAC(t *testing.T) {
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "patch-limitranges"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "limitrange-patcher"},
+							{Kind: "User", Name: "system:limitrange-patcher"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "patch-limitranges"},
 					},
@@ -504,10 +509,10 @@ func TestRBAC(t *testing.T) {
 				// Create the namespace used later in the test
 				{superUser, "POST", "", "namespaces", "", "", limitRangeNamespace, http.StatusCreated},
 
-				{"limitrange-patcher", "PATCH", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusForbidden},
+				{"system:limitrange-patcher", "PATCH", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusForbidden},
 				{superUser, "PATCH", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusCreated},
 				{superUser, "PATCH", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusOK},
-				{"limitrange-patcher", "PATCH", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusOK},
+				{"system:limitrange-patcher", "PATCH", "", "limitranges", "limitrange-namespace", "a", aLimitRange, http.StatusOK},
 			},
 		},
 	}
@@ -517,23 +522,24 @@ func TestRBAC(t *testing.T) {
 		masterConfig := framework.NewIntegrationTestMasterConfig()
 		masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 		masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-			superUser:                          {Name: "admin", Groups: []string{"system:masters"}},
-			"any-rolebinding-writer":           {Name: "any-rolebinding-writer"},
-			"any-rolebinding-writer-namespace": {Name: "any-rolebinding-writer-namespace"},
-			"bob":                              {Name: "bob"},
-			"job-writer":                       {Name: "job-writer"},
-			"job-writer-namespace":             {Name: "job-writer-namespace"},
-			"nonescalating-rolebinding-writer": {Name: "nonescalating-rolebinding-writer"},
-			"pod-reader":                       {Name: "pod-reader"},
-			"limitrange-updater":               {Name: "limitrange-updater"},
-			"limitrange-patcher":               {Name: "limitrange-patcher"},
-			"user-with-no-permissions":         {Name: "user-with-no-permissions"},
+			superUser:                                 {Name: "system:admin", Groups: []string{"system:masters"}, Tenant: "system"},
+			"system:any-rolebinding-writer":           {Name: "system:any-rolebinding-writer", Tenant: testTenant},
+			"system:any-rolebinding-writer-namespace": {Name: "system:any-rolebinding-writer-namespace", Tenant: testTenant},
+			"bob":                         {Name: "bob", Tenant: testTenant},
+			"system:job-writer":           {Name: "system:job-writer", Tenant: testTenant},
+			"system:job-writer-namespace": {Name: "system:job-writer-namespace", Tenant: testTenant},
+			"system:nonescalating-rolebinding-writer": {Name: "system:nonescalating-rolebinding-writer", Tenant: testTenant},
+			"system:pod-reader":                       {Name: "system:pod-reader", Tenant: testTenant},
+			"system:limitrange-updater":               {Name: "system:limitrange-updater", Tenant: testTenant},
+			"system:limitrange-patcher":               {Name: "system:limitrange-patcher", Tenant: testTenant},
+			"system:user-with-no-permissions":         {Name: "system:user-with-no-permissions", Tenant: testTenant},
 		}))
 		masterConfig.GenericConfig.OpenAPIConfig = framework.DefaultOpenAPIConfig()
 		_, s, closeFn := framework.RunAMaster(masterConfig)
 		defer closeFn()
 
-		clientConfig := &restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: legacyscheme.Codecs}}
+		clientConfig := restclient.NewAggregatedConfig(kubeConfig)
 
 		// Bootstrap the API Server with the test case's initial roles.
 		superuserClient, _ := clientsetForToken(superUser, clientConfig)
@@ -626,19 +632,21 @@ func TestRBAC(t *testing.T) {
 }
 
 func TestBootstrapping(t *testing.T) {
-	superUser := "admin/system:masters"
+	superUser := "system:admin/system:masters"
 
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 	masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-		superUser: {Name: "admin", Groups: []string{"system:masters"}},
+		superUser: {Name: "system:admin", Groups: []string{"system:masters"}, Tenant: "system"},
 	}))
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
 
-	clientset := clientset.NewForConfigOrDie(&restclient.Config{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig := &restclient.KubeConfig{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
-	watcher, err := clientset.RbacV1().ClusterRoles().Watch(metav1.ListOptions{ResourceVersion: "0"})
+	watcher := clientset.RbacV1().ClusterRoles().Watch(metav1.ListOptions{ResourceVersion: "0"})
+	err := watcher.GetFirstError()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -687,16 +695,17 @@ func TestDiscoveryUpgradeBootstrapping(t *testing.T) {
 		}
 	}()
 
-	superUser := "admin/system:masters"
+	superUser := "system:admin/system:masters"
 
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 	masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-		superUser: {Name: "admin", Groups: []string{"system:masters"}},
+		superUser: {Name: "system:admin", Groups: []string{"system:masters"}, Tenant: "system"},
 	}))
 	_, s, tearDownFn := framework.RunAMaster(masterConfig)
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig := &restclient.KubeConfig{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	// Modify the default RBAC discovery ClusterRoleBidnings to look more like the defaults that
 	// existed prior to v1.14, but with user modifications.
@@ -734,7 +743,8 @@ func TestDiscoveryUpgradeBootstrapping(t *testing.T) {
 	// `system:discovery`, and respect auto-reconciliation annotations.
 	_, s, tearDownFn = framework.RunAMaster(masterConfig)
 
-	client = clientset.NewForConfigOrDie(&restclient.Config{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig2 := &restclient.KubeConfig{BearerToken: superUser, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	client = clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig2))
 
 	newDiscRoleBinding, err := client.RbacV1().ClusterRoleBindings().Get("system:discovery", metav1.GetOptions{})
 	if err != nil {

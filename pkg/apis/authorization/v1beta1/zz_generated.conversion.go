@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -253,6 +254,7 @@ func autoConvert_v1beta1_ResourceAttributes_To_authorization_ResourceAttributes(
 	out.Resource = in.Resource
 	out.Subresource = in.Subresource
 	out.Name = in.Name
+	out.Tenant = in.Tenant
 	return nil
 }
 
@@ -269,6 +271,7 @@ func autoConvert_authorization_ResourceAttributes_To_v1beta1_ResourceAttributes(
 	out.Resource = in.Resource
 	out.Subresource = in.Subresource
 	out.Name = in.Name
+	out.Tenant = in.Tenant
 	return nil
 }
 

@@ -269,8 +269,8 @@ func (m *FakeNodeHandler) PatchStatus(nodeName string, data []byte) (*v1.Node, e
 }
 
 // Watch watches Nodes in a fake store.
-func (m *FakeNodeHandler) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	return watch.NewFake(), nil
+func (m *FakeNodeHandler) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+	return watch.NewAggregatedWatcherWithOneWatch(watch.NewFake(), nil)
 }
 
 // Patch patches a Node in the fake store.
@@ -394,6 +394,10 @@ func (f *FakeRecorder) generateEvent(obj runtime.Object, timestamp metav1.Time, 
 
 func (f *FakeRecorder) makeEvent(ref *v1.ObjectReference, eventtype, reason, message string) *v1.Event {
 	t := metav1.Time{Time: f.clock.Now()}
+	tenant := ref.Tenant
+	if tenant == "" {
+		tenant = metav1.TenantDefault
+	}
 	namespace := ref.Namespace
 	if namespace == "" {
 		namespace = metav1.NamespaceDefault
@@ -401,6 +405,7 @@ func (f *FakeRecorder) makeEvent(ref *v1.ObjectReference, eventtype, reason, mes
 
 	clientref := v1.ObjectReference{
 		Kind:            ref.Kind,
+		Tenant:          ref.Tenant,
 		Namespace:       ref.Namespace,
 		Name:            ref.Name,
 		UID:             ref.UID,
@@ -413,6 +418,7 @@ func (f *FakeRecorder) makeEvent(ref *v1.ObjectReference, eventtype, reason, mes
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 		InvolvedObject: clientref,
 		Reason:         reason,
@@ -450,6 +456,7 @@ func NewNode(name string) *v1.Node {
 func NewPod(name, host string) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    metav1.TenantDefault,
 			Namespace: "default",
 			Name:      name,
 		},

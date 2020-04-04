@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -86,8 +87,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err := f.PodClient().Get(pod.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-pod")
 
-		podChan, err := f.PodClient().Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for pods")
+		podChan := f.PodClient().Watch(watchOptions)
+		framework.ExpectNoError(podChan.GetFirstError(), "failed to create watch for pods")
 		podChan.Stop()
 
 		f.PodClient().Update(pod.Name, updatePod)
@@ -211,8 +212,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err = f.ClientSet.AppsV1().Deployments(namespace).Get(d.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-deployment")
 
-		deploymentChan, err := f.ClientSet.AppsV1().Deployments(namespace).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for deployments")
+		deploymentChan := f.ClientSet.AppsV1().Deployments(namespace).Watch(watchOptions)
+		framework.ExpectNoError(deploymentChan.GetFirstError(), "failed to create watch for deployments")
 		deploymentChan.Stop()
 
 		_, err = f.ClientSet.AppsV1().Deployments(namespace).Update(d)
@@ -344,8 +345,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err = f.ClientSet.CoreV1().ConfigMaps(namespace).Get(configMap.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-configmap")
 
-		configMapChan, err := f.ClientSet.CoreV1().ConfigMaps(namespace).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for config maps")
+		configMapChan := f.ClientSet.CoreV1().ConfigMaps(namespace).Watch(watchOptions)
+		framework.ExpectNoError(configMapChan.GetFirstError(), "failed to create watch for config maps")
 		configMapChan.Stop()
 
 		_, err = f.ClientSet.CoreV1().ConfigMaps(namespace).Update(configMap)
@@ -476,8 +477,8 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		_, err = f.ClientSet.CoreV1().Secrets(namespace).Get(secret.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-secret")
 
-		secretChan, err := f.ClientSet.CoreV1().Secrets(namespace).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for secrets")
+		secretChan := f.ClientSet.CoreV1().Secrets(namespace).Watch(watchOptions)
+		framework.ExpectNoError(secretChan.GetFirstError(), "failed to create watch for secrets")
 		secretChan.Stop()
 
 		_, err = f.ClientSet.CoreV1().Secrets(namespace).Update(secret)
@@ -660,13 +661,15 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		}
 
 		ginkgo.By("Creating a kubernetes client that impersonates an unauthorized anonymous user")
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err)
-		config.Impersonate = restclient.ImpersonationConfig{
-			UserName: "system:anonymous",
-			Groups:   []string{"system:unauthenticated"},
+		for _, config := range configs.GetAllConfigs() {
+			config.Impersonate = restclient.ImpersonationConfig{
+				UserName: "system:anonymous",
+				Groups:   []string{"system:unauthenticated"},
+			}
 		}
-		anonymousClient, err := clientset.NewForConfig(config)
+		anonymousClient, err := clientset.NewForConfig(configs)
 		framework.ExpectNoError(err)
 
 		_, err = anonymousClient.CoreV1().Pods(namespace).Get("another-audit-pod", metav1.GetOptions{})
@@ -693,13 +696,15 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 
 	ginkgo.It("should list pods as impersonated user.", func() {
 		ginkgo.By("Creating a kubernetes client that impersonates an authorized user")
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err)
-		config.Impersonate = restclient.ImpersonationConfig{
-			UserName: "superman",
-			Groups:   []string{"system:masters"},
+		for _, config := range configs.GetAllConfigs() {
+			config.Impersonate = restclient.ImpersonationConfig{
+				UserName: "superman",
+				Groups:   []string{"system:masters"},
+			}
 		}
-		impersonatedClient, err := clientset.NewForConfig(config)
+		impersonatedClient, err := clientset.NewForConfig(configs)
 		framework.ExpectNoError(err)
 
 		_, err = impersonatedClient.CoreV1().Pods(namespace).List(metav1.ListOptions{})

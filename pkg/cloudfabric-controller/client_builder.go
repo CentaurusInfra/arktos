@@ -122,7 +122,7 @@ func (b SAControllerClientBuilder) Config(name string) (*restclient.Config, erro
 			options.FieldSelector = fieldSelector
 			return b.CoreClient.Secrets(b.Namespace).List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.FieldSelector = fieldSelector
 			return b.CoreClient.Secrets(b.Namespace).Watch(options)
 		},
@@ -181,8 +181,10 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 	username := apiserverserviceaccount.MakeUsername(sa.Namespace, sa.Name)
 
 	clientConfig := restclient.AnonymousClientConfig(b.ClientConfig)
-	clientConfig.BearerToken = token
 	restclient.AddUserAgent(clientConfig, username)
+	for _, config := range clientConfig.GetAllConfigs() {
+		config.BearerToken = token
+	}
 
 	// Try token review first
 	tokenReview := &v1authenticationapi.TokenReview{Spec: v1authenticationapi.TokenReviewSpec{Token: token}}
@@ -202,15 +204,18 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 	// If we couldn't run the token review, the API might be disabled or we might not have permission.
 	// Try to make a request to /apis with the token. If we get a 401 we should consider the token invalid.
 	clientConfigCopy := *clientConfig
-	clientConfigCopy.NegotiatedSerializer = legacyscheme.Codecs
-	client, err := restclient.UnversionedRESTClientFor(&clientConfigCopy)
-	if err != nil {
-		return nil, false, err
-	}
-	err = client.Get().AbsPath("/apis").Do().Error()
-	if apierrors.IsUnauthorized(err) {
-		klog.Warningf("Token for %s/%s did not authenticate correctly: %v", sa.Namespace, sa.Name, err)
-		return nil, false, nil
+
+	for _, config := range clientConfigCopy.GetAllConfigs() {
+		config.NegotiatedSerializer = legacyscheme.Codecs
+		client, err := restclient.UnversionedRESTClientFor(config)
+		if err != nil {
+			return nil, false, err
+		}
+		err = client.Get().AbsPath("/apis").Do().Error()
+		if apierrors.IsUnauthorized(err) {
+			klog.Warningf("Token for %s/%s did not authenticate correctly: %v", sa.Namespace, sa.Name, err)
+			return nil, false, nil
+		}
 	}
 
 	return clientConfig, true, nil

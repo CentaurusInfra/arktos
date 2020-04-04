@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -368,8 +369,8 @@ func testDeploymentCleanUpPolicy(f *framework.Framework) {
 	}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	w, err := c.CoreV1().Pods(ns).Watch(options)
-	framework.ExpectNoError(err)
+	w := c.CoreV1().Pods(ns).Watch(options)
+	framework.ExpectNoError(w.GetFirstError())
 	go func() {
 		// There should be only one pod being created, which is the pod with the redis image.
 		// The old RS shouldn't create new pod when deployment controller adding pod template hash label to its selector.

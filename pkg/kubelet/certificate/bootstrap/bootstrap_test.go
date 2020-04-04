@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,13 +78,14 @@ users:
 		t.Fatal(err)
 	}
 
-	expectedConfig := &restclient.Config{
+	expectedKubeConfig := &restclient.KubeConfig{
 		Host: "https://cluster-b.com",
 		TLSClientConfig: restclient.TLSClientConfig{
 			CAData: []byte(`Test`),
 		},
 		BearerToken: "mytoken-b",
 	}
+	expectedConfig := restclient.NewAggregatedConfig(expectedKubeConfig)
 
 	if !reflect.DeepEqual(config, expectedConfig) {
 		t.Errorf("Unexpected config: %s", diff.ObjectDiff(config, expectedConfig))
@@ -143,7 +145,7 @@ const (
 
 type fakeClient struct {
 	certificatesclient.CertificateSigningRequestInterface
-	watch       *watch.FakeWatcher
+	watch       watch.AggregatedWatchInterface
 	failureType failureType
 }
 
@@ -164,11 +166,15 @@ func (c *fakeClient) List(opts metav1.ListOptions) (*certificates.CertificateSig
 	return &certificates.CertificateSigningRequestList{}, nil
 }
 
-func (c *fakeClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	c.watch = watch.NewFakeWithChanSize(1, false)
-	c.watch.Add(c.generateCSR())
+func (c *fakeClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+	aggWatcher := watch.NewAggregatedWatcher()
+	watcher := watch.NewFakeWithChanSize(1, false)
+	watcher.Add(c.generateCSR())
+
+	aggWatcher.AddWatchInterface(watcher, nil)
+	c.watch = aggWatcher
 	c.watch.Stop()
-	return c.watch, nil
+	return c.watch
 }
 
 func (c *fakeClient) generateCSR() *certificates.CertificateSigningRequest {

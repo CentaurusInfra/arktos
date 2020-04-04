@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -122,7 +123,7 @@ func (b SAControllerClientBuilder) Config(name string) (*restclient.Config, erro
 			options.FieldSelector = fieldSelector
 			return b.CoreClient.Secrets(b.Namespace).List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.FieldSelector = fieldSelector
 			return b.CoreClient.Secrets(b.Namespace).Watch(options)
 		},
@@ -180,9 +181,11 @@ func (b SAControllerClientBuilder) Config(name string) (*restclient.Config, erro
 func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount, token string) (*restclient.Config, bool, error) {
 	username := apiserverserviceaccount.MakeUsername(sa.Namespace, sa.Name)
 
-	clientConfig := restclient.AnonymousClientConfig(b.ClientConfig)
-	clientConfig.BearerToken = token
-	restclient.AddUserAgent(clientConfig, username)
+	clientConfigs := restclient.AnonymousClientConfig(b.ClientConfig)
+	restclient.AddUserAgent(clientConfigs, username)
+	for _, config := range clientConfigs.GetAllConfigs() {
+		config.BearerToken = token
+	}
 
 	// Try token review first
 	tokenReview := &v1authenticationapi.TokenReview{Spec: v1authenticationapi.TokenReviewSpec{Token: token}}
@@ -196,24 +199,27 @@ func (b SAControllerClientBuilder) getAuthenticatedConfig(sa *v1.ServiceAccount,
 			return nil, false, nil
 		}
 		klog.V(4).Infof("Verified credential for %s/%s", sa.Namespace, sa.Name)
-		return clientConfig, true, nil
+		return clientConfigs, true, nil
 	}
 
 	// If we couldn't run the token review, the API might be disabled or we might not have permission.
 	// Try to make a request to /apis with the token. If we get a 401 we should consider the token invalid.
-	clientConfigCopy := *clientConfig
-	clientConfigCopy.NegotiatedSerializer = legacyscheme.Codecs
-	client, err := restclient.UnversionedRESTClientFor(&clientConfigCopy)
-	if err != nil {
-		return nil, false, err
-	}
-	err = client.Get().AbsPath("/apis").Do().Error()
-	if apierrors.IsUnauthorized(err) {
-		klog.Warningf("Token for %s/%s did not authenticate correctly: %v", sa.Namespace, sa.Name, err)
-		return nil, false, nil
+	clientConfigCopy := *clientConfigs
+
+	for _, config := range clientConfigCopy.GetAllConfigs() {
+		config.NegotiatedSerializer = legacyscheme.Codecs
+		client, err := restclient.UnversionedRESTClientFor(config)
+		if err != nil {
+			return nil, false, err
+		}
+		err = client.Get().AbsPath("/apis").Do().Error()
+		if apierrors.IsUnauthorized(err) {
+			klog.Warningf("Token for %s/%s did not authenticate correctly: %v. Host %s", sa.Namespace, sa.Name, err, config.Host)
+			return nil, false, nil
+		}
 	}
 
-	return clientConfig, true, nil
+	return clientConfigs, true, nil
 }
 
 func (b SAControllerClientBuilder) ConfigOrDie(name string) *restclient.Config {

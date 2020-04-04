@@ -43,11 +43,19 @@ type RbacV1Client struct {
 }
 
 func (c *RbacV1Client) ClusterRoles() ClusterRoleInterface {
-	return newClusterRoles(c)
+	return newClusterRolesWithMultiTenancy(c, "default")
+}
+
+func (c *RbacV1Client) ClusterRolesWithMultiTenancy(tenant string) ClusterRoleInterface {
+	return newClusterRolesWithMultiTenancy(c, tenant)
 }
 
 func (c *RbacV1Client) ClusterRoleBindings() ClusterRoleBindingInterface {
-	return newClusterRoleBindings(c)
+	return newClusterRoleBindingsWithMultiTenancy(c, "default")
+}
+
+func (c *RbacV1Client) ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingInterface {
+	return newClusterRoleBindingsWithMultiTenancy(c, tenant)
 }
 
 func (c *RbacV1Client) Roles(namespace string) RoleInterface {
@@ -68,16 +76,20 @@ func (c *RbacV1Client) RoleBindingsWithMultiTenancy(namespace string, tenant str
 
 // NewForConfig creates a new RbacV1Client for the given config.
 func NewForConfig(c *rest.Config) (*RbacV1Client, error) {
-	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
-	client, err := rest.RESTClientFor(&config)
-	if err != nil {
+	configs := rest.CopyConfigs(c)
+	if err := setConfigDefaults(configs); err != nil {
 		return nil, err
 	}
 
-	clients := []rest.Interface{client}
+	clients := make([]rest.Interface, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		client, err := rest.RESTClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		clients[i] = client
+	}
+
 	return &RbacV1Client{clients}, nil
 }
 
@@ -97,14 +109,17 @@ func New(c rest.Interface) *RbacV1Client {
 	return &RbacV1Client{clients}
 }
 
-func setConfigDefaults(config *rest.Config) error {
+func setConfigDefaults(configs *rest.Config) error {
 	gv := v1.SchemeGroupVersion
-	config.GroupVersion = &gv
-	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
-	if config.UserAgent == "" {
-		config.UserAgent = rest.DefaultKubernetesUserAgent()
+	for _, config := range configs.GetAllConfigs() {
+		config.GroupVersion = &gv
+		config.APIPath = "/apis"
+		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+		if config.UserAgent == "" {
+			config.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
 	}
 
 	return nil

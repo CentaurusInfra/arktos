@@ -32,6 +32,7 @@ import (
 // FakeClusterRoleBindings implements ClusterRoleBindingInterface
 type FakeClusterRoleBindings struct {
 	Fake *FakeRbacV1alpha1
+	te   string
 }
 
 var clusterrolebindingsResource = schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1alpha1", Resource: "clusterrolebindings"}
@@ -41,7 +42,8 @@ var clusterrolebindingsKind = schema.GroupVersionKind{Group: "rbac.authorization
 // Get takes name of the clusterRoleBinding, and returns the corresponding clusterRoleBinding object, and an error if there is any.
 func (c *FakeClusterRoleBindings) Get(name string, options v1.GetOptions) (result *v1alpha1.ClusterRoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(clusterrolebindingsResource, name), &v1alpha1.ClusterRoleBinding{})
+		Invokes(testing.NewTenantGetAction(clusterrolebindingsResource, name, c.te), &v1alpha1.ClusterRoleBinding{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -52,7 +54,8 @@ func (c *FakeClusterRoleBindings) Get(name string, options v1.GetOptions) (resul
 // List takes label and field selectors, and returns the list of ClusterRoleBindings that match those selectors.
 func (c *FakeClusterRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.ClusterRoleBindingList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(clusterrolebindingsResource, clusterrolebindingsKind, opts), &v1alpha1.ClusterRoleBindingList{})
+		Invokes(testing.NewTenantListAction(clusterrolebindingsResource, clusterrolebindingsKind, opts, c.te), &v1alpha1.ClusterRoleBindingList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -70,16 +73,21 @@ func (c *FakeClusterRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.Cl
 	return list, err
 }
 
-// Watch returns a watch.Interface that watches the requested clusterRoleBindings.
-func (c *FakeClusterRoleBindings) Watch(opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(clusterrolebindingsResource, opts))
+// Watch returns a watch.AggregatedWatchInterface that watches the requested clusterRoleBindings.
+func (c *FakeClusterRoleBindings) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+	aggWatch := watch.NewAggregatedWatcher()
+	watcher, err := c.Fake.
+		InvokesWatch(testing.NewTenantWatchAction(clusterrolebindingsResource, opts, c.te))
+
+	aggWatch.AddWatchInterface(watcher, err)
+	return aggWatch
 }
 
 // Create takes the representation of a clusterRoleBinding and creates it.  Returns the server's representation of the clusterRoleBinding, and an error, if there is any.
 func (c *FakeClusterRoleBindings) Create(clusterRoleBinding *v1alpha1.ClusterRoleBinding) (result *v1alpha1.ClusterRoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(clusterrolebindingsResource, clusterRoleBinding), &v1alpha1.ClusterRoleBinding{})
+		Invokes(testing.NewTenantCreateAction(clusterrolebindingsResource, clusterRoleBinding, c.te), &v1alpha1.ClusterRoleBinding{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -90,7 +98,8 @@ func (c *FakeClusterRoleBindings) Create(clusterRoleBinding *v1alpha1.ClusterRol
 // Update takes the representation of a clusterRoleBinding and updates it. Returns the server's representation of the clusterRoleBinding, and an error, if there is any.
 func (c *FakeClusterRoleBindings) Update(clusterRoleBinding *v1alpha1.ClusterRoleBinding) (result *v1alpha1.ClusterRoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(clusterrolebindingsResource, clusterRoleBinding), &v1alpha1.ClusterRoleBinding{})
+		Invokes(testing.NewTenantUpdateAction(clusterrolebindingsResource, clusterRoleBinding, c.te), &v1alpha1.ClusterRoleBinding{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -101,14 +110,16 @@ func (c *FakeClusterRoleBindings) Update(clusterRoleBinding *v1alpha1.ClusterRol
 // Delete takes name of the clusterRoleBinding and deletes it. Returns an error if one occurs.
 func (c *FakeClusterRoleBindings) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(clusterrolebindingsResource, name), &v1alpha1.ClusterRoleBinding{})
+		Invokes(testing.NewTenantDeleteAction(clusterrolebindingsResource, name, c.te), &v1alpha1.ClusterRoleBinding{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeClusterRoleBindings) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 
-	action := testing.NewRootDeleteCollectionAction(clusterrolebindingsResource, listOptions)
+	action := testing.NewTenantDeleteCollectionAction(clusterrolebindingsResource, listOptions, c.te)
+
 	_, err := c.Fake.Invokes(action, &v1alpha1.ClusterRoleBindingList{})
 	return err
 }
@@ -116,7 +127,8 @@ func (c *FakeClusterRoleBindings) DeleteCollection(options *v1.DeleteOptions, li
 // Patch applies the patch and returns the patched clusterRoleBinding.
 func (c *FakeClusterRoleBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ClusterRoleBinding, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(clusterrolebindingsResource, name, pt, data, subresources...), &v1alpha1.ClusterRoleBinding{})
+		Invokes(testing.NewTenantPatchSubresourceAction(clusterrolebindingsResource, c.te, name, pt, data, subresources...), &v1alpha1.ClusterRoleBinding{})
+
 	if obj == nil {
 		return nil, err
 	}

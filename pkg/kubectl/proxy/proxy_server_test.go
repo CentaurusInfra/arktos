@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -446,13 +447,14 @@ func TestPathHandling(t *testing.T) {
 		{"test10", "/custom/", "/custom/api/v1/pods/", "/api/v1/pods/"},
 	}
 
-	cc := &rest.Config{
+	kubeConfig := &rest.KubeConfig{
 		Host: ts.URL,
 	}
+	configs := rest.NewAggregatedConfig(kubeConfig)
 
 	for _, tt := range table {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := NewServer("", tt.prefix, "/not/used/for/this/test", nil, cc, 0)
+			p, err := NewServer("", tt.prefix, "/not/used/for/this/test", nil, configs, 0)
 			if err != nil {
 				t.Fatalf("%#v: %v", tt, err)
 			}

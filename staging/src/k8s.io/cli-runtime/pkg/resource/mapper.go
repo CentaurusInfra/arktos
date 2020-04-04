@@ -75,7 +75,8 @@ func (m *mapper) infoForData(data []byte, source string) (*Info, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to connect to a server to handle %q: %v", mapping.Resource, err)
 		}
-		ret.Client = client
+		// TODO - should need one client only - check whether need multiple client
+		ret.Clients = []RESTClient{client}
 	}
 
 	return ret, nil
@@ -124,7 +125,8 @@ func (m *mapper) infoForObject(obj runtime.Object, typer runtime.ObjectTyper, pr
 		if err != nil {
 			return nil, fmt.Errorf("unable to connect to a server to handle %q: %v", mapping.Resource, err)
 		}
-		ret.Client = client
+		// TODO - check whether need all clients from api servers
+		ret.Clients = []RESTClient{client}
 	}
 
 	return ret, nil

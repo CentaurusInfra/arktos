@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,13 +30,15 @@ import (
 )
 
 func TestDecoratedWatcher(t *testing.T) {
+	aggWatcher := watch.NewAggregatedWatcher()
 	w := watch.NewFake()
+	aggWatcher.AddWatchInterface(w, nil)
 	decorator := func(obj runtime.Object) error {
 		pod := obj.(*example.Pod)
 		pod.Annotations = map[string]string{"decorated": "true"}
 		return nil
 	}
-	dw := newDecoratedWatcher(w, decorator)
+	dw := newDecoratedWatcher(aggWatcher, decorator)
 	defer dw.Stop()
 
 	go w.Add(&example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}})
@@ -55,12 +58,14 @@ func TestDecoratedWatcher(t *testing.T) {
 }
 
 func TestDecoratedWatcherError(t *testing.T) {
+	aggWatcher := watch.NewAggregatedWatcher()
 	w := watch.NewFake()
+	aggWatcher.AddWatchInterface(w, nil)
 	expErr := fmt.Errorf("expected error")
 	decorator := func(obj runtime.Object) error {
 		return expErr
 	}
-	dw := newDecoratedWatcher(w, decorator)
+	dw := newDecoratedWatcher(aggWatcher, decorator)
 	defer dw.Stop()
 
 	go w.Add(&example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}})

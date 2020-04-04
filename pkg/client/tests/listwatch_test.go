@@ -105,8 +105,10 @@ func TestListWatchesCanList(t *testing.T) {
 		}
 		server := httptest.NewServer(&handler)
 		defer server.Close()
-		client := clientset.NewForConfigOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
-		lw := NewListWatchFromClient(client.CoreV1().RESTClient(), item.resource, item.namespace, item.fieldSelector)
+		kubeConfig := restclient.KubeConfig{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+		configs := restclient.NewAggregatedConfig(&kubeConfig)
+		client := clientset.NewForConfigOrDie(configs)
+		lw := NewListWatchFromClient(client.CoreV1(), item.resource, item.namespace, item.fieldSelector)
 		lw.DisableChunking = true
 		// This test merely tests that the correct request is made.
 		lw.List(metav1.ListOptions{})
@@ -172,8 +174,10 @@ func TestListWatchesCanWatch(t *testing.T) {
 		}
 		server := httptest.NewServer(&handler)
 		defer server.Close()
-		client := clientset.NewForConfigOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
-		lw := NewListWatchFromClient(client.CoreV1().RESTClient(), item.resource, item.namespace, item.fieldSelector)
+		kubeConfig := &restclient.KubeConfig{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+		configs := restclient.NewAggregatedConfig(kubeConfig)
+		client := clientset.NewForConfigOrDie(configs)
+		lw := NewListWatchFromClient(client.CoreV1(), item.resource, item.namespace, item.fieldSelector)
 		// This test merely tests that the correct request is made.
 		lw.Watch(metav1.ListOptions{ResourceVersion: item.rv})
 		handler.ValidateRequest(t, item.location, "GET", nil)
@@ -182,22 +186,24 @@ func TestListWatchesCanWatch(t *testing.T) {
 
 type lw struct {
 	list  runtime.Object
-	watch watch.Interface
+	watch watch.AggregatedWatchInterface
 }
 
 func (w lw) List(options metav1.ListOptions) (runtime.Object, error) {
 	return w.list, nil
 }
 
-func (w lw) Watch(options metav1.ListOptions) (watch.Interface, error) {
-	return w.watch, nil
+func (w lw) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
+	return w.watch
 }
 
 func (w lw) Update(options metav1.ListOptions) {
 }
 
 func TestListWatchUntil(t *testing.T) {
+	fws := watch.NewAggregatedWatcher()
 	fw := watch.NewFake()
+	fws.AddWatchInterface(fw, nil)
 	go func() {
 		obj := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -213,7 +219,7 @@ func TestListWatchUntil(t *testing.T) {
 			},
 			Items: []v1.Pod{{}},
 		},
-		watch: fw,
+		watch: fws,
 	}
 
 	conditions := []watchtools.ConditionFunc{

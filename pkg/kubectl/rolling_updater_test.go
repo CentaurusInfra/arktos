@@ -1538,7 +1538,7 @@ func TestUpdateRcWithRetries(t *testing.T) {
 			}
 		}),
 	}
-	clientConfig := &restclient.Config{
+	clientConfig := &restclient.KubeConfig{
 		APIPath: "/api",
 		ContentConfig: restclient.ContentConfig{
 			NegotiatedSerializer: scheme.Codecs,
@@ -1647,7 +1647,7 @@ func TestAddDeploymentHash(t *testing.T) {
 			}
 		}),
 	}
-	clientConfig := &restclient.Config{
+	clientConfig := &restclient.KubeConfig{
 		APIPath: "/api",
 		ContentConfig: restclient.ContentConfig{
 			NegotiatedSerializer: scheme.Codecs,

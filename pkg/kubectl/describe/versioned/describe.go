@@ -2015,6 +2015,7 @@ func describeReplicaSet(rs *appsv1.ReplicaSet, events *corev1.EventList, running
 		w.Write(LEVEL_0, "Name:\t%s\n", rs.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", rs.Namespace)
 		w.Write(LEVEL_0, "Tenant:\t%s\n", rs.Tenant)
+		w.Write(LEVEL_0, "HashKey:\t%d\n", rs.HashKey)
 		w.Write(LEVEL_0, "Selector:\t%s\n", metav1.FormatLabelSelector(rs.Spec.Selector))
 		printLabelsMultiline(w, "Labels", rs.Labels)
 		printAnnotationsMultiline(w, "Annotations", rs.Annotations)
@@ -2539,6 +2540,9 @@ func describeEndpoints(ep *corev1.Endpoints, events *corev1.EventList) (string, 
 		w.Write(LEVEL_0, "Subsets:\n")
 		for i := range ep.Subsets {
 			subset := &ep.Subsets[i]
+			if len(subset.ServiceGroupId) > 0 {
+				w.Write(LEVEL_1, "Service Group Id:\t%s\n", subset.ServiceGroupId)
+			}
 
 			addresses := make([]string, 0, len(subset.Addresses))
 			for _, addr := range subset.Addresses {
@@ -3434,6 +3438,7 @@ func describeDeployment(d *appsv1.Deployment, selector labels.Selector, internal
 		w.Write(LEVEL_0, "Name:\t%s\n", d.ObjectMeta.Name)
 		w.Write(LEVEL_0, "Namespace:\t%s\n", d.ObjectMeta.Namespace)
 		w.Write(LEVEL_0, "Tenant:\t%s\n", d.ObjectMeta.Tenant)
+		w.Write(LEVEL_0, "HashKey:\t%d\n", d.HashKey)
 		w.Write(LEVEL_0, "CreationTimestamp:\t%s\n", d.CreationTimestamp.Time.Format(time.RFC1123Z))
 		printLabelsMultiline(w, "Labels", d.Labels)
 		printAnnotationsMultiline(w, "Annotations", d.Annotations)

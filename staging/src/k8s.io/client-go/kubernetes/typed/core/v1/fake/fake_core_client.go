@@ -55,6 +55,11 @@ func (c *FakeCoreV1) ControllerInstances() v1.ControllerInstanceInterface {
 	return &FakeControllerInstances{c}
 }
 
+func (c *FakeCoreV1) DataPartitionConfigs() v1.DataPartitionConfigInterface {
+
+	return &FakeDataPartitionConfigs{c}
+}
+
 func (c *FakeCoreV1) Endpoints(namespace string) v1.EndpointsInterface {
 	return &FakeEndpoints{c, namespace, "default"}
 }

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,9 +41,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/group"
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
+	"k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/tokentest"
 	clientset "k8s.io/client-go/kubernetes"
 	clienttypedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -55,12 +58,13 @@ import (
 const (
 	AliceToken string = "abc123" // username: alice.  Present in token file.
 	BobToken   string = "xyz987" // username: bob.  Present in token file.
+	testTenant string = "fake-tenant"
 )
 
 type allowAliceAuthorizer struct{}
 
 func (allowAliceAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
-	if a.GetUser() != nil && a.GetUser().GetName() == "alice" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" {
 		return authorizer.DecisionAllow, "", nil
 	}
 	return authorizer.DecisionNoOpinion, "I can't allow that.  Go ask alice.", nil
@@ -143,6 +147,7 @@ func TestEmptyList(t *testing.T) {
 
 func initStatusForbiddenMasterCongfig() *master.Config {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
+	masterConfig.GenericConfig.Authentication = server.AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 	masterConfig.GenericConfig.Authorization.Authorizer = authorizerfactory.NewAlwaysDenyAuthorizer()
 	return masterConfig
 }
@@ -150,8 +155,8 @@ func initStatusForbiddenMasterCongfig() *master.Config {
 func initUnauthorizedMasterCongfig() *master.Config {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	tokenAuthenticator := tokentest.New()
-	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "alice", UID: "1"}
-	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "bob", UID: "2"}
+	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "fake-tenant:alice", UID: "1"}
+	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "fake-tenant:bob", UID: "2"}
 	masterConfig.GenericConfig.Authentication.Authenticator = group.NewGroupAdder(bearertoken.New(tokenAuthenticator), []string{user.AllAuthenticated})
 	masterConfig.GenericConfig.Authorization.Authorizer = allowAliceAuthorizer{}
 	return masterConfig
@@ -180,7 +185,7 @@ func TestStatus(t *testing.T) {
 			statusCode:   http.StatusForbidden,
 			reqPath:      "/apis",
 			reason:       "Forbidden",
-			message:      `forbidden: User "" cannot get path "/apis": Everything is forbidden.`,
+			message:      `forbidden: User "fake-user" cannot get path "/apis": Everything is forbidden.`,
 		},
 		{
 			name:         "401",
@@ -303,7 +308,8 @@ func TestObjectSizeResponses(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	const DeploymentMegabyteSize = 100000
 	const DeploymentTwoMegabyteSize = 1000000
@@ -647,7 +653,8 @@ func TestMasterService(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	err := wait.Poll(time.Second, time.Minute, func() (bool, error) {
 		svcList, err := client.CoreV1().Services(metav1.NamespaceDefault).List(metav1.ListOptions{})
@@ -689,7 +696,8 @@ func TestServiceAlloc(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(cfg)
 	defer closeFn()
 
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL}
+	client := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	svc := func(i int) *corev1.Service {
 		return &corev1.Service{
@@ -760,14 +768,15 @@ func TestUpdateNodeObjects(t *testing.T) {
 	if len(server) == 0 {
 		t.Skip("UPDATE_NODE_APISERVER is not set")
 	}
-	c := clienttypedv1.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		QPS:  10000,
 		Host: server,
 		ContentConfig: restclient.ContentConfig{
 			AcceptContentTypes: "application/vnd.kubernetes.protobuf",
 			ContentType:        "application/vnd.kubernetes.protobuf",
 		},
-	})
+	}
+	c := clienttypedv1.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	nodes := 400
 	listers := 5
@@ -801,7 +810,8 @@ func TestUpdateNodeObjects(t *testing.T) {
 
 	for k := 0; k < watchers; k++ {
 		go func(lister int) {
-			w, err := c.Nodes().Watch(metav1.ListOptions{})
+			w := c.Nodes().Watch(metav1.ListOptions{})
+			err := w.GetFirstError()
 			if err != nil {
 				fmt.Printf("[watch:%d] error: %v", lister, err)
 				return

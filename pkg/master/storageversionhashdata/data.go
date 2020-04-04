@@ -46,6 +46,7 @@ var GVRToStorageVersionHash = map[string]string{
 	"v1/actions":                "CDVjb9Zn97o=",
 	"v1/configmaps":             "qFsyl6wFWjQ=",
 	"v1/controllerinstances":    "HX8UpZZPgz8=",
+	"v1/datapartitionconfigs":   "fJCt9dZHskg=",
 	"v1/endpoints":              "fWeeMqaN/OA=",
 	"v1/events":                 "r2yiGXH7wu8=",
 	"v1/limitranges":            "EBKMFVe6cwo=",

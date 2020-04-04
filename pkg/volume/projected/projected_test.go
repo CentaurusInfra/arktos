@@ -45,6 +45,14 @@ import (
 )
 
 func TestCollectDataWithSecret(t *testing.T) {
+	testCollectDataWithSecret(t, metav1.TenantDefault)
+}
+
+func TestCollectDataWithSecretWithMultiTenancy(t *testing.T) {
+	testCollectDataWithSecret(t, "test-te")
+}
+
+func testCollectDataWithSecret(t *testing.T, tenant string) {
 	caseMappingMode := int32(0400)
 	cases := []struct {
 		name     string
@@ -248,7 +256,7 @@ func TestCollectDataWithSecret(t *testing.T) {
 	for _, tc := range cases {
 		testNamespace := "test_projected_namespace"
 		tc.secret.ObjectMeta = metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    tenant,
 			Namespace: testNamespace,
 			Name:      tc.name,
 		}
@@ -258,7 +266,7 @@ func TestCollectDataWithSecret(t *testing.T) {
 		source.Sources[0].Secret.Optional = &tc.optional
 
 		testPodUID := types.UID("test_pod_uid")
-		pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+		pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: testNamespace, UID: testPodUID}}
 		client := fake.NewSimpleClientset(tc.secret)
 		_, host := newTestHost(t, client)
 

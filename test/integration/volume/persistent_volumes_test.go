@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1096,18 +1097,20 @@ func waitForAnyPersistentVolumeClaimPhase(w watch.Interface, phase v1.Persistent
 func createClients(ns *v1.Namespace, t *testing.T, s *httptest.Server, syncPeriod time.Duration) (*clientset.Clientset, *persistentvolumecontroller.PersistentVolumeController, informers.SharedInformerFactory, watch.Interface, watch.Interface) {
 	// Use higher QPS and Burst, there is a test for race conditions which
 	// creates many objects and default values were too low.
-	binderClient := clientset.NewForConfigOrDie(&restclient.Config{
+	kubeConfig1 := &restclient.KubeConfig{
 		Host:          s.URL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}},
 		QPS:           1000000,
 		Burst:         1000000,
-	})
-	testClient := clientset.NewForConfigOrDie(&restclient.Config{
+	}
+	binderClient := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig1))
+	kubeConfig2 := &restclient.KubeConfig{
 		Host:          s.URL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}},
 		QPS:           1000000,
 		Burst:         1000000,
-	})
+	}
+	testClient := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig2))
 
 	host := volumetest.NewFakeVolumeHost("/tmp/fake", nil, nil)
 	plugin := &volumetest.FakeVolumePlugin{
@@ -1142,11 +1145,13 @@ func createClients(ns *v1.Namespace, t *testing.T, s *httptest.Server, syncPerio
 		t.Fatalf("Failed to construct PersistentVolumes: %v", err)
 	}
 
-	watchPV, err := testClient.CoreV1().PersistentVolumes().Watch(metav1.ListOptions{})
+	watchPV := testClient.CoreV1().PersistentVolumes().Watch(metav1.ListOptions{})
+	err = watchPV.GetFirstError()
 	if err != nil {
 		t.Fatalf("Failed to watch PersistentVolumes: %v", err)
 	}
-	watchPVC, err := testClient.CoreV1().PersistentVolumeClaims(ns.Name).Watch(metav1.ListOptions{})
+	watchPVC := testClient.CoreV1().PersistentVolumeClaims(ns.Name).Watch(metav1.ListOptions{})
+	err = watchPVC.GetFirstError()
 	if err != nil {
 		t.Fatalf("Failed to watch PersistentVolumeClaims: %v", err)
 	}

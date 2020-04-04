@@ -19,6 +19,8 @@ package resource
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/rand"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -28,6 +30,7 @@ import (
 
 // Selector is a Visitor for resources that match a label selector.
 type Selector struct {
+	Clients       []RESTClient
 	Client        RESTClient
 	Mapping       *meta.RESTMapping
 	Tenant        string
@@ -39,9 +42,9 @@ type Selector struct {
 }
 
 // NewSelector creates a resource selector which hides details of getting items by their label selector.
-func NewSelector(client RESTClient, mapping *meta.RESTMapping, tenant, namespace, labelSelector, fieldSelector string, export bool, limitChunks int64) *Selector {
-	return &Selector{
-		Client:        client,
+func NewSelector(clients []RESTClient, mapping *meta.RESTMapping, tenant, namespace, labelSelector, fieldSelector string, export bool, limitChunks int64) *Selector {
+	s := &Selector{
+		Clients:       clients,
 		Mapping:       mapping,
 		Tenant:        tenant,
 		Namespace:     namespace,
@@ -50,13 +53,26 @@ func NewSelector(client RESTClient, mapping *meta.RESTMapping, tenant, namespace
 		Export:        export,
 		LimitChunks:   limitChunks,
 	}
+
+	max := len(clients)
+	if max == 1 {
+		s.Client = clients[0]
+	}
+
+	if max > 1 {
+		rand.Seed(time.Now().UnixNano())
+		ran := rand.IntnRange(0, max-1)
+		s.Client = clients[ran]
+	}
+
+	return s
 }
 
 // Visit implements Visitor and uses request chunking by default.
 func (r *Selector) Visit(fn VisitorFunc) error {
 	var continueToken string
 	for {
-		list, err := NewHelper(r.Client, r.Mapping).ListWithMultiTenancy(
+		list, err := NewHelper(r.Clients, r.Mapping).ListWithMultiTenancy(
 			r.Tenant,
 			r.Namespace,
 			r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
@@ -92,7 +108,7 @@ func (r *Selector) Visit(fn VisitorFunc) error {
 		resourceVersion, _ := metadataAccessor.ResourceVersion(list)
 		nextContinueToken, _ := metadataAccessor.Continue(list)
 		info := &Info{
-			Client:          r.Client,
+			Clients:         r.Clients,
 			Mapping:         r.Mapping,
 			Tenant:          r.Tenant,
 			Namespace:       r.Namespace,
@@ -111,13 +127,13 @@ func (r *Selector) Visit(fn VisitorFunc) error {
 	}
 }
 
-func (r *Selector) Watch(resourceVersion string) (watch.Interface, error) {
-	return NewHelper(r.Client, r.Mapping).Watch(r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
+func (r *Selector) Watch(resourceVersion string) watch.AggregatedWatchInterface {
+	return NewHelper(r.Clients, r.Mapping).Watch(r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
 		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
 }
 
-func (r *Selector) WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
-	return NewHelper(r.Client, r.Mapping).WatchWithMultiTenancy(r.Tenant, r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
+func (r *Selector) WatchWithMultiTenancy(resourceVersion string) watch.AggregatedWatchInterface {
+	return NewHelper(r.Clients, r.Mapping).WatchWithMultiTenancy(r.Tenant, r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
 		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
 }
 

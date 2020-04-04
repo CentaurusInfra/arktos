@@ -41,6 +41,14 @@ import (
 )
 
 func TestMakePayload(t *testing.T) {
+	testMakePayload(t, metav1.TenantDefault)
+}
+
+func TestMakePayloadWithMultiTenancy(t *testing.T) {
+	testMakePayload(t, "test-te")
+}
+
+func testMakePayload(t *testing.T, tenant string) {
 	caseMappingMode := int32(0400)
 	cases := []struct {
 		name     string
@@ -294,6 +302,14 @@ func TestCanSupport(t *testing.T) {
 }
 
 func TestPlugin(t *testing.T) {
+	testPlugin(t, metav1.TenantDefault)
+}
+
+func TestPluginWithMultiTenancy(t *testing.T) {
+	testPlugin(t, "test-te")
+}
+
+func testPlugin(t *testing.T, tenant string) {
 	var (
 		testPodUID     = types.UID("test_pod_uid")
 		testVolumeName = "test_volume_name"
@@ -301,7 +317,7 @@ func TestPlugin(t *testing.T) {
 		testName       = "test_secret_name"
 
 		volumeSpec    = volumeSpec(testVolumeName, testName, 0644)
-		secret        = secret(testNamespace, testName)
+		secret        = secret(tenant, testNamespace, testName)
 		client        = fake.NewSimpleClientset(&secret)
 		pluginMgr     = volume.VolumePluginMgr{}
 		rootDir, host = newTestHost(t, client)
@@ -314,7 +330,7 @@ func TestPlugin(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -363,7 +379,15 @@ func TestPlugin(t *testing.T) {
 	}
 }
 
-func TestInvalidPathSecret(t *testing.T) {
+func TestInvalidPathsecret(t *testing.T) {
+	testInvalidPathsecret(t, metav1.TenantDefault)
+}
+
+func TestInvalidPathSecretWithMultiTenancy(t *testing.T) {
+	testInvalidPathsecret(t, "test-te")
+}
+
+func testInvalidPathsecret(t *testing.T, tenant string) {
 	var (
 		testPodUID     = types.UID("test_pod_uid")
 		testVolumeName = "test_volume_name"
@@ -371,7 +395,7 @@ func TestInvalidPathSecret(t *testing.T) {
 		testName       = "test_secret_name"
 
 		volumeSpec    = volumeSpec(testVolumeName, testName, 0644)
-		secret        = secret(testNamespace, testName)
+		secret        = secret(tenant, testNamespace, testName)
 		client        = fake.NewSimpleClientset(&secret)
 		pluginMgr     = volume.VolumePluginMgr{}
 		rootDir, host = newTestHost(t, client)
@@ -388,7 +412,7 @@ func TestInvalidPathSecret(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -418,6 +442,14 @@ func TestInvalidPathSecret(t *testing.T) {
 // mountpoint, which is the state the system will be in after reboot.  The dir
 // should be mounter and the secret data written to it.
 func TestPluginReboot(t *testing.T) {
+	testPluginReboot(t, metav1.TenantDefault)
+}
+
+func TestPluginRebootWithMultiTenancy(t *testing.T) {
+	testPluginReboot(t, "test-te")
+}
+
+func testPluginReboot(t *testing.T, tenant string) {
 	var (
 		testPodUID     = types.UID("test_pod_uid3")
 		testVolumeName = "test_volume_name"
@@ -425,7 +457,7 @@ func TestPluginReboot(t *testing.T) {
 		testName       = "test_secret_name"
 
 		volumeSpec    = volumeSpec(testVolumeName, testName, 0644)
-		secret        = secret(testNamespace, testName)
+		secret        = secret(tenant, testNamespace, testName)
 		client        = fake.NewSimpleClientset(&secret)
 		pluginMgr     = volume.VolumePluginMgr{}
 		rootDir, host = newTestHost(t, client)
@@ -438,7 +470,7 @@ func TestPluginReboot(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -471,6 +503,14 @@ func TestPluginReboot(t *testing.T) {
 }
 
 func TestPluginOptional(t *testing.T) {
+	testPluginOptional(t, metav1.TenantDefault)
+}
+
+func TestPluginOptionalWithMultiTenancy(t *testing.T) {
+	testPluginOptional(t, "test-te")
+}
+
+func testPluginOptional(t *testing.T, tenant string) {
 	var (
 		testPodUID     = types.UID("test_pod_uid")
 		testVolumeName = "test_volume_name"
@@ -492,7 +532,7 @@ func TestPluginOptional(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -562,6 +602,14 @@ func TestPluginOptional(t *testing.T) {
 }
 
 func TestPluginOptionalKeys(t *testing.T) {
+	testPluginOptionalKeys(t, metav1.TenantDefault)
+}
+
+func TestPluginOptionalKeysWithMultiTenancy(t *testing.T) {
+	testPluginOptionalKeys(t, "test-te")
+}
+
+func testPluginOptionalKeys(t *testing.T, tenant string) {
 	var (
 		testPodUID     = types.UID("test_pod_uid")
 		testVolumeName = "test_volume_name"
@@ -570,7 +618,7 @@ func TestPluginOptionalKeys(t *testing.T) {
 		trueVal        = true
 
 		volumeSpec    = volumeSpec(testVolumeName, testName, 0644)
-		secret        = secret(testNamespace, testName)
+		secret        = secret(tenant, testNamespace, testName)
 		client        = fake.NewSimpleClientset(&secret)
 		pluginMgr     = volume.VolumePluginMgr{}
 		rootDir, host = newTestHost(t, client)
@@ -590,7 +638,7 @@ func TestPluginOptionalKeys(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -651,10 +699,10 @@ func volumeSpec(volumeName, secretName string, defaultMode int32) *v1.Volume {
 	}
 }
 
-func secret(namespace, name string) v1.Secret {
+func secret(tenant, namespace, name string) v1.Secret {
 	return v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    tenant,
 			Namespace: namespace,
 			Name:      name,
 		},

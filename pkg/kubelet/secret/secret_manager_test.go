@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,12 +34,12 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/util/manager"
 )
 
-func checkObject(t *testing.T, store manager.Store, ns, name string, shouldExist bool) {
-	_, err := store.Get(ns, name)
+func checkObject(t *testing.T, store manager.Store, tenant, ns, name string, shouldExist bool) {
+	_, err := store.Get(tenant, ns, name)
 	if shouldExist && err != nil {
 		t.Errorf("unexpected actions: %#v", err)
 	}
-	if !shouldExist && (err == nil || !strings.Contains(err.Error(), fmt.Sprintf("object %q/%q not registered", ns, name))) {
+	if !shouldExist && (err == nil || !strings.Contains(err.Error(), fmt.Sprintf("object %q/%q/%q not registered", tenant, ns, name))) {
 		t.Errorf("unexpected actions: %#v", err)
 	}
 }
@@ -48,8 +49,8 @@ func noObjectTTL() (time.Duration, bool) {
 }
 
 func getSecret(fakeClient clientset.Interface) manager.GetObjectFunc {
-	return func(namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
-		return fakeClient.CoreV1().Secrets(namespace).Get(name, opts)
+	return func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
+		return fakeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 }
 
@@ -63,9 +64,10 @@ type secretsToAttach struct {
 	containerEnvSecrets  []envSecrets
 }
 
-func podWithSecrets(ns, podName string, toAttach secretsToAttach) *v1.Pod {
+func podWithSecrets(tenant, ns, podName string, toAttach secretsToAttach) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    tenant,
 			Namespace: ns,
 			Name:      podName,
 		},
@@ -106,6 +108,14 @@ func podWithSecrets(ns, podName string, toAttach secretsToAttach) *v1.Pod {
 }
 
 func TestCacheBasedSecretManager(t *testing.T) {
+	testCacheBasedSecretManager(t, metav1.TenantDefault)
+}
+
+func TestCacheBasedSecretManagerWithMultiTenancy(t *testing.T) {
+	testCacheBasedSecretManager(t, "test-te")
+}
+
+func testCacheBasedSecretManager(t *testing.T, tenant string) {
 	fakeClient := &fake.Clientset{}
 	store := manager.NewObjectStore(getSecret(fakeClient), clock.RealClock{}, noObjectTTL, 0)
 	manager := &secretManager{
@@ -121,7 +131,7 @@ func TestCacheBasedSecretManager(t *testing.T) {
 			{envFromNames: []string{"s20"}},
 		},
 	}
-	manager.RegisterPod(podWithSecrets("ns1", "name1", s1))
+	manager.RegisterPod(podWithSecrets(tenant, "ns1", "name1", s1))
 	// Update the pod with a different secrets.
 	s2 := secretsToAttach{
 		imagePullSecretNames: []string{"s1"},
@@ -131,9 +141,9 @@ func TestCacheBasedSecretManager(t *testing.T) {
 			{envFromNames: []string{"s40"}},
 		},
 	}
-	manager.RegisterPod(podWithSecrets("ns1", "name1", s2))
+	manager.RegisterPod(podWithSecrets(tenant, "ns1", "name1", s2))
 	// Create another pod, but with same secrets in different namespace.
-	manager.RegisterPod(podWithSecrets("ns2", "name2", s2))
+	manager.RegisterPod(podWithSecrets(tenant, "ns2", "name2", s2))
 	// Create and delete a pod with some other secrets.
 	s3 := secretsToAttach{
 		imagePullSecretNames: []string{"s5"},
@@ -142,15 +152,15 @@ func TestCacheBasedSecretManager(t *testing.T) {
 			{envFromNames: []string{"s60"}},
 		},
 	}
-	manager.RegisterPod(podWithSecrets("ns3", "name", s3))
-	manager.UnregisterPod(podWithSecrets("ns3", "name", s3))
+	manager.RegisterPod(podWithSecrets(tenant, "ns3", "name", s3))
+	manager.UnregisterPod(podWithSecrets(tenant, "ns3", "name", s3))
 
 	// We should have only: s1, s3 and s4 secrets in namespaces: ns1 and ns2.
 	for _, ns := range []string{"ns1", "ns2", "ns3"} {
 		for _, secret := range []string{"s1", "s2", "s3", "s4", "s5", "s6", "s20", "s40", "s50"} {
 			shouldExist :=
 				(secret == "s1" || secret == "s3" || secret == "s4" || secret == "s40") && (ns == "ns1" || ns == "ns2")
-			checkObject(t, store, ns, secret, shouldExist)
+			checkObject(t, store, tenant, ns, secret, shouldExist)
 		}
 	}
 }

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -266,7 +267,8 @@ func (o TaintOptions) RunTaint() error {
 		if err != nil {
 			return err
 		}
-		helper := resource.NewHelper(client, mapping)
+		// taint shall be single client job
+		helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
 
 		var outputObj runtime.Object
 		if createdPatch {

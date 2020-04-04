@@ -240,7 +240,8 @@ func testExec(t *testing.T, tenant string) {
 					}
 				}),
 			}
-			tf.ClientConfigVal = &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: scheme.Codecs, GroupVersion: &schema.GroupVersion{Version: test.version}}}
+			kubeConfig := &restclient.KubeConfig{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: scheme.Codecs, GroupVersion: &schema.GroupVersion{Version: test.version}}}
+			tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 			ex := &fakeRemoteExecutor{}
 			if test.execErr {
 				ex.execErr = fmt.Errorf("exec error")

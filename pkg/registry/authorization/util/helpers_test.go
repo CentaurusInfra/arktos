@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +36,7 @@ func TestResourceAttributesFrom(t *testing.T) {
 		"Resource",
 		"Subresource",
 		"Name",
+		"Tenant",
 
 		// Fields we copy in NonResourceAttributesFrom
 		"Path",
@@ -58,6 +60,7 @@ func TestResourceAttributesFrom(t *testing.T) {
 		"Subresource",
 		"Name",
 		"ResourceRequest",
+		"Tenant",
 
 		// Fields we set in NonResourceAttributesFrom
 		"User",

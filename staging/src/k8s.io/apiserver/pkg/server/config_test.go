@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
@@ -37,7 +39,8 @@ func TestNewWithDelegate(t *testing.T) {
 	delegateConfig.ExternalAddress = "192.168.10.4:443"
 	delegateConfig.PublicAddress = net.ParseIP("192.168.10.4")
 	delegateConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
-	delegateConfig.LoopbackClientConfig = &rest.Config{}
+	delegateConfig.LoopbackClientConfig = rest.CreateEmptyConfig()
+	delegateConfig.Authentication = AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 	clientset := fake.NewSimpleClientset()
 	if clientset == nil {
 		t.Fatal("unable to create fake client set")
@@ -47,7 +50,7 @@ func TestNewWithDelegate(t *testing.T) {
 		return fmt.Errorf("delegate failed healthcheck")
 	}))
 
-	sharedInformers := informers.NewSharedInformerFactory(clientset, delegateConfig.LoopbackClientConfig.Timeout)
+	sharedInformers := informers.NewSharedInformerFactory(clientset, delegateConfig.LoopbackClientConfig.GetConfig().Timeout)
 	delegateServer, err := delegateConfig.Complete(sharedInformers).New("test", NewEmptyDelegate())
 	if err != nil {
 		t.Fatal(err)
@@ -69,13 +72,14 @@ func TestNewWithDelegate(t *testing.T) {
 	wrappingConfig.ExternalAddress = "192.168.10.4:443"
 	wrappingConfig.PublicAddress = net.ParseIP("192.168.10.4")
 	wrappingConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
-	wrappingConfig.LoopbackClientConfig = &rest.Config{}
+	wrappingConfig.LoopbackClientConfig = rest.CreateEmptyConfig()
+	wrappingConfig.Authentication = AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 
 	wrappingConfig.HealthzChecks = append(wrappingConfig.HealthzChecks, healthz.NamedCheck("wrapping-health", func(r *http.Request) error {
 		return fmt.Errorf("wrapping failed healthcheck")
 	}))
 
-	sharedInformers = informers.NewSharedInformerFactory(clientset, wrappingConfig.LoopbackClientConfig.Timeout)
+	sharedInformers = informers.NewSharedInformerFactory(clientset, wrappingConfig.LoopbackClientConfig.GetConfig().Timeout)
 	wrappingServer, err := wrappingConfig.Complete(sharedInformers).New("test", delegateServer)
 	if err != nil {
 		t.Fatal(err)

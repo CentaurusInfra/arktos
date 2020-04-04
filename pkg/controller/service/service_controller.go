@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -104,8 +105,8 @@ type ServiceController struct {
 	eventRecorder       record.EventRecorder
 	nodeLister          corelisters.NodeLister
 	nodeListerSynced    cache.InformerSynced
-	podLister          	corelisters.PodLister
-	podListerSynced    	cache.InformerSynced
+	podLister           corelisters.PodLister
+	podListerSynced     cache.InformerSynced
 	// services that need to be synced
 	queue workqueue.RateLimitingInterface
 }
@@ -122,7 +123,7 @@ func New(
 ) (*ServiceController, error) {
 	broadcaster := record.NewBroadcaster()
 	broadcaster.StartLogging(klog.Infof)
-	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
 	recorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "service-controller"})
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
@@ -867,7 +868,7 @@ func GetOpenstackClient() *gophercloud.ProviderClient {
 }
 
 // createNeutronLB creates external Neutron load balancer
-func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.LoadBalancer, error){
+func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.LoadBalancer, error) {
 	service := obj.(*v1.Service)
 	client := GetOpenstackClient()
 	serviceclient, err := openstack.NewLoadBalancerV2(client, gophercloud.EndpointOpts{
@@ -894,7 +895,7 @@ func (s *ServiceController) createNeutronLB(obj interface{}) (*loadbalancers.Loa
 }
 
 // createNeutronLBListener creates listener for external Neutron load balancer
-func (s *ServiceController) createNeutronLBListener(client *gophercloud.ServiceClient, loadbalancerID string, name string, port int) (*listeners.Listener, error){
+func (s *ServiceController) createNeutronLBListener(client *gophercloud.ServiceClient, loadbalancerID string, name string, port int) (*listeners.Listener, error) {
 	klog.V(4).Infof("Creating listener for port %d", port)
 	createOpts := listeners.CreateOpts{
 		Name:           fmt.Sprintf("listener_%s_%d", name, port),
@@ -916,10 +917,10 @@ func (s *ServiceController) createNeutronLBListener(client *gophercloud.ServiceC
 func (s *ServiceController) createNeutronLBPool(client *gophercloud.ServiceClient, listenerID string, name string) (*pools.Pool, error) {
 	klog.V(4).Infof("Creating LB Pool of %s", name)
 	createOpts := pools.CreateOpts{
-		LBMethod:       pools.LBMethodRoundRobin,
-		Protocol:       "TCP",
-		Name:           name,
-		ListenerID:     listenerID,
+		LBMethod:   pools.LBMethodRoundRobin,
+		Protocol:   "TCP",
+		Name:       name,
+		ListenerID: listenerID,
 	}
 
 	pool, err := pools.Create(client, createOpts).Extract()

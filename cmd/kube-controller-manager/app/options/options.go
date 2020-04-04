@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,6 +78,7 @@ type KubeControllerManagerOptions struct {
 	ReplicationController            *ReplicationControllerOptions
 	ResourceQuotaController          *ResourceQuotaControllerOptions
 	SAController                     *SAControllerOptions
+	TenantController                 *TenantControllerOptions
 	TTLAfterFinishedController       *TTLAfterFinishedControllerOptions
 
 	SecureServing *apiserveroptions.SecureServingOptionsWithLoopback
@@ -156,6 +158,9 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		SAController: &SAControllerOptions{
 			&componentConfig.SAController,
 		},
+		TenantController: &TenantControllerOptions{
+			&componentConfig.TenantController,
+		},
 		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{
 			&componentConfig.TTLAfterFinishedController,
 		},
@@ -231,11 +236,12 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.ReplicationController.AddFlags(fss.FlagSet("replicationcontroller"))
 	s.ResourceQuotaController.AddFlags(fss.FlagSet("resourcequota controller"))
 	s.SAController.AddFlags(fss.FlagSet("serviceaccount controller"))
+	s.TenantController.AddFlags(fss.FlagSet("tenant controller"))
 	s.TTLAfterFinishedController.AddFlags(fss.FlagSet("ttl-after-finished controller"))
 
 	fs := fss.FlagSet("misc")
 	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
-	fs.StringVar(&s.Kubeconfig, "kubeconfig", s.Kubeconfig, "Path to kubeconfig file with authorization and master location information.")
+	fs.StringVar(&s.Kubeconfig, "kubeconfig", s.Kubeconfig, "Path to kubeconfig files with authorization and master location information.")
 	utilfeature.DefaultMutableFeatureGate.AddFlag(fss.FlagSet("generic"))
 
 	return fss
@@ -306,6 +312,9 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.ServiceController.ApplyTo(&c.ComponentConfig.ServiceController); err != nil {
 		return err
 	}
+	if err := s.TenantController.ApplyTo(&c.ComponentConfig.TenantController); err != nil {
+		return err
+	}
 	if err := s.TTLAfterFinishedController.ApplyTo(&c.ComponentConfig.TTLAfterFinishedController); err != nil {
 		return err
 	}
@@ -357,6 +366,7 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.ResourceQuotaController.Validate()...)
 	errs = append(errs, s.SAController.Validate()...)
 	errs = append(errs, s.ServiceController.Validate()...)
+	errs = append(errs, s.TenantController.Validate()...)
 	errs = append(errs, s.TTLAfterFinishedController.Validate()...)
 	errs = append(errs, s.SecureServing.Validate()...)
 	errs = append(errs, s.InsecureServing.Validate()...)
@@ -378,29 +388,32 @@ func (s KubeControllerManagerOptions) Config(allControllers []string, disabledBy
 		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 	}
 
-	kubeconfig, err := clientcmd.BuildConfigFromFlags(s.Master, s.Kubeconfig)
+	kubeconfigs, err := clientcmd.BuildConfigFromFlags(s.Master, s.Kubeconfig)
 	if err != nil {
 		return nil, err
 	}
-	kubeconfig.ContentConfig.ContentType = s.Generic.ClientConnection.ContentType
-	kubeconfig.QPS = s.Generic.ClientConnection.QPS
-	kubeconfig.Burst = int(s.Generic.ClientConnection.Burst)
 
-	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeconfig, KubeControllerManagerUserAgent))
+	for _, kubeConfig := range kubeconfigs.GetAllConfigs() {
+		kubeConfig.ContentConfig.ContentType = s.Generic.ClientConnection.ContentType
+		kubeConfig.QPS = s.Generic.ClientConnection.QPS
+		kubeConfig.Burst = int(s.Generic.ClientConnection.Burst)
+	}
+
+	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeconfigs, KubeControllerManagerUserAgent))
 	if err != nil {
 		return nil, err
 	}
 
 	// shallow copy, do not modify the kubeconfig.Timeout.
-	config := *kubeconfig
+	config := *kubeconfigs.GetConfig()
 	config.Timeout = s.Generic.LeaderElection.RenewDeadline.Duration
-	leaderElectionClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "leader-election"))
+	leaderElectionClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(restclient.NewAggregatedConfig(&config), "leader-election"))
 
 	eventRecorder := createRecorder(client, KubeControllerManagerUserAgent)
 
 	c := &kubecontrollerconfig.Config{
 		Client:               client,
-		Kubeconfig:           kubeconfig,
+		Kubeconfig:           kubeconfigs,
 		EventRecorder:        eventRecorder,
 		LeaderElectionClient: leaderElectionClient,
 	}

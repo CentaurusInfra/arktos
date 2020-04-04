@@ -191,7 +191,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 		c.versionHandler.unsetDiscovery(version)
 		return nil
 	}
-	c.versionHandler.setDiscovery(version, discovery.NewAPIVersionHandler(Codecs, version, discovery.APIResourceListerFunc(func() []metav1.APIResource {
+	c.versionHandler.setDiscovery(version, discovery.NewAPIVersionHandler(Codecs, version, discovery.APIResourceListerFunc(func(filter func(metav1.APIResource) bool) []metav1.APIResource {
 		return apiResourcesForDiscovery
 	})))
 

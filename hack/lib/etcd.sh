@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +18,13 @@
 # A set of helpers for starting/running etcd for tests
 
 ETCD_VERSION=${ETCD_VERSION:-3.3.10}
-ETCD_HOST=${ETCD_HOST:-127.0.0.1}
+INT_NAME=$(ip route | awk '/default/ { print $5 }')
+ETCD_LOCAL_HOST=${ETCD_LOCAL_HOST:-127.0.0.1}
+ETCD_HOST=$(ip addr show $INT_NAME | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+ETCD_NAME=$(hostname -s)
 ETCD_PORT=${ETCD_PORT:-2379}
+ETCD_PEER_PORT=${ETCD_PEER_PORT:-2380}
+
 export KUBE_INTEGRATION_ETCD_URL="http://${ETCD_HOST}:${ETCD_PORT}"
 
 kube::etcd::validate() {
@@ -50,7 +56,6 @@ kube::etcd::validate() {
   if [[ $(kube::etcd::version "${ETCD_VERSION}") -gt $(kube::etcd::version "${version}") ]]; then
    export PATH=${KUBE_ROOT}/third_party/etcd:${PATH}
    hash etcd
-   echo "${PATH}"
    version=$(etcd --version | head -n 1 | cut -d " " -f 3)
    if [[ $(kube::etcd::version "${ETCD_VERSION}") -gt $(kube::etcd::version "${version}") ]]; then
     kube::log::usage "etcd version ${ETCD_VERSION} or greater required."
@@ -75,8 +80,8 @@ kube::etcd::start() {
   else
     ETCD_LOGFILE=${ETCD_LOGFILE:-"/dev/null"}
   fi
-  kube::log::info "etcd --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls http://${ETCD_HOST}:${ETCD_PORT} --debug > \"${ETCD_LOGFILE}\" 2>/dev/null"
-  etcd --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --debug 2> "${ETCD_LOGFILE}" >/dev/null &
+  kube::log::info "etcd --name ${ETCD_NAME} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT}   --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls ${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT} --debug > \"${ETCD_LOGFILE}\" 2>/dev/null"
+  etcd --name ${ETCD_NAME} --listen-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}"   --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT}" --initial-advertise-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-token "etcd-cluster-1" --initial-cluster "${ETCD_NAME}=http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-state "new"  --debug 2> "${ETCD_LOGFILE}" >/dev/null &
   ETCD_PID=$!
 
   echo "Waiting for etcd to come up."
@@ -136,3 +141,12 @@ kube::etcd::install() {
     kube::log::info "export PATH=\"$(pwd)/etcd:\${PATH}\""
   )
 }
+
+kube::etcd::add_member() {
+  hostname=$1
+  urlAddress=$2
+
+  kube::log::info "add a member $hostname at $urlAddress to the current etcd cluster"
+  etcdctl member add $hostname $urlAddress
+}
+

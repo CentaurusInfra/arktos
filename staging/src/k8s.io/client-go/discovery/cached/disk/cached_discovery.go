@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -218,6 +219,12 @@ func (d *CachedDiscoveryClient) RESTClient() restclient.Interface {
 	return d.delegate.RESTClient()
 }
 
+// RESTClients returns all RESTClient that are used to communicate
+// with all API servers by this client implementation.
+func (d *CachedDiscoveryClient) RESTClients() []restclient.Interface {
+	return d.delegate.RESTClients()
+}
+
 // ServerPreferredResources returns the supported resources with the version preferred by the
 // server.
 func (d *CachedDiscoveryClient) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
@@ -270,17 +277,19 @@ func (d *CachedDiscoveryClient) Invalidate() {
 // If discoveryCacheDir is empty, cached server resource data will be looked up in the current directory.
 // TODO(juanvallejo): the value of "--cache-dir" should be honored. Consolidate discoveryCacheDir with httpCacheDir
 // so that server resources and http-cache data are stored in the same location, provided via config flags.
-func NewCachedDiscoveryClientForConfig(config *restclient.Config, discoveryCacheDir, httpCacheDir string, ttl time.Duration) (*CachedDiscoveryClient, error) {
+// TODO - Discovery use one api server for now
+func NewCachedDiscoveryClientForConfig(configs *restclient.Config, discoveryCacheDir, httpCacheDir string, ttl time.Duration) (*CachedDiscoveryClient, error) {
 	if len(httpCacheDir) > 0 {
 		// update the given restconfig with a custom roundtripper that
 		// understands how to handle cache responses.
+		config := configs.GetConfig()
 		config = restclient.CopyConfig(config)
 		config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 			return newCacheRoundTripper(httpCacheDir, rt)
 		})
 	}
 
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(configs)
 	if err != nil {
 		return nil, err
 	}

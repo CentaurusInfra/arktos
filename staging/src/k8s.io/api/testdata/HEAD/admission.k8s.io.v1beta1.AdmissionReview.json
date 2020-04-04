@@ -38,7 +38,8 @@
         "21": [
   "22"
 ]
-      }
+      },
+      "tenant": "23"
     },
     "object": {"apiVersion":"example.com/v1","kind":"CustomType","spec":{"replicas":1},"status":{"available":1}},
     "oldObject": {"apiVersion":"example.com/v1","kind":"CustomType","spec":{"replicas":1},"status":{"available":1}},
@@ -53,19 +54,19 @@
         "selfLink": "(湗Ć]ʪƬ滈憴Uą飋ī",
         "resourceVersion": "71208173751669476"
       },
-      "status": "23",
-      "message": "24",
+      "status": "24",
+      "message": "25",
       "reason": "Hr鯹)晿\u003co,c鮽ort昍řČ扷5Ɨ",
       "details": {
-        "name": "25",
-        "group": "26",
-        "kind": "27",
+        "name": "26",
+        "group": "27",
+        "kind": "28",
         "uid": "Ƣ6/ʕVŚ(ĿȊ甞",
         "causes": [
           {
             "reason": "颋ǅ",
-            "message": "28",
-            "field": "29"
+            "message": "29",
+            "field": "30"
           }
         ],
         "retryAfterSeconds": 1001983654
@@ -75,7 +76,7 @@
     "patch": "fQ==",
     "patchType": "-Ǐ忄*齧獚敆Ȏțê",
     "auditAnnotations": {
-      "30": "31"
+      "31": "32"
     }
   }
 }

@@ -52,6 +52,7 @@ import (
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
+	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	ttlcontroller "k8s.io/kubernetes/pkg/controller/ttl"
 	"k8s.io/kubernetes/pkg/controller/ttlafterfinished"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
@@ -337,11 +338,35 @@ func startNamespaceController(ctx ControllerContext) (http.Handler, bool, error)
 	// the namespace cleanup controller is very chatty.  It makes lots of discovery calls and then it makes lots of delete calls
 	// the ratelimiter negatively affects its speed.  Deleting 100 total items in a namespace (that's only a few of each resource
 	// including events), takes ~10 seconds by default.
-	nsKubeconfig := ctx.ClientBuilder.ConfigOrDie("namespace-controller")
-	nsKubeconfig.QPS *= 20
-	nsKubeconfig.Burst *= 100
-	namespaceKubeClient := clientset.NewForConfigOrDie(nsKubeconfig)
-	return startModifiedNamespaceController(ctx, namespaceKubeClient, nsKubeconfig)
+	nsKubeconfigs := ctx.ClientBuilder.ConfigOrDie("namespace-controller")
+	for _, nsKubeconfig := range nsKubeconfigs.GetAllConfigs() {
+		nsKubeconfig.QPS *= 20
+		nsKubeconfig.Burst *= 100
+	}
+	namespaceKubeClient := clientset.NewForConfigOrDie(nsKubeconfigs)
+	return startModifiedNamespaceController(ctx, namespaceKubeClient, nsKubeconfigs)
+}
+
+func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
+	// tenant controller will be even more chatty than namespace controller when doing cleanups.
+	// but tenant deletion probably doesn't have to be very quick. For now we keep the same
+	// QPS/Burst settings as namespace controller. After we implement tenant cleanup, We will
+	// adjust these if there are feedback on the duration of tenant cleanup
+	tnKubeConfigs := ctx.ClientBuilder.ConfigOrDie("tenant-controller")
+	for _, tnKubeConfig := range tnKubeConfigs.GetAllConfigs() {
+		tnKubeConfig.QPS *= 20
+		tnKubeConfig.Burst *= 100
+	}
+	tenantKubeClient := clientset.NewForConfigOrDie(tnKubeConfigs)
+
+	tenantController := tenantcontroller.NewTenantController(
+		tenantKubeClient,
+		ctx.InformerFactory.Core().V1().Tenants(),
+		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
+	)
+	go tenantController.Run(int(ctx.ComponentConfig.TenantController.ConcurrentTenantSyncs), ctx.Stop)
+
+	return nil, true, nil
 }
 
 func startModifiedNamespaceController(ctx ControllerContext, namespaceKubeClient clientset.Interface, nsKubeconfig *restclient.Config) (http.Handler, bool, error) {

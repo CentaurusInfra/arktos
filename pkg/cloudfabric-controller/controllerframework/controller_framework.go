@@ -87,7 +87,7 @@ var (
 func NewControllerBase(controllerType string, client clientset.Interface, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) (*ControllerBase, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy("", "")})
 
 	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
 		if err := metrics.RegisterMetricAndTrackRateLimiterUsage(controllerType+"_controller", client.CoreV1().RESTClient().GetRateLimiter()); err != nil {
@@ -184,7 +184,7 @@ func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 			break
 		case updatedType, ok := <-c.controllerInstanceUpdateCh.Read:
 			if !ok {
-				klog.Errorf("Unexpected controller instance update message")
+				klog.Error("Unexpected controller instance update message")
 				return
 			}
 			klog.Infof("Got controller instance update massage. Updated Controller Type %s, current controller instance type %s, key %d", updatedType, c.controllerType, c.controllerKey)

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -67,14 +68,15 @@ func (s *DeprecatedInsecureServingInfo) NewLoopbackClientConfig() (*rest.Config,
 		return nil, err
 	}
 
-	return &rest.Config{
+	kubeConfig := &rest.KubeConfig{
 		Host: "http://" + net.JoinHostPort(host, port),
 		// Increase QPS limits. The client is currently passed to all admission plugins,
 		// and those can be throttled in case of higher load on apiserver - see #22340 and #22422
 		// for more details. Once #22422 is fixed, we may want to remove it.
 		QPS:   50,
 		Burst: 100,
-	}, nil
+	}
+	return rest.NewAggregatedConfig(kubeConfig), nil
 }
 
 // InsecureSuperuser implements authenticator.Request to always return a superuser.

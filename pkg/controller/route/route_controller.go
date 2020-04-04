@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -107,7 +108,7 @@ func (rc *RouteController) Run(stopCh <-chan struct{}, syncPeriod time.Duration)
 	}
 
 	if rc.broadcaster != nil {
-		rc.broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: rc.kubeClient.CoreV1().Events("")})
+		rc.broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: rc.kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
 	}
 
 	// TODO: If we do just the full Resync every 5 minutes (default value)
@@ -187,6 +188,7 @@ func (rc *RouteController) reconcile(nodes []*v1.Node, routes []*cloudprovider.R
 									Name:      string(nodeName),
 									UID:       types.UID(nodeName),
 									Namespace: "",
+									Tenant:    "",
 								}, v1.EventTypeWarning, "FailedToCreateRoute", msg)
 						}
 						klog.V(4).Infof(msg)

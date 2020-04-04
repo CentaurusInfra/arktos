@@ -46,20 +46,23 @@ subsets:
       name: "30"
       namespace: "29"
       resourceVersion: "32"
+      tenant: "34"
       uid: ěĂ凗蓏Ŋ蛊ĉy緅縕
   notReadyAddresses:
-  - hostname: "35"
-    ip: "34"
-    nodeName: "36"
+  - hostname: "36"
+    ip: "35"
+    nodeName: "37"
     targetRef:
-      apiVersion: "40"
-      fieldPath: "42"
-      kind: "37"
-      name: "39"
-      namespace: "38"
-      resourceVersion: "41"
+      apiVersion: "41"
+      fieldPath: "43"
+      kind: "38"
+      name: "40"
+      namespace: "39"
+      resourceVersion: "42"
+      tenant: "44"
       uid: 颋ǅ
   ports:
-  - name: "43"
+  - name: "45"
     port: 1575426699
     protocol: ƏS$+½H牗洝尿
+  serviceGroupId: "46"

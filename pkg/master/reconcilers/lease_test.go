@@ -42,7 +42,7 @@ func newFakeLeases() *fakeLeases {
 	return &fakeLeases{make(map[string]bool)}
 }
 
-func (f *fakeLeases) ListLeases() ([]string, error) {
+func (f *fakeLeases) ListLeases(serviceGroupId string) ([]string, error) {
 	res := make([]string, 0, len(f.keys))
 	for ip := range f.keys {
 		res = append(res, ip)
@@ -50,7 +50,7 @@ func (f *fakeLeases) ListLeases() ([]string, error) {
 	return res, nil
 }
 
-func (f *fakeLeases) UpdateLease(ip string) error {
+func (f *fakeLeases) UpdateLease(ip string, serviceGroupId string) error {
 	f.keys[ip] = true
 	return nil
 }
@@ -428,7 +428,7 @@ func TestLeaseEndpointReconciler(t *testing.T) {
 			}
 		}
 		r := NewLeaseEndpointReconciler(clientset.CoreV1(), fakeLeases)
-		err := r.ReconcileEndpoints(test.serviceName, net.ParseIP(test.ip), test.endpointPorts, true)
+		err := r.ReconcileEndpoints(test.serviceName, "", net.ParseIP(test.ip), test.endpointPorts, true)
 		if err != nil {
 			t.Errorf("case %q: unexpected error: %v", test.testName, err)
 		}
@@ -444,6 +444,13 @@ func TestLeaseEndpointReconciler(t *testing.T) {
 		if updatedKeys := fakeLeases.GetUpdatedKeys(); len(updatedKeys) != 1 || updatedKeys[0] != test.ip {
 			t.Errorf("case %q: expected the master's IP to be refreshed, but the following IPs were refreshed instead: %v", test.testName, updatedKeys)
 		}
+	}
+}
+
+func TestLeaseEndpointNonReconcile(t *testing.T) {
+	ns := corev1.NamespaceDefault
+	om := func(name string) metav1.ObjectMeta {
+		return metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: ns, Name: name}
 	}
 
 	nonReconcileTests := []struct {
@@ -528,7 +535,7 @@ func TestLeaseEndpointReconciler(t *testing.T) {
 				}
 			}
 			r := NewLeaseEndpointReconciler(clientset.CoreV1(), fakeLeases)
-			err := r.ReconcileEndpoints(test.serviceName, net.ParseIP(test.ip), test.endpointPorts, false)
+			err := r.ReconcileEndpoints(test.serviceName, "", net.ParseIP(test.ip), test.endpointPorts, false)
 			if err != nil {
 				t.Errorf("case %q: unexpected error: %v", test.testName, err)
 			}
@@ -628,7 +635,7 @@ func TestLeaseRemoveEndpoints(t *testing.T) {
 				}
 			}
 			r := NewLeaseEndpointReconciler(clientset.CoreV1(), fakeLeases)
-			err := r.RemoveEndpoints(test.serviceName, net.ParseIP(test.ip), test.endpointPorts)
+			err := r.RemoveEndpoints(test.serviceName, "", net.ParseIP(test.ip), test.endpointPorts)
 			if err != nil {
 				t.Errorf("case %q: unexpected error: %v", test.testName, err)
 			}

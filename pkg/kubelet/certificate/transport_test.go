@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -176,7 +177,7 @@ func TestRotateShutsDownConnections(t *testing.T) {
 	s.StartTLS()
 	defer s.Close()
 
-	c := &rest.Config{
+	kubeConfig := &rest.KubeConfig{
 		Host: s.URL,
 		TLSClientConfig: rest.TLSClientConfig{
 			// We don't care about the server's cert.
@@ -187,13 +188,14 @@ func TestRotateShutsDownConnections(t *testing.T) {
 			NegotiatedSerializer: serializer.NegotiatedSerializerWrapper(runtime.SerializerInfo{}),
 		},
 	}
+	c := rest.NewAggregatedConfig(kubeConfig)
 
 	// Check for a new cert every 10 milliseconds
 	if _, err := updateTransport(stop, 10*time.Millisecond, c, m, 0); err != nil {
 		t.Fatal(err)
 	}
 
-	client, err := rest.UnversionedRESTClientFor(c)
+	client, err := rest.UnversionedRESTClientFor(kubeConfig)
 	if err != nil {
 		t.Fatal(err)
 	}

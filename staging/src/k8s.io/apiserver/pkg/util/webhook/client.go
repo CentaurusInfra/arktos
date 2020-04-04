@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -116,6 +117,8 @@ func (cm *ClientManager) Validate() error {
 
 // HookClient get a RESTClient from the cache, or constructs one based on the
 // webhook configuration.
+// TODO - here only has one entry for service name and namespace, create one client only
+// Check whether it needs multiple clients or not later
 func (cm *ClientManager) HookClient(cc ClientConfig) (*rest.RESTClient, error) {
 	ccWithNoName := cc
 	ccWithNoName.Name = ""
@@ -127,7 +130,7 @@ func (cm *ClientManager) HookClient(cc ClientConfig) (*rest.RESTClient, error) {
 		return client.(*rest.RESTClient), nil
 	}
 
-	complete := func(cfg *rest.Config) (*rest.RESTClient, error) {
+	complete := func(cfg *rest.KubeConfig) (*rest.RESTClient, error) {
 		// Combine CAData from the config with any existing CA bundle provided
 		if len(cfg.TLSClientConfig.CAData) > 0 {
 			cfg.TLSClientConfig.CAData = append(cfg.TLSClientConfig.CAData, '\n')
@@ -148,7 +151,7 @@ func (cm *ClientManager) HookClient(cc ClientConfig) (*rest.RESTClient, error) {
 		if err != nil {
 			return nil, err
 		}
-		cfg := rest.CopyConfig(restConfig)
+		cfg := rest.CopyConfig(restConfig.GetConfig())
 		serverName := cc.Service.Name + "." + cc.Service.Namespace + ".svc"
 		host := serverName + ":443"
 		cfg.Host = "https://" + host
@@ -195,7 +198,7 @@ func (cm *ClientManager) HookClient(cc ClientConfig) (*rest.RESTClient, error) {
 		return nil, err
 	}
 
-	cfg := rest.CopyConfig(restConfig)
+	cfg := rest.CopyConfig(restConfig.GetConfig())
 	cfg.Host = u.Scheme + "://" + u.Host
 	cfg.APIPath = u.Path
 

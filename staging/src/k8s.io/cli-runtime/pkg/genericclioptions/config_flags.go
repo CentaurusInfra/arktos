@@ -221,7 +221,7 @@ func (f *ConfigFlags) toRawKubePersistentConfigLoader() clientcmd.ClientConfig {
 // Expects the AddFlags method to have been called.
 // Returns a CachedDiscoveryInterface using a computed RESTConfig.
 func (f *ConfigFlags) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
-	config, err := f.ToRESTConfig()
+	configs, err := f.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +229,10 @@ func (f *ConfigFlags) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, e
 	// The more groups you have, the more discovery requests you need to make.
 	// given 25 groups (our groups + a few custom resources) with one-ish version each, discovery needs to make 50 requests
 	// double it just so we don't end up here again for a while.  This config is only used for discovery.
-	config.Burst = 100
+
+	for _, c := range configs.GetAllConfigs() {
+		c.Burst = 100
+	}
 
 	// retrieve a user-provided value for the "cache-dir"
 	// defaulting to ~/.kube/http-cache if no user-value is given.
@@ -238,8 +241,10 @@ func (f *ConfigFlags) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, e
 		httpCacheDir = *f.CacheDir
 	}
 
-	discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(homedir.HomeDir(), ".kube", "cache", "discovery"), config.Host)
-	return diskcached.NewCachedDiscoveryClientForConfig(config, discoveryCacheDir, httpCacheDir, time.Duration(10*time.Minute))
+	// TODO - verify usage for cache collision
+	//discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(homedir.HomeDir(), ".kube", "cache", "discovery"), config.Host)
+	discoveryCacheDir := filepath.Join(homedir.HomeDir(), ".kube", "cache", "discovery")
+	return diskcached.NewCachedDiscoveryClientForConfig(configs, discoveryCacheDir, httpCacheDir, time.Duration(10*time.Minute))
 }
 
 // ToRESTMapper returns a mapper.

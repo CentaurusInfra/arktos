@@ -14,135 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PARTITION_CONFIG_DIR=${PARTITION_CONFIG_DIR:-"/var/run/kubernetes/"}
-
-VIRTLET_METADATA_DIR=${VIRTLET_METADATA_DIR:-"/var/lib/virtlet"}
-VIRTLET_LOG_DIR=${VIRTLET_LOG_DIR:-"/var/log/virtlet"}
-
-APPARMOR_ENABLED=${APPARMOR_ENABLED:-""}
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
-# containerd socket file path
-export CONTAINERD_SOCK_PATH="/run/containerd/containerd.sock"
-export VIRTLET_SOCK_PATH="/run/virtlet.sock"
-
-# This is required by virtlet deamonset installation
-export ALLOW_PRIVILEGED=true
-
-# onebox has option to choose cni plugin: bridge(default), alktron(neutron integration)
-CNIPLUGIN=${CNIPLUGIN:-"bridge"}
-
-# This command builds and runs a local kubernetes cluster.
-# You may need to run this as root to allow kubelet to open docker's socket,
-# and to write the test CA in /var/run/kubernetes.
-DOCKER_OPTS=${DOCKER_OPTS:-""}
-export DOCKER=(docker "${DOCKER_OPTS[@]}")
-DOCKER_ROOT=${DOCKER_ROOT:-""}
-ALLOW_PRIVILEGED=${ALLOW_PRIVILEGED:-""}
-DENY_SECURITY_CONTEXT_ADMISSION=${DENY_SECURITY_CONTEXT_ADMISSION:-""}
-PSP_ADMISSION=${PSP_ADMISSION:-""}
-NODE_ADMISSION=${NODE_ADMISSION:-""}
-RUNTIME_CONFIG=${RUNTIME_CONFIG:-""}
-KUBELET_AUTHORIZATION_WEBHOOK=${KUBELET_AUTHORIZATION_WEBHOOK:-""}
-KUBELET_AUTHENTICATION_WEBHOOK=${KUBELET_AUTHENTICATION_WEBHOOK:-""}
-POD_MANIFEST_PATH=${POD_MANIFEST_PATH:-"/var/run/kubernetes/static-pods"}
-KUBELET_FLAGS=${KUBELET_FLAGS:-""}
-KUBELET_IMAGE=${KUBELET_IMAGE:-""}
-# many dev environments run with swap on, so we don't fail in this env
-FAIL_SWAP_ON=${FAIL_SWAP_ON:-"false"}
-# Name of the network plugin, eg: "kubenet"
-NET_PLUGIN=${NET_PLUGIN:-""}
-# Place the config files and binaries required by NET_PLUGIN in these directory,
-# eg: "/etc/cni/net.d" for config files, and "/opt/cni/bin" for binaries.
-CNI_CONF_DIR=${CNI_CONF_DIR:-""}
-CNI_BIN_DIR=${CNI_BIN_DIR:-""}
-SERVICE_CLUSTER_IP_RANGE=${SERVICE_CLUSTER_IP_RANGE:-10.0.0.0/24}
-FIRST_SERVICE_CLUSTER_IP=${FIRST_SERVICE_CLUSTER_IP:-10.0.0.1}
-# if enabled, must set CGROUP_ROOT
-CGROUPS_PER_QOS=${CGROUPS_PER_QOS:-true}
-# name of the cgroup driver, i.e. cgroupfs or systemd
-CGROUP_DRIVER=${CGROUP_DRIVER:-""}
-# if cgroups per qos is enabled, optionally change cgroup root
-CGROUP_ROOT=${CGROUP_ROOT:-""}
-# owner of client certs, default to current user if not specified
-USER=${USER:-$(whoami)}
-
-# enables testing eviction scenarios locally.
-EVICTION_HARD=${EVICTION_HARD:-"memory.available<100Mi,nodefs.available<10%,nodefs.inodesFree<5%"}
-EVICTION_SOFT=${EVICTION_SOFT:-""}
-EVICTION_PRESSURE_TRANSITION_PERIOD=${EVICTION_PRESSURE_TRANSITION_PERIOD:-"1m"}
-
-# ensures all places of cert/node naming related to hostname are lower-cased for consistency
-lohostname=$(hostname | tr '[:upper:]' '[:lower:]')
-
-# This script uses docker0 (or whatever container bridge docker is currently using)
-# and we don't know the IP of the DNS pod to pass in as --cluster-dns.
-# To set this up by hand, set this flag and change DNS_SERVER_IP.
-# Note also that you need API_HOST (defined above) for correct DNS.
-KUBE_PROXY_MODE=${KUBE_PROXY_MODE:-""}
-ENABLE_CLUSTER_DNS=${KUBE_ENABLE_CLUSTER_DNS:-true}
-ENABLE_NODELOCAL_DNS=${KUBE_ENABLE_NODELOCAL_DNS:-false}
-DNS_SERVER_IP=${KUBE_DNS_SERVER_IP:-10.0.0.10}
-LOCAL_DNS_IP=${KUBE_LOCAL_DNS_IP:-169.254.20.10}
-DNS_MEMORY_LIMIT=${KUBE_DNS_MEMORY_LIMIT:-170Mi}
-DNS_DOMAIN=${KUBE_DNS_NAME:-"cluster.local"}
-KUBECTL=${KUBECTL:-"${KUBE_ROOT}/cluster/kubectl.sh"}
-WAIT_FOR_URL_API_SERVER=${WAIT_FOR_URL_API_SERVER:-60}
-MAX_TIME_FOR_URL_API_SERVER=${MAX_TIME_FOR_URL_API_SERVER:-1}
-ENABLE_DAEMON=${ENABLE_DAEMON:-false}
-HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"${lohostname}"}
-EXTERNAL_CLOUD_PROVIDER=${EXTERNAL_CLOUD_PROVIDER:-false}
-EXTERNAL_CLOUD_PROVIDER_BINARY=${EXTERNAL_CLOUD_PROVIDER_BINARY:-""}
-CLOUD_PROVIDER=${CLOUD_PROVIDER:-""}
-CLOUD_CONFIG=${CLOUD_CONFIG:-""}
-FEATURE_GATES=${FEATURE_GATES:-"AllAlpha=false"}
-STORAGE_BACKEND=${STORAGE_BACKEND:-"etcd3"}
-STORAGE_MEDIA_TYPE=${STORAGE_MEDIA_TYPE:-""}
-# preserve etcd data. you also need to set ETCD_DIR.
-PRESERVE_ETCD="${PRESERVE_ETCD:-false}"
-# enable Pod priority and preemption
-ENABLE_POD_PRIORITY_PREEMPTION=${ENABLE_POD_PRIORITY_PREEMPTION:-""}
-
-# enable kubernetes dashboard
-ENABLE_CLUSTER_DASHBOARD=${KUBE_ENABLE_CLUSTER_DASHBOARD:-false}
-
-# RBAC Mode options
-AUTHORIZATION_MODE=${AUTHORIZATION_MODE:-"Node,RBAC"}
-KUBECONFIG_TOKEN=${KUBECONFIG_TOKEN:-""}
-AUTH_ARGS=${AUTH_ARGS:-""}
-
-# cloud fabric controller manager config
-WORKLOAD_CONTROLLER_CONFIG_PATH=${WORKLOAD_CONTROLLER_CONFIG_PATH:-"/var/run/kubernetes/controllerconfig.json"}
-
-# Install a default storage class (enabled by default)
-DEFAULT_STORAGE_CLASS=${KUBE_DEFAULT_STORAGE_CLASS:-true}
-
-# Do not run the mutation detector by default on a local cluster.
-# It is intended for a specific type of testing and inherently leaks memory.
-KUBE_CACHE_MUTATION_DETECTOR="${KUBE_CACHE_MUTATION_DETECTOR:-false}"
-export KUBE_CACHE_MUTATION_DETECTOR
-
-# panic the server on watch decode errors since they are considered coder mistakes
-KUBE_PANIC_WATCH_DECODE_ERROR="${KUBE_PANIC_WATCH_DECODE_ERROR:-true}"
-export KUBE_PANIC_WATCH_DECODE_ERROR
-
-# Default list of admission Controllers to invoke prior to persisting objects in cluster
-# The order defined here does not matter.
-ENABLE_ADMISSION_PLUGINS=${ENABLE_ADMISSION_PLUGINS:-"NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota"}
-DISABLE_ADMISSION_PLUGINS=${DISABLE_ADMISSION_PLUGINS:-""}
-ADMISSION_CONTROL_CONFIG_FILE=${ADMISSION_CONTROL_CONFIG_FILE:-""}
-
-# START_MODE can be 'all', 'kubeletonly', 'nokubelet', or 'nokubeproxy'
-START_MODE=${START_MODE:-"all"}
-
-# A list of controllers to enable
-KUBE_CONTROLLERS="${KUBE_CONTROLLERS:-"*"}"
-
-# Audit policy
-AUDIT_POLICY_FILE=${AUDIT_POLICY_FILE:-""}
-
-# Kube-apiserver instance number
-APISERVER_NUMBER=${APISERVER_NUMBER:-"1"}
+source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
 # sanity check for OpenStack provider
 if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
@@ -176,7 +50,7 @@ set -e
 # Do dudiligence to ensure containerd service and socket in a working state
 # Containerd service should be part of docker.io installation or apt-get install containerd for Ubuntu OS
 if ! sudo systemctl is-active --quiet containerd; then
-  echo "Containerd is required for Alkid"
+  echo "Containerd is required for Arktos"
   exit 1
 fi
 
@@ -185,41 +59,12 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-if [ "${APPARMOR_ENABLED}" == "true" ]; then
-  echo "Config test env under apparmor enabled host"
-  # Start AppArmor service before we have scripts to configure it properly
-  if ! sudo stemctl is-active --quiet apparmor; then
-    echo "Starting Apparmor service"
-    sudo systemctl start apparmor
-  fi
-
-  # install runtime apparmor profiles and reload apparmor
-  echo "Intalling arktos runtime apparmor profiles"
-  APPARMOR_PROFILE_DIR=${KUBE_ROOT}/hack/runtime/apparmor
-  cp ${APPARMOR_PROFILE_DIR}/libvirt-qemu /etc/apparmor.d/abstractions/
-  sudo install -m 0644 ${APPARMOR_PROFILE_DIR}/libvirtd ${APPARMOR_PROFILE_DIR}/virtlet ${APPARMOR_PROFILE_DIR}/vms -t /etc/apparmor.d/
-  sudo apparmor_parser -r /etc/apparmor.d/libvirtd
-  sudo apparmor_parser -r /etc/apparmor.d/virtlet
-  sudo apparmor_parser -r /etc/apparmor.d/vms
-  echo "Completed"
-  echo "Setting annotations for the runtime daemonset"
-  sed -i 's+apparmorlibvirtname+container.apparmor.security.beta.kubernetes.io/libvirt+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorlibvirtvalue+localhost/libvirtd+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvmsname+container.apparmor.security.beta.kubernetes.io/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvmsvalue+localhost/vms+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvirtletname+container.apparmor.security.beta.kubernetes.io/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  sed -i 's+apparmorvirtletvalue+localhost/virtlet+g' ${KUBE_ROOT}/hack/runtime/vmruntime.yaml
-  echo "Completed"
-else
-  # TODO: FIXME: if likely, one can move back to apparmor disabled env, the yaml needs reset or re-checkout	
-  echo "Stopping Apparmor service"
-  sudo systemctl stop apparmor
-fi
-
 # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
 source ${KUBE_ROOT}/hack/arktos-cni.rc
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
+source "${KUBE_ROOT}/hack/lib/common.sh"
+
 kube::util::ensure-gnu-sed
 
 function usage {
@@ -278,45 +123,6 @@ fi
 # Shut down anyway if there's an error.
 set +e
 
-API_PORT=${API_PORT:-8080}
-API_SECURE_PORT=${API_SECURE_PORT:-6443}
-
-# WARNING: For DNS to work on most setups you should export API_HOST as the docker0 ip address,
-API_HOST=${API_HOST:-"${lohostname}"}
-API_HOST_IP=${API_HOST_IP:-"0.0.0.0"}
-ADVERTISE_ADDRESS=${ADVERTISE_ADDRESS:-""}
-NODE_PORT_RANGE=${NODE_PORT_RANGE:-""}
-API_BIND_ADDR=${API_BIND_ADDR:-"0.0.0.0"}
-EXTERNAL_HOSTNAME=${EXTERNAL_HOSTNAME:-"${lohostname}"}
-
-KUBELET_HOST=${KUBELET_HOST:-"127.0.0.1"}
-# By default only allow CORS for requests on localhost
-API_CORS_ALLOWED_ORIGINS=${API_CORS_ALLOWED_ORIGINS:-/127.0.0.1(:[0-9]+)?$,/localhost(:[0-9]+)?$}
-KUBELET_PORT=${KUBELET_PORT:-10250}
-LOG_LEVEL=${LOG_LEVEL:-3}
-# Use to increase verbosity on particular files, e.g. LOG_SPEC=token_controller*=5,other_controller*=4
-LOG_SPEC=${LOG_SPEC:-""}
-LOG_DIR=${LOG_DIR:-"/tmp"}
-CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-"remote"}
-CONTAINER_RUNTIME_ENDPOINT=${CONTAINER_RUNTIME_ENDPOINT:-"containerRuntime,container,${CONTAINERD_SOCK_PATH};vmRuntime,vm,${VIRTLET_SOCK_PATH}"}
-
-RUNTIME_REQUEST_TIMEOUT=${RUNTIME_REQUEST_TIMEOUT:-"2m"}
-IMAGE_SERVICE_ENDPOINT=${IMAGE_SERVICE_ENDPOINT:-""}
-CHAOS_CHANCE=${CHAOS_CHANCE:-0.0}
-CPU_CFS_QUOTA=${CPU_CFS_QUOTA:-true}
-ENABLE_HOSTPATH_PROVISIONER=${ENABLE_HOSTPATH_PROVISIONER:-"false"}
-CLAIM_BINDER_SYNC_PERIOD=${CLAIM_BINDER_SYNC_PERIOD:-"15s"} # current k8s default
-ENABLE_CONTROLLER_ATTACH_DETACH=${ENABLE_CONTROLLER_ATTACH_DETACH:-"true"} # current default
-# This is the default dir and filename where the apiserver will generate a self-signed cert
-# which should be able to be used as the CA to verify itself
-CERT_DIR=${CERT_DIR:-"/var/run/kubernetes"}
-ROOT_CA_FILE=${CERT_DIR}/server-ca.crt
-ROOT_CA_KEY=${CERT_DIR}/server-ca.key
-CLUSTER_SIGNING_CERT_FILE=${CLUSTER_SIGNING_CERT_FILE:-"${ROOT_CA_FILE}"}
-CLUSTER_SIGNING_KEY_FILE=${CLUSTER_SIGNING_KEY_FILE:-"${ROOT_CA_KEY}"}
-# Reuse certs will skip generate new ca/cert files under CERT_DIR
-# it's useful with PRESERVE_ETCD=true because new ca will make existed service account secrets invalided
-REUSE_CERTS=${REUSE_CERTS:-false}
 
 # name of the cgroup driver, i.e. cgroupfs or systemd
 if [[ ${CONTAINER_RUNTIME} == "docker" ]]; then
@@ -472,7 +278,6 @@ cleanup()
 
   exit 0
 }
-
 # Check if all processes are still running. Prints a warning once each time
 # a process dies unexpectedly.
 function healthcheck {
@@ -598,11 +403,18 @@ function start_apiserver {
     configsuffix="$(($1 + 1))"
     configfilepath="${PARTITION_CONFIG_DIR}apiserver${configsuffix}.config"
     ${CONTROLPLANE_SUDO} rm -f  $configfilepath
+    ${CONTROLPLANE_SUDO} cp hack/apiserver.config $configfilepath
     echo "Creating apiserver partition config file  $configfilepath..."
-    cat << EOF | ${CONTROLPLANE_SUDO}  tee -a $configfilepath
-/registry/pods/, tenant$(($1+1)), tenant$(($1+2))
-EOF
 
+    previous=tenant$(($1+1))
+    if [[ $1 -eq 0 ]]; then
+      previous=
+    fi
+    partition_end=tenant$(($1+2))
+    if [[ "$(($1 + 1))" -eq "${APISERVER_NUMBER}" ]]; then
+      partition_end=
+    fi
+    ${CONTROLPLANE_SUDO}  sed -i "s/tenant_begin,tenant_end/${previous},${partition_end}/gi"  $configfilepath
     security_admission=""
     if [[ -n "${DENY_SECURITY_CONTEXT_ADMISSION}" ]]; then
       security_admission=",SecurityContextDeny"
@@ -650,6 +462,11 @@ EOF
     node_port_range=""
     if [[ "${NODE_PORT_RANGE}" != "" ]] ; then
         node_port_range="--service-node-port-range=${NODE_PORT_RANGE}"
+    fi
+
+    service_group_id=""
+    if [[ "${APISERVER_SERVICEGROUPID}" != "" ]]; then
+      service_group_id="--service-group-id=${APISERVER_SERVICEGROUPID}"
     fi
 
     if [[ "${REUSE_CERTS}" != true ]]; then
@@ -710,6 +527,7 @@ EOF
       --requestheader-allowed-names=system:auth-proxy \
       --proxy-client-cert-file="${CERT_DIR}/client-auth-proxy.crt" \
       --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
+      ${service_group_id} \
       --partition-config="${configfilepath}" \
       --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
     APISERVER_PID=$!
@@ -722,11 +540,15 @@ EOF
     # Create kubeconfigs for all components, using client certs
     # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" admin
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" "admin$1"
     ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
     kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
+
+    # Move the admin kubeconfig for each apiserver
+    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin.kubeconfig" "${CERT_DIR}/admin$1.kubeconfig"
+    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/workload-controller.kubeconfig" "${CERT_DIR}/workload-controller$1.kubeconfig"
+
 
     if [[ -z "${AUTH_ARGS}" ]]; then
         AUTH_ARGS="--client-key=${CERT_DIR}/client-admin.key --client-certificate=${CERT_DIR}/client-admin.crt"
@@ -734,62 +556,16 @@ EOF
 
     # Grant apiserver permission to speak to the kubelet
     # TODO kubelet can talk to mutilple apiservers. However, it needs to implement after code changes
-    ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" create clusterrolebinding kube-apiserver-kubelet-admin --clusterrole=system:kubelet-api-admin --user=kube-apiserver
+    ${KUBECTL} --kubeconfig "${CERT_DIR}/admin$1.kubeconfig" create clusterrolebinding kube-apiserver-kubelet-admin --clusterrole=system:kubelet-api-admin --user=kube-apiserver
 
-    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin.kubeconfig" "${CERT_DIR}/admin-kube-aggregator.kubeconfig"
-    ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/admin-kube-aggregator.kubeconfig"
-    ${KUBECTL} config set-cluster local-up-cluster --kubeconfig="${CERT_DIR}/admin-kube-aggregator.kubeconfig" --server="https://${API_HOST_IP}:31090"
-    echo "use 'kubectl --kubeconfig=${CERT_DIR}/admin-kube-aggregator.kubeconfig' to use the aggregated API server"
+    ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin$1.kubeconfig" "${CERT_DIR}/admin-kube-aggregator$1.kubeconfig"
+    ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/admin-kube-aggregator$1.kubeconfig"
+    ${KUBECTL} config set-cluster local-up-cluster --kubeconfig="${CERT_DIR}/admin-kube-aggregator$1.kubeconfig" --server="https://${API_HOST_IP}:31090"
+    echo "use 'kubectl --kubeconfig=${CERT_DIR}/admin-kube-aggregator$1.kubeconfig' to use the aggregated API server"
 
     # Copy workload controller manager config to run path
     ${CONTROLPLANE_SUDO} cp "cmd/workload-controller-manager/config/controllerconfig.json" "${CERT_DIR}/controllerconfig.json"
     ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/controllerconfig.json"
-}
-
-function start_controller_manager {
-    node_cidr_args=()
-    if [[ "${NET_PLUGIN}" == "kubenet" ]]; then
-      node_cidr_args=("--allocate-node-cidrs=true" "--cluster-cidr=10.1.0.0/16")
-    fi
-
-    cloud_config_arg=("--cloud-provider=${CLOUD_PROVIDER}" "--cloud-config=${CLOUD_CONFIG}")
-    if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
-      cloud_config_arg=("--cloud-provider=external")
-      cloud_config_arg+=("--external-cloud-volume-plugin=${CLOUD_PROVIDER}")
-      cloud_config_arg+=("--cloud-config=${CLOUD_CONFIG}")
-    fi
-
-    CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
-      --v="${LOG_LEVEL}" \
-      --vmodule="${LOG_SPEC}" \
-      --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
-      --root-ca-file="${ROOT_CA_FILE}" \
-      --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
-      --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
-      --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
-      ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
-      --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
-      --feature-gates="${FEATURE_GATES}" \
-      "${cloud_config_arg[@]}" \
-      --kubeconfig "${CERT_DIR}"/controller.kubeconfig \
-      --use-service-account-credentials \
-      --controllers="${KUBE_CONTROLLERS}" \
-      --leader-elect=false \
-      --cert-dir="${CERT_DIR}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
-    CTLRMGR_PID=$!
-}
-
-function start_workload_controller_manager {
-    controller_config_arg=("--controllerconfig=${WORKLOAD_CONTROLLER_CONFIG_PATH}")
-
-    WORKLOAD_CONTROLLER_LOG=${LOG_DIR}/workload-controller-manager.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/workload-controller-manager" \
-      --v="${LOG_LEVEL}" \
-      --kubeconfig "${CERT_DIR}"/workload-controller.kubeconfig \
-      "${controller_config_arg[@]}" >"${WORKLOAD_CONTROLLER_LOG}" 2>&1 &
-    WORKLOAD_CTLRMGR_PID=$!
 }
 
 function start_cloud_controller_manager {
@@ -964,18 +740,6 @@ EOF
       --config=/tmp/kube-proxy.yaml \
       --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
     PROXY_PID=$!
-}
-
-function start_kubescheduler {
-
-    SCHEDULER_LOG=${LOG_DIR}/kube-scheduler.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-scheduler \
-      --v="${LOG_LEVEL}" \
-      --leader-elect=false \
-      --kubeconfig "${CERT_DIR}"/scheduler.kubeconfig \
-      --feature-gates="${FEATURE_GATES}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
-    SCHEDULER_PID=$!
 }
 
 function start_kubedns {
@@ -1160,8 +924,9 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   set_service_accounts
   echo "Starting ${APISERVER_NUMBER} kube-apiserver instances. If you want to make changes to the kube-apiserver nubmer, please run export APISERVER_SERVER=n(n=1,2,...). "
   APISERVER_PID_ARRAY=()
+  previous=
   for ((i = $((APISERVER_NUMBER - 1)) ; i >= 0 ; i--)); do
-    start_apiserver $i
+    kube::common::start_apiserver $i
   done
   #remove workload controller manager cluster role and rolebinding applying per this already be added to bootstrappolicy
   
@@ -1170,15 +935,15 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
 
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
 
-  start_controller_manager
-  start_workload_controller_manager
+  kube::common::start_controller_manager
+  kube::common::start_workload_controller_manager
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
   fi
   if [[ "${START_MODE}" != "nokubeproxy" ]]; then
     start_kubeproxy
   fi
-  start_kubescheduler
+  kube::common::start_kubescheduler
   start_kubedns
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
@@ -1219,9 +984,9 @@ while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3
 
 cluster/kubectl.sh label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file hack/runtime/images.yaml
+cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
-cluster/kubectl.sh create -f hack/runtime/vmruntime.yaml
+cluster/kubectl.sh create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
 cluster/kubectl.sh get ds --namespace kube-system
 

@@ -248,7 +248,7 @@ type Dependencies struct {
 	DockerClientConfig      *dockershim.ClientConfig
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
-	OnHeartbeatFailure      func()
+	OnHeartbeatFailure      []func()
 	KubeClient              clientset.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
@@ -429,7 +429,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 
 	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	if kubeDeps.KubeClient != nil {
-		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1().RESTClient(), "services", metav1.NamespaceAll, fields.Everything())
+		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
 		r := cache.NewReflector(serviceLW, &v1.Service{}, serviceIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
@@ -438,7 +438,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 	if kubeDeps.KubeClient != nil {
 		fieldSelector := fields.Set{api.ObjectNameField: string(nodeName)}.AsSelector()
-		nodeLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1().RESTClient(), "nodes", metav1.NamespaceAll, fieldSelector)
+		nodeLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
 		r := cache.NewReflector(nodeLW, &v1.Node{}, nodeIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
@@ -452,6 +452,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		Name:      string(nodeName),
 		UID:       types.UID(nodeName),
 		Namespace: "",
+		Tenant:    "",
 	}
 
 	containerRefManager := kubecontainer.NewRefManager()
@@ -898,7 +899,7 @@ type Kubelet struct {
 	lastObservedNodeAddresses    []v1.NodeAddress
 
 	// onRepeatedHeartbeatFailure is called when a heartbeat operation fails more than once. optional.
-	onRepeatedHeartbeatFailure func()
+	onRepeatedHeartbeatFailure []func()
 
 	// podWorkers handle syncing Pods in response to events.
 	podWorkers PodWorkers
@@ -2213,48 +2214,34 @@ func (kl *Kubelet) LatestLoopEntryTime() time.Time {
 	return val.(time.Time)
 }
 
-// breaking change - partial node ready
-// todo[arktos]: node needs to let scheduler know what runtime is up or not yet on this node
-// updateRuntimeUp calls the container runtime status callback, initializing
+// updateRuntimeUp calls the runtime service status callback, initializing
 // the runtime dependent modules when the container runtime first comes up,
 // and returns an error if the status check fails.  If the status check is OK,
 // update the container runtime uptime in the kubelet runtimeState.
-// the node RuntimeUp is IF ANY runtimes on the node are ready, for both network and compute
+// the node RuntimeUp if the primry runtime service is ready
 func (kl *Kubelet) updateRuntimeUp() {
 	// Periodically log the whole runtime status for debugging.
-	runtimeServices, err := kl.runtimeManager.GetAllRuntimeServices()
+	runtime, err := kl.runtimeManager.GetPrimaryRuntimeService()
 	if err != nil {
-		klog.Errorf("GetAllruntimeServices Failed: %v", err)
+		klog.Errorf("GetPrimaryRuntimeService Failed: %v", err)
+		return
+	}
+	s1, err := runtime.Status()
+	if err != nil {
+		klog.Errorf("Container runtime sanity check failed: %v", err)
+		return
+	}
+	if s1 == nil {
+		klog.Errorf("Container runtime status is nil")
+		return
+	}
+	if s1.Conditions == nil || len(s1.Conditions) == 0 {
+		klog.Errorf("Container runtime status conditions is nil or empty")
 		return
 	}
 
-	aRuntimeIsUp := false
-	for _, runtime := range runtimeServices {
-		// todo: partial runtime handling
-		//       check if the runtime service is primary and only check primary runtime status for node up
-		//
-		s1, err := runtime.Status()
-		if err != nil {
-			klog.Errorf("Container runtime sanity check failed: %v", err)
-			continue
-		}
-		if s1 == nil {
-			klog.Errorf("Container runtime status is nil")
-			continue
-		}
-		if s1.Conditions == nil || len(s1.Conditions) == 0 {
-			klog.Errorf("Container runtime status conditions is nil or empty")
-			continue
-		}
-
-		s := toKubeRuntimeStatus(s1)
-		if err := kl.updateOneRuntimeUp(s); err == nil {
-			aRuntimeIsUp = true
-			break
-		}
-	}
-
-	if !aRuntimeIsUp {
+	s := toKubeRuntimeStatus(s1)
+	if err := kl.updateOneRuntimeUp(s); err != nil {
 		return
 	}
 

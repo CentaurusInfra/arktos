@@ -36,25 +36,26 @@ metadata:
   uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
 spec:
   extra:
-    "36":
-    - "37"
+    "37":
+    - "38"
   groups:
-  - "35"
+  - "36"
   nonResourceAttributes:
-    path: "32"
-    verb: "33"
+    path: "33"
+    verb: "34"
   resourceAttributes:
     group: "27"
     name: "31"
     namespace: "25"
     resource: "29"
     subresource: "30"
+    tenant: "32"
     verb: "26"
     version: "28"
-  uid: "38"
-  user: "34"
+  uid: "39"
+  user: "35"
 status:
   allowed: false
   denied: true
-  evaluationError: "40"
-  reason: "39"
+  evaluationError: "41"
+  reason: "40"

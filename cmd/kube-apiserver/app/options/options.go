@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,6 +73,8 @@ type ServerRunOptions struct {
 	ServiceAccountSigningKeyFile     string
 	ServiceAccountIssuer             serviceaccount.TokenGenerator
 	ServiceAccountTokenMaxExpiration time.Duration
+
+	ServiceGroupId string
 }
 
 // NewServerRunOptions creates a new ServerRunOptions object with default parameters
@@ -235,6 +238,11 @@ func (s *ServerRunOptions) Flags() (fss cliflag.NamedFlagSets) {
 
 	fs.StringVar(&s.ServiceAccountSigningKeyFile, "service-account-signing-key-file", s.ServiceAccountSigningKeyFile, ""+
 		"Path to the file that contains the current private key of the service account token issuer. The issuer will sign issued ID tokens with this private key. (Requires the 'TokenRequest' feature gate.)")
+
+	fs.StringVar(&s.ServiceGroupId, "service-group-id", s.ServiceGroupId, ""+
+		"An optional field indicating the service group that this api server is belong to. Service group id is used to partition "+
+		"tenant data read from etcd. Default to service group 0. If there is no data partition for the service group, this api "+
+		"server will take all data from etcd")
 
 	return fss
 }

@@ -93,18 +93,20 @@ func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 }
 
 func (c *hollowNodeConfig) createClientConfigFromFile() (*restclient.Config, error) {
-	clientConfig, err := clientcmd.LoadFromFile(c.KubeconfigPath)
+	clientConfigs, err := clientcmd.LoadFromFile(c.KubeconfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", c.KubeconfigPath, err)
 	}
-	config, err := clientcmd.NewDefaultClientConfig(*clientConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	configs, err := clientcmd.NewDefaultClientConfig(*clientConfigs, &clientcmd.ConfigOverrides{}).ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
 	}
-	config.ContentType = c.ContentType
-	config.QPS = 10
-	config.Burst = 20
-	return config, nil
+	for _, config := range configs.GetAllConfigs() {
+		config.ContentType = c.ContentType
+		config.QPS = 10
+		config.Burst = 20
+	}
+	return configs, nil
 }
 
 func (c *hollowNodeConfig) createHollowKubeletOptions() *kubemark.HollowKubletOptions {
@@ -163,12 +165,12 @@ func run(config *hollowNodeConfig) {
 	}
 
 	// create a client to communicate with API server.
-	clientConfig, err := config.createClientConfigFromFile()
+	clientConfigs, err := config.createClientConfigFromFile()
 	if err != nil {
 		klog.Fatalf("Failed to create a ClientConfig: %v. Exiting.", err)
 	}
 
-	client, err := clientset.NewForConfig(clientConfig)
+	client, err := clientset.NewForConfig(clientConfigs)
 	if err != nil {
 		klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 	}
@@ -176,17 +178,19 @@ func run(config *hollowNodeConfig) {
 	if config.Morph == "kubelet" {
 		f, c := kubemark.GetHollowKubeletConfig(config.createHollowKubeletOptions())
 
-		heartbeatClientConfig := *clientConfig
-		heartbeatClientConfig.Timeout = c.NodeStatusUpdateFrequency.Duration
-		// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
-		if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
-			leaseTimeout := time.Duration(c.NodeLeaseDurationSeconds) * time.Second
-			if heartbeatClientConfig.Timeout > leaseTimeout {
-				heartbeatClientConfig.Timeout = leaseTimeout
+		heartbeatClientConfigs := restclient.CopyConfigs(clientConfigs)
+		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
+			heartbeatClientConfig.Timeout = c.NodeStatusUpdateFrequency.Duration
+			// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
+			if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
+				leaseTimeout := time.Duration(c.NodeLeaseDurationSeconds) * time.Second
+				if heartbeatClientConfig.Timeout > leaseTimeout {
+					heartbeatClientConfig.Timeout = leaseTimeout
+				}
 			}
+			heartbeatClientConfig.QPS = float32(-1)
 		}
-		heartbeatClientConfig.QPS = float32(-1)
-		heartbeatClient, err := clientset.NewForConfig(&heartbeatClientConfig)
+		heartbeatClient, err := clientset.NewForConfig(heartbeatClientConfigs)
 		if err != nil {
 			klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 		}
@@ -214,7 +218,7 @@ func run(config *hollowNodeConfig) {
 	}
 
 	if config.Morph == "proxy" {
-		client, err := clientset.NewForConfig(clientConfig)
+		client, err := clientset.NewForConfig(clientConfigs)
 		if err != nil {
 			klog.Fatalf("Failed to create API Server client: %v", err)
 		}

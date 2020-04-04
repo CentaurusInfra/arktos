@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,7 +75,7 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
 
-	config := &restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          s.URL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[corev1.GroupName].GroupVersion()},
 	}
@@ -93,14 +94,14 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 		}
 	}
 
-	getWatchFunc := func(c *kubernetes.Clientset, secret *corev1.Secret) func(options metav1.ListOptions) (watch.Interface, error) {
-		return func(options metav1.ListOptions) (watch.Interface, error) {
+	getWatchFunc := func(c *kubernetes.Clientset, secret *corev1.Secret) func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		return func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", secret.Name).String()
-			res, err := c.CoreV1().Secrets(secret.Namespace).Watch(options)
-			if err != nil {
-				t.Fatalf("Failed to create a watcher on Secrets: %v", err)
+			res := c.CoreV1().Secrets(secret.Namespace).Watch(options)
+			if res.GetFirstError() != nil {
+				t.Fatalf("Failed to create a watcher on Secrets: %v", res.GetFirstError())
 			}
-			return res, err
+			return res
 		}
 	}
 
@@ -155,19 +156,19 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 		name                string
 		succeed             bool
 		secret              *corev1.Secret
-		getWatcher          func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.Interface, error, func())
+		getWatcher          func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.AggregatedWatchInterface, func())
 		normalizeOutputFunc func(referenceOutput []string) []string
 	}{
 		{
 			name:    "regular watcher should fail",
 			succeed: false,
 			secret:  newTestSecret("secret-01"),
-			getWatcher: func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.Interface, error, func()) {
+			getWatcher: func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.AggregatedWatchInterface, func()) {
 				options := metav1.ListOptions{
 					ResourceVersion: secret.ResourceVersion,
 				}
-				w, err := getWatchFunc(c, secret)(options)
-				return w, err, noop
+				w := getWatchFunc(c, secret)(options)
+				return w, noop
 			}, // regular watcher; unfortunately destined to fail
 			normalizeOutputFunc: noopNormalization,
 		},
@@ -175,14 +176,14 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 			name:    "RetryWatcher survives closed watches",
 			succeed: true,
 			secret:  newTestSecret("secret-02"),
-			getWatcher: func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.Interface, error, func()) {
+			getWatcher: func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.AggregatedWatchInterface, func()) {
 				lw := &cache.ListWatch{
-					WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 						return getWatchFunc(c, secret)(options)
 					},
 				}
 				w, err := watchtools.NewRetryWatcher(secret.ResourceVersion, lw)
-				return w, err, func() { <-w.Done() }
+				return watch.NewAggregatedWatcherWithOneWatch(w, err), func() { <-w.Done() }
 			},
 			normalizeOutputFunc: noopNormalization,
 		},
@@ -190,17 +191,17 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 			name:    "InformerWatcher survives closed watches",
 			succeed: true,
 			secret:  newTestSecret("secret-03"),
-			getWatcher: func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.Interface, error, func()) {
+			getWatcher: func(c *kubernetes.Clientset, secret *corev1.Secret) (watch.AggregatedWatchInterface, func()) {
 				lw := &cache.ListWatch{
 					ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 						return getListFunc(c, secret)(options), nil
 					},
-					WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 						return getWatchFunc(c, secret)(options)
 					},
 				}
 				_, _, w, done := watchtools.NewIndexerInformerWatcher(lw, &corev1.Secret{})
-				return w, nil, func() { <-done }
+				return watch.NewAggregatedWatcherWithOneWatch(w, nil), func() { <-done }
 			},
 			normalizeOutputFunc: normalizeInformerOutputFunc(initialCount),
 		},
@@ -209,6 +210,7 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 	for _, tmptc := range tt {
 		tc := tmptc // we need to copy it for parallel runs
 		t.Run(tc.name, func(t *testing.T) {
+			config := restclient.NewAggregatedConfig(kubeConfig)
 			c, err := kubernetes.NewForConfig(config)
 			if err != nil {
 				t.Fatalf("Failed to create clientset: %v", err)
@@ -219,7 +221,7 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 				t.Fatalf("Failed to create testing secret %s/%s: %v", tc.secret.Namespace, tc.secret.Name, err)
 			}
 
-			watcher, err, doneFn := tc.getWatcher(c, secret)
+			aggWatcher, doneFn := tc.getWatcher(c, secret)
 			if err != nil {
 				t.Fatalf("Failed to create watcher: %v", err)
 			}
@@ -235,7 +237,7 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 			startTime := time.Now()
 			ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 			defer cancel()
-			_, err = watchtools.UntilWithoutRetry(ctx, watcher, func(event watch.Event) (bool, error) {
+			_, err = watchtools.UntilWithoutRetry(ctx, aggWatcher, func(event watch.Event) (bool, error) {
 				s, ok := event.Object.(*corev1.Secret)
 				if !ok {
 					t.Fatalf("Received an object that is not a Secret: %#v", event.Object)

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -104,28 +105,31 @@ func (t *DynamicControllerClientBuilder) Config(saName string) (*restclient.Conf
 		return nil, err
 	}
 
-	configCopy := constructClient(t.Namespace, saName, t.ClientConfig)
+	configsCopy := constructClient(t.Namespace, saName, t.ClientConfig)
 
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
 	rt, ok := t.roundTripperFuncMap[saName]
-	if ok {
-		configCopy.WrapTransport = rt
-	} else {
-		cachedTokenSource := transport.NewCachedTokenSource(&tokenSourceImpl{
-			namespace:          t.Namespace,
-			serviceAccountName: saName,
-			coreClient:         t.CoreClient,
-			expirationSeconds:  t.expirationSeconds,
-			leewayPercent:      t.leewayPercent,
-		})
-		configCopy.WrapTransport = transport.TokenSourceWrapTransport(cachedTokenSource)
 
-		t.roundTripperFuncMap[saName] = configCopy.WrapTransport
+	for _, configCopy := range configsCopy.GetAllConfigs() {
+		if ok {
+			configCopy.WrapTransport = rt
+		} else {
+			cachedTokenSource := transport.NewCachedTokenSource(&tokenSourceImpl{
+				namespace:          t.Namespace,
+				serviceAccountName: saName,
+				coreClient:         t.CoreClient,
+				expirationSeconds:  t.expirationSeconds,
+				leewayPercent:      t.leewayPercent,
+			})
+			configCopy.WrapTransport = transport.TokenSourceWrapTransport(cachedTokenSource)
+
+			t.roundTripperFuncMap[saName] = configCopy.WrapTransport
+		}
 	}
 
-	return &configCopy, nil
+	return &configsCopy, nil
 }
 
 func (t *DynamicControllerClientBuilder) ConfigOrDie(name string) *restclient.Config {

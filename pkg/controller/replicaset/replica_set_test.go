@@ -52,6 +52,9 @@ import (
 	"k8s.io/kubernetes/pkg/securitycontext"
 )
 
+var kubeConfigV1 = &restclient.KubeConfig{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+var configsV1 = restclient.NewAggregatedConfig(kubeConfigV1)
+
 func testNewReplicaSetControllerFromClient(client clientset.Interface, stopCh chan struct{}, burstReplicas int) (*ReplicaSetController, informers.SharedInformerFactory) {
 	informers := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 
@@ -205,7 +208,7 @@ func TestSyncReplicaSetDoesNothingWithMultiTenancy(t *testing.T) {
 }
 
 func testSyncReplicaSetDoesNothing(t *testing.T, tenant string) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := clientset.NewForConfigOrDie(configsV1)
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -231,7 +234,7 @@ func TestDeleteFinalStateUnknownWithMultiTenancy(t *testing.T) {
 }
 
 func testDeleteFinalStateUnknown(t *testing.T, tenant string) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := clientset.NewForConfigOrDie(configsV1)
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -318,7 +321,9 @@ func testSyncReplicaSetDormancy(t *testing.T, tenant string) {
 	}
 	testServer := httptest.NewServer(&fakeHandler)
 	defer testServer.Close()
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	kubeConfig := &restclient.KubeConfig{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
+	configs := restclient.NewAggregatedConfig(kubeConfig)
+	client := clientset.NewForConfigOrDie(configs)
 
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
@@ -379,7 +384,7 @@ func testSyncReplicaSetDormancy(t *testing.T, tenant string) {
 func TestPodControllerLookup(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	manager, informers := testNewReplicaSetControllerFromClient(clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}), stopCh, BurstReplicas)
+	manager, informers := testNewReplicaSetControllerFromClient(clientset.NewForConfigOrDie(configsV1), stopCh, BurstReplicas)
 	testCases := []struct {
 		inRSs     []*apps.ReplicaSet
 		pod       *v1.Pod
@@ -956,7 +961,7 @@ func TestRSSyncExpectationsWithMultiTenancy(t *testing.T) {
 }
 
 func testRSSyncExpectations(t *testing.T, tenant string) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := clientset.NewForConfigOrDie(configsV1)
 	fakePodControl := controller.FakePodControl{}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -1053,7 +1058,7 @@ func TestOverlappingRSsWithMultiTenancy(t *testing.T) {
 }
 
 func testOverlappingRSs(t *testing.T, tenant string) {
-	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	client := clientset.NewForConfigOrDie(configsV1)
 	labelMap := map[string]string{"foo": "bar"}
 
 	stopCh := make(chan struct{})
@@ -1104,7 +1109,7 @@ func TestDeletionTimestampWithMultiTenancy(t *testing.T) {
 }
 
 func testDeletionTimestamp(t *testing.T, tenant string) {
-	c := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
+	c := clientset.NewForConfigOrDie(configsV1)
 	labelMap := map[string]string{"foo": "bar"}
 	stopCh := make(chan struct{})
 	defer close(stopCh)

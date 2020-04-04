@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +35,10 @@ import (
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
+const (
+	testTenant string = metav1.TenantSystem
+)
+
 // Inject into master an authorizer that uses user info.
 // TODO(etune): remove this test once a more comprehensive built-in authorizer is implemented.
 type sarAuthorizer struct{}
@@ -49,7 +54,8 @@ func (sarAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, st
 func alwaysAlice(req *http.Request) (*authenticator.Response, bool, error) {
 	return &authenticator.Response{
 		User: &user.DefaultInfo{
-			Name: "alice",
+			Name:   "alice",
+			Tenant: testTenant,
 		},
 	}, true, nil
 }
@@ -61,7 +67,8 @@ func TestSubjectAccessReview(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
 
-	clientset := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	tests := []struct {
 		name           string
@@ -149,14 +156,15 @@ func TestSelfSubjectAccessReview(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authentication.Authenticator = authenticator.RequestFunc(func(req *http.Request) (*authenticator.Response, bool, error) {
 		return &authenticator.Response{
-			User: &user.DefaultInfo{Name: username},
+			User: &user.DefaultInfo{Name: username, Tenant: testTenant},
 		}, true, nil
 	})
 	masterConfig.GenericConfig.Authorization.Authorizer = sarAuthorizer{}
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
 
-	clientset := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	tests := []struct {
 		name           string
@@ -235,7 +243,8 @@ func TestLocalSubjectAccessReview(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
 
-	clientset := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
+	kubeConfig := &restclient.KubeConfig{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}}
+	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	tests := []struct {
 		name           string

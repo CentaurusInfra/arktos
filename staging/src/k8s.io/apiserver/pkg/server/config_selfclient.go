@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +38,7 @@ func (s *SecureServingInfo) NewClientConfig(caCert []byte) (*restclient.Config, 
 		return nil, err
 	}
 
-	return &restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		// Increase QPS limits. The client is currently passed to all admission plugins,
 		// and those can be throttled in case of higher load on apiserver - see #22340 and #22422
 		// for more details. Once #22422 is fixed, we may want to remove it.
@@ -49,17 +50,20 @@ func (s *SecureServingInfo) NewClientConfig(caCert []byte) (*restclient.Config, 
 		TLSClientConfig: restclient.TLSClientConfig{
 			CAData: caCert,
 		},
-	}, nil
+	}
+
+	return restclient.NewAggregatedConfig(kubeConfig), nil
 }
 
+// Assuming one server config only
 func (s *SecureServingInfo) NewLoopbackClientConfig(token string, loopbackCert []byte) (*restclient.Config, error) {
 	c, err := s.NewClientConfig(loopbackCert)
-	if err != nil || c == nil {
+	if err != nil || c == nil || len(c.GetAllConfigs()) != 1 {
 		return c, err
 	}
 
-	c.BearerToken = token
-	c.TLSClientConfig.ServerName = LoopbackClientServerNameOverride
+	c.GetConfig().BearerToken = token
+	c.GetConfig().TLSClientConfig.ServerName = LoopbackClientServerNameOverride
 
 	return c, nil
 }

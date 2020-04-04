@@ -46,15 +46,16 @@ type PersistentVolumeInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.PersistentVolume, error)
 	List(opts metav1.ListOptions) (*v1.PersistentVolumeList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PersistentVolume, err error)
 	PersistentVolumeExpansion
 }
 
 // persistentVolumes implements PersistentVolumeInterface
 type persistentVolumes struct {
-	client rest.Interface
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	te      string
 }
 
 // newPersistentVolumes returns a PersistentVolumes
@@ -64,8 +65,9 @@ func newPersistentVolumes(c *CoreV1Client) *persistentVolumes {
 
 func newPersistentVolumesWithMultiTenancy(c *CoreV1Client, tenant string) *persistentVolumes {
 	return &persistentVolumes{
-		client: c.RESTClient(),
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -102,18 +104,23 @@ func (c *persistentVolumes) List(opts metav1.ListOptions) (result *v1.Persistent
 }
 
 // Watch returns a watch.Interface that watches the requested persistentVolumes.
-func (c *persistentVolumes) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *persistentVolumes) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Resource("persistentvolumes").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Resource("persistentvolumes").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }
 
 // Create takes the representation of a persistentVolume and creates it.  Returns the server's representation of the persistentVolume, and an error, if there is any.

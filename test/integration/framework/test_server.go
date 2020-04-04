@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -121,7 +122,7 @@ func StartTestServer(t *testing.T, stopCh <-chan struct{}, setup TestServerSetup
 	if setup.ModifyServerConfig != nil {
 		setup.ModifyServerConfig(kubeAPIServerConfig)
 	}
-	kubeAPIServer, err := app.CreateKubeAPIServer(kubeAPIServerConfig, genericapiserver.NewEmptyDelegate(), admissionPostStartHook)
+	kubeAPIServer, err := app.CreateKubeAPIServer(kubeAPIServerConfig, genericapiserver.NewEmptyDelegate(), admissionPostStartHook, stopCh)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,46 +133,48 @@ func StartTestServer(t *testing.T, stopCh <-chan struct{}, setup TestServerSetup
 	}()
 
 	// Adjust the loopback config for external use (external server name and CA)
-	kubeAPIServerClientConfig := rest.CopyConfig(kubeAPIServerConfig.GenericConfig.LoopbackClientConfig)
-	kubeAPIServerClientConfig.CAFile = path.Join(certDir, "apiserver.crt")
-	kubeAPIServerClientConfig.CAData = nil
-	kubeAPIServerClientConfig.ServerName = ""
+	kubeAPIServerClientConfigs := rest.CopyConfigs(kubeAPIServerConfig.GenericConfig.LoopbackClientConfig)
+	for _, kubeAPIServerClientConfig := range kubeAPIServerClientConfigs.GetAllConfigs() {
+		kubeAPIServerClientConfig.CAFile = path.Join(certDir, "apiserver.crt")
+		kubeAPIServerClientConfig.CAData = nil
+		kubeAPIServerClientConfig.ServerName = ""
 
-	// wait for health
-	err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (done bool, err error) {
-		healthzConfig := rest.CopyConfig(kubeAPIServerClientConfig)
-		healthzConfig.ContentType = ""
-		healthzConfig.AcceptContentTypes = ""
-		kubeClient, err := client.NewForConfig(healthzConfig)
+		// wait for health
+		err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (done bool, err error) {
+			healthzConfig := rest.CopyConfig(kubeAPIServerClientConfig)
+			healthzConfig.ContentType = ""
+			healthzConfig.AcceptContentTypes = ""
+			kubeClient, err := client.NewForConfig(rest.NewAggregatedConfig(healthzConfig))
+			if err != nil {
+				// this happens because we race the API server start
+				t.Log(err)
+				return false, nil
+			}
+
+			healthStatus := 0
+			kubeClient.Discovery().RESTClient().Get().AbsPath("/healthz").Do().StatusCode(&healthStatus)
+			if healthStatus != http.StatusOK {
+				return false, nil
+			}
+
+			if _, err := kubeClient.CoreV1().Namespaces().Get("default", metav1.GetOptions{}); err != nil {
+				return false, nil
+			}
+			if _, err := kubeClient.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{}); err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
 		if err != nil {
-			// this happens because we race the API server start
-			t.Log(err)
-			return false, nil
+			t.Fatal(err)
 		}
+	}
 
-		healthStatus := 0
-		kubeClient.Discovery().RESTClient().Get().AbsPath("/healthz").Do().StatusCode(&healthStatus)
-		if healthStatus != http.StatusOK {
-			return false, nil
-		}
-
-		if _, err := kubeClient.CoreV1().Namespaces().Get("default", metav1.GetOptions{}); err != nil {
-			return false, nil
-		}
-		if _, err := kubeClient.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{}); err != nil {
-			return false, nil
-		}
-
-		return true, nil
-	})
+	kubeAPIServerClient, err := client.NewForConfig(kubeAPIServerClientConfigs)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	kubeAPIServerClient, err := client.NewForConfig(kubeAPIServerClientConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return kubeAPIServerClient, kubeAPIServerClientConfig
+	return kubeAPIServerClient, kubeAPIServerClientConfigs
 }

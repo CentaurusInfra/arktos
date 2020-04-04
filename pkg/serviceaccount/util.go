@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,17 +33,18 @@ const (
 )
 
 // UserInfo returns a user.Info interface for the given namespace, service account name and UID
-func UserInfo(namespace, name, uid string) user.Info {
+func UserInfo(namespace, name, uid, tenant string) user.Info {
 	return (&ServiceAccountInfo{
 		Name:      name,
 		Namespace: namespace,
 		UID:       uid,
+		Tenant:    tenant,
 	}).UserInfo()
 }
 
 type ServiceAccountInfo struct {
-	Name, Namespace, UID string
-	PodName, PodUID      string
+	Name, Namespace, UID, Tenant string
+	PodName, PodUID              string
 }
 
 func (sa *ServiceAccountInfo) UserInfo() user.Info {
@@ -50,6 +52,7 @@ func (sa *ServiceAccountInfo) UserInfo() user.Info {
 		Name:   apiserverserviceaccount.MakeUsername(sa.Namespace, sa.Name),
 		UID:    sa.UID,
 		Groups: apiserverserviceaccount.MakeGroupNames(sa.Namespace),
+		Tenant: sa.Tenant,
 	}
 	if sa.PodName != "" && sa.PodUID != "" {
 		info.Extra = map[string][]string{
@@ -70,6 +73,10 @@ func IsServiceAccountToken(secret *v1.Secret, sa *v1.ServiceAccount) bool {
 	uid := secret.Annotations[v1.ServiceAccountUIDKey]
 	if name != sa.Name {
 		// Name must match
+		return false
+	}
+	if secret.Tenant != sa.Tenant {
+		// Tenant must match
 		return false
 	}
 	if len(uid) > 0 && uid != string(sa.UID) {

@@ -73,7 +73,7 @@ func NewFilteredDaemonSetInformerWithMultiTenancy(client kubernetes.Interface, n
 				}
 				return client.AppsV1beta2().DaemonSetsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

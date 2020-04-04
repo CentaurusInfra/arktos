@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -657,21 +658,22 @@ func TestWatchHTTPDynamicClientErrors(t *testing.T) {
 	}))
 	defer s.Close()
 
-	client := dynamic.NewForConfigOrDie(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:    s.URL,
 		APIPath: "/" + prefix,
-	}).Resource(newGroupVersion.WithResource("simple"))
+	}
+	client := dynamic.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig)).Resource(newGroupVersion.WithResource("simple"))
 
-	w, err := client.Watch(metav1.ListOptions{})
-	if err != nil {
-		t.Fatal(err)
+	ag := client.Watch(metav1.ListOptions{})
+	if ag.GetFirstError() != nil {
+		t.Fatal(ag.GetFirstError())
 	}
 
 	errStatus := errors.NewInternalError(fmt.Errorf("we got an error")).Status()
 	watcher.Error(&errStatus)
 	watcher.Stop()
 
-	got := <-w.ResultChan()
+	got := <-ag.ResultChan()
 	if got.Type != watch.Error {
 		t.Fatalf("unexpected watch type: %#v", got)
 	}

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@ import (
 
 	"k8s.io/klog"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -73,6 +75,13 @@ func (v *authorizingVisitor) visit(source fmt.Stringer, rule *rbacv1.PolicyRule,
 
 func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (authorizer.Decision, string, error) {
 	ruleCheckingVisitor := &authorizingVisitor{requestAttributes: requestAttributes}
+
+	userTenant := requestAttributes.GetUser().GetTenant()
+	if userTenant != metav1.TenantSystem && userTenant != metav1.TenantDefault && userTenant != requestAttributes.GetTenant() {
+		klog.Infof("user tenant '%v' does not match the requested tenant space '%v'",
+			userTenant, requestAttributes.GetTenant())
+		return authorizer.DecisionDeny, ruleCheckingVisitor.reason, nil
+	}
 
 	r.authorizationRuleResolver.VisitRulesFor(requestAttributes.GetUser(), requestAttributes.GetNamespace(), ruleCheckingVisitor.visit)
 	if ruleCheckingVisitor.allowed {
@@ -199,12 +208,20 @@ func (g *RoleGetter) GetRole(namespace, name string) (*rbacv1.Role, error) {
 	return g.Lister.Roles(namespace).Get(name)
 }
 
+func (g *RoleGetter) GetRoleWithMultiTenancy(tenant, namespace, name string) (*rbacv1.Role, error) {
+	return g.Lister.RolesWithMultiTenancy(tenant, namespace).Get(name)
+}
+
 type RoleBindingLister struct {
 	Lister rbaclisters.RoleBindingLister
 }
 
 func (l *RoleBindingLister) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error) {
 	return l.Lister.RoleBindings(namespace).List(labels.Everything())
+}
+
+func (l *RoleBindingLister) ListRoleBindingsWithMultiTenancy(tenant, namespace string) ([]*rbacv1.RoleBinding, error) {
+	return l.Lister.RoleBindingsWithMultiTenancy(namespace, tenant).List(labels.Everything())
 }
 
 type ClusterRoleGetter struct {
@@ -221,4 +238,8 @@ type ClusterRoleBindingLister struct {
 
 func (l *ClusterRoleBindingLister) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
 	return l.Lister.List(labels.Everything())
+}
+
+func (l *ClusterRoleBindingLister) ListClusterRoleBindingsWithMultiTenancy(tenant string) ([]*rbacv1.ClusterRoleBinding, error) {
+	return l.Lister.ClusterRoleBindingsWithMultiTenancy(tenant).List(labels.Everything())
 }

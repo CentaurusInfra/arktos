@@ -40,15 +40,16 @@ type PodMetricsesGetter interface {
 type PodMetricsInterface interface {
 	Get(name string, options v1.GetOptions) (*v1beta1.PodMetrics, error)
 	List(opts v1.ListOptions) (*v1beta1.PodMetricsList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
+	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 	PodMetricsExpansion
 }
 
 // podMetricses implements PodMetricsInterface
 type podMetricses struct {
-	client rest.Interface
-	ns     string
-	te     string
+	client  rest.Interface
+	clients []rest.Interface
+	ns      string
+	te      string
 }
 
 // newPodMetricses returns a PodMetricses
@@ -58,9 +59,10 @@ func newPodMetricses(c *MetricsV1beta1Client, namespace string) *podMetricses {
 
 func newPodMetricsesWithMultiTenancy(c *MetricsV1beta1Client, namespace string, tenant string) *podMetricses {
 	return &podMetricses{
-		client: c.RESTClient(),
-		ns:     namespace,
-		te:     tenant,
+		client:  c.RESTClient(),
+		clients: c.RESTClients(),
+		ns:      namespace,
+		te:      tenant,
 	}
 }
 
@@ -98,17 +100,22 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1beta1.PodMetricsList
 }
 
 // Watch returns a watch.Interface that watches the requested podMetricses.
-func (c *podMetricses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *podMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.Get().
-		Tenant(c.te).
-		Namespace(c.ns).
-		Resource("pods").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range c.clients {
+		watcher, err := client.Get().
+			Tenant(c.te).
+			Namespace(c.ns).
+			Resource("pods").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Watch()
+		aggWatch.AddWatchInterface(watcher, err)
+	}
+	return aggWatch
 }

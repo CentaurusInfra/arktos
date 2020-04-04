@@ -721,9 +721,9 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 	}
 
 	// print watched changes
-	w, err := r.WatchWithMultiTenancy(rv)
-	if err != nil {
-		return err
+	aw := r.WatchWithMultiTenancy(rv)
+	if aw.GetFirstError() != nil {
+		return aw.GetFirstError()
 	}
 
 	first := true
@@ -731,7 +731,7 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 	defer cancel()
 	intr := interrupt.New(nil, cancel)
 	intr.Run(func() error {
-		_, err := watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
+		_, err := watchtools.UntilWithoutRetry(ctx, aw, func(e watch.Event) (bool, error) {
 			if !isList && first {
 				// drop the initial watch event in the single resource case
 				first = false

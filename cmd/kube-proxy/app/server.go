@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -142,7 +143,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 
 	fs.StringVar(&o.ConfigFile, "config", o.ConfigFile, "The path to the configuration file.")
 	fs.StringVar(&o.WriteConfigTo, "write-config-to", o.WriteConfigTo, "If set, write the default configuration values to this file and exit.")
-	fs.StringVar(&o.config.ClientConnection.Kubeconfig, "kubeconfig", o.config.ClientConnection.Kubeconfig, "Path to kubeconfig file with authorization information (the master location is set by the master flag).")
+	fs.StringVar(&o.config.ClientConnection.Kubeconfig, "kubeconfig", o.config.ClientConnection.Kubeconfig, "Path to kubeconfig files with authorization information (the master location is set by the master flag).")
 	fs.StringVar(&o.config.ClusterCIDR, "cluster-cidr", o.config.ClusterCIDR, "The CIDR range of pods in the cluster. When configured, traffic sent to a Service cluster IP from outside this range will be masqueraded and traffic sent from pods to an external LoadBalancer IP will be directed to the respective cluster IP instead")
 	fs.StringVar(&o.config.ClientConnection.ContentType, "kube-api-content-type", o.config.ClientConnection.ContentType, "Content type of requests sent to apiserver.")
 	fs.StringVar(&o.master, "master", o.master, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
@@ -492,16 +493,16 @@ type ProxyServer struct {
 // createClients creates a kube client and an event client from the given config and masterOverride.
 // TODO remove masterOverride when CLI flags are removed.
 func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string) (clientset.Interface, v1core.EventsGetter, error) {
-	var kubeConfig *rest.Config
+	var kubeConfigs *rest.Config
 	var err error
 
 	if len(config.Kubeconfig) == 0 && len(masterOverride) == 0 {
 		klog.Info("Neither kubeconfig file nor master URL was specified. Falling back to in-cluster config.")
-		kubeConfig, err = rest.InClusterConfig()
+		kubeConfigs, err = rest.InClusterConfig()
 	} else {
 		// This creates a client, first loading any specified kubeconfig
 		// file, and then overriding the Master flag, if non-empty.
-		kubeConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		kubeConfigs, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: config.Kubeconfig},
 			&clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: masterOverride}}).ClientConfig()
 	}
@@ -509,22 +510,24 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, err
 	}
 
-	kubeConfig.AcceptContentTypes = config.AcceptContentTypes
-	kubeConfig.ContentType = config.ContentType
-	kubeConfig.QPS = config.QPS
-	kubeConfig.Burst = int(config.Burst)
+	for _, kubeConfig := range kubeConfigs.GetAllConfigs() {
+		kubeConfig.AcceptContentTypes = config.AcceptContentTypes
+		kubeConfig.ContentType = config.ContentType
+		kubeConfig.QPS = config.QPS
+		kubeConfig.Burst = int(config.Burst)
+	}
 
-	client, err := clientset.NewForConfig(kubeConfig)
+	clients, err := clientset.NewForConfig(kubeConfigs)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	eventClient, err := clientset.NewForConfig(kubeConfig)
+	eventClients, err := clientset.NewForConfig(kubeConfigs)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client, eventClient.CoreV1(), nil
+	return clients, eventClients.CoreV1(), nil
 }
 
 // Run runs the specified ProxyServer.  This should never exit (unless CleanupAndExit is set).

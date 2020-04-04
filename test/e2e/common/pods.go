@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -241,7 +242,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 				}
 				return podList, err
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				options.LabelSelector = selector.String()
 				return podClient.Watch(options)
 			},
@@ -537,7 +538,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		Message retrieved form Websocket MUST match with expected exec command output.
 	*/
 	framework.ConformanceIt("should support remote command execution over websockets [NodeConformance]", func() {
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err, "unable to get base config")
 
 		ginkgo.By("creating the pod")
@@ -572,7 +573,8 @@ var _ = framework.KubeDescribe("Pods", func() {
 			Param("command", "remote execution test")
 
 		url := req.URL()
-		ws, err := framework.OpenWebSocketForURL(url, config, []string{"channel.k8s.io"})
+		kubeConfig := configs.GetConfig()
+		ws, err := framework.OpenWebSocketForURL(url, kubeConfig, []string{"channel.k8s.io"})
 		if err != nil {
 			framework.Failf("Failed to open websocket to %s: %v", url.String(), err)
 		}
@@ -619,7 +621,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		Message retrieved form Websocket MUST match with container's output.
 	*/
 	framework.ConformanceIt("should support retrieving logs from the container over websockets [NodeConformance]", func() {
-		config, err := framework.LoadConfig()
+		configs, err := framework.LoadConfig()
 		framework.ExpectNoError(err, "unable to get base config")
 
 		ginkgo.By("creating the pod")
@@ -651,7 +653,8 @@ var _ = framework.KubeDescribe("Pods", func() {
 
 		url := req.URL()
 
-		ws, err := framework.OpenWebSocketForURL(url, config, []string{"binary.k8s.io"})
+		kubeConfig := configs.GetConfig()
+		ws, err := framework.OpenWebSocketForURL(url, kubeConfig, []string{"binary.k8s.io"})
 		if err != nil {
 			framework.Failf("Failed to open websocket to %s: %v", url.String(), err)
 		}

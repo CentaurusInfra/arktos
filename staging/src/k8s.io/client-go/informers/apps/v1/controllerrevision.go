@@ -73,7 +73,7 @@ func NewFilteredControllerRevisionInformerWithMultiTenancy(client kubernetes.Int
 				}
 				return client.AppsV1().ControllerRevisionsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

@@ -37,7 +37,9 @@ function install_kata_components {
 	sudo snap install kata-containers --classic
 
 	# Check if system support Kata
-	local kata_check_msg=`$kata_snap_path/bin/kata-runtime kata-check`
+	echo "* Checking Kata compatibility"
+	local kata_check_msg=`$kata_snap_path/bin/kata-runtime kata-check 2>&1`
+	echo $kata_check_msg
 	if ! echo $kata_check_msg | grep -q "System is capable of running Kata Containers"; then
 		echo "Aborted. Current system does not support Kata Containers."
 		exit

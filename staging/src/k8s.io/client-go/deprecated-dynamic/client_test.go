@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,10 +61,11 @@ func getObject(version, kind, name string) *unstructured.Unstructured {
 
 func getClientServer(gv *schema.GroupVersion, h func(http.ResponseWriter, *http.Request)) (Interface, *httptest.Server, error) {
 	srv := httptest.NewServer(http.HandlerFunc(h))
-	cl, err := NewClient(&restclient.Config{
+	kubeConfig := &restclient.KubeConfig{
 		Host:          srv.URL,
 		ContentConfig: restclient.ContentConfig{GroupVersion: gv},
-	}, *gv)
+	}
+	cl, err := NewClient(restclient.NewAggregatedConfig(kubeConfig), *gv)
 	if err != nil {
 		srv.Close()
 		return nil, nil, err
@@ -522,14 +524,14 @@ func TestWatch(t *testing.T) {
 		}
 		defer srv.Close()
 
-		watcher, err := cl.Resource(resource, tc.namespace).Watch(metav1.ListOptions{})
-		if err != nil {
-			t.Errorf("unexpected error when watching %q: %v", tc.name, err)
+		aw := cl.Resource(resource, tc.namespace).Watch(metav1.ListOptions{})
+		if aw.GetFirstError() != nil {
+			t.Errorf("unexpected error when watching %q: %v", tc.name, aw.GetFirstError())
 			continue
 		}
 
 		for _, want := range tc.events {
-			got := <-watcher.ResultChan()
+			got := <-aw.ResultChan()
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("Watch(%q) want: %v\ngot: %v", tc.name, want, got)
 			}

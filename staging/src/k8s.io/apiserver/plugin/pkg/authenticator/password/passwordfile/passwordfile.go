@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"strings"
 
@@ -60,14 +62,34 @@ func NewCSV(path string) (*PasswordAuthenticator, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(record) < 3 {
+		size := len(record)
+		if size < 3 ||
+			(size == 3 && record[2] == "") {
 			return nil, fmt.Errorf("password file '%s' must have at least 3 columns (password, user name, user uid), found %d", path, len(record))
 		}
+
+		// if a line has ,,[text] at the end, [text] is treated as tenant
+		// for example, password1,user1,uid1,,tenant1
+		// otherwise, no tenant is set and is defaulted to metav1.TenantSystem
+		if size > 3 &&
+			record[size-1] == "" &&
+			record[size-2] == "" {
+			return nil, fmt.Errorf("password file '%s' is using a format that is expected to specify a tenant but it doesn't", path)
+		}
+
+		tenant := metav1.TenantSystem
+		// check for comma in the last record
+		if size >= 3 &&
+			record[size-1] != "" &&
+			record[size-2] == "" {
+			tenant = record[size-1]
+		}
+
 		obj := &userPasswordInfo{
-			info:     &user.DefaultInfo{Name: record[1], UID: record[2]},
+			info:     &user.DefaultInfo{Name: record[1], UID: record[2], Tenant: tenant},
 			password: record[0],
 		}
-		if len(record) >= 4 {
+		if len(record) > 3 && record[3] != "" {
 			obj.info.Groups = strings.Split(record[3], ",")
 		}
 		recordNum++

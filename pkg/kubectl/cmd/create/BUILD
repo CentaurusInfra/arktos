@@ -19,6 +19,7 @@ go_library(
         "create_secret.go",
         "create_service.go",
         "create_serviceaccount.go",
+        "create_tenant.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/kubectl/cmd/create",
     visibility = ["//build/visible_to:pkg_kubectl_cmd_create_CONSUMERS"],
@@ -74,6 +75,7 @@ go_test(
         "create_service_test.go",
         "create_serviceaccount_test.go",
         "create_test.go",
+        "multi_tenancy_create_test.go",
     ],
     data = [
         "//test/e2e/testing-manifests:all-srcs",

@@ -415,10 +415,12 @@ func TestWebhookV1beta1(t *testing.T) {
 	// made by the client from requests made by controllers. We use this to filter out requests
 	// before recording them to ensure we don't accidentally mistake requests from controllers
 	// as requests made by the client.
-	clientConfig := rest.CopyConfig(server.ClientConfig)
-	clientConfig.Impersonate.UserName = testClientUsername
-	clientConfig.Impersonate.Groups = []string{"system:masters", "system:authenticated"}
-	client, err := clientset.NewForConfig(clientConfig)
+	clientConfigs := rest.CopyConfigs(server.ClientConfig)
+	for _, clientConfig := range clientConfigs.GetAllConfigs() {
+		clientConfig.Impersonate.UserName = testClientUsername
+		clientConfig.Impersonate.Groups = []string{"system:masters", "system:authenticated"}
+	}
+	client, err := clientset.NewForConfig(clientConfigs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -431,7 +433,7 @@ func TestWebhookV1beta1(t *testing.T) {
 	}
 
 	// gather resources to test
-	dynamicClient, err := dynamic.NewForConfig(clientConfig)
+	dynamicClient, err := dynamic.NewForConfig(clientConfigs)
 	if err != nil {
 		t.Fatal(err)
 	}

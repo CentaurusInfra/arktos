@@ -55,7 +55,7 @@ function create-and-upload-hollow-node-image {
     run-cmd-with-retries "${build_cmd[@]}"
   else
     # Build+push the image through makefile.
-    build_cmd=("make" "${KUBEMARK_IMAGE_MAKE_TARGET}")
+    build_cmd=("sudo" "-E" "make" "${KUBEMARK_IMAGE_MAKE_TARGET}")
     MAKE_DIR="${KUBE_ROOT}/cluster/images/kubemark"
     KUBEMARK_BIN="$(kube::util::find-binary-for-platform kubemark linux/amd64)"
     if [[ -z "${KUBEMARK_BIN}" ]]; then
@@ -209,7 +209,13 @@ function start-hollow-nodes {
   # shellcheck disable=SC2154 # Color defined in sourced script
   echo -e "${color_yellow}STARTING SETUP FOR HOLLOW-NODES${color_norm}"
   create-and-upload-hollow-node-image
-  create-kube-hollow-node-resources
+  if [ "${CLOUD_PROVIDER}" = "aws" ]; then
+    create-kube-hollow-node-resources-aws
+    sed -i "s/https:\/\/${MASTER_INTERNAL_IP}/https:\/\/${MASTER_PUBLIC_IP}/" $LOCAL_KUBECONFIG
+    MASTER_IP=${MASTER_PUBLIC_IP}
+  else
+    create-kube-hollow-node-resources
+  fi
   wait-for-hollow-nodes-to-run-or-timeout
 }
 
@@ -221,5 +227,10 @@ MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
 start-hollow-nodes
 
 echo ""
-echo "Master IP: ${MASTER_IP}"
+if [ "${CLOUD_PROVIDER}" = "aws" ]; then
+  echo "Master Public IP: ${MASTER_PUBLIC_IP}"
+  echo "Master Internal IP: ${MASTER_INTERNAL_IP}"
+else
+  echo "Master IP: ${MASTER_IP}"
+fi
 echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG}"

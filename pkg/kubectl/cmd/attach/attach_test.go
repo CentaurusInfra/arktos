@@ -265,7 +265,8 @@ func testAttach(t *testing.T, tenant string) {
 					}
 				}),
 			}
-			tf.ClientConfigVal = &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: scheme.Codecs, GroupVersion: &schema.GroupVersion{Version: test.version}}}
+			kubeConfig := &restclient.KubeConfig{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: scheme.Codecs, GroupVersion: &schema.GroupVersion{Version: test.version}}}
+			tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 			remoteAttach := &fakeRemoteAttach{}
 			if test.remoteAttachErr {
@@ -376,7 +377,8 @@ func testAttachWarnings(t *testing.T, tenant string) {
 					}
 				}),
 			}
-			tf.ClientConfigVal = &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: scheme.Codecs, GroupVersion: &schema.GroupVersion{Version: test.version}}}
+			kubeConfig := &restclient.KubeConfig{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: scheme.Codecs, GroupVersion: &schema.GroupVersion{Version: test.version}}}
+			tf.ClientConfigVal = restclient.NewAggregatedConfig(kubeConfig)
 
 			options := &AttachOptions{
 				StreamOptions: exec.StreamOptions{
