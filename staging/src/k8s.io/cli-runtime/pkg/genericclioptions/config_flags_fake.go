@@ -111,7 +111,7 @@ func (c *namespacedClientConfig) Namespace() (string, bool, error) {
 	return c.namespace, false, nil
 }
 
-func (c *namespacedClientConfig) RawConfig() (clientcmdapi.Config, error) {
+func (c *namespacedClientConfig) RawConfig() ([]clientcmdapi.Config, error) {
 	return c.delegate.RawConfig()
 }
 func (c *namespacedClientConfig) ClientConfig() (*rest.Config, error) {

@@ -56,7 +56,7 @@ func getDefaultServer() string {
 // ClientConfig is used to make it easy to get an api server client
 type ClientConfig interface {
 	// RawConfig returns the merged result of all overrides
-	RawConfig() (clientcmdapi.Config, error)
+	RawConfig() ([]clientcmdapi.Config, error)
 	// ClientConfig returns a complete client config
 	ClientConfig() (*restclient.Config, error)
 	// Namespace returns the namespace resulting from the merged
@@ -124,8 +124,8 @@ func RESTConfigFromKubeConfig(configBytes []byte) (*restclient.Config, error) {
 	return clientConfig.ClientConfig()
 }
 
-func (config *DirectClientConfig) RawConfig() (clientcmdapi.Config, error) {
-	return config.config, nil
+func (config *DirectClientConfig) RawConfig() ([]clientcmdapi.Config, error) {
+	return []clientcmdapi.Config{config.config}, nil
 }
 
 // ClientConfig implements ClientConfig
@@ -501,8 +501,8 @@ type inClusterClientConfig struct {
 
 var _ ClientConfig = &inClusterClientConfig{}
 
-func (config *inClusterClientConfig) RawConfig() (clientcmdapi.Config, error) {
-	return clientcmdapi.Config{}, fmt.Errorf("inCluster environment config doesn't support multiple clusters")
+func (config *inClusterClientConfig) RawConfig() ([]clientcmdapi.Config, error) {
+	return []clientcmdapi.Config{}, fmt.Errorf("inCluster environment config doesn't support multiple clusters")
 }
 
 func (config *inClusterClientConfig) ClientConfig() (*restclient.Config, error) {

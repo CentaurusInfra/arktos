@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -384,6 +385,10 @@ func (*fakeFailingDiscovery) RESTClient() restclient.Interface {
 	return nil
 }
 
+func (*fakeFailingDiscovery) RESTClients() []restclient.Interface {
+	return nil
+}
+
 func (d *fakeFailingDiscovery) ServerGroups() (*metav1.APIGroupList, error) {
 	if d.groups == nil && d.groupsErr != nil {
 		return nil, d.groupsErr
@@ -441,6 +446,10 @@ func (c *fakeCachedDiscoveryInterface) Invalidate() {
 
 func (c *fakeCachedDiscoveryInterface) RESTClient() restclient.Interface {
 	return &fake.RESTClient{}
+}
+
+func (c *fakeCachedDiscoveryInterface) RESTClients() []restclient.Interface {
+	return []restclient.Interface{&fake.RESTClient{}}
 }
 
 func (c *fakeCachedDiscoveryInterface) ServerGroups() (*metav1.APIGroupList, error) {

@@ -221,42 +221,42 @@ func (r *Result) ResourceMapping() (*meta.RESTMapping, error) {
 // (selectors or pure types) can be watched, they will be, otherwise the list
 // will be visited (equivalent to the Infos() call) and if there is a single
 // resource present, it will be watched, otherwise an error will be returned.
-func (r *Result) Watch(resourceVersion string) (watch.Interface, error) {
+func (r *Result) Watch(resourceVersion string) watch.AggregatedWatchInterface {
 	if r.err != nil {
-		return nil, r.err
+		return watch.NewAggregatedWatcherWithOneWatch(nil, r.err)
 	}
 	if len(r.sources) != 1 {
-		return nil, fmt.Errorf("you may only watch a single resource or type of resource at a time")
+		return watch.NewAggregatedWatcherWithOneWatch(nil, fmt.Errorf("you may only watch a single resource or type of resource at a time"))
 	}
 	w, ok := r.sources[0].(Watchable)
 	if !ok {
 		info, err := r.Infos()
 		if err != nil {
-			return nil, err
+			return watch.NewAggregatedWatcherWithOneWatch(nil, err)
 		}
 		if len(info) != 1 {
-			return nil, fmt.Errorf("watch is only supported on individual resources and resource collections - %d resources were found", len(info))
+			return watch.NewAggregatedWatcherWithOneWatch(nil, fmt.Errorf("watch is only supported on individual resources and resource collections - %d resources were found", len(info)))
 		}
 		return info[0].Watch(resourceVersion)
 	}
 	return w.Watch(resourceVersion)
 }
 
-func (r *Result) WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
+func (r *Result) WatchWithMultiTenancy(resourceVersion string) watch.AggregatedWatchInterface {
 	if r.err != nil {
-		return nil, r.err
+		return watch.NewAggregatedWatcherWithOneWatch(nil, r.err)
 	}
 	if len(r.sources) != 1 {
-		return nil, fmt.Errorf("you may only watch a single resource or type of resource at a time")
+		return watch.NewAggregatedWatcherWithOneWatch(nil, fmt.Errorf("you may only watch a single resource or type of resource at a time"))
 	}
 	w, ok := r.sources[0].(Watchable)
 	if !ok {
 		info, err := r.Infos()
 		if err != nil {
-			return nil, err
+			return watch.NewAggregatedWatcherWithOneWatch(nil, err)
 		}
 		if len(info) != 1 {
-			return nil, fmt.Errorf("watch is only supported on individual resources and resource collections - %d resources were found", len(info))
+			return watch.NewAggregatedWatcherWithOneWatch(nil, fmt.Errorf("watch is only supported on individual resources and resource collections - %d resources were found", len(info)))
 		}
 		return info[0].WatchWithMultiTenancy(resourceVersion)
 	}

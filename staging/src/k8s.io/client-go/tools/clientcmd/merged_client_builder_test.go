@@ -48,11 +48,11 @@ type testClientConfig struct {
 	tenantSpecified    bool
 }
 
-func (c *testClientConfig) RawConfig() (clientcmdapi.Config, error) {
+func (c *testClientConfig) RawConfig() ([]clientcmdapi.Config, error) {
 	if c.rawconfig == nil {
-		return clientcmdapi.Config{}, fmt.Errorf("unexpected call")
+		return []clientcmdapi.Config{}, fmt.Errorf("unexpected call")
 	}
-	return *c.rawconfig, nil
+	return []clientcmdapi.Config{*c.rawconfig}, nil
 }
 func (c *testClientConfig) ClientConfig() (*restclient.Config, error) {
 	return c.config, c.err
@@ -217,14 +217,17 @@ func TestInClusterConfig(t *testing.T) {
 	for name, test := range testCases {
 		c := &DeferredLoadingClientConfig{icc: test.icc}
 		c.loader = &ClientConfigLoadingRules{DefaultClientConfig: test.defaultConfig}
-		c.clientConfig = test.clientConfig
+		c.clientConfigs = []ClientConfig{test.clientConfig}
 
 		cfg, err := c.ClientConfig()
 		if test.icc.called != test.checkedICC {
 			t.Errorf("%s: unexpected in-cluster-config call %t", name, test.icc.called)
 		}
-		if err != test.err || cfg != test.result {
-			t.Errorf("%s: unexpected result: %v %#v", name, err, cfg)
+		if err != test.err {
+			t.Errorf("%s: Got err [%v], expected err [%v]", name, err, test.err)
+		}
+		if cfg != nil && test.result == nil || cfg == nil && test.result != nil || cfg != nil && test.result != nil && cfg.ToString() != test.result.ToString() {
+			t.Errorf("%s: unexpected result [%#v]", name, cfg)
 		}
 	}
 }
@@ -347,7 +350,7 @@ func TestInClusterConfigNamespace(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			c := &DeferredLoadingClientConfig{icc: test.icc, overrides: test.overrides}
-			c.clientConfig = test.clientConfig
+			c.clientConfigs = []ClientConfig{test.clientConfig}
 
 			ns, overridden, err := c.Namespace()
 			if test.icc.called != test.checkedICC {

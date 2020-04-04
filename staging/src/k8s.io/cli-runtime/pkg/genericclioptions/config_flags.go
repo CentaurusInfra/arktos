@@ -229,9 +229,10 @@ func (f *ConfigFlags) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, e
 	// The more groups you have, the more discovery requests you need to make.
 	// given 25 groups (our groups + a few custom resources) with one-ish version each, discovery needs to make 50 requests
 	// double it just so we don't end up here again for a while.  This config is only used for discovery.
-	// TODO - discovery client use single api server config for now
-	config := configs.GetConfig()
-	config.Burst = 100
+
+	for _, c := range configs.GetAllConfigs() {
+		c.Burst = 100
+	}
 
 	// retrieve a user-provided value for the "cache-dir"
 	// defaulting to ~/.kube/http-cache if no user-value is given.
@@ -240,7 +241,9 @@ func (f *ConfigFlags) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, e
 		httpCacheDir = *f.CacheDir
 	}
 
-	discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(homedir.HomeDir(), ".kube", "cache", "discovery"), config.Host)
+	// TODO - verify usage for cache collision
+	//discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(homedir.HomeDir(), ".kube", "cache", "discovery"), config.Host)
+	discoveryCacheDir := filepath.Join(homedir.HomeDir(), ".kube", "cache", "discovery")
 	return diskcached.NewCachedDiscoveryClientForConfig(configs, discoveryCacheDir, httpCacheDir, time.Duration(10*time.Minute))
 }
 

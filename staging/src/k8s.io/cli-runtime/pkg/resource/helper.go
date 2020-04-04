@@ -18,7 +18,9 @@ limitations under the License.
 package resource
 
 import (
+	"k8s.io/apimachinery/pkg/util/rand"
 	"strconv"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +39,8 @@ type Helper struct {
 	Resource string
 	// A RESTClient capable of mutating this resource.
 	RESTClient RESTClient
+	// A list of RESTClients connecting to api server with data partitions.
+	RESTClients []RESTClient
 	// True if the resource type is scoped to namespaces
 	NamespaceScoped bool
 	// True if the resource type is scoped to tenants
@@ -44,13 +48,26 @@ type Helper struct {
 }
 
 // NewHelper creates a Helper from a ResourceMapping
-func NewHelper(client RESTClient, mapping *meta.RESTMapping) *Helper {
-	return &Helper{
+func NewHelper(clients []RESTClient, mapping *meta.RESTMapping) *Helper {
+	h := &Helper{
 		Resource:        mapping.Resource.Resource,
-		RESTClient:      client,
+		RESTClients:     clients,
 		NamespaceScoped: mapping.Scope.Name() == meta.RESTScopeNameNamespace,
 		TenantScoped:    mapping.Scope.Name() == meta.RESTScopeNameNamespace || mapping.Scope.Name() == meta.RESTScopeNameTenant,
 	}
+
+	max := len(clients)
+	if max == 1 {
+		h.RESTClient = clients[0]
+	}
+
+	if max > 1 {
+		rand.Seed(time.Now().UnixNano())
+		ran := rand.IntnRange(0, max-1)
+		h.RESTClient = clients[ran]
+	}
+
+	return h
 }
 
 func (m *Helper) Get(namespace, name string, export bool) (runtime.Object, error) {
@@ -77,25 +94,34 @@ func (m *Helper) List(namespace, apiVersion string, export bool, options *metav1
 	return req.Do().Get()
 }
 
-func (m *Helper) Watch(namespace, apiVersion string, options *metav1.ListOptions) (watch.Interface, error) {
+func (m *Helper) Watch(namespace, apiVersion string, options *metav1.ListOptions) watch.AggregatedWatchInterface {
 	options.Watch = true
-	return m.RESTClient.Get().
-		NamespaceIfScoped(namespace, m.NamespaceScoped).
-		Resource(m.Resource).
-		VersionedParams(options, metav1.ParameterCodec).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+
+	for _, client := range m.RESTClients {
+		aggWatch.AddWatchInterface(client.Get().
+			NamespaceIfScoped(namespace, m.NamespaceScoped).
+			Resource(m.Resource).
+			VersionedParams(options, metav1.ParameterCodec).
+			Watch())
+	}
+	return aggWatch
 }
 
-func (m *Helper) WatchSingle(namespace, name, resourceVersion string) (watch.Interface, error) {
-	return m.RESTClient.Get().
-		NamespaceIfScoped(namespace, m.NamespaceScoped).
-		Resource(m.Resource).
-		VersionedParams(&metav1.ListOptions{
-			ResourceVersion: resourceVersion,
-			Watch:           true,
-			FieldSelector:   fields.OneTermEqualSelector("metadata.name", name).String(),
-		}, metav1.ParameterCodec).
-		Watch()
+func (m *Helper) WatchSingle(namespace, name, resourceVersion string) watch.AggregatedWatchInterface {
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range m.RESTClients {
+		aggWatch.AddWatchInterface(client.Get().
+			NamespaceIfScoped(namespace, m.NamespaceScoped).
+			Resource(m.Resource).
+			VersionedParams(&metav1.ListOptions{
+				ResourceVersion: resourceVersion,
+				Watch:           true,
+				FieldSelector:   fields.OneTermEqualSelector("metadata.name", name).String(),
+			}, metav1.ParameterCodec).
+			Watch())
+	}
+	return aggWatch
 }
 
 func (m *Helper) Delete(namespace, name string) (runtime.Object, error) {
@@ -214,27 +240,35 @@ func (m *Helper) ListWithMultiTenancy(tenant, namespace, apiVersion string, expo
 	return req.Do().Get()
 }
 
-func (m *Helper) WatchWithMultiTenancy(tenant, namespace, apiVersion string, options *metav1.ListOptions) (watch.Interface, error) {
+func (m *Helper) WatchWithMultiTenancy(tenant, namespace, apiVersion string, options *metav1.ListOptions) watch.AggregatedWatchInterface {
 	options.Watch = true
-	return m.RESTClient.Get().
-		TenantIfScoped(tenant, m.TenantScoped).
-		NamespaceIfScoped(namespace, m.NamespaceScoped).
-		Resource(m.Resource).
-		VersionedParams(options, metav1.ParameterCodec).
-		Watch()
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range m.RESTClients {
+		aggWatch.AddWatchInterface(client.Get().
+			TenantIfScoped(tenant, m.TenantScoped).
+			NamespaceIfScoped(namespace, m.NamespaceScoped).
+			Resource(m.Resource).
+			VersionedParams(options, metav1.ParameterCodec).
+			Watch())
+	}
+	return aggWatch
 }
 
-func (m *Helper) WatchSingleWithMultiTenancy(tenant, namespace, name, resourceVersion string) (watch.Interface, error) {
-	return m.RESTClient.Get().
-		TenantIfScoped(tenant, m.TenantScoped).
-		NamespaceIfScoped(namespace, m.NamespaceScoped).
-		Resource(m.Resource).
-		VersionedParams(&metav1.ListOptions{
-			ResourceVersion: resourceVersion,
-			Watch:           true,
-			FieldSelector:   fields.OneTermEqualSelector("metadata.name", name).String(),
-		}, metav1.ParameterCodec).
-		Watch()
+func (m *Helper) WatchSingleWithMultiTenancy(tenant, namespace, name, resourceVersion string) watch.AggregatedWatchInterface {
+	aggWatch := watch.NewAggregatedWatcher()
+	for _, client := range m.RESTClients {
+		aggWatch.AddWatchInterface(client.Get().
+			TenantIfScoped(tenant, m.TenantScoped).
+			NamespaceIfScoped(namespace, m.NamespaceScoped).
+			Resource(m.Resource).
+			VersionedParams(&metav1.ListOptions{
+				ResourceVersion: resourceVersion,
+				Watch:           true,
+				FieldSelector:   fields.OneTermEqualSelector("metadata.name", name).String(),
+			}, metav1.ParameterCodec).
+			Watch())
+	}
+	return aggWatch
 }
 
 func (m *Helper) DeleteWithMultiTenancy(tenant, namespace, name string) (runtime.Object, error) {

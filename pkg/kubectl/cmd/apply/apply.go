@@ -418,7 +418,7 @@ func (o *ApplyOptions) Run() error {
 				options.DryRun = []string{metav1.DryRunAll}
 			}
 
-			obj, err := resource.NewHelper(info.Client, info.Mapping).PatchWithMultiTenancy(
+			obj, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(
 				info.Tenant,
 				info.Namespace,
 				info.Name,
@@ -483,7 +483,7 @@ func (o *ApplyOptions) Run() error {
 				if o.ServerDryRun {
 					options.DryRun = []string{metav1.DryRunAll}
 				}
-				obj, err := resource.NewHelper(info.Client, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, &options)
+				obj, err := resource.NewHelper(info.Clients, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, &options)
 				if err != nil {
 					return cmdutil.AddSourceToErr("creating", info.Source, err)
 				}
@@ -522,7 +522,7 @@ func (o *ApplyOptions) Run() error {
 				fmt.Fprintf(o.ErrOut, warningNoLastAppliedConfigAnnotation, o.cmdBaseName)
 			}
 
-			helper := resource.NewHelper(info.Client, info.Mapping)
+			helper := resource.NewHelper(info.Clients, info.Mapping)
 			patcher := &Patcher{
 				Mapping:       info.Mapping,
 				Helper:        helper,

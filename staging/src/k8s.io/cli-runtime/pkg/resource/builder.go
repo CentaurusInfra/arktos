@@ -901,7 +901,7 @@ func (b *Builder) visitBySelector() *Result {
 
 	visitors := []Visitor{}
 	for _, mapping := range mappings {
-		client, err := b.getClient(mapping.GroupVersionKind.GroupVersion())
+		clients, err := b.getClients(mapping.GroupVersionKind.GroupVersion())
 		if err != nil {
 			result.err = err
 			return result
@@ -914,7 +914,9 @@ func (b *Builder) visitBySelector() *Result {
 			selectorTenant = ""
 			selectorNamespace = ""
 		}
-		visitors = append(visitors, NewSelector(client, mapping, selectorTenant, selectorNamespace, labelSelector, fieldSelector, b.export, b.limitChunks))
+
+		// TODO - check whether selector is suppported in watch - too many connections
+		visitors = append(visitors, NewSelector(clients, mapping, selectorTenant, selectorNamespace, labelSelector, fieldSelector, b.export, b.limitChunks))
 	}
 	if b.continueOnError {
 		result.visitor = EagerVisitorList(visitors)
@@ -945,6 +947,37 @@ func (b *Builder) getClient(gv schema.GroupVersion) (RESTClient, error) {
 	}
 
 	return NewClientWithOptions(client, b.requestTransforms...), nil
+}
+
+func (b *Builder) getClients(gv schema.GroupVersion) ([]RESTClient, error) {
+	var (
+		clients []RESTClient
+		errs    []error
+	)
+
+	switch {
+	case b.fakeClientFn != nil:
+		clients = make([]RESTClient, 1)
+		errs = make([]error, 1)
+		clients[0], errs[0] = b.fakeClientFn(gv)
+	case b.negotiatedSerializer != nil:
+		clients, errs = b.clientConfigFn.clientsForGroupVersion(gv, b.negotiatedSerializer)
+	default:
+		clients, errs = b.clientConfigFn.unstructuredClientsForGroupVersion(gv)
+	}
+
+	// TODO - retry create connection if it is ok for other clients;
+	// fail when retry failed, also close established connections
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for i, client := range clients {
+		clients[i] = NewClientWithOptions(client, b.requestTransforms...)
+	}
+	return clients, nil
 }
 
 func (b *Builder) checkResourceTenantNamespace(mappingScope meta.RESTScopeName) (string, string, error) {
@@ -1010,18 +1043,18 @@ func (b *Builder) visitByResource() *Result {
 		result.err = err
 		return result
 	}
-	clients := make(map[string]RESTClient)
+	clientsMap := make(map[string][]RESTClient)
 	for _, mapping := range mappings {
 		s := fmt.Sprintf("%s/%s", mapping.GroupVersionKind.GroupVersion().String(), mapping.Resource.Resource)
-		if _, ok := clients[s]; ok {
+		if _, ok := clientsMap[s]; ok {
 			continue
 		}
-		client, err := b.getClient(mapping.GroupVersionKind.GroupVersion())
+		clients, err := b.getClients(mapping.GroupVersionKind.GroupVersion())
 		if err != nil {
 			result.err = err
 			return result
 		}
-		clients[s] = client
+		clientsMap[s] = clients
 	}
 
 	items := []Visitor{}
@@ -1031,7 +1064,7 @@ func (b *Builder) visitByResource() *Result {
 			return result.withError(fmt.Errorf("resource %q is not recognized: %v", tuple.Resource, mappings))
 		}
 		s := fmt.Sprintf("%s/%s", mapping.GroupVersionKind.GroupVersion().String(), mapping.Resource.Resource)
-		client, ok := clients[s]
+		clients, ok := clientsMap[s]
 		if !ok {
 			return result.withError(fmt.Errorf("could not find a client for resource %q", tuple.Resource))
 		}
@@ -1043,7 +1076,7 @@ func (b *Builder) visitByResource() *Result {
 		}
 
 		info := &Info{
-			Client:    client,
+			Clients:   clients,
 			Mapping:   mapping,
 			Tenant:    selectorTenant,
 			Namespace: selectorNamespace,
@@ -1087,7 +1120,7 @@ func (b *Builder) visitByName() *Result {
 	}
 	mapping := mappings[0]
 
-	client, err := b.getClient(mapping.GroupVersionKind.GroupVersion())
+	clients, err := b.getClients(mapping.GroupVersionKind.GroupVersion())
 	if err != nil {
 		result.err = err
 		return result
@@ -1101,7 +1134,7 @@ func (b *Builder) visitByName() *Result {
 	visitors := []Visitor{}
 	for _, name := range b.names {
 		info := &Info{
-			Client:    client,
+			Clients:   clients,
 			Mapping:   mapping,
 			Tenant:    selectorTenant,
 			Namespace: selectorNamespace,

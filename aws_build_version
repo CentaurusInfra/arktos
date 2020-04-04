@@ -1,0 +1,24 @@
+KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")
+
+source $KUBE_ROOT/hack/lib/version.sh
+
+unset KUBE_GIT_MAJOR
+unset KUBE_GIT_MINOR
+unset KUBE_GIT_VERSION
+unset KUBE_GIT_TREE_STATE
+unset KUBE_GIT_COMMIT
+
+kube::version::get_version_vars
+
+KUBE_GIT_MAJOR=${KUBE_GIT_MAJOR:-1}
+KUBE_GIT_MINOR=${KUBE_GIT_MINOR:-15}
+if [[ -z "${KUBE_GIT_VERSION}" ]]; then
+  short_commit=${KUBE_GIT_COMMIT:0:8}
+  KUBE_GIT_VERSION="v${KUBE_GIT_MAJOR}.${KUBE_GIT_MINOR}.0-${short_commit}"
+fi
+
+export KUBE_GIT_MAJOR
+export KUBE_GIT_MINOR
+export KUBE_GIT_VERSION
+export KUBE_GIT_TREE_STATE
+export KUBE_GIT_COMMIT

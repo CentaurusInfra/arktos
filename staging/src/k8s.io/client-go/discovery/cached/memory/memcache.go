@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -141,6 +142,10 @@ func (d *memCacheClient) ServerGroups() (*metav1.APIGroupList, error) {
 
 func (d *memCacheClient) RESTClient() restclient.Interface {
 	return d.delegate.RESTClient()
+}
+
+func (d *memCacheClient) RESTClients() []restclient.Interface {
+	return d.delegate.RESTClients()
 }
 
 func (d *memCacheClient) ServerPreferredResources() ([]*metav1.APIResourceList, error) {

@@ -74,7 +74,7 @@ type ClientConfigLoader interface {
 	// IsDefaultConfig returns true if the returned config matches the defaults.
 	IsDefaultConfig(config *restclient.KubeConfig) bool
 	// Load returns the latest config
-	Load() (*clientcmdapi.Config, error)
+	Load() ([]*clientcmdapi.Config, error)
 }
 
 type KubeconfigGetter func() (*clientcmdapi.Config, error)
@@ -86,8 +86,9 @@ type ClientConfigGetter struct {
 // ClientConfigGetter implements the ClientConfigLoader interface.
 var _ ClientConfigLoader = &ClientConfigGetter{}
 
-func (g *ClientConfigGetter) Load() (*clientcmdapi.Config, error) {
-	return g.kubeconfigGetter()
+func (g *ClientConfigGetter) Load() ([]*clientcmdapi.Config, error) {
+	config, err := g.kubeconfigGetter()
+	return []*clientcmdapi.Config{config}, err
 }
 
 func (g *ClientConfigGetter) GetLoadingPrecedence() []string {
@@ -167,7 +168,7 @@ func NewDefaultClientConfigLoadingRules() *ClientConfigLoadingRules {
 // non-conflicting entries from the second file's "red-user" are discarded.
 // Relative paths inside of the .kubeconfig files are resolved against the .kubeconfig file's parent folder
 // and only absolute file paths are returned.
-func (rules *ClientConfigLoadingRules) Load() (*clientcmdapi.Config, error) {
+func (rules *ClientConfigLoadingRules) Load() ([]*clientcmdapi.Config, error) {
 	if err := rules.Migrate(); err != nil {
 		return nil, err
 	}
@@ -208,23 +209,32 @@ func (rules *ClientConfigLoadingRules) Load() (*clientcmdapi.Config, error) {
 			continue
 		}
 
-		kubeconfigs = append(kubeconfigs, config)
+		mergedConfig, err := rules.mergeConfig(config)
+		if err != nil {
+			errlist = append(errlist, err)
+		}
+
+		kubeconfigs = append(kubeconfigs, mergedConfig)
 	}
 
+	if len(kubeconfigs) == 0 {
+		newConfig := clientcmdapi.NewConfig()
+		kubeconfigs = append(kubeconfigs, newConfig)
+	}
+
+	return kubeconfigs, utilerrors.NewAggregate(errlist)
+}
+
+func (rules *ClientConfigLoadingRules) mergeConfig(configInput *clientcmdapi.Config) (*clientcmdapi.Config, error) {
 	// first merge all of our maps
 	mapConfig := clientcmdapi.NewConfig()
 
-	for _, kubeconfig := range kubeconfigs {
-		mergo.MergeWithOverwrite(mapConfig, kubeconfig)
-	}
+	mergo.MergeWithOverwrite(mapConfig, configInput)
 
 	// merge all of the struct values in the reverse order so that priority is given correctly
 	// errors are not added to the list the second time
 	nonMapConfig := clientcmdapi.NewConfig()
-	for i := len(kubeconfigs) - 1; i >= 0; i-- {
-		kubeconfig := kubeconfigs[i]
-		mergo.MergeWithOverwrite(nonMapConfig, kubeconfig)
-	}
+	mergo.MergeWithOverwrite(nonMapConfig, configInput)
 
 	// since values are overwritten, but maps values are not, we can merge the non-map config on top of the map config and
 	// get the values we expect.
@@ -232,12 +242,11 @@ func (rules *ClientConfigLoadingRules) Load() (*clientcmdapi.Config, error) {
 	mergo.MergeWithOverwrite(config, mapConfig)
 	mergo.MergeWithOverwrite(config, nonMapConfig)
 
+	var err error
 	if rules.ResolvePaths() {
-		if err := ResolveLocalPaths(config); err != nil {
-			errlist = append(errlist, err)
-		}
+		err = ResolveLocalPaths(config)
 	}
-	return config, utilerrors.NewAggregate(errlist)
+	return config, err
 }
 
 // Migrate uses the MigrationRules map.  If a destination file is not present, then the source file is checked.
@@ -306,7 +315,7 @@ func (rules *ClientConfigLoadingRules) GetStartingConfig() (*clientcmdapi.Config
 		return nil, err
 	}
 
-	return &rawConfig, nil
+	return &rawConfig[0], nil
 }
 
 // GetDefaultFilename implements ConfigAccess

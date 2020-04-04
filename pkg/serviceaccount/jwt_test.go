@@ -117,21 +117,21 @@ func TestTokenGenerateAndValidate(t *testing.T) {
 			Name:      "my-service-account",
 			UID:       "12345",
 			Namespace: "test",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    "tenant1",
 		},
 	}
 	rsaSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-rsa-secret",
 			Namespace: "test",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    "tenant1",
 		},
 	}
 	ecdsaSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-ecdsa-secret",
 			Namespace: "test",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    "tenant1",
 		},
 	}
 
@@ -256,10 +256,20 @@ func TestTokenGenerateAndValidate(t *testing.T) {
 			ExpectedUserUID:  expectedUserUID,
 			ExpectedGroups:   []string{"system:serviceaccounts", "system:serviceaccounts:test"},
 		},
-		"valid lookup": {
+		"valid lookup (rsa)": {
 			Token:            rsaToken,
 			Client:           fake.NewSimpleClientset(serviceAccount, rsaSecret, ecdsaSecret),
 			Keys:             []interface{}{getPublicKey(rsaPublicKey)},
+			ExpectedErr:      false,
+			ExpectedOK:       true,
+			ExpectedUserName: expectedUserName,
+			ExpectedUserUID:  expectedUserUID,
+			ExpectedGroups:   []string{"system:serviceaccounts", "system:serviceaccounts:test"},
+		},
+		"valid lookup (ecdsa)": {
+			Token:            ecdsaToken,
+			Client:           fake.NewSimpleClientset(serviceAccount, ecdsaSecret),
+			Keys:             []interface{}{getPublicKey(ecdsaPublicKey)},
 			ExpectedErr:      false,
 			ExpectedOK:       true,
 			ExpectedUserName: expectedUserName,

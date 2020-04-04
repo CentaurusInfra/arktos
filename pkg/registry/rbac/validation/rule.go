@@ -102,6 +102,7 @@ func NewDefaultRuleResolver(roleGetter RoleGetter, roleBindingLister RoleBinding
 
 type RoleGetter interface {
 	GetRole(namespace, name string) (*rbacv1.Role, error)
+	GetRoleWithMultiTenancy(tenant, namespace, name string) (*rbacv1.Role, error)
 }
 
 type RoleBindingLister interface {
@@ -250,7 +251,7 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 			if !applies {
 				continue
 			}
-			rules, err := r.GetRoleReferenceRules(roleBinding.RoleRef, namespace)
+			rules, err := r.GetRoleReferenceRulesWithMultiTenancy(roleBinding.RoleRef, roleBinding.Tenant, namespace)
 			if err != nil {
 				if !visitor(nil, nil, err) {
 					return
@@ -265,6 +266,28 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 				}
 			}
 		}
+	}
+}
+
+// GetRoleReferenceRulesWithMultiTenancy attempts to resolve the RoleBinding or ClusterRoleBinding.
+func (r *DefaultRuleResolver) GetRoleReferenceRulesWithMultiTenancy(roleRef rbacv1.RoleRef, tenant, bindingNamespace string) ([]rbacv1.PolicyRule, error) {
+	switch roleRef.Kind {
+	case "Role":
+		role, err := r.roleGetter.GetRoleWithMultiTenancy(tenant, bindingNamespace, roleRef.Name)
+		if err != nil {
+			return nil, err
+		}
+		return role.Rules, nil
+
+	case "ClusterRole":
+		clusterRole, err := r.clusterRoleGetter.GetClusterRole(roleRef.Name)
+		if err != nil {
+			return nil, err
+		}
+		return clusterRole.Rules, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported role reference kind: %q", roleRef.Kind)
 	}
 }
 
@@ -355,6 +378,21 @@ func (r *StaticRoles) GetRole(namespace, name string) (*rbacv1.Role, error) {
 	}
 	for _, role := range r.roles {
 		if role.Namespace == namespace && role.Name == name {
+			return role, nil
+		}
+	}
+	return nil, errors.New("role not found")
+}
+
+func (r *StaticRoles) GetRoleWithMultiTenancy(tenant, namespace, name string) (*rbacv1.Role, error) {
+	if len(namespace) == 0 {
+		return nil, errors.New("must provide namespace when getting role")
+	}
+	if len(tenant) == 0 {
+		return nil, errors.New("must provide namespace when getting role")
+	}
+	for _, role := range r.roles {
+		if role.Namespace == namespace && role.Name == name && role.Tenant == tenant {
 			return role, nil
 		}
 	}

@@ -17,6 +17,7 @@ go_library(
         "//pkg/apis/rbac/v1:go_default_library",
         "//pkg/registry/rbac/validation:go_default_library",
         "//staging/src/k8s.io/api/rbac/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/labels:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/errors:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/authentication/user:go_default_library",
