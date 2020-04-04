@@ -8,7 +8,7 @@ This release is the first release of the project. It includes the following new 
 * API Server with Multi-Tenancy and Unified Pod Support
 * Arktos VM Runtime Server
 
-# Key Features or Improvements:
+# Key Features and Improvements:
 
 * Multi-tenancy
 	* Introduce a new layer “tenant” before “namespace” in API resource URL schema, to provide a clear and isolated resource hierarchy for tenants.

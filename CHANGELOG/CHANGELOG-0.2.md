@@ -6,7 +6,7 @@ This release focuses on the stabilization of Arktos as well as new features in m
 * Scalability: API server data partitioning and performance test in AWS.  
 * Unified VM/Container: Partial runtime services readiness and storage volume support.  
 
-# Key Features or Improvements 
+# Key Features and Improvements 
 
 Multi-tenancy:  
 
@@ -30,14 +30,3 @@ Unified VM/Container:
 * Add support for primary runtime [#126](https://github.com/futurewei-cloud/arktos/pull/126)  
 * Add volume driver for OpenStack Cinder [#93](https://github.com/futurewei-cloud/arktos/pull/93)  
 * Fix issues on VM pod vCPU settings [#139](https://github.com/futurewei-cloud/arktos/pull/139)  
-
-# Known Issues 
-
-Below is a list of known issues of this release:
-
-* Create new tenant make events related to the tenant populated to all api servers [#64](https://github.com/futurewei-cloud/arktos/issues/64) 
-* Performance testing: Scheduling Throughput is one fourth of pre-Alkaid [#96](https://github.com/futurewei-cloud/arktos/issues/96) 
-* AWS: Register kubemark master as a node [#171](https://github.com/futurewei-cloud/arktos/issues/171) 
-* AWS: Start-kubemark failed to run without sudo password [#170](https://github.com/futurewei-cloud/arktos/issues/170) 
-* Get coredns working with kubeadm [#169](https://github.com/futurewei-cloud/arktos/issues/169) 
-* AWS: Add workload-controller-manager to aws-kube-up and start-kubemark [#168](https://github.com/futurewei-cloud/arktos/issues/168) 
