@@ -24,6 +24,7 @@ import (
 
 	"k8s.io/klog"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -76,7 +77,7 @@ func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (aut
 	ruleCheckingVisitor := &authorizingVisitor{requestAttributes: requestAttributes}
 
 	userTenant := requestAttributes.GetUser().GetTenant()
-	if userTenant != "system" && userTenant != requestAttributes.GetTenant() {
+	if userTenant != metav1.TenantSystem && userTenant != metav1.TenantDefault && userTenant != requestAttributes.GetTenant() {
 		klog.Infof("user tenant '%v' does not match the requested tenant space '%v'",
 			userTenant, requestAttributes.GetTenant())
 		return authorizer.DecisionDeny, ruleCheckingVisitor.reason, nil
@@ -205,6 +206,10 @@ type RoleGetter struct {
 
 func (g *RoleGetter) GetRole(namespace, name string) (*rbacv1.Role, error) {
 	return g.Lister.Roles(namespace).Get(name)
+}
+
+func (g *RoleGetter) GetRoleWithMultiTenancy(tenant, namespace, name string) (*rbacv1.Role, error) {
+	return g.Lister.RolesWithMultiTenancy(tenant, namespace).Get(name)
 }
 
 type RoleBindingLister struct {

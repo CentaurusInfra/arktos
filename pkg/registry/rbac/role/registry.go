@@ -65,3 +65,8 @@ type AuthorizerAdapter struct {
 func (a AuthorizerAdapter) GetRole(namespace, name string) (*rbacv1.Role, error) {
 	return a.Registry.GetRole(genericapirequest.WithNamespace(genericapirequest.NewContext(), namespace), name, &metav1.GetOptions{})
 }
+
+// GetRoleWithMultiTenancy returns the corresponding Role by name in specified namespace and tenant
+func (a AuthorizerAdapter) GetRoleWithMultiTenancy(tenant, namespace, name string) (*rbacv1.Role, error) {
+	return a.Registry.GetRole(genericapirequest.WithTenantAndNamespace(genericapirequest.NewContext(), tenant, namespace), name, &metav1.GetOptions{})
+}

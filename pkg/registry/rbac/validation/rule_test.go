@@ -76,7 +76,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 	staticRoles1 := StaticRoles{
 		roles: []*rbacv1.Role{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1", Name: "readthings"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1", Name: "readthings", Tenant: metav1.TenantSystem},
 				Rules:      []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
 			},
 		},
