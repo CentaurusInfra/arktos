@@ -1,23 +1,23 @@
 ---
-title: API Server Data Partition Design for CloudFabric
+title: API Server Data Partition Design for Arktos
 authors:
   - "@sindica"
 ---
 
-# API Server Data Partition Design for CloudFabric
+# API Server Data Partition Design for Arktos
 
 ## Table of Contents
 
 ## Motivation
 
-Community version of Kubernetes can take up 5K nodes per cluster, each 
-nodes has 30 pods without significant performance issue. One of the goals 
-of CloudFabric is to greatly increase the number of nodes that can be 
+Community version of Kubernetes can take up to 5K nodes per cluster, each 
+node has 30 pods without significant performance issue. One of the goals 
+of Arktos is to greatly increase the number of nodes that can be 
 managed by a single cluster.
 
-With current community design of each api server get all data from 
-backend storage (ETCD for now), api server becomes one of the bottle 
-necks in CloudFabric scaling up.
+With current community design, each api server gets all data from 
+backend storage (ETCD for now), api server becomes one of the bottlenecks
+ in Arktos scaling up.
 
 This document will address how to partition data across api server instances.
 
@@ -26,8 +26,8 @@ This document will address how to partition data across api server instances.
 * Primary: Define a mechanism that data from backend storage can be effectively
 partitioned across multiple api server instances
 * Primary: Allows clients to get all data continuously without service interruption
-* Primary: Allows users to manage data partition without service interruption
-* Secondary: Single parition cluster performance shall aligned with community version
+* Primary: Allows users to manage data partitions without service interruption
+* Secondary: Single partition cluster performance shall aligned with community version
 * Secondary: System will automatically adjust data partition based on data volume and 
 traffic pattern
 
@@ -44,7 +44,7 @@ will not be addressed in this design doc
 
 * We added a top level Kubernetes object named '**datapartitionconfigs**' with path
 '**/api/v1/datapartitionconfigs**'.
- - This allows each api server to get data partition setting assigned to it
+ - This allows each api server to get the data partition setting assigned to it
  - This allows admin to view and adjust data partition across api servers manually
  - This allows managing component to list and adjust data partition across api servers
 based on data volume and traffic automatically
@@ -116,11 +116,11 @@ Events:  <none>
 
 ### API Structs
 
-Using data partition identified by service group, kubernetes cluster can have multiple api 
+Using data partition identified by service group, Arktos cluster can have multiple api 
 server instances in the same service group, achieving the purpose of HA. It also allows 
 dynamic data partitioning mechanism.
 
-Here are the DataPartitionConfig data struct introduced into Kubernetes:
+Here are the DataPartitionConfig data struct introduced into Arktos:
 ```text
 type DataPartitionConfig struct {
 	metav1.TypeMeta
