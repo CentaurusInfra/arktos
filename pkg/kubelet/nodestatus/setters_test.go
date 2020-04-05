@@ -52,6 +52,93 @@ const (
 	testKubeletHostname = "127.0.0.1"
 )
 
+
+
+func TestRuntimeServiceCondition(t *testing.T) {
+	zeroTime := time.Time{}
+	checkTime := time.Date(2019, 10, 24, 0, 0, 0, 0, time.UTC)
+	recordEventFunc := func(eventType, event string) {}
+	nowFunc := func() time.Time { return checkTime }
+
+	cases := []struct{
+		desc string
+		node *v1.Node
+		runtimeServiceStateFunc func() (map[string]map[string]bool, error)
+		expectedConditions []v1.NodeCondition
+	}{
+		{
+			desc: "fresh empty node status should get unknown conditions",
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+					},
+				},
+			},
+			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
+				return map[string] map[string]bool{
+				}, nil
+			},
+			expectedConditions: []v1.NodeCondition{
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionUnknown, "", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionUnknown, "", "",  checkTime, checkTime),
+			},
+		},
+		{
+			desc: "condition should keep the same except for LastHeartbeatTime",
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "", zeroTime, zeroTime),
+						makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "", zeroTime, zeroTime),
+					},
+				},
+			},
+			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
+				return map[string] map[string]bool{
+					"container": { "fake-container": true },
+					"vm": {"fake-vm": false},
+				}, nil
+			},
+			expectedConditions: []v1.NodeCondition{
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "",  zeroTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "",  zeroTime, checkTime),
+			},
+		},
+		{
+			desc: "condition should all change",
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "", zeroTime, zeroTime),
+						makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "", zeroTime, zeroTime),
+					},
+				},
+			},
+			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
+				return map[string] map[string]bool{
+					"container": { "fake-container": false },
+					"vm": {"fake-vm": true},
+				}, nil
+			},
+			expectedConditions: []v1.NodeCondition{
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionFalse, "None of container runtime is ready", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionTrue, "At least one vm runtime is ready", "",  checkTime, checkTime),
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.desc, func(t *testing.T) {
+			setter := RuntimeServiceCondition(nowFunc, c.runtimeServiceStateFunc, recordEventFunc)
+			if err := setter(c.node); err != nil {
+				t.Fatalf("unexpected error: #{err}")
+			}
+
+			assert.True(t, apiequality.Semantic.DeepEqual(c.expectedConditions, c.node.Status.Conditions), "%s", diff.ObjectDiff(c.expectedConditions, c.node.Status.Conditions))
+		})
+	}
+}
+
 // TODO(mtaufen): below is ported from the old kubelet_node_status_test.go code, potentially add more test coverage for NodeAddress setter in future
 func TestNodeAddress(t *testing.T) {
 	cases := []struct {
@@ -1713,6 +1800,17 @@ func makeDiskPressureCondition(pressure bool, transition, heartbeat time.Time) *
 		Status:             v1.ConditionFalse,
 		Reason:             "KubeletHasNoDiskPressure",
 		Message:            "kubelet has no disk pressure",
+		LastTransitionTime: metav1.NewTime(transition),
+		LastHeartbeatTime:  metav1.NewTime(heartbeat),
+	}
+}
+
+func makeRuntimeServiceCondition(typ v1.NodeConditionType, status v1.ConditionStatus, reason, message string,  transition, heartbeat time.Time) v1.NodeCondition {
+	return v1.NodeCondition{
+		Type:               typ,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
 		LastTransitionTime: metav1.NewTime(transition),
 		LastHeartbeatTime:  metav1.NewTime(heartbeat),
 	}
