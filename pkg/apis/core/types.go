@@ -5262,17 +5262,17 @@ type DataPartitionConfig struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	// Start tenant is inclusive
-	StartTenant string
+	// Range start is inclusive
+	RangeStart string
 
 	// Whether this is an open end start
-	IsStartTenantValid bool
+	IsRangeStartValid bool
 
-	// End tenant is exclusive
-	EndTenant string
+	// Range end is exclusive
+	RangeEnd string
 
 	// Whether this is an open end end
-	IsEndTenantValid bool
+	IsRangeEndValid bool
 
 	// Which service group is using this data configuration
 	ServiceGroupId string

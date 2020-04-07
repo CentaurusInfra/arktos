@@ -1032,17 +1032,17 @@ message DaemonEndpoint {
 message DataPartitionConfig {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
-  // Start tenant is inclusive
-  optional string startTenant = 2;
+  // Range start is inclusive
+  optional string rangeStart = 2;
 
   // Whether this is an open end start
-  optional bool isStartTenantValid = 3;
+  optional bool isRangeStartValid = 3;
 
-  // End tenant is exclusive
-  optional string endTenant = 4;
+  // Range end is exclusive
+  optional string rangeEnd = 4;
 
   // Whether this is an open end end
-  optional bool isEndTenantValid = 5;
+  optional bool isRangeEndValid = 5;
 
   // Which service group is using this data configuration
   optional string serviceGroupId = 6;

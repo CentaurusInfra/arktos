@@ -39,11 +39,11 @@ func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 
 func validNewDataPartitionConfig() *api.DataPartitionConfig {
 	return &api.DataPartitionConfig{
-		StartTenant:        "tenanta",
-		IsStartTenantValid: true,
-		EndTenant:          "tenantz",
-		IsEndTenantValid:   true,
-		ServiceGroupId:     "0",
+		RangeStart:        "tenanta",
+		IsRangeStartValid: true,
+		RangeEnd:          "tenantz",
+		IsRangeEndValid:   true,
+		ServiceGroupId:    "0",
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -85,17 +85,17 @@ func TestCreateSetsFields(t *testing.T) {
 	if actual.Name != dataPartition.Name {
 		t.Errorf("unexpected data partition name: %#v", actual)
 	}
-	if actual.StartTenant != dataPartition.StartTenant {
-		t.Errorf("unexpected start tenant: %#v", actual)
+	if actual.RangeStart != dataPartition.RangeStart {
+		t.Errorf("unexpected range start key value: %#v", actual)
 	}
-	if actual.IsStartTenantValid != dataPartition.IsStartTenantValid {
-		t.Errorf("unexpected isStartTenantValid: %#v", actual)
+	if actual.IsRangeStartValid != dataPartition.IsRangeStartValid {
+		t.Errorf("unexpected isRangeStartValid: %#v", actual)
 	}
-	if actual.EndTenant != dataPartition.EndTenant {
-		t.Errorf("unexpected end tenant: %#v", actual)
+	if actual.RangeEnd != dataPartition.RangeEnd {
+		t.Errorf("unexpected range end key value: %#v", actual)
 	}
-	if actual.IsEndTenantValid != dataPartition.IsEndTenantValid {
-		t.Errorf("unexpected IsEndTenantValid: %#v", actual)
+	if actual.IsRangeEndValid != dataPartition.IsRangeEndValid {
+		t.Errorf("unexpected IsRangeEndValid: %#v", actual)
 	}
 	if actual.ServiceGroupId != dataPartition.ServiceGroupId {
 		t.Errorf("unexpected ServiceGroupId: %#v", actual)
