@@ -26,7 +26,6 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apiserver/pkg/authentication/user"
 )
 
@@ -73,7 +72,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 		Resources: []string{"*"},
 	}
 
-	staticRoles1 := StaticRoles{
+	staticRolesWithSystemTenant := StaticRoles{
 		roles: []*rbacv1.Role{
 			{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1", Name: "readthings", Tenant: metav1.TenantSystem},
@@ -117,6 +116,50 @@ func TestDefaultRuleResolver(t *testing.T) {
 		},
 	}
 
+	staticRolesWithRegularTenant := StaticRoles{
+		roles: []*rbacv1.Role{
+			{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace2", Name: "readthings", Tenant: "tenant2"},
+				Rules:      []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
+			},
+		},
+		clusterRoles: []*rbacv1.ClusterRole{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "tenant-admin"},
+				Rules:      []rbacv1.PolicyRule{ruleAdmin},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "write-nodes"},
+				Rules:      []rbacv1.PolicyRule{ruleWriteNodes},
+			},
+		},
+		roleBindings: []*rbacv1.RoleBinding{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "namespace2",
+					Tenant:    "tenant2",
+				},
+				Subjects: []rbacv1.Subject{
+					{Kind: rbacv1.UserKind, Name: "johndoe"},
+					{Kind: rbacv1.GroupKind, Name: "group2"},
+				},
+				RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: "readthings"},
+			},
+		},
+		clusterRoleBindings: []*rbacv1.ClusterRoleBinding{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Tenant: "tenant2",
+				},
+				Subjects: []rbacv1.Subject{
+					{Kind: rbacv1.UserKind, Name: "admin"},
+					{Kind: rbacv1.GroupKind, Name: "admin"},
+				},
+				RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "tenant-admin"},
+			},
+		},
+	}
+
 	tests := []struct {
 		StaticRoles
 
@@ -125,8 +168,8 @@ func TestDefaultRuleResolver(t *testing.T) {
 		namespace      string
 		effectiveRules []rbacv1.PolicyRule
 	}{
-		{
-			StaticRoles: staticRoles1,
+		{	// the following cases for system tenant
+			StaticRoles: staticRolesWithSystemTenant,
 			user: &user.DefaultInfo{
 				Name:   "foobar",
 				Tenant: metav1.TenantSystem,
@@ -135,7 +178,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 			effectiveRules: []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
 		},
 		{
-			StaticRoles: staticRoles1,
+			StaticRoles: staticRolesWithSystemTenant,
 			user: &user.DefaultInfo{
 				Name:   "foobar",
 				Tenant: metav1.TenantSystem,
@@ -144,7 +187,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 			effectiveRules: nil,
 		},
 		{
-			StaticRoles: staticRoles1,
+			StaticRoles: staticRolesWithSystemTenant,
 			// Same as above but without a namespace. Only cluster rules should apply.
 			user: &user.DefaultInfo{
 				Name:   "foobar",
@@ -153,9 +196,43 @@ func TestDefaultRuleResolver(t *testing.T) {
 			effectiveRules: []rbacv1.PolicyRule{ruleAdmin},
 		},
 		{
-			StaticRoles: staticRoles1,
+			StaticRoles: staticRolesWithSystemTenant,
 			user: &user.DefaultInfo{
 				Tenant: metav1.TenantSystem,
+			},
+			effectiveRules: nil,
+		},
+		{	// the following cases for regular tenant
+			StaticRoles: staticRolesWithRegularTenant,
+			user: &user.DefaultInfo{
+				Name:   "johndoe",
+				Tenant: "tenant2",
+			},
+			namespace:      "namespace2",
+			effectiveRules: []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
+		},
+		{
+			StaticRoles: staticRolesWithRegularTenant,
+			user: &user.DefaultInfo{
+				Name:   "johndoe",
+				Tenant: "tenant2",
+			},
+			namespace:      "namespace3",
+			effectiveRules: nil,
+		},
+		{
+			StaticRoles: staticRolesWithRegularTenant,
+			// Same as above but without a namespace. Only cluster rules should apply.
+			user: &user.DefaultInfo{
+				Name:   "johndoe",
+				Groups: []string{"admin"},
+				Tenant: "tenant2"},
+			effectiveRules: []rbacv1.PolicyRule{ruleAdmin},
+		},
+		{
+			StaticRoles: staticRolesWithRegularTenant,
+			user: &user.DefaultInfo{
+				Tenant: "tenant2",
 			},
 			effectiveRules: nil,
 		},
@@ -174,8 +251,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 		sort.Sort(byHash(tc.effectiveRules))
 
 		if !reflect.DeepEqual(rules, tc.effectiveRules) {
-			ruleDiff := diff.ObjectDiff(rules, tc.effectiveRules)
-			t.Errorf("case %d: %s", i, ruleDiff)
+			t.Errorf("case %d: \nexpected %#v\n actual %#v", i, tc.effectiveRules, rules)
 		}
 	}
 }
