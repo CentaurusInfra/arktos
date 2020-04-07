@@ -222,7 +222,6 @@ func TestDefaultRuleResolver(t *testing.T) {
 		},
 		{
 			StaticRoles: staticRolesWithRegularTenant,
-			// Same as above but without a namespace. Only cluster rules should apply.
 			user: &user.DefaultInfo{
 				Name:   "johndoe",
 				Groups: []string{"admin"},
