@@ -569,8 +569,8 @@ func RuntimeServiceCondition(nowFunc func() time.Time, // typically Kubelet.cloc
 			// If the specified condition doesn't exist, create one
 			if condition == nil {
 				condition = &v1.NodeCondition{
-					Type:   conditionType,
-					Status: v1.ConditionUnknown,
+					Type:               conditionType,
+					Status:             v1.ConditionUnknown,
 					LastTransitionTime: currentTime,
 				}
 
@@ -601,7 +601,7 @@ func RuntimeServiceCondition(nowFunc func() time.Time, // typically Kubelet.cloc
 				node.Status.Conditions = append(node.Status.Conditions, *condition)
 			}
 		}
-		
+
 		subConditionSetter(node, v1.NodeVmRuntimeReady, "vm", vmRuntimeStatus)
 		subConditionSetter(node, v1.NodeContainerRuntimeReady, "container", containerRuntimeStatus)
 		return nil

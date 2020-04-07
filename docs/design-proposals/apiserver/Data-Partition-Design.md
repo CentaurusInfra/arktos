@@ -53,10 +53,10 @@ based on data volume and traffic automatically
 apiVersion: v1
 kind: DataPartitionConfig
 serviceGroupId: "1"
-startTenant: "A"
-isStartTenantValid: false 
-endTenant: "m"
-isEndTenantValid: true
+rangeStart: "A"
+isRangeStartValid: false 
+rangeEnd: "m"
+isRangeEndValid: true
 metadata:
   name: "partition-1"
 ``` 
@@ -68,21 +68,21 @@ $ curl http://127.0.0.1:8080/api/v1/datapartitionconfigs
   "apiVersion": "v1",
   "metadata": {
     "selfLink": "/api/v1/datapartitionconfigs",
-    "resourceVersion": "670"
+    "resourceVersion": "487"
   },
   "items": [
     {
       "metadata": {
         "name": "partition-1",
         "selfLink": "/api/v1/datapartitionconfigs/partition-1",
-        "uid": "c28d0dcf-52af-4794-90e8-160c353d22ba",
-        "hashKey": 1479568363250919565,
-        "resourceVersion": "438",
-        "creationTimestamp": "2020-04-04T01:54:12Z"
+        "uid": "c8cd663c-5d0f-44e1-aeef-80aa0ebeb56a",
+        "hashKey": 214864085683041732,
+        "resourceVersion": "397",
+        "creationTimestamp": "2020-04-06T22:17:13Z"
       },
-      "startTenant": "A",
-      "endTenant": "m",
-      "isEndTenantValid": true,
+      "rangeStart": "A",
+      "rangeEnd": "m",
+      "isRangeEndValid": true,
       "serviceGroupId": "1"
     }
   ]
@@ -126,17 +126,17 @@ type DataPartitionConfig struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	// Start tenant is inclusive
-	StartTenant string
+	// Range start is inclusive
+	RangeStart string
 
 	// Whether this is an open end start
-	IsStartTenantValid bool
+	IsRangeStartValid bool
 
-	// End tenant is exclusive
-	EndTenant string
+	// Range end is exclusive
+	RangeEnd string
 
 	// Whether this is an open end end
-	IsEndTenantValid bool
+	IsRangeEndValid bool
 
 	// Which service group is using this data configuration
 	ServiceGroupId string

@@ -5959,17 +5959,17 @@ type DataPartitionConfig struct {
 
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Start tenant is inclusive
-	StartTenant string `json:"startTenant" protobuf:"bytes,2,opt,name=startTenant"`
+	// Range start is inclusive
+	RangeStart string `json:"rangeStart" protobuf:"bytes,2,opt,name=rangeStart"`
 
 	// Whether this is an open end start
-	IsStartTenantValid bool `json:"isStartTenantValid,omitempty" protobuf:"varint,3,opt,name=isStartTenantValid"`
+	IsRangeStartValid bool `json:"isRangeStartValid,omitempty" protobuf:"varint,3,opt,name=isRangeStartValid"`
 
-	// End tenant is exclusive
-	EndTenant string `json:"endTenant" protobuf:"bytes,4,opt,name=endTenant"`
+	// Range end is exclusive
+	RangeEnd string `json:"rangeEnd" protobuf:"bytes,4,opt,name=rangeEnd"`
 
 	// Whether this is an open end end
-	IsEndTenantValid bool `json:"isEndTenantValid,omitempty" protobuf:"varint,5,opt,name=isEndTenantValid"`
+	IsRangeEndValid bool `json:"isRangeEndValid,omitempty" protobuf:"varint,5,opt,name=isRangeEndValid"`
 
 	// Which service group is using this data configuration
 	ServiceGroupId string `json:"serviceGroupId" protobuf:"bytes,6,opt,name=serviceGroupId"`

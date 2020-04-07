@@ -49,7 +49,7 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			ExpectedEtcdPath: "/registry/controllerinstances/instance1",
 		},
 		gvr("", "v1", "datapartitionconfigs"): {
-			Stub:             `{"metadata": {"name": "partition1"}, "startTenant": "tenant1", "isStartTenantValid": true, "endTenant": "tenantz", "isEndTenantValid": true, "serviceGroupId": "1"}`,
+			Stub:             `{"metadata": {"name": "partition1"}, "rangeStart": "tenant1", "isRangeStartValid": true, "rangeEnd": "tenantz", "isRangeEndValid": true, "serviceGroupId": "1"}`,
 			ExpectedEtcdPath: "/registry/datapartitionconfigs/partition1",
 		},
 		gvr("", "v1", "configmaps"): {

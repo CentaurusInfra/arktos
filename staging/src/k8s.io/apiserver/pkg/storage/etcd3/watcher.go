@@ -159,18 +159,18 @@ func (w *watcher) run(ctx context.Context, key string, rev int64, recursive bool
 }
 
 func (w *watcher) updatePartitionConfig(dp corev1.DataPartitionConfig) {
-	startTenant := ""
-	if dp.IsStartTenantValid {
-		startTenant = dp.StartTenant
+	rangeStartValue := ""
+	if dp.IsRangeStartValid {
+		rangeStartValue = dp.RangeStart
 	}
-	endTenant := ""
-	if dp.IsEndTenantValid {
-		endTenant = dp.EndTenant
+	rangeEndValue := ""
+	if dp.IsRangeEndValid {
+		rangeEndValue = dp.RangeEnd
 	}
 
 	interval := storage.Interval{
-		Begin: startTenant,
-		End:   endTenant,
+		Begin: rangeStartValue,
+		End:   rangeEndValue,
 	}
 
 	for k := range w.partitionConfig {
