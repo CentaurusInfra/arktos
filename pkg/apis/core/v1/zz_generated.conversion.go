@@ -3570,10 +3570,10 @@ func Convert_core_DaemonEndpoint_To_v1_DaemonEndpoint(in *core.DaemonEndpoint, o
 
 func autoConvert_v1_DataPartitionConfig_To_core_DataPartitionConfig(in *v1.DataPartitionConfig, out *core.DataPartitionConfig, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	out.StartTenant = in.StartTenant
-	out.IsStartTenantValid = in.IsStartTenantValid
-	out.EndTenant = in.EndTenant
-	out.IsEndTenantValid = in.IsEndTenantValid
+	out.RangeStart = in.RangeStart
+	out.IsRangeStartValid = in.IsRangeStartValid
+	out.RangeEnd = in.RangeEnd
+	out.IsRangeEndValid = in.IsRangeEndValid
 	out.ServiceGroupId = in.ServiceGroupId
 	return nil
 }
@@ -3585,10 +3585,10 @@ func Convert_v1_DataPartitionConfig_To_core_DataPartitionConfig(in *v1.DataParti
 
 func autoConvert_core_DataPartitionConfig_To_v1_DataPartitionConfig(in *core.DataPartitionConfig, out *v1.DataPartitionConfig, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	out.StartTenant = in.StartTenant
-	out.IsStartTenantValid = in.IsStartTenantValid
-	out.EndTenant = in.EndTenant
-	out.IsEndTenantValid = in.IsEndTenantValid
+	out.RangeStart = in.RangeStart
+	out.IsRangeStartValid = in.IsRangeStartValid
+	out.RangeEnd = in.RangeEnd
+	out.IsRangeEndValid = in.IsRangeEndValid
 	out.ServiceGroupId = in.ServiceGroupId
 	return nil
 }

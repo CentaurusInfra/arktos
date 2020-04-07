@@ -1019,20 +1019,20 @@ func testDataPartitionReset(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "partition-10",
 		},
-		StartTenant:        "tenant2",
-		IsStartTenantValid: true,
-		EndTenant:          "zzzz",
-		IsEndTenantValid:   true,
+		RangeStart:        "tenant2",
+		IsRangeStartValid: true,
+		RangeEnd:          "zzzz",
+		IsRangeEndValid:   true,
 		ServiceGroupId:     serviceGroupId,
 	}
 	dpConfig, err := clientSet.CoreV1().DataPartitionConfigs().Create(dpConfigData)
 	assert.Nil(t, err)
 	assert.Equal(t, dpConfig.Name, dpConfigData.Name)
 	assert.Equal(t, dpConfig.ServiceGroupId, dpConfigData.ServiceGroupId)
-	assert.Equal(t, dpConfig.StartTenant, dpConfigData.StartTenant)
-	assert.Equal(t, dpConfig.EndTenant, dpConfigData.EndTenant)
-	assert.Equal(t, dpConfig.IsStartTenantValid, dpConfigData.IsStartTenantValid)
-	assert.Equal(t, dpConfig.IsEndTenantValid, dpConfigData.IsEndTenantValid)
+	assert.Equal(t, dpConfig.RangeStart, dpConfigData.RangeStart)
+	assert.Equal(t, dpConfig.RangeEnd, dpConfigData.RangeEnd)
+	assert.Equal(t, dpConfig.IsRangeEndValid, dpConfigData.IsRangeEndValid)
+	assert.Equal(t, dpConfig.ServiceGroupId, dpConfigData.ServiceGroupId)
 
 	// wait for population as resync is 30 second
 	time.Sleep(35 * time.Second)

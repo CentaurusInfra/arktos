@@ -43,8 +43,8 @@
       }
     ]
   },
-  "startTenant": "25",
-  "isStartTenantValid": true,
-  "endTenant": "26",
+  "rangeStart": "25",
+  "isRangeStartValid": true,
+  "rangeEnd": "26",
   "serviceGroupId": "27"
 }

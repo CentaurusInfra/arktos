@@ -131,10 +131,10 @@ Sample data partition spec:
 apiVersion: v1
 kind: DataPartitionConfig
 serviceGroupId: "1"
-startTenant: "A"
-isStartTenantValid: false 
-endTenant: "m"
-isEndTenantValid: true
+rangeStart: "A"
+isRangeStartValid: false 
+rangeEnd: "m"
+isRangeEndValid: true
 metadata:
   name: "partition-1"
 ```

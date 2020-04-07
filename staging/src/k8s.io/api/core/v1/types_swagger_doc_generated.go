@@ -511,12 +511,12 @@ func (DaemonEndpoint) SwaggerDoc() map[string]string {
 }
 
 var map_DataPartitionConfig = map[string]string{
-	"":                   "DataPartitionConfig contains api server data partition configurations. Name in ObjectMeta is used for identitification",
-	"startTenant":        "Start tenant is inclusive",
-	"isStartTenantValid": "Whether this is an open end start",
-	"endTenant":          "End tenant is exclusive",
-	"isEndTenantValid":   "Whether this is an open end end",
-	"serviceGroupId":     "Which service group is using this data configuration",
+	"":                  "DataPartitionConfig contains api server data partition configurations. Name in ObjectMeta is used for identitification",
+	"rangeStart":        "Range start is inclusive",
+	"isRangeStartValid": "Whether this is an open end start",
+	"rangeEnd":          "Range end is exclusive",
+	"isRangeEndValid":   "Whether this is an open end end",
+	"serviceGroupId":    "Which service group is using this data configuration",
 }
 
 func (DataPartitionConfig) SwaggerDoc() map[string]string {
