@@ -16,29 +16,62 @@ The key changes to each authenticator is that it needs to retrieve the tenant in
 
 ### 1.Certificate Authenticator
 
-The existing X509 certificate authenticator reads "/CN" and "/O" from cert subject, and map them to user name and groups respectively. 
+The existing X509 certificate authenticator reads "/CN" and "/O" from cert subject, and map them to user name and groups respectively. To make the authenticator tenancy-aware, "/O" is changed to map to tenant and "/OU" (Organization Unit) to map to groups instead. To maintain backward compatibility, two formats are to be used. If "tenant:" is at the beginning of "/O", then what's after the it will be treated as tenant. For example, with "/O=tenant:tenantA/OU=app1/OU=app2", tenant will be set as "tenantA", and groups will be ["app1", "app2"]. If "tenant:" is not found at the beginning of "/O", the string before the first ":" in /CN will be used as tenant. For example, with "/CN=tenantB:demo/O=app1/O=app2", tenant will be set to "tenantB".
 
-To make the authenticator tenancy-aware, "/O" will be mapped to tenant while "/OU" (Organization Unit) will be mapped to groups. 
-
-Below is a sample cert:
+Here is a sample certificate request with the new format specifying tenant explicitly in ***/O***:
 
 ```text
-openssl req -new -key demo.pem -out demo-csr.pem -subj "/CN=demo/O=tenant1/OU=app1/OU=app2"
+openssl req -new -key demo.pem -out demo-csr.pem -subj "/CN=userA/O=tenant:tenantA/OU=app1"
 ```
 
-The certificate authenticator will map it to the following user:
-* The user name is "demo".
-* The user belongs to tenant "tenant1".
-* The user has a membership of group "app1" and "app1".
+And here is a sample certificate request with the old format where tenant is take implicitly from ***/CN***:
 
-### 2.Token Authenticator
-(**TBD**)
+```text
+openssl req -new -key demo.pem -out demo-csr.pem -subj "/CN=tenant:tenantA/O=app1/O=app2"
+```
 
-### 3.Basic Authenticator
-(**TBD**)
+If both of the above formats fail to produce a valid tenant name, the request will be rejected.
+
+### 2.Token File Authenticator
+With --token-auth-file=/path/to/tokenfile, token is read from tokenfile with the following format:
+
+```text
+[token],[user],[uid],[groups...],[other data]
+```
+
+Token file is prepared by system admin and supplied to cluster at start-up time. To support multi-tenancy, this format is changed to:
+
+```text
+[token],[user],[uid],[groups...],[other data],,[tenant]
+```
+
+The empty ",," at the end indicates a tenant name is to follow.  This new format provides backward compatibility. If no such field of arrangement exists, it will be identified as the old format and thus tenant is defaulted to "system".
+
+### 3.Basic Auth File Authenticator
+With--basic-auth-file=/path/to/somefile, token is read from tokenfile with the following format:
+
+```text
+[password],[user],[uid],[groups...],[other data]
+```
+
+Password file is prepared by system admin and supplied to cluster at start-up time. To support multi-tenancy, this format is changed to:
+
+```text
+[password],[user],[uid],[groups...],[other data],,[tenant]
+```
+
+The empty ",," at the end indicates a tenant name is to follow.  This new format provides backward compatibility. If no such field of arrangement exists, it will be identified as the old format and thus tenant is defaulted to "system".
 
 ### 4.Service Account Authenticator
-(**TBD**)
+Service account can use JSON Web Token (JWT) as  a bearer token to authenticate with apiserver.  Both service account and sercret will be changed to tenant-scope. The tenant name is to be added to the bearer token so that it can be retrieved and verified during authentication.
+
+### 5.Webhook Token Authentication
+
+Arktos delegates user management to external components such as OpenStack Keystone through webhook token authentication using [k8s-keystone-auth](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/using-keystone-webhook-authenticator-and-authorizer.md). A token is issued by Keystone once a user successfully logs in at Keystone. This token is passed from kubectl to apiserver for authentication as a bearer token, and in turn it is passed by k8s-keystone-auth to the Keystone service for validation. Upon success, user info such as user's name, domain, project, roles is returned to Arktos. For arktos, Keystone domain is mapped to "tenant", while the combination of Keystone project and role maps to Arktos role, and Keystone role assignment which contains project, role and user is mapped to the Arktos rolebinding accordingly. Code change is required in apiserver to extract the domain returned from Keystone and set it to tenant in context.
+
+### 6.OpenID Connect Tokens
+
+[OpenID Connect](https://openid.net/connect/) is used for authentication with some OAuth2 providers such as Azure Active Directory, AWS, and Google, where tokens are obtained and passed to apiserver as JWT token for authentication. Changes are to be made to extract and set tenant in context.
 
 ## Authorization
 
@@ -142,7 +175,7 @@ As we discussed earlier, it is better not to introduce a new resource type of Te
 I am considering to downgrade the scope of ClusterRole from cluster-scope to tenant-scope. So that each tenant can define their own ClusterRoles without worrying name collision. (In this sense, we may need to rename ClusterRole to something like WideRangeRole or GeneralRole ). 
 
 A concern we have that is how to differ the system-tenant rules which applies to all the tenants from the rules that apply to the system-tenant itself only. 
-  
+
 I found that there is a field of “ScopeType” in the type of Rule.I found this field was defined but not actively used in K8s. (I search ScopeType in k8s repo and found no appearance other than the Rule type definition).
 
 So each regular user can define two type of roles, ClusterRole and Role, which operates on a tenant scope and a namespace scope. “ScopeType” field in the rule will simply be ignored.
