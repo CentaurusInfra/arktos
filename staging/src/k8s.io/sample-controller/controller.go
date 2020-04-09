@@ -274,7 +274,9 @@ func (c *Controller) syncHandler(key string) error {
 	deployment, err := c.deploymentsLister.Deployments(foo.Namespace).Get(deploymentName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
+		fmt.Printf("\n 1 err ---- %v ", err)
 		deployment, err = c.kubeclientset.AppsV1().Deployments(foo.Namespace).Create(newDeployment(foo))
+		fmt.Printf("\n 2 err ---- %v ", err)
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -397,7 +399,7 @@ func newDeployment(foo *samplev1alpha1.Foo) *appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      foo.Spec.DeploymentName,
 			Namespace: foo.Namespace,
-			Tenant:    foo.Tenant,
+			//Tenant:    foo.Tenant,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(foo, samplev1alpha1.SchemeGroupVersion.WithKind("Foo")),
 			},

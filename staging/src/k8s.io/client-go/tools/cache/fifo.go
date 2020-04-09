@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +19,8 @@ package cache
 
 import (
 	"errors"
+	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -159,6 +162,9 @@ func (f *FIFO) Add(obj interface{}) error {
 // safely retry items without contending with the producer and potentially enqueueing
 // stale items.
 func (f *FIFO) AddIfNotPresent(obj interface{}) error {
+	fmt.Printf("\n FIFO ======================================== obj %#v \n", obj)
+	debug.PrintStack()
+	fmt.Printf("\n FIFO ======================================== \n")
 	id, err := f.keyFunc(obj)
 	if err != nil {
 		return KeyError{obj, err}

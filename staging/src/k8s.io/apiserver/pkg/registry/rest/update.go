@@ -221,7 +221,10 @@ func (i *defaultUpdatedObjectInfo) UpdatedObject(ctx context.Context, oldObj run
 
 	// Allow any configured transformers to update the new object
 	for _, transformer := range i.transformers {
+		//fmt.Printf("\n +++++++++++++++++++++++++++++ transformer %#v err %v \n ", transformer, err)
 		newObj, err = transformer(ctx, newObj, oldObj)
+		//fmt.Printf("\n +++++++++++++++++++++++++++++ err %v \n oldObj %#v \n\n newObj %#v \n ", err, oldObj, newObj)
+
 		if err != nil {
 			return nil, err
 		}

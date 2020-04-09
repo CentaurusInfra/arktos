@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -90,6 +91,7 @@ func (gvk GroupVersionKind) String() string {
 type GroupVersion struct {
 	Group   string `json:"group" protobuf:"bytes,1,opt,name=group"`
 	Version string `json:"version" protobuf:"bytes,2,opt,name=version"`
+	Tenant  string `json:"tenant" protobuf:"bytes,3,opt,name=tenant"`
 }
 
 // Empty returns true if group and version are empty

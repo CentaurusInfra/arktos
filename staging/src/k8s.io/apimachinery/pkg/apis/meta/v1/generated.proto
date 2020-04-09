@@ -106,6 +106,8 @@ message APIResource {
 
   // tenanted indicates if a resource is tenanted or not.
   optional bool tenanted = 11;
+
+  optional string tenant = 12;
 }
 
 // APIResourceList is a list of APIResource, it is used to expose the name of the

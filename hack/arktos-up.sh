@@ -864,6 +864,7 @@ EOF
 fi
 }
 
+rm /tmp/* -f
 # install etcd if necessary
 if ! [[ $(which etcd) ]]; then
   if ! [ -f "${KUBE_ROOT}/third_party/etcd/etcd" ]; then

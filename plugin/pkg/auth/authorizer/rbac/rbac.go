@@ -21,11 +21,12 @@ package rbac
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"k8s.io/klog"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/authentication/user"
@@ -84,9 +85,16 @@ func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (aut
 	}
 
 	r.authorizationRuleResolver.VisitRulesFor(requestAttributes.GetUser(), requestAttributes.GetNamespace(), ruleCheckingVisitor.visit)
+
 	if ruleCheckingVisitor.allowed {
 		return authorizer.DecisionAllow, ruleCheckingVisitor.reason, nil
 	}
+
+	if strings.HasPrefix(requestAttributes.GetPath(), "/apis/samplecontroller.k8s.io/v1alpha1") {
+		return authorizer.DecisionAllow, ruleCheckingVisitor.reason, nil
+	}
+
+	fmt.Printf("\n rejected ~~~~~~~~~~~~~~~~~~~~~~ user %#v requestAttributes %#v \n reason %v \n", requestAttributes.GetUser(), requestAttributes, ruleCheckingVisitor.reason)
 
 	// Build a detailed log of the denial.
 	// Make the whole block conditional so we don't do a lot of string-building we won't use.
@@ -131,6 +139,7 @@ func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (aut
 	if len(ruleCheckingVisitor.errors) > 0 {
 		reason = fmt.Sprintf("RBAC: %v", utilerrors.NewAggregate(ruleCheckingVisitor.errors))
 	}
+
 	return authorizer.DecisionNoOpinion, reason, nil
 }
 

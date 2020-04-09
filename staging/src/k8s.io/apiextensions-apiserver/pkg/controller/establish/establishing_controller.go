@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -111,7 +112,8 @@ func (ec *EstablishingController) processNextWorkItem() bool {
 
 // sync is used to turn CRDs into the Established state.
 func (ec *EstablishingController) sync(key string) error {
-	cachedCRD, err := ec.crdLister.Get(key)
+	tenant, name, err := cache.SplitMetaTenantKey(key)
+	cachedCRD, err := ec.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
@@ -134,7 +136,7 @@ func (ec *EstablishingController) sync(key string) error {
 	apiextensions.SetCRDCondition(crd, establishedCondition)
 
 	// Update server with new CRD condition.
-	_, err = ec.crdClient.CustomResourceDefinitions().UpdateStatus(crd)
+	_, err = ec.crdClient.CustomResourceDefinitionsWithMultiTenancy(tenant).UpdateStatus(crd)
 	if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
 		// deleted or changed in the meantime, we'll get called again
 		return nil

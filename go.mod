@@ -77,7 +77,7 @@ require (
 	github.com/gophercloud/gophercloud v0.6.0
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
-	github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d // indirect
+	github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/hashicorp/hcl v0.0.0-20160711231752-d8c773c4cba1 // indirect
 	github.com/heketi/heketi v9.0.0+incompatible

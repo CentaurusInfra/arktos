@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,10 +37,13 @@ func ToGroupVersion(gv string) (GroupVersion, error) {
 
 	switch strings.Count(gv, "/") {
 	case 0:
-		return GroupVersion{Group(gv), ""}, nil
+		return GroupVersion{Group(gv), "", ""}, nil
 	case 1:
 		i := strings.Index(gv, "/")
-		return GroupVersion{Group(gv[:i]), Version(gv[i+1:])}, nil
+		return GroupVersion{Group(gv[:i]), Version(gv[i+1:]), ""}, nil
+	case 2:
+		parts := strings.Split(gv, "/")
+		return GroupVersion{Group(parts[1]), Version(parts[2]), parts[0]}, nil
 	default:
 		return GroupVersion{}, fmt.Errorf("unexpected GroupVersion string: %v", gv)
 	}

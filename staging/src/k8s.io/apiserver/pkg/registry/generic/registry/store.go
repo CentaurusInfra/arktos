@@ -629,7 +629,16 @@ func (e *Store) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 				return nil, nil, nil, kubeerr.NewInvalid(qualifiedKind, name, fieldErrList)
 			}
 			if resourceVersion != version {
-				return nil, nil, nil, kubeerr.NewConflict(qualifiedResource, name, fmt.Errorf(OptimisticLockErrorMsg))
+				/*fmt.Printf("\n ------------------------------------ \n ")
+				fmt.Printf("\n existing %#v \n", existing)
+				fmt.Printf("\n obj %#v \n", obj)
+				fmt.Printf("\n objInfo %#v \n", objInfo)
+				user, _ := genericapirequest.UserFrom(ctx)
+				fmt.Printf("\n user %#v \n", user)
+
+				debug.PrintStack()
+				fmt.Printf("\n ------------------------------------ \n ")*/
+				return nil, nil, nil, kubeerr.NewConflict(qualifiedResource, name, fmt.Errorf(fmt.Sprintf("%v \n\n obj %#v \n\n res %#v", OptimisticLockErrorMsg, obj, res)))
 			}
 		}
 		if err := rest.BeforeUpdate(e.UpdateStrategy, ctx, obj, existing); err != nil {

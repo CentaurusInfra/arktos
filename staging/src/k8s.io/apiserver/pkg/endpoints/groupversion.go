@@ -126,7 +126,6 @@ func (s staticLister) ListAPIResources(filter func(metav1.APIResource) bool) []m
 	}
 
 	ret := []metav1.APIResource{}
-
 	for _, resource := range s.list {
 		if filter(resource) {
 			ret = append(ret, resource)

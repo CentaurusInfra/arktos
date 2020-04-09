@@ -159,12 +159,40 @@ Here are some examples:
 
 ### CRD Support
 
+#### New Multi-Tenancy Behavior
+
  Each tenant can install their CRD independently, without worrying about resource name collisions. The API group/vision/kind (G/V/K) defined by the CRD object is only accessible to that tenant.
  
- For CRDs installed in system world, by default it's only accessible for tenant users. But if it's marked with "multi-tenancy.k8s.io/published" annotation, it will be accessible to all tenants.
+ For CRDs installed in system world, by default it's only accessible fo the system tenant. But if it's marked with "multi-tenancy.k8s.io/published" annotation, it will be accessible to all tenants. It is implemented by copying the CRD to every tenant world when a "published" CRD is detected in the system world. 
  
- If there is a collision between CRDs in system world and tenant world, the latter one takes precedence if it's accessed by a tenant.
- 
+ If there is a collision between CRDs in system world and tenant world, the system one takes precedence. There are two types of collision:
+ 1. the collision in the name of CRD. 
+ 2. the collision in G/V/K defined in CRDs
+For the first type of collision, we should keep the G/V/K defined by the regular tenant. The tenant CRD before copy-over will be renamed. 
+To solve the second type of collision,  The CRD with the "published" annotation will have higher priority when a CRD request is searching for a matching G/V/K.
+
+#### Key changes
+
+ The key changes to realize the above features are:
+ * CustomResourceDefinition will be a tenant-scoped resource. As a result, different tenants can have CRDs with the same name. 
+
+ * A CRD copy controller is a added. This controller watches for CRDs with "multi-tenancy.k8s.io/published" annotation. If the CRD is from a regular tenant, just remove the annotation. If it is a new system CRD and the CRD status is "Established" (which means the CRD has passed the validity check), this controller will copy the CRD to every regular tenant.
+
+ 4. The existing CRD validation controllers will be changed to ignore the regular CRD with the "published" annotation, as this CRD has been checked in the system world.
+
+ 5. When a custom resource request comes in, APIServer will search the CRDs under the tenant of the request for the matching G/V/K to complete the operation. The CRDs with the "published" annotation has a higher priority to make sure the system CRD takes precedence.
+
+ 6. APIResource struct will have a new field, Tenant. For non-CRD resources, this field is empty, which means the resources are applicable to all tenants. For CRD resources, it indicates the belonging tenant.
+ 7. When a resource discovery request comes in, API server will show the API resources whose tenant field is empty and those the resource tenant matches the tenant in the request. 
+
+#### More to Do
+
+PH-II items:
+
+1. Rolling update support (More to do)
+
+2. Backward compatibility on Custom Resource Controller
+  
  (**TBD: Requires more implementation details**)
 
 ## Appendix: Design Discussions

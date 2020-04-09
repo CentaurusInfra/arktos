@@ -48,9 +48,14 @@ type DiscoveryController struct {
 	crdsSynced cache.InformerSynced
 
 	// To allow injection for testing.
-	syncFn func(version schema.GroupVersion) error
+	syncFn func(version GroupVersionWithMultiTenancy) error
 
 	queue workqueue.RateLimitingInterface
+}
+
+type GroupVersionWithMultiTenancy struct {
+	tenant       string
+	groupVersion schema.GroupVersion
 }
 
 func NewDiscoveryController(crdInformer informers.CustomResourceDefinitionInformer, versionHandler *versionDiscoveryHandler, groupHandler *groupDiscoveryHandler) *DiscoveryController {
@@ -74,19 +79,31 @@ func NewDiscoveryController(crdInformer informers.CustomResourceDefinitionInform
 	return c
 }
 
-func (c *DiscoveryController) sync(version schema.GroupVersion) error {
+func (c *DiscoveryController) sync(key GroupVersionWithMultiTenancy) error {
 
 	apiVersionsForDiscovery := []metav1.GroupVersionForDiscovery{}
 	apiResourcesForDiscovery := []metav1.APIResource{}
 	versionsForDiscoveryMap := map[metav1.GroupVersion]bool{}
 
+	version := key.groupVersion
+	tenant := key.tenant
+
+	fmt.Printf("\n 1 ------------------------------- version group %v tenant %v \n", version, tenant)
+
+	//crds, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).List(labels.Everything())
 	crds, err := c.crdLister.List(labels.Everything())
+	fmt.Printf("\n +++++++++++++++++++++++++++++ crds number %v \n ", len(crds))
+	for _, crd := range crds {
+		fmt.Printf("\n +++++++++++++++++++++++++++++ crd %v \n ", crd)
+	}
 	if err != nil {
 		return err
 	}
 	foundVersion := false
 	foundGroup := false
+
 	for _, crd := range crds {
+		fmt.Printf("\n 1 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ crd %v \n ", crd)
 		if !apiextensions.IsCRDConditionTrue(crd, apiextensions.Established) {
 			continue
 		}
@@ -101,25 +118,28 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			if !v.Served {
 				continue
 			}
+
 			// If there is any Served version, that means the group should show up in discovery
 			foundGroup = true
 
-			gv := metav1.GroupVersion{Group: crd.Spec.Group, Version: v.Name}
+			gv := metav1.GroupVersion{Group: crd.Spec.Group, Version: v.Name, Tenant: crd.Tenant}
 			if !versionsForDiscoveryMap[gv] {
 				versionsForDiscoveryMap[gv] = true
 				apiVersionsForDiscovery = append(apiVersionsForDiscovery, metav1.GroupVersionForDiscovery{
 					GroupVersion: crd.Spec.Group + "/" + v.Name,
 					Version:      v.Name,
+					Tenant:       crd.Tenant,
 				})
 			}
 			if v.Name == version.Version {
 				foundThisVersion = true
 			}
 			if v.Storage {
-				storageVersionHash = discovery.StorageVersionHash(gv.Group, gv.Version, crd.Spec.Names.Kind)
+				storageVersionHash = discovery.StorageVersionHashWithMultiTenancy(gv.Tenant, gv.Group, gv.Version, crd.Spec.Names.Kind)
 			}
 		}
 
+		fmt.Printf("\n 2 ------------------------------- version group %v tenant %v \n", version, tenant)
 		if !foundThisVersion {
 			continue
 		}
@@ -131,6 +151,9 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			verbs = metav1.Verbs([]string{"delete", "deletecollection", "get", "list", "watch"})
 		}
 
+		fmt.Printf("\n 3 ------------------------------- version group %v tenant %v \n", version, tenant)
+		fmt.Printf("\n 3.1 ------------------------------- %#v \n", apiResourcesForDiscovery)
+
 		apiResourcesForDiscovery = append(apiResourcesForDiscovery, metav1.APIResource{
 			Name:               crd.Status.AcceptedNames.Plural,
 			SingularName:       crd.Status.AcceptedNames.Singular,
@@ -141,7 +164,9 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			ShortNames:         crd.Status.AcceptedNames.ShortNames,
 			Categories:         crd.Status.AcceptedNames.Categories,
 			StorageVersionHash: storageVersionHash,
+			Tenant:             crd.Tenant,
 		})
+		fmt.Printf("\n 3.2 ------------------------------- %#v \n", apiResourcesForDiscovery)
 
 		subresources, err := apiextensions.GetSubresourcesForVersion(crd, version.Version)
 		if err != nil {
@@ -154,6 +179,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Kind:       crd.Status.AcceptedNames.Kind,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
+				Tenant:     crd.Tenant,
 			})
 		}
 
@@ -166,10 +192,12 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 				Namespaced: crd.Spec.Scope == apiextensions.NamespaceScoped,
 				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
+				Tenant:     crd.Tenant,
 			})
 		}
 	}
 
+	fmt.Printf("\n 4 ------------------------------- version group %v tenant %v \n", version, tenant)
 	if !foundGroup {
 		c.groupHandler.unsetDiscovery(version.Group)
 		c.versionHandler.unsetDiscovery(version)
@@ -191,7 +219,10 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 		c.versionHandler.unsetDiscovery(version)
 		return nil
 	}
+
+	fmt.Printf("\n 5 ------------------------------- version group %v tenant %v \n", version, tenant)
 	c.versionHandler.setDiscovery(version, discovery.NewAPIVersionHandler(Codecs, version, discovery.APIResourceListerFunc(func(filter func(metav1.APIResource) bool) []metav1.APIResource {
+		fmt.Printf("\n ^^^^^^^^^^^^^^^^^^   %#v tenant %v \n", apiResourcesForDiscovery, tenant)
 		return apiResourcesForDiscovery
 	})))
 
@@ -235,7 +266,7 @@ func (c *DiscoveryController) processNextWorkItem() bool {
 	}
 	defer c.queue.Done(key)
 
-	err := c.syncFn(key.(schema.GroupVersion))
+	err := c.syncFn(key.(GroupVersionWithMultiTenancy))
 	if err == nil {
 		c.queue.Forget(key)
 		return true
@@ -249,7 +280,11 @@ func (c *DiscoveryController) processNextWorkItem() bool {
 
 func (c *DiscoveryController) enqueue(obj *apiextensions.CustomResourceDefinition) {
 	for _, v := range obj.Spec.Versions {
-		c.queue.Add(schema.GroupVersion{Group: obj.Spec.Group, Version: v.Name})
+		gv := GroupVersionWithMultiTenancy{
+			tenant:       obj.Tenant,
+			groupVersion: schema.GroupVersion{Group: obj.Spec.Group, Version: v.Name},
+		}
+		c.queue.Add(gv)
 	}
 }
 

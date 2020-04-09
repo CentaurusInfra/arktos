@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -166,6 +167,7 @@ func (gvk GroupVersionKind) String() string {
 type GroupVersion struct {
 	Group   string
 	Version string
+	Tenant  string
 }
 
 // Empty returns true if group and version are empty
@@ -221,10 +223,13 @@ func ParseGroupVersion(gv string) (GroupVersion, error) {
 
 	switch strings.Count(gv, "/") {
 	case 0:
-		return GroupVersion{"", gv}, nil
+		return GroupVersion{"", gv, ""}, nil
 	case 1:
 		i := strings.Index(gv, "/")
-		return GroupVersion{gv[:i], gv[i+1:]}, nil
+		return GroupVersion{gv[:i], gv[i+1:], ""}, nil
+	case 2:
+		parts := strings.Split(gv, "/")
+		return GroupVersion{parts[1], parts[2], parts[0]}, nil
 	default:
 		return GroupVersion{}, fmt.Errorf("unexpected GroupVersion string: %v", gv)
 	}

@@ -16,6 +16,7 @@ require (
 	github.com/google/gofuzz v1.0.0
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d
 	github.com/gophercloud/gophercloud v0.6.0
+	github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d
 	github.com/gregjones/httpcache v0.0.0-20170728041850-787624de3eb7
 	github.com/imdario/mergo v0.3.5
 	github.com/peterbourgon/diskv v2.0.1+incompatible

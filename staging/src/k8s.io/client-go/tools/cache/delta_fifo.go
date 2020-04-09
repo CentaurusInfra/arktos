@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -229,6 +231,9 @@ func (f *DeltaFIFO) Delete(obj interface{}) error {
 // Important: obj must be a Deltas (the output of the Pop() function). Yes, this is
 // different from the Add/Update/Delete functions.
 func (f *DeltaFIFO) AddIfNotPresent(obj interface{}) error {
+	fmt.Printf("\n DeltaFIFO ======================================== obj %#v \n", obj)
+	debug.PrintStack()
+	fmt.Printf("\n DeltaFIFO ======================================== \n")
 	deltas, ok := obj.(Deltas)
 	if !ok {
 		return fmt.Errorf("object must be of type deltas, but got: %#v", obj)

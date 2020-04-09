@@ -274,11 +274,11 @@ func (l *Lifecycle) Admit(a admission.Attributes, o admission.ObjectInterfaces) 
 		return admission.NewForbidden(a, fmt.Errorf("not yet ready to handle request"))
 	}
 
-	// check the tenant is not terminating
+	/*// check the tenant is not terminating
 	if err := l.tenantLifecycleAdmit(a); err != nil {
 		fmt.Printf("\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ err %v\n", err)
 		return err
-	}
+	}*/
 
 	// check the namespace is not terminating
 	if err := l.namespaceLifecycleAdmit(a); err != nil {

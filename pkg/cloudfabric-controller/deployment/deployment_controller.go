@@ -22,11 +22,12 @@ package deployment
 
 import (
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
-	"reflect"
-	"time"
 
 	"k8s.io/klog"
 
@@ -48,7 +49,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment/util"
 	"k8s.io/kubernetes/pkg/util/metrics"
 )
@@ -103,7 +104,7 @@ type DeploymentController struct {
 // NewDeploymentController creates a new DeploymentController.
 func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, client clientset.Interface, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) (*DeploymentController, error) {
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
+	eventBroadcaster.StartLogging(klog.V(2).Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy("", "")})
 
 	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
@@ -159,8 +160,8 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer dc.queue.ShutDown()
 
-	klog.Infof("Starting %s controller", dc.GetControllerType())
-	defer klog.Infof("Shutting down %s controller", dc.GetControllerType())
+	klog.V(2).Infof("Starting %s controller", dc.GetControllerType())
+	defer klog.V(2).Infof("Shutting down %s controller", dc.GetControllerType())
 
 	if !controller.WaitForCacheSync(dc.GetControllerType(), stopCh, dc.dListerSynced, dc.rsListerSynced, dc.podListerSynced) {
 		return
@@ -174,21 +175,21 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 
 	go wait.Until(dc.ReportHealth, time.Minute, stopCh)
 
-	klog.Infof("All work started for controller %s instance %s", dc.GetControllerType(), dc.GetControllerName())
+	klog.V(2).Infof("All work started for controller %s instance %s", dc.GetControllerType(), dc.GetControllerName())
 
 	<-stopCh
 }
 
 func (dc *DeploymentController) addDeployment(obj interface{}) {
 	d := obj.(*apps.Deployment)
-	klog.V(4).Infof("Adding deployment %s", d.Name)
+	klog.V(2).Infof("Adding deployment %s", d.Name)
 	dc.enqueueDeployment(d)
 }
 
 func (dc *DeploymentController) updateDeployment(old, cur interface{}) {
 	oldD := old.(*apps.Deployment)
 	curD := cur.(*apps.Deployment)
-	klog.V(4).Infof("Updating deployment %s", oldD.Name)
+	klog.V(2).Infof("Updating deployment %s", oldD.Name)
 	dc.enqueueDeployment(curD)
 }
 
@@ -206,7 +207,7 @@ func (dc *DeploymentController) deleteDeployment(obj interface{}) {
 			return
 		}
 	}
-	klog.V(4).Infof("Deleting deployment %s", d.Name)
+	klog.V(2).Infof("Deleting deployment %s", d.Name)
 	dc.enqueueDeployment(d)
 }
 
@@ -227,7 +228,7 @@ func (dc *DeploymentController) addReplicaSet(obj interface{}) {
 		if d == nil {
 			return
 		}
-		klog.V(4).Infof("ReplicaSet %s added.", rs.Name)
+		klog.V(2).Infof("ReplicaSet %s added.", rs.Name)
 		dc.enqueueDeployment(d)
 		return
 	}
@@ -238,7 +239,7 @@ func (dc *DeploymentController) addReplicaSet(obj interface{}) {
 	if len(ds) == 0 {
 		return
 	}
-	klog.V(4).Infof("Orphan ReplicaSet %s added.", rs.Name)
+	klog.V(2).Infof("Orphan ReplicaSet %s added.", rs.Name)
 	for _, d := range ds {
 		dc.enqueueDeployment(d)
 	}
@@ -258,7 +259,7 @@ func (dc *DeploymentController) getDeploymentsForReplicaSet(rs *apps.ReplicaSet)
 	if len(deployments) > 1 {
 		// ControllerRef will ensure we don't do anything crazy, but more than one
 		// item in this list nevertheless constitutes user error.
-		klog.V(4).Infof("user error! more than one deployment is selecting replica set %s/%s/%s with labels: %#v, returning %s/%s/%s",
+		klog.V(2).Infof("user error! more than one deployment is selecting replica set %s/%s/%s with labels: %#v, returning %s/%s/%s",
 			rs.Tenant, rs.Namespace, rs.Name, rs.Labels, deployments[0].Tenant, deployments[0].Namespace, deployments[0].Name)
 	}
 	return deployments
@@ -293,7 +294,7 @@ func (dc *DeploymentController) updateReplicaSet(old, cur interface{}) {
 		if d == nil {
 			return
 		}
-		klog.V(4).Infof("ReplicaSet %s updated.", curRS.Name)
+		klog.V(2).Infof("ReplicaSet %s updated.", curRS.Name)
 		dc.enqueueDeployment(d)
 		return
 	}
@@ -306,7 +307,7 @@ func (dc *DeploymentController) updateReplicaSet(old, cur interface{}) {
 		if len(ds) == 0 {
 			return
 		}
-		klog.V(4).Infof("Orphan ReplicaSet %s updated.", curRS.Name)
+		klog.V(2).Infof("Orphan ReplicaSet %s updated.", curRS.Name)
 		for _, d := range ds {
 			dc.enqueueDeployment(d)
 		}
@@ -345,7 +346,7 @@ func (dc *DeploymentController) deleteReplicaSet(obj interface{}) {
 	if d == nil {
 		return
 	}
-	klog.V(4).Infof("ReplicaSet %s deleted.", rs.Name)
+	klog.V(2).Infof("ReplicaSet %s deleted.", rs.Name)
 	dc.enqueueDeployment(d)
 }
 
@@ -369,7 +370,7 @@ func (dc *DeploymentController) deletePod(obj interface{}) {
 			return
 		}
 	}
-	klog.V(4).Infof("Pod %s deleted.", pod.Name)
+	klog.V(2).Infof("Pod %s deleted.", pod.Name)
 	if d := dc.getDeploymentForPod(pod); d != nil && d.Spec.Strategy.Type == apps.RecreateDeploymentStrategyType {
 		// Sync if this Deployment now has no more Pods.
 		rsList, err := util.ListReplicaSets(d, util.RsListFromClient(dc.GetClient().AppsV1()))
@@ -437,7 +438,7 @@ func (dc *DeploymentController) getDeploymentForPod(pod *v1.Pod) *apps.Deploymen
 	}
 	rs, err = dc.rsLister.ReplicaSetsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(controllerRef.Name)
 	if err != nil || rs.UID != controllerRef.UID {
-		klog.V(4).Infof("Cannot get replicaset %q for pod %q: %v", controllerRef.Name, pod.Name, err)
+		klog.V(2).Infof("Cannot get replicaset %q for pod %q: %v", controllerRef.Name, pod.Name, err)
 		return nil
 	}
 
@@ -481,7 +482,7 @@ func (dc *DeploymentController) processNextWorkItem() bool {
 	if !dc.IsControllerActive() {
 		isDone, countOfProcessingWorkItem := dc.IsDoneProcessingCurrentWorkloads()
 		if !isDone {
-			klog.Infof("Controller is not active, worker idle .... count of work items = %d", countOfProcessingWorkItem)
+			klog.V(2).Infof("Controller is not active, worker idle .... count of work items = %d", countOfProcessingWorkItem)
 			// TODO : compare key version and controller locked status version
 			time.Sleep(1 * time.Second)
 			return true
@@ -592,9 +593,9 @@ func (dc *DeploymentController) getPodMapForDeployment(d *apps.Deployment, rsLis
 // This function is not meant to be invoked concurrently with the same key.
 func (dc *DeploymentController) syncDeployment(key string) error {
 	startTime := time.Now()
-	klog.V(4).Infof("Started syncing deployment %q (%v)", key, startTime)
+	klog.V(2).Infof("Started syncing deployment %q (%v)", key, startTime)
 	defer func() {
-		klog.V(4).Infof("Finished syncing deployment %q (%v)", key, time.Since(startTime))
+		klog.V(2).Infof("Finished syncing deployment %q (%v)", key, time.Since(startTime))
 	}()
 
 	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
@@ -611,11 +612,11 @@ func (dc *DeploymentController) syncDeployment(key string) error {
 			hashKey := fuzzer.GetHashOfUUID(deployment.UID)
 			if hashKey != deployment.HashKey {
 				deployment.HashKey = hashKey
-				klog.Infof("Deployment %s/%s/%s was not initialized with hash key uuid %s, caculated as %v", deployment.Tenant, deployment.Namespace, deployment.Name, deployment.UID, deployment.HashKey)
+				klog.V(2).Infof("Deployment %s/%s/%s was not initialized with hash key uuid %s, caculated as %v", deployment.Tenant, deployment.Namespace, deployment.Name, deployment.UID, deployment.HashKey)
 			}
 		}
 		if !dc.IsInRange(deployment.HashKey) {
-			klog.Infof("Deployment %s/%s/%s hashkey %d is not in range. skipped ", deployment.Tenant, deployment.Namespace, deployment.Name, deployment.HashKey)
+			klog.V(2).Infof("Deployment %s/%s/%s hashkey %d is not in range. skipped ", deployment.Tenant, deployment.Namespace, deployment.Name, deployment.HashKey)
 			return nil
 		}
 	}

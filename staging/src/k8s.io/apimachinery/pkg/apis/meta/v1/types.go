@@ -1008,6 +1008,8 @@ type GroupVersionForDiscovery struct {
 	// version specifies the version in the form of "version". This is to save
 	// the clients the trouble of splitting the GroupVersion.
 	Version string `json:"version" protobuf:"bytes,2,opt,name=version"`
+
+	Tenant string `json:"tenant" protobuf:"bytes,3,opt,name=tenant"`
 }
 
 // APIResource specifies the name of a resource and whether it is namespaced.
@@ -1046,6 +1048,8 @@ type APIResource struct {
 	StorageVersionHash string `json:"storageVersionHash,omitempty" protobuf:"bytes,10,opt,name=storageVersionHash"`
 	// tenanted indicates if a resource is tenanted or not.
 	Tenanted bool `json:"tenanted" protobuf:"varint,11,opt,name=tenanted"`
+
+	Tenant string `json:"tenant" protobuf:"varint,12,opt,name=tenant"`
 }
 
 // Verbs masks the value so protobuf can generate

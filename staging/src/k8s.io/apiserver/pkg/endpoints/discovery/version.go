@@ -18,6 +18,7 @@ limitations under the License.
 package discovery
 
 import (
+	"errors"
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
@@ -80,29 +81,42 @@ func (s *APIVersionHandler) handle(req *restful.Request, resp *restful.Response)
 }
 
 func (s *APIVersionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-
-	// for regular tenants, we only return the resources that are tenant-scoped
-	filterFunc := func(resource metav1.APIResource) bool {
-		return resource.Tenanted
-	}
-
+	var filterFunc func(metav1.APIResource) bool
 	ctx := req.Context()
 	requestor, exists := request.UserFrom(ctx)
 
-	if !exists || requestor.GetTenant() == metav1.TenantNone {
-		filterFunc = nil
-
-		//TODO: raise an error if code goes here
-		//temporarily set the tenant to the omni-potent "system" tenant to make the tests pass
-		// The following should be uncommented after the test changes
-		/* responsewriters.InternalError(w, req, errors.New("The user tenant for the request cannot be identfied."))
-		return */
+	if !exists {
+		responsewriters.InternalError(w, req, errors.New("The user info is missing."))
+		return
 	}
 
-	if exists && requestor.GetTenant() == metav1.TenantSystem {
+	tenant := requestor.GetTenant()
+
+	if tenant == metav1.TenantNone {
 		filterFunc = nil
+		// workaround
+		/*
+			responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info %s is missing.", requestor.GetName()))
+			return*/
+	}
+
+	if tenant == metav1.TenantSystem {
+		filterFunc = nil
+	} else {
+		// for regular tenants, we only return the resources that are tenant-scoped
+		filterFunc = func(resource metav1.APIResource) bool {
+			return resource.Tenanted
+		}
+	}
+
+	resources := s.apiResourceLister.ListAPIResources(filterFunc)
+	result := []metav1.APIResource{}
+	for _, resource := range resources {
+		if resource.Tenant == "" || tenant == "system" || (resource.Tenant != "" && resource.Tenant == tenant) {
+			result = append(result, resource)
+		}
 	}
 
 	responsewriters.WriteObjectNegotiated(s.serializer, negotiation.DefaultEndpointRestrictions, schema.GroupVersion{}, w, req, http.StatusOK,
-		&metav1.APIResourceList{GroupVersion: s.groupVersion.String(), APIResources: s.apiResourceLister.ListAPIResources(filterFunc)})
+		&metav1.APIResourceList{GroupVersion: s.groupVersion.String(), APIResources: result})
 }

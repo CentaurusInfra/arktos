@@ -133,6 +133,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 		transformers := []rest.TransformFunc{}
 		if scope.FieldManager != nil {
 			transformers = append(transformers, func(_ context.Context, newObj, liveObj runtime.Object) (runtime.Object, error) {
+				//fmt.Printf("\n 111111111111111111111111111111111 \n")
 				obj, err := scope.FieldManager.Update(liveObj, newObj, managerOrUserAgent(options.FieldManager, req.UserAgent()))
 				if err != nil {
 					return nil, fmt.Errorf("failed to update object (Update for %v) managed fields: %v", scope.Kind, err)
@@ -142,19 +143,24 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 		}
 		if mutatingAdmission, ok := admit.(admission.MutationInterface); ok {
 			transformers = append(transformers, func(ctx context.Context, newObj, oldObj runtime.Object) (runtime.Object, error) {
+				//fmt.Printf("\n 2222222222222222222222222222222222222222222222 %#v \n", mutatingAdmission)
 				isNotZeroObject, err := hasUID(oldObj)
 				if err != nil {
 					return nil, fmt.Errorf("unexpected error when extracting UID from oldObj: %v", err.Error())
 				} else if !isNotZeroObject {
 					if mutatingAdmission.Handles(admission.Create) {
+						//fmt.Printf("\n 3333333333333333333333333333333333 \n")
 						return newObj, mutatingAdmission.Admit(admission.NewAttributesRecord(newObj, nil, scope.Kind, tenant, namespace, name, scope.Resource, scope.Subresource, admission.Create, updateToCreateOptions(options), dryrun.IsDryRun(options.DryRun), userInfo), scope)
 					}
 
 				} else {
 					if mutatingAdmission.Handles(admission.Update) {
+						//fmt.Printf("\n 4444444444444444444444444444444444444444 \n")
 						return newObj, mutatingAdmission.Admit(admission.NewAttributesRecord(newObj, oldObj, scope.Kind, tenant, namespace, name, scope.Resource, scope.Subresource, admission.Update, options, dryrun.IsDryRun(options.DryRun), userInfo), scope)
+						//return oldObj, mutatingAdmission.Admit(admission.NewAttributesRecord(newObj, oldObj, scope.Kind, tenant, namespace, name, scope.Resource, scope.Subresource, admission.Update, options, dryrun.IsDryRun(options.DryRun), userInfo), scope)
 					}
 				}
+				//fmt.Printf("\n 555555555555555555555555555555555555555555555 \n")
 				return newObj, nil
 			})
 		}
@@ -170,6 +176,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 			Subresource:     scope.Subresource,
 			Namespace:       namespace,
 			Name:            name,
+			Tenant:          tenant,
 		}
 
 		trace.Step("About to store object in database")

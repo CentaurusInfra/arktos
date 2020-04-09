@@ -95,6 +95,18 @@ func MetaNamespaceKeyFunc(obj interface{}) (string, error) {
 	return metaKey, nil
 }
 
+/*func MetaTenantNamespaceKeyFunc(obj interface{}) (string, error) {
+	metaKey, err := MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		return metaKey, err
+	}
+	if len(meta.GetTenant()) > 0 && meta.GetTenant() != v1.TenantDefault {
+		metaKey = meta.GetTenant() + "/" + metaKey
+	}
+
+	return metaKey, nil
+}*/
+
 // SplitMetaNamespaceKey returns the namespace and name that
 // MetaNamespaceKeyFunc encoded into key.
 // It provides backward-compatibility for namespace-scoped objects before multi-tenancy changes

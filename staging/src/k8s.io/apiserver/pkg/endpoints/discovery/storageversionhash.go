@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +28,20 @@ import (
 // this function.
 func StorageVersionHash(group, version, kind string) string {
 	gvk := group + "/" + version + "/" + kind
+	if gvk == "" {
+		return ""
+	}
+	bytes := sha256.Sum256([]byte(gvk))
+	// Assuming there are N kinds in the cluster, and the hash is X-byte long,
+	// the chance of colliding hash P(N,X) approximates to 1-e^(-(N^2)/2^(8X+1)).
+	// P(10,000, 8) ~= 2.7*10^(-12), which is low enough.
+	// See https://en.wikipedia.org/wiki/Birthday_problem#Approximations.
+	return base64.StdEncoding.EncodeToString(
+		bytes[:8])
+}
+
+func StorageVersionHashWithMultiTenancy(tenant, group, version, kind string) string {
+	gvk := tenant + "/" + group + "/" + version + "/" + kind
 	if gvk == "" {
 		return ""
 	}

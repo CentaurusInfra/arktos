@@ -261,6 +261,9 @@ type deleteNotification struct {
 }
 
 func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
+	/*fmt.Printf("\n ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ \n ")
+	debug.PrintStack()
+	fmt.Printf("\n ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ \n ")*/
 	defer utilruntime.HandleCrash()
 
 	fifo := NewDeltaFIFO(MetaNamespaceKeyFunc, s.indexer)
