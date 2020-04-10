@@ -78,6 +78,7 @@ EVICTION_PRESSURE_TRANSITION_PERIOD=${EVICTION_PRESSURE_TRANSITION_PERIOD:-"1m"}
 
 # ensures all places of cert/node naming related to hostname are lower-cased for consistency
 lohostname=$(hostname | tr '[:upper:]' '[:lower:]')
+hostip=$(hostname -i)
 
 # This script uses docker0 (or whatever container bridge docker is currently using)
 # and we don't know the IP of the DNS pod to pass in as --cluster-dns.
@@ -161,6 +162,7 @@ API_SECURE_PORT=${API_SECURE_PORT:-6443}
 # WARNING: For DNS to work on most setups you should export API_HOST as the docker0 ip address,
 API_HOST=${API_HOST:-"${lohostname}"}
 API_HOST_IP=${API_HOST_IP:-"0.0.0.0"}
+API_HOST_IP_EXTERNAL=${API_HOST_IP_EXTERNAL:-"${hostip}"}
 ADVERTISE_ADDRESS=${ADVERTISE_ADDRESS:-""}
 NODE_PORT_RANGE=${NODE_PORT_RANGE:-""}
 API_BIND_ADDR=${API_BIND_ADDR:-"0.0.0.0"}
