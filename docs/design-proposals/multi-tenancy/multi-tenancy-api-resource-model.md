@@ -159,14 +159,88 @@ Here are some examples:
 
 ### CRD Support
 
- Each tenant can install their CRD independently, without worrying about resource name collisions. The API group/vision/kind (G/V/K) defined by the CRD object is only accessible to that tenant.
- 
- For CRDs installed in system world, by default it's only accessible for tenant users. But if it's marked with "multi-tenancy.k8s.io/published" annotation, it will be accessible to all tenants.
- 
- If there is a collision between CRDs in system world and tenant world, the latter one takes precedence if it's accessed by a tenant.
- 
- (**TBD: Requires more implementation details**)
+#### Principles and Outlines of Design
 
+ The following Arktos multi-tenancy design principles will be observed in the design of CRD:
+ 
+ 1. **isolation**. Each regular tenant can independently create/delete/update their CRDs and custom resources based on the CRDs. There will be NO CRD G/V/K collision between two regular tenants. Actually, the CRDs and custom resources of one regular tenant are invisible to another regular tenant.  
+
+ 2. **Managebility**. A cluster operator (he should be user under the system tenant) can introduce a new CRD, where he can choose to:
+  * make it usable only to the system tenant.
+  * or, make it usable only to a spefic set of to regular tenants and the system tenants, 
+  * or, usable to all the regular tenants. 
+  * Additionally, the applicable range of a CRD can be changed by the cluster operator at any time in a simple and quick manner. That will be useful to CRD test and rolling update.  
+ 
+ Note: it does not contradict the principle of isolation. The isolation principle is about two regular tenants, while this principle is about the system tenant and regular tenants. 
+
+ 3. **Autonomy**. The tenant admin has the final say on what CRD will be used in his tenant space when there is an overlap between the tenant's CRD and that of the system tenant. The tenant can choose MultiTenancyCRD policy to be :
+  * NeverUseSystemCRD
+  * SystemCRDFirst
+  * LocalCRDFirst
+
+  Besides, the tenant user can change the MultiTenancyCRD policy anytime. 
+
+  The default policy will be LocalCRDFirst. Under the default policy, if a tenant has deployed CRD objects and CRD operators based on its own CRD, the introduction of an overlapping system CRD will not cause break.
+
+ 4. **Backward compatibility**. The legacy CRD definitions and CRD operators continue to work in Arktos. More specifically, it means:
+    * An existing defintion of CRD (usually in a .yaml file) can be applied without any change.
+    * An existing CRD operator image can work in Arktos without re-compiling or image rebuilding.
+    * An existing CRD operator source code build and work in Arktos. So developers can create new operators or revise existing operators in Arktos without learning new APIs.
+
+However, we need to point out that, Arktos does not allow a regular tenant to access cluster-scope resources, such as nodes and daemonsets. So a CRD definition or a CRD operator that needs access to the cluster-scope resources will no longer be supported in a regular tenant's space. Surely, they can continue to work in the system tenant's space. For the same reason, a regular tenant is not allowed to create a cluster-scope CRD. If regular tenant specifies its CRD to be cluster-scoped, the CRD will be changed to tenant-scoped. 
+ 
+ 
+#### Detailed Design
+
+ The key changes to realize the isolation principles are:
+ * CustomResourceDefinition will be changed to a tenant-scoped resource. As a result, same CRD G/V/K can co-exist as long as they live under different tenants. 
+ * APIResource struct ( which is the data structure to holds the info of resource types suspported in API server) will have a new field, Tenant. For non-CRD resources, this field is empty, which means the resources are applicable to all tenants. For CRD resources, it indicates the belonging tenant.
+ * The CRD shown in the response to a resource discovery request should only show those usable to tenant in the request.
+
+The key changes to realize managability and automony are:
+* A new field, ApplicableRange, will be added to the CustomResourceDefinitionSpec. The field is ignored in a regular-tenant CRD. Yet for a system-tenant CRD, it indicates the scope of the regular tenants that this CRD is applicable to. This field is a list of annotations, which are used to finding matching tenants. (other designs may also work, as long as the field give info in finding matching tenants)
+
+* the logic to find a matching CRD for a request in the API server will be changed as the following:
+
+```
+GetMatchingCRD(G/V/K, tenant) (found_CRD, error)
+  switch (MultiTenancyCRDPolicy) {
+    case NeverUseSystemCRD:
+      if (found matching CRD in tenant's world ) {
+          return (tenant's CRD), nil
+      } 
+      return nil, NotFoundError
+
+    case SystemCRDFirst:
+      if (found matching CRD in system tenant's world ) && (tenant is in the system CRD's ApplicableRange) {
+          return (the system CRD), nil
+      } 
+      if (found matching CRD in tenant's world ) {
+          return (tenant's CRD), nil
+      } 
+
+      return nil, NotFoundError
+
+    case LocalCRDFirst:
+      if (found matching CRD in tenant's world ) {
+          return (tenant's CRD), nil
+      } 
+      if (found matching CRD in system tenant's world ) && (tenant is in the system CRD's ApplicableRange) {
+          return (the system CRD), nil
+      } 
+
+      return nil, NotFoundError
+    }
+  }
+  ```
+ 
+ Note that the above search-CRD logic is in the APIServer side, so we don't need to worry about authorizing regular tenant to access some system resources.
+
+ To maintain backward compatility, "short path" will also implemented CRD request resolution. More details about "short path" is given in the above section of "Resource URL Endpoint Resolution".
+
+ Some other changes include:
+ * In CRD validation, the ResourceScope will be checked. If a regular-tenant CRD has the resource scope set to "Cluster-Scope", it will be changed to "Tenant-scoped".
+ 
 ## Appendix: Design Discussions
 
 ### Comparison with Other resource models
@@ -217,5 +291,14 @@ Here is how it works:
 * The corresponding world is created by the tenant controller.
 * In URL resolution part, API Server will automatically use "xxx" as tenant if request.user.tenant is not available.
 
+### Other CRD Designs discussed
 
+We have considered the design to copy the system CRD to each tenant's world for simplicity in CRD searching logic. In this design, when the system tenant decides to publish a CRD, the system copies the CRD to spaces of applicable regular tenants. Yet I am moving away from it as it is less flexible and responsive than desired. Consider the following scenarios:
+* When copying a CRD from system's space to tenant's space, the tenant's own CRD is overwritten. If the system CRD contains some tricky bugs and the tenant would like to revert to his own copy CRD after a period, he has to retrieve the CRD source file and apply it. If the orginal CRD yaml file is gone, he cannot even revert. While with current design, it can be done by just changing MultiTenancyCRDPolicy of the tenant.
+* If the system tenant would like to recall a published CRD, it needs to remove the CRD from each affected tenant. Yet with the no-copy design, it involves only one deletion in the system space.
 
+Besides, the copy-CRD-to-tenant design also has the following disadvantages comparing to design given earlier:
+1. delay in deployment. It costs time and resources to copying.
+2. It needs a new controller to watch for the CRD, which will copy the CRD to tenant spaces or remove CRD from tenant spaces. 
+
+The advantage of copy-CRD-to-tenant scheme is simplicity, as all the CRDs that the tenant has access are in the tenant's own space and we don't need to worry about authorization. However, as explained above, the logic to search matching CRD is in the api server side, not the client side. Therefore, no concern about client authorization is necessary. Besides, per the pseudo-code given above, the complixity of the CRD matching is acceptable. 
