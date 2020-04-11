@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"reflect"
@@ -173,7 +174,7 @@ func (dc *DeploymentController) Run(controllerConfig config.ControllerConfig, st
 
 	go dc.WatchInstanceUpdate(stopCh)
 
-	go wait.Until(dc.ReportHealth, time.Second*time.Duration(controllerConfig.ReportHealthIntervalInSecond), stopCh)
+	go wait.Until(dc.ReportHealth, time.Second*time.Duration(controllerConfig.ReportHealthIntervalInSecond+rand.Intn(3)), stopCh)
 
 	klog.Infof("All work started for controller %s instance %s", dc.GetControllerType(), dc.GetControllerName())
 

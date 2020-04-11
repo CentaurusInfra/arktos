@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/grafov/bcast"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	apps "k8s.io/api/apps/v1"
@@ -206,7 +207,7 @@ func (rsc *ReplicaSetController) Run(controllerConfig config.ControllerConfig, s
 
 	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
 
-	go wait.Until(rsc.ControllerBase.ReportHealth, time.Second*time.Duration(controllerConfig.ReportHealthIntervalInSecond), stopCh)
+	go wait.Until(rsc.ControllerBase.ReportHealth, time.Second*time.Duration(controllerConfig.ReportHealthIntervalInSecond+rand.Intn(3)), stopCh)
 
 	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), rsc.GetControllerName())
 

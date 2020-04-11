@@ -3,17 +3,17 @@
         {
             "type":    "node",
             "workers": 5,
-            "reportHealthIntervalInSecond":  10
+            "reportHealthIntervalInSecond":  20
         },
         {
             "type":    "replicaset",
             "workers": 10,
-            "reportHealthIntervalInSecond":  10
+            "reportHealthIntervalInSecond":  20
         },
         {
             "type":     "deployment",
             "workers":  5,
-            "reportHealthIntervalInSecond":  10
+            "reportHealthIntervalInSecond":  20
         }
     ]
 }
