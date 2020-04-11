@@ -205,4 +205,4 @@ Components not decided yet at current phase are not included in these views.
 
 ### Runtime component relationship
 
-![C&C view](images/network-runtime-cnc.png)
+![C&C view](images/network-c-and-c.png)
