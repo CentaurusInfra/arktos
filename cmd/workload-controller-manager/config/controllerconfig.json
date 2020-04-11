@@ -2,15 +2,18 @@
     "controllers": [
         {
             "type":    "node",
-            "workers": 5
+            "workers": 5,
+            "reportHealthIntervalInSecond":  10
         },
         {
             "type":    "replicaset",
-            "workers": 10
+            "workers": 10,
+            "reportHealthIntervalInSecond":  10
         },
         {
             "type":     "deployment",
-            "workers":  5
+            "workers":  5,
+            "reportHealthIntervalInSecond":  10
         }
     ]
 }

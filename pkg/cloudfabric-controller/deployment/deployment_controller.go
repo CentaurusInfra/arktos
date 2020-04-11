@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
+	"k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"reflect"
 	"time"
@@ -155,7 +156,7 @@ func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInfor
 }
 
 // Run begins watching and syncing.
-func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
+func (dc *DeploymentController) Run(controllerConfig config.ControllerConfig, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer dc.queue.ShutDown()
 
@@ -166,13 +167,13 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 		return
 	}
 
-	for i := 0; i < workers; i++ {
+	for i := 0; i < controllerConfig.Workers; i++ {
 		go wait.Until(dc.worker, time.Second, stopCh)
 	}
 
 	go dc.WatchInstanceUpdate(stopCh)
 
-	go wait.Until(dc.ReportHealth, time.Minute, stopCh)
+	go wait.Until(dc.ReportHealth, time.Second*time.Duration(controllerConfig.ReportHealthIntervalInSecond), stopCh)
 
 	klog.Infof("All work started for controller %s instance %s", dc.GetControllerType(), dc.GetControllerName())
 

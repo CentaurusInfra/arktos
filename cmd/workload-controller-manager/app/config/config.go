@@ -46,7 +46,7 @@ type Config struct {
 	EventRecorder record.EventRecorder
 
 	// the controller type config
-	ControllerTypeConfig ControllerConfig
+	ControllerConfigMap ControllerConfigMap
 }
 
 type completedConfig struct {

@@ -131,13 +131,13 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	}
 
 	startControllerInstanceManager(controllerContext)
-	replicatSetWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("replicaset")
+	replicatSetConfig, isOK := c.ControllerConfigMap.GetControllerConfig("replicaset")
 	if isOK {
-		startReplicaSetController(controllerContext, replicatSetWorkerNumber)
+		startReplicaSetController(controllerContext, replicatSetConfig)
 	}
-	deploymentWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("deployment")
+	deploymentConfig, isOK := c.ControllerConfigMap.GetControllerConfig("deployment")
 	if isOK {
-		startDeploymentController(controllerContext, deploymentWorkerNumber)
+		startDeploymentController(controllerContext, deploymentConfig)
 	}
 
 	controllerContext.InformerFactory.Start(controllerContext.Stop)
@@ -227,7 +227,7 @@ func GetAvailableResources(clientBuilder controller.ControllerClientBuilder) (ma
 	return allResources, nil
 }
 
-func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handler, bool, error) {
+func startReplicaSetController(ctx ControllerContext, controllerConfig config.ControllerConfig) (http.Handler, bool, error) {
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}] {
 		return nil, false, nil
 	}
@@ -255,11 +255,11 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 		replicaset.BurstReplicas,
 		cimChangeCh,
 		rsResetChGrp,
-	).Run(workerNum, ctx.Stop)
+	).Run(controllerConfig, ctx.Stop)
 	return nil, true, nil
 }
 
-func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handler, bool, error) {
+func startDeploymentController(ctx ControllerContext, controllerConfig config.ControllerConfig) (http.Handler, bool, error) {
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}] {
 		return nil, false, nil
 	}
@@ -296,7 +296,7 @@ func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handl
 	if err != nil {
 		return nil, true, fmt.Errorf("error creating Deployment controller: %v", err)
 	}
-	go dc.Run(workerNum, ctx.Stop)
+	go dc.Run(controllerConfig, ctx.Stop)
 	return nil, true, nil
 }
 

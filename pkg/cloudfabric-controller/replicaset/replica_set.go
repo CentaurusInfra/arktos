@@ -64,6 +64,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"k8s.io/utils/integer"
 
+	"k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 )
 
@@ -188,7 +189,7 @@ func (rsc *ReplicaSetController) SetEventRecorder(recorder record.EventRecorder)
 	rsc.podControl = controller.RealPodControl{KubeClient: rsc.GetClient(), Recorder: recorder}
 }
 
-func (rsc *ReplicaSetController) Run(workers int, stopCh <-chan struct{}) {
+func (rsc *ReplicaSetController) Run(controllerConfig config.ControllerConfig, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer rsc.queue.ShutDown()
 
@@ -199,13 +200,13 @@ func (rsc *ReplicaSetController) Run(workers int, stopCh <-chan struct{}) {
 		return
 	}
 
-	for i := 0; i < workers; i++ {
+	for i := 0; i < controllerConfig.Workers; i++ {
 		go wait.Until(rsc.worker, time.Second, stopCh)
 	}
 
 	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
 
-	go wait.Until(rsc.ControllerBase.ReportHealth, time.Minute, stopCh)
+	go wait.Until(rsc.ControllerBase.ReportHealth, time.Second*time.Duration(controllerConfig.ReportHealthIntervalInSecond), stopCh)
 
 	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), rsc.GetControllerName())
 

@@ -69,7 +69,7 @@ func main() {
 }
 
 func getConfig() (*controllerManagerConfig.Config, error) {
-	controllerconfig, err := controllerManagerConfig.NewControllerConfig(controllerconfigfilepath)
+	controllerConfigMap, err := controllerManagerConfig.NewControllerConfigMap(controllerconfigfilepath)
 
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 	c := &controllerManagerConfig.Config{
 		Client:                  client,
 		ControllerManagerConfig: agConfig,
-		ControllerTypeConfig:    controllerconfig,
+		ControllerConfigMap:     controllerConfigMap,
 		//EventRecorder:        eventRecorder,
 	}
 

@@ -27,41 +27,48 @@ type controllerTypes struct {
 }
 
 type controllerType struct {
-	Type    string `json:"type"`
-	Workers int    `json:"workers"`
+	Type                         string `json:"type"`
+	Workers                      int    `json:"workers"`
+	ReportHealthIntervalInSecond int    `json:"reportHealthIntervalInSecond"`
 }
 
-// ControllerConfig is the config to load controller configurations
+// ControllerConfigMap is the config map to load controller configurations
+type ControllerConfigMap struct {
+	typemap map[string]ControllerConfig
+}
+
+// ControllerConfig stores configured values for a controller
 type ControllerConfig struct {
-	typemap map[string]int
+	Workers                      int
+	ReportHealthIntervalInSecond int
 }
 
-// NewControllerConfig to load configuration from a local file
-func NewControllerConfig(filePath string) (ControllerConfig, error) {
+// NewControllerConfigMap to load configuration from a local file
+func NewControllerConfigMap(filePath string) (ControllerConfigMap, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
-		return ControllerConfig{}, err
+		return ControllerConfigMap{}, err
 	}
 	defer jsonFile.Close()
 
 	byteValue, err := ioutil.ReadAll(jsonFile)
 	if err != nil {
-		return ControllerConfig{}, err
+		return ControllerConfigMap{}, err
 	}
 
 	var types controllerTypes
 
 	json.Unmarshal([]byte(byteValue), &types)
 
-	var controllerMap map[string]int
-	controllerMap = make(map[string]int)
+	var controllerMap map[string]ControllerConfig
+	controllerMap = make(map[string]ControllerConfig)
 	for _, controllerType := range types.Types {
-		controllerMap[controllerType.Type] = controllerType.Workers
+		controllerMap[controllerType.Type] = ControllerConfig{Workers: controllerType.Workers, ReportHealthIntervalInSecond: controllerType.ReportHealthIntervalInSecond}
 	}
-	return ControllerConfig{typemap: controllerMap}, nil
+	return ControllerConfigMap{typemap: controllerMap}, nil
 }
 
-func (c *ControllerConfig) GetWorkerNumber(controllerType string) (int, bool) {
-	workerNumber, isOK := c.typemap[controllerType]
-	return workerNumber, isOK
+func (c *ControllerConfigMap) GetControllerConfig(controllerType string) (ControllerConfig, bool) {
+	controllerConfig, isOK := c.typemap[controllerType]
+	return controllerConfig, isOK
 }
