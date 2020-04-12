@@ -42,6 +42,9 @@ type masterCountEndpointReconciler struct {
 
 // NewMasterCountEndpointReconciler creates a new EndpointReconciler that reconciles based on a
 // specified expected number of masters.
+// MasterCount reconciler is only used in integration test. It does not have unit test and not
+//		used in api server start up path. Also have a lot of duplicated code in reconcile function.
+//		Not sure whether this is meaningful to maintain - 2020/04/10
 func NewMasterCountEndpointReconciler(masterCount int, endpointClient corev1client.EndpointsGetter) EndpointReconciler {
 	return &masterCountEndpointReconciler{
 		masterCount:    masterCount,

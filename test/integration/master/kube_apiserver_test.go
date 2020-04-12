@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -224,7 +225,6 @@ func testReconcilersMasterLease(t *testing.T, leaseCount int, masterCount int) {
 
 	// cleanup the registry storage
 	defer registry.CleanupStorage()
-
 	// 1. start masterCount api servers
 	for i := 0; i < masterCount; i++ {
 		// start master count api server
@@ -237,23 +237,25 @@ func testReconcilersMasterLease(t *testing.T, leaseCount int, masterCount int) {
 	}
 
 	// 2. verify master count servers have registered
-	if err := wait.PollImmediate(3*time.Second, 2*time.Minute, func() (bool, error) {
-		client, err := kubernetes.NewForConfig(masterCountServers[0].ClientConfig)
-		endpoints, err := client.CoreV1().Endpoints("default").Get("kubernetes", metav1.GetOptions{})
-		if err != nil {
-			t.Logf("error fetching endpoints: %v", err)
-			return false, nil
+	if masterCount > 0 {
+		if err := wait.PollImmediate(3*time.Second, 2*time.Minute, func() (bool, error) {
+			client, err := kubernetes.NewForConfig(masterCountServers[0].ClientConfig)
+			endpoints, err := client.CoreV1().Endpoints("default").Get("kubernetes", metav1.GetOptions{})
+			if err != nil {
+				t.Logf("error fetching endpoints: %v", err)
+				return false, nil
+			}
+			return verifyEndpointsWithIPs(masterCountServers, getEndpointIPs(endpoints)), nil
+		}); err != nil {
+			t.Fatalf("master count endpoints failed to register: %v", err)
 		}
-		return verifyEndpointsWithIPs(masterCountServers, getEndpointIPs(endpoints)), nil
-	}); err != nil {
-		t.Fatalf("master count endpoints failed to register: %v", err)
 	}
 
 	// 3. start lease api servers
 	for i := 0; i < leaseCount; i++ {
 		options := []string{
 			"--endpoint-reconciler-type", "lease",
-			"--advertise-address", fmt.Sprintf("10.0.1.%v", i+10),
+			"--advertise-address", fmt.Sprintf("10.0.2.%v", i+10),
 		}
 		server := kubeapiservertesting.StartTestServerOrDie(t, instanceOptions, options, etcd)
 		defer server.TearDownFn()
@@ -283,6 +285,10 @@ func testReconcilersMasterLease(t *testing.T, leaseCount int, masterCount int) {
 	}); err != nil {
 		t.Fatalf("did not find only lease endpoints: %v", err)
 	}
+}
+
+func TestReconcilerMasterLeaseOnly(t *testing.T) {
+	testReconcilersMasterLease(t, 3, 0)
 }
 
 func TestReconcilerMasterLeaseCombined(t *testing.T) {
