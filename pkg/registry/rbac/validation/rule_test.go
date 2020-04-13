@@ -168,7 +168,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 		namespace      string
 		effectiveRules []rbacv1.PolicyRule
 	}{
-		{	// the following cases for system tenant
+		{ // the following cases for system tenant
 			StaticRoles: staticRolesWithSystemTenant,
 			user: &user.DefaultInfo{
 				Name:   "foobar",
@@ -202,7 +202,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 			},
 			effectiveRules: nil,
 		},
-		{	// the following cases for regular tenant
+		{ // the following cases for regular tenant
 			StaticRoles: staticRolesWithRegularTenant,
 			user: &user.DefaultInfo{
 				Name:   "johndoe",

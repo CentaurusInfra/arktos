@@ -1023,7 +1023,7 @@ func testDataPartitionReset(t *testing.T) {
 		IsRangeStartValid: true,
 		RangeEnd:          "zzzz",
 		IsRangeEndValid:   true,
-		ServiceGroupId:     serviceGroupId,
+		ServiceGroupId:    serviceGroupId,
 	}
 	dpConfig, err := clientSet.CoreV1().DataPartitionConfigs().Create(dpConfigData)
 	assert.Nil(t, err)
@@ -1170,45 +1170,42 @@ func TestTwoApiServerCluster(t *testing.T) {
 	serviceGroup2Id := "2"
 	masterCount := 3
 
-	// 1. set up api server 1 with serviceGroup1Id
+	t.Log("1. set up api server 1 with serviceGroup1Id")
 	prefix, configFilename1 := createSingleApiServerPartitionFile(t, "A", "m")
 	defer deleteSinglePartitionConfigFile(t, configFilename1)
 
 	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1, serviceGroup1Id)
 	masterConfig1.ExtraConfig.MasterCount = masterCount
 	_, _, closeFn1 := framework.RunAMaster(masterConfig1)
-	defer closeFn1()
 
-	// 2. set up api server 2 with serviceGroup2Id
+	t.Log("2. set up api server 2 with serviceGroup2Id")
 	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr2, serviceGroup2Id)
 	masterConfig2.ExtraConfig.MasterCount = masterCount
 	_, _, closeFn2 := framework.RunAMaster(masterConfig2)
 	defer closeFn2()
 
-	// 3. set up api server 3 with serviceGroup1Id
+	t.Log("3. set up api server 3 with serviceGroup1Id")
 	masterAddr3 := "172.10.10.1"
 	masterConfig3 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr3, serviceGroup1Id)
 	masterConfig3.ExtraConfig.MasterCount = masterCount
 	_, _, closeFn3 := framework.RunAMaster(masterConfig3)
-	defer closeFn3()
 
-	// 4. set up api server 4 with serviceGroup2Id
+	t.Log("4. set up api server 4 with serviceGroup2Id")
 	masterAddr4 := "100.1.1.10"
 	masterConfig4 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr4, serviceGroup2Id)
 	masterConfig4.ExtraConfig.MasterCount = masterCount
 	_, _, closeFn4 := framework.RunAMaster(masterConfig4)
 	defer closeFn4()
 
-	// 5. set up api server with serviceGroup2Id
+	t.Log("5. set up api server with serviceGroup2Id")
 	masterAddr5 := "100.1.1.9"
 	masterConfig5 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr5, serviceGroup2Id)
 	masterConfig5.ExtraConfig.MasterCount = masterCount
 	_, _, closeFn5 := framework.RunAMaster(masterConfig5)
-	defer closeFn5()
 
 	time.Sleep(5 * time.Second)
 
-	// 5. check master lease in storage
+	t.Log("5.1 check master lease in storage")
 	endpointClient := clientv1core.NewForConfigOrDie(masterConfig1.GenericConfig.LoopbackClientConfig)
 	e, err := endpointClient.Endpoints(v1.NamespaceDefault).Get(kubernetesServiceName, metav1.GetOptions{})
 	assert.Nil(t, err)
@@ -1226,6 +1223,41 @@ func TestTwoApiServerCluster(t *testing.T) {
 	assert.Equal(t, masterAddr4, e.Subsets[1].Addresses[0].IP)
 	assert.Equal(t, masterAddr5, e.Subsets[1].Addresses[1].IP)
 	assert.Equal(t, masterAddr2, e.Subsets[1].Addresses[2].IP)
+
+	t.Logf("6. master 5 died")
+	closeFn5()
+
+	// master lease expires in 10 seconds
+	time.Sleep(11 * time.Second)
+
+	e, err = endpointClient.Endpoints(v1.NamespaceDefault).Get(kubernetesServiceName, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.NotNil(t, e)
+	assert.Equal(t, 2, len(e.Subsets))
+	assert.Equal(t, serviceGroup1Id, e.Subsets[0].ServiceGroupId)
+	assert.Equal(t, serviceGroup2Id, e.Subsets[1].ServiceGroupId)
+
+	assert.Equal(t, 2, len(e.Subsets[0].Addresses))
+	assert.Equal(t, masterAddr3, e.Subsets[0].Addresses[0].IP)
+	assert.Equal(t, masterAddr1, e.Subsets[0].Addresses[1].IP)
+
+	assert.Equal(t, 2, len(e.Subsets[1].Addresses))
+	assert.Equal(t, masterAddr4, e.Subsets[1].Addresses[0].IP)
+	assert.Equal(t, masterAddr2, e.Subsets[1].Addresses[1].IP)
+
+	t.Log("7. master 1 and 3 died - simulate all server in one service group died")
+	closeFn1()
+	closeFn3()
+	time.Sleep(11 * time.Second)
+	e, err = endpointClient.Endpoints(v1.NamespaceDefault).Get(kubernetesServiceName, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.NotNil(t, e)
+	assert.Equal(t, 1, len(e.Subsets))
+	assert.Equal(t, serviceGroup2Id, e.Subsets[0].ServiceGroupId)
+
+	assert.Equal(t, 2, len(e.Subsets[0].Addresses))
+	assert.Equal(t, masterAddr4, e.Subsets[0].Addresses[0].IP)
+	assert.Equal(t, masterAddr2, e.Subsets[0].Addresses[1].IP)
 }
 
 func setUpSingleApiserver(t *testing.T, begin, end string, serviceGroupId string) (*httptest.Server, framework.CloseFunc, clientset.Interface, string) {
