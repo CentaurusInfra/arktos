@@ -206,3 +206,7 @@ Components not decided yet at current phase are not included in these views.
 ### Runtime component relationship
 
 ![C&C view](images/network-c-and-c.png)
+
+### Key Scenario: tenant & DNS provisioning
+
+![tenant & DNS provision](images/network-scenario-tenant-init.png)
