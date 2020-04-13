@@ -44,8 +44,8 @@ import (
 
 // Leases is an interface which assists in managing the set of active masters
 type Leases interface {
-	// ListLeases retrieves a list of the current master (IP, ServiceGroupId)
-	ListLeases(serviceGroupId string) ([]string, error)
+	// ListLeases retrieves a map of service group id to list of IPs
+	ListLeases() (map[string][]string, error)
 
 	// UpdateLease adds or refreshes a master's lease
 	UpdateLease(ip string, serviceGroupId string) error
@@ -62,26 +62,26 @@ type storageLeases struct {
 
 var _ Leases = &storageLeases{}
 
-// ListLeases retrieves a list of the current master IPs of this service group from storage
-func (s *storageLeases) ListLeases(serviceGroupId string) ([]string, error) {
+// ListLeases retrieves a map of service group id to master IP list
+func (s *storageLeases) ListLeases() (map[string][]string, error) {
 	epList := &corev1.EndpointsList{}
 	if err := s.storage.List(apirequest.NewDefaultContext(), s.baseKey, "0", storage.Everything, epList); err != nil {
 		return nil, err
 	}
 
-	ipList := make([]string, 0)
+	ipList := make(map[string][]string)
 	for _, item := range epList.Items {
-		subsets := item.Subsets
-		for _, ss := range subsets {
-			if ss.ServiceGroupId == serviceGroupId {
-				for _, epAddress := range ss.Addresses {
-					ipList = append(ipList, epAddress.IP)
-				}
+		for _, ss := range item.Subsets {
+			existedIPs, isOK := ipList[ss.ServiceGroupId]
+			if isOK {
+				ipList[ss.ServiceGroupId] = append(existedIPs, ss.Addresses[0].IP)
+			} else {
+				ipList[ss.ServiceGroupId] = []string{ss.Addresses[0].IP}
 			}
 		}
 	}
 
-	klog.V(6).Infof("Current master IPs listed in storage for service group %s are %v", serviceGroupId, ipList)
+	klog.V(6).Infof("Current master IPs listed in storage are %v", ipList)
 
 	return ipList, nil
 }
@@ -172,7 +172,6 @@ func (r *leaseEndpointReconciler) ReconcileEndpoints(serviceName string, service
 func (r *leaseEndpointReconciler) doReconcile(serviceName string, serviceGroupId string, endpointPorts []corev1.EndpointPort, reconcilePorts bool) error {
 	e, err := r.endpointClient.Endpoints(corev1.NamespaceDefault).Get(serviceName, metav1.GetOptions{})
 	shouldCreate := false
-	//klog.Infof("Get endpoints for service [%v] [%+v]. Error [%v]", serviceName, e, err)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
@@ -188,7 +187,7 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, serviceGroupId
 	}
 
 	// ... and the list of master IP keys from etcd
-	masterIPs, err := r.masterLeases.ListLeases(serviceGroupId)
+	masterIPs, err := r.masterLeases.ListLeases()
 	if err != nil {
 		return err
 	}
@@ -200,29 +199,30 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, serviceGroupId
 		return fmt.Errorf("no master IPs were listed in storage, refusing to erase all endpoints for the kubernetes service")
 	}
 
-	// each api service only reconcile endpoints that is related to its own service group
-	subsetsRelated, subsetsNotRelated := endpointsv1.GetRelatedSubsets(e.Subsets, serviceGroupId)
-
 	// Next, we compare the current list of endpoints with the list of master IP keys
-	formatCorrect, ipCorrect, portsCorrect := checkEndpointSubsetFormatWithLease(subsetsRelated, masterIPs, endpointPorts, reconcilePorts)
+	formatCorrect, ipCorrect, portsCorrect := checkEndpointSubsetFormatWithLease(e, masterIPs, endpointPorts, reconcilePorts)
 	if formatCorrect && ipCorrect && portsCorrect {
 		return nil
 	}
 
 	if !formatCorrect {
 		// Something is egregiously wrong, just re-make the endpoints record.
-		e.Subsets = []corev1.EndpointSubset{{
-			Addresses:      []corev1.EndpointAddress{},
-			Ports:          endpointPorts,
-			ServiceGroupId: serviceGroupId,
-		}}
+		e.Subsets = make([]corev1.EndpointSubset, len(masterIPs))
+		i := 0
+		for serviceGroupId := range masterIPs {
+			e.Subsets[i].Ports = endpointPorts
+			e.Subsets[i].ServiceGroupId = serviceGroupId
+			i++
+		}
 	}
 
 	if !formatCorrect || !ipCorrect {
-		// repopulate the addresses according to the expected IPs from etcd
-		e.Subsets[0].Addresses = make([]corev1.EndpointAddress, len(masterIPs))
-		for i, ip := range masterIPs {
-			e.Subsets[0].Addresses[i] = corev1.EndpointAddress{IP: ip}
+		for i, ss := range e.Subsets {
+			e.Subsets[i].Addresses = make([]corev1.EndpointAddress, len(masterIPs[ss.ServiceGroupId]))
+			// repopulate the addresses according to the expected IPs from etcd
+			for j, ip := range masterIPs[ss.ServiceGroupId] {
+				e.Subsets[i].Addresses[j] = corev1.EndpointAddress{IP: ip}
+			}
 		}
 		// Lexicographic order is retained by this step.
 		e.Subsets = endpointsv1.RepackSubsets(e.Subsets, serviceGroupId)
@@ -230,10 +230,10 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, serviceGroupId
 
 	if !portsCorrect {
 		// Reset ports.
-		e.Subsets[0].Ports = endpointPorts
+		for i := range e.Subsets {
+			e.Subsets[i].Ports = endpointPorts
+		}
 	}
-
-	endpointsv1.AddNotRelatedSubsets(e, subsetsNotRelated)
 
 	klog.Warningf("Resetting endpoints for master service %q to %v", serviceName, masterIPs)
 	if shouldCreate {
@@ -254,13 +254,44 @@ func (r *leaseEndpointReconciler) doReconcile(serviceName string, serviceGroupId
 // * ipsCorrect when the addresses in the endpoints match the expected addresses list
 // * portsCorrect is true when endpoint ports exactly match provided ports.
 //     portsCorrect is only evaluated when reconcilePorts is set to true.
-// EndpointSubset should have the same service group id
-func checkEndpointSubsetFormatWithLease(ss []corev1.EndpointSubset, expectedIPs []string, ports []corev1.EndpointPort, reconcilePorts bool) (formatCorrect bool, ipsCorrect bool, portsCorrect bool) {
-	if len(ss) != 1 {
+func checkEndpointSubsetFormatWithLease(e *corev1.Endpoints, expectedIPs map[string][]string, ports []corev1.EndpointPort, reconcilePorts bool) (formatCorrect bool, ipsCorrect bool, portsCorrect bool) {
+	if len(e.Subsets) < 1 {
 		return false, false, false
 	}
 
-	sub := &ss[0]
+	formatCorrect = true
+	ipsCorrect = true
+	portsCorrect = true
+
+	checkedServiceGroupIds := make(map[string]bool)
+	for _, ss := range e.Subsets {
+		ips, isOK := expectedIPs[ss.ServiceGroupId]
+		if !isOK {
+			return false, false, false
+		}
+		formatCorrectA, ipsCorrectA, portsCorrectA := checkEndpointSubsetFormatWithLeaseForServiceGroup(ss, ips, ports, reconcilePorts)
+		formatCorrect = formatCorrect && formatCorrectA
+		ipsCorrect = ipsCorrect && ipsCorrectA
+		portsCorrect = portsCorrect && portsCorrectA
+		if !formatCorrect && !ipsCorrect && !portsCorrect { // skip rest check
+			return false, false, false
+		}
+		checkedServiceGroupIds[ss.ServiceGroupId] = true
+	}
+
+	// check whether all service groups are verified
+	for spId := range expectedIPs {
+		_, isOK := checkedServiceGroupIds[spId]
+		if !isOK {
+			return false, false, false
+		}
+	}
+
+	return formatCorrect, ipsCorrect, portsCorrect
+}
+
+func checkEndpointSubsetFormatWithLeaseForServiceGroup(ss corev1.EndpointSubset, expectedIPs []string, ports []corev1.EndpointPort, reconcilePorts bool) (formatCorrect bool, ipsCorrect bool, portsCorrect bool) {
+	sub := ss
 	portsCorrect = true
 	if reconcilePorts {
 		if len(sub.Ports) != len(ports) {

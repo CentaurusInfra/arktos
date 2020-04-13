@@ -209,21 +209,28 @@ function kube::common::set_service_accounts {
 
 function kube::common::generate_certs {
     # Create CA signers
-    if [[ "${ENABLE_SINGLE_CA_SIGNER:-}" = true ]]; then
-        kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"client auth","server auth"'
-        sudo cp "${CERT_DIR}/server-ca.key" "${CERT_DIR}/client-ca.key"
-        sudo cp "${CERT_DIR}/server-ca.crt" "${CERT_DIR}/client-ca.crt"
-        sudo cp "${CERT_DIR}/server-ca-config.json" "${CERT_DIR}/client-ca-config.json"
+    # no need to regenerate CA in every run - optimize
+    if [ "${REGENERATE_CA:-}" = true ] || ! [ -e "${CERT_DIR}/server-ca.key" ] || ! [ -e "${CERT_DIR}/server-ca.crt" ] ||
+       ! [ -e "${CERT_DIR}/client-ca.key" ] || ! [ -e "${CERT_DIR}/client-ca.crt" ] ||
+       ! [ -e "${CERT_DIR}/server-ca-config.json" ] || ! [ -e "${CERT_DIR}/client-ca-config.json" ]; then
+      if [[ "${ENABLE_SINGLE_CA_SIGNER:-}" = true ]]; then
+          kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"client auth","server auth"'
+          sudo cp "${CERT_DIR}/server-ca.key" "${CERT_DIR}/client-ca.key"
+          sudo cp "${CERT_DIR}/server-ca.crt" "${CERT_DIR}/client-ca.crt"
+          sudo cp "${CERT_DIR}/server-ca-config.json" "${CERT_DIR}/client-ca-config.json"
+      else
+          kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"server auth"'
+          kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" client '"client auth"'
+      fi
     else
-        kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"server auth"'
-        kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" client '"client auth"'
+      echo "Skip generating CA as CA files existed and REGENERATE_CA != true. To regenerate CA files, export REGENERATE_CA=true"
     fi
 
     # Create auth proxy client ca
     kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
 
     # serving cert for kube-apiserver
-    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${PUBLIC_IP:-}"
+    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${PUBLIC_IP:-}"
 
     # Create client certs signed with client-ca, given id, given CN and a number of groups
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' controller system:kube-controller-manager
