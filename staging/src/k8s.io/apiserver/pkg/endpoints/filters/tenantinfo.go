@@ -18,6 +18,7 @@ package filters
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,11 +39,8 @@ func WithTenantInfo(handler http.Handler) http.Handler {
 
 		tenantInRequestor := requestor.GetTenant()
 		if tenantInRequestor == metav1.TenantNone {
-			// temporary workaround
-			// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
-			tenantInRequestor = metav1.TenantSystem
-			//responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
-			//return
+			responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
+			return
 		}
 
 		requestInfo, exists := request.RequestInfoFrom(ctx)

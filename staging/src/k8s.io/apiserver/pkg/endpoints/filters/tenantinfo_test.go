@@ -71,15 +71,13 @@ func TestTenantInfoRequest(t *testing.T) {
 			ExepctedRespCode: 500,
 			ExpectedTenant:   "",
 		},
-		// temporarily disabled test case
-		// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
-		/*{
+		{
 			Name:             "empty tenant in user info triggers Internal error",
 			Url:              "/api/v1/namespaces/default/pods",
 			UserInfo:         getTenantedUserInfo(metav1.TenantNone),
 			ExepctedRespCode: 500,
 			ExpectedTenant:   "",
-		},*/
+		},
 		{
 			Name:             "system tenant user does not change tenant in request info",
 			Url:              "/api/v1/tenants/aaa/namespaces/default/pods",
