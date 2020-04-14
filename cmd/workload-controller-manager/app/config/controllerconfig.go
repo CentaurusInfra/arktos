@@ -22,7 +22,7 @@ import (
 	"os"
 )
 
-type controllerTypes struct {
+type controllerManagerConfig struct {
 	ReportHealthIntervalInSecond int              `json:"reportHealthIntervalInSecond"`
 	Types                        []controllerType `json:"controllers"`
 }
@@ -51,7 +51,7 @@ func NewControllerConfig(filePath string) (ControllerConfig, error) {
 		return ControllerConfig{}, err
 	}
 
-	var types controllerTypes
+	var types controllerManagerConfig
 
 	json.Unmarshal([]byte(byteValue), &types)
 
