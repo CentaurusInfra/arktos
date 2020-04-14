@@ -209,7 +209,7 @@ func (g *RoleGetter) GetRole(namespace, name string) (*rbacv1.Role, error) {
 }
 
 func (g *RoleGetter) GetRoleWithMultiTenancy(tenant, namespace, name string) (*rbacv1.Role, error) {
-	return g.Lister.RolesWithMultiTenancy(tenant, namespace).Get(name)
+	return g.Lister.RolesWithMultiTenancy(namespace, tenant).Get(name)
 }
 
 type RoleBindingLister struct {
