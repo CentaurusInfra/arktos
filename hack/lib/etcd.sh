@@ -17,7 +17,7 @@
 
 # A set of helpers for starting/running etcd for tests
 
-ETCD_VERSION=${ETCD_VERSION:-3.3.10}
+ETCD_VERSION=${ETCD_VERSION:-3.4.4}
 INT_NAME=$(ip route | awk '/default/ { print $5 }')
 ETCD_LOCAL_HOST=${ETCD_LOCAL_HOST:-127.0.0.1}
 ETCD_HOST=$(ip addr show $INT_NAME | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
@@ -85,8 +85,11 @@ kube::etcd::start() {
   ETCD_PID=$!
 
   echo "Waiting for etcd to come up."
-  kube::util::wait_for_url "${KUBE_INTEGRATION_ETCD_URL}/v2/machines" "etcd: " 0.25 80
-  curl -fs -X PUT "${KUBE_INTEGRATION_ETCD_URL}/v2/keys/_test"
+  kube::util::wait_for_url "${KUBE_INTEGRATION_ETCD_URL}/version" "etcd: " 0.25 80
+  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/range -X POST -d '{"key": "Zm9v"}'
+  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/range -X POST -d '{"key": "Zm9v", "range_end": "Zm9w"}'
+  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/deleterange -X POST -d '{"key": "Zm9v"}'
 }
 
 kube::etcd::stop() {
