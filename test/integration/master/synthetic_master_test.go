@@ -64,7 +64,7 @@ const (
 type allowAliceAuthorizer struct{}
 
 func (allowAliceAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
-	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "alice" && a.GetUser().GetTenant() == testTenant {
 		return authorizer.DecisionAllow, "", nil
 	}
 	return authorizer.DecisionNoOpinion, "I can't allow that.  Go ask alice.", nil
@@ -155,8 +155,8 @@ func initStatusForbiddenMasterCongfig() *master.Config {
 func initUnauthorizedMasterCongfig() *master.Config {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	tokenAuthenticator := tokentest.New()
-	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "fake-tenant:alice", UID: "1"}
-	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "fake-tenant:bob", UID: "2"}
+	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "alice", UID: "1", Tenant: testTenant}
+	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "bob", UID: "2", Tenant: testTenant}
 	masterConfig.GenericConfig.Authentication.Authenticator = group.NewGroupAdder(bearertoken.New(tokenAuthenticator), []string{user.AllAuthenticated})
 	masterConfig.GenericConfig.Authorization.Authorizer = allowAliceAuthorizer{}
 	return masterConfig

@@ -318,7 +318,7 @@ func TestRBAC(t *testing.T) {
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "read-pods"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "system:pod-reader"},
+							{Kind: "User", Name: "pod-reader"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "read-pods"},
 					},
@@ -363,41 +363,41 @@ func TestRBAC(t *testing.T) {
 				clusterRoleBindings: []rbacapi.ClusterRoleBinding{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "write-jobs"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:job-writer"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "job-writer"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "write-jobs"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "create-rolebindings"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "system:job-writer"},
-							{Kind: "User", Name: "system:nonescalating-rolebinding-writer"},
-							{Kind: "User", Name: "system:any-rolebinding-writer"},
+							{Kind: "User", Name: "job-writer"},
+							{Kind: "User", Name: "nonescalating-rolebinding-writer"},
+							{Kind: "User", Name: "any-rolebinding-writer"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "create-rolebindings"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "bind-any-clusterrole"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:any-rolebinding-writer"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "any-rolebinding-writer"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "bind-any-clusterrole"},
 					},
 				},
 				roleBindings: []rbacapi.RoleBinding{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "write-jobs", Namespace: "job-namespace"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:job-writer-namespace"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "job-writer-namespace"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "write-jobs"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "create-rolebindings", Namespace: "job-namespace"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "system:job-writer-namespace"},
-							{Kind: "User", Name: "system:any-rolebinding-writer-namespace"},
+							{Kind: "User", Name: "job-writer-namespace"},
+							{Kind: "User", Name: "any-rolebinding-writer-namespace"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "create-rolebindings"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "bind-any-clusterrole", Namespace: "job-namespace"},
-						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "system:any-rolebinding-writer-namespace"}},
+						Subjects:   []rbacapi.Subject{{Kind: "User", Name: "any-rolebinding-writer-namespace"}},
 						RoleRef:    rbacapi.RoleRef{Kind: "ClusterRole", Name: "bind-any-clusterrole"},
 					},
 				},
@@ -465,7 +465,7 @@ func TestRBAC(t *testing.T) {
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "update-limitranges"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "system:limitrange-updater"},
+							{Kind: "User", Name: "limitrange-updater"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "update-limitranges"},
 					},
@@ -499,7 +499,7 @@ func TestRBAC(t *testing.T) {
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "patch-limitranges"},
 						Subjects: []rbacapi.Subject{
-							{Kind: "User", Name: "system:limitrange-patcher"},
+							{Kind: "User", Name: "limitrange-patcher"},
 						},
 						RoleRef: rbacapi.RoleRef{Kind: "ClusterRole", Name: "patch-limitranges"},
 					},
@@ -522,17 +522,17 @@ func TestRBAC(t *testing.T) {
 		masterConfig := framework.NewIntegrationTestMasterConfig()
 		masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 		masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-			superUser:                                 {Name: "system:admin", Groups: []string{"system:masters"}, Tenant: "system"},
-			"system:any-rolebinding-writer":           {Name: "system:any-rolebinding-writer", Tenant: testTenant},
-			"system:any-rolebinding-writer-namespace": {Name: "system:any-rolebinding-writer-namespace", Tenant: testTenant},
+			superUser:                                 {Tenant: metav1.TenantSystem, Name: "admin", Groups: []string{"system:masters"}},
+			"system:any-rolebinding-writer":           {Tenant: metav1.TenantSystem, Name: "any-rolebinding-writer"},
+			"system:any-rolebinding-writer-namespace": {Tenant: metav1.TenantSystem, Name: "any-rolebinding-writer-namespace"},
 			"bob":                         {Name: "bob", Tenant: testTenant},
-			"system:job-writer":           {Name: "system:job-writer", Tenant: testTenant},
-			"system:job-writer-namespace": {Name: "system:job-writer-namespace", Tenant: testTenant},
-			"system:nonescalating-rolebinding-writer": {Name: "system:nonescalating-rolebinding-writer", Tenant: testTenant},
-			"system:pod-reader":                       {Name: "system:pod-reader", Tenant: testTenant},
-			"system:limitrange-updater":               {Name: "system:limitrange-updater", Tenant: testTenant},
-			"system:limitrange-patcher":               {Name: "system:limitrange-patcher", Tenant: testTenant},
-			"system:user-with-no-permissions":         {Name: "system:user-with-no-permissions", Tenant: testTenant},
+			"system:job-writer":           {Tenant: metav1.TenantSystem, Name: "job-writer"},
+			"system:job-writer-namespace": {Tenant: metav1.TenantSystem, Name: "job-writer-namespace"},
+			"system:nonescalating-rolebinding-writer": {Tenant: metav1.TenantSystem, Name: "nonescalating-rolebinding-writer"},
+			"system:pod-reader":                       {Tenant: metav1.TenantSystem, Name: "pod-reader"},
+			"system:limitrange-updater":               {Tenant: metav1.TenantSystem, Name: "limitrange-updater"},
+			"system:limitrange-patcher":               {Tenant: metav1.TenantSystem, Name: "limitrange-patcher"},
+			"system:user-with-no-permissions":         {Tenant: metav1.TenantSystem, Name: "user-with-no-permissions"},
 		}))
 		masterConfig.GenericConfig.OpenAPIConfig = framework.DefaultOpenAPIConfig()
 		_, s, closeFn := framework.RunAMaster(masterConfig)
@@ -637,7 +637,7 @@ func TestBootstrapping(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 	masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-		superUser: {Name: "system:admin", Groups: []string{"system:masters"}, Tenant: "system"},
+		superUser: {Tenant: metav1.TenantSystem, Name: "admin", Groups: []string{"system:masters"}},
 	}))
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
@@ -700,7 +700,7 @@ func TestDiscoveryUpgradeBootstrapping(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.Authorization.Authorizer = newRBACAuthorizer(masterConfig)
 	masterConfig.GenericConfig.Authentication.Authenticator = bearertoken.New(tokenfile.New(map[string]*user.DefaultInfo{
-		superUser: {Name: "system:admin", Groups: []string{"system:masters"}, Tenant: "system"},
+		superUser: {Tenant: metav1.TenantSystem, Name: "admin", Groups: []string{"system:masters"}},
 	}))
 	_, s, tearDownFn := framework.RunAMaster(masterConfig)
 

@@ -46,6 +46,7 @@ func (g *GroupAdder) AuthenticateRequest(req *http.Request) (*authenticator.Resp
 		UID:    r.User.GetUID(),
 		Groups: append(r.User.GetGroups(), g.Groups...),
 		Extra:  r.User.GetExtra(),
+		Tenant: r.User.GetTenant(),
 	}
 	return r, true, nil
 }
