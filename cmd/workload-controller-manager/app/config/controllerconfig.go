@@ -22,8 +22,9 @@ import (
 	"os"
 )
 
-type controllerTypes struct {
-	Types []controllerType `json:"controllers"`
+type controllerManagerConfig struct {
+	ReportHealthIntervalInSecond int              `json:"reportHealthIntervalInSecond"`
+	Types                        []controllerType `json:"controllers"`
 }
 
 type controllerType struct {
@@ -33,7 +34,8 @@ type controllerType struct {
 
 // ControllerConfig is the config to load controller configurations
 type ControllerConfig struct {
-	typemap map[string]int
+	typemap                      map[string]int
+	reportHealthIntervalInSecond int
 }
 
 // NewControllerConfig to load configuration from a local file
@@ -49,7 +51,7 @@ func NewControllerConfig(filePath string) (ControllerConfig, error) {
 		return ControllerConfig{}, err
 	}
 
-	var types controllerTypes
+	var types controllerManagerConfig
 
 	json.Unmarshal([]byte(byteValue), &types)
 
@@ -58,10 +60,14 @@ func NewControllerConfig(filePath string) (ControllerConfig, error) {
 	for _, controllerType := range types.Types {
 		controllerMap[controllerType.Type] = controllerType.Workers
 	}
-	return ControllerConfig{typemap: controllerMap}, nil
+	return ControllerConfig{typemap: controllerMap, reportHealthIntervalInSecond: types.ReportHealthIntervalInSecond}, nil
 }
 
 func (c *ControllerConfig) GetWorkerNumber(controllerType string) (int, bool) {
 	workerNumber, isOK := c.typemap[controllerType]
 	return workerNumber, isOK
+}
+
+func (c *ControllerConfig) GetReportHealthIntervalInSecond() int {
+	return c.reportHealthIntervalInSecond
 }
