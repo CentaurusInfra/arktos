@@ -172,8 +172,6 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 
 	go dc.WatchInstanceUpdate(stopCh)
 
-	go wait.Until(dc.ReportHealth, time.Minute, stopCh)
-
 	klog.Infof("All work started for controller %s instance %s", dc.GetControllerType(), dc.GetControllerName())
 
 	<-stopCh

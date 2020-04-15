@@ -30,11 +30,12 @@ package replicaset
 
 import (
 	"fmt"
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"reflect"
 	"sort"
 	"sync"
 	"time"
+
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 
 	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -204,8 +205,6 @@ func (rsc *ReplicaSetController) Run(workers int, stopCh <-chan struct{}) {
 	}
 
 	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
-
-	go wait.Until(rsc.ControllerBase.ReportHealth, time.Minute, stopCh)
 
 	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), rsc.GetControllerName())
 
