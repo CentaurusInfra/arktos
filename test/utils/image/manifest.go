@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -232,7 +233,7 @@ func initImageConfigs() map[int]Config {
 	configs[DebianBase] = Config{googleContainerRegistry, "debian-base", "0.4.1"}
 	configs[EchoServer] = Config{e2eRegistry, "echoserver", "2.2"}
 	configs[EntrypointTester] = Config{e2eRegistry, "entrypoint-tester", "1.0"}
-	configs[Etcd] = Config{gcRegistry, "etcd", "3.3.10"}
+	configs[Etcd] = Config{gcRegistry, "etcd", "3.4.4"}
 	configs[GBFrontend] = Config{sampleRegistry, "gb-frontend", "v6"}
 	configs[GBRedisSlave] = Config{sampleRegistry, "gb-redisslave", "v3"}
 	configs[InClusterClient] = Config{e2eRegistry, "inclusterclient", "1.0"}
