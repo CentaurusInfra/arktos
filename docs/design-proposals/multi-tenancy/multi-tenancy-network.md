@@ -155,7 +155,7 @@ Services, as one of the critical network related resource types, are withing the
 Putting service type in tenant level is out of primacy as it has following flaws:
 1. service IP address has to be the same across all networks, which implies some range of service IP needs to be predefined as shared across networks of a tenant (tenant manageability burden);  
 1. associating network-agnostic service to network-specific endpoints would introduce significant inconsistency;
-1. kubectl query for service has no way to return meaningful content of endpoint.   
+1. kubectl query for service (e.g. ```kubectl describe service```) has no way to return meaningful content of endpoints.
 
 The well-known services (default/kubernetes, kube-system/kube-dns) present some problem here. Service kubernetes has tenant/namespace(default) scope in current implementation, unable to have multiple kubernets services with each of them in one network due to name conflict. The same rational applies to kube-dns.
 
@@ -165,9 +165,9 @@ Another solution is to change their name to schema that can uniquely differentia
 
 One plausible remedy is making stringent containment of network to namespaces - resources in one namespace belongs solely to one network; one network can accommodate multiple namespace. This cannot handle the default/kubernetes service problem, as it is of default namespace.
 
-None of the two of above seems ideal. However, the latter, tweaking with the service name, coupled with trick applicable only to kubernetes & kube-dns, seems pragmatic and practical. The idea is suffixing service name with network name, also putting proper alias record in DNS database so that pods are able to look up by kubernetes and kube-dns common name. This approach is not flexible; it works fine with limited number of well-known alias, though.
+None of the two of above seems ideal. However, the latter, fiddling with the service name, if coupled with trick applicable only to kubernetes & kube-dns, seems pragmatic and practical. The idea is suffixing service name with network name (e.g. kubernetes_mynetwork), also answering query for kubernetes with that of kubernetes_mynetwork (by alias record or other form of dynamic technique), so that pods are able to look up them without using the network-suffixed names. This approach is not flexible and depending on dns ability; it works fine with limited number of well-known aliases, though. coreDNS, one of the most commonly used dns server binaries, has such dynamic aliasing ability.
 
-One of the confusions is ```kubectl get service kubenetes``` would fail with no such resource error - this is breaking, but for good reason - to remind users of service resource being network specific in our system. Pods are able to query DNS for kubernetes without caring about the new name schema as they are network related and able to locate the proper DNS service in the interesting network scope.
+One of the confusions is ```kubectl get service kubenetes``` would fail with no such resource error - this is breaking, but for good reason - to remind users of service resource being network specific in our system. However, pods are able to query DNS for kubernetes without caring about the new name schema as they are network related and able to locate the proper DNS service in the interesting network scope.
 
 #### Service IP
 
