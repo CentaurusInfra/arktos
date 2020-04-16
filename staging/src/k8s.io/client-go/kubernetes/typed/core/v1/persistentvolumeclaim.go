@@ -130,8 +130,14 @@ func (c *persistentVolumeClaims) Watch(opts metav1.ListOptions) watch.Aggregated
 // Create takes the representation of a persistentVolumeClaim and creates it.  Returns the server's representation of the persistentVolumeClaim, and an error, if there is any.
 func (c *persistentVolumeClaims) Create(persistentVolumeClaim *v1.PersistentVolumeClaim) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
+
+	objectTenant := persistentVolumeClaim.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Body(persistentVolumeClaim).
@@ -144,8 +150,14 @@ func (c *persistentVolumeClaims) Create(persistentVolumeClaim *v1.PersistentVolu
 // Update takes the representation of a persistentVolumeClaim and updates it. Returns the server's representation of the persistentVolumeClaim, and an error, if there is any.
 func (c *persistentVolumeClaims) Update(persistentVolumeClaim *v1.PersistentVolumeClaim) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
+
+	objectTenant := persistentVolumeClaim.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(persistentVolumeClaim.Name).
@@ -161,8 +173,14 @@ func (c *persistentVolumeClaims) Update(persistentVolumeClaim *v1.PersistentVolu
 
 func (c *persistentVolumeClaims) UpdateStatus(persistentVolumeClaim *v1.PersistentVolumeClaim) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
+
+	objectTenant := persistentVolumeClaim.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(persistentVolumeClaim.Name).

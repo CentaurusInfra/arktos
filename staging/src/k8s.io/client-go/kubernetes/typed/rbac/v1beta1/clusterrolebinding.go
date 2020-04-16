@@ -125,8 +125,14 @@ func (c *clusterRoleBindings) Watch(opts v1.ListOptions) watch.AggregatedWatchIn
 // Create takes the representation of a clusterRoleBinding and creates it.  Returns the server's representation of the clusterRoleBinding, and an error, if there is any.
 func (c *clusterRoleBindings) Create(clusterRoleBinding *v1beta1.ClusterRoleBinding) (result *v1beta1.ClusterRoleBinding, err error) {
 	result = &v1beta1.ClusterRoleBinding{}
+
+	objectTenant := clusterRoleBinding.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("clusterrolebindings").
 		Body(clusterRoleBinding).
 		Do().
@@ -138,8 +144,14 @@ func (c *clusterRoleBindings) Create(clusterRoleBinding *v1beta1.ClusterRoleBind
 // Update takes the representation of a clusterRoleBinding and updates it. Returns the server's representation of the clusterRoleBinding, and an error, if there is any.
 func (c *clusterRoleBindings) Update(clusterRoleBinding *v1beta1.ClusterRoleBinding) (result *v1beta1.ClusterRoleBinding, err error) {
 	result = &v1beta1.ClusterRoleBinding{}
+
+	objectTenant := clusterRoleBinding.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("clusterrolebindings").
 		Name(clusterRoleBinding.Name).
 		Body(clusterRoleBinding).

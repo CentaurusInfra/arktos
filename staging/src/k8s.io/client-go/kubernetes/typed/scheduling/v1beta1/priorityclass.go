@@ -115,6 +115,7 @@ func (c *priorityClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterf
 // Create takes the representation of a priorityClass and creates it.  Returns the server's representation of the priorityClass, and an error, if there is any.
 func (c *priorityClasses) Create(priorityClass *v1beta1.PriorityClass) (result *v1beta1.PriorityClass, err error) {
 	result = &v1beta1.PriorityClass{}
+
 	err = c.client.Post().
 		Resource("priorityclasses").
 		Body(priorityClass).
@@ -127,6 +128,7 @@ func (c *priorityClasses) Create(priorityClass *v1beta1.PriorityClass) (result *
 // Update takes the representation of a priorityClass and updates it. Returns the server's representation of the priorityClass, and an error, if there is any.
 func (c *priorityClasses) Update(priorityClass *v1beta1.PriorityClass) (result *v1beta1.PriorityClass, err error) {
 	result = &v1beta1.PriorityClass{}
+
 	err = c.client.Put().
 		Resource("priorityclasses").
 		Name(priorityClass.Name).

@@ -116,6 +116,7 @@ func (c *aPIServices) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterf
 // Create takes the representation of a aPIService and creates it.  Returns the server's representation of the aPIService, and an error, if there is any.
 func (c *aPIServices) Create(aPIService *v1.APIService) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
+
 	err = c.client.Post().
 		Resource("apiservices").
 		Body(aPIService).
@@ -128,6 +129,7 @@ func (c *aPIServices) Create(aPIService *v1.APIService) (result *v1.APIService, 
 // Update takes the representation of a aPIService and updates it. Returns the server's representation of the aPIService, and an error, if there is any.
 func (c *aPIServices) Update(aPIService *v1.APIService) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
+
 	err = c.client.Put().
 		Resource("apiservices").
 		Name(aPIService.Name).
@@ -143,6 +145,7 @@ func (c *aPIServices) Update(aPIService *v1.APIService) (result *v1.APIService, 
 
 func (c *aPIServices) UpdateStatus(aPIService *v1.APIService) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
+
 	err = c.client.Put().
 		Resource("apiservices").
 		Name(aPIService.Name).

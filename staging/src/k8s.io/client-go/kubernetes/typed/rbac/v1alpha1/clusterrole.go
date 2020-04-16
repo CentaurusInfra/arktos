@@ -125,8 +125,14 @@ func (c *clusterRoles) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 // Create takes the representation of a clusterRole and creates it.  Returns the server's representation of the clusterRole, and an error, if there is any.
 func (c *clusterRoles) Create(clusterRole *v1alpha1.ClusterRole) (result *v1alpha1.ClusterRole, err error) {
 	result = &v1alpha1.ClusterRole{}
+
+	objectTenant := clusterRole.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("clusterroles").
 		Body(clusterRole).
 		Do().
@@ -138,8 +144,14 @@ func (c *clusterRoles) Create(clusterRole *v1alpha1.ClusterRole) (result *v1alph
 // Update takes the representation of a clusterRole and updates it. Returns the server's representation of the clusterRole, and an error, if there is any.
 func (c *clusterRoles) Update(clusterRole *v1alpha1.ClusterRole) (result *v1alpha1.ClusterRole, err error) {
 	result = &v1alpha1.ClusterRole{}
+
+	objectTenant := clusterRole.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("clusterroles").
 		Name(clusterRole.Name).
 		Body(clusterRole).

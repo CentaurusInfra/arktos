@@ -115,6 +115,7 @@ func (c *mutatingWebhookConfigurations) Watch(opts v1.ListOptions) watch.Aggrega
 // Create takes the representation of a mutatingWebhookConfiguration and creates it.  Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.
 func (c *mutatingWebhookConfigurations) Create(mutatingWebhookConfiguration *v1beta1.MutatingWebhookConfiguration) (result *v1beta1.MutatingWebhookConfiguration, err error) {
 	result = &v1beta1.MutatingWebhookConfiguration{}
+
 	err = c.client.Post().
 		Resource("mutatingwebhookconfigurations").
 		Body(mutatingWebhookConfiguration).
@@ -127,6 +128,7 @@ func (c *mutatingWebhookConfigurations) Create(mutatingWebhookConfiguration *v1b
 // Update takes the representation of a mutatingWebhookConfiguration and updates it. Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.
 func (c *mutatingWebhookConfigurations) Update(mutatingWebhookConfiguration *v1beta1.MutatingWebhookConfiguration) (result *v1beta1.MutatingWebhookConfiguration, err error) {
 	result = &v1beta1.MutatingWebhookConfiguration{}
+
 	err = c.client.Put().
 		Resource("mutatingwebhookconfigurations").
 		Name(mutatingWebhookConfiguration.Name).

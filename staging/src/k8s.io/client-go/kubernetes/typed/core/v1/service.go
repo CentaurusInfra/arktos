@@ -129,8 +129,14 @@ func (c *services) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 // Create takes the representation of a service and creates it.  Returns the server's representation of the service, and an error, if there is any.
 func (c *services) Create(service *v1.Service) (result *v1.Service, err error) {
 	result = &v1.Service{}
+
+	objectTenant := service.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("services").
 		Body(service).
@@ -143,8 +149,14 @@ func (c *services) Create(service *v1.Service) (result *v1.Service, err error) {
 // Update takes the representation of a service and updates it. Returns the server's representation of the service, and an error, if there is any.
 func (c *services) Update(service *v1.Service) (result *v1.Service, err error) {
 	result = &v1.Service{}
+
+	objectTenant := service.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("services").
 		Name(service.Name).
@@ -160,8 +172,14 @@ func (c *services) Update(service *v1.Service) (result *v1.Service, err error) {
 
 func (c *services) UpdateStatus(service *v1.Service) (result *v1.Service, err error) {
 	result = &v1.Service{}
+
+	objectTenant := service.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("services").
 		Name(service.Name).

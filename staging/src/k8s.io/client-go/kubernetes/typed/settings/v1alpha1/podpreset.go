@@ -129,8 +129,14 @@ func (c *podPresets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a podPreset and creates it.  Returns the server's representation of the podPreset, and an error, if there is any.
 func (c *podPresets) Create(podPreset *v1alpha1.PodPreset) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
+
+	objectTenant := podPreset.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Body(podPreset).
@@ -143,8 +149,14 @@ func (c *podPresets) Create(podPreset *v1alpha1.PodPreset) (result *v1alpha1.Pod
 // Update takes the representation of a podPreset and updates it. Returns the server's representation of the podPreset, and an error, if there is any.
 func (c *podPresets) Update(podPreset *v1alpha1.PodPreset) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
+
+	objectTenant := podPreset.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Name(podPreset.Name).

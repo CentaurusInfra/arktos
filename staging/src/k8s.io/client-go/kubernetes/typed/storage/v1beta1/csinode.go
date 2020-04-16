@@ -115,6 +115,7 @@ func (c *cSINodes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a cSINode and creates it.  Returns the server's representation of the cSINode, and an error, if there is any.
 func (c *cSINodes) Create(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, err error) {
 	result = &v1beta1.CSINode{}
+
 	err = c.client.Post().
 		Resource("csinodes").
 		Body(cSINode).
@@ -127,6 +128,7 @@ func (c *cSINodes) Create(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, er
 // Update takes the representation of a cSINode and updates it. Returns the server's representation of the cSINode, and an error, if there is any.
 func (c *cSINodes) Update(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, err error) {
 	result = &v1beta1.CSINode{}
+
 	err = c.client.Put().
 		Resource("csinodes").
 		Name(cSINode.Name).

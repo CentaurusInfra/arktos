@@ -129,8 +129,14 @@ func (c *actions) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface 
 // Create takes the representation of a action and creates it.  Returns the server's representation of the action, and an error, if there is any.
 func (c *actions) Create(action *v1.Action) (result *v1.Action, err error) {
 	result = &v1.Action{}
+
+	objectTenant := action.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("actions").
 		Body(action).
@@ -143,8 +149,14 @@ func (c *actions) Create(action *v1.Action) (result *v1.Action, err error) {
 // Update takes the representation of a action and updates it. Returns the server's representation of the action, and an error, if there is any.
 func (c *actions) Update(action *v1.Action) (result *v1.Action, err error) {
 	result = &v1.Action{}
+
+	objectTenant := action.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(action.Name).
@@ -160,8 +172,14 @@ func (c *actions) Update(action *v1.Action) (result *v1.Action, err error) {
 
 func (c *actions) UpdateStatus(action *v1.Action) (result *v1.Action, err error) {
 	result = &v1.Action{}
+
+	objectTenant := action.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(action.Name).

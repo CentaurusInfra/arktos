@@ -130,8 +130,14 @@ func (c *horizontalPodAutoscalers) Watch(opts v1.ListOptions) watch.AggregatedWa
 // Create takes the representation of a horizontalPodAutoscaler and creates it.  Returns the server's representation of the horizontalPodAutoscaler, and an error, if there is any.
 func (c *horizontalPodAutoscalers) Create(horizontalPodAutoscaler *v2beta2.HorizontalPodAutoscaler) (result *v2beta2.HorizontalPodAutoscaler, err error) {
 	result = &v2beta2.HorizontalPodAutoscaler{}
+
+	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Body(horizontalPodAutoscaler).
@@ -144,8 +150,14 @@ func (c *horizontalPodAutoscalers) Create(horizontalPodAutoscaler *v2beta2.Horiz
 // Update takes the representation of a horizontalPodAutoscaler and updates it. Returns the server's representation of the horizontalPodAutoscaler, and an error, if there is any.
 func (c *horizontalPodAutoscalers) Update(horizontalPodAutoscaler *v2beta2.HorizontalPodAutoscaler) (result *v2beta2.HorizontalPodAutoscaler, err error) {
 	result = &v2beta2.HorizontalPodAutoscaler{}
+
+	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(horizontalPodAutoscaler.Name).
@@ -161,8 +173,14 @@ func (c *horizontalPodAutoscalers) Update(horizontalPodAutoscaler *v2beta2.Horiz
 
 func (c *horizontalPodAutoscalers) UpdateStatus(horizontalPodAutoscaler *v2beta2.HorizontalPodAutoscaler) (result *v2beta2.HorizontalPodAutoscaler, err error) {
 	result = &v2beta2.HorizontalPodAutoscaler{}
+
+	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(horizontalPodAutoscaler.Name).

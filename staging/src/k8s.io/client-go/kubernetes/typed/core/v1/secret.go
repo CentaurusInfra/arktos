@@ -129,8 +129,14 @@ func (c *secrets) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface 
 // Create takes the representation of a secret and creates it.  Returns the server's representation of the secret, and an error, if there is any.
 func (c *secrets) Create(secret *v1.Secret) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
+
+	objectTenant := secret.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("secrets").
 		Body(secret).
@@ -143,8 +149,14 @@ func (c *secrets) Create(secret *v1.Secret) (result *v1.Secret, err error) {
 // Update takes the representation of a secret and updates it. Returns the server's representation of the secret, and an error, if there is any.
 func (c *secrets) Update(secret *v1.Secret) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
+
+	objectTenant := secret.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("secrets").
 		Name(secret.Name).

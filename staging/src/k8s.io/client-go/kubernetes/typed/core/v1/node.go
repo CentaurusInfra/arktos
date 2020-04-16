@@ -116,6 +116,7 @@ func (c *nodes) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a node and creates it.  Returns the server's representation of the node, and an error, if there is any.
 func (c *nodes) Create(node *v1.Node) (result *v1.Node, err error) {
 	result = &v1.Node{}
+
 	err = c.client.Post().
 		Resource("nodes").
 		Body(node).
@@ -128,6 +129,7 @@ func (c *nodes) Create(node *v1.Node) (result *v1.Node, err error) {
 // Update takes the representation of a node and updates it. Returns the server's representation of the node, and an error, if there is any.
 func (c *nodes) Update(node *v1.Node) (result *v1.Node, err error) {
 	result = &v1.Node{}
+
 	err = c.client.Put().
 		Resource("nodes").
 		Name(node.Name).
@@ -143,6 +145,7 @@ func (c *nodes) Update(node *v1.Node) (result *v1.Node, err error) {
 
 func (c *nodes) UpdateStatus(node *v1.Node) (result *v1.Node, err error) {
 	result = &v1.Node{}
+
 	err = c.client.Put().
 		Resource("nodes").
 		Name(node.Name).

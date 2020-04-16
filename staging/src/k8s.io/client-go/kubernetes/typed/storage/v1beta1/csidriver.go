@@ -115,6 +115,7 @@ func (c *cSIDrivers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a cSIDriver and creates it.  Returns the server's representation of the cSIDriver, and an error, if there is any.
 func (c *cSIDrivers) Create(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDriver, err error) {
 	result = &v1beta1.CSIDriver{}
+
 	err = c.client.Post().
 		Resource("csidrivers").
 		Body(cSIDriver).
@@ -127,6 +128,7 @@ func (c *cSIDrivers) Create(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDr
 // Update takes the representation of a cSIDriver and updates it. Returns the server's representation of the cSIDriver, and an error, if there is any.
 func (c *cSIDrivers) Update(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDriver, err error) {
 	result = &v1beta1.CSIDriver{}
+
 	err = c.client.Put().
 		Resource("csidrivers").
 		Name(cSIDriver.Name).

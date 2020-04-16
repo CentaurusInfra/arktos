@@ -115,6 +115,7 @@ func (c *fischers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a fischer and creates it.  Returns the server's representation of the fischer, and an error, if there is any.
 func (c *fischers) Create(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, err error) {
 	result = &v1alpha1.Fischer{}
+
 	err = c.client.Post().
 		Resource("fischers").
 		Body(fischer).
@@ -127,6 +128,7 @@ func (c *fischers) Create(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, 
 // Update takes the representation of a fischer and updates it. Returns the server's representation of the fischer, and an error, if there is any.
 func (c *fischers) Update(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, err error) {
 	result = &v1alpha1.Fischer{}
+
 	err = c.client.Put().
 		Resource("fischers").
 		Name(fischer.Name).

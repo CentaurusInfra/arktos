@@ -115,6 +115,7 @@ func (c *runtimeClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 // Create takes the representation of a runtimeClass and creates it.  Returns the server's representation of the runtimeClass, and an error, if there is any.
 func (c *runtimeClasses) Create(runtimeClass *v1alpha1.RuntimeClass) (result *v1alpha1.RuntimeClass, err error) {
 	result = &v1alpha1.RuntimeClass{}
+
 	err = c.client.Post().
 		Resource("runtimeclasses").
 		Body(runtimeClass).
@@ -127,6 +128,7 @@ func (c *runtimeClasses) Create(runtimeClass *v1alpha1.RuntimeClass) (result *v1
 // Update takes the representation of a runtimeClass and updates it. Returns the server's representation of the runtimeClass, and an error, if there is any.
 func (c *runtimeClasses) Update(runtimeClass *v1alpha1.RuntimeClass) (result *v1alpha1.RuntimeClass, err error) {
 	result = &v1alpha1.RuntimeClass{}
+
 	err = c.client.Put().
 		Resource("runtimeclasses").
 		Name(runtimeClass.Name).

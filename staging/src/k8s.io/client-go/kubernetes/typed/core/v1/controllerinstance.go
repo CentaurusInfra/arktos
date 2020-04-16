@@ -114,6 +114,7 @@ func (c *controllerInstances) Watch(opts metav1.ListOptions) watch.AggregatedWat
 // Create takes the representation of a controllerInstance and creates it.  Returns the server's representation of the controllerInstance, and an error, if there is any.
 func (c *controllerInstances) Create(controllerInstance *v1.ControllerInstance) (result *v1.ControllerInstance, err error) {
 	result = &v1.ControllerInstance{}
+
 	err = c.client.Post().
 		Resource("controllerinstances").
 		Body(controllerInstance).
@@ -126,6 +127,7 @@ func (c *controllerInstances) Create(controllerInstance *v1.ControllerInstance) 
 // Update takes the representation of a controllerInstance and updates it. Returns the server's representation of the controllerInstance, and an error, if there is any.
 func (c *controllerInstances) Update(controllerInstance *v1.ControllerInstance) (result *v1.ControllerInstance, err error) {
 	result = &v1.ControllerInstance{}
+
 	err = c.client.Put().
 		Resource("controllerinstances").
 		Name(controllerInstance.Name).

@@ -134,8 +134,14 @@ func (c *replicationControllers) Watch(opts metav1.ListOptions) watch.Aggregated
 // Create takes the representation of a replicationController and creates it.  Returns the server's representation of the replicationController, and an error, if there is any.
 func (c *replicationControllers) Create(replicationController *v1.ReplicationController) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
+
+	objectTenant := replicationController.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Body(replicationController).
@@ -148,8 +154,14 @@ func (c *replicationControllers) Create(replicationController *v1.ReplicationCon
 // Update takes the representation of a replicationController and updates it. Returns the server's representation of the replicationController, and an error, if there is any.
 func (c *replicationControllers) Update(replicationController *v1.ReplicationController) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
+
+	objectTenant := replicationController.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationController.Name).
@@ -165,8 +177,14 @@ func (c *replicationControllers) Update(replicationController *v1.ReplicationCon
 
 func (c *replicationControllers) UpdateStatus(replicationController *v1.ReplicationController) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
+
+	objectTenant := replicationController.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationController.Name).
@@ -242,8 +260,14 @@ func (c *replicationControllers) GetScale(replicationControllerName string, opti
 // UpdateScale takes the top resource name and the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *replicationControllers) UpdateScale(replicationControllerName string, scale *autoscalingv1.Scale) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
+
+	objectTenant := scale.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationControllerName).

@@ -130,8 +130,14 @@ func (c *foos) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a foo and creates it.  Returns the server's representation of the foo, and an error, if there is any.
 func (c *foos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	objectTenant := foo.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Body(foo).
@@ -144,8 +150,14 @@ func (c *foos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 // Update takes the representation of a foo and updates it. Returns the server's representation of the foo, and an error, if there is any.
 func (c *foos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	objectTenant := foo.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(foo.Name).
@@ -161,8 +173,14 @@ func (c *foos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 
 func (c *foos) UpdateStatus(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	objectTenant := foo.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(foo.Name).

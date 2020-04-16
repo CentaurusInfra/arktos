@@ -114,6 +114,7 @@ func (c *dataPartitionConfigs) Watch(opts metav1.ListOptions) watch.AggregatedWa
 // Create takes the representation of a dataPartitionConfig and creates it.  Returns the server's representation of the dataPartitionConfig, and an error, if there is any.
 func (c *dataPartitionConfigs) Create(dataPartitionConfig *v1.DataPartitionConfig) (result *v1.DataPartitionConfig, err error) {
 	result = &v1.DataPartitionConfig{}
+
 	err = c.client.Post().
 		Resource("datapartitionconfigs").
 		Body(dataPartitionConfig).
@@ -126,6 +127,7 @@ func (c *dataPartitionConfigs) Create(dataPartitionConfig *v1.DataPartitionConfi
 // Update takes the representation of a dataPartitionConfig and updates it. Returns the server's representation of the dataPartitionConfig, and an error, if there is any.
 func (c *dataPartitionConfigs) Update(dataPartitionConfig *v1.DataPartitionConfig) (result *v1.DataPartitionConfig, err error) {
 	result = &v1.DataPartitionConfig{}
+
 	err = c.client.Put().
 		Resource("datapartitionconfigs").
 		Name(dataPartitionConfig.Name).

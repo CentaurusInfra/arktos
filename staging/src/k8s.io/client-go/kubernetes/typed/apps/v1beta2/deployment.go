@@ -130,8 +130,14 @@ func (c *deployments) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 // Create takes the representation of a deployment and creates it.  Returns the server's representation of the deployment, and an error, if there is any.
 func (c *deployments) Create(deployment *v1beta2.Deployment) (result *v1beta2.Deployment, err error) {
 	result = &v1beta2.Deployment{}
+
+	objectTenant := deployment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("deployments").
 		Body(deployment).
@@ -144,8 +150,14 @@ func (c *deployments) Create(deployment *v1beta2.Deployment) (result *v1beta2.De
 // Update takes the representation of a deployment and updates it. Returns the server's representation of the deployment, and an error, if there is any.
 func (c *deployments) Update(deployment *v1beta2.Deployment) (result *v1beta2.Deployment, err error) {
 	result = &v1beta2.Deployment{}
+
+	objectTenant := deployment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(deployment.Name).
@@ -161,8 +173,14 @@ func (c *deployments) Update(deployment *v1beta2.Deployment) (result *v1beta2.De
 
 func (c *deployments) UpdateStatus(deployment *v1beta2.Deployment) (result *v1beta2.Deployment, err error) {
 	result = &v1beta2.Deployment{}
+
+	objectTenant := deployment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(deployment.Name).

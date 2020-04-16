@@ -130,8 +130,14 @@ func (c *ingresses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a ingress and creates it.  Returns the server's representation of the ingress, and an error, if there is any.
 func (c *ingresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
+
+	objectTenant := ingress.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Body(ingress).
@@ -144,8 +150,14 @@ func (c *ingresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, e
 // Update takes the representation of a ingress and updates it. Returns the server's representation of the ingress, and an error, if there is any.
 func (c *ingresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
+
+	objectTenant := ingress.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(ingress.Name).
@@ -161,8 +173,14 @@ func (c *ingresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, e
 
 func (c *ingresses) UpdateStatus(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
+
+	objectTenant := ingress.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(ingress.Name).

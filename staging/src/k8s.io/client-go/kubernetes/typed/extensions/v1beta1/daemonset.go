@@ -130,8 +130,14 @@ func (c *daemonSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a daemonSet and creates it.  Returns the server's representation of the daemonSet, and an error, if there is any.
 func (c *daemonSets) Create(daemonSet *v1beta1.DaemonSet) (result *v1beta1.DaemonSet, err error) {
 	result = &v1beta1.DaemonSet{}
+
+	objectTenant := daemonSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Body(daemonSet).
@@ -144,8 +150,14 @@ func (c *daemonSets) Create(daemonSet *v1beta1.DaemonSet) (result *v1beta1.Daemo
 // Update takes the representation of a daemonSet and updates it. Returns the server's representation of the daemonSet, and an error, if there is any.
 func (c *daemonSets) Update(daemonSet *v1beta1.DaemonSet) (result *v1beta1.DaemonSet, err error) {
 	result = &v1beta1.DaemonSet{}
+
+	objectTenant := daemonSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(daemonSet.Name).
@@ -161,8 +173,14 @@ func (c *daemonSets) Update(daemonSet *v1beta1.DaemonSet) (result *v1beta1.Daemo
 
 func (c *daemonSets) UpdateStatus(daemonSet *v1beta1.DaemonSet) (result *v1beta1.DaemonSet, err error) {
 	result = &v1beta1.DaemonSet{}
+
+	objectTenant := daemonSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(daemonSet.Name).

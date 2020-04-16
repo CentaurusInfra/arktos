@@ -130,8 +130,14 @@ func (c *podDisruptionBudgets) Watch(opts v1.ListOptions) watch.AggregatedWatchI
 // Create takes the representation of a podDisruptionBudget and creates it.  Returns the server's representation of the podDisruptionBudget, and an error, if there is any.
 func (c *podDisruptionBudgets) Create(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
+
+	objectTenant := podDisruptionBudget.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Body(podDisruptionBudget).
@@ -144,8 +150,14 @@ func (c *podDisruptionBudgets) Create(podDisruptionBudget *v1beta1.PodDisruption
 // Update takes the representation of a podDisruptionBudget and updates it. Returns the server's representation of the podDisruptionBudget, and an error, if there is any.
 func (c *podDisruptionBudgets) Update(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
+
+	objectTenant := podDisruptionBudget.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(podDisruptionBudget.Name).
@@ -161,8 +173,14 @@ func (c *podDisruptionBudgets) Update(podDisruptionBudget *v1beta1.PodDisruption
 
 func (c *podDisruptionBudgets) UpdateStatus(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
+
+	objectTenant := podDisruptionBudget.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(podDisruptionBudget.Name).
