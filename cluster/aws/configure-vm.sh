@@ -63,32 +63,6 @@ ensure-packages() {
   chmod +x safe_format_and_mount
 }
 
-function create-node-pki {
-  echo "Creating node pki files"
-
-  local -r pki_dir="/etc/kubernetes/pki"
-  mkdir -p "${pki_dir}"
-
-  if [[ -z "${CA_CERT_BUNDLE:-}" ]]; then
-    CA_CERT_BUNDLE="${CA_CERT}"
-  fi
-
-  CA_CERT_BUNDLE_PATH="${pki_dir}/ca-certificates.crt"
-  echo "${CA_CERT_BUNDLE}" | base64 --decode > "${CA_CERT_BUNDLE_PATH}"
-
-  if [[ ! -z "${KUBELET_CERT:-}" && ! -z "${KUBELET_KEY:-}" ]]; then
-    KUBELET_CERT_PATH="${pki_dir}/kubelet.crt"
-    echo "${KUBELET_CERT}" | base64 --decode > "${KUBELET_CERT_PATH}"
-
-    KUBELET_KEY_PATH="${pki_dir}/kubelet.key"
-    echo "${KUBELET_KEY}" | base64 --decode > "${KUBELET_KEY_PATH}"
-  fi
-
-  # TODO(mikedanese): remove this when we don't support downgrading to versions
-  # < 1.6.
-  ln -sf "${CA_CERT_BUNDLE_PATH}" /etc/kubernetes/ca.crt
-}
-
 function ensure-install-dir() {
   INSTALL_DIR="/var/cache/kubernetes-install"
   mkdir -p ${INSTALL_DIR}
@@ -235,44 +209,6 @@ apt-get-update() {
   done
 }
 
-# Restart any services that need restarting due to a library upgrade
-# Uses needrestart
-restart-updated-services() {
-  # We default to restarting services, because this is only done as part of an update
-  if [[ "${AUTO_RESTART_SERVICES:-true}" != "true" ]]; then
-    echo "Auto restart of services prevented by AUTO_RESTART_SERVICES=${AUTO_RESTART_SERVICES}"
-    return
-  fi
-  echo "Restarting services with updated libraries (needrestart -r a)"
-  # The pipes make sure that needrestart doesn't think it is running with a TTY
-  # Debian bug #803249; fixed but not necessarily in package repos yet
-  echo "" | needrestart -r a 2>&1 | tee /dev/null
-}
-
-# Reboot the machine if /var/run/reboot-required exists
-reboot-if-required() {
-  if [[ ! -e "/var/run/reboot-required" ]]; then
-    return
-  fi
-
-  echo "Reboot is required (/var/run/reboot-required detected)"
-  if [[ -e "/var/run/reboot-required.pkgs" ]]; then
-    echo "Packages that triggered reboot:"
-    cat /var/run/reboot-required.pkgs
-  fi
-
-  # We default to rebooting the machine because this is only done as part of an update
-  if [[ "${AUTO_REBOOT:-true}" != "true" ]]; then
-    echo "Reboot prevented by AUTO_REBOOT=${AUTO_REBOOT}"
-    return
-  fi
-
-  rm -f /var/run/reboot-required
-  rm -f /var/run/reboot-required.pkgs
-  echo "Triggering reboot"
-  init 6
-}
-
 # Finds the master PD device
 find-master-pd() {
   if ( grep "/mnt/master-pd" /proc/mounts ); then
@@ -339,20 +275,6 @@ mount-master-pd() {
   chgrp -R etcd /mnt/master-pd/var/etcd
 }
 
-# The job of this function is simple, but the basic regular expression syntax makes
-# this difficult to read. What we want to do is convert from [0-9]+B, KB, KiB, MB, etc
-# into [0-9]+, Ki, Mi, Gi, etc.
-# This is done in two steps:
-#   1. Convert from [0-9]+X?i?B into [0-9]X? (X denotes the prefix, ? means the field
-#      is optional.
-#   2. Attach an 'i' to the end of the string if we find a letter.
-# The two step process is needed to handle the edge case in which we want to convert
-# a raw byte count, as the result should be a simple number (e.g. 5B -> 5).
-function convert-bytes-gce-kube() {
-  local -r storage_space=$1
-  echo "${storage_space}" | sed -e 's/^\([0-9]\+\)\([A-Z]\)\?i\?B$/\1\2/g' -e 's/\([A-Z]\)$/\1i/'
-}
-
 function split-commas() {
   echo $1 | tr "," "\n"
 }
@@ -387,19 +309,6 @@ function download-release() {
   done
 
   echo "Running release install script"
-}
-
-function node-docker-opts() {
-  if [[ -n "${EXTRA_DOCKER_OPTS-}" ]]; then
-    DOCKER_OPTS="${DOCKER_OPTS:-} ${EXTRA_DOCKER_OPTS}"
-  fi
-
-  # Decide whether to enable a docker registry mirror. This is taken from
-  # the "kube-env" metadata value.
-  if [[ -n "${DOCKER_REGISTRY_MIRROR_URL:-}" ]]; then
-    echo "Enable docker registry mirror at: ${DOCKER_REGISTRY_MIRROR_URL}"
-    DOCKER_OPTS="${DOCKER_OPTS:-} --registry-mirror=${DOCKER_REGISTRY_MIRROR_URL}"
-  fi
 }
 
 function run-user-script() {
@@ -551,12 +460,21 @@ function setup-kubernetes-master() {
   setup-kubelet
 
   KUBE_MASTER_EIP=`cat /etc/kubernetes/kube_env.yaml | grep MASTER_EIP | cut -d\' -f2`
-  echo "Setting up kubernetes master: version $KUBE_VER EIP: $KUBE_MASTER_EIP."
+  KUBE_API_BIND_PORT=`cat /etc/kubernetes/kube_env.yaml | grep API_BIND_PORT | cut -d\' -f2`
+  KUBE_MASTER_NAME=`cat /etc/kubernetes/kube_env.yaml | grep KUBERNETES_MASTER_NAME | cut -d\' -f2`
+  if [[ -z "$KUBE_MASTER_NAME" ]]; then
+    KUBE_NODE_NAME=`hostname`
+  else
+    KUBE_NODE_NAME=$KUBE_MASTER_NAME
+  fi
+
+  echo "Setting up kubernetes master $KUBE_NODE_NAME: version $KUBE_VER EIP: $KUBE_MASTER_EIP Port: $KUBE_API_BIND_PORT."
 
   # Run kubeadm init - TODO: take pod-network-cidr and networking yaml as a params
-  kubeadm init --pod-network-cidr=10.244.0.0/16 --kubernetes-version=$KUBE_VER --apiserver-cert-extra-sans=$KUBE_MASTER_EIP &> /etc/kubernetes/kubeadm-init-log
+  kubeadm init --node-name=$KUBE_NODE_NAME --apiserver-bind-port=$KUBE_API_BIND_PORT --pod-network-cidr=10.244.0.0/16 --kubernetes-version=$KUBE_VER --apiserver-cert-extra-sans=$KUBE_MASTER_EIP &> /etc/kubernetes/kubeadm-init-log
   if [ $? -eq 0 ]; then
     echo "kubeadm init successful."
+    sed -i "/listen-client-urls=/ s/$/,http:\/\/127.0.0.1:2382/" /etc/kubernetes/manifests/etcd.yaml
     sudo mkdir -p /root/.kube
     sudo cp -i /etc/kubernetes/admin.conf /root/.kube/config
     sudo chown $(id -u):$(id -g) /root/.kube/config
@@ -623,7 +541,6 @@ if [[ -z "${is_push}" ]]; then
     mount-master-pd
     ensure-apparmor-service
   fi
-  create-node-pki
   ensure-docker
   ensure-containerd
   download-release
