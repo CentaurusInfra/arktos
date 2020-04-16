@@ -138,8 +138,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: my-service
-  network: my-netowrk
 spec:
+  network: my-netowrk
   selector:
     app: MyApp
   ports:
@@ -150,23 +150,37 @@ spec:
 
 #### Naming Problem & Solution
 
-The well-known services (kubernetes, kube-dns) present some problem here. Service kubernetes has tenant/namespace(default) scope in current implementation, unable to have multiple kubernets services with each of them in one network due to name conflict. The same applies to does kube-dns.
+Services, as one of the critical network related resource types, are withing the network boundary. There is no such *shared* services of tenant or whole cluster, as both the critical virtual IP address and the associated endpoints (typically leading to pods) are all of same network.
+
+Putting service type in tenant level is out of primacy as it has following flaws:
+1. service IP address has to be the same across all networks, which implies some range of service IP needs to be predefined as shared across networks of a tenant (tenant manageability burden);  
+1. associating network-agnostic service to network-specific endpoints would introduce significant inconsistency;
+1. kubectl query for service has no way to return meaningful content of endpoint.   
+
+The well-known services (default/kubernetes, kube-system/kube-dns) present some problem here. Service kubernetes has tenant/namespace(default) scope in current implementation, unable to have multiple kubernets services with each of them in one network due to name conflict. The same rational applies to kube-dns.
 
 One solution is to making its name colliding space to tenant+namespace+network, which is also breaking and inconsistent with other types (e.g. introducing network as one more parameter to call kubectl get service).
 
 Another solution is to change their name to schema that can uniquely differentiate by combining with network name; this is awkward and breaking in general. 
 
-One plausible remedy is making stringent containment of network to namespaces - resources in one namespace belongs solely to one network; one network can accommodate multiple namespace. This cannot handle kubernetes service problem, as it is of default namespace.
+One plausible remedy is making stringent containment of network to namespaces - resources in one namespace belongs solely to one network; one network can accommodate multiple namespace. This cannot handle the default/kubernetes service problem, as it is of default namespace.
 
 None of the two of above seems ideal. However, the latter, tweaking with the service name, coupled with trick applicable only to kubernetes & kube-dns, seems pragmatic and practical. The idea is suffixing service name with network name, also putting proper alias record in DNS database so that pods are able to look up by kubernetes and kube-dns common name. This approach is not flexible; it works fine with limited number of well-known alias, though.
 
+One of the confusions is ```kubectl get service kubenetes``` would fail with no such resource error - this is breaking, but for good reason - to remind users of service resource being network specific in our system. Pods are able to query DNS for kubernetes without caring about the new name schema as they are network related and able to locate the proper DNS service in the interesting network scope.
+
 #### Service IP
 
-Service IP address is allocated from network-specific pool. Each network might have different range of service IPs.
+Service IP address is allocated from the network-specific pool. 
+
+These are two types of service IP pool:
+
+##### Arktos managed pool
+Service IP addresses are explicitly managed by Arktos for every network. Each network might have different range of service IPs.
 
 Service IPAM is provided through 2 changes:
 
-1. each network object specifies its service ip range;
+1. each network object specifies its service IP range;
 
     ```yaml
     apiVersion: v1
@@ -175,10 +189,29 @@ Service IPAM is provided through 2 changes:
       name: default
     spec:
       type: flat
-      cidr: 10.0.0.1/24
+      service:
+      - cidr: 10.0.0.0/16
+      - cidr: 192.168.0.0/24
     ```
    
 1. on service creation, some mechanism to assign service the proper IP address.
+
+##### Network provider managed pool
+Service IP addresses are implicitly managed by the capable network provider. Network object can have the service IP cidr (or not); at best for information - Arktos delegates IPAM to the external network provider, via network controller invoking the service it provides. 
+
+Network object specifies service ipam as *external* (the default is k8s - managed by Arktos):
+
+    ```yaml
+    apiVersion: v1
+    kind: Network
+    metadata:
+      name: default
+    spec:
+      type: flat
+      service:
+        ipam: external
+      - cidr: 10.0.0.0/16
+    ```
 
 #### Semantic support
 
