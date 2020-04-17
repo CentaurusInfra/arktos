@@ -139,7 +139,7 @@ kind: Service
 metadata:
   name: my-service
 spec:
-  network: my-netowrk
+  network: my-network
   selector:
     app: MyApp
   ports:
