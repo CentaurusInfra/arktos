@@ -338,9 +338,10 @@ func (le *LeaderElector) tryAcquireOrRenew() bool {
 		le.observedRecord = *oldLeaderElectionRecord
 		le.observedTime = le.clock.Now()
 	}
+
+	// No need to check if has the release now since the statement above adds time automatically
 	if len(oldLeaderElectionRecord.HolderIdentity) > 0 &&
-		le.observedTime.Add(le.config.LeaseDuration).After(now.Time) &&
-		!le.IsLeader() {
+		le.observedTime.Add(le.config.LeaseDuration).After(now.Time)  {
 		klog.V(4).Infof("lock is held by %v and has not yet expired", oldLeaderElectionRecord.HolderIdentity)
 		return false
 	}
