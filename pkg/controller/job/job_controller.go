@@ -176,13 +176,13 @@ func (jm *JobController) getPodJobs(pod *v1.Pod) []*batch.Job {
 // resolveControllerRef returns the controller referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching controller
 // of the correct Kind.
-func (jm *JobController) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) *batch.Job {
+func (jm *JobController) resolveControllerRef(tenant, namespace string, controllerRef *metav1.OwnerReference) *batch.Job {
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
 	if controllerRef.Kind != controllerKind.Kind {
 		return nil
 	}
-	job, err := jm.jobLister.Jobs(namespace).Get(controllerRef.Name)
+	job, err := jm.jobLister.JobsWithMultiTenancy(namespace, tenant).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (jm *JobController) addPod(obj interface{}) {
 
 	// If it has a ControllerRef, that's all that matters.
 	if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
-		job := jm.resolveControllerRef(pod.Namespace, controllerRef)
+		job := jm.resolveControllerRef(pod.Tenant, pod.Namespace, controllerRef)
 		if job == nil {
 			return
 		}
@@ -256,14 +256,14 @@ func (jm *JobController) updatePod(old, cur interface{}) {
 	controllerRefChanged := !reflect.DeepEqual(curControllerRef, oldControllerRef)
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
-		if job := jm.resolveControllerRef(oldPod.Namespace, oldControllerRef); job != nil {
+		if job := jm.resolveControllerRef(oldPod.Tenant, oldPod.Namespace, oldControllerRef); job != nil {
 			jm.enqueueController(job, immediate)
 		}
 	}
 
 	// If it has a ControllerRef, that's all that matters.
 	if curControllerRef != nil {
-		job := jm.resolveControllerRef(curPod.Namespace, curControllerRef)
+		job := jm.resolveControllerRef(curPod.Tenant, curPod.Namespace, curControllerRef)
 		if job == nil {
 			return
 		}
@@ -308,7 +308,7 @@ func (jm *JobController) deletePod(obj interface{}) {
 		// No controller should care about orphans being deleted.
 		return
 	}
-	job := jm.resolveControllerRef(pod.Namespace, controllerRef)
+	job := jm.resolveControllerRef(pod.Tenant, pod.Namespace, controllerRef)
 	if job == nil {
 		return
 	}
@@ -411,14 +411,14 @@ func (jm *JobController) getPodsForJob(j *batch.Job) ([]*v1.Pod, error) {
 	}
 	// List all pods to include those that don't match the selector anymore
 	// but have a ControllerRef pointing to this controller.
-	pods, err := jm.podStore.Pods(j.Namespace).List(labels.Everything())
+	pods, err := jm.podStore.PodsWithMultiTenancy(j.Namespace, j.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
 	// If any adoptions are attempted, we should first recheck for deletion
 	// with an uncached quorum read sometime after listing Pods (see #42639).
 	canAdoptFunc := controller.RecheckDeletionTimestamp(func() (metav1.Object, error) {
-		fresh, err := jm.kubeClient.BatchV1().Jobs(j.Namespace).Get(j.Name, metav1.GetOptions{})
+		fresh, err := jm.kubeClient.BatchV1().JobsWithMultiTenancy(j.Namespace, j.Tenant).Get(j.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -440,14 +440,14 @@ func (jm *JobController) syncJob(key string) (bool, error) {
 		klog.V(4).Infof("Finished syncing job %q (%v)", key, time.Since(startTime))
 	}()
 
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return false, err
 	}
-	if len(ns) == 0 || len(name) == 0 {
+	if len(tenant) == 0 || len(namespace) == 0 || len(name) == 0 {
 		return false, fmt.Errorf("invalid job key %q: either namespace or name is missing", key)
 	}
-	sharedJob, err := jm.jobLister.Jobs(ns).Get(name)
+	sharedJob, err := jm.jobLister.JobsWithMultiTenancy(namespace, tenant).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.V(4).Infof("Job has been deleted: %v", key)
@@ -613,7 +613,7 @@ func (jm *JobController) deleteJobPods(job *batch.Job, pods []*v1.Pod, errCh cha
 	for i := int32(0); i < int32(nbPods); i++ {
 		go func(ix int32) {
 			defer wait.Done()
-			if err := jm.podControl.DeletePod(job.Namespace, pods[ix].Name, job); err != nil {
+			if err := jm.podControl.DeletePodWithMultiTenancy(job.Tenant, job.Namespace, pods[ix].Name, job); err != nil {
 				defer utilruntime.HandleError(err)
 				klog.V(2).Infof("Failed to delete %v, job %q/%q deadline exceeded", pods[ix].Name, job.Namespace, job.Name)
 				errCh <- err
@@ -709,7 +709,7 @@ func (jm *JobController) manageJob(activePods []*v1.Pod, succeeded int32, job *b
 		for i := int32(0); i < diff; i++ {
 			go func(ix int32) {
 				defer wait.Done()
-				if err := jm.podControl.DeletePod(job.Namespace, activePods[ix].Name, job); err != nil {
+				if err := jm.podControl.DeletePodWithMultiTenancy(job.Tenant, job.Namespace, activePods[ix].Name, job); err != nil {
 					defer utilruntime.HandleError(err)
 					// Decrement the expected number of deletes because the informer won't observe this deletion
 					klog.V(2).Infof("Failed to delete %v, decrementing expectations for job %q/%q", activePods[ix].Name, job.Namespace, job.Name)
@@ -768,7 +768,7 @@ func (jm *JobController) manageJob(activePods []*v1.Pod, succeeded int32, job *b
 			for i := int32(0); i < batchSize; i++ {
 				go func() {
 					defer wait.Done()
-					err := jm.podControl.CreatePodsWithControllerRef(job.Namespace, &job.Spec.Template, job, metav1.NewControllerRef(job, controllerKind))
+					err := jm.podControl.CreatePodsWithControllerRefWithMultiTenancy(job.Tenant, job.Namespace, &job.Spec.Template, job, metav1.NewControllerRef(job, controllerKind))
 					if err != nil && errors.IsTimeout(err) {
 						// Pod is created but its initialization has timed out.
 						// If the initialization is successful eventually, the
@@ -822,7 +822,7 @@ func (jm *JobController) manageJob(activePods []*v1.Pod, succeeded int32, job *b
 }
 
 func (jm *JobController) updateJobStatus(job *batch.Job) error {
-	jobClient := jm.kubeClient.BatchV1().Jobs(job.Namespace)
+	jobClient := jm.kubeClient.BatchV1().JobsWithMultiTenancy(job.Namespace, job.Tenant)
 	var err error
 	for i := 0; i <= statusUpdateRetries; i = i + 1 {
 		var newJob *batch.Job
