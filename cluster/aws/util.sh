@@ -914,10 +914,17 @@ function start-flannel-ds {
   popd
 }
 
+function start-bridge-networking {
+  :
+}
+
 function start-cluster-networking {
   case "${NETWORK_PROVIDER}" in
     flannel)
     start-flannel-ds
+    ;;
+    bridge)
+    start-bridge-networking
     ;;
   esac
 }
@@ -937,6 +944,8 @@ function kube-up {
   ensure-temp-dir
 
   create-bootstrap-script
+
+  write-controller-config
 
   upload-server-tars
 
@@ -1065,6 +1074,29 @@ function create-bootstrap-script() {
   ) > "${BOOTSTRAP_SCRIPT}"
 }
 
+# copy controller config into a temporary file.
+# Assumed vars
+function write-controller-config {
+  if [[ -f ${KUBE_ROOT}/cmd/workload-controller-manager/config/controllerconfig.json ]]; then
+    cp "${KUBE_ROOT}/cmd/workload-controller-manager/config/controllerconfig.json" "${KUBE_TEMP}/controllerconfig.json"
+  else
+    cat <<EOF >${KUBE_TEMP}/controllerconfig.json
+{
+    "controllers": [
+        {
+            "type":    "node",
+            "workers":     5
+        },
+        {
+            "type":    "replicaset",
+            "workers":    10
+        }
+    ]
+}
+EOF
+  fi
+}
+
 # Starts the master node
 function start-master() {
   # Ensure RUNTIME_CONFIG is populated
@@ -1095,8 +1127,17 @@ function start-master() {
     echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
     echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
     echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
-    echo "MASTER_EIP: $(yaml-quote ${KUBE_MASTER_IP:-})"
+    echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
     echo "__EOF_MASTER_KUBE_ENV_YAML"
+    echo ""
+    echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+    cat ${KUBE_ROOT}/cluster/aws/manifests/workload-controller-manager.manifest
+    echo "__EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+    echo ""
+    echo "cat > workload-controllerconfig.json << __EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
+    cat ${KUBE_TEMP}/controllerconfig.json
+    echo ""
+    echo "__EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
     echo ""
     echo "wget -O bootstrap ${BOOTSTRAP_SCRIPT_URL}"
     echo "chmod +x bootstrap"
@@ -1559,7 +1600,7 @@ function kube-down {
     find-tagged-master-ip
 
     if [[ -n "${KUBE_MASTER_IP:-}" ]]; then
-      echo "Releasing EIP $KUBE_MASTER_IP"
+      echo "Releasing External IP $KUBE_MASTER_IP"
       release-elastic-ip ${KUBE_MASTER_IP}
     fi
 

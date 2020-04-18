@@ -23,9 +23,7 @@ set -o nounset
 set -o pipefail
 
 # Define key path variables.
-KUBE_ROOT="/home/kubernetes"
-KUBE_BINDIR="${KUBE_ROOT}/kubernetes/server/bin"
-
+KUBEMARK_INSTALL="/var/cache/kubernetes-install/kubemark"
 if [[ -z "${CLOUD_PROVIDER}" ]]; then
   CLOUD_PROVIDER="aws"
 fi
@@ -49,9 +47,9 @@ function config-ip-firewall {
 }
 
 function create-dirs {
-	echo "Creating required directories"
-	mkdir -p /etc/kubernetes/manifests
-	mkdir -p /etc/kubernetes/addons
+  echo "Creating required directories"
+  mkdir -p /etc/kubernetes/manifests
+  mkdir -p /etc/kubernetes/addons
 }
 
 # Compute etcd related variables.
@@ -64,6 +62,18 @@ function compute-etcd-variables {
 		# though our setup scripts.
 		ETCD_QUOTA_BYTES=" --quota-backend-bytes=4294967296 "
 	fi
+}
+
+# Computes command line arguments to be passed to etcd-events.
+function compute-etcd-events-params {
+       local params="${ETCD_TEST_ARGS:-}"
+       params+=" --name=etcd-$(hostname -s)"
+       params+=" --listen-peer-urls=http://127.0.0.1:2381"
+       params+=" --advertise-client-urls=http://127.0.0.1:4002"
+       params+=" --listen-client-urls=http://0.0.0.0:4002"
+       params+=" --data-dir=/var/etcd/data-events"
+       params+=" ${ETCD_QUOTA_BYTES}"
+       echo "${params}"
 }
 
 # Formats the given device ($1) if needed and mounts it at given mount point
@@ -121,8 +131,8 @@ function mount-pd() {
 
 function create-addonmanager-kubeconfig {
   echo "Creating addonmanager kubeconfig file"
-  mkdir -p "${KUBE_ROOT}/k8s_auth_data/addon-manager"
-  cat <<EOF >"${KUBE_ROOT}/k8s_auth_data/addon-manager/kubeconfig"
+  mkdir -p "${KUBEMARK_INSTALL}/addon-manager"
+  cat <<EOF >"${KUBEMARK_INSTALL}/addon-manager/kubeconfig"
 apiVersion: v1
 kind: Config
 users:
@@ -158,7 +168,7 @@ function prepare-log-file {
 # $1: addon category under /etc/kubernetes
 # $2: manifest source dir
 function setup-addon-manifests {
-  local -r src_dir="${KUBE_ROOT}/$2"
+  local -r src_dir="${KUBEMARK_INSTALL}/$2"
   local -r dst_dir="/etc/kubernetes/$1/$2"
 
   if [[ ! -d "${dst_dir}" ]]; then
@@ -175,171 +185,9 @@ function setup-addon-manifests {
   chmod 644 "${dst_dir}"/*
 }
 
-# Write the config for the audit policy.
-# Note: This duplicates the function in cluster/gce/gci/configure-helper.sh.
-# TODO: Get rid of this function when #53321 is fixed.
-function create-master-audit-policy {
-  local -r path="${1}"
-  local -r policy="${2:-}"
-
-  if [[ -n "${policy}" ]]; then
-    echo "${policy}" > "${path}"
-    return
-  fi
-
-  # Known api groups
-  local -r known_apis='
-      - group: "" # core
-      - group: "admissionregistration.k8s.io"
-      - group: "apiextensions.k8s.io"
-      - group: "apiregistration.k8s.io"
-      - group: "apps"
-      - group: "authentication.k8s.io"
-      - group: "authorization.k8s.io"
-      - group: "autoscaling"
-      - group: "batch"
-      - group: "certificates.k8s.io"
-      - group: "extensions"
-      - group: "metrics"
-      - group: "networking.k8s.io"
-      - group: "policy"
-      - group: "rbac.authorization.k8s.io"
-      - group: "settings.k8s.io"
-      - group: "storage.k8s.io"'
-
-  cat <<EOF >"${path}"
-apiVersion: audit.k8s.io/v1
-kind: Policy
-rules:
-  # The following requests were manually identified as high-volume and low-risk,
-  # so drop them.
-  - level: None
-    users: ["system:kube-proxy"]
-    verbs: ["watch"]
-    resources:
-      - group: "" # core
-        resources: ["endpoints", "services", "services/status"]
-  - level: None
-    # Ingress controller reads 'configmaps/ingress-uid' through the unsecured port.
-    # TODO(#46983): Change this to the ingress controller service account.
-    users: ["system:unsecured"]
-    namespaces: ["kube-system"]
-    verbs: ["get"]
-    resources:
-      - group: "" # core
-        resources: ["configmaps"]
-  - level: None
-    users: ["kubelet"] # legacy kubelet identity
-    verbs: ["get"]
-    resources:
-      - group: "" # core
-        resources: ["nodes", "nodes/status"]
-  - level: None
-    userGroups: ["system:nodes"]
-    verbs: ["get"]
-    resources:
-      - group: "" # core
-        resources: ["nodes", "nodes/status"]
-  - level: None
-    users:
-      - system:kube-controller-manager
-      - system:kube-scheduler
-      - system:serviceaccount:kube-system:endpoint-controller
-    verbs: ["get", "update"]
-    namespaces: ["kube-system"]
-    resources:
-      - group: "" # core
-        resources: ["endpoints"]
-  - level: None
-    users: ["system:apiserver"]
-    verbs: ["get"]
-    resources:
-      - group: "" # core
-        resources: ["namespaces", "namespaces/status", "namespaces/finalize"]
-  # Don't log HPA fetching metrics.
-  - level: None
-    users:
-      - system:kube-controller-manager
-    verbs: ["get", "list"]
-    resources:
-      - group: "metrics"
-  # Don't log these read-only URLs.
-  - level: None
-    nonResourceURLs:
-      - /healthz*
-      - /version
-      - /swagger*
-  # Don't log events requests.
-  - level: None
-    resources:
-      - group: "" # core
-        resources: ["events"]
-  # node and pod status calls from nodes are high-volume and can be large, don't log responses for expected updates from nodes
-  - level: Request
-    users: ["kubelet", "system:node-problem-detector", "system:serviceaccount:kube-system:node-problem-detector"]
-    verbs: ["update","patch"]
-    resources:
-      - group: "" # core
-        resources: ["nodes/status", "pods/status"]
-    omitStages:
-      - "RequestReceived"
-  - level: Request
-    userGroups: ["system:nodes"]
-    verbs: ["update","patch"]
-    resources:
-      - group: "" # core
-        resources: ["nodes/status", "pods/status"]
-    omitStages:
-      - "RequestReceived"
-  # deletecollection calls can be large, don't log responses for expected namespace deletions
-  - level: Request
-    users: ["system:serviceaccount:kube-system:namespace-controller"]
-    verbs: ["deletecollection"]
-    omitStages:
-      - "RequestReceived"
-  # Secrets, ConfigMaps, and TokenReviews can contain sensitive & binary data,
-  # so only log at the Metadata level.
-  - level: Metadata
-    resources:
-      - group: "" # core
-        resources: ["secrets", "configmaps"]
-      - group: authentication.k8s.io
-        resources: ["tokenreviews"]
-    omitStages:
-      - "RequestReceived"
-  # Get repsonses can be large; skip them.
-  - level: Request
-    verbs: ["get", "list", "watch"]
-    resources: ${known_apis}
-    omitStages:
-      - "RequestReceived"
-  # Default level for known APIs
-  - level: RequestResponse
-    resources: ${known_apis}
-    omitStages:
-      - "RequestReceived"
-  # Default level for all other requests.
-  - level: Metadata
-    omitStages:
-      - "RequestReceived"
-EOF
-}
-
-# Computes command line arguments to be passed to etcd-events.
-function compute-etcd-events-params {
-	local params="${ETCD_TEST_ARGS:-}"
-	params+=" --name=etcd-$(hostname -s)"
-	params+=" --listen-peer-urls=http://127.0.0.1:2381"
-	params+=" --advertise-client-urls=http://127.0.0.1:4002"
-	params+=" --listen-client-urls=http://0.0.0.0:4002"
-	params+=" --data-dir=/var/etcd/data-events"
-	params+=" ${ETCD_QUOTA_BYTES}"
-	echo "${params}"
-}
-
 # Computes command line arguments to be passed to addon-manager.
 function compute-kube-addon-manager-params {
-	echo ""
+  echo ""
 }
 
 # Start a kubernetes master component '$1' which can be any of the following:
@@ -355,7 +203,7 @@ function start-kubemaster-component() {
 	echo "Start master component $1"
 	local -r component=$1
 	prepare-log-file /var/log/"${component}".log
-	local -r src_file="${KUBE_ROOT}/${component}.yaml"
+	local -r src_file="${KUBEMARK_INSTALL}/${component}.yaml"
 	local -r params=$("compute-${component}-params")
 
 	# Evaluate variables.
@@ -377,13 +225,16 @@ function start-kubemaster-component() {
 echo "Start to configure master instance for kubemark"
 
 # Extract files from the server tar and setup master env variables.
-cd "${KUBE_ROOT}"
-source "${KUBE_ROOT}/kubemark-master-env.sh"
+cd "${KUBEMARK_INSTALL}"
+source "${KUBEMARK_INSTALL}/kubemark-master-env.sh"
 
 # Setup IP firewall rules, required directory structure and etcd config.
 config-ip-firewall
 create-dirs
 compute-etcd-variables
+
+ADDON_MANAGER_TOKEN=$(cat /etc/srv/kubernetes/known_tokens.csv | grep addon-manager | awk -F , '{print $1}')
+create-addonmanager-kubeconfig
 
 # Mount master PD for event-etcd (if required) and create symbolic links to it.
 {

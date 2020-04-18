@@ -15,6 +15,7 @@
 # limitations under the License.
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/../../..
+KUBEMARK_INSTALL="/var/cache/kubernetes-install/kubemark"
 
 source "${KUBE_ROOT}/test/kubemark/common/util.sh"
 
@@ -105,6 +106,7 @@ function create-kubemark-master {
     export KUBE_CREATE_NODES=false
     export LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
     export KUBE_API_BIND_PORT=443
+    export NETWORK_PROVIDER="bridge"
 
     # Disable all addons. They are running outside of the kubemark cluster.
     export KUBE_ENABLE_CLUSTER_AUTOSCALER=false
@@ -200,22 +202,22 @@ function copy-resource-files-to-master {
     "${KUBEMARK_DIRECTORY}/configure-kubectl.sh" \
     "${RESOURCE_DIRECTORY}/manifests/etcd-events.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/kube-addon-manager.yaml" \
-    "kubernetes@${MASTER_NAME}":/home/kubernetes/
+    "kubernetes@${MASTER_NAME}":${KUBEMARK_INSTALL}
   copy-files \
     "${RESOURCE_DIRECTORY}/manifests/addons/kubemark-rbac-bindings/cluster-autoscaler-binding.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/addons/kubemark-rbac-bindings/heapster-binding.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/addons/kubemark-rbac-bindings/kubecfg-binding.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/addons/kubemark-rbac-bindings/npd-binding.yaml" \
-    "kubernetes@${MASTER_NAME}":/home/kubernetes/kubemark-rbac-bindings/
+    "kubernetes@${MASTER_NAME}":${KUBEMARK_INSTALL}/kubemark-rbac-bindings/
   echo "Copied resource manifests to master."
 }
 
 function create-kubemark-resources {
   create-master-env-file
-  CREATE_DIR_CMD="sudo mkdir -p /home/kubernetes/kubemark-rbac-bindings"
+  CREATE_DIR_CMD="sudo mkdir -p ${KUBEMARK_INSTALL}/kubemark-rbac-bindings"
   execute-cmd-on-master-with-retries "${CREATE_DIR_CMD}" 3
   copy-resource-files-to-master
-  MASTER_STARTUP_CMD="sudo bash -c 'export CLOUD_PROVIDER=${CLOUD_PROVIDER} && /home/kubernetes/start-kubemark-master-aws.sh'"
+  MASTER_STARTUP_CMD="sudo bash -c 'export CLOUD_PROVIDER=${CLOUD_PROVIDER} && ${KUBEMARK_INSTALL}/start-kubemark-master-aws.sh'"
   execute-cmd-on-master-with-retries "${MASTER_STARTUP_CMD}"
   echo "The master has started and is now live."
 
