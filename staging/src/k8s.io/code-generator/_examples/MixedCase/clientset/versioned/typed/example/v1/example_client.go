@@ -23,9 +23,11 @@ import (
 	"time"
 
 	rand "k8s.io/apimachinery/pkg/util/rand"
+	apiserverupdate "k8s.io/client-go/apiserverupdate"
 	rest "k8s.io/client-go/rest"
 	v1 "k8s.io/code-generator/_examples/MixedCase/apis/example/v1"
 	"k8s.io/code-generator/_examples/MixedCase/clientset/versioned/scheme"
+	klog "k8s.io/klog"
 )
 
 type ExampleV1Interface interface {
@@ -38,6 +40,7 @@ type ExampleV1Interface interface {
 // ExampleV1Client is used to interact with features provided by the example.crd.code-generator.k8s.io group.
 type ExampleV1Client struct {
 	restClients []rest.Interface
+	configs     *rest.Config
 }
 
 func (c *ExampleV1Client) ClusterTestTypes() ClusterTestTypeInterface {
@@ -68,7 +71,14 @@ func NewForConfig(c *rest.Config) (*ExampleV1Client, error) {
 		clients[i] = client
 	}
 
-	return &ExampleV1Client{clients}, nil
+	obj := &ExampleV1Client{
+		restClients: clients,
+		configs:     configs,
+	}
+
+	obj.run()
+
+	return obj, nil
 }
 
 // NewForConfigOrDie creates a new ExampleV1Client for the given config and
@@ -84,7 +94,7 @@ func NewForConfigOrDie(c *rest.Config) *ExampleV1Client {
 // New creates a new ExampleV1Client for the given RESTClient.
 func New(c rest.Interface) *ExampleV1Client {
 	clients := []rest.Interface{c}
-	return &ExampleV1Client{clients}
+	return &ExampleV1Client{restClients: clients}
 }
 
 func setConfigDefaults(configs *rest.Config) error {
@@ -131,4 +141,31 @@ func (c *ExampleV1Client) RESTClients() []rest.Interface {
 	}
 
 	return c.restClients
+}
+
+// run watch api server instance updates and recreate connections to new set of api servers
+func (c *ExampleV1Client) run() {
+	go func(c *ExampleV1Client) {
+		member := c.configs.WatchUpdate()
+		watcherForUpdateComplete := apiserverupdate.GetClientSetsWatcher()
+		watcherForUpdateComplete.AddWatcher()
+
+		for {
+			select {
+			case <-member.Read:
+				// create new client
+				clients := make([]rest.Interface, len(c.configs.GetAllConfigs()))
+				for i, config := range c.configs.GetAllConfigs() {
+					client, err := rest.RESTClientFor(config)
+					if err != nil {
+						klog.Fatalf("Cannot create rest client for [%+v], err %v", config, err)
+						return
+					}
+					clients[i] = client
+				}
+				c.restClients = clients
+				watcherForUpdateComplete.NotifyDone()
+			}
+		}
+	}(c)
 }
