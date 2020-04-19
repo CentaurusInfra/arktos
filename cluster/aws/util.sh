@@ -564,8 +564,14 @@ function ensure-master-ip {
 # Sets DHCP_OPTION_SET_ID
 function create-dhcp-option-set () {
   if [[ -z ${DHCP_OPTION_SET_ID-} ]]; then
-    DHCP_OPTION_SET_ID=$($AWS_CMD describe-dhcp-options --filters Name=tag-key,Values=KubernetesCluster --query DhcpOptions[0].DhcpOptionsId)
-    echo "Using pre-existing, user-specified DHCP options $DHCP_OPTION_SET_ID"
+    local k8s_dhcp_opt_set=$($AWS_CMD describe-dhcp-options --filters Name=tag-key,Values=KubernetesCluster --query DhcpOptions[0].DhcpOptionsId)
+    if [[ ${k8s_dhcp_opt_set} == "None" ]]; then
+      echo "No KubernetesCluster DHCP options found"
+      DHCP_OPTION_SET_ID=""
+    else
+      DHCP_OPTION_SET_ID=${k8s_dhcp_opt_set}
+      echo "Using pre-existing KubernetesCluster DHCP options $DHCP_OPTION_SET_ID"
+    fi
   else
     echo "Using pre-existing, user-specified DHCP options $DHCP_OPTION_SET_ID"
   fi
