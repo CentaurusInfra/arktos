@@ -4,7 +4,7 @@ Use cases for a Arktos multi-node dev cluster on AWS are to test features in clo
 
 ## Prerequisites
 
-1. You will need an AWS account, and awscli v1 configured in your bash profile. Please refer to AWS CLI configuration documentation.
+1. You will need an AWS account, and awscli configured in your bash profile. Please refer to AWS CLI configuration documentation.
 
 1. You will need python, golang, docker, and build-essential installed.
 
@@ -24,11 +24,13 @@ source $PWD/aws_build_version && sudo -E make quick-release
 ```bash
 source $PWD/aws_kube_params.inc && ./cluster/kube-up.sh
 ```
+kube-up script displays the admin cluster details upon successful deployment.
 
 5. To start kubemark master, run the following:
 ```bash
 source $PWD/aws_kube_params.inc && ./test/kubemark/start-kubemark.sh
 ```
+start-kubemark script will print the kubemark master details upon successful deployment. Note down the External IP of kubemark master node.
 
 ## Using the admin cluster and kubemark cluster
 
@@ -45,7 +47,7 @@ source $PWD/aws_kube_params.inc && ./test/kubemark/start-kubemark.sh
 ## Running kubemark perf tests
 ```bash
 root@node:~/go/src/k8s.io# git clone https://github.com/kubernetes/perf-tests
-root@node:~/go/src/k8s.io# MASTER_NAME=<Kubemark_Master_Name> MASTER_IP=<Kubemark_Master_External_IP> ./perf-tests/run-e2e.sh cluster-loader2 --provider=kubemark --report-dir=/tmp/perflogs/ --kubeconfig=<Repo_Root>/test/kubemark/resources/kubeconfig.kubemark --testconfig=testing/load/config.yaml
+root@node:~/go/src/k8s.io# MASTER_IP=<Kubemark_Master_External_IP> ./perf-tests/run-e2e.sh cluster-loader2 --provider=kubemark --report-dir=/tmp/perflogs/ --kubeconfig=<Repo_Root>/test/kubemark/resources/kubeconfig.kubemark --testconfig=testing/load/config.yaml
 ```
 
 ## Arktos cluster tear-down
