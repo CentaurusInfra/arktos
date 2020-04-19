@@ -230,7 +230,7 @@ function kube::common::generate_certs {
     kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
 
     # serving cert for kube-apiserver
-    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${PUBLIC_IP:-}"
+    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
 
     # Create client certs signed with client-ca, given id, given CN and a number of groups
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' controller system:kube-controller-manager
@@ -249,7 +249,6 @@ function kube::common::generate_certs {
 }
 
 function kube::common::start_apiserver()  {
-
     CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
     
     #Increment ports to enable running muliple kube-apiserver simultaneously
@@ -672,9 +671,7 @@ EOF
       done
     fi >>/tmp/kube-proxy.yaml
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
-        kube::common::generate_kubeproxy_certs
-    fi
+    kube::common::generate_kubeproxy_certs
 
     # shellcheck disable=SC2024
     sudo "${GO_OUT}/hyperkube" kube-proxy \
@@ -685,15 +682,19 @@ EOF
 }
 
 function kube::common::generate_kubelet_certs {
-    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
+  if [[ "${REUSE_CERTS}" != true ]]; then
+        CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+        kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
+        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
+  fi
 }
 
 function kube::common::generate_kubeproxy_certs {
-    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
+    if [[ "${REUSE_CERTS}" != true ]]; then
+        CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+        kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
+        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
+    fi
 }
 
 

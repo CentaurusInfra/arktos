@@ -346,16 +346,6 @@ function set_service_accounts {
     fi
 }
 
-function generate_kubeproxy_certs {
-    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
-}
-
-function generate_kubelet_certs {
-    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
-}
-
 function start_cloud_controller_manager {
     if [ -z "${CLOUD_CONFIG}" ]; then
       echo "CLOUD_CONFIG cannot be empty!"
@@ -481,9 +471,7 @@ function start_kubelet {
       ${KUBELET_FLAGS}
     )
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
-        generate_kubelet_certs
-    fi
+    kube::common::generate_kubelet_certs
 
     # shellcheck disable=SC2024
     sudo -E "${GO_OUT}/hyperkube" kubelet "${all_kubelet_flags[@]}" >"${KUBELET_LOG}" 2>&1 &
@@ -519,7 +507,7 @@ EOF
     fi >>/tmp/kube-proxy.yaml
 
     if [[ "${REUSE_CERTS}" != true ]]; then
-        generate_kubeproxy_certs
+        kube::common::generate_kubeproxy_certs
     fi
 
     # shellcheck disable=SC2024

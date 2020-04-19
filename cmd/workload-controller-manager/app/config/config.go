@@ -18,7 +18,6 @@ package config
 
 import (
 	apiserver "k8s.io/apiserver/pkg/server"
-	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 )
@@ -35,9 +34,6 @@ type Config struct {
 	InsecureServing *apiserver.DeprecatedInsecureServingInfo
 	Authentication  apiserver.AuthenticationInfo
 	Authorization   apiserver.AuthorizationInfo
-
-	// the general kube client
-	Client *clientset.Clientset
 
 	// the rest config for the master
 	ControllerManagerConfig *restclient.Config

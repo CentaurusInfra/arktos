@@ -32,7 +32,6 @@ import (
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
-	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	controllerManagerConfig "k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
 	"k8s.io/kubernetes/pkg/master/ports"
@@ -93,16 +92,13 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 	}
 
 	agConfig := restclient.NewAggregatedConfig(configs...)
-	client, err := clientset.NewForConfig(agConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &controllerManagerConfig.Config{
-		Client:                  client,
 		ControllerManagerConfig: agConfig,
 		ControllerTypeConfig:    controllerconfig,
-		//EventRecorder:        eventRecorder,
 	}
 
 	klog.Infof("Current workload controller port %d", workloadControllerPort)
@@ -120,12 +116,3 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 
 	return c, nil
 }
-
-/*
-func createRecorder(kubeClient clientset.Interface, userAgent string) record.EventRecorder {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-	return eventBroadcaster.NewRecorder(clientgokubescheme.Scheme, v1.EventSource{Component: userAgent})
-}
-*/
