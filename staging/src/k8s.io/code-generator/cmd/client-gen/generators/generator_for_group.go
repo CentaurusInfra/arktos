@@ -99,11 +99,13 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 		"Version":                        namer.IC(g.version),
 		"types":                          g.types,
 		"apiPath":                        apiPath(g.group),
+		"klogFatal":                      c.Universe.Function(types.Name{Package: "k8s.io/klog", Name: "Fatalf"}),
 		"ranSeed":                        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/rand", Name: "Seed"}),
 		"ranRange":                       c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/rand", Name: "IntnRange"}),
 		"schemaGroupVersion":             c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime/schema", Name: "GroupVersion"}),
 		"runtimeAPIVersionInternal":      c.Universe.Variable(types.Name{Package: "k8s.io/apimachinery/pkg/runtime", Name: "APIVersionInternal"}),
 		"restConfig":                     c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
+		"getClientSetsWatcher":           c.Universe.Function(types.Name{Package: "k8s.io/client-go/apiserverupdate", Name: "GetClientSetsWatcher"}),
 		"restDefaultKubernetesUserAgent": c.Universe.Function(types.Name{Package: "k8s.io/client-go/rest", Name: "DefaultKubernetesUserAgent"}),
 		"restRESTClientInterface":        c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
 		"restRESTClientFor":              c.Universe.Function(types.Name{Package: "k8s.io/client-go/rest", Name: "RESTClientFor"}),
@@ -149,6 +151,7 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 	sw.Do(getRESTClient, m)
 	sw.Do(getRESTClients, m)
 
+	sw.Do(run, m)
 	return sw.Error()
 }
 
@@ -165,6 +168,7 @@ var groupClientTemplate = `
 // $.GroupGoName$$.Version$Client is used to interact with features provided by the $.groupName$ group.
 type $.GroupGoName$$.Version$Client struct {
 	restClients []$.restRESTClientInterface|raw$
+	configs *$.restConfig|raw$
 }
 `
 
@@ -211,7 +215,14 @@ func NewForConfig(c *$.restConfig|raw$) (*$.GroupGoName$$.Version$Client, error)
 		clients[i] = client
 	}
 
-	return &$.GroupGoName$$.Version$Client{clients}, nil
+	obj := &$.GroupGoName$$.Version$Client{
+		restClients: clients,
+		configs:     configs,
+	}
+
+	obj.run()
+
+	return obj, nil
 }
 `
 
@@ -265,7 +276,7 @@ var newClientForRESTClientTemplate = `
 // New creates a new $.GroupGoName$$.Version$Client for the given RESTClient.
 func New(c $.restRESTClientInterface|raw$) *$.GroupGoName$$.Version$Client {
 	clients := []rest.Interface{c}
-	return &$.GroupGoName$$.Version$Client{clients}
+	return &$.GroupGoName$$.Version$Client{restClients: clients}
 }
 `
 
@@ -309,5 +320,34 @@ func setConfigDefaults(configs *$.restConfig|raw$) error {
 	}
 
 	return nil
+}
+`
+
+var run = `
+// run watch api server instance updates and recreate connections to new set of api servers
+func (c *$.GroupGoName$$.Version$Client) run() {
+	go func(c *$.GroupGoName$$.Version$Client) {
+		member := c.configs.WatchUpdate()
+		watcherForUpdateComplete := $.getClientSetsWatcher|raw$()
+		watcherForUpdateComplete.AddWatcher()
+
+		for {
+			select {
+			case <-member.Read:
+				// create new client
+				clients := make([]$.restRESTClientInterface|raw$, len(c.configs.GetAllConfigs()))
+				for i, config := range c.configs.GetAllConfigs() {
+					client, err := $.restRESTClientFor|raw$(config)
+					if err != nil {
+						$.klogFatal|raw$("Cannot create rest client for [%+v], err %v", config, err)
+						return
+					}
+					clients[i] = client
+				}
+				c.restClients = clients
+				watcherForUpdateComplete.NotifyDone()
+			}
+		}
+	}(c)
 }
 `

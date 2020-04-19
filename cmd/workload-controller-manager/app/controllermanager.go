@@ -19,6 +19,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/datapartition"
 	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment"
 	"net/http"
@@ -131,6 +132,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	}
 
 	reportHealthIntervalInSecond := c.ControllerTypeConfig.GetReportHealthIntervalInSecond()
+	startAPIServerConfigManager(controllerContext)
 	startControllerInstanceManager(controllerContext)
 	replicatSetWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("replicaset")
 	if isOK {
@@ -316,6 +318,17 @@ func startControllerInstanceManager(ctx ControllerContext) (bool, error) {
 		ctx.InformerFactory.Core().V1().ControllerInstances(),
 		ctx.ClientBuilder.ClientOrDie("controller-instance-manager"),
 		ctx.ControllerInstanceUpdateChGrp).Run(ctx.Stop)
+
+	return true, nil
+}
+
+func startAPIServerConfigManager(ctx ControllerContext) (bool, error) {
+	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "endpoints"}] {
+		return false, nil
+	}
+
+	go datapartition.NewAPIServerConfigManagerWithInformer(ctx.InformerFactory.Core().V1().Endpoints(),
+		ctx.ClientBuilder.ClientOrDie("api-server-configuration-manager")).Run(ctx.Stop)
 
 	return true, nil
 }

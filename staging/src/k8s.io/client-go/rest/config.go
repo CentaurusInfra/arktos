@@ -21,13 +21,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/grafov/bcast"
 	"io/ioutil"
+	"k8s.io/client-go/apiserverupdate"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	gruntime "runtime"
 	"strings"
+	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,10 +59,13 @@ type AggregatedConfig interface {
 	GetAllConfigs()
 	AddConfig(*KubeConfig)
 	ToString()
+	WatchUpdate() *bcast.Member
 }
 
 type Config struct {
-	config []*KubeConfig
+	config                []*KubeConfig
+	downstreamNotifyChGrp *bcast.Group
+	mux                   sync.RWMutex
 }
 
 func NewAggregatedConfig(configs ...*KubeConfig) *Config {
@@ -67,8 +73,27 @@ func NewAggregatedConfig(configs ...*KubeConfig) *Config {
 	for i, config := range configs {
 		ag[i] = config
 	}
+	c := &Config{
+		config: ag,
+	}
 
-	return &Config{config: ag}
+	// watch kube config update
+	go func() {
+		upStreamConfigUpdateCh := apiserverupdate.GetAPIServerConfigUpdateChGrp().Join()
+		for {
+			select {
+			case <-upStreamConfigUpdateCh.Read:
+				c.updateConfig()
+				if c.downstreamNotifyChGrp != nil {
+					c.downstreamNotifyChGrp.Send("Config update completed")
+				} else {
+					klog.V(6).Info("Config does not have downstream listener")
+				}
+			}
+		}
+	}()
+
+	return c
 }
 
 // For test purpose only
@@ -78,14 +103,21 @@ func CreateEmptyConfig() *Config {
 }
 
 func (ag *Config) AddConfig(config *KubeConfig) {
+	ag.mux.Lock()
 	ag.config = append(ag.config, config)
+	ag.mux.Unlock()
 }
 
 func (ag *Config) GetAllConfigs() []*KubeConfig {
+	ag.mux.RLock()
+	defer ag.mux.RUnlock()
 	return ag.config
 }
 
 func (ag *Config) GetConfig() *KubeConfig {
+	ag.mux.RLock()
+	defer ag.mux.RUnlock()
+
 	max := len(ag.config)
 	switch max {
 	case 0:
@@ -100,10 +132,30 @@ func (ag *Config) GetConfig() *KubeConfig {
 }
 
 func (ag *Config) GetConfigInPlace(pos int) *KubeConfig {
+	ag.mux.RLock()
+	defer ag.mux.RUnlock()
 	if pos >= 0 && len(ag.config) > pos {
 		return ag.config[pos]
 	}
 	return nil
+}
+
+// WatchUpdate returns a bcast.Member pointer that are used to watch
+// KubeConfig update
+func (ag *Config) WatchUpdate() *bcast.Member {
+	if ag.downstreamNotifyChGrp != nil {
+		return ag.downstreamNotifyChGrp.Join()
+	}
+
+	ag.mux.RLock()
+	defer ag.mux.RUnlock()
+	if ag.downstreamNotifyChGrp != nil {
+		return ag.downstreamNotifyChGrp.Join()
+	}
+
+	ag.downstreamNotifyChGrp = bcast.NewGroup()
+	go ag.downstreamNotifyChGrp.Broadcast(0)
+	return ag.downstreamNotifyChGrp.Join()
 }
 
 func (ag *Config) ToString() string {
@@ -112,6 +164,44 @@ func (ag *Config) ToString() string {
 		text += fmt.Sprintf("%#v", kubeConfig)
 	}
 	return text
+}
+
+// TODO - check overrides
+func (ag *Config) updateConfig() {
+	ag.mux.Lock()
+	defer ag.mux.Unlock()
+
+	// get all arg's from first config
+	if len(ag.config) == 0 {
+		klog.Fatal("Config len is 0. Not able to get original config.")
+	}
+
+	newApiServers := apiserverupdate.GetAPIServerConfig()
+	// make a copy - preventing server updates in the middle of config update
+	copyOfServers := *newApiServers
+	numOfServers := len(copyOfServers)
+
+	// remove extra config
+	if len(ag.config) > numOfServers {
+		ag.config = ag.config[:numOfServers]
+	}
+
+	// add additional config
+	if len(ag.config) < numOfServers {
+		for i := len(ag.config); i < numOfServers; i++ {
+			configCopy := *ag.config[0]
+			ag.config = append(ag.config, &configCopy)
+		}
+	}
+
+	// assign new hosts
+	i := 0
+	klog.V(6).Infof("Len of new server %d; len of new config %d", numOfServers, len(ag.config))
+	for _, ss := range copyOfServers {
+		ag.config[i].Host = fmt.Sprintf("%s://%s:%d/", ss.Ports[0].Name, ss.Addresses[0].IP, ss.Ports[0].Port)
+		klog.V(6).Infof("New host %s, service group id %s", ag.config[i].Host, ss.ServiceGroupId)
+		i++
+	}
 }
 
 // kubeConfig holds the common attributes that can be passed to a Kubernetes client on
