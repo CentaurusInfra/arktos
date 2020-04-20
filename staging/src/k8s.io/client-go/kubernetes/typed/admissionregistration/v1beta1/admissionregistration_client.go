@@ -146,22 +146,19 @@ func (c *AdmissionregistrationV1beta1Client) run() {
 		watcherForUpdateComplete := apiserverupdate.GetClientSetsWatcher()
 		watcherForUpdateComplete.AddWatcher()
 
-		for {
-			select {
-			case <-member.Read:
-				// create new client
-				clients := make([]rest.Interface, len(c.configs.GetAllConfigs()))
-				for i, config := range c.configs.GetAllConfigs() {
-					client, err := rest.RESTClientFor(config)
-					if err != nil {
-						klog.Fatalf("Cannot create rest client for [%+v], err %v", config, err)
-						return
-					}
-					clients[i] = client
+		for range member.Read {
+			// create new client
+			clients := make([]rest.Interface, len(c.configs.GetAllConfigs()))
+			for i, config := range c.configs.GetAllConfigs() {
+				client, err := rest.RESTClientFor(config)
+				if err != nil {
+					klog.Fatalf("Cannot create rest client for [%+v], err %v", config, err)
+					return
 				}
-				c.restClients = clients
-				watcherForUpdateComplete.NotifyDone()
+				clients[i] = client
 			}
+			c.restClients = clients
+			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)
 }
