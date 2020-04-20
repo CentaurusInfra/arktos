@@ -109,6 +109,7 @@ If these settings are set on a pod attached to a flat network, the settings will
 
 (**TBD: for a flat network, can we automatically limit its communication scope to that network?**)
 
+(**TBD: do we plan to support multiple network providers? How would it impact the type definition?**)
 
 ### Network Controller
 
@@ -131,7 +132,7 @@ The reasons that DNS service is per-network instead of per-space are:
 
 #### Type definition
 
-Addition of service spec is metadata.network field. By default, it is the default network of the tenant. 
+Addition of service spec is spec.network field. By default, it is the default network of the tenant. 
 
 ```yaml
 apiVersion: v1
@@ -194,10 +195,12 @@ Service IPAM is provided through 2 changes:
       - cidr: 192.168.0.0/24
     ```
    
-1. on service creation, some mechanism to assign service the proper IP address.
+1. on service creation, the current service IP address assignment mechanism is used - in scope of individual network instead of the whole cluster, though.
 
 ##### Network provider managed pool
-Service IP addresses are implicitly managed by the capable network provider. Network object can have the service IP cidr (or not); at best for information - Arktos delegates IPAM to the external network provider, via network controller invoking the service it provides. 
+Service IP addresses are implicitly managed by the capable network provider. Network object can have the service IP cidr (or not); at best for information - Arktos delegates IPAM to the external network provider, via network/service controller (detailed design TBD) interacting with the external network provider.
+
+(**TBD: Can we support network provider to mutate service IP after it has been assigned? If so, how does the mutation propagate to Arktos?**)
 
 Network object specifies service ipam as *external* (the default is k8s - managed by Arktos):
 
@@ -210,7 +213,6 @@ Network object specifies service ipam as *external* (the default is k8s - manage
       type: flat
       service:
         ipam: external
-      - cidr: 10.0.0.0/16
     ```
 
 #### Semantic support
