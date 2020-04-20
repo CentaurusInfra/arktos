@@ -80,15 +80,12 @@ func NewAggregatedConfig(configs ...*KubeConfig) *Config {
 	// watch kube config update
 	go func() {
 		upStreamConfigUpdateCh := apiserverupdate.GetAPIServerConfigUpdateChGrp().Join()
-		for {
-			select {
-			case <-upStreamConfigUpdateCh.Read:
-				c.updateConfig()
-				if c.downstreamNotifyChGrp != nil {
-					c.downstreamNotifyChGrp.Send("Config update completed")
-				} else {
-					klog.V(6).Info("Config does not have downstream listener")
-				}
+		for range upStreamConfigUpdateCh.Read {
+			c.updateConfig()
+			if c.downstreamNotifyChGrp != nil {
+				c.downstreamNotifyChGrp.Send("Config update completed")
+			} else {
+				klog.V(6).Info("Config does not have downstream listener")
 			}
 		}
 	}()
@@ -177,9 +174,7 @@ func (ag *Config) updateConfig() {
 	}
 
 	newApiServers := apiserverupdate.GetAPIServerConfig()
-	// make a copy - preventing server updates in the middle of config update
-	copyOfServers := *newApiServers
-	numOfServers := len(copyOfServers)
+	numOfServers := len(newApiServers)
 
 	// remove extra config
 	if len(ag.config) > numOfServers {
@@ -197,7 +192,7 @@ func (ag *Config) updateConfig() {
 	// assign new hosts
 	i := 0
 	klog.V(6).Infof("Len of new server %d; len of new config %d", numOfServers, len(ag.config))
-	for _, ss := range copyOfServers {
+	for _, ss := range newApiServers {
 		ag.config[i].Host = fmt.Sprintf("%s://%s:%d/", ss.Ports[0].Name, ss.Addresses[0].IP, ss.Ports[0].Port)
 		klog.V(6).Infof("New host %s, service group id %s", ag.config[i].Host, ss.ServiceGroupId)
 		i++

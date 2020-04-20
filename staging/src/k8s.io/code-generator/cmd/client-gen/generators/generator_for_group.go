@@ -331,22 +331,19 @@ func (c *$.GroupGoName$$.Version$Client) run() {
 		watcherForUpdateComplete := $.getClientSetsWatcher|raw$()
 		watcherForUpdateComplete.AddWatcher()
 
-		for {
-			select {
-			case <-member.Read:
-				// create new client
-				clients := make([]$.restRESTClientInterface|raw$, len(c.configs.GetAllConfigs()))
-				for i, config := range c.configs.GetAllConfigs() {
-					client, err := $.restRESTClientFor|raw$(config)
-					if err != nil {
-						$.klogFatal|raw$("Cannot create rest client for [%+v], err %v", config, err)
-						return
-					}
-					clients[i] = client
+		for range member.Read {
+			// create new client
+			clients := make([]$.restRESTClientInterface|raw$, len(c.configs.GetAllConfigs()))
+			for i, config := range c.configs.GetAllConfigs() {
+				client, err := $.restRESTClientFor|raw$(config)
+				if err != nil {
+					$.klogFatal|raw$("Cannot create rest client for [%+v], err %v", config, err)
+					return
 				}
-				c.restClients = clients
-				watcherForUpdateComplete.NotifyDone()
+				clients[i] = client
 			}
+			c.restClients = clients
+			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)
 }

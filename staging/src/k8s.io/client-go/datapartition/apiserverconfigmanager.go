@@ -150,13 +150,13 @@ func (a *APIServerConfigManager) syncApiServerConfig() error {
 		klog.V(4).Info("mux released syncApiServerConfig.")
 	}()
 
-	apiEndpoints, err := a.kubeClient.CoreV1().Endpoints(Namespace_System).List(metav1.ListOptions{})
+	apiEndpoints, err := a.kubeClient.CoreV1().Endpoints(Namespace_System).Get(KubernetesServiceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Fatalf("Error in getting api server endpoints list: %v", err)
-	} else if len(apiEndpoints.Items) != 1 {
-		klog.Fatalf("Got unexpected api server endpoints list: %v", err)
+	} else if apiEndpoints == nil {
+		klog.Fatalf("Cannot get %s endpoints: %v", KubernetesServiceName, err)
 	}
-	klog.V(3).Infof("Api server end points [%+v]", apiEndpoints.Items[0].Subsets)
+	klog.V(3).Infof("Api server end points [%+v]", apiEndpoints.Subsets)
 
 	// TODO - currently assume the first endpoint for each service group id is load balancer,
 	// connect to the load balancer of the service group cluster
@@ -164,7 +164,7 @@ func (a *APIServerConfigManager) syncApiServerConfig() error {
 	a.rev, _ = strconv.Atoi(apiEndpoints.ResourceVersion)
 	a.firstUpdateTime = time.Now().Add(startUpResetDelayInSeconds)
 	klog.Infof("Set first update api server to time %v", a.firstUpdateTime)
-	a.setApiServerConfig(apiEndpoints.Items[0])
+	a.setApiServerConfig(apiEndpoints)
 	return nil
 }
 
@@ -201,7 +201,7 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 		klog.V(4).Infof("mux released updateApiServer")
 	}()
 
-	a.setApiServerConfig(*curEp)
+	a.setApiServerConfig(curEp)
 }
 
 func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
@@ -226,7 +226,7 @@ func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
 	// TODO - how to deal with integration test running in parrallel
 }
 
-func (a *APIServerConfigManager) setApiServerConfig(ep v1.Endpoints) {
+func (a *APIServerConfigManager) setApiServerConfig(ep *v1.Endpoints) {
 	hasUpdate := false
 
 	existingServiceGroupIds := make(map[string]bool)

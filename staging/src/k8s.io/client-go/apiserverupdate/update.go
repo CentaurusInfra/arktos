@@ -40,7 +40,7 @@ Those components interact as below:
 . ClientSets: create clientsets from new config. Notify clienset update watcher when the updates was completed
 . Clientset update watcher: when the last clientset is updated, send notification to ListAndWatch to reset the watchers
 
- */
+*/
 
 var apiServerConfigUpdateChGrp *bcast.Group
 var muxCreateApiServerConfigUpdateChGrp sync.Mutex
@@ -65,13 +65,19 @@ func GetAPIServerConfigUpdateChGrp() *bcast.Group {
 	return apiServerConfigUpdateChGrp
 }
 
-func GetAPIServerConfig() *map[string]v1.EndpointSubset {
-	return &apiServerMap
+func GetAPIServerConfig() map[string]v1.EndpointSubset {
+	return apiServerMap
 }
 
 func SetAPIServerConfig(c map[string]v1.EndpointSubset) {
 	klog.V(3).Infof("Update APIServer Config from [%+v] to [%+v]", apiServerMap, c)
-	apiServerMap = c
+	muxUpdateServerMap.Lock()
+	// map is passing as reference. Needs to copy manually
+	apiServerMap = make(map[string]v1.EndpointSubset)
+	for k, v := range c {
+		apiServerMap[k] = v
+	}
+	muxUpdateServerMap.Unlock()
 }
 
 var clientsetUpdateChGrp *bcast.Group
@@ -131,7 +137,8 @@ func (w *ClientSetsWatcher) AddWatcher() {
 
 func (w *ClientSetsWatcher) StartWaitingForComplete() {
 	w.muxStartWaiting.Lock()
-	klog.Infof("ClientSetsWatcher: Started waiting for clientset update complete. current watcher %d", w.watcherCount)
+	muxUpdateServerMap.Lock()
+	klog.Infof("ClientSetsWatcher: Started waiting for clientset update complete. current watcher %d. muxStartWaiting and muxUpdateServerMap are locked", w.watcherCount)
 	w.waitingCount = w.watcherCount
 }
 
@@ -140,9 +147,10 @@ func (w *ClientSetsWatcher) NotifyDone() {
 	defer w.mux.Unlock()
 	if w.waitingCount == 1 {
 		// waiting done
+		muxUpdateServerMap.Unlock()
 		w.muxStartWaiting.Unlock()
 		clientsetUpdateChGrp.Send("all clientset update done")
-		klog.V(3).Info("ClientSetsWatcher: Sent complete message after all clientset update was done")
+		klog.V(3).Info("ClientSetsWatcher: Sent complete message after all clientset update was done. muxStartWaiting and muxUpdateServerMap are unlocked")
 		return
 	}
 
