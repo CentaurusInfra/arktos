@@ -47,6 +47,7 @@ import (
 	apiservice "k8s.io/kubernetes/pkg/api/service"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
+	"k8s.io/kubernetes/pkg/apis/core/helper/qos"
 	podshelper "k8s.io/kubernetes/pkg/apis/core/pods"
 	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
@@ -2594,6 +2595,37 @@ func validatePullPolicy(policy core.PullPolicy, fldPath *field.Path) field.Error
 	return allErrors
 }
 
+var supportedResizeResources = sets.NewString(string(core.ResourceCPU), string(core.ResourceMemory))
+var supportedResizePolicies = sets.NewString(string(core.NoRestart), string(core.RestartContainer))
+
+func validateResizePolicy(policyList []core.ResizePolicy, fldPath *field.Path) field.ErrorList {
+	allErrors := field.ErrorList{}
+
+	// validate that resource name is not repeated, supported resource names and policy values are specified
+	resources := make(map[core.ResourceName]bool)
+	for i, p := range policyList {
+		if _, found := resources[p.ResourceName]; found {
+			allErrors = append(allErrors, field.Duplicate(fldPath.Index(i), p.ResourceName))
+		}
+		resources[p.ResourceName] = true
+		switch p.ResourceName {
+		case core.ResourceCPU, core.ResourceMemory:
+		case "":
+			allErrors = append(allErrors, field.Required(fldPath, ""))
+		default:
+			allErrors = append(allErrors, field.NotSupported(fldPath, p.ResourceName, supportedResizeResources.List()))
+		}
+		switch p.Policy {
+		case core.NoRestart, core.RestartContainer:
+		case "":
+			allErrors = append(allErrors, field.Required(fldPath, ""))
+		default:
+			allErrors = append(allErrors, field.NotSupported(fldPath, p.Policy, supportedResizePolicies.List()))
+		}
+	}
+	return allErrors
+}
+
 func validateInitContainers(podWithVm bool, containers, otherContainers []core.Container, deviceVolumes map[string]core.VolumeSource, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
@@ -2692,6 +2724,7 @@ func validateContainers(podWithVm bool, containers []core.Container, isInitConta
 		allErrs = append(allErrs, ValidateVolumeDevices(ctr.VolumeDevices, volMounts, volumes, idxPath.Child("volumeDevices"))...)
 		allErrs = append(allErrs, validatePullPolicy(ctr.ImagePullPolicy, idxPath.Child("imagePullPolicy"))...)
 		allErrs = append(allErrs, ValidateResourceRequirements(&ctr.Resources, idxPath.Child("resources"))...)
+		allErrs = append(allErrs, validateResizePolicy(ctr.ResizePolicy, idxPath.Child("resizePolicy"))...)
 		allErrs = append(allErrs, ValidateSecurityContext(ctr.SecurityContext, idxPath.Child("securityContext"))...)
 	}
 
@@ -3712,6 +3745,15 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(specPath.Child("activeDeadlineSeconds"), newPod.Spec.ActiveDeadlineSeconds, "must not update from a positive integer to nil value"))
 	}
 
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		// reject QOS change attempt
+		oldQOS := qos.GetPodQOS(oldPod)
+		newQOS := qos.GetPodQOS(newPod)
+		if newQOS != oldQOS {
+			allErrs = append(allErrs, field.Invalid(fldPath, newQOS, "Pod QOS is immutable"))
+		}
+	}
+
 	// validate updated spec.NICs; portID not allowed to update after assignment
 	// todo: add more stringent validations to disallow updates for other fields of vnic (assignment are fine)
 	for _, patchedNIC := range newPod.Spec.Nics {
@@ -3747,11 +3789,48 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 	}
 
 	// handle updateable fields by munging those fields prior to deep equal comparison.
-	mungedPod := *newPod
+	mungedPod := newPod.DeepCopy() // TODO: Check perf impact of DeepCopy
 	// munge spec.containers[*].image
 	var newContainers []core.Container
 	for ix, container := range mungedPod.Spec.Containers {
 		container.Image = oldPod.Spec.Containers[ix].Image
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			// Resources and ResourcesAllocated fields are mutable (for CPU & memory only)
+			//   - user can modify Resources to express new desired Resources
+			//   - node can modify ResourcesAllocated to update Pod's allocated resources
+			lim := container.Resources.Limits
+			if oldPod.Spec.Containers[ix].Resources.Limits != nil {
+				if lim == nil {
+					lim = make(core.ResourceList)
+				}
+				lim[core.ResourceCPU] = oldPod.Spec.Containers[ix].Resources.Limits[core.ResourceCPU]
+				lim[core.ResourceMemory] = oldPod.Spec.Containers[ix].Resources.Limits[core.ResourceMemory]
+			} else {
+				lim = nil
+			}
+			req := container.Resources.Requests
+			if oldPod.Spec.Containers[ix].Resources.Requests != nil {
+				if req == nil {
+					req = make(core.ResourceList)
+				}
+				req[core.ResourceCPU] = oldPod.Spec.Containers[ix].Resources.Requests[core.ResourceCPU]
+				req[core.ResourceMemory] = oldPod.Spec.Containers[ix].Resources.Requests[core.ResourceMemory]
+			} else {
+				req = nil
+			}
+			alloc := container.ResourcesAllocated
+			if oldPod.Spec.Containers[ix].ResourcesAllocated != nil {
+				if alloc == nil {
+					alloc = make(core.ResourceList)
+				}
+				alloc[core.ResourceCPU] = oldPod.Spec.Containers[ix].ResourcesAllocated[core.ResourceCPU]
+				alloc[core.ResourceMemory] = oldPod.Spec.Containers[ix].ResourcesAllocated[core.ResourceMemory]
+			} else {
+				alloc = nil
+			}
+			container.Resources = core.ResourceRequirements{Limits: lim, Requests: req}
+			container.ResourcesAllocated = alloc
+		}
 		newContainers = append(newContainers, container)
 	}
 
@@ -3783,7 +3862,7 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		// This diff isn't perfect, but it's a helluva lot better an "I'm not going to tell you what the difference is".
 		//TODO: Pinpoint the specific field that causes the invalid error after we have strategic merge diff
 		specDiff := diff.ObjectDiff(mungedPod.Spec, oldPod.Spec)
-		allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not change fields other than `spec.containers[*].image`, `spec.initContainers[*].image`, `spec.activeDeadlineSeconds`, `spec.nics` or `spec.tolerations` (only additions to existing tolerations)\n%v", specDiff)))
+		allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not change fields other than `spec.containers[*].image`, `spec.initContainers[*].image`, `spec.activeDeadlineSeconds`, `spec.nics` or `spec.tolerations` (only additions to existing tolerations) or spec.containers[*].resources or spec.containers[*].resourcesAllocated (for cpu, memory only)\n%v", specDiff)))
 	}
 
 	return allErrs
