@@ -70,7 +70,7 @@ func NewCloudNodeController(
 	eventBroadcaster.StartLogging(klog.Infof)
 	if kubeClient != nil {
 		klog.V(0).Infof("Sending events to api server.")
-		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	} else {
 		klog.V(0).Infof("No api server defined - no events will be sent to API server.")
 	}

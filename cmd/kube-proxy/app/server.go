@@ -30,7 +30,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -555,7 +555,7 @@ func (s *ProxyServer) Run() error {
 	}
 
 	if s.Broadcaster != nil && s.EventClient != nil {
-		s.Broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: s.EventClient.Events("")})
+		s.Broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: s.EventClient.EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	}
 
 	// Start up a healthz server if requested
@@ -625,7 +625,7 @@ func (s *ProxyServer) Run() error {
 	}
 
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(s.Client, s.ConfigSyncPeriod,
-		informers.WithTweakListOptions(func(options *v1meta.ListOptions) {
+		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			options.LabelSelector = "!" + apis.LabelServiceProxyName
 		}))
 
