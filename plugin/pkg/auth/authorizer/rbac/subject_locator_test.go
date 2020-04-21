@@ -22,12 +22,21 @@ import (
 	"testing"
 
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	rbacregistryvalidation "k8s.io/kubernetes/pkg/registry/rbac/validation"
 )
 
-func TestSubjectLocator(t *testing.T) {
+func TestSubjectLocatorWithSystemTenant(t *testing.T) {
+	testSubjectLocator(t, metav1.TenantSystem)
+}
+
+func TestSubjectLocatorWithRegularTenant(t *testing.T) {
+	testSubjectLocator(t, testTenant)
+}
+
+func testSubjectLocator(t *testing.T, tenant string) {
 	type actionToSubjects struct {
 		action   authorizer.Attributes
 		subjects []rbacv1.Subject
@@ -47,17 +56,17 @@ func TestSubjectLocator(t *testing.T) {
 		{
 			name: "no super user, star matches star",
 			clusterRoles: []*rbacv1.ClusterRole{
-				newClusterRole("admin", newRule("*", "*", "*", "*")),
+				newClusterRole(tenant, "admin", newRule("*", "*", "*", "*")),
 			},
 			clusterRoleBindings: []*rbacv1.ClusterRoleBinding{
-				newClusterRoleBinding("admin", "User:super-admin", "Group:super-admins"),
+				newClusterRoleBinding(tenant, "admin", "User:super-admin", "Group:super-admins"),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "system", "admin", bindToClusterRole, "User:admin", "Group:admins"),
+				newRoleBinding(tenant, "ns1", "admin", bindToClusterRole, "User:admin", "Group:admins"),
 			},
 			actionsToSubjects: []actionToSubjects{
 				{
-					&defaultAttributes{"", "", "get", "Pods", "", "ns1", "", "system"},
+					&defaultAttributes{"", "", "get", "Pods", "", "ns1", "", tenant},
 					[]rbacv1.Subject{
 						{Kind: rbacv1.GroupKind, APIGroup: rbacv1.GroupName, Name: user.SystemPrivilegedGroup},
 						{Kind: rbacv1.UserKind, APIGroup: rbacv1.GroupName, Name: "super-admin"},
@@ -68,7 +77,7 @@ func TestSubjectLocator(t *testing.T) {
 				},
 				{
 					// cluster role matches star in namespace
-					&defaultAttributes{"", "", "*", "Pods", "", "*", "", "system"},
+					&defaultAttributes{"", "", "*", "Pods", "", "*", "", tenant},
 					[]rbacv1.Subject{
 						{Kind: rbacv1.GroupKind, APIGroup: rbacv1.GroupName, Name: user.SystemPrivilegedGroup},
 						{Kind: rbacv1.UserKind, APIGroup: rbacv1.GroupName, Name: "super-admin"},
@@ -77,7 +86,7 @@ func TestSubjectLocator(t *testing.T) {
 				},
 				{
 					// empty ns
-					&defaultAttributes{"", "", "*", "Pods", "", "", "", "system"},
+					&defaultAttributes{"", "", "*", "Pods", "", "", "", tenant},
 					[]rbacv1.Subject{
 						{Kind: rbacv1.GroupKind, APIGroup: rbacv1.GroupName, Name: user.SystemPrivilegedGroup},
 						{Kind: rbacv1.UserKind, APIGroup: rbacv1.GroupName, Name: "super-admin"},
@@ -90,20 +99,20 @@ func TestSubjectLocator(t *testing.T) {
 			name:      "super user, local roles work",
 			superUser: "foo",
 			clusterRoles: []*rbacv1.ClusterRole{
-				newClusterRole("admin", newRule("*", "*", "*", "*")),
+				newClusterRole(tenant, "admin", newRule("*", "*", "*", "*")),
 			},
 			clusterRoleBindings: []*rbacv1.ClusterRoleBinding{
-				newClusterRoleBinding("admin", "User:super-admin", "Group:super-admins"),
+				newClusterRoleBinding(tenant, "admin", "User:super-admin", "Group:super-admins"),
 			},
 			roles: []*rbacv1.Role{
-				newRole("admin", "ns1", newRule("get", "*", "Pods", "*")),
+				newRole(tenant, "admin", "ns1", newRule("get", "*", "Pods", "*")),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "system", "admin", bindToRole, "User:admin", "Group:admins"),
+				newRoleBinding(tenant, "ns1", "admin", bindToRole, "User:admin", "Group:admins"),
 			},
 			actionsToSubjects: []actionToSubjects{
 				{
-					&defaultAttributes{"", "", "get", "Pods", "", "ns1", "", "system"},
+					&defaultAttributes{"", "", "get", "Pods", "", "ns1", "", tenant},
 					[]rbacv1.Subject{
 						{Kind: rbacv1.GroupKind, APIGroup: rbacv1.GroupName, Name: user.SystemPrivilegedGroup},
 						{Kind: rbacv1.UserKind, APIGroup: rbacv1.GroupName, Name: "foo"},
@@ -114,8 +123,8 @@ func TestSubjectLocator(t *testing.T) {
 					},
 				},
 				{
-					// verb matchies correctly
-					&defaultAttributes{"", "", "create", "Pods", "", "ns1", "", "system"},
+					// verbs match correctly
+					&defaultAttributes{"", "", "create", "Pods", "", "ns1", "", tenant},
 					[]rbacv1.Subject{
 						{Kind: rbacv1.GroupKind, APIGroup: rbacv1.GroupName, Name: user.SystemPrivilegedGroup},
 						{Kind: rbacv1.UserKind, APIGroup: rbacv1.GroupName, Name: "foo"},
@@ -125,7 +134,7 @@ func TestSubjectLocator(t *testing.T) {
 				},
 				{
 					// binding only works in correct ns
-					&defaultAttributes{"", "", "get", "Pods", "", "ns2", "", "system"},
+					&defaultAttributes{"", "", "get", "Pods", "", "ns2", "", tenant},
 					[]rbacv1.Subject{
 						{Kind: rbacv1.GroupKind, APIGroup: rbacv1.GroupName, Name: user.SystemPrivilegedGroup},
 						{Kind: rbacv1.UserKind, APIGroup: rbacv1.GroupName, Name: "foo"},

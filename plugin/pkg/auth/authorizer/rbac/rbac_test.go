@@ -31,6 +31,8 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac/bootstrappolicy"
 )
 
+var testTenant = "johndoe-tenant"
+
 func newRule(verbs, apiGroups, resources, nonResourceURLs string) rbacv1.PolicyRule {
 	return rbacv1.PolicyRule{
 		Verbs:           strings.Split(verbs, ","),
@@ -40,12 +42,16 @@ func newRule(verbs, apiGroups, resources, nonResourceURLs string) rbacv1.PolicyR
 	}
 }
 
-func newRole(name, namespace string, rules ...rbacv1.PolicyRule) *rbacv1.Role {
-	return &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}, Rules: rules}
+func newRole(tenant, name, namespace string, rules ...rbacv1.PolicyRule) *rbacv1.Role {
+	return &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{
+		Namespace: namespace,
+		Name: name,
+		Tenant: tenant,
+	}, Rules: rules}
 }
 
-func newClusterRole(name string, rules ...rbacv1.PolicyRule) *rbacv1.ClusterRole {
-	return &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: name}, Rules: rules}
+func newClusterRole(tenant, name string, rules ...rbacv1.PolicyRule) *rbacv1.ClusterRole {
+	return &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: name, Tenant: tenant}, Rules: rules}
 }
 
 const (
@@ -53,9 +59,9 @@ const (
 	bindToClusterRole uint16 = 0x1
 )
 
-func newClusterRoleBinding(roleName string, subjects ...string) *rbacv1.ClusterRoleBinding {
+func newClusterRoleBinding(tenant, roleName string, subjects ...string) *rbacv1.ClusterRoleBinding {
 	r := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{},
+		ObjectMeta: metav1.ObjectMeta{Tenant: tenant},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "ClusterRole", // ClusterRoleBindings can only refer to ClusterRole
@@ -80,7 +86,7 @@ func newClusterRoleBinding(roleName string, subjects ...string) *rbacv1.ClusterR
 	return r
 }
 
-func newRoleBinding(namespace, tenant, roleName string, bindType uint16, subjects ...string) *rbacv1.RoleBinding {
+func newRoleBinding(tenant, namespace, roleName string, bindType uint16, subjects ...string) *rbacv1.RoleBinding {
 	r := &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Tenant: tenant}}
 
 	switch bindType {
@@ -139,7 +145,15 @@ func (d *defaultAttributes) IsResourceRequest() bool { return true }
 func (d *defaultAttributes) GetPath() string         { return "" }
 func (d *defaultAttributes) GetTenant() string       { return d.tenant }
 
-func TestAuthorizer(t *testing.T) {
+func TestAuthorizerWithSystemTenant(t *testing.T) {
+	testAuthorizer(t, metav1.TenantSystem)
+}
+
+func TestAuthorizerWithRegularTenant(t *testing.T) {
+	testAuthorizer(t, testTenant)
+}
+
+func testAuthorizer(t *testing.T, tenant string) {
 	tests := []struct {
 		roles               []*rbacv1.Role
 		roleBindings        []*rbacv1.RoleBinding
@@ -151,100 +165,104 @@ func TestAuthorizer(t *testing.T) {
 	}{
 		{
 			clusterRoles: []*rbacv1.ClusterRole{
-				newClusterRole("admin", newRule("*", "*", "*", "*")),
+				newClusterRole(tenant, "admin", newRule("*", "*", "*", "*")),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "system", "admin", bindToClusterRole, "User:admin", "Group:admins"),
+				newRoleBinding(tenant, "ns1", "admin", bindToClusterRole, "User:admin", "Group:admins"),
 			},
 			shouldPass: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "Pods", "", "ns1", "", "system"},
-				&defaultAttributes{"admin", "", "watch", "Pods", "", "ns1", "", "system"},
-				&defaultAttributes{"admin", "group1", "watch", "Foobar", "", "ns1", "", "system"},
-				&defaultAttributes{"joe", "admins", "watch", "Foobar", "", "ns1", "", "system"},
-				&defaultAttributes{"joe", "group1,admins", "watch", "Foobar", "", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "Pods", "", "ns1", "", tenant},
+				&defaultAttributes{"admin", "", "watch", "Pods", "", "ns1", "", tenant},
+				&defaultAttributes{"admin", "group1", "watch", "Foobar", "", "ns1", "", tenant},
+				&defaultAttributes{"joe", "admins", "watch", "Foobar", "", "ns1", "", tenant},
+				&defaultAttributes{"joe", "group1,admins", "watch", "Foobar", "", "ns1", "", tenant},
 			},
 			shouldFail: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "GET", "Pods", "", "ns2", "", "system"},
-				&defaultAttributes{"admin", "", "GET", "Nodes", "", "", "", "system"},
-				&defaultAttributes{"admin", "admins", "GET", "Pods", "", "ns2", "", "system"},
-				&defaultAttributes{"admin", "admins", "GET", "Nodes", "", "", "", "system"},
+				&defaultAttributes{"admin", "", "GET", "Pods", "", "ns2", "", tenant},
+				&defaultAttributes{"admin", "", "GET", "Nodes", "", "", "", tenant},
+				&defaultAttributes{"admin", "admins", "GET", "Pods", "", "ns2", "", tenant},
+				&defaultAttributes{"admin", "admins", "GET", "Nodes", "", "", "", tenant},
 			},
 		},
 		{
 			// Non-resource-url tests
 			clusterRoles: []*rbacv1.ClusterRole{
-				newClusterRole("non-resource-url-getter", newRule("get", "", "", "/apis")),
-				newClusterRole("non-resource-url", newRule("*", "", "", "/apis")),
-				newClusterRole("non-resource-url-prefix", newRule("get", "", "", "/apis/*")),
+				newClusterRole(tenant, "non-resource-url-getter", newRule("get", "", "", "/apis")),
+				newClusterRole(tenant, "non-resource-url", newRule("*", "", "", "/apis")),
+				newClusterRole(tenant, "non-resource-url-prefix", newRule("get", "", "", "/apis/*")),
 			},
 			clusterRoleBindings: []*rbacv1.ClusterRoleBinding{
-				newClusterRoleBinding("non-resource-url-getter", "User:foo", "Group:bar"),
-				newClusterRoleBinding("non-resource-url", "User:admin", "Group:admin"),
-				newClusterRoleBinding("non-resource-url-prefix", "User:prefixed", "Group:prefixed"),
+				newClusterRoleBinding(tenant, "non-resource-url-getter", "User:foo", "Group:bar"),
+				newClusterRoleBinding(tenant, "non-resource-url", "User:admin", "Group:admin"),
+				newClusterRoleBinding(tenant, "non-resource-url-prefix", "User:prefixed", "Group:prefixed"),
 			},
 			shouldPass: []authorizer.Attributes{
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: "system"}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: "system"}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: "system"}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: "system"}, Verb: "get", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: "system"}, Verb: "watch", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: "system"}, Verb: "watch", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: tenant}, Verb: "get", Path: "/apis", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: tenant}, Verb: "get", Path: "/apis", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: tenant}, Verb: "get", Path: "/apis", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: tenant}, Verb: "get", Path: "/apis", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: tenant}, Verb: "watch", Path: "/apis", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: tenant}, Verb: "watch", Path: "/apis", Tenant: tenant},
 
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: "system"}, Verb: "get", Path: "/apis/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: "system"}, Verb: "get", Path: "/apis/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: "system"}, Verb: "get", Path: "/apis/v1/foobar"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: "system"}, Verb: "get", Path: "/apis/v1/foorbar"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: tenant}, Verb: "get", Path: "/apis/v1", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: tenant}, Verb: "get", Path: "/apis/v1", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: tenant}, Verb: "get", Path: "/apis/v1/foobar", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: tenant}, Verb: "get", Path: "/apis/v1/foorbar", Tenant: tenant},
 			},
 			shouldFail: []authorizer.Attributes{
 				// wrong verb
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: "system"}, Verb: "watch", Path: "/apis"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: "system"}, Verb: "watch", Path: "/apis"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: tenant}, Verb: "watch", Path: "/apis", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: tenant}, Verb: "watch", Path: "/apis", Tenant: tenant},
+
+				// wrong tenant
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: "wrongtenant"}, Verb: "watch", Path: "/apis", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: "wrongtenant"}, Verb: "watch", Path: "/apis", Tenant: tenant},
 
 				// wrong path
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: "system"}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: "system"}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: "system"}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: "system"}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "foo", Tenant: tenant}, Verb: "get", Path: "/api/v1", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"bar"}, Tenant: tenant}, Verb: "get", Path: "/api/v1", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "admin", Tenant: tenant}, Verb: "get", Path: "/api/v1", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"admin"}, Tenant: tenant}, Verb: "get", Path: "/api/v1", Tenant: tenant},
 
 				// not covered by prefix
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: "system"}, Verb: "get", Path: "/api/v1"},
-				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: "system"}, Verb: "get", Path: "/api/v1"},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Name: "prefixed", Tenant: tenant}, Verb: "get", Path: "/api/v1", Tenant: tenant},
+				authorizer.AttributesRecord{User: &user.DefaultInfo{Groups: []string{"prefixed"}, Tenant: tenant}, Verb: "get", Path: "/api/v1", Tenant: tenant},
 			},
 		},
 		{
 			// test subresource resolution
 			clusterRoles: []*rbacv1.ClusterRole{
-				newClusterRole("admin", newRule("*", "*", "pods", "*")),
+				newClusterRole(tenant, "admin", newRule("*", "*", "pods", "*")),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "system", "admin", bindToClusterRole, "User:admin", "Group:admins"),
+				newRoleBinding(tenant, "ns1", "admin", bindToClusterRole, "User:admin", "Group:admins"),
 			},
 			shouldPass: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", "", tenant},
 			},
 			shouldFail: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", "", tenant},
 			},
 		},
 		{
 			// test subresource resolution
 			clusterRoles: []*rbacv1.ClusterRole{
-				newClusterRole("admin",
+				newClusterRole(tenant, "admin",
 					newRule("*", "*", "pods/status", "*"),
 					newRule("*", "*", "*/scale", "*"),
 				),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
-				newRoleBinding("ns1", "system", "admin", bindToClusterRole, "User:admin", "Group:admins"),
+				newRoleBinding(tenant, "ns1", "admin", bindToClusterRole, "User:admin", "Group:admins"),
 			},
 			shouldPass: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", "", "system"},
-				&defaultAttributes{"admin", "", "get", "pods", "scale", "ns1", "", "system"},
-				&defaultAttributes{"admin", "", "get", "deployments", "scale", "ns1", "", "system"},
-				&defaultAttributes{"admin", "", "get", "anything", "scale", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "pods", "status", "ns1", "", tenant},
+				&defaultAttributes{"admin", "", "get", "pods", "scale", "ns1", "", tenant},
+				&defaultAttributes{"admin", "", "get", "deployments", "scale", "ns1", "", tenant},
+				&defaultAttributes{"admin", "", "get", "anything", "scale", "ns1", "", tenant},
 			},
 			shouldFail: []authorizer.Attributes{
-				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", "", "system"},
+				&defaultAttributes{"admin", "", "get", "pods", "", "ns1", "", tenant},
 			},
 		},
 	}
@@ -253,13 +271,13 @@ func TestAuthorizer(t *testing.T) {
 		a := RBACAuthorizer{ruleResolver}
 		for _, attr := range tt.shouldPass {
 			if decision, _, _ := a.Authorize(attr); decision != authorizer.DecisionAllow {
-				t.Errorf("case %d: incorrectly restricted %s", i, attr)
+				t.Errorf("case %d: incorrectly restricted, expected: %s, actual: %v", i, attr, decision)
 			}
 		}
 
 		for _, attr := range tt.shouldFail {
 			if decision, _, _ := a.Authorize(attr); decision == authorizer.DecisionAllow {
-				t.Errorf("case %d: incorrectly passed %s", i, attr)
+				t.Errorf("case %d: incorrectly passed, expected: %s, actual: %v", i, attr, decision)
 			}
 		}
 	}

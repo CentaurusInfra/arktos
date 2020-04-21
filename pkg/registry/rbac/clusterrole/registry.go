@@ -65,3 +65,7 @@ type AuthorizerAdapter struct {
 func (a AuthorizerAdapter) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
 	return a.Registry.GetClusterRole(genericapirequest.NewContext(), name, &metav1.GetOptions{})
 }
+
+func (a AuthorizerAdapter) GetClusterRoleWithMultiTenancy(tenant, name string) (*rbacv1.ClusterRole, error) {
+	return a.Registry.GetClusterRole(genericapirequest.WithTenant(genericapirequest.NewContext(), tenant), name, &metav1.GetOptions{})
+}
