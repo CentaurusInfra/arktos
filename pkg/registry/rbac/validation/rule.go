@@ -415,7 +415,7 @@ func (r *StaticRoles) GetClusterRoleWithMultiTenancy(tenant, name string) (*rbac
 			return clusterRole, nil
 		}
 	}
-	return nil, errors.New("clusterrole not found")
+	return nil, errors.New("clusterrole " + tenant + "/" + name + " not found")
 }
 
 func (r *StaticRoles) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error) {

@@ -105,7 +105,7 @@ func testSubjectLocator(t *testing.T, tenant string) {
 				newClusterRoleBinding(tenant, "admin", "User:super-admin", "Group:super-admins"),
 			},
 			roles: []*rbacv1.Role{
-				newRole("admin", "ns1", newRule("get", "*", "Pods", "*")),
+				newRole(tenant, "admin", "ns1", newRule("get", "*", "Pods", "*")),
 			},
 			roleBindings: []*rbacv1.RoleBinding{
 				newRoleBinding(tenant, "ns1", "admin", bindToRole, "User:admin", "Group:admins"),
@@ -123,7 +123,7 @@ func testSubjectLocator(t *testing.T, tenant string) {
 					},
 				},
 				{
-					// verb matchies correctly
+					// verbs match correctly
 					&defaultAttributes{"", "", "create", "Pods", "", "ns1", "", tenant},
 					[]rbacv1.Subject{
 						{Kind: rbacv1.GroupKind, APIGroup: rbacv1.GroupName, Name: user.SystemPrivilegedGroup},
