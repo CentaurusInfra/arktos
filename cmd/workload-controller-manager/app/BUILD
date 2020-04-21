@@ -28,6 +28,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/server/healthz:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/server/mux:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/server/routes:go_default_library",
+        "//staging/src/k8s.io/client-go/datapartition:go_default_library",
         "//staging/src/k8s.io/client-go/discovery/cached:go_default_library",
         "//staging/src/k8s.io/client-go/dynamic:go_default_library",
         "//staging/src/k8s.io/client-go/dynamic/dynamicinformer:go_default_library",

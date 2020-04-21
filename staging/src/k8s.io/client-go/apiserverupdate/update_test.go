@@ -14,29 +14,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package datapartition
-
-import (
-	"github.com/grafov/bcast"
-	"sync"
-)
-
-var datapartitionUpdateChGrp *bcast.Group
-var mux sync.Mutex
-
-func GetDataPartitionUpdateChGrp() *bcast.Group {
-	if datapartitionUpdateChGrp != nil {
-		return datapartitionUpdateChGrp
-	}
-
-	mux.Lock()
-	defer mux.Unlock()
-	if datapartitionUpdateChGrp != nil {
-		return datapartitionUpdateChGrp
-	}
-
-	datapartitionUpdateChGrp = bcast.NewGroup()
-	go datapartitionUpdateChGrp.Broadcast(0)
-
-	return datapartitionUpdateChGrp
-}
+package apiserverupdate
