@@ -83,6 +83,7 @@ func RoleEscalationAuthorized(ctx context.Context, a authorizer.Authorizer) bool
 		Resource:        requestInfo.Resource,
 		Name:            requestInfo.Name,
 		Namespace:       requestInfo.Namespace,
+		Tenant:          requestInfo.Tenant,
 		ResourceRequest: true,
 	}
 
@@ -97,7 +98,7 @@ func RoleEscalationAuthorized(ctx context.Context, a authorizer.Authorizer) bool
 }
 
 // BindingAuthorized returns true if the user associated with the context is explicitly authorized to bind the specified roleRef
-func BindingAuthorized(ctx context.Context, roleRef rbac.RoleRef, bindingNamespace string, a authorizer.Authorizer) bool {
+func BindingAuthorized(ctx context.Context, roleRef rbac.RoleRef, bindingTenant string, bindingNamespace string, a authorizer.Authorizer) bool {
 	if a == nil {
 		return false
 	}
@@ -115,6 +116,7 @@ func BindingAuthorized(ctx context.Context, roleRef rbac.RoleRef, bindingNamespa
 		// and to authorize binding a clusterrole across all namespaces in a clusterrolebinding.
 		Namespace:       bindingNamespace,
 		ResourceRequest: true,
+		Tenant:          bindingTenant,
 	}
 
 	// This occurs after defaulting and conversion, so values pulled from the roleRef won't change
