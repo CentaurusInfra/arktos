@@ -229,7 +229,11 @@ type ClusterRoleGetter struct {
 }
 
 func (g *ClusterRoleGetter) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
-	return g.Lister.Get(name)
+	return g.Lister.ClusterRoles().Get(name)
+}
+
+func (g *ClusterRoleGetter) GetClusterRoleWithMultiTenancy(tenant, name string) (*rbacv1.ClusterRole, error) {
+	return g.Lister.ClusterRolesWithMultiTenancy(tenant).Get(name)
 }
 
 type ClusterRoleBindingLister struct {
