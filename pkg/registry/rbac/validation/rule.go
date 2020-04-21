@@ -112,6 +112,7 @@ type RoleBindingLister interface {
 
 type ClusterRoleGetter interface {
 	GetClusterRole(name string) (*rbacv1.ClusterRole, error)
+	GetClusterRoleWithMultiTenancy(tenant, name string) (*rbacv1.ClusterRole, error)
 }
 
 type ClusterRoleBindingLister interface {
@@ -208,7 +209,7 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 		if !applies {
 			continue
 		}
-		rules, err := r.GetRoleReferenceRules(clusterRoleBinding.RoleRef, "")
+		rules, err := r.GetRoleReferenceRulesWithMultiTenancy(clusterRoleBinding.RoleRef, clusterRoleBinding.Tenant, "")
 		if err != nil {
 			if !visitor(nil, nil, err) {
 				return
@@ -280,7 +281,7 @@ func (r *DefaultRuleResolver) GetRoleReferenceRulesWithMultiTenancy(roleRef rbac
 		return role.Rules, nil
 
 	case "ClusterRole":
-		clusterRole, err := r.clusterRoleGetter.GetClusterRole(roleRef.Name)
+		clusterRole, err := r.clusterRoleGetter.GetClusterRoleWithMultiTenancy(tenant, roleRef.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -402,6 +403,15 @@ func (r *StaticRoles) GetRoleWithMultiTenancy(tenant, namespace, name string) (*
 func (r *StaticRoles) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
 	for _, clusterRole := range r.clusterRoles {
 		if clusterRole.Name == name {
+			return clusterRole, nil
+		}
+	}
+	return nil, errors.New("clusterrole not found")
+}
+
+func (r *StaticRoles) GetClusterRoleWithMultiTenancy(tenant, name string) (*rbacv1.ClusterRole, error) {
+	for _, clusterRole := range r.clusterRoles {
+		if clusterRole.Name == name && clusterRole.Tenant == tenant{
 			return clusterRole, nil
 		}
 	}

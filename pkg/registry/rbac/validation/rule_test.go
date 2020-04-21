@@ -29,6 +29,8 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 )
 
+var testTenant = "johndoe-tenant"
+
 // compute a hash of a policy rule so we can sort in a deterministic order
 func hashOf(p rbacv1.PolicyRule) string {
 	hash := fnv.New32()
@@ -81,8 +83,11 @@ func TestDefaultRuleResolver(t *testing.T) {
 		},
 		clusterRoles: []*rbacv1.ClusterRole{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "cluster-admin"},
-				Rules:      []rbacv1.PolicyRule{ruleAdmin},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "cluster-admin",
+					Tenant: metav1.TenantSystem,
+				},
+				Rules: []rbacv1.PolicyRule{ruleAdmin},
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: "write-nodes"},
@@ -119,14 +124,17 @@ func TestDefaultRuleResolver(t *testing.T) {
 	staticRolesWithRegularTenant := StaticRoles{
 		roles: []*rbacv1.Role{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace2", Name: "readthings", Tenant: "tenant2"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace2", Name: "readthings", Tenant: testTenant},
 				Rules:      []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
 			},
 		},
 		clusterRoles: []*rbacv1.ClusterRole{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "tenant-admin"},
-				Rules:      []rbacv1.PolicyRule{ruleAdmin},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "tenant-admin",
+					Tenant: testTenant,
+				},
+				Rules: []rbacv1.PolicyRule{ruleAdmin},
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: "write-nodes"},
@@ -137,7 +145,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "namespace2",
-					Tenant:    "tenant2",
+					Tenant:    testTenant,
 				},
 				Subjects: []rbacv1.Subject{
 					{Kind: rbacv1.UserKind, Name: "johndoe"},
@@ -149,7 +157,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 		clusterRoleBindings: []*rbacv1.ClusterRoleBinding{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "tenant2",
+					Tenant: testTenant,
 				},
 				Subjects: []rbacv1.Subject{
 					{Kind: rbacv1.UserKind, Name: "admin"},
@@ -206,7 +214,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 			StaticRoles: staticRolesWithRegularTenant,
 			user: &user.DefaultInfo{
 				Name:   "johndoe",
-				Tenant: "tenant2",
+				Tenant: testTenant,
 			},
 			namespace:      "namespace2",
 			effectiveRules: []rbacv1.PolicyRule{ruleReadPods, ruleReadServices},
@@ -215,7 +223,7 @@ func TestDefaultRuleResolver(t *testing.T) {
 			StaticRoles: staticRolesWithRegularTenant,
 			user: &user.DefaultInfo{
 				Name:   "johndoe",
-				Tenant: "tenant2",
+				Tenant: testTenant,
 			},
 			namespace:      "namespace3",
 			effectiveRules: nil,
@@ -225,13 +233,13 @@ func TestDefaultRuleResolver(t *testing.T) {
 			user: &user.DefaultInfo{
 				Name:   "johndoe",
 				Groups: []string{"admin"},
-				Tenant: "tenant2"},
+				Tenant: testTenant},
 			effectiveRules: []rbacv1.PolicyRule{ruleAdmin},
 		},
 		{
 			StaticRoles: staticRolesWithRegularTenant,
 			user: &user.DefaultInfo{
-				Tenant: "tenant2",
+				Tenant: testTenant,
 			},
 			effectiveRules: nil,
 		},
