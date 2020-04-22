@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2018 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -170,8 +171,8 @@ export KUBE_GCE_ENABLE_IP_ALIASES=true
 export SECONDARY_RANGE_NAME="pods-default"
 export STORAGE_BACKEND="etcd3"
 export STORAGE_MEDIA_TYPE="application/vnd.kubernetes.protobuf"
-export ETCD_IMAGE=3.3.10-1
-export ETCD_VERSION=3.3.10
+export ETCD_IMAGE=3.4.4-0
+export ETCD_VERSION=3.4.4
 
 # Upgrade master with updated kube envs
 "${KUBE_ROOT}/cluster/gce/upgrade.sh" -M -l
