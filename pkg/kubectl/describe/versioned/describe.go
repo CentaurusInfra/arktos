@@ -2898,7 +2898,7 @@ func (d *NodeDescriber) Describe(tenant, namespace, name string, describerSettin
 		} else {
 			// TODO: We haven't decided the namespace for Node object yet.
 			ref.UID = types.UID(ref.Name)
-			events, _ = d.CoreV1().Events("").Search(scheme.Scheme, ref)
+			events, _ = d.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).Search(scheme.Scheme, ref)
 		}
 	}
 

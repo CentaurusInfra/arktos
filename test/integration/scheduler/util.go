@@ -230,7 +230,7 @@ func initTestSchedulerWithOptions(
 		v1.EventSource{Component: v1.DefaultSchedulerName},
 	)
 	eventBroadcaster.StartRecordingToSink(&clientv1core.EventSinkImpl{
-		Interface: context.clientSet.CoreV1().Events(""),
+		Interface: context.clientSet.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll),
 	})
 
 	context.informerFactory.Start(context.schedulerConfig.StopEverything)
