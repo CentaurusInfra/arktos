@@ -1,4 +1,5 @@
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # Build the etcd image
 #
 # Usage:
-# 	[BUNDLED_ETCD_VERSIONS=2.2.1 2.3.7 3.0.17 3.1.12 3.2.24 3.3.10] [REGISTRY=k8s.gcr.io] [ARCH=amd64] [BASEIMAGE=busybox] make (build|push)
+# 	[BUNDLED_ETCD_VERSIONS=3.4.4] [REGISTRY=k8s.gcr.io] [ARCH=amd64] [BASEIMAGE=busybox] make (build|push)
 #
 # The image contains different etcd versions to simplify
 # upgrades. Thus be careful when removing any versions from here.
@@ -26,10 +27,10 @@
 # Except from etcd-$(version) and etcdctl-$(version) binaries, we also
 # need etcd and etcdctl binaries for backward compatibility reasons.
 # That binary will be set to the last version from $(BUNDLED_ETCD_VERSIONS).
-BUNDLED_ETCD_VERSIONS?=2.2.1 2.3.7 3.0.17 3.1.12 3.2.24 3.3.10
+BUNDLED_ETCD_VERSIONS?=3.4.4
 
 # LATEST_ETCD_VERSION identifies the most recent etcd version available.
-LATEST_ETCD_VERSION?=3.3.10
+LATEST_ETCD_VERSION?=3.4.4
 
 # REVISION provides a version number fo this image and all it's bundled
 # artifacts. It should start at zero for each LATEST_ETCD_VERSION and increment
@@ -52,7 +53,7 @@ MANIFEST_IMAGE := $(PUSH_REGISTRY)/etcd
 # This option is for running docker manifest command
 export DOCKER_CLI_EXPERIMENTAL := enabled
 # golang version should match the golang version from https://github.com/coreos/etcd/releases for the current ETCD_VERSION.
-GOLANG_VERSION?=1.10.4
+GOLANG_VERSION?=1.12.9
 GOARM=7
 TEMP_DIR:=$(shell mktemp -d)
 
@@ -97,13 +98,23 @@ else
 
 	# Download etcd in a golang container and cross-compile it statically
 	# For each release create a tmp dir 'etcd_release_tmp_dir' and unpack the release tar there.
+        arch_prefix=""
+        ifeq ($(ARCH),arm)
+		arch_prefix="GOARM=$(GOARM)"
+        endif
+
+        # use '/go/src/go.etcd.io/etcd' to build etcd 3.4 and later.
 	for version in $(BUNDLED_ETCD_VERSIONS); do \
-		etcd_release_tmp_dir=$(shell mktemp -d); \
-		docker run --interactive -v $${etcd_release_tmp_dir}:/etcdbin golang:$(GOLANG_VERSION) /bin/bash -c \
-			"git clone https://github.com/coreos/etcd /go/src/github.com/coreos/etcd \
-			&& cd /go/src/github.com/coreos/etcd \
+	        etcd_release_tmp_dir=$(shell mktemp -d); \
+		etcd_build_dir="/go/src/github.com/coreos/etcd"; \
+		if [ $$(echo $$version | cut -d. -f2) -gt 3 ]; then \
+			etcd_build_dir="/go/src/go.etcd.io/etcd"; \
+		fi; \
+		docker run --interactive -v $${etcd_release_tmp_dir}:/etcdbin golang:$(GOLANG_VERSION)$(DOCKER_VOL_OPTS) /bin/bash -c \
+			"git clone https://github.com/coreos/etcd $$etcd_build_dir \
+			&& cd $$etcd_build_dir \
 			&& git checkout v$${version} \
-			&& GOARM=$(GOARM) GOARCH=$(ARCH) ./build \
+			&& $(arch_prefix) GOARCH=$(ARCH) ./build \
 			&& cp -f bin/$(ARCH)/etcd* bin/etcd* /etcdbin; echo 'done'"; \
 		cp $$etcd_release_tmp_dir/etcd $$etcd_release_tmp_dir/etcdctl $(TEMP_DIR)/; \
 		cp $(TEMP_DIR)/etcd $(TEMP_DIR)/etcd-$$version; \

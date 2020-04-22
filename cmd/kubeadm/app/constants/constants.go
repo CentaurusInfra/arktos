@@ -87,6 +87,8 @@ const (
 
 	// EtcdListenClientPort defines the port etcd listen on for client traffic
 	EtcdListenClientPort = 2379
+	// EtcdMetricsPort is the port at which to obtain etcd metrics and health status
+	EtcdMetricsPort = 2381
 
 	// EtcdPeerCertAndKeyBaseName defines etcd's peer certificate and key base name
 	EtcdPeerCertAndKeyBaseName = "etcd/peer"
@@ -259,7 +261,7 @@ const (
 	MinExternalEtcdVersion = "3.2.18"
 
 	// DefaultEtcdVersion indicates the default etcd version that kubeadm uses
-	DefaultEtcdVersion = "3.3.10"
+	DefaultEtcdVersion = "3.4.4-0"
 
 	// PauseVersion indicates the default pause image version for kubeadm
 	PauseVersion = "3.1"
@@ -371,6 +373,10 @@ const (
 	// May be overridden by a flag at startup.
 	// Deprecated: use the secure KubeControllerManagerPort instead.
 	InsecureKubeControllerManagerPort = 10252
+
+	// EtcdAdvertiseClientUrlsAnnotationKey is the annotation key on every etcd pod, describing the
+	// advertise client URLs
+	EtcdAdvertiseClientUrlsAnnotationKey = "kubeadm.kubernetes.io/etcd.advertise-client-urls"
 )
 
 var (
@@ -405,12 +411,11 @@ var (
 	CurrentKubernetesVersion = version.MustParseSemantic("v1.14.0")
 
 	// SupportedEtcdVersion lists officially supported etcd versions with corresponding Kubernetes releases
+	// Since the current arktos version is 14, therefore, we change the etcd version to 3.4.4
 	SupportedEtcdVersion = map[uint8]string{
 		12: "3.2.24",
 		13: "3.2.24",
-		14: "3.3.10",
-		15: "3.3.10",
-		16: "3.3.10",
+		14: "3.4.4-0",
 	}
 
 	// KubeadmCertsClusterRoleName sets the name for the ClusterRole that allows

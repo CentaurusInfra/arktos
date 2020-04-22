@@ -85,11 +85,9 @@ kube::etcd::start() {
   ETCD_PID=$!
 
   echo "Waiting for etcd to come up."
-  kube::util::wait_for_url "${KUBE_INTEGRATION_ETCD_URL}/version" "etcd: " 0.25 80
-  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
-  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/range -X POST -d '{"key": "Zm9v"}'
-  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/range -X POST -d '{"key": "Zm9v", "range_end": "Zm9w"}'
-  curl -fs -L ${KUBE_INTEGRATION_ETCD_URL}/v3/kv/deleterange -X POST -d '{"key": "Zm9v"}'
+  # Check etcd health
+  kube::util::wait_for_url "${KUBE_INTEGRATION_ETCD_URL}/health" "etcd: " 0.25 80
+  curl -fs -X POST "${KUBE_INTEGRATION_ETCD_URL}/v3/kv/put" -d '{"key": "X3Rlc3Q=", "value": ""}'
 }
 
 kube::etcd::stop() {
