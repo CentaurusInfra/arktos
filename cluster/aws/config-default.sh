@@ -79,6 +79,7 @@ MASTER_ROOT_DISK_SIZE=${MASTER_ROOT_DISK_SIZE:-40}
 # The minions root EBS volume size (used to house Docker images)
 NODE_ROOT_DISK_TYPE="${NODE_ROOT_DISK_TYPE:-gp2}"
 NODE_ROOT_DISK_SIZE=${NODE_ROOT_DISK_SIZE:-32}
+KUBE_CREATE_NODES="${KUBE_CREATE_NODES:-true}"
 
 MASTER_NAME="${INSTANCE_PREFIX}-master"
 MASTER_TAG="${INSTANCE_PREFIX}-master"
@@ -91,10 +92,12 @@ CLUSTER_IP_RANGE="${CLUSTER_IP_RANGE:-10.244.0.0/16}"
 MASTER_IP_RANGE="${MASTER_IP_RANGE:-10.246.0.0/24}"
 SSH_CIDR="${SSH_CIDR:-0.0.0.0/0}" # IP to restrict ssh access to nodes/master
 HTTP_API_CIDR="${HTTP_API_CIDR:-0.0.0.0/0}" # IP to restrict HTTP API access
+API_BIND_PORT=${KUBE_API_BIND_PORT:-6443}
 # If set to an Elastic IP address, the master instance will be associated with this IP.
 # Otherwise a new Elastic IP will be acquired
 # (We used to accept 'auto' to mean 'allocate elastic ip', but that is now the default)
 MASTER_RESERVED_IP="${MASTER_RESERVED_IP:-}"
+REGISTER_MASTER_KUBELET=${REGISTER_MASTER:-true}
 
 # Runtime config
 RUNTIME_CONFIG="${KUBE_RUNTIME_CONFIG:-}"
@@ -129,7 +132,8 @@ ENABLE_DNS_HORIZONTAL_AUTOSCALER="${KUBE_ENABLE_DNS_HORIZONTAL_AUTOSCALER:-false
 ENABLE_CLUSTER_UI="${KUBE_ENABLE_CLUSTER_UI:-true}"
 
 # Optional: Create autoscaler for cluster's nodes.
-ENABLE_CLUSTER_AUTOSCALER="${KUBE_ENABLE_CLUSTER_AUTOSCALER:-false}"
+ENABLE_CLUSTER_AUTOSCALER="${KUBE_ENABLE_CLUSTER_AUTOSCALER:-true}"
+AUTOSCALER_MIG_CONFIG=""
 if [[ "${ENABLE_CLUSTER_AUTOSCALER}" == "true" ]]; then
   # TODO: actually configure ASG or similar
   AUTOSCALER_MIN_NODES="${KUBE_AUTOSCALER_MIN_NODES:-1}"
@@ -154,7 +158,7 @@ COREOS_CHANNEL="${COREOS_CHANNEL:-alpha}"
 CONTAINER_RUNTIME="${KUBE_CONTAINER_RUNTIME:-docker}"
 RKT_VERSION="${KUBE_RKT_VERSION:-1.14.0}"
 
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-kubenet}" # kubenet, opencontrail, flannel
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-flannel}" # kubenet, opencontrail, flannel
 
 # OpenContrail networking plugin specific settings
 OPENCONTRAIL_TAG="${OPENCONTRAIL_TAG:-R2.20}"

@@ -210,9 +210,10 @@ function start-hollow-nodes {
   echo -e "${color_yellow}STARTING SETUP FOR HOLLOW-NODES${color_norm}"
   create-and-upload-hollow-node-image
   if [ "${CLOUD_PROVIDER}" = "aws" ]; then
-    create-kube-hollow-node-resources-aws
-    sed -i "s/https:\/\/${MASTER_INTERNAL_IP}/https:\/\/${MASTER_PUBLIC_IP}/" $LOCAL_KUBECONFIG
-    MASTER_IP=${MASTER_PUBLIC_IP}
+    (
+      MASTER_IP=${MASTER_INTERNAL_IP}
+      create-kube-hollow-node-resources
+    )
   else
     create-kube-hollow-node-resources
   fi
@@ -220,9 +221,8 @@ function start-hollow-nodes {
 }
 
 detect-project &> /dev/null
-create-kubemark-master
 
-MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
+create-kubemark-master
 
 start-hollow-nodes
 

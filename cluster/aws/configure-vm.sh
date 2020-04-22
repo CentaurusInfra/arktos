@@ -19,7 +19,6 @@ set -o nounset
 set -o pipefail
 
 KUBE_VER=""
-KUBE_MASTER_EIP=""
 KUBEMARK_MASTER=${KUBEMARK_MASTER:-false}
 
 
@@ -61,32 +60,6 @@ ensure-packages() {
   cd /usr/share/google
   download-or-bust "dc96f40fdc9a0815f099a51738587ef5a976f1da" https://raw.githubusercontent.com/GoogleCloudPlatform/compute-image-packages/82b75f314528b90485d5239ab5d5495cc22d775f/google-startup-scripts/usr/share/google/safe_format_and_mount
   chmod +x safe_format_and_mount
-}
-
-function create-node-pki {
-  echo "Creating node pki files"
-
-  local -r pki_dir="/etc/kubernetes/pki"
-  mkdir -p "${pki_dir}"
-
-  if [[ -z "${CA_CERT_BUNDLE:-}" ]]; then
-    CA_CERT_BUNDLE="${CA_CERT}"
-  fi
-
-  CA_CERT_BUNDLE_PATH="${pki_dir}/ca-certificates.crt"
-  echo "${CA_CERT_BUNDLE}" | base64 --decode > "${CA_CERT_BUNDLE_PATH}"
-
-  if [[ ! -z "${KUBELET_CERT:-}" && ! -z "${KUBELET_KEY:-}" ]]; then
-    KUBELET_CERT_PATH="${pki_dir}/kubelet.crt"
-    echo "${KUBELET_CERT}" | base64 --decode > "${KUBELET_CERT_PATH}"
-
-    KUBELET_KEY_PATH="${pki_dir}/kubelet.key"
-    echo "${KUBELET_KEY}" | base64 --decode > "${KUBELET_KEY_PATH}"
-  fi
-
-  # TODO(mikedanese): remove this when we don't support downgrading to versions
-  # < 1.6.
-  ln -sf "${CA_CERT_BUNDLE_PATH}" /etc/kubernetes/ca.crt
 }
 
 function ensure-install-dir() {
@@ -235,44 +208,6 @@ apt-get-update() {
   done
 }
 
-# Restart any services that need restarting due to a library upgrade
-# Uses needrestart
-restart-updated-services() {
-  # We default to restarting services, because this is only done as part of an update
-  if [[ "${AUTO_RESTART_SERVICES:-true}" != "true" ]]; then
-    echo "Auto restart of services prevented by AUTO_RESTART_SERVICES=${AUTO_RESTART_SERVICES}"
-    return
-  fi
-  echo "Restarting services with updated libraries (needrestart -r a)"
-  # The pipes make sure that needrestart doesn't think it is running with a TTY
-  # Debian bug #803249; fixed but not necessarily in package repos yet
-  echo "" | needrestart -r a 2>&1 | tee /dev/null
-}
-
-# Reboot the machine if /var/run/reboot-required exists
-reboot-if-required() {
-  if [[ ! -e "/var/run/reboot-required" ]]; then
-    return
-  fi
-
-  echo "Reboot is required (/var/run/reboot-required detected)"
-  if [[ -e "/var/run/reboot-required.pkgs" ]]; then
-    echo "Packages that triggered reboot:"
-    cat /var/run/reboot-required.pkgs
-  fi
-
-  # We default to rebooting the machine because this is only done as part of an update
-  if [[ "${AUTO_REBOOT:-true}" != "true" ]]; then
-    echo "Reboot prevented by AUTO_REBOOT=${AUTO_REBOOT}"
-    return
-  fi
-
-  rm -f /var/run/reboot-required
-  rm -f /var/run/reboot-required.pkgs
-  echo "Triggering reboot"
-  init 6
-}
-
 # Finds the master PD device
 find-master-pd() {
   if ( grep "/mnt/master-pd" /proc/mounts ); then
@@ -339,20 +274,6 @@ mount-master-pd() {
   chgrp -R etcd /mnt/master-pd/var/etcd
 }
 
-# The job of this function is simple, but the basic regular expression syntax makes
-# this difficult to read. What we want to do is convert from [0-9]+B, KB, KiB, MB, etc
-# into [0-9]+, Ki, Mi, Gi, etc.
-# This is done in two steps:
-#   1. Convert from [0-9]+X?i?B into [0-9]X? (X denotes the prefix, ? means the field
-#      is optional.
-#   2. Attach an 'i' to the end of the string if we find a letter.
-# The two step process is needed to handle the edge case in which we want to convert
-# a raw byte count, as the result should be a simple number (e.g. 5B -> 5).
-function convert-bytes-gce-kube() {
-  local -r storage_space=$1
-  echo "${storage_space}" | sed -e 's/^\([0-9]\+\)\([A-Z]\)\?i\?B$/\1\2/g' -e 's/\([A-Z]\)$/\1i/'
-}
-
 function split-commas() {
   echo $1 | tr "," "\n"
 }
@@ -389,19 +310,6 @@ function download-release() {
   echo "Running release install script"
 }
 
-function node-docker-opts() {
-  if [[ -n "${EXTRA_DOCKER_OPTS-}" ]]; then
-    DOCKER_OPTS="${DOCKER_OPTS:-} ${EXTRA_DOCKER_OPTS}"
-  fi
-
-  # Decide whether to enable a docker registry mirror. This is taken from
-  # the "kube-env" metadata value.
-  if [[ -n "${DOCKER_REGISTRY_MIRROR_URL:-}" ]]; then
-    echo "Enable docker registry mirror at: ${DOCKER_REGISTRY_MIRROR_URL}"
-    DOCKER_OPTS="${DOCKER_OPTS:-} --registry-mirror=${DOCKER_REGISTRY_MIRROR_URL}"
-  fi
-}
-
 function run-user-script() {
   if curl-metadata k8s-user-startup-script > "${INSTALL_DIR}/k8s-user-script.sh"; then
     user_script=$(cat "${INSTALL_DIR}/k8s-user-script.sh")
@@ -417,6 +325,7 @@ function ensure-apparmor-service() {
   local hostfqdn=$(hostname -f)
   local hostname=$(hostname)
   echo "127.0.1.1 $hostfqdn $hostname" >> /etc/hosts
+  echo "$API_SERVERS $KUBERNETES_MASTER_NAME" >> /etc/hosts
 
   # Start AppArmor service before we have scripts to configure it properly
   if ! sudo systemctl is-active --quiet apparmor; then
@@ -426,7 +335,6 @@ function ensure-apparmor-service() {
 }
 
 function setup-flannel-cni-conf() {
-  mkdir -p /etc/cni/net.d
   cat > /etc/cni/net.d/10-flannel.conflist <<EOF
 {
   "name": "cbr0",
@@ -447,6 +355,38 @@ function setup-flannel-cni-conf() {
   ]
 }
 EOF
+}
+
+function setup-bridge-cni-conf() {
+  cat > /etc/cni/net.d/bridge.conf <<EOF
+{
+  "cniVersion": "0.3.1",
+  "name": "containerd-net",
+  "type": "bridge",
+  "bridge": "cni0",
+  "isGateway": true,
+  "ipMasq": true,
+  "ipam": {
+    "type": "host-local",
+    "subnet": "10.88.0.0/16",
+    "routes": [
+      { "dst": "0.0.0.0/0" }
+    ]
+  }
+}
+EOF
+}
+
+function setup-cni-network-conf() {
+  mkdir -p /etc/cni/net.d
+  case "${NETWORK_PROVIDER:-flannel}" in
+    flannel)
+    setup-flannel-cni-conf
+    ;;
+    bridge)
+    setup-bridge-cni-conf
+    ;;
+  esac
 }
 
 function enable-root-ssh() {
@@ -481,9 +421,7 @@ function ensure-docker() {
 }
 
 function unpack-kubernetes() {
-  rm -rf /tmp/k8s_install
-  mkdir -p /tmp/k8s_install
-  pushd /tmp/k8s_install
+  pushd ${INSTALL_DIR}
   cp -p /usr/share/google/kubernetes-server-linux-amd64.tar.gz .
   tar xf kubernetes-server-linux-amd64.tar.gz
   cp -p ./kubernetes/server/bin/kubelet /usr/bin/
@@ -491,7 +429,7 @@ function unpack-kubernetes() {
   cp -p ./kubernetes/server/bin/kubeadm /usr/bin/
   KUBE_VER=`cat ./kubernetes/server/bin/kube-apiserver.docker_tag`
   if [[ "${KUBERNETES_MASTER}" == "true" ]]; then
-    img_bins=(kube-apiserver kube-controller-manager kube-scheduler)
+    img_bins=(kube-apiserver kube-controller-manager kube-scheduler workload-controller-manager)
     for img in "${img_bins[@]}"; do
       echo "Loading docker image for $img"
       sudo docker load -i ./kubernetes/server/bin/$img.tar
@@ -499,7 +437,6 @@ function unpack-kubernetes() {
   fi
   echo "Loading docker image for kube-proxy"
   sudo docker load -i ./kubernetes/server/bin/kube-proxy.tar
-  rm -rf /tmp/k8s_install/kubernetes
   popd
 
   sudo apt-get install -y iptables arptables ebtables
@@ -511,6 +448,202 @@ deb https://apt.kubernetes.io/ kubernetes-xenial main
 EOF
   sudo apt-get update -y
   sudo apt-get install -y conntrack kubernetes-cni cri-tools
+}
+
+# Create the log file and set its properties.
+#
+# $1 is the file to create.
+# $2: the log owner uid to set for the log file.
+# $3: the log owner gid to set for the log file.
+function prepare-log-file {
+  touch $1
+  chmod 644 $1
+  chown "${2:-${LOG_OWNER_USER:-root}}":"${3:-${LOG_OWNER_GROUP:-root}}" $1
+}
+
+# secure_random generates a secure random string of bytes. This function accepts
+# a number of secure bytes desired and returns a base64 encoded string with at
+# least the requested entropy. Rather than directly reading from /dev/urandom,
+# we use uuidgen which calls getrandom(2). getrandom(2) verifies that the
+# entropy pool has been initialized sufficiently for the desired operation
+# before reading from /dev/urandom.
+#
+# ARGS:
+#   #1: number of secure bytes to generate. We round up to the nearest factor of 32.
+function secure_random {
+  local infobytes="${1}"
+  if ((infobytes <= 0)); then
+    echo "Invalid argument to secure_random: infobytes='${infobytes}'" 1>&2
+    return 1
+  fi
+
+  local out=""
+  for (( i = 0; i < "${infobytes}"; i += 32 )); do
+    # uuids have 122 random bits, sha256 sums have 256 bits, so concatenate
+    # three uuids and take their sum. The sum is encoded in ASCII hex, hence the
+    # 64 character cut.
+    out+="$(
+     (
+       uuidgen --random;
+       uuidgen --random;
+       uuidgen --random;
+     ) | sha256sum \
+       | head -c 64
+    )";
+  done
+  # Finally, convert the ASCII hex to base64 to increase the density.
+  echo -n "${out}" | xxd -r -p | base64 -w 0
+}
+
+# append_or_replace_prefixed_line ensures:
+# 1. the specified file exists
+# 2. existing lines with the specified ${prefix} are removed
+# 3. a new line with the specified ${prefix}${suffix} is appended
+function append_or_replace_prefixed_line {
+  local -r file="${1:-}"
+  local -r prefix="${2:-}"
+  local -r suffix="${3:-}"
+  local -r dirname="$(dirname ${file})"
+  local -r tmpfile="$(mktemp -t filtered.XXXX --tmpdir=${dirname})"
+
+  touch "${file}"
+  awk "substr(\$0,0,length(\"${prefix}\")) != \"${prefix}\" { print }" "${file}" > "${tmpfile}"
+  echo "${prefix}${suffix}" >> "${tmpfile}"
+  mv "${tmpfile}" "${file}"
+}
+
+# After the first boot and on upgrade, these files exist on the master-pd
+# and should never be touched again (except perhaps an additional service
+# account, see NB below.) One exception is if METADATA_CLOBBERS_CONFIG is
+# enabled. In that case the basic_auth.csv file will be rewritten to make
+# sure it matches the metadata source of truth.
+function create-master-auth {
+  echo "Creating master auth files"
+  local -r auth_dir="/etc/srv/kubernetes"
+  mkdir -p ${auth_dir}
+  local -r basic_auth_csv="${auth_dir}/basic_auth.csv"
+  if [[ -n "${KUBE_PASSWORD:-}" && -n "${KUBE_USER:-}" ]]; then
+    if [[ -e "${basic_auth_csv}" && "${METADATA_CLOBBERS_CONFIG:-false}" == "true" ]]; then
+      # If METADATA_CLOBBERS_CONFIG is true, we want to rewrite the file
+      # completely, because if we're changing KUBE_USER and KUBE_PASSWORD, we
+      # have nothing to match on.  The file is replaced just below with
+      # append_or_replace_prefixed_line.
+      rm "${basic_auth_csv}"
+    fi
+    append_or_replace_prefixed_line "${basic_auth_csv}" "${KUBE_PASSWORD},${KUBE_USER},"      "admin,system:masters"
+  fi
+
+  local -r known_tokens_csv="${auth_dir}/known_tokens.csv"
+  if [[ -e "${known_tokens_csv}" && "${METADATA_CLOBBERS_CONFIG:-false}" == "true" ]]; then
+    rm "${known_tokens_csv}"
+  fi
+  if [[ -n "${KUBE_BEARER_TOKEN:-}" ]]; then
+    append_or_replace_prefixed_line "${known_tokens_csv}" "${KUBE_BEARER_TOKEN},"             "admin,admin,system:masters"
+  fi
+  if [[ -n "${WORKLOAD_CONTROLLER_MANAGER_TOKEN:-}" ]]; then
+    append_or_replace_prefixed_line "${known_tokens_csv}" "${WORKLOAD_CONTROLLER_MANAGER_TOKEN}," "system:workload-controller-manager,uid:system:workload-controller-manager"
+  fi
+  if [[ -n "${KUBE_CLUSTER_AUTOSCALER_TOKEN:-}" ]]; then
+    append_or_replace_prefixed_line "${known_tokens_csv}" "${KUBE_CLUSTER_AUTOSCALER_TOKEN}," "cluster-autoscaler,uid:cluster-autoscaler"
+  fi
+  if [[ -n "${NODE_PROBLEM_DETECTOR_TOKEN:-}" ]]; then
+    append_or_replace_prefixed_line "${known_tokens_csv}" "${NODE_PROBLEM_DETECTOR_TOKEN},"   "system:node-problem-detector,uid:node-problem-detector"
+  fi
+  if [[ -n "${ADDON_MANAGER_TOKEN:-}" ]]; then
+    append_or_replace_prefixed_line "${known_tokens_csv}" "${ADDON_MANAGER_TOKEN},"   "system:addon-manager,uid:system:addon-manager,system:masters"
+  fi
+  if [[ -n "${EXTRA_STATIC_AUTH_COMPONENTS:-}" ]]; then
+    # Create a static Bearer token and kubeconfig for extra, comma-separated components.
+    IFS="," read -r -a extra_components <<< "${EXTRA_STATIC_AUTH_COMPONENTS:-}"
+    for extra_component in "${extra_components[@]}"; do
+      local token="$(secure_random 32)"
+      append_or_replace_prefixed_line "${known_tokens_csv}" "${token}," "system:${extra_component},uid:system:${extra_component}"
+      create-kubeconfig "${extra_component}" "${token}"
+    done
+  fi
+}
+
+function create-kubeconfig {
+  local component=$1
+  local token=$2
+  echo "Creating kubeconfig file for component ${component}"
+  mkdir -p /etc/srv/kubernetes/${component}
+  cat <<EOF >/etc/srv/kubernetes/${component}/kubeconfig
+apiVersion: v1
+kind: Config
+users:
+- name: ${component}
+  user:
+    token: ${token}
+clusters:
+- name: local
+  cluster:
+    insecure-skip-tls-verify: true
+    server: https://localhost:${API_BIND_PORT}
+contexts:
+- context:
+    cluster: local
+    user: ${component}
+  name: ${component}
+current-context: ${component}
+EOF
+}
+
+# Starts workload controller manager.
+# It prepares the log file, loads the docker image, calculates variables, sets them
+# in the manifest file, and then copies the manifest file to /etc/kubernetes/manifests.
+#
+# Assumed vars (which are calculated in function compute-master-manifest-variables)
+#   CLOUD_CONFIG_OPT
+#   CLOUD_CONFIG_VOLUME
+#   CLOUD_CONFIG_MOUNT
+#   DOCKER_REGISTRY
+function start-workload-controller-manager {
+  CLOUD_CONFIG_MOUNT=""
+  CLOUD_CONFIG_VOLUME=""
+  PV_RECYCLER_MOUNT=""
+  PV_RECYCLER_VOLUME=""
+  FLEXVOLUME_HOSTPATH_MOUNT=""
+  FLEXVOLUME_HOSTPATH_VOLUME=""
+  DOCKER_REGISTRY="k8s.gcr.io"
+  WORKLOAD_CONTROLLER_MANAGER_CPU_REQUEST="${WORKLOAD_CONTROLLER_MANAGER_CPU_REQUEST:-200m}"
+
+  echo "Starting workload controller-manager .."
+  mkdir -p /etc/srv/kubernetes/workload-controller-manager
+  cp /var/cache/kubernetes-install/workload-controllerconfig.json /etc/srv/kubernetes/workload-controller-manager/
+  create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN:-""}
+  prepare-log-file /var/log/workload-controller-manager.log
+  # Calculate variables and assemble the command line.
+  local params="${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=2"}"
+  params+=" --controllerconfig=/etc/srv/kubernetes/workload-controller-manager/workload-controllerconfig.json"
+  params+=" --kubeconfig=/etc/srv/kubernetes/workload-controller-manager/kubeconfig"
+
+  # Disable using HPA metrics REST clients if metrics-server isn't enabled,
+  # or if we want to explicitly disable it by setting HPA_USE_REST_CLIENT.
+
+  local -r kube_rc_docker_tag=$(cat ${INSTALL_DIR}/kubernetes/server/bin/workload-controller-manager.docker_tag)
+  local container_env=""
+  if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
+    container_env="\"env\":[{\"name\": \"KUBE_CACHE_MUTATION_DETECTOR\", \"value\": \"${ENABLE_CACHE_MUTATION_DETECTOR}\"}],"
+  fi
+
+  local -r src_file="/var/cache/kubernetes-install/workload-controller-manager.manifest"
+  # Evaluate variables.
+  sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${DOCKER_REGISTRY}@g" "${src_file}"
+  sed -i -e "s@{{pillar\['workload-controller-manager_docker_tag'\]}}@${kube_rc_docker_tag}@g" "${src_file}"
+  sed -i -e "s@{{params}}@${params}@g" "${src_file}"
+  sed -i -e "s@{{container_env}}@${container_env}@g" ${src_file}
+  sed -i -e "s@{{cloud_config_mount}}@${CLOUD_CONFIG_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{cloud_config_volume}}@${CLOUD_CONFIG_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{additional_cloud_config_mount}}@@g" "${src_file}"
+  sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
+  sed -i -e "s@{{pv_recycler_mount}}@${PV_RECYCLER_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{pv_recycler_volume}}@${PV_RECYCLER_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{flexvolume_hostpath_mount}}@${FLEXVOLUME_HOSTPATH_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{cpurequest}}@${WORKLOAD_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
+
+  cp "${src_file}" /etc/kubernetes/manifests
 }
 
 function setup-kubelet() {
@@ -550,11 +683,33 @@ EOF
 function setup-kubernetes-master() {
   setup-kubelet
 
-  KUBE_MASTER_EIP=`cat /etc/kubernetes/kube_env.yaml | grep MASTER_EIP | cut -d\' -f2`
-  echo "Setting up kubernetes master: version $KUBE_VER EIP: $KUBE_MASTER_EIP."
+  if [[ -z "$KUBERNETES_MASTER_NAME" ]]; then
+    KUBE_NODE_NAME=`hostname`
+  else
+    KUBE_NODE_NAME=$KUBERNETES_MASTER_NAME
+  fi
+
+  echo "Setting up kubernetes master $KUBE_NODE_NAME: Version $KUBE_VER ExtIP: $MASTER_EXTERNAL_IP Port: $API_BIND_PORT."
+
+  local init_phases="control-plane,etcd"
+  local skip_phases="--skip-phases=${init_phases}"
+  if [[ ${NETWORK_PROVIDER:-flannel} == "bridge" ]]; then
+    skip_phases="--skip-phases=${init_phases},addon"
+  fi
 
   # Run kubeadm init - TODO: take pod-network-cidr and networking yaml as a params
-  kubeadm init --pod-network-cidr=10.244.0.0/16 --kubernetes-version=$KUBE_VER --apiserver-cert-extra-sans=$KUBE_MASTER_EIP &> /etc/kubernetes/kubeadm-init-log
+  kubeadm init phase control-plane apiserver --apiserver-bind-port=$API_BIND_PORT --kubernetes-version=$KUBE_VER
+  kubeadm init phase control-plane controller-manager --pod-network-cidr=10.244.0.0/16 --kubernetes-version=$KUBE_VER
+  kubeadm init phase control-plane scheduler --kubernetes-version=$KUBE_VER
+  kubeadm init phase etcd local
+
+  sed -i "/listen-client-urls=/ s/$/,http:\/\/127.0.0.1:2382/" /etc/kubernetes/manifests/etcd.yaml
+  sed -i "/- kube-apiserver/a \ \ \ \ - --token-auth-file=\/etc\/srv\/kubernetes\/known_tokens.csv" /etc/kubernetes/manifests/kube-apiserver.yaml
+  sed -i "/- kube-apiserver/a \ \ \ \ - --basic-auth-file=\/etc\/srv\/kubernetes\/basic_auth.csv" /etc/kubernetes/manifests/kube-apiserver.yaml
+  sed -i "/volumeMounts:/a \ \ \ \ - mountPath: \/etc\/srv\/kubernetes\n      name: etc-srv-kubernetes\n      readOnly: true" /etc/kubernetes/manifests/kube-apiserver.yaml
+  sed -i "/volumes:/a \ \ - hostPath:\n      path: \/etc\/srv\/kubernetes\n      type: DirectoryOrCreate\n    name: etc-srv-kubernetes" /etc/kubernetes/manifests/kube-apiserver.yaml
+
+  kubeadm init --node-name=$KUBE_NODE_NAME --apiserver-bind-port=$API_BIND_PORT --apiserver-cert-extra-sans=$MASTER_EXTERNAL_IP --ignore-preflight-errors=all $skip_phases &> /etc/kubernetes/kubeadm-init-log
   if [ $? -eq 0 ]; then
     echo "kubeadm init successful."
     sudo mkdir -p /root/.kube
@@ -563,6 +718,8 @@ function setup-kubernetes-master() {
     sudo mkdir -p /home/ubuntu/.kube
     sudo cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
     sudo chown ubuntu:ubuntu /home/ubuntu/.kube/config
+
+    start-workload-controller-manager
 
     sudo mkdir -p /etc/kubernetes/kubeadm_join_cmd
     local line1=$(sudo cat /etc/kubernetes/kubeadm-init-log | grep "kubeadm join" | cut -d\\ -f1)
@@ -604,11 +761,11 @@ function setup-kubernetes-worker() {
   mkdir -p /etc/kubernetes/manifests
 }
 
-# This script is re-used on AWS.  Some of the above functions will be replaced.
-# The AWS kube-up script looks for this marker:
-#+AWS_OVERRIDES_HERE
-
 ####################################################################################
+
+WORKLOAD_CONTROLLER_MANAGER_TOKEN="$(secure_random 32)"
+KUBE_CLUSTER_AUTOSCALER_TOKEN="$(secure_random 32)"
+ADDON_MANAGER_TOKEN="$(secure_random 32)"
 
 if [[ -z "${is_push}" ]]; then
   echo "== kube-up node config starting =="
@@ -618,12 +775,12 @@ if [[ -z "${is_push}" ]]; then
   ensure-install-dir
   ensure-packages
   set-kube-env
-  setup-flannel-cni-conf
+  setup-cni-network-conf
   if [[ "${KUBERNETES_MASTER}" == "true" ]]; then
     mount-master-pd
     ensure-apparmor-service
+    create-master-auth
   fi
-  create-node-pki
   ensure-docker
   ensure-containerd
   download-release
