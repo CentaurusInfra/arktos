@@ -318,7 +318,7 @@ func checkName(obj runtime.Object, name, namespace, tenant string, namer ScopeNa
 				"the namespace of the object (%s) does not match the namespace on the request (%s)", objNamespace, namespace))
 		}
 	}
-	if len(tenant) > 0 {
+	if tenant != metav1.TenantDefault && len(tenant) > 0 {
 		if len(objTenant) > 0 && objTenant != tenant {
 			return errors.NewBadRequest(fmt.Sprintf(
 				"the tenant of the object (%s) does not match the tenant on the request (%s)", objTenant, tenant))

@@ -181,10 +181,27 @@ func (c byAccessModes) Len() int {
 	return len(c.modes)
 }
 
+func claimToVolumeKey(claim *v1.PersistentVolumeClaim) string {
+	var key string
+	if claim.Tenant == "" || claim.Tenant == v1.TenantDefault {
+		key = claim.Spec.VolumeName
+	} else {
+		key = fmt.Sprintf("%s/%s", claim.Tenant, claim.Spec.VolumeName)
+	}
+	return key
+}
+
 func claimToClaimKey(claim *v1.PersistentVolumeClaim) string {
-	return fmt.Sprintf("%s/%s", claim.Namespace, claim.Name)
+	key, _ := cache.MetaNamespaceKeyFunc(claim)
+	return key
 }
 
 func claimrefToClaimKey(claimref *v1.ObjectReference) string {
-	return fmt.Sprintf("%s/%s", claimref.Namespace, claimref.Name)
+	var key string
+	if claimref.Tenant ==  "" || claimref.Tenant == v1.TenantDefault {
+		key = fmt.Sprintf("%s/%s", claimref.Namespace, claimref.Name)
+	} else {
+		key = fmt.Sprintf("%s/%s/%s", claimref.Tenant, claimref.Namespace, claimref.Name)
+	}
+	return key
 }

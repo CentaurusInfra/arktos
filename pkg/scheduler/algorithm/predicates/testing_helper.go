@@ -27,9 +27,9 @@ import (
 type FakePersistentVolumeClaimInfo []v1.PersistentVolumeClaim
 
 // GetPersistentVolumeClaimInfo gets PVC matching the namespace and PVC ID.
-func (pvcs FakePersistentVolumeClaimInfo) GetPersistentVolumeClaimInfo(namespace string, pvcID string) (*v1.PersistentVolumeClaim, error) {
+func (pvcs FakePersistentVolumeClaimInfo) GetPersistentVolumeClaimInfo(tenant, namespace string, pvcID string) (*v1.PersistentVolumeClaim, error) {
 	for _, pvc := range pvcs {
-		if pvc.Name == pvcID && pvc.Namespace == namespace {
+		if pvc.Tenant == tenant && pvc.Name == pvcID && pvc.Namespace == namespace {
 			return &pvc, nil
 		}
 	}

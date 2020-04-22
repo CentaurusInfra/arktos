@@ -75,7 +75,7 @@ func UpdatePVSize(
 		return fmt.Errorf("error Creating two way merge patch for PV %q with error : %v", pvClone.Name, err)
 	}
 
-	_, err = kubeClient.CoreV1().PersistentVolumes().Patch(pvClone.Name, types.StrategicMergePatchType, patchBytes)
+	_, err = kubeClient.CoreV1().PersistentVolumesWithMultiTenancy(pvClone.Tenant).Patch(pvClone.Name, types.StrategicMergePatchType, patchBytes)
 	if err != nil {
 		return fmt.Errorf("error Patching PV %q with error : %v", pvClone.Name, err)
 	}
@@ -169,7 +169,7 @@ func PatchPVCStatus(
 		return nil, fmt.Errorf("patchPVCStatus failed to patch PVC %q: %v", oldPVC.Name, err)
 	}
 
-	updatedClaim, updateErr := kubeClient.CoreV1().PersistentVolumeClaims(oldPVC.Namespace).
+	updatedClaim, updateErr := kubeClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(oldPVC.Namespace, oldPVC.Tenant).
 		Patch(oldPVC.Name, types.StrategicMergePatchType, patchBytes, "status")
 	if updateErr != nil {
 		return nil, fmt.Errorf("patchPVCStatus failed to patch PVC %q: %v", oldPVC.Name, updateErr)
