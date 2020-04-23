@@ -276,7 +276,6 @@ func (l *Lifecycle) Admit(a admission.Attributes, o admission.ObjectInterfaces) 
 
 	// check the tenant is not terminating
 	if err := l.tenantLifecycleAdmit(a); err != nil {
-		fmt.Printf("\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ err %v\n", err)
 		return err
 	}
 
