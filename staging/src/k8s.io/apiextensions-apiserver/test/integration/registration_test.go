@@ -63,7 +63,8 @@ func TestMultipleResourceInstances(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	noxuNamespacedWatch, err := noxuNamespacedResourceClient.Watch(metav1.ListOptions{ResourceVersion: noxuListListMeta.GetResourceVersion()})
+	noxuNamespacedWatch := noxuNamespacedResourceClient.Watch(metav1.ListOptions{ResourceVersion: noxuListListMeta.GetResourceVersion()})
+	err = noxuNamespacedWatch.GetFirstError()
 	if err != nil {
 		t.Fatal(err)
 	}

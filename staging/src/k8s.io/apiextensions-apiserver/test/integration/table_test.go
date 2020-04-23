@@ -34,6 +34,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apiextensions-apiserver/test/integration/fixtures"
+	restclient "k8s.io/client-go/rest"
 )
 
 func newTableCRD() *apiextensionsv1beta1.CustomResourceDefinition {
@@ -149,11 +150,13 @@ func TestTableGet(t *testing.T) {
 		scheme.AddKnownTypes(metav1beta1.SchemeGroupVersion, &metav1beta1.Table{}, &metav1beta1.TableOptions{})
 		scheme.AddKnownTypes(metav1.SchemeGroupVersion, &metav1.Table{}, &metav1.TableOptions{})
 
-		crConfig := *config
-		crConfig.GroupVersion = &gv
-		crConfig.APIPath = "/apis"
-		crConfig.NegotiatedSerializer = codecs.WithoutConversion()
-		crRestClient, err := rest.RESTClientFor(&crConfig)
+		crConfig := restclient.CopyConfigs(config)
+		for _, configCopy := range crConfig.GetAllConfigs() {
+			configCopy.GroupVersion = &gv
+			configCopy.APIPath = "/apis"
+			configCopy.NegotiatedSerializer = codecs.WithoutConversion()
+		}
+		crRestClient, err := rest.RESTClientFor(crConfig.GetConfig())
 		if err != nil {
 			t.Fatal(err)
 		}
