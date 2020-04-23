@@ -130,8 +130,14 @@ func (c *statefulSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *statefulSets) Create(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
+
+	objectTenant := statefulSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Body(statefulSet).
@@ -144,8 +150,14 @@ func (c *statefulSets) Create(statefulSet *v1beta1.StatefulSet) (result *v1beta1
 // Update takes the representation of a statefulSet and updates it. Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *statefulSets) Update(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
+
+	objectTenant := statefulSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSet.Name).
@@ -161,8 +173,14 @@ func (c *statefulSets) Update(statefulSet *v1beta1.StatefulSet) (result *v1beta1
 
 func (c *statefulSets) UpdateStatus(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
 	result = &v1beta1.StatefulSet{}
+
+	objectTenant := statefulSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSet.Name).

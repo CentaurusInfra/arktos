@@ -115,6 +115,7 @@ func (c *storageClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 // Create takes the representation of a storageClass and creates it.  Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *storageClasses) Create(storageClass *v1beta1.StorageClass) (result *v1beta1.StorageClass, err error) {
 	result = &v1beta1.StorageClass{}
+
 	err = c.client.Post().
 		Resource("storageclasses").
 		Body(storageClass).
@@ -127,6 +128,7 @@ func (c *storageClasses) Create(storageClass *v1beta1.StorageClass) (result *v1b
 // Update takes the representation of a storageClass and updates it. Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *storageClasses) Update(storageClass *v1beta1.StorageClass) (result *v1beta1.StorageClass, err error) {
 	result = &v1beta1.StorageClass{}
+
 	err = c.client.Put().
 		Resource("storageclasses").
 		Name(storageClass.Name).

@@ -130,8 +130,14 @@ func (c *testTypes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a testType and creates it.  Returns the server's representation of the testType, and an error, if there is any.
 func (c *testTypes) Create(testType *example2.TestType) (result *example2.TestType, err error) {
 	result = &example2.TestType{}
+
+	objectTenant := testType.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Body(testType).
@@ -144,8 +150,14 @@ func (c *testTypes) Create(testType *example2.TestType) (result *example2.TestTy
 // Update takes the representation of a testType and updates it. Returns the server's representation of the testType, and an error, if there is any.
 func (c *testTypes) Update(testType *example2.TestType) (result *example2.TestType, err error) {
 	result = &example2.TestType{}
+
+	objectTenant := testType.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(testType.Name).
@@ -161,8 +173,14 @@ func (c *testTypes) Update(testType *example2.TestType) (result *example2.TestTy
 
 func (c *testTypes) UpdateStatus(testType *example2.TestType) (result *example2.TestType, err error) {
 	result = &example2.TestType{}
+
+	objectTenant := testType.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(testType.Name).

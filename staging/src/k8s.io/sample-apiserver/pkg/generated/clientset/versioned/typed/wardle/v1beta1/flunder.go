@@ -130,8 +130,14 @@ func (c *flunders) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a flunder and creates it.  Returns the server's representation of the flunder, and an error, if there is any.
 func (c *flunders) Create(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
+
+	objectTenant := flunder.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("flunders").
 		Body(flunder).
@@ -144,8 +150,14 @@ func (c *flunders) Create(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, er
 // Update takes the representation of a flunder and updates it. Returns the server's representation of the flunder, and an error, if there is any.
 func (c *flunders) Update(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
+
+	objectTenant := flunder.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(flunder.Name).
@@ -161,8 +173,14 @@ func (c *flunders) Update(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, er
 
 func (c *flunders) UpdateStatus(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
+
+	objectTenant := flunder.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(flunder.Name).

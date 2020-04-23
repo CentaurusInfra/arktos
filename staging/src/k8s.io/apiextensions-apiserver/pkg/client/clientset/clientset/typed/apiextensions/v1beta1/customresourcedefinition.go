@@ -116,6 +116,7 @@ func (c *customResourceDefinitions) Watch(opts v1.ListOptions) watch.AggregatedW
 // Create takes the representation of a customResourceDefinition and creates it.  Returns the server's representation of the customResourceDefinition, and an error, if there is any.
 func (c *customResourceDefinitions) Create(customResourceDefinition *v1beta1.CustomResourceDefinition) (result *v1beta1.CustomResourceDefinition, err error) {
 	result = &v1beta1.CustomResourceDefinition{}
+
 	err = c.client.Post().
 		Resource("customresourcedefinitions").
 		Body(customResourceDefinition).
@@ -128,6 +129,7 @@ func (c *customResourceDefinitions) Create(customResourceDefinition *v1beta1.Cus
 // Update takes the representation of a customResourceDefinition and updates it. Returns the server's representation of the customResourceDefinition, and an error, if there is any.
 func (c *customResourceDefinitions) Update(customResourceDefinition *v1beta1.CustomResourceDefinition) (result *v1beta1.CustomResourceDefinition, err error) {
 	result = &v1beta1.CustomResourceDefinition{}
+
 	err = c.client.Put().
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).
@@ -143,6 +145,7 @@ func (c *customResourceDefinitions) Update(customResourceDefinition *v1beta1.Cus
 
 func (c *customResourceDefinitions) UpdateStatus(customResourceDefinition *v1beta1.CustomResourceDefinition) (result *v1beta1.CustomResourceDefinition, err error) {
 	result = &v1beta1.CustomResourceDefinition{}
+
 	err = c.client.Put().
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).

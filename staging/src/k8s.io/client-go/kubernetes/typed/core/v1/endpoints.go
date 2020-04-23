@@ -129,8 +129,14 @@ func (c *endpoints) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterfac
 // Create takes the representation of a endpoints and creates it.  Returns the server's representation of the endpoints, and an error, if there is any.
 func (c *endpoints) Create(endpoints *v1.Endpoints) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
+
+	objectTenant := endpoints.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Body(endpoints).
@@ -143,8 +149,14 @@ func (c *endpoints) Create(endpoints *v1.Endpoints) (result *v1.Endpoints, err e
 // Update takes the representation of a endpoints and updates it. Returns the server's representation of the endpoints, and an error, if there is any.
 func (c *endpoints) Update(endpoints *v1.Endpoints) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
+
+	objectTenant := endpoints.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Name(endpoints.Name).

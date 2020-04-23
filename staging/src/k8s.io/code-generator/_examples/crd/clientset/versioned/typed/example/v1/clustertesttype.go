@@ -120,6 +120,7 @@ func (c *clusterTestTypes) Watch(opts metav1.ListOptions) watch.AggregatedWatchI
 // Create takes the representation of a clusterTestType and creates it.  Returns the server's representation of the clusterTestType, and an error, if there is any.
 func (c *clusterTestTypes) Create(clusterTestType *v1.ClusterTestType) (result *v1.ClusterTestType, err error) {
 	result = &v1.ClusterTestType{}
+
 	err = c.client.Post().
 		Resource("clustertesttypes").
 		Body(clusterTestType).
@@ -132,6 +133,7 @@ func (c *clusterTestTypes) Create(clusterTestType *v1.ClusterTestType) (result *
 // Update takes the representation of a clusterTestType and updates it. Returns the server's representation of the clusterTestType, and an error, if there is any.
 func (c *clusterTestTypes) Update(clusterTestType *v1.ClusterTestType) (result *v1.ClusterTestType, err error) {
 	result = &v1.ClusterTestType{}
+
 	err = c.client.Put().
 		Resource("clustertesttypes").
 		Name(clusterTestType.Name).
@@ -147,6 +149,7 @@ func (c *clusterTestTypes) Update(clusterTestType *v1.ClusterTestType) (result *
 
 func (c *clusterTestTypes) UpdateStatus(clusterTestType *v1.ClusterTestType) (result *v1.ClusterTestType, err error) {
 	result = &v1.ClusterTestType{}
+
 	err = c.client.Put().
 		Resource("clustertesttypes").
 		Name(clusterTestType.Name).
@@ -214,6 +217,7 @@ func (c *clusterTestTypes) GetScale(clusterTestTypeName string, options metav1.G
 // UpdateScale takes the top resource name and the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *clusterTestTypes) UpdateScale(clusterTestTypeName string, scale *autoscaling.Scale) (result *autoscaling.Scale, err error) {
 	result = &autoscaling.Scale{}
+
 	err = c.client.Put().
 		Resource("clustertesttypes").
 		Name(clusterTestTypeName).

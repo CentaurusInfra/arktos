@@ -130,8 +130,14 @@ func (c *cronJobs) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a cronJob and creates it.  Returns the server's representation of the cronJob, and an error, if there is any.
 func (c *cronJobs) Create(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJob, err error) {
 	result = &v2alpha1.CronJob{}
+
+	objectTenant := cronJob.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("cronjobs").
 		Body(cronJob).
@@ -144,8 +150,14 @@ func (c *cronJobs) Create(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJob, 
 // Update takes the representation of a cronJob and updates it. Returns the server's representation of the cronJob, and an error, if there is any.
 func (c *cronJobs) Update(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJob, err error) {
 	result = &v2alpha1.CronJob{}
+
+	objectTenant := cronJob.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("cronjobs").
 		Name(cronJob.Name).
@@ -161,8 +173,14 @@ func (c *cronJobs) Update(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJob, 
 
 func (c *cronJobs) UpdateStatus(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJob, err error) {
 	result = &v2alpha1.CronJob{}
+
+	objectTenant := cronJob.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("cronjobs").
 		Name(cronJob.Name).

@@ -133,8 +133,14 @@ func (c *replicaSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 // Create takes the representation of a replicaSet and creates it.  Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *replicaSets) Create(replicaSet *v1beta1.ReplicaSet) (result *v1beta1.ReplicaSet, err error) {
 	result = &v1beta1.ReplicaSet{}
+
+	objectTenant := replicaSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Body(replicaSet).
@@ -147,8 +153,14 @@ func (c *replicaSets) Create(replicaSet *v1beta1.ReplicaSet) (result *v1beta1.Re
 // Update takes the representation of a replicaSet and updates it. Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *replicaSets) Update(replicaSet *v1beta1.ReplicaSet) (result *v1beta1.ReplicaSet, err error) {
 	result = &v1beta1.ReplicaSet{}
+
+	objectTenant := replicaSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSet.Name).
@@ -164,8 +176,14 @@ func (c *replicaSets) Update(replicaSet *v1beta1.ReplicaSet) (result *v1beta1.Re
 
 func (c *replicaSets) UpdateStatus(replicaSet *v1beta1.ReplicaSet) (result *v1beta1.ReplicaSet, err error) {
 	result = &v1beta1.ReplicaSet{}
+
+	objectTenant := replicaSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSet.Name).
@@ -241,8 +259,14 @@ func (c *replicaSets) GetScale(replicaSetName string, options v1.GetOptions) (re
 // UpdateScale takes the top resource name and the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *replicaSets) UpdateScale(replicaSetName string, scale *v1beta1.Scale) (result *v1beta1.Scale, err error) {
 	result = &v1beta1.Scale{}
+
+	objectTenant := scale.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSetName).

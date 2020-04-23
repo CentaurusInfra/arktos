@@ -126,8 +126,14 @@ func (c *volumeAttachments) Watch(opts v1.ListOptions) watch.AggregatedWatchInte
 // Create takes the representation of a volumeAttachment and creates it.  Returns the server's representation of the volumeAttachment, and an error, if there is any.
 func (c *volumeAttachments) Create(volumeAttachment *v1beta1.VolumeAttachment) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
+
+	objectTenant := volumeAttachment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("volumeattachments").
 		Body(volumeAttachment).
 		Do().
@@ -139,8 +145,14 @@ func (c *volumeAttachments) Create(volumeAttachment *v1beta1.VolumeAttachment) (
 // Update takes the representation of a volumeAttachment and updates it. Returns the server's representation of the volumeAttachment, and an error, if there is any.
 func (c *volumeAttachments) Update(volumeAttachment *v1beta1.VolumeAttachment) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
+
+	objectTenant := volumeAttachment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("volumeattachments").
 		Name(volumeAttachment.Name).
 		Body(volumeAttachment).
@@ -155,8 +167,14 @@ func (c *volumeAttachments) Update(volumeAttachment *v1beta1.VolumeAttachment) (
 
 func (c *volumeAttachments) UpdateStatus(volumeAttachment *v1beta1.VolumeAttachment) (result *v1beta1.VolumeAttachment, err error) {
 	result = &v1beta1.VolumeAttachment{}
+
+	objectTenant := volumeAttachment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("volumeattachments").
 		Name(volumeAttachment.Name).
 		SubResource("status").

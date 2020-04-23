@@ -125,8 +125,14 @@ func (c *namespaces) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterfa
 // Create takes the representation of a namespace and creates it.  Returns the server's representation of the namespace, and an error, if there is any.
 func (c *namespaces) Create(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
+
+	objectTenant := namespace.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("namespaces").
 		Body(namespace).
 		Do().
@@ -138,8 +144,14 @@ func (c *namespaces) Create(namespace *v1.Namespace) (result *v1.Namespace, err 
 // Update takes the representation of a namespace and updates it. Returns the server's representation of the namespace, and an error, if there is any.
 func (c *namespaces) Update(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
+
+	objectTenant := namespace.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("namespaces").
 		Name(namespace.Name).
 		Body(namespace).
@@ -154,8 +166,14 @@ func (c *namespaces) Update(namespace *v1.Namespace) (result *v1.Namespace, err 
 
 func (c *namespaces) UpdateStatus(namespace *v1.Namespace) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
+
+	objectTenant := namespace.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("namespaces").
 		Name(namespace.Name).
 		SubResource("status").

@@ -134,8 +134,14 @@ func (c *statefulSets) Watch(opts metav1.ListOptions) watch.AggregatedWatchInter
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *statefulSets) Create(statefulSet *v1.StatefulSet) (result *v1.StatefulSet, err error) {
 	result = &v1.StatefulSet{}
+
+	objectTenant := statefulSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Body(statefulSet).
@@ -148,8 +154,14 @@ func (c *statefulSets) Create(statefulSet *v1.StatefulSet) (result *v1.StatefulS
 // Update takes the representation of a statefulSet and updates it. Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *statefulSets) Update(statefulSet *v1.StatefulSet) (result *v1.StatefulSet, err error) {
 	result = &v1.StatefulSet{}
+
+	objectTenant := statefulSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSet.Name).
@@ -165,8 +177,14 @@ func (c *statefulSets) Update(statefulSet *v1.StatefulSet) (result *v1.StatefulS
 
 func (c *statefulSets) UpdateStatus(statefulSet *v1.StatefulSet) (result *v1.StatefulSet, err error) {
 	result = &v1.StatefulSet{}
+
+	objectTenant := statefulSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSet.Name).
@@ -242,8 +260,14 @@ func (c *statefulSets) GetScale(statefulSetName string, options metav1.GetOption
 // UpdateScale takes the top resource name and the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *statefulSets) UpdateScale(statefulSetName string, scale *autoscalingv1.Scale) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
+
+	objectTenant := scale.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSetName).

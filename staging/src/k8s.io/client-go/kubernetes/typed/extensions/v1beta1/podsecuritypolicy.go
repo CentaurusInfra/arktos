@@ -125,8 +125,14 @@ func (c *podSecurityPolicies) Watch(opts v1.ListOptions) watch.AggregatedWatchIn
 // Create takes the representation of a podSecurityPolicy and creates it.  Returns the server's representation of the podSecurityPolicy, and an error, if there is any.
 func (c *podSecurityPolicies) Create(podSecurityPolicy *v1beta1.PodSecurityPolicy) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
+
+	objectTenant := podSecurityPolicy.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("podsecuritypolicies").
 		Body(podSecurityPolicy).
 		Do().
@@ -138,8 +144,14 @@ func (c *podSecurityPolicies) Create(podSecurityPolicy *v1beta1.PodSecurityPolic
 // Update takes the representation of a podSecurityPolicy and updates it. Returns the server's representation of the podSecurityPolicy, and an error, if there is any.
 func (c *podSecurityPolicies) Update(podSecurityPolicy *v1beta1.PodSecurityPolicy) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
+
+	objectTenant := podSecurityPolicy.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("podsecuritypolicies").
 		Name(podSecurityPolicy.Name).
 		Body(podSecurityPolicy).

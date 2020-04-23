@@ -129,8 +129,14 @@ func (c *roles) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a role and creates it.  Returns the server's representation of the role, and an error, if there is any.
 func (c *roles) Create(role *v1alpha1.Role) (result *v1alpha1.Role, err error) {
 	result = &v1alpha1.Role{}
+
+	objectTenant := role.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("roles").
 		Body(role).
@@ -143,8 +149,14 @@ func (c *roles) Create(role *v1alpha1.Role) (result *v1alpha1.Role, err error) {
 // Update takes the representation of a role and updates it. Returns the server's representation of the role, and an error, if there is any.
 func (c *roles) Update(role *v1alpha1.Role) (result *v1alpha1.Role, err error) {
 	result = &v1alpha1.Role{}
+
+	objectTenant := role.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("roles").
 		Name(role.Name).

@@ -129,8 +129,14 @@ func (c *serviceAccounts) Watch(opts metav1.ListOptions) watch.AggregatedWatchIn
 // Create takes the representation of a serviceAccount and creates it.  Returns the server's representation of the serviceAccount, and an error, if there is any.
 func (c *serviceAccounts) Create(serviceAccount *v1.ServiceAccount) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
+
+	objectTenant := serviceAccount.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Body(serviceAccount).
@@ -143,8 +149,14 @@ func (c *serviceAccounts) Create(serviceAccount *v1.ServiceAccount) (result *v1.
 // Update takes the representation of a serviceAccount and updates it. Returns the server's representation of the serviceAccount, and an error, if there is any.
 func (c *serviceAccounts) Update(serviceAccount *v1.ServiceAccount) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
+
+	objectTenant := serviceAccount.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Name(serviceAccount.Name).

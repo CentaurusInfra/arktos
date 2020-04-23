@@ -566,10 +566,22 @@ var createSubresourceTemplate = `
 // Create takes the representation of a $.inputType|private$ and creates it.  Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Create($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Post().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
@@ -585,10 +597,22 @@ var createTemplate = `
 // Create takes the representation of a $.inputType|private$ and creates it.  Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Create($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Post().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Body($.inputType|private$).
 		Do().
@@ -602,10 +626,22 @@ var updateSubresourceTemplate = `
 // Update takes the top resource name and the representation of a $.inputType|private$ and updates it. Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Update($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$		
 	err = c.client.Put().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
@@ -621,10 +657,22 @@ var updateTemplate = `
 // Update takes the representation of a $.inputType|private$ and updates it. Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Update($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Put().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.inputType|private$.Name).
 		Body($.inputType|private$).
@@ -641,10 +689,22 @@ var updateStatusTemplate = `
 
 func (c *$.type|privatePlural$) UpdateStatus($.type|private$ *$.type|raw$) (result *$.type|raw$, err error) {
 	result = &$.type|raw${}
+	$if .tenanted$
+	objectTenant := $.type|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Put().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$.Name).
 		SubResource("status").

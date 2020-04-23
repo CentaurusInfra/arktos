@@ -129,8 +129,14 @@ func (c *configMaps) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterfa
 // Create takes the representation of a configMap and creates it.  Returns the server's representation of the configMap, and an error, if there is any.
 func (c *configMaps) Create(configMap *v1.ConfigMap) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
+
+	objectTenant := configMap.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Body(configMap).
@@ -143,8 +149,14 @@ func (c *configMaps) Create(configMap *v1.ConfigMap) (result *v1.ConfigMap, err 
 // Update takes the representation of a configMap and updates it. Returns the server's representation of the configMap, and an error, if there is any.
 func (c *configMaps) Update(configMap *v1.ConfigMap) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
+
+	objectTenant := configMap.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Name(configMap.Name).

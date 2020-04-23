@@ -115,6 +115,7 @@ func (c *componentStatuses) Watch(opts metav1.ListOptions) watch.AggregatedWatch
 // Create takes the representation of a componentStatus and creates it.  Returns the server's representation of the componentStatus, and an error, if there is any.
 func (c *componentStatuses) Create(componentStatus *v1.ComponentStatus) (result *v1.ComponentStatus, err error) {
 	result = &v1.ComponentStatus{}
+
 	err = c.client.Post().
 		Resource("componentstatuses").
 		Body(componentStatus).
@@ -127,6 +128,7 @@ func (c *componentStatuses) Create(componentStatus *v1.ComponentStatus) (result 
 // Update takes the representation of a componentStatus and updates it. Returns the server's representation of the componentStatus, and an error, if there is any.
 func (c *componentStatuses) Update(componentStatus *v1.ComponentStatus) (result *v1.ComponentStatus, err error) {
 	result = &v1.ComponentStatus{}
+
 	err = c.client.Put().
 		Resource("componentstatuses").
 		Name(componentStatus.Name).

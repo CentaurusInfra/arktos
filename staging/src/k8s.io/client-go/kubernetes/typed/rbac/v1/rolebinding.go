@@ -129,8 +129,14 @@ func (c *roleBindings) Watch(opts metav1.ListOptions) watch.AggregatedWatchInter
 // Create takes the representation of a roleBinding and creates it.  Returns the server's representation of the roleBinding, and an error, if there is any.
 func (c *roleBindings) Create(roleBinding *v1.RoleBinding) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
+
+	objectTenant := roleBinding.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Body(roleBinding).
@@ -143,8 +149,14 @@ func (c *roleBindings) Create(roleBinding *v1.RoleBinding) (result *v1.RoleBindi
 // Update takes the representation of a roleBinding and updates it. Returns the server's representation of the roleBinding, and an error, if there is any.
 func (c *roleBindings) Update(roleBinding *v1.RoleBinding) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
+
+	objectTenant := roleBinding.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Name(roleBinding.Name).

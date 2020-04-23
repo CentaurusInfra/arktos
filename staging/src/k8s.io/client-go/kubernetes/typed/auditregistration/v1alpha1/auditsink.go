@@ -125,8 +125,14 @@ func (c *auditSinks) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a auditSink and creates it.  Returns the server's representation of the auditSink, and an error, if there is any.
 func (c *auditSinks) Create(auditSink *v1alpha1.AuditSink) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
+
+	objectTenant := auditSink.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("auditsinks").
 		Body(auditSink).
 		Do().
@@ -138,8 +144,14 @@ func (c *auditSinks) Create(auditSink *v1alpha1.AuditSink) (result *v1alpha1.Aud
 // Update takes the representation of a auditSink and updates it. Returns the server's representation of the auditSink, and an error, if there is any.
 func (c *auditSinks) Update(auditSink *v1alpha1.AuditSink) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
+
+	objectTenant := auditSink.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("auditsinks").
 		Name(auditSink.Name).
 		Body(auditSink).

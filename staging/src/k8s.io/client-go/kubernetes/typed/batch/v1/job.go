@@ -130,8 +130,14 @@ func (c *jobs) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a job and creates it.  Returns the server's representation of the job, and an error, if there is any.
 func (c *jobs) Create(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	objectTenant := job.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Body(job).
@@ -144,8 +150,14 @@ func (c *jobs) Create(job *v1.Job) (result *v1.Job, err error) {
 // Update takes the representation of a job and updates it. Returns the server's representation of the job, and an error, if there is any.
 func (c *jobs) Update(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	objectTenant := job.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(job.Name).
@@ -161,8 +173,14 @@ func (c *jobs) Update(job *v1.Job) (result *v1.Job, err error) {
 
 func (c *jobs) UpdateStatus(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	objectTenant := job.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(job.Name).

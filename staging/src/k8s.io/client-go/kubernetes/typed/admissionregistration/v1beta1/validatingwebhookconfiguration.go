@@ -115,6 +115,7 @@ func (c *validatingWebhookConfigurations) Watch(opts v1.ListOptions) watch.Aggre
 // Create takes the representation of a validatingWebhookConfiguration and creates it.  Returns the server's representation of the validatingWebhookConfiguration, and an error, if there is any.
 func (c *validatingWebhookConfigurations) Create(validatingWebhookConfiguration *v1beta1.ValidatingWebhookConfiguration) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
 	result = &v1beta1.ValidatingWebhookConfiguration{}
+
 	err = c.client.Post().
 		Resource("validatingwebhookconfigurations").
 		Body(validatingWebhookConfiguration).
@@ -127,6 +128,7 @@ func (c *validatingWebhookConfigurations) Create(validatingWebhookConfiguration 
 // Update takes the representation of a validatingWebhookConfiguration and updates it. Returns the server's representation of the validatingWebhookConfiguration, and an error, if there is any.
 func (c *validatingWebhookConfigurations) Update(validatingWebhookConfiguration *v1beta1.ValidatingWebhookConfiguration) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
 	result = &v1beta1.ValidatingWebhookConfiguration{}
+
 	err = c.client.Put().
 		Resource("validatingwebhookconfigurations").
 		Name(validatingWebhookConfiguration.Name).

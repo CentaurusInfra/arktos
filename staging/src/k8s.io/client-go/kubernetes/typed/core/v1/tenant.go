@@ -114,6 +114,7 @@ func (c *tenants) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface 
 // Create takes the representation of a tenant and creates it.  Returns the server's representation of the tenant, and an error, if there is any.
 func (c *tenants) Create(tenant *v1.Tenant) (result *v1.Tenant, err error) {
 	result = &v1.Tenant{}
+
 	err = c.client.Post().
 		Resource("tenants").
 		Body(tenant).
@@ -126,6 +127,7 @@ func (c *tenants) Create(tenant *v1.Tenant) (result *v1.Tenant, err error) {
 // Update takes the representation of a tenant and updates it. Returns the server's representation of the tenant, and an error, if there is any.
 func (c *tenants) Update(tenant *v1.Tenant) (result *v1.Tenant, err error) {
 	result = &v1.Tenant{}
+
 	err = c.client.Put().
 		Resource("tenants").
 		Name(tenant.Name).
@@ -141,6 +143,7 @@ func (c *tenants) Update(tenant *v1.Tenant) (result *v1.Tenant, err error) {
 
 func (c *tenants) UpdateStatus(tenant *v1.Tenant) (result *v1.Tenant, err error) {
 	result = &v1.Tenant{}
+
 	err = c.client.Put().
 		Resource("tenants").
 		Name(tenant.Name).

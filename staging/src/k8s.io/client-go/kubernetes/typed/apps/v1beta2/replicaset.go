@@ -130,8 +130,14 @@ func (c *replicaSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 // Create takes the representation of a replicaSet and creates it.  Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *replicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
+
+	objectTenant := replicaSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Body(replicaSet).
@@ -144,8 +150,14 @@ func (c *replicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.Re
 // Update takes the representation of a replicaSet and updates it. Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *replicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
+
+	objectTenant := replicaSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSet.Name).
@@ -161,8 +173,14 @@ func (c *replicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.Re
 
 func (c *replicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
+
+	objectTenant := replicaSet.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSet.Name).

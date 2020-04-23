@@ -129,8 +129,14 @@ func (c *examples) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 // Create takes the representation of a example and creates it.  Returns the server's representation of the example, and an error, if there is any.
 func (c *examples) Create(example *v1.Example) (result *v1.Example, err error) {
 	result = &v1.Example{}
+
+	objectTenant := example.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("examples").
 		Body(example).
@@ -143,8 +149,14 @@ func (c *examples) Create(example *v1.Example) (result *v1.Example, err error) {
 // Update takes the representation of a example and updates it. Returns the server's representation of the example, and an error, if there is any.
 func (c *examples) Update(example *v1.Example) (result *v1.Example, err error) {
 	result = &v1.Example{}
+
+	objectTenant := example.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("examples").
 		Name(example.Name).

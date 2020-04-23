@@ -126,8 +126,14 @@ func (c *persistentVolumes) Watch(opts metav1.ListOptions) watch.AggregatedWatch
 // Create takes the representation of a persistentVolume and creates it.  Returns the server's representation of the persistentVolume, and an error, if there is any.
 func (c *persistentVolumes) Create(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
+
+	objectTenant := persistentVolume.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("persistentvolumes").
 		Body(persistentVolume).
 		Do().
@@ -139,8 +145,14 @@ func (c *persistentVolumes) Create(persistentVolume *v1.PersistentVolume) (resul
 // Update takes the representation of a persistentVolume and updates it. Returns the server's representation of the persistentVolume, and an error, if there is any.
 func (c *persistentVolumes) Update(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
+
+	objectTenant := persistentVolume.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("persistentvolumes").
 		Name(persistentVolume.Name).
 		Body(persistentVolume).
@@ -155,8 +167,14 @@ func (c *persistentVolumes) Update(persistentVolume *v1.PersistentVolume) (resul
 
 func (c *persistentVolumes) UpdateStatus(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
+
+	objectTenant := persistentVolume.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("persistentvolumes").
 		Name(persistentVolume.Name).
 		SubResource("status").

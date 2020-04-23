@@ -115,6 +115,7 @@ func (c *storageClasses) Watch(opts metav1.ListOptions) watch.AggregatedWatchInt
 // Create takes the representation of a storageClass and creates it.  Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *storageClasses) Create(storageClass *v1.StorageClass) (result *v1.StorageClass, err error) {
 	result = &v1.StorageClass{}
+
 	err = c.client.Post().
 		Resource("storageclasses").
 		Body(storageClass).
@@ -127,6 +128,7 @@ func (c *storageClasses) Create(storageClass *v1.StorageClass) (result *v1.Stora
 // Update takes the representation of a storageClass and updates it. Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *storageClasses) Update(storageClass *v1.StorageClass) (result *v1.StorageClass, err error) {
 	result = &v1.StorageClass{}
+
 	err = c.client.Put().
 		Resource("storageclasses").
 		Name(storageClass.Name).

@@ -129,8 +129,14 @@ func (c *controllerRevisions) Watch(opts v1.ListOptions) watch.AggregatedWatchIn
 // Create takes the representation of a controllerRevision and creates it.  Returns the server's representation of the controllerRevision, and an error, if there is any.
 func (c *controllerRevisions) Create(controllerRevision *v1beta1.ControllerRevision) (result *v1beta1.ControllerRevision, err error) {
 	result = &v1beta1.ControllerRevision{}
+
+	objectTenant := controllerRevision.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Body(controllerRevision).
@@ -143,8 +149,14 @@ func (c *controllerRevisions) Create(controllerRevision *v1beta1.ControllerRevis
 // Update takes the representation of a controllerRevision and updates it. Returns the server's representation of the controllerRevision, and an error, if there is any.
 func (c *controllerRevisions) Update(controllerRevision *v1beta1.ControllerRevision) (result *v1beta1.ControllerRevision, err error) {
 	result = &v1beta1.ControllerRevision{}
+
+	objectTenant := controllerRevision.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Name(controllerRevision.Name).

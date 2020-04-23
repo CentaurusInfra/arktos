@@ -126,8 +126,14 @@ func (c *certificateSigningRequests) Watch(opts v1.ListOptions) watch.Aggregated
 // Create takes the representation of a certificateSigningRequest and creates it.  Returns the server's representation of the certificateSigningRequest, and an error, if there is any.
 func (c *certificateSigningRequests) Create(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
+
+	objectTenant := certificateSigningRequest.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("certificatesigningrequests").
 		Body(certificateSigningRequest).
 		Do().
@@ -139,8 +145,14 @@ func (c *certificateSigningRequests) Create(certificateSigningRequest *v1beta1.C
 // Update takes the representation of a certificateSigningRequest and updates it. Returns the server's representation of the certificateSigningRequest, and an error, if there is any.
 func (c *certificateSigningRequests) Update(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
+
+	objectTenant := certificateSigningRequest.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("certificatesigningrequests").
 		Name(certificateSigningRequest.Name).
 		Body(certificateSigningRequest).
@@ -155,8 +167,14 @@ func (c *certificateSigningRequests) Update(certificateSigningRequest *v1beta1.C
 
 func (c *certificateSigningRequests) UpdateStatus(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
+
+	objectTenant := certificateSigningRequest.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("certificatesigningrequests").
 		Name(certificateSigningRequest.Name).
 		SubResource("status").

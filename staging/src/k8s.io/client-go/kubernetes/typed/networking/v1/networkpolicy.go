@@ -129,8 +129,14 @@ func (c *networkPolicies) Watch(opts metav1.ListOptions) watch.AggregatedWatchIn
 // Create takes the representation of a networkPolicy and creates it.  Returns the server's representation of the networkPolicy, and an error, if there is any.
 func (c *networkPolicies) Create(networkPolicy *v1.NetworkPolicy) (result *v1.NetworkPolicy, err error) {
 	result = &v1.NetworkPolicy{}
+
+	objectTenant := networkPolicy.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("networkpolicies").
 		Body(networkPolicy).
@@ -143,8 +149,14 @@ func (c *networkPolicies) Create(networkPolicy *v1.NetworkPolicy) (result *v1.Ne
 // Update takes the representation of a networkPolicy and updates it. Returns the server's representation of the networkPolicy, and an error, if there is any.
 func (c *networkPolicies) Update(networkPolicy *v1.NetworkPolicy) (result *v1.NetworkPolicy, err error) {
 	result = &v1.NetworkPolicy{}
+
+	objectTenant := networkPolicy.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("networkpolicies").
 		Name(networkPolicy.Name).
