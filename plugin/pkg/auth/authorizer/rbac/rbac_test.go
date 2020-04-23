@@ -45,8 +45,8 @@ func newRule(verbs, apiGroups, resources, nonResourceURLs string) rbacv1.PolicyR
 func newRole(tenant, name, namespace string, rules ...rbacv1.PolicyRule) *rbacv1.Role {
 	return &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{
 		Namespace: namespace,
-		Name: name,
-		Tenant: tenant,
+		Name:      name,
+		Tenant:    tenant,
 	}, Rules: rules}
 }
 

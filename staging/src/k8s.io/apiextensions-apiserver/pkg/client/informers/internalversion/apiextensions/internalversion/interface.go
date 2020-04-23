@@ -48,5 +48,5 @@ func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace s
 
 // CustomResourceDefinitions returns a CustomResourceDefinitionInformer.
 func (v *version) CustomResourceDefinitions() CustomResourceDefinitionInformer {
-	return &customResourceDefinitionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &customResourceDefinitionInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
