@@ -59,7 +59,7 @@ func ValidateCustomResourceDefinition(obj *apiextensions.CustomResourceDefinitio
 		return ret
 	}
 
-	allErrs := genericvalidation.ValidateObjectMeta(&obj.ObjectMeta, false, false, nameValidationFn, field.NewPath("metadata"))
+	allErrs := genericvalidation.ValidateObjectMeta(&obj.ObjectMeta, true, false, nameValidationFn, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionSpec(&obj.Spec, field.NewPath("spec"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionStatus(&obj.Status, field.NewPath("status"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionStoredVersions(obj.Status.StoredVersions, obj.Spec.Versions, field.NewPath("status").Child("storedVersions"))...)

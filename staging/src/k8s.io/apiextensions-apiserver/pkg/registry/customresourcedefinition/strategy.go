@@ -50,7 +50,7 @@ func (strategy) NamespaceScoped() bool {
 }
 
 func (strategy) TenantScoped() bool {
-	return false
+	return true
 }
 
 // PrepareForCreate clears the status of a CustomResourceDefinition before creation.
@@ -140,7 +140,7 @@ func (statusStrategy) NamespaceScoped() bool {
 }
 
 func (statusStrategy) TenantScoped() bool {
-	return false
+	return true
 }
 
 func (statusStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {

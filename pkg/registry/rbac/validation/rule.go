@@ -411,7 +411,7 @@ func (r *StaticRoles) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
 
 func (r *StaticRoles) GetClusterRoleWithMultiTenancy(tenant, name string) (*rbacv1.ClusterRole, error) {
 	for _, clusterRole := range r.clusterRoles {
-		if clusterRole.Name == name && clusterRole.Tenant == tenant{
+		if clusterRole.Name == name && clusterRole.Tenant == tenant {
 			return clusterRole, nil
 		}
 	}
