@@ -23,6 +23,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"k8s.io/client-go/datapartition"
+	"k8s.io/client-go/informers"
 	"math/rand"
 	"net"
 	"net/http"
@@ -740,7 +742,10 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		klog.Warning(err)
 	}
 
-	if err := RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
+	// Start APIServerConfigManager
+	startAPIServerConfigManager(kubeDeps.KubeClient, stopCh)
+
+	if err = RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
 		return err
 	}
 
@@ -1296,4 +1301,15 @@ func RunDockershim(f *options.KubeletFlags, c *kubeletconfiginternal.KubeletConf
 	}
 	<-stopCh
 	return nil
+}
+
+// API Server Config Manager is used to watch api server configuration update
+// Upon the inroduction of api server data partition, it needs to connect to update
+// connections when API Server Configuration is updated
+func startAPIServerConfigManager(client clientset.Interface, stopCh <-chan struct{}) {
+	informerFactory := informers.NewSharedInformerFactory(client, 10*time.Minute)
+	go datapartition.NewAPIServerConfigManagerWithInformer(informerFactory.Core().V1().Endpoints(), client).
+		Run(stopCh)
+
+	informerFactory.Start(stopCh)
 }

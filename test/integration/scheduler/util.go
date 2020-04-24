@@ -19,6 +19,7 @@ package scheduler
 
 import (
 	"fmt"
+	"k8s.io/client-go/datapartition"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -237,6 +238,10 @@ func initTestSchedulerWithOptions(
 	context.informerFactory.WaitForCacheSync(context.schedulerConfig.StopEverything)
 
 	context.scheduler.Run()
+
+	// Mock API Server Config Manager
+	datapartition.GetAPIServerConfigManagerMock()
+
 	return context
 }
 
