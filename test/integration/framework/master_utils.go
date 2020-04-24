@@ -20,6 +20,7 @@ package framework
 import (
 	"flag"
 	"k8s.io/apiserver/pkg/storage/datapartition"
+	apiPartition "k8s.io/client-go/datapartition"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -132,6 +133,9 @@ func startMasterOrDieWithDataPartition(masterConfig *master.Config, incomingServ
 
 // startMasterOrDie starts a kubernetes master and an httpserver to handle api requests
 func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Server, masterReceiver MasterReceiver, withDataPartition bool) (*master.Master, *httptest.Server, CloseFunc) {
+	// Mock API Server Config Manager
+	apiPartition.GetAPIServerConfigManagerMock()
+
 	var m *master.Master
 	var s *httptest.Server
 

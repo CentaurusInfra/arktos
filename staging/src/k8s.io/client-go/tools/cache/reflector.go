@@ -106,6 +106,9 @@ type Reflector struct {
 	// it will be set to "" to get all data from storage; and then reset to "0" to get from cache in
 	// later list and watch
 	listFromResourceVersion string
+
+	// There are some watch that can only happen to certain api servers
+	allowPartialWatch bool
 }
 
 var (
@@ -129,7 +132,7 @@ func NewNamespaceKeyedIndexerAndReflector(lw ListerWatcher, expectedType interfa
 // resyncPeriod, so that you can use reflectors to periodically process everything as
 // well as incrementally processing the things that change.
 func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration) *Reflector {
-	return NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
+	return NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod, false)
 }
 
 // NewReflectorWithReset creates a new Reflector object which will keep the given store up to
@@ -140,13 +143,13 @@ func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyn
 // well as incrementally processing the things that change. Also,  it introduces a  reset
 // chan for any incoming bound changes
 func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, filterBounds []filterBound) *Reflector {
-	r := NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
+	r := NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod, false)
 	r.filterBounds = filterBounds
 	return r
 }
 
 // NewNamedReflector same as NewReflector, but with a specified name for logging
-func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration) *Reflector {
+func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, allowPartialWatch bool) *Reflector {
 	r := &Reflector{
 		name:                    name,
 		listerWatcher:           lw,
@@ -159,6 +162,7 @@ func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, 
 		aggChan:                 make(chan interface{}),
 		clientSetUpdateChan:     apiserverupdate.WatchClientSetUpdate(),
 		listFromResourceVersion: "0",
+		allowPartialWatch:       allowPartialWatch,
 	}
 	return r
 }
@@ -247,7 +251,7 @@ func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 // and then use the resource version to watch.
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
-	klog.V(3).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
+	klog.V(3).Infof("ListAndWatch %v. filter bounds %+v. name %s", r.expectedType, r.filterBounds, r.name)
 	var resourceVersion string
 
 	// Explicitly set "0" as resource version - it's fine for the List()
@@ -385,6 +389,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			// watch bookmarks, it will ignore this field).
 			// Disabled in Alpha release of watch bookmarks feature.
 			AllowWatchBookmarks: false,
+			AllowPartialWatch:   r.allowPartialWatch,
 		}
 
 		if len(r.filterBounds) > 0 {

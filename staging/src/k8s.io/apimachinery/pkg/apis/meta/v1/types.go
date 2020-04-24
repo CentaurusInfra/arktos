@@ -398,6 +398,13 @@ type ListOptions struct {
 	// add, update, and remove notifications. Specify resourceVersion.
 	// +optional
 	Watch bool `json:"watch,omitempty" protobuf:"varint,3,opt,name=watch"`
+
+	// Whether needs to watch all api server data partition. Used to for some data that is only
+	// available for one partition. Hence could fail on watching other partition
+	// Generally used in client only to indicate partial failure is allowed
+	// +optional
+	AllowPartialWatch bool `json:"allowPartialWatch,omitempty" protobuf:"varint,10,opt,name=allowPartialWatch"`
+
 	// allowWatchBookmarks requests watch events with type "BOOKMARK".
 	// Servers that do not implement bookmarks may ignore this flag and
 	// bookmarks are sent at the server's discretion. Clients should not

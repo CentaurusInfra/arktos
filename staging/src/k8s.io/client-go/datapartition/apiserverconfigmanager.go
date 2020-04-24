@@ -44,6 +44,9 @@ const (
 )
 
 var instance *APIServerConfigManager
+var muxCreateInstance sync.Mutex
+
+var SyncApiServerConfigHandler = syncApiServerConfig
 
 type APIServerConfigManager struct {
 	apiserverListerSynced cache.InformerSynced
@@ -61,34 +64,41 @@ type APIServerConfigManager struct {
 	firstUpdateTime time.Time
 }
 
-func GetAPIServerConfigManager() *APIServerConfigManager {
-	return instance
-}
-
-func checkInstanceExistence() {
+// Use to mock APIServerConfigManager in integration tests
+func GetAPIServerConfigManagerMock() *APIServerConfigManager {
 	if instance != nil {
-		klog.Fatalf("Unexpected reference to api server config manager - initialized")
+		return instance
 	}
-}
 
-func NewAPIServerConfigManager(kubeClient clientset.Interface) *APIServerConfigManager {
+	muxCreateInstance.Lock()
+	defer muxCreateInstance.Unlock()
+	if instance != nil {
+		return instance
+	}
+
 	manager := &APIServerConfigManager{
-		kubeClient:                   kubeClient,
-		isApiServerConfigInitialized: false,
-		APIServerMap:                 make(map[string]v1.EndpointSubset),
+		isApiServerConfigInitialized: true,
 	}
 
-	err := manager.syncApiServerConfig()
-	if err != nil {
-		klog.Fatalf("Unable to get api server list from registry. Error %v", err)
-	}
-
+	SyncApiServerConfigHandler = mockApiServerConfigSync
 	instance = manager
 	return instance
 }
 
+func mockApiServerConfigSync(a *APIServerConfigManager) error {
+	return nil
+}
+
 func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInformer, kubeClient clientset.Interface) *APIServerConfigManager {
-	checkInstanceExistence()
+	if instance != nil {
+		return instance
+	}
+
+	muxCreateInstance.Lock()
+	defer muxCreateInstance.Unlock()
+	if instance != nil {
+		return instance
+	}
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -113,10 +123,12 @@ func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInf
 
 	manager.apiserverLister = epInformer.Lister()
 	manager.apiserverListerSynced = epInformer.Informer().HasSynced
-	err := manager.syncApiServerConfig()
+	err := SyncApiServerConfigHandler(manager)
 	if err != nil {
 		klog.Fatalf("Unable to get api server list from registry. Error %v", err)
 	}
+
+	SyncApiServerConfigHandler = syncApiServerConfig
 
 	instance = manager
 	return instance
@@ -126,6 +138,9 @@ func (a *APIServerConfigManager) Run(stopCh <-chan struct{}) {
 	klog.Info("Starting api server config manager")
 	defer klog.Info("Shutting down api server config manager")
 
+	if a.kubeClient == nil {
+		return
+	}
 	if !cache.WaitForCacheSync(stopCh, a.apiserverListerSynced) {
 		klog.Info("Api service end points NOT synced %v.")
 		return
@@ -142,7 +157,7 @@ func (a *APIServerConfigManager) GetAPIServerConfig() map[string]v1.EndpointSubs
 	return a.APIServerMap
 }
 
-func (a *APIServerConfigManager) syncApiServerConfig() error {
+func syncApiServerConfig(a *APIServerConfigManager) error {
 	a.mux.Lock()
 	klog.V(4).Info("mux acquired syncApiServerConfig.")
 	defer func() {

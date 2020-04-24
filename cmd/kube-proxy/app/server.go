@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/client-go/datapartition"
 	"net/http"
 	"os"
 	goruntime "runtime"
@@ -628,6 +629,11 @@ func (s *ProxyServer) Run() error {
 		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			options.LabelSelector = "!" + apis.LabelServiceProxyName
 		}))
+
+	// Create API Server Config Manager
+	apiServerConfigManager := datapartition.NewAPIServerConfigManagerWithInformer(
+		informerFactory.Core().V1().Endpoints(), s.Client)
+	go apiServerConfigManager.Run(wait.NeverStop)
 
 	// Create configs (i.e. Watches for Services and Endpoints)
 	// Note: RegisterHandler() calls need to happen before creation of Sources because sources

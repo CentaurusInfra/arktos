@@ -708,6 +708,9 @@ items:
     - endpoints
     verbs:
     - create
+    - get
+    - list
+    - watch
   - apiGroups:
     - ""
     resourceNames:
@@ -966,6 +969,8 @@ items:
     - endpoints
     verbs:
     - get
+    - list
+    - watch
   - apiGroups:
     - certificates.k8s.io
     resources:
@@ -1096,6 +1101,7 @@ items:
     - endpoints
     - services
     verbs:
+    - get
     - list
     - watch
   - apiGroups:
