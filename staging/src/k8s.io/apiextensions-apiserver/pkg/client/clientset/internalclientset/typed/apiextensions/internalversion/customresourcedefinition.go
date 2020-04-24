@@ -117,6 +117,7 @@ func (c *customResourceDefinitions) List(opts v1.ListOptions) (result *apiextens
 		}
 
 		err = client.Get().
+			Tenant(c.te).
 			Resource("customresourcedefinitions").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -167,8 +168,13 @@ func (c *customResourceDefinitions) Watch(opts v1.ListOptions) watch.AggregatedW
 func (c *customResourceDefinitions) Create(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 
+	objectTenant := customResourceDefinition.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("customresourcedefinitions").
 		Body(customResourceDefinition).
 		Do().
@@ -181,8 +187,13 @@ func (c *customResourceDefinitions) Create(customResourceDefinition *apiextensio
 func (c *customResourceDefinitions) Update(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 
+	objectTenant := customResourceDefinition.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).
 		Body(customResourceDefinition).
@@ -198,8 +209,13 @@ func (c *customResourceDefinitions) Update(customResourceDefinition *apiextensio
 func (c *customResourceDefinitions) UpdateStatus(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 
+	objectTenant := customResourceDefinition.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).
 		SubResource("status").
