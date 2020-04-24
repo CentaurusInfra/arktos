@@ -646,7 +646,6 @@ bazel-test-integration:
 	@echo "$$BAZEL_TEST_INTEGRATION_HELP_INFO"
 else
 bazel-test-integration:
-	bazel test --test_arg=-test.short --config integration //vendor/k8s.io/apiextensions-apiserver/test/integration/...
 	bazel test --test_arg=-test.short --config integration //test/integration/...	
 endif
 
