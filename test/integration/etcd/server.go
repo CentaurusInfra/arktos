@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 
+	v1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -167,7 +168,10 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 	}
 
 	// create CRDs so we can make sure that custom resources do not get lost
-	CreateTestCRDs(t, apiextensionsclientset.NewForConfigOrDie(kubeClientConfigs), false, GetCustomResourceDefinitionData()...)
+	kubeClient.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}})
+	crdData := GetCustomResourceDefinitionData()
+	crdData = append(crdData, GetCustomResourceDefinitionDataWithMultiTenancy()...)
+	CreateTestCRDs(t, apiextensionsclientset.NewForConfigOrDie(kubeClientConfigs), false, crdData...)
 
 	// force cached discovery reset
 	discoveryClient := cacheddiscovery.NewMemCacheClient(kubeClient.Discovery())
@@ -347,25 +351,25 @@ func CreateTestCRDs(t *testing.T, client apiextensionsclientset.Interface, skipC
 }
 
 func createTestCRD(t *testing.T, client apiextensionsclientset.Interface, skipCrdExistsInDiscovery bool, crd *apiextensionsv1beta1.CustomResourceDefinition) {
-	if _, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd); err != nil {
-		t.Fatalf("Failed to create %s CRD; %v", crd.Name, err)
+	if _, err := client.ApiextensionsV1beta1().CustomResourceDefinitionsWithMultiTenancy(crd.Tenant).Create(crd); err != nil {
+		t.Fatalf("Failed to create %s CRD under tenant %v : %v", crd.Name, crd.Tenant, err)
 	}
 	if skipCrdExistsInDiscovery {
-		if err := waitForEstablishedCRD(client, crd.Name); err != nil {
+		if err := waitForEstablishedCRD(client, crd); err != nil {
 			t.Fatalf("Failed to establish %s CRD; %v", crd.Name, err)
 		}
 		return
 	}
-	if err := wait.PollImmediate(500*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
+	if err := wait.PollImmediate(500*time.Millisecond, time.Second*2, func() (bool, error) {
 		return CrdExistsInDiscovery(client, crd), nil
 	}); err != nil {
-		t.Fatalf("Failed to see %s in discovery: %v", crd.Name, err)
+		t.Fatalf("Failed to see %s under tenant %s in discovery: %v", crd.Name, crd.Tenant, err)
 	}
 }
 
-func waitForEstablishedCRD(client apiextensionsclientset.Interface, name string) error {
-	return wait.PollImmediate(500*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
-		crd, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
+func waitForEstablishedCRD(client apiextensionsclientset.Interface, crd *apiextensionsv1beta1.CustomResourceDefinition) error {
+	return wait.PollImmediate(500*time.Millisecond, time.Second*2, func() (bool, error) {
+		crd, err := client.ApiextensionsV1beta1().CustomResourceDefinitionsWithMultiTenancy(crd.Tenant).Get(crd.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

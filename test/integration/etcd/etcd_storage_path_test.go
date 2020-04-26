@@ -27,7 +27,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -175,7 +175,10 @@ func TestEtcdStoragePath(t *testing.T) {
 		}
 	}
 
-	for path, gvrs := range pathSeen {
+	//Temporarilu turn this check off as we now allow CRDs of the same G/V/K under different tenants.
+	// TODO: rewrite the following check after the following issue is closed:
+	// https://github.com/futurewei-cloud/arktos/issues/227
+	/*for path, gvrs := range pathSeen {
 		if len(gvrs) != 1 {
 			gvrStrings := []string{}
 			for _, key := range gvrs {
@@ -183,7 +186,7 @@ func TestEtcdStoragePath(t *testing.T) {
 			}
 			t.Errorf("invalid test data, please ensure all expectedEtcdPath are unique, path %s has duplicate GVRs:\n%s", path, gvrStrings)
 		}
-	}
+	}*/
 }
 
 func dumpEtcdKVOnFailure(t *testing.T, kvClient clientv3.KV) {
