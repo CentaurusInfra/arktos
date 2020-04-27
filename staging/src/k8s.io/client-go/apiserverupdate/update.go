@@ -75,7 +75,7 @@ func SetAPIServerConfig(c map[string]v1.EndpointSubset) {
 	// map is passing as reference. Needs to copy manually
 	apiServerMap = make(map[string]v1.EndpointSubset)
 	for k, v := range c {
-		apiServerMap[k] = v
+		apiServerMap[k] = *v.DeepCopy()
 	}
 	muxUpdateServerMap.Unlock()
 }
