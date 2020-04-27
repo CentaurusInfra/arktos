@@ -468,6 +468,14 @@ message CommonInfo {
   // +optional
   optional ResourceRequirements resources = 3;
 
+  // Node compute resources allocated to the container.
+  // +optional
+  map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> resourcesAllocated = 6;
+
+  // Resources resize policy for the container.
+  // +optional
+  repeated ResizePolicy resizePolicy = 7;
+
   // Pod volumes to mount into the workload's filesystem.
   // +optional
   repeated VolumeMount volumeMounts = 4;
@@ -4980,6 +4988,14 @@ message VirtualMachine {
   // +optional
   optional ResourceRequirements resources = 3;
 
+  // Node compute resources allocated to the container.
+  // +optional
+  map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> resourcesAllocated = 15;
+
+  // Resources resize policy for the container.
+  // +optional
+  repeated ResizePolicy resizePolicy = 16;
+
   // Pod volumes to mount into the workload's filesystem.
   // Cannot be updated.
   // +optional
@@ -5064,6 +5080,10 @@ message VirtualMachineStatus {
 
   // +optional
   optional int32 restartCount = 9;
+
+  // Compute resource requests and limits applied to the VM
+  // +optional
+  optional ResourceRequirements resources = 10;
 }
 
 // Volume represents a named volume in a pod that may be accessed by any container in the pod.
