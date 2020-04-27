@@ -291,6 +291,18 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 }
 
 func TestGenerateKey(t *testing.T) {
+	const TOTAL_SCOPE = int64(9223372036854775807)        // 1       100%
+	const HALF_SCOPE = int64(4611686018427387903)         // 1/2      50%
+	const ONE_FOURTH_SCOPE = int64(2305843009213693951)   // 1/4      25%
+	const THREE_FOURTH_SCOPE = int64(6917529027641081855) // 3/4      75%
+	const ONE_EIGHTH_SCOPE = int64(1152921504606846975)   // 1/8    12.5%
+	const THREE_EIGHTH_SCOPE = int64(3458764513820540927) // 3/8    37.5%
+	const FIVE_EIGHTH_SCOPE = int64(5764607523034234879)  // 5/8    62.5%
+	const SEVEN_EIGHTH_SCOPE = int64(8070450532247928831) // 7/8    87.5%
+	const ONE_SIXTEENTH_SCOPE = int64(576460752303423487) // 1/16   6.25%
+
+	assert.Equal(t, int64(-1), GenerateKey(nil))
+
 	controllerBase := new(ControllerBase)
 
 	// Start state: []
@@ -301,7 +313,7 @@ func TestGenerateKey(t *testing.T) {
 	//              In this way, we expect controller key is math.MaxInt64.
 	//              (Same expression logic for other test cases)
 	controllerKey := GenerateKey(controllerBase)
-	assert.Equal(t, int64(9223372036854775807), controllerKey)
+	assert.Equal(t, TOTAL_SCOPE, controllerKey)
 
 	// Start state: [100]
 	// End state: [50, 50]
@@ -309,11 +321,11 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(9223372036854775807),
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(4611686018427387903), controllerKey)
+	assert.Equal(t, HALF_SCOPE, controllerKey)
 
 	// Start state: [50, 50]
 	// End state: [25, 25, 50]
@@ -321,15 +333,15 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(4611686018427387903),
+			controllerKey: HALF_SCOPE,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(2305843009213693951), controllerKey)
+	assert.Equal(t, ONE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25, 25, 50]
 	// End state: [25, 25, 25, 25]
@@ -337,19 +349,19 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(2305843009213693951),
+			controllerKey: ONE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(6917529027641081855), controllerKey)
+	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25, 25, 25, 25]
 	// End state: [12.5, 12.5, 25, 25, 25]
@@ -357,23 +369,23 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(2305843009213693951),
+			controllerKey: ONE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(6917529027641081855),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: THREE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(6917529027641081855),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: THREE_FOURTH_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(1152921504606846975), controllerKey)
+	assert.Equal(t, ONE_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 25, 25, 25]
 	// End state: [12.5, 12.5, 12.5, 12.5, 25, 25]
@@ -381,27 +393,27 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(1152921504606846975),
+			controllerKey: ONE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(1152921504606846975),
-			controllerKey: int64(2305843009213693951),
+			lowerboundKey: ONE_EIGHTH_SCOPE,
+			controllerKey: ONE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(6917529027641081855),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: THREE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(6917529027641081855),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: THREE_FOURTH_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(3458764513820540927), controllerKey)
+	assert.Equal(t, THREE_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 25, 25]
 	// End state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 25]
@@ -409,31 +421,31 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(1152921504606846975),
+			controllerKey: ONE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(1152921504606846975),
-			controllerKey: int64(2305843009213693951),
+			lowerboundKey: ONE_EIGHTH_SCOPE,
+			controllerKey: ONE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(3458764513820540927),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: THREE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(3458764513820540927),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: THREE_EIGHTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(6917529027641081855),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: THREE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(6917529027641081855),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: THREE_FOURTH_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(5764607523034234879), controllerKey)
+	assert.Equal(t, FIVE_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 25]
 	// End state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
@@ -441,35 +453,35 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(1152921504606846975),
+			controllerKey: ONE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(1152921504606846975),
-			controllerKey: int64(2305843009213693951),
+			lowerboundKey: ONE_EIGHTH_SCOPE,
+			controllerKey: ONE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(3458764513820540927),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: THREE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(3458764513820540927),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: THREE_EIGHTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(5764607523034234879),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: FIVE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(5764607523034234879),
-			controllerKey: int64(6917529027641081855),
+			lowerboundKey: FIVE_EIGHTH_SCOPE,
+			controllerKey: THREE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(6917529027641081855),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: THREE_FOURTH_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(8070450532247928831), controllerKey)
+	assert.Equal(t, SEVEN_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
 	// End state: [6.25, 6.25, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
@@ -477,39 +489,39 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(1152921504606846975),
+			controllerKey: ONE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(1152921504606846975),
-			controllerKey: int64(2305843009213693951),
+			lowerboundKey: ONE_EIGHTH_SCOPE,
+			controllerKey: ONE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(3458764513820540927),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: THREE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(3458764513820540927),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: THREE_EIGHTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(5764607523034234879),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: FIVE_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(5764607523034234879),
-			controllerKey: int64(6917529027641081855),
+			lowerboundKey: FIVE_EIGHTH_SCOPE,
+			controllerKey: THREE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(6917529027641081855),
-			controllerKey: int64(8070450532247928831),
+			lowerboundKey: THREE_FOURTH_SCOPE,
+			controllerKey: SEVEN_EIGHTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(8070450532247928831),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: SEVEN_EIGHTH_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(576460752303423487), controllerKey)
+	assert.Equal(t, ONE_SIXTEENTH_SCOPE, controllerKey)
 
 	// This case shows what happens after a controller was terminated unexpected.
 	// Assume there are 3 controllers [25, 25, 50]. The second one terminated,
@@ -520,15 +532,15 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(2305843009213693951),
+			controllerKey: ONE_FOURTH_SCOPE,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(5764607523034234879), controllerKey)
+	assert.Equal(t, FIVE_EIGHTH_SCOPE, controllerKey)
 
 	// Following cases shows how work load will impact the splitting
 	// Expression added "(number)" which shows work load count in the scope
@@ -540,17 +552,17 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(4611686018427387903),
+			controllerKey: HALF_SCOPE,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 			workloadNum:   2,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(6917529027641081855), controllerKey)
+	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25(5), 25(0), 50(0)]
 	// End state: [25, 25, 25, 25]
@@ -559,22 +571,22 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(2305843009213693951),
+			controllerKey: ONE_FOURTH_SCOPE,
 			workloadNum:   5,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 			workloadNum:   0,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(6917529027641081855), controllerKey)
+	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25(0), 25(2), 25(5), 25(0)]
 	// End state: [25, 12.5, 12.5, 25, 25]
@@ -582,27 +594,27 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: int64(2305843009213693951),
+			controllerKey: ONE_FOURTH_SCOPE,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: int64(2305843009213693951),
-			controllerKey: int64(4611686018427387903),
+			lowerboundKey: ONE_FOURTH_SCOPE,
+			controllerKey: HALF_SCOPE,
 			workloadNum:   2,
 		},
 		{
-			lowerboundKey: int64(4611686018427387903),
-			controllerKey: int64(6917529027641081855),
+			lowerboundKey: HALF_SCOPE,
+			controllerKey: THREE_FOURTH_SCOPE,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: int64(6917529027641081855),
-			controllerKey: int64(9223372036854775807),
+			lowerboundKey: THREE_FOURTH_SCOPE,
+			controllerKey: TOTAL_SCOPE,
 			workloadNum:   0,
 		},
 	}
 	controllerKey = GenerateKey(controllerBase)
-	assert.Equal(t, int64(3458764513820540927), controllerKey)
+	assert.Equal(t, THREE_EIGHTH_SCOPE, controllerKey)
 }
 
 func TestSize(t *testing.T) {

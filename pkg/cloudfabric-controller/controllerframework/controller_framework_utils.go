@@ -57,6 +57,10 @@ func SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap map[str
 // 2. If there are more than one scope at the biggest size, we chose the one with most ongoing work load, and split it.
 // 3. If both existing scope size and ongoing work are even, we choose first scope and split it.
 func GenerateKey(c *ControllerBase) int64 {
+	if c == nil {
+		return -1
+	}
+
 	if len(c.sortedControllerInstancesLocal) == 0 {
 		return math.MaxInt64
 	}
