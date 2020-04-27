@@ -17,7 +17,6 @@ limitations under the License.
 package podresourceallocation
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -26,6 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/apis/core/helper/qos"
 	"k8s.io/kubernetes/pkg/auth/nodeidentifier"
 	"k8s.io/kubernetes/pkg/features"
 )
@@ -57,7 +57,7 @@ func NewPodResourceAllocation() *Plugin {
 }
 
 // Admit may mutate the pod's ResourcesAllocated or ResizePolicy fields for compatibility with older client versions
-func (p *Plugin) Admit(ctx context.Context, attributes admission.Attributes, o admission.ObjectInterfaces) (err error) {
+func (p *Plugin) Admit(attributes admission.Attributes, o admission.ObjectInterfaces) (err error) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
 		return nil
 	}
@@ -149,7 +149,10 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 	case admission.Create:
 		// newly created pods must have ResourcesAllocated field either empty or equal to Requests
 		for _, c := range pod.Spec.Containers {
-			if c.ResourcesAllocated == nil ||
+			if c.Resources.Requests == nil {
+				continue
+			}
+			if c.ResourcesAllocated == nil || len(c.ResourcesAllocated) != len(c.Resources.Requests) ||
 				!reflect.DeepEqual(c.ResourcesAllocated, c.Resources.Requests) {
 				return apierrors.NewBadRequest("Resource allocation must equal desired resources for new pod")
 			}
@@ -160,12 +163,23 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 		if !ok {
 			return apierrors.NewBadRequest("Resource was marked with kind Pod but was unable to be converted")
 		}
+
+		// reject QOS change attempt
+		oldQOS := qos.GetPodQOS(oldPod)
+		newQOS := qos.GetPodQOS(pod)
+		if newQOS != oldQOS {
+			return admission.NewForbidden(attributes, fmt.Errorf("Pod QoS is immutable"))
+		}
+
 		// only node can update ResourcesAllocated field (for CPU and memory fields only - checked during validation)
 		// also verify that node is updating ResourcesAllocated only for pods that are bound to it
 		// noderestriction plugin (if enabled) ensures that node isn't modifying anything besides ResourcesAllocated
 		userInfo := attributes.GetUserInfo()
 		nodeName, isNode := p.nodeidentifier.NodeIdentity(userInfo)
 		for i, c := range pod.Spec.Containers {
+			if c.Resources.Requests == nil || len(c.Resources.Requests) == 0 {
+				continue
+			}
 			if c.ResourcesAllocated != nil &&
 				!reflect.DeepEqual(c.ResourcesAllocated, oldPod.Spec.Containers[i].ResourcesAllocated) {
 				if !isNode {

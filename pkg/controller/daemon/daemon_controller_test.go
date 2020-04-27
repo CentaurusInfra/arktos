@@ -721,6 +721,7 @@ func resourcePodSpec(nodeName, memory, cpu string) v1.PodSpec {
 			Resources: v1.ResourceRequirements{
 				Requests: allocatableResources(memory, cpu),
 			},
+			ResourcesAllocated: allocatableResources(memory, cpu),
 		}},
 	}
 }
@@ -737,6 +738,7 @@ func resourcePodSpecWithoutNodeName(memory, cpu string) v1.PodSpec {
 			Resources: v1.ResourceRequirements{
 				Requests: allocatableResources(memory, cpu),
 			},
+			ResourcesAllocated: allocatableResources(memory, cpu),
 		}},
 	}
 }
@@ -2016,7 +2018,8 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 								Ports: []v1.ContainerPort{{
 									HostPort: 666,
 								}},
-								Resources: resourceContainerSpec("50M", "0.5"),
+								Resources:          resourceContainerSpec("50M", "0.5"),
+								ResourcesAllocated: allocatableResources("50M", "0.5"),
 							}},
 						},
 					},
@@ -2045,7 +2048,8 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 								Ports: []v1.ContainerPort{{
 									HostPort: 666,
 								}},
-								Resources: resourceContainerSpec("50M", "0.5"),
+								Resources:          resourceContainerSpec("50M", "0.5"),
+								ResourcesAllocated: allocatableResources("50M", "0.5"),
 							}},
 						},
 					},

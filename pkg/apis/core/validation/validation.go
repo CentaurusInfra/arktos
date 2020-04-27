@@ -47,7 +47,6 @@ import (
 	apiservice "k8s.io/kubernetes/pkg/api/service"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
-	"k8s.io/kubernetes/pkg/apis/core/helper/qos"
 	podshelper "k8s.io/kubernetes/pkg/apis/core/pods"
 	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
@@ -3743,15 +3742,6 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		}
 	} else if oldPod.Spec.ActiveDeadlineSeconds != nil {
 		allErrs = append(allErrs, field.Invalid(specPath.Child("activeDeadlineSeconds"), newPod.Spec.ActiveDeadlineSeconds, "must not update from a positive integer to nil value"))
-	}
-
-	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
-		// reject QOS change attempt
-		oldQOS := qos.GetPodQOS(oldPod)
-		newQOS := qos.GetPodQOS(newPod)
-		if newQOS != oldQOS {
-			allErrs = append(allErrs, field.Invalid(fldPath, newQOS, "Pod QOS is immutable"))
-		}
 	}
 
 	// validate updated spec.NICs; portID not allowed to update after assignment
