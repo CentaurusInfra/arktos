@@ -87,7 +87,7 @@ func TestGetControllerInstanceManager(t *testing.T) {
 	checkInstanceHandler = mockCheckInstanceHander
 }
 
-func TestGenerateKey(t *testing.T) {
+func TestCreateControllerInstanceBase(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -290,7 +290,338 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
 }
 
-func TestGetMaxInterval(t *testing.T) {
+func TestGenerateKey(t *testing.T) {
+	controllerBase := new(ControllerBase)
+
+	// Start state: []
+	// End state: [100]
+	// controllerKey: math.MaxInt64 * 100%
+	// Description: Start state [] means there is no controller. End state [100] means the new controller will
+	//              controll 100% of the scope space. The total scope space is math.MaxInt64 (9223372036854775807).
+	//              In this way, we expect controller key is math.MaxInt64.
+	//              (Same expression logic for other test cases)
+	controllerKey := GenerateKey(controllerBase)
+	assert.Equal(t, int64(9223372036854775807), controllerKey)
+
+	// Start state: [100]
+	// End state: [50, 50]
+	// controllerKey: math.MaxInt64 * 50% -- Scope of 100% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(4611686018427387903), controllerKey)
+
+	// Start state: [50, 50]
+	// End state: [25, 25, 50]
+	// controllerKey: math.MaxInt64 * 25%  -- Scope of first 50% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(4611686018427387903),
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(2305843009213693951), controllerKey)
+
+	// Start state: [25, 25, 50]
+	// End state: [25, 25, 25, 25]
+	// controllerKey: math.MaxInt64 * 75%  -- Scope of second 50% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(2305843009213693951),
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(4611686018427387903),
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(6917529027641081855), controllerKey)
+
+	// Start state: [25, 25, 25, 25]
+	// End state: [12.5, 12.5, 25, 25, 25]
+	// controllerKey: math.MaxInt64 * 12.5%  -- Scope of first 25% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(2305843009213693951),
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(4611686018427387903),
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(6917529027641081855),
+		},
+		{
+			lowerboundKey: int64(6917529027641081855),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(1152921504606846975), controllerKey)
+
+	// Start state: [12.5, 12.5, 25, 25, 25]
+	// End state: [12.5, 12.5, 12.5, 12.5, 25, 25]
+	// controllerKey: math.MaxInt64 * 37.5%  -- Scope of second 25% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(1152921504606846975),
+		},
+		{
+			lowerboundKey: int64(1152921504606846975),
+			controllerKey: int64(2305843009213693951),
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(4611686018427387903),
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(6917529027641081855),
+		},
+		{
+			lowerboundKey: int64(6917529027641081855),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(3458764513820540927), controllerKey)
+
+	// Start state: [12.5, 12.5, 12.5, 12.5, 25, 25]
+	// End state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 25]
+	// controllerKey: math.MaxInt64 * 62.5%  -- Scope of third 25% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(1152921504606846975),
+		},
+		{
+			lowerboundKey: int64(1152921504606846975),
+			controllerKey: int64(2305843009213693951),
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(3458764513820540927),
+		},
+		{
+			lowerboundKey: int64(3458764513820540927),
+			controllerKey: int64(4611686018427387903),
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(6917529027641081855),
+		},
+		{
+			lowerboundKey: int64(6917529027641081855),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(5764607523034234879), controllerKey)
+
+	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 25]
+	// End state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
+	// controllerKey: math.MaxInt64 * 87.5%  -- Scope of last 25% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(1152921504606846975),
+		},
+		{
+			lowerboundKey: int64(1152921504606846975),
+			controllerKey: int64(2305843009213693951),
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(3458764513820540927),
+		},
+		{
+			lowerboundKey: int64(3458764513820540927),
+			controllerKey: int64(4611686018427387903),
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(5764607523034234879),
+		},
+		{
+			lowerboundKey: int64(5764607523034234879),
+			controllerKey: int64(6917529027641081855),
+		},
+		{
+			lowerboundKey: int64(6917529027641081855),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(8070450532247928831), controllerKey)
+
+	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
+	// End state: [6.25, 6.25, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
+	// controllerKey: math.MaxInt64 * 6.25%  -- Scope of first 12.5% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(1152921504606846975),
+		},
+		{
+			lowerboundKey: int64(1152921504606846975),
+			controllerKey: int64(2305843009213693951),
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(3458764513820540927),
+		},
+		{
+			lowerboundKey: int64(3458764513820540927),
+			controllerKey: int64(4611686018427387903),
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(5764607523034234879),
+		},
+		{
+			lowerboundKey: int64(5764607523034234879),
+			controllerKey: int64(6917529027641081855),
+		},
+		{
+			lowerboundKey: int64(6917529027641081855),
+			controllerKey: int64(8070450532247928831),
+		},
+		{
+			lowerboundKey: int64(8070450532247928831),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(576460752303423487), controllerKey)
+
+	// This case shows what happens after a controller was terminated unexpected.
+	// Assume there are 3 controllers [25, 25, 50]. The second one terminated,
+	// then state is [25, 75]. Now let's join a new controller instance.
+	// Start state: [25, 75]
+	// End state: [25, 37.5, 37.5]
+	// controllerKey: math.MaxInt64 * (25% + 37.5%)  -- Scope of 75% splitted
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(2305843009213693951),
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(9223372036854775807),
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(5764607523034234879), controllerKey)
+
+	// Following cases shows how work load will impact the splitting
+	// Expression added "(number)" which shows work load count in the scope
+	// For example, [50(0), 50(2)] means first 50% scope has no work load and second 50% scope has 2 work loads
+
+	// Start state: [50(0), 50(2)]
+	// End state: [50, 25, 25]
+	// controllerKey: math.MaxInt64 * 75%  -- Scope of second 50% splitted since it has more work load
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(4611686018427387903),
+			workloadNum:   0,
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(9223372036854775807),
+			workloadNum:   2,
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(6917529027641081855), controllerKey)
+
+	// Start state: [25(5), 25(0), 50(0)]
+	// End state: [25, 25, 25, 25]
+	// controllerKey: math.MaxInt64 * 75%  -- Scope of second 50% splitted
+	// Although scope of first 25% has more work load, its scope size is smaller than the second 50%
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(2305843009213693951),
+			workloadNum:   5,
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(4611686018427387903),
+			workloadNum:   0,
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(9223372036854775807),
+			workloadNum:   0,
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(6917529027641081855), controllerKey)
+
+	// Start state: [25(0), 25(2), 25(5), 25(0)]
+	// End state: [25, 12.5, 12.5, 25, 25]
+	// controllerKey: math.MaxInt64 * 37.5%  -- Scope of second 25% splitted since it has more work load
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: int64(2305843009213693951),
+			workloadNum:   0,
+		},
+		{
+			lowerboundKey: int64(2305843009213693951),
+			controllerKey: int64(4611686018427387903),
+			workloadNum:   2,
+		},
+		{
+			lowerboundKey: int64(4611686018427387903),
+			controllerKey: int64(6917529027641081855),
+			workloadNum:   0,
+		},
+		{
+			lowerboundKey: int64(6917529027641081855),
+			controllerKey: int64(9223372036854775807),
+			workloadNum:   0,
+		},
+	}
+	controllerKey = GenerateKey(controllerBase)
+	assert.Equal(t, int64(3458764513820540927), controllerKey)
+}
+
+func TestSize(t *testing.T) {
+	instance := new(controllerInstanceLocal)
+
+	instance.lowerboundKey = 0
+	instance.controllerKey = int64(math.MaxInt64)
+	assert.Equal(t, int64(math.MaxInt64), instance.Size())
+
+	instance.lowerboundKey = 0
+	instance.controllerKey = 2
+	assert.Equal(t, int64(3), instance.Size()) // instance controls 0, 1, 2, so Size() is 3
+
+	instance.lowerboundKey = 2
+	instance.controllerKey = 4
+	assert.Equal(t, int64(2), instance.Size()) // instance controls 3, 4, so Size() is 2
+}
+
+func TestIsInRange(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -298,16 +629,6 @@ func TestGetMaxInterval(t *testing.T) {
 	controllerType := "foo"
 	controllerInstanceBase, _ := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
 	assert.True(t, controllerInstanceBase.IsControllerActive())
-
-	// Single controller instance, max interval always (0, maxInt64)
-	min, max := controllerInstanceBase.getMaxInterval()
-	assert.Equal(t, int64(0), min)
-	assert.Equal(t, int64(math.MaxInt64), max)
-
-	controllerInstanceBase.sortedControllerInstancesLocal[0].workloadNum = int32(-1)
-	min, max = controllerInstanceBase.getMaxInterval()
-	assert.Equal(t, int64(0), min)
-	assert.Equal(t, int64(math.MaxInt64), max)
 
 	// check range
 	assert.True(t, controllerInstanceBase.IsInRange(int64(0)))
@@ -323,9 +644,6 @@ func TestGetMaxInterval(t *testing.T) {
 	controllerInstance2 := newControllerInstance(controllerType, hashKey1, workloadNum1, true)
 	controllerInstanceBase.controllerInstanceMap[controllerInstance2.Name] = *controllerInstance2
 	controllerInstanceBase.sortedControllerInstancesLocal = SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceBase.controllerInstanceMap)
-	min, max = controllerInstanceBase.getMaxInterval()
-	assert.Equal(t, int64(0), min)
-	assert.Equal(t, hashKey1, max)
 
 	// check range
 	controllerInstanceBase.curPos = 0
@@ -339,18 +657,6 @@ func TestGetMaxInterval(t *testing.T) {
 	assert.False(t, controllerInstanceBase.IsInRange(int64(0)))
 	assert.False(t, controllerInstanceBase.IsInRange(hashKey1))
 	assert.True(t, controllerInstanceBase.IsInRange(int64(math.MaxInt64)))
-
-	// 2 controller instances with workloadNum1 < workloadNum2 => (min, max) = controller instance 2 range
-	controllerInstanceBase.sortedControllerInstancesLocal[1].workloadNum = workloadNum1 + 1
-	min, max = controllerInstanceBase.getMaxInterval()
-	assert.Equal(t, hashKey1, min)
-	assert.Equal(t, int64(math.MaxInt64), max)
-
-	// 2 controller instances with workloadNum1 > workloadNum2 => (min, max) = controller instance 1 range
-	controllerInstanceBase.sortedControllerInstancesLocal[1].workloadNum = workloadNum1 - 1
-	min, max = controllerInstanceBase.getMaxInterval()
-	assert.Equal(t, int64(0), min)
-	assert.Equal(t, hashKey1, max)
 }
 
 func TestControllerInstanceLifeCycle(t *testing.T) {

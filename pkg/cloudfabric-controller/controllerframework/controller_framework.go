@@ -57,6 +57,14 @@ type controllerInstanceLocal struct {
 	isLocked      bool
 }
 
+func (c *controllerInstanceLocal) Size() int64 {
+	size := c.controllerKey - c.lowerboundKey
+	if c.lowerboundKey == 0 && c.controllerKey != math.MaxInt64 {
+		size++
+	}
+	return size
+}
+
 type ControllerBase struct {
 	controllerType            string
 	controllerName            string
@@ -117,7 +125,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, cimUpd
 		InformerResetChGrp:             informerResetChGrp,
 	}
 
-	controller.controllerKey = controller.generateKey()
+	controller.controllerKey = GenerateKey(controller)
 	controller.controllerName = generateControllerName()
 	controller.unlockControllerInstanceHandler = controller.unlockControllerInstance
 
@@ -277,41 +285,6 @@ func (c *ControllerBase) IsDoneProcessingCurrentWorkloads() (bool, int) {
 	}
 
 	return true, 0
-}
-
-func (c *ControllerBase) generateKey() int64 {
-	if len(c.sortedControllerInstancesLocal) == 0 {
-		return math.MaxInt64
-	}
-
-	min, max := c.getMaxInterval()
-	return (max - min) / 2
-}
-
-func (c *ControllerBase) getMaxInterval() (int64, int64) {
-	min := int64(0)
-	max := int64(math.MaxInt64)
-
-	maxWorkloadNum := (int32)(-1)
-	intervalFound := false
-
-	for i := 0; i < len(c.sortedControllerInstancesLocal); i++ {
-		item := c.sortedControllerInstancesLocal[i]
-
-		if item.workloadNum > maxWorkloadNum {
-			maxWorkloadNum = item.workloadNum
-			max = item.controllerKey
-			min = item.lowerboundKey
-			intervalFound = true
-		}
-	}
-
-	if !intervalFound && len(c.sortedControllerInstancesLocal) > 0 {
-		min = c.sortedControllerInstancesLocal[0].lowerboundKey
-		max = c.sortedControllerInstancesLocal[0].controllerKey
-	}
-
-	return min, max
 }
 
 func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMap map[string]v1.ControllerInstance) {
