@@ -34,6 +34,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/server/mux:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/server/routes:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/term:go_default_library",
+        "//staging/src/k8s.io/client-go/datapartition:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/typed/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/tools/leaderelection:go_default_library",
         "//staging/src/k8s.io/component-base/cli/flag:go_default_library",

@@ -529,11 +529,6 @@ function kube::common::start_kubescheduler {
 }
 
 function kube::common::start_kubelet {
-    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    kubeconfigfilepaths="${CERT_DIR}/kubelet.kubeconfig"
-    if [[ $# -gt 1 ]] ; then
-       kubeconfigfilepaths=$@
-    fi
     KUBELET_LOG=${LOG_DIR}/kubelet.log
     mkdir -p "${POD_MANIFEST_PATH}" &>/dev/null || sudo mkdir -p "${POD_MANIFEST_PATH}"
 
@@ -604,7 +599,7 @@ function kube::common::start_kubelet {
       "--hostname-override=${HOSTNAME_OVERRIDE}"
       "${cloud_config_arg[@]}"
       "--address=0.0.0.0"
-      --kubeconfig "${kubeconfigfilepaths}"
+      --kubeconfig "${CERT_DIR}"/kubelet.kubeconfig
       "--feature-gates=${FEATURE_GATES}"
       "--cpu-cfs-quota=${CPU_CFS_QUOTA}"
       "--enable-controller-attach-detach=${ENABLE_CONTROLLER_ATTACH_DETACH}"
@@ -628,9 +623,7 @@ function kube::common::start_kubelet {
       ${KUBELET_FLAGS}
     )
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
-        kube::common::generate_kubelet_certs
-    fi
+    kube::common::generate_kubelet_certs
 
     # shellcheck disable=SC2024
     sudo -E "${GO_OUT}/hyperkube" kubelet "${all_kubelet_flags[@]}" >"${KUBELET_LOG}" 2>&1 &

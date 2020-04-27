@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"k8s.io/client-go/datapartition"
 	"net/http"
 	"os"
 	goruntime "runtime"
@@ -154,7 +155,16 @@ func runCommand(cmd *cobra.Command, args []string, opts *options.Options) error 
 		return fmt.Errorf("unable to register configz: %s", err)
 	}
 
+	startAPIServerConfigManager(cc, stopCh)
 	return Run(cc, stopCh)
+}
+
+// API Server Config Manager is used to watch api server configuration update
+// Upon the inroduction of api server data partition, it needs to connect to update
+// connections when API Server Configuration is updated
+func startAPIServerConfigManager(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) {
+	go datapartition.NewAPIServerConfigManagerWithInformer(cc.InformerFactory.Core().V1().Endpoints(),
+		cc.Client).Run(stopCh)
 }
 
 // Run executes the scheduler based on the given configuration. It only return on error or when stopCh is closed.

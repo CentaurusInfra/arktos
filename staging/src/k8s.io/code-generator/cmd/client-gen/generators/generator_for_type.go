@@ -141,6 +141,8 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"subresourcePath":          "",
 		"GroupGoName":              g.groupGoName,
 		"Version":                  namer.IC(g.version),
+		"klogInfof":                c.Universe.Type(types.Name{Package: "k8s.io/klog", Name: "V"}),
+		"stringsContains":          c.Universe.Type(types.Name{Package: "strings", Name: "Contains"}),
 		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
 		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
 		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
@@ -461,7 +463,42 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 		Timeout(timeout).
 		Do().
 		Into(result)
-	
+	if err == nil {
+		return
+	}
+
+	if !$.stringsContains|raw$(err.Error(), "forbidden") ||
+		!$.stringsContains|raw$(err.Error(), "no relationship found between node") {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
+			$if .tenanted$Tenant(c.te).$end$
+			Resource("$.type|resource$").
+			VersionedParams(&opts, $.schemeParameterCodec|raw$).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && $.stringsContains|raw$(err.Error(), "forbidden") &&
+			$.stringsContains|raw$(err.Error(), "no relationship found between node") {
+			$.klogInfof|raw$(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
+
 	return
 }
 `
@@ -734,6 +771,11 @@ func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatch
 			VersionedParams(&opts, $.schemeParameterCodec|raw$).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			$.klogInfof|raw$(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch

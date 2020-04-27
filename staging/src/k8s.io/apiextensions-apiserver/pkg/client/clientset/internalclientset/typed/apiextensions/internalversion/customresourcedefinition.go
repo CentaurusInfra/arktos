@@ -20,6 +20,7 @@ limitations under the License.
 package internalversion
 
 import (
+	strings "strings"
 	"time"
 
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
@@ -28,6 +29,7 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 )
 
 // CustomResourceDefinitionsGetter has a method to return a CustomResourceDefinitionInterface.
@@ -99,6 +101,40 @@ func (c *customResourceDefinitions) List(opts v1.ListOptions) (result *apiextens
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !strings.Contains(err.Error(), "forbidden") ||
+		!strings.Contains(err.Error(), "no relationship found between node") {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Tenant(c.te).
+			Resource("customresourcedefinitions").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && strings.Contains(err.Error(), "forbidden") &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -118,6 +154,11 @@ func (c *customResourceDefinitions) Watch(opts v1.ListOptions) watch.AggregatedW
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -127,8 +168,13 @@ func (c *customResourceDefinitions) Watch(opts v1.ListOptions) watch.AggregatedW
 func (c *customResourceDefinitions) Create(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 
+	objectTenant := customResourceDefinition.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("customresourcedefinitions").
 		Body(customResourceDefinition).
 		Do().
@@ -141,8 +187,13 @@ func (c *customResourceDefinitions) Create(customResourceDefinition *apiextensio
 func (c *customResourceDefinitions) Update(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 
+	objectTenant := customResourceDefinition.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).
 		Body(customResourceDefinition).
@@ -158,8 +209,13 @@ func (c *customResourceDefinitions) Update(customResourceDefinition *apiextensio
 func (c *customResourceDefinitions) UpdateStatus(customResourceDefinition *apiextensions.CustomResourceDefinition) (result *apiextensions.CustomResourceDefinition, err error) {
 	result = &apiextensions.CustomResourceDefinition{}
 
+	objectTenant := customResourceDefinition.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("customresourcedefinitions").
 		Name(customResourceDefinition.Name).
 		SubResource("status").

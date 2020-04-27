@@ -4,8 +4,9 @@
   "labelSelector": "2",
   "fieldSelector": "3",
   "watch": true,
+  "allowWatchBookmarks": true,
   "resourceVersion": "4",
-  "timeoutSeconds": 1002466899136229878,
-  "limit": 5339971464584210463,
+  "timeoutSeconds": 6780787122834727873,
+  "limit": 3549865785210165515,
   "continue": "5"
 }

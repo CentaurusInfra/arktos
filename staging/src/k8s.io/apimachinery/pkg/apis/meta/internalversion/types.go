@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +36,11 @@ type ListOptions struct {
 	FieldSelector fields.Selector
 	// If true, watch for changes to this list
 	Watch bool
+	// Whether needs to watch all api server data partition. Used to for some data that is only
+	// available for one partition. Hence could fail on watching other partition
+	// Generally used in client only to indicate partial failure is allowed
+	// +optional
+	AllowPartialWatch bool
 	// allowWatchBookmarks requests watch events with type "BOOKMARK".
 	// Servers that do not implement bookmarks may ignore this flag and
 	// bookmarks are sent at the server's discretion. Clients should not
