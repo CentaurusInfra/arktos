@@ -328,6 +328,7 @@ func TestValidateUpdate(t *testing.T) {
 			expectError: true,
 		},
 		//TODO: more unit tests and negative tests
+		//TODO: add QoS immutable tests
 	}
 
 	for _, tc := range tests {
