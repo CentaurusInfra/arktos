@@ -327,8 +327,8 @@ func startAPIServerConfigManager(ctx ControllerContext) (bool, error) {
 		return false, nil
 	}
 
-	go datapartition.NewAPIServerConfigManagerWithInformer(ctx.InformerFactory.Core().V1().Endpoints(),
-		ctx.ClientBuilder.ClientOrDie("api-server-configuration-manager")).Run(ctx.Stop)
+	datapartition.StartAPIServerConfigManager(ctx.InformerFactory.Core().V1().Endpoints(),
+		ctx.ClientBuilder.ClientOrDie("apiserver-configuration-manager"), ctx.Stop)
 
 	return true, nil
 }

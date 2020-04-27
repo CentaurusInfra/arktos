@@ -631,9 +631,7 @@ func (s *ProxyServer) Run() error {
 		}))
 
 	// Create API Server Config Manager
-	apiServerConfigManager := datapartition.NewAPIServerConfigManagerWithInformer(
-		informerFactory.Core().V1().Endpoints(), s.Client)
-	go apiServerConfigManager.Run(wait.NeverStop)
+	datapartition.StartAPIServerConfigManager(informerFactory.Core().V1().Endpoints(), s.Client, wait.NeverStop)
 
 	// Create configs (i.e. Watches for Services and Endpoints)
 	// Note: RegisterHandler() calls need to happen before creation of Sources because sources

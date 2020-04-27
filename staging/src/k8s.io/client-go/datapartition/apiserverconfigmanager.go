@@ -93,15 +93,15 @@ func mockApiServerConfigSync(a *APIServerConfigManager) error {
 	return nil
 }
 
-func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInformer, kubeClient clientset.Interface) *APIServerConfigManager {
+func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInformer, kubeClient clientset.Interface) (*APIServerConfigManager, error) {
 	if instance != nil {
-		return instance
+		return instance, nil
 	}
 
 	muxCreateInstance.Lock()
 	defer muxCreateInstance.Unlock()
 	if instance != nil {
-		return instance
+		return instance, nil
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -129,13 +129,13 @@ func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInf
 	manager.apiserverListerSynced = epInformer.Informer().HasSynced
 	err := SyncApiServerConfigHandler(manager)
 	if err != nil {
-		klog.Fatalf("Unable to get api server list from registry. Error %v", err)
+		return nil, err
 	}
 
 	SyncApiServerConfigHandler = syncApiServerConfig
 
 	instance = manager
-	return instance
+	return instance, nil
 }
 
 func (a *APIServerConfigManager) Run(stopCh <-chan struct{}) {
@@ -171,7 +171,8 @@ func syncApiServerConfig(a *APIServerConfigManager) error {
 
 	apiEndpoints, err := a.kubeClient.CoreV1().Endpoints(Namespace_System).Get(KubernetesServiceName, metav1.GetOptions{})
 	if err != nil {
-		klog.Fatalf("Error in getting api server endpoints list: %v", err)
+		klog.Errorf("Error in getting api server endpoints list: %v", err)
+		return err
 	} else if apiEndpoints == nil {
 		klog.Fatalf("Cannot get %s endpoints: %v", KubernetesServiceName, err)
 	}
@@ -306,4 +307,16 @@ func isApiServerEndpoint(ep *v1.Endpoints) bool {
 	}
 
 	return false
+}
+
+func StartAPIServerConfigManager(endpointsInformer coreinformers.EndpointsInformer, client clientset.Interface, stopCh <-chan struct{}) (bool, error) {
+	apiServerConfigManager, err := NewAPIServerConfigManagerWithInformer(
+		endpointsInformer, client)
+	if err != nil {
+		// TODO - check whether need to add retry
+		klog.Fatalf("Error getting api server endpoints. Error %v", err)
+	}
+	go apiServerConfigManager.Run(stopCh)
+
+	return true, nil
 }
