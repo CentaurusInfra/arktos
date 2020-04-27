@@ -619,12 +619,20 @@ func TestHandleMemExceeded(t *testing.T) {
 	testClusterDNSDomain := "TEST"
 	kl.dnsConfigurer = dns.NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
 
-	spec := v1.PodSpec{NodeName: string(kl.nodeName),
-		Containers: []v1.Container{{Resources: v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceMemory: resource.MustParse("90"),
+	spec := v1.PodSpec{
+		NodeName: string(kl.nodeName),
+		Containers: []v1.Container{
+			{
+				Resources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{
+						v1.ResourceMemory: resource.MustParse("90"),
+					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceMemory: resource.MustParse("90"),
+				},
 			},
-		}}},
+		},
 	}
 	pods := []*v1.Pod{
 		podWithUIDNameNsSpec("123456789", "newpod", "foo", spec),
@@ -716,53 +724,83 @@ func TestHandlePluginResources(t *testing.T) {
 
 	// pod requiring adjustedResource can be successfully allocated because updatePluginResourcesFunc
 	// adjusts node.allocatableResource for this resource to a sufficient value.
-	fittingPodSpec := v1.PodSpec{NodeName: string(kl.nodeName),
-		Containers: []v1.Container{{Resources: v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				adjustedResource: resourceQuantity2,
+	fittingPodSpec := v1.PodSpec{
+		NodeName: string(kl.nodeName),
+		Containers: []v1.Container{
+			{
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						adjustedResource: resourceQuantity2,
+					},
+					Requests: v1.ResourceList{
+						adjustedResource: resourceQuantity2,
+					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					adjustedResource: resourceQuantity2,
+				},
 			},
-			Requests: v1.ResourceList{
-				adjustedResource: resourceQuantity2,
-			},
-		}}},
+		},
 	}
 	// pod requiring emptyResource (extended resources with 0 allocatable) will
 	// not pass PredicateAdmit.
-	emptyPodSpec := v1.PodSpec{NodeName: string(kl.nodeName),
-		Containers: []v1.Container{{Resources: v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				emptyResource: resourceQuantity2,
+	emptyPodSpec := v1.PodSpec{
+		NodeName: string(kl.nodeName),
+		Containers: []v1.Container{
+			{
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						emptyResource: resourceQuantity2,
+					},
+					Requests: v1.ResourceList{
+						emptyResource: resourceQuantity2,
+					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					emptyResource: resourceQuantity2,
+				},
 			},
-			Requests: v1.ResourceList{
-				emptyResource: resourceQuantity2,
-			},
-		}}},
+		},
 	}
 	// pod requiring missingResource will pass PredicateAdmit.
 	//
 	// Extended resources missing in node status are ignored in PredicateAdmit.
 	// This is required to support extended resources that are not managed by
 	// device plugin, such as cluster-level resources.
-	missingPodSpec := v1.PodSpec{NodeName: string(kl.nodeName),
-		Containers: []v1.Container{{Resources: v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				missingResource: resourceQuantity2,
+	missingPodSpec := v1.PodSpec{
+		NodeName: string(kl.nodeName),
+		Containers: []v1.Container{
+			{
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						missingResource: resourceQuantity2,
+					},
+					Requests: v1.ResourceList{
+						missingResource: resourceQuantity2,
+					},
+				},
+				ResourcesAllocated: v1.ResourceList{},
 			},
-			Requests: v1.ResourceList{
-				missingResource: resourceQuantity2,
-			},
-		}}},
+		},
 	}
 	// pod requiring failedResource will fail with the resource failed to be allocated.
-	failedPodSpec := v1.PodSpec{NodeName: string(kl.nodeName),
-		Containers: []v1.Container{{Resources: v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				failedResource: resourceQuantity1,
+	failedPodSpec := v1.PodSpec{
+		NodeName: string(kl.nodeName),
+		Containers: []v1.Container{
+			{
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						failedResource: resourceQuantity1,
+					},
+					Requests: v1.ResourceList{
+						failedResource: resourceQuantity1,
+					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					failedResource: resourceQuantity1,
+				},
 			},
-			Requests: v1.ResourceList{
-				failedResource: resourceQuantity1,
-			},
-		}}},
+		},
 	}
 
 	fittingPod := podWithUIDNameNsSpec("1", "fittingpod", "foo", fittingPodSpec)

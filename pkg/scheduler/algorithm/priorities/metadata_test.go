@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -97,6 +98,10 @@ func TestPriorityMetadata(t *testing.T) {
 							v1.ResourceMemory: resource.MustParse("2000"),
 						},
 					},
+					ResourcesAllocated: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("200m"),
+						v1.ResourceMemory: resource.MustParse("2000"),
+					},
 				},
 			},
 			Tolerations: tolerations,
@@ -118,6 +123,10 @@ func TestPriorityMetadata(t *testing.T) {
 							v1.ResourceCPU:    resource.MustParse("200m"),
 							v1.ResourceMemory: resource.MustParse("2000"),
 						},
+					},
+					ResourcesAllocated: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("200m"),
+						v1.ResourceMemory: resource.MustParse("2000"),
 					},
 				},
 			},

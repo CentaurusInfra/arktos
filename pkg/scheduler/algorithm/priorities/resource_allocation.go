@@ -96,7 +96,7 @@ func getNonZeroRequests(pod *v1.Pod) *schedulernodeinfo.Resource {
 	result := &schedulernodeinfo.Resource{}
 	for i := range pod.Spec.Workloads() {
 		workload := &pod.Spec.Workloads()[i]
-		cpu, memory := priorityutil.GetNonzeroRequests(&workload.Resources.Requests)
+		cpu, memory := priorityutil.GetNonzeroRequests(&workload.ResourcesAllocated)
 		result.MilliCPU += cpu
 		result.Memory += memory
 	}

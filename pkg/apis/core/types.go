@@ -2043,6 +2043,12 @@ type CommonInfo struct {
 	// Compute resource requirements.
 	// +optional
 	Resources ResourceRequirements
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy
 	// +optional
 	VolumeMounts []VolumeMount
 	// Policy for pulling images for this container
@@ -2176,6 +2182,12 @@ type VirtualMachine struct {
 	// Compute resource requirements.
 	// +optional
 	Resources ResourceRequirements
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy
 	// +optional
 	VolumeMounts []VolumeMount
 	// Policy for pulling images for this container
@@ -2363,6 +2375,7 @@ type VirtualMachineStatus struct {
 	PowerState           VmPowerState
 	Ready                bool
 	RestartCount         int32
+	Resources            ResourceRequirements
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -2921,6 +2934,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 			ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
 			ps.WorkloadInfo[0].ImagePullPolicy = ps.VirtualMachine.ImagePullPolicy
 			ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
+			ps.WorkloadInfo[0].ResourcesAllocated = ps.VirtualMachine.ResourcesAllocated
+			ps.WorkloadInfo[0].ResizePolicy = ps.VirtualMachine.ResizePolicy
 			ps.WorkloadInfo[0].VolumeMounts = ps.VirtualMachine.VolumeMounts
 		} else {
 			ps.WorkloadInfo = make([]CommonInfo, len(ps.Containers))
@@ -2929,6 +2944,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 				ps.WorkloadInfo[i].Image = ps.Containers[i].Image
 				ps.WorkloadInfo[i].ImagePullPolicy = ps.Containers[i].ImagePullPolicy
 				ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
+				ps.WorkloadInfo[i].ResourcesAllocated = ps.Containers[i].ResourcesAllocated
+				ps.WorkloadInfo[i].ResizePolicy = ps.Containers[i].ResizePolicy
 				ps.WorkloadInfo[i].VolumeMounts = ps.Containers[i].VolumeMounts
 			}
 		}
