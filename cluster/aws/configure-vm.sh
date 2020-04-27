@@ -357,6 +357,15 @@ function setup-flannel-cni-conf() {
 EOF
 }
 
+function setup-weave-cni-conf() {
+  cat > /etc/cni/net.d/10-weave.conf <<EOF
+{
+  "name": "weave",
+  "type": "weave-net"
+}
+EOF
+}
+
 function setup-bridge-cni-conf() {
   cat > /etc/cni/net.d/bridge.conf <<EOF
 {
@@ -382,6 +391,9 @@ function setup-cni-network-conf() {
   case "${NETWORK_PROVIDER:-flannel}" in
     flannel)
     setup-flannel-cni-conf
+    ;;
+    weave)
+    setup-weave-cni-conf
     ;;
     bridge)
     setup-bridge-cni-conf
@@ -696,11 +708,18 @@ function setup-kubernetes-master() {
   if [[ ${NETWORK_PROVIDER:-flannel} == "bridge" ]]; then
     skip_phases="--skip-phases=${init_phases},addon"
   fi
+  local feature_gates=""
+  if [[ ! -z ${FEATURE_GATES:-""} ]]; then
+    feature_gates="feature-gates=${FEATURE_GATES}"
+  fi
+  local pod_net_cidr=""
+  if [[ ! -z ${POD_NETWORK_CIDR} ]]; then
+    pod_net_cidr="--pod-network-cidr=$POD_NETWORK_CIDR"
+  fi
 
-  # Run kubeadm init - TODO: take pod-network-cidr and networking yaml as a params
-  kubeadm init phase control-plane apiserver --apiserver-bind-port=$API_BIND_PORT --kubernetes-version=$KUBE_VER
-  kubeadm init phase control-plane controller-manager --pod-network-cidr=10.244.0.0/16 --kubernetes-version=$KUBE_VER
-  kubeadm init phase control-plane scheduler --kubernetes-version=$KUBE_VER
+  kubeadm init phase control-plane apiserver --apiserver-bind-port=$API_BIND_PORT --kubernetes-version=$KUBE_VER --apiserver-extra-args=$feature_gates
+  kubeadm init phase control-plane controller-manager --kubernetes-version=$KUBE_VER $pod_net_cidr --controller-manager-extra-args=$feature_gates
+  kubeadm init phase control-plane scheduler --kubernetes-version=$KUBE_VER --scheduler-extra-args=$feature_gates
   kubeadm init phase etcd local
 
   sed -i "/listen-client-urls=/ s/$/,http:\/\/127.0.0.1:2382/" /etc/kubernetes/manifests/etcd.yaml
@@ -708,8 +727,13 @@ function setup-kubernetes-master() {
   sed -i "/- kube-apiserver/a \ \ \ \ - --basic-auth-file=\/etc\/srv\/kubernetes\/basic_auth.csv" /etc/kubernetes/manifests/kube-apiserver.yaml
   sed -i "/volumeMounts:/a \ \ \ \ - mountPath: \/etc\/srv\/kubernetes\n      name: etc-srv-kubernetes\n      readOnly: true" /etc/kubernetes/manifests/kube-apiserver.yaml
   sed -i "/volumes:/a \ \ - hostPath:\n      path: \/etc\/srv\/kubernetes\n      type: DirectoryOrCreate\n    name: etc-srv-kubernetes" /etc/kubernetes/manifests/kube-apiserver.yaml
+  if [[ ! -z $feature_gates ]]; then
+    sed -i "/KUBELET_CONFIG_ARGS/a Environment=\"KUBELET_EXTRA_ARGS=--feature-gates=${FEATURE_GATES}\"" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+    feature_gates="--$feature_gates"
+  fi
 
-  kubeadm init --node-name=$KUBE_NODE_NAME --apiserver-bind-port=$API_BIND_PORT --apiserver-cert-extra-sans=$MASTER_EXTERNAL_IP --ignore-preflight-errors=all $skip_phases &> /etc/kubernetes/kubeadm-init-log
+  kubeadm init --node-name=$KUBE_NODE_NAME --apiserver-bind-port=$API_BIND_PORT --apiserver-cert-extra-sans=$MASTER_EXTERNAL_IP \
+               --ignore-preflight-errors=all $skip_phases $pod_net_cidr &> /etc/kubernetes/kubeadm-init-log
   if [ $? -eq 0 ]; then
     echo "kubeadm init successful."
     sudo mkdir -p /root/.kube
