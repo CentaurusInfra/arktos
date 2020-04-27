@@ -2932,6 +2932,8 @@ func autoConvert_v1_CommonInfo_To_core_CommonInfo(in *v1.CommonInfo, out *core.C
 	if err := Convert_v1_ResourceRequirements_To_core_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
 		return err
 	}
+	out.ResourcesAllocated = *(*core.ResourceList)(unsafe.Pointer(&in.ResourcesAllocated))
+	out.ResizePolicy = *(*[]core.ResizePolicy)(unsafe.Pointer(&in.ResizePolicy))
 	out.VolumeMounts = *(*[]core.VolumeMount)(unsafe.Pointer(&in.VolumeMounts))
 	out.ImagePullPolicy = core.PullPolicy(in.ImagePullPolicy)
 	return nil
@@ -2948,6 +2950,8 @@ func autoConvert_core_CommonInfo_To_v1_CommonInfo(in *core.CommonInfo, out *v1.C
 	if err := Convert_core_ResourceRequirements_To_v1_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
 		return err
 	}
+	out.ResourcesAllocated = *(*v1.ResourceList)(unsafe.Pointer(&in.ResourcesAllocated))
+	out.ResizePolicy = *(*[]v1.ResizePolicy)(unsafe.Pointer(&in.ResizePolicy))
 	out.VolumeMounts = *(*[]v1.VolumeMount)(unsafe.Pointer(&in.VolumeMounts))
 	out.ImagePullPolicy = v1.PullPolicy(in.ImagePullPolicy)
 	return nil
@@ -8275,6 +8279,8 @@ func autoConvert_v1_VirtualMachine_To_core_VirtualMachine(in *v1.VirtualMachine,
 	if err := Convert_v1_ResourceRequirements_To_core_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
 		return err
 	}
+	out.ResourcesAllocated = *(*core.ResourceList)(unsafe.Pointer(&in.ResourcesAllocated))
+	out.ResizePolicy = *(*[]core.ResizePolicy)(unsafe.Pointer(&in.ResizePolicy))
 	out.VolumeMounts = *(*[]core.VolumeMount)(unsafe.Pointer(&in.VolumeMounts))
 	out.ImagePullPolicy = core.PullPolicy(in.ImagePullPolicy)
 	out.KeyPairName = in.KeyPairName
@@ -8300,6 +8306,8 @@ func autoConvert_core_VirtualMachine_To_v1_VirtualMachine(in *core.VirtualMachin
 	if err := Convert_core_ResourceRequirements_To_v1_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
 		return err
 	}
+	out.ResourcesAllocated = *(*v1.ResourceList)(unsafe.Pointer(&in.ResourcesAllocated))
+	out.ResizePolicy = *(*[]v1.ResizePolicy)(unsafe.Pointer(&in.ResizePolicy))
 	out.VolumeMounts = *(*[]v1.VolumeMount)(unsafe.Pointer(&in.VolumeMounts))
 	out.ImagePullPolicy = v1.PullPolicy(in.ImagePullPolicy)
 	out.KeyPairName = in.KeyPairName
@@ -8329,6 +8337,9 @@ func autoConvert_v1_VirtualMachineStatus_To_core_VirtualMachineStatus(in *v1.Vir
 	out.PowerState = core.VmPowerState(in.PowerState)
 	out.Ready = in.Ready
 	out.RestartCount = in.RestartCount
+	if err := Convert_v1_ResourceRequirements_To_core_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -8347,6 +8358,9 @@ func autoConvert_core_VirtualMachineStatus_To_v1_VirtualMachineStatus(in *core.V
 	out.PowerState = v1.VmPowerState(in.PowerState)
 	out.Ready = in.Ready
 	out.RestartCount = in.RestartCount
+	if err := Convert_core_ResourceRequirements_To_v1_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+		return err
+	}
 	return nil
 }
 

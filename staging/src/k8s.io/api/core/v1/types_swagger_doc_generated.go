@@ -238,12 +238,14 @@ func (ClientIPConfig) SwaggerDoc() map[string]string {
 }
 
 var map_CommonInfo = map[string]string{
-	"":                "Colection of fields that are common to Container and VirtualMachine objects",
-	"name":            "Required. Name of the container specified as a DNS_LABEL.",
-	"image":           "Image name.",
-	"resources":       "Compute Resources required by this container.",
-	"volumeMounts":    "Pod volumes to mount into the workload's filesystem.",
-	"imagePullPolicy": "Image pull policy.",
+	"":                   "Colection of fields that are common to Container and VirtualMachine objects",
+	"name":               "Required. Name of the container specified as a DNS_LABEL.",
+	"image":              "Image name.",
+	"resources":          "Compute Resources required by this container.",
+	"resourcesAllocated": "Node compute resources allocated to the container.",
+	"resizePolicy":       "Resources resize policy for the container.",
+	"volumeMounts":       "Pod volumes to mount into the workload's filesystem.",
+	"imagePullPolicy":    "Image pull policy.",
 }
 
 func (CommonInfo) SwaggerDoc() map[string]string {
@@ -2445,6 +2447,8 @@ var map_VirtualMachine = map[string]string{
 	"name":                    "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
 	"image":                   "Image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
 	"resources":               "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+	"resourcesAllocated":      "Node compute resources allocated to the container.",
+	"resizePolicy":            "Resources resize policy for the container.",
 	"volumeMounts":            "Pod volumes to mount into the workload's filesystem. Cannot be updated.",
 	"imagePullPolicy":         "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
 	"keyPairName":             "either keyPair or the publicKeystring must be provided, used to logon to the VM",
@@ -2462,10 +2466,11 @@ func (VirtualMachine) SwaggerDoc() map[string]string {
 }
 
 var map_VirtualMachineStatus = map[string]string{
-	"":        "VirtualMachineStatus holds the details of the current status of a given virtual machine instance",
-	"name":    "Required",
-	"imageId": "image",
-	"state":   "state of the virtual machine",
+	"":          "VirtualMachineStatus holds the details of the current status of a given virtual machine instance",
+	"name":      "Required",
+	"imageId":   "image",
+	"state":     "state of the virtual machine",
+	"resources": "Compute resource requests and limits applied to the VM",
 }
 
 func (VirtualMachineStatus) SwaggerDoc() map[string]string {
