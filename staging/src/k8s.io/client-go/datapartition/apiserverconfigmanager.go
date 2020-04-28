@@ -47,6 +47,10 @@ var instance *APIServerConfigManager
 var muxCreateInstance sync.Mutex
 
 var SyncApiServerConfigHandler = syncApiServerConfig
+var setApiServerConfigMapHandler = setApiServerConfigMap
+var setAPIServerConfigHandler = apiserverupdate.SetAPIServerConfig
+var sendUpdateMessageHandler = sendUpdateMessage
+var startWaitForCompleteHandler = apiserverupdate.GetClientSetsWatcher().StartWaitingForComplete
 
 type APIServerConfigManager struct {
 	apiserverListerSynced cache.InformerSynced
@@ -142,7 +146,7 @@ func (a *APIServerConfigManager) Run(stopCh <-chan struct{}) {
 		return
 	}
 	if !cache.WaitForCacheSync(stopCh, a.apiserverListerSynced) {
-		klog.Info("Api service end points NOT synced %v.")
+		klog.Info("Api service end points NOT synced.")
 		return
 	}
 
@@ -179,7 +183,7 @@ func syncApiServerConfig(a *APIServerConfigManager) error {
 	a.rev, _ = strconv.Atoi(apiEndpoints.ResourceVersion)
 	a.firstUpdateTime = time.Now().Add(startUpResetDelayInSeconds)
 	klog.Infof("Set first update api server to time %v", a.firstUpdateTime)
-	a.setApiServerConfig(apiEndpoints)
+	setApiServerConfigMapHandler(a, apiEndpoints)
 	return nil
 }
 
@@ -202,6 +206,7 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 
 		if newRev < oldRev {
 			klog.V(3).Infof("Got staled endpoint %s in updateFunc. Existing version %s, new instance version %v", KubernetesServiceName, oldEp.ResourceVersion, curEp.ResourceVersion)
+			return
 		}
 	}
 
@@ -216,7 +221,7 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 		klog.V(4).Infof("mux released updateApiServer")
 	}()
 
-	a.setApiServerConfig(curEp)
+	setApiServerConfigMapHandler(a, curEp)
 }
 
 func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
@@ -237,11 +242,11 @@ func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
 		return
 	}
 
-	klog.Warningf("Received event for deleting % end point", KubernetesServiceName)
+	klog.Warningf("Received event for deleting %s end point", KubernetesServiceName)
 	// TODO - how to deal with integration test running in parrallel
 }
 
-func (a *APIServerConfigManager) setApiServerConfig(ep *v1.Endpoints) {
+func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 	hasUpdate := false
 
 	existingServiceGroupIds := make(map[string]bool)
@@ -268,13 +273,13 @@ func (a *APIServerConfigManager) setApiServerConfig(ep *v1.Endpoints) {
 	if hasUpdate {
 		// wait 30 (defined in startUpResetDelayInSeconds) second after start to send update message
 		//   - otherwise, update api server config during start up might cause issue
-		go func(firstUpdateTime time.Time) {
+		go func(a *APIServerConfigManager) {
 			now := time.Now()
-			if firstUpdateTime.After(now) {
-				time.Sleep(firstUpdateTime.Sub(now))
+			if a.firstUpdateTime.After(now) {
+				time.Sleep(a.firstUpdateTime.Sub(now))
 			}
 
-			apiserverupdate.SetAPIServerConfig(a.APIServerMap)
+			setAPIServerConfigHandler(a.APIServerMap)
 
 			// No need to reset config if there is only one server as it is already connected
 			if !a.isApiServerConfigInitialized {
@@ -285,10 +290,14 @@ func (a *APIServerConfigManager) setApiServerConfig(ep *v1.Endpoints) {
 				}
 			}
 
-			go a.updateChGrp.Send("API server config updated")
-			apiserverupdate.GetClientSetsWatcher().StartWaitingForComplete()
-		}(a.firstUpdateTime)
+			sendUpdateMessageHandler(a)
+			startWaitForCompleteHandler()
+		}(a)
 	}
+}
+
+func sendUpdateMessage(a *APIServerConfigManager) {
+	go a.updateChGrp.Send("API server config updated")
 }
 
 func isApiServerEndpoint(ep *v1.Endpoints) bool {
