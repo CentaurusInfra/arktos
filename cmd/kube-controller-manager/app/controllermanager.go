@@ -242,8 +242,8 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 
 		// start API Server Config Manager
 		client := rootClientBuilder.ClientOrDie("apiserver-configuration-manager")
-		go datapartition.NewAPIServerConfigManagerWithInformer(controllerContext.InformerFactory.Core().V1().Endpoints(), client).
-			Run(controllerContext.Stop)
+		datapartition.StartAPIServerConfigManager(controllerContext.InformerFactory.Core().V1().Endpoints(),
+			client, controllerContext.Stop)
 
 		controllerContext.InformerFactory.Start(controllerContext.Stop)
 		controllerContext.GenericInformerFactory.Start(controllerContext.Stop)

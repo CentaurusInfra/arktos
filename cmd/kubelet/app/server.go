@@ -743,7 +743,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	}
 
 	// Start APIServerConfigManager
-	startAPIServerConfigManager(kubeDeps.KubeClient, stopCh)
+	go startAPIServerConfigManager(kubeDeps.KubeClient, stopCh)
 
 	if err = RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
 		return err
@@ -1306,10 +1306,19 @@ func RunDockershim(f *options.KubeletFlags, c *kubeletconfiginternal.KubeletConf
 // API Server Config Manager is used to watch api server configuration update
 // Upon the inroduction of api server data partition, it needs to connect to update
 // connections when API Server Configuration is updated
+// Kubelet can be start as static pod - do not fail when it cannot connect to API Server
 func startAPIServerConfigManager(client clientset.Interface, stopCh <-chan struct{}) {
 	informerFactory := informers.NewSharedInformerFactory(client, 10*time.Minute)
-	go datapartition.NewAPIServerConfigManagerWithInformer(informerFactory.Core().V1().Endpoints(), client).
-		Run(stopCh)
-
-	informerFactory.Start(stopCh)
+	for {
+		apiServerConfigManager, err := datapartition.NewAPIServerConfigManagerWithInformer(
+			informerFactory.Core().V1().Endpoints(), client)
+		if err == nil {
+			go apiServerConfigManager.Run(stopCh)
+			informerFactory.Start(stopCh)
+			return
+		} else {
+			klog.Errorf("Error creating api server config manager. %v. Retry after 10 seconds", err)
+			time.Sleep(10 * time.Second)
+		}
+	}
 }
