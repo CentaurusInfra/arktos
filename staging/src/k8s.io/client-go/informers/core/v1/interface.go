@@ -43,6 +43,8 @@ type Interface interface {
 	LimitRanges() LimitRangeInformer
 	// Namespaces returns a NamespaceInformer.
 	Namespaces() NamespaceInformer
+	// Networks returns a NetworkInformer.
+	Networks() NetworkInformer
 	// Nodes returns a NodeInformer.
 	Nodes() NodeInformer
 	// PersistentVolumes returns a PersistentVolumeInformer.
@@ -127,6 +129,11 @@ func (v *version) LimitRanges() LimitRangeInformer {
 // Namespaces returns a NamespaceInformer.
 func (v *version) Namespaces() NamespaceInformer {
 	return &namespaceInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
+}
+
+// Networks returns a NetworkInformer.
+func (v *version) Networks() NetworkInformer {
+	return &networkInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // Nodes returns a NodeInformer.

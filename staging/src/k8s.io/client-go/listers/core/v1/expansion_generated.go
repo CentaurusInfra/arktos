@@ -79,6 +79,14 @@ type NamespaceListerExpansion interface{}
 // NamespaceTenantLister.
 type NamespaceTenantListerExpansion interface{}
 
+// NetworkListerExpansion allows custom methods to be added to
+// NetworkLister.
+type NetworkListerExpansion interface{}
+
+// NetworkTenantListerExpansion allows custom methods to be added to
+// NetworkTenantLister.
+type NetworkTenantListerExpansion interface{}
+
 // PersistentVolumeListerExpansion allows custom methods to be added to
 // PersistentVolumeLister.
 type PersistentVolumeListerExpansion interface{}

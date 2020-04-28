@@ -22,6 +22,7 @@ go_library(
         "limitrange.go",
         "namespace.go",
         "namespace_expansion.go",
+        "network.go",
         "node.go",
         "node_expansion.go",
         "persistentvolume.go",

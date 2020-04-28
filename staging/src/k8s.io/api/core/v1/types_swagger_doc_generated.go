@@ -1076,6 +1076,45 @@ func (NamespaceStatus) SwaggerDoc() map[string]string {
 	return map_NamespaceStatus
 }
 
+var map_Network = map[string]string{
+	"":       "A Network specifies a network boundary",
+	"spec":   "Spec defines desired state of network",
+	"status": "Status is the actual state of network",
+}
+
+func (Network) SwaggerDoc() map[string]string {
+	return map_Network
+}
+
+var map_NetworkList = map[string]string{
+	"":         "NetworkList is a list of Networks.",
+	"metadata": "Standard list metadata.",
+	"items":    "Items is the list of Network objects in the list.",
+}
+
+func (NetworkList) SwaggerDoc() map[string]string {
+	return map_NetworkList
+}
+
+var map_NetworkSpec = map[string]string{
+	"":      "NetworkSpec is a description of network",
+	"type":  "Type is the network type",
+	"vpcid": "VPCID is vpc identifier specific to network provider",
+}
+
+func (NetworkSpec) SwaggerDoc() map[string]string {
+	return map_NetworkSpec
+}
+
+var map_NetworkStatus = map[string]string{
+	"":      "NetworkStatus represents information about the status of a network",
+	"phase": "Phase is the current lifecycle phase of Network.",
+}
+
+func (NetworkStatus) SwaggerDoc() map[string]string {
+	return map_NetworkStatus
+}
+
 var map_Nic = map[string]string{
 	"":            "Network interface type used in the VM workload Nic info will be provided at the pod level so they can be used by both Container and VM workload",
 	"name":        "The interface name to be used in the VM or container",

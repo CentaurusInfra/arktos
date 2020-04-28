@@ -33,6 +33,8 @@ type EndpointsExpansion interface{}
 
 type LimitRangeExpansion interface{}
 
+type NetworkExpansion interface{}
+
 type PersistentVolumeExpansion interface{}
 
 type PersistentVolumeClaimExpansion interface{}

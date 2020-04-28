@@ -18,6 +18,7 @@ go_library(
         "interface.go",
         "limitrange.go",
         "namespace.go",
+        "network.go",
         "node.go",
         "persistentvolume.go",
         "persistentvolumeclaim.go",

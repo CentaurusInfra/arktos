@@ -40,6 +40,7 @@ type CoreV1Interface interface {
 	EventsGetter
 	LimitRangesGetter
 	NamespacesGetter
+	NetworksGetter
 	NodesGetter
 	PersistentVolumesGetter
 	PersistentVolumeClaimsGetter
@@ -116,6 +117,14 @@ func (c *CoreV1Client) Namespaces() NamespaceInterface {
 
 func (c *CoreV1Client) NamespacesWithMultiTenancy(tenant string) NamespaceInterface {
 	return newNamespacesWithMultiTenancy(c, tenant)
+}
+
+func (c *CoreV1Client) Networks() NetworkInterface {
+	return newNetworksWithMultiTenancy(c, "default")
+}
+
+func (c *CoreV1Client) NetworksWithMultiTenancy(tenant string) NetworkInterface {
+	return newNetworksWithMultiTenancy(c, tenant)
 }
 
 func (c *CoreV1Client) Nodes() NodeInterface {
