@@ -125,7 +125,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, cimUpd
 		InformerResetChGrp:             informerResetChGrp,
 	}
 
-	controller.controllerKey = GenerateKey(controller)
+	controller.controllerKey = controller.generateKey()
 	controller.controllerName = generateControllerName()
 	controller.unlockControllerInstanceHandler = controller.unlockControllerInstance
 
@@ -285,6 +285,41 @@ func (c *ControllerBase) IsDoneProcessingCurrentWorkloads() (bool, int) {
 	}
 
 	return true, 0
+}
+
+// Generate controllerKey for new controller instance. It is to find and split a scope for new controller instance.
+// Scope Splitting Principles:
+// 1. We always find existing scope with biggest size, and split it.
+// 2. If there are more than one scope at the biggest size, we chose the one with most ongoing work load, and split it.
+// 3. If both existing scope size and ongoing work are even, we choose first scope and split it.
+func (c *ControllerBase) generateKey() int64 {
+	if len(c.sortedControllerInstancesLocal) == 0 {
+		return math.MaxInt64
+	}
+
+	candidate := c.sortedControllerInstancesLocal[0]
+	for i := 1; i < len(c.sortedControllerInstancesLocal); i++ {
+		item := c.sortedControllerInstancesLocal[i]
+
+		// There are two conditions to be met then change candidate:
+		// 1. if the space is bigger
+		// 2. or the space size is same, but with more work load
+		// When splitting odd size space, the sub spaces has 1 difference in size. So ignore difference of 1 when comparing two spaces' size.
+		// Which is said, we consider it is bigger when it's bigger more than 1, and we consider both are equal even they have diff 1.
+		if item.Size() > candidate.Size()+1 ||
+			(math.Abs(float64(item.Size()-candidate.Size())) <= 1 && item.workloadNum > candidate.workloadNum) {
+			candidate = item
+		}
+	}
+
+	spaceToSplit := candidate.controllerKey - candidate.lowerboundKey
+
+	// Add one to space to guarantee the first half will have more than second half when space to split is not even.
+	// But don't apply if the scope starting from 0 because it already got extra space from number 0.
+	if spaceToSplit != math.MaxInt64 && candidate.lowerboundKey != 0 {
+		spaceToSplit++
+	}
+	return candidate.lowerboundKey + spaceToSplit/2
 }
 
 func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMap map[string]v1.ControllerInstance) {

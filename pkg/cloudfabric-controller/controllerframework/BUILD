@@ -4,7 +4,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "controller_framework.go",
-        "controller_framework_test_utils.go",
         "controller_framework_utils.go",
         "controllerinstancemanager.go",
     ],

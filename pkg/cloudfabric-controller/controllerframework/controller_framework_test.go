@@ -301,8 +301,6 @@ func TestGenerateKey(t *testing.T) {
 	const SEVEN_EIGHTH_SCOPE = int64(8070450532247928831) // 7/8    87.5%
 	const ONE_SIXTEENTH_SCOPE = int64(576460752303423487) // 1/16   6.25%
 
-	assert.Equal(t, int64(-1), GenerateKey(nil))
-
 	controllerBase := new(ControllerBase)
 
 	// Start state: []
@@ -312,7 +310,7 @@ func TestGenerateKey(t *testing.T) {
 	//              controll 100% of the scope space. The total scope space is math.MaxInt64 (9223372036854775807).
 	//              In this way, we expect controller key is math.MaxInt64.
 	//              (Same expression logic for other test cases)
-	controllerKey := GenerateKey(controllerBase)
+	controllerKey := controllerBase.generateKey()
 	assert.Equal(t, TOTAL_SCOPE, controllerKey)
 
 	// Start state: [100]
@@ -324,7 +322,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, HALF_SCOPE, controllerKey)
 
 	// Start state: [50, 50]
@@ -340,7 +338,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, ONE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25, 25, 50]
@@ -360,7 +358,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25, 25, 25, 25]
@@ -384,7 +382,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, ONE_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 25, 25, 25]
@@ -412,7 +410,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, THREE_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 25, 25]
@@ -444,7 +442,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, FIVE_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 25]
@@ -480,7 +478,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, SEVEN_EIGHTH_SCOPE, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
@@ -520,7 +518,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, ONE_SIXTEENTH_SCOPE, controllerKey)
 
 	// This case shows what happens after a controller was terminated unexpected.
@@ -539,7 +537,7 @@ func TestGenerateKey(t *testing.T) {
 			controllerKey: TOTAL_SCOPE,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, FIVE_EIGHTH_SCOPE, controllerKey)
 
 	// Following cases shows how work load will impact the splitting
@@ -561,7 +559,7 @@ func TestGenerateKey(t *testing.T) {
 			workloadNum:   2,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25(5), 25(0), 50(0)]
@@ -585,7 +583,7 @@ func TestGenerateKey(t *testing.T) {
 			workloadNum:   0,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
 
 	// Start state: [25(0), 25(2), 25(5), 25(0)]
@@ -613,7 +611,7 @@ func TestGenerateKey(t *testing.T) {
 			workloadNum:   0,
 		},
 	}
-	controllerKey = GenerateKey(controllerBase)
+	controllerKey = controllerBase.generateKey()
 	assert.Equal(t, THREE_EIGHTH_SCOPE, controllerKey)
 }
 

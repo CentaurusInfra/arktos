@@ -17,8 +17,11 @@ limitations under the License.
 package controllerframework
 
 import (
+	"github.com/grafov/bcast"
 	"k8s.io/api/core/v1"
-	"math"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes/fake"
 	"sort"
 )
 
@@ -51,41 +54,53 @@ func SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap map[str
 	return sortedControllerInstancesLocal
 }
 
-// Generate controllerKey for new controller instance. It is to find and split a scope for new controller instance.
-// Scope Splitting Principles:
-// 1. We always find existing scope with biggest size, and split it.
-// 2. If there are more than one scope at the biggest size, we chose the one with most ongoing work load, and split it.
-// 3. If both existing scope size and ongoing work are even, we choose first scope and split it.
-func GenerateKey(c *ControllerBase) int64 {
-	if c == nil {
-		return -1
+// The following are test util. Put here so that can be used in other packages' tests
+
+var alwaysReady = func() bool { return true }
+var notifyTimes int
+
+func mockNotifyHander(controllerInstance *v1.ControllerInstance) {
+	notifyTimes++
+	return
+}
+func mockCheckInstanceHander() {
+	return
+}
+
+func CreateTestControllerInstanceManager(stopCh chan struct{}) (*ControllerInstanceManager, informers.SharedInformerFactory) {
+	client := fake.NewSimpleClientset()
+	informers := informers.NewSharedInformerFactory(client, 0)
+
+	cim := NewControllerInstanceManager(informers.Core().V1().ControllerInstances(), client, nil)
+	go cim.Run(stopCh)
+
+	cim.controllerListerSynced = alwaysReady
+	cim.notifyHandler = mockNotifyHander
+	checkInstanceHandler = mockCheckInstanceHander
+	return GetControllerInstanceManager(), informers
+}
+
+func MockCreateControllerInstance(c *ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
+	fakeControllerInstance := &v1.ControllerInstance{
+		ObjectMeta:     metav1.ObjectMeta{Name: c.GetControllerName()},
+		ControllerType: c.GetControllerType(),
+		ControllerKey:  c.GetControllerKey(),
+		WorkloadNum:    0,
+		IsLocked:       false,
+	}
+	return fakeControllerInstance, nil
+}
+
+func MockCreateControllerInstanceAndResetChs(stopCh chan struct{}) (*bcast.Member, *bcast.Group) {
+	cimUpdateChGrp := bcast.NewGroup()
+	cimUpdateCh := cimUpdateChGrp.Join()
+	informersResetChGrp := bcast.NewGroup()
+
+	cim := GetControllerInstanceManager()
+	if cim == nil {
+		cim, _ = CreateTestControllerInstanceManager(stopCh)
+		go cim.Run(stopCh)
 	}
 
-	if len(c.sortedControllerInstancesLocal) == 0 {
-		return math.MaxInt64
-	}
-
-	candidate := c.sortedControllerInstancesLocal[0]
-	for i := 1; i < len(c.sortedControllerInstancesLocal); i++ {
-		item := c.sortedControllerInstancesLocal[i]
-
-		// There are two conditions to be met then change candidate:
-		// 1. if the space is bigger
-		// 2. or the space size is same, but with more work load
-		// When splitting odd size space, the sub spaces has 1 difference in size. So ignore difference of 1 when comparing two spaces' size.
-		// Which is said, we consider it is bigger when it's bigger more than 1, and we consider both are equal even they have diff 1.
-		if item.Size() > candidate.Size()+1 ||
-			(math.Abs(float64(item.Size()-candidate.Size())) <= 1 && item.workloadNum > candidate.workloadNum) {
-			candidate = item
-		}
-	}
-
-	spaceToSplit := candidate.controllerKey - candidate.lowerboundKey
-
-	// Add one to space to guarantee the first half will have more than second half when space to split is not even.
-	// But don't apply if the scope starting from 0 because it already got extra space from number 0.
-	if spaceToSplit != math.MaxInt64 && candidate.lowerboundKey != 0 {
-		spaceToSplit++
-	}
-	return candidate.lowerboundKey + spaceToSplit/2
+	return cimUpdateCh, informersResetChGrp
 }
