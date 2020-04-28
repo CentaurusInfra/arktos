@@ -5289,3 +5289,81 @@ type DataPartitionConfigList struct {
 	// List of data partition configuration
 	Items []DataPartitionConfig
 }
+
+// NetworkType describes the type of a Network
+type NetworkType string
+
+// Valid values of network type
+const (
+	FlatNetwork NetworkType = "flat"
+	VPCNetwork  NetworkType = "vpc"
+)
+
+// NetworkSpec is a description of network
+type NetworkSpec struct {
+	// Type is the network type
+	// +optional
+	Type NetworkType
+
+	// VPCID is vpc identifier specific to network provider
+	// +optional
+	VPCID string
+}
+
+// NetworkPhase describes the lifecycle phase of Network
+type NetworkPhase string
+
+// Valid values of network lifecycle phase
+const (
+	// NetworkPending means the network accepted by the system, but
+	// has not been ready for use.
+	NetworkPending NetworkPhase = "Pending"
+	// NetworkFailed means for some reason the network is in error state
+	// and cannot be used properly any more.
+	NetworkFailed NetworkPhase = "Failed"
+	// NetworkOK means the network is in good shape.
+	NetworkOK NetworkPhase = "Okay"
+	// NetworkTerminating means the network is in the middle of termination.
+	NetworkTerminating NetworkPhase = "Terminating"
+	// NetworkUnknown means the state of network cannot be decided due to
+	// communication problems.
+	NetworkUnknown NetworkPhase = "Unknown"
+)
+
+// NetworkStatus represents information about the status of a network
+type NetworkStatus struct {
+	// Phase is the current lifecycle phase of Network.
+	// +optional
+	Phase NetworkPhase
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// A Network specifies a network boundary
+type Network struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ObjectMeta
+
+	// Spec defines desired state of network
+	// +optional
+	Spec NetworkSpec
+
+	// Status is the actual state of network
+	// +optional
+	Status NetworkStatus
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// NetworkList is a list of Networks.
+type NetworkList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	// Items is the list of Network objects in the list.
+	Items []Network
+}

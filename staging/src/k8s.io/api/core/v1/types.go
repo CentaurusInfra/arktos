@@ -5986,3 +5986,82 @@ type DataPartitionConfigList struct {
 	// List of data partition configuration
 	Items []DataPartitionConfig `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
 }
+
+// NetworkType describes the type of a Network
+type NetworkType string
+
+// Valid values of network type
+const (
+	FlatNetwork NetworkType = "flat"
+	VPCNetwork  NetworkType = "vpc"
+)
+
+// NetworkSpec is a description of network
+type NetworkSpec struct {
+	// Type is the network type
+	// +optional
+	Type NetworkType `json:"type,omitempty" protobuf:"bytes,1,opt,name=type,casttype=NetworkType"`
+
+	// VPCID is vpc identifier specific to network provider
+	// +optional
+	VPCID string `json:"vpcid,omitempty" protobuf:"bytes,2,opt,name=vpcid"`
+}
+
+// NetworkPhase describes the lifecycle phase of Network
+type NetworkPhase string
+
+// Valid values of network lifecycle phase
+const (
+	// NetworkPending means the network accepted by the system, but
+	// has not been ready for use.
+	NetworkPending NetworkPhase = "Pending"
+	// NetworkFailed means for some reason the network is in error state
+	// and cannot be used properly any more.
+	NetworkFailed NetworkPhase = "Failed"
+	// NetworkOK means the network is in good shape.
+	NetworkOK NetworkPhase = "Okay"
+	// NetworkTerminating means the network is in the middle of termination.
+	NetworkTerminating NetworkPhase = "Terminating"
+	// NetworkUnknown means the state of network cannot be decided due to
+	// communication problems.
+	NetworkUnknown NetworkPhase = "Unknown"
+)
+
+// NetworkStatus represents information about the status of a network
+type NetworkStatus struct {
+	// Phase is the current lifecycle phase of Network.
+	// +optional
+	Phase NetworkPhase `json:"phase,omitempty" protobuf:"bytes,1,opt,name=phase,casttype=NetworkPhase"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// A Network specifies a network boundary
+type Network struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Spec defines desired state of network
+	// +optional
+	Spec NetworkSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+
+	// Status is the actual state of network
+	// +optional
+	Status NetworkStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// NetworkList is a list of Networks.
+type NetworkList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Items is the list of Network objects in the list.
+	Items []Network `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
