@@ -17,6 +17,7 @@ limitations under the License.
 package controllerframework
 
 import (
+	generalErrors "errors"
 	"fmt"
 	"math"
 	"strings"
@@ -125,7 +126,11 @@ func NewControllerBase(controllerType string, client clientset.Interface, cimUpd
 		InformerResetChGrp:             informerResetChGrp,
 	}
 
-	controller.controllerKey = controller.generateKey()
+	controllerKey, err := controller.generateKey()
+	if err != nil {
+		return nil, err
+	}
+	controller.controllerKey = controllerKey
 	controller.controllerName = generateControllerName()
 	controller.unlockControllerInstanceHandler = controller.unlockControllerInstance
 
@@ -292,9 +297,9 @@ func (c *ControllerBase) IsDoneProcessingCurrentWorkloads() (bool, int) {
 // 1. We always find existing scope with biggest size, and split it.
 // 2. If there are more than one scope at the biggest size, we chose the one with most ongoing work load, and split it.
 // 3. If both existing scope size and ongoing work are even, we choose first scope and split it.
-func (c *ControllerBase) generateKey() int64 {
+func (c *ControllerBase) generateKey() (int64, error) {
 	if len(c.sortedControllerInstancesLocal) == 0 {
-		return math.MaxInt64
+		return math.MaxInt64, nil
 	}
 
 	candidate := c.sortedControllerInstancesLocal[0]
@@ -319,7 +324,11 @@ func (c *ControllerBase) generateKey() int64 {
 	if spaceToSplit != math.MaxInt64 && candidate.lowerboundKey != 0 {
 		spaceToSplit++
 	}
-	return candidate.lowerboundKey + spaceToSplit/2
+
+	if spaceToSplit <= 1 {
+		return -1, generalErrors.New("no enough space to split for new controller manager instance")
+	}
+	return candidate.lowerboundKey + spaceToSplit/2, nil
 }
 
 func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMap map[string]v1.ControllerInstance) {

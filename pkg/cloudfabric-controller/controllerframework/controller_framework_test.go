@@ -291,15 +291,15 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 }
 
 func TestGenerateKey(t *testing.T) {
-	const TOTAL_SCOPE = int64(9223372036854775807)        // 1       100%
-	const HALF_SCOPE = int64(4611686018427387903)         // 1/2      50%
-	const ONE_FOURTH_SCOPE = int64(2305843009213693951)   // 1/4      25%
-	const THREE_FOURTH_SCOPE = int64(6917529027641081855) // 3/4      75%
-	const ONE_EIGHTH_SCOPE = int64(1152921504606846975)   // 1/8    12.5%
-	const THREE_EIGHTH_SCOPE = int64(3458764513820540927) // 3/8    37.5%
-	const FIVE_EIGHTH_SCOPE = int64(5764607523034234879)  // 5/8    62.5%
-	const SEVEN_EIGHTH_SCOPE = int64(8070450532247928831) // 7/8    87.5%
-	const ONE_SIXTEENTH_SCOPE = int64(576460752303423487) // 1/16   6.25%
+	const TotalScope = int64(9223372036854775807)       // 1       100%
+	const HalfScope = int64(4611686018427387903)        // 1/2      50%
+	const OneFourthScope = int64(2305843009213693951)   // 1/4      25%
+	const ThreeFourthScope = int64(6917529027641081855) // 3/4      75%
+	const OneEighthScope = int64(1152921504606846975)   // 1/8    12.5%
+	const ThreeEighthScope = int64(3458764513820540927) // 3/8    37.5%
+	const FiveEighthScope = int64(5764607523034234879)  // 5/8    62.5%
+	const SevenEighthScope = int64(8070450532247928831) // 7/8    87.5%
+	const OneSixteenthScope = int64(576460752303423487) // 1/16   6.25%
 
 	controllerBase := new(ControllerBase)
 
@@ -310,8 +310,9 @@ func TestGenerateKey(t *testing.T) {
 	//              controll 100% of the scope space. The total scope space is math.MaxInt64 (9223372036854775807).
 	//              In this way, we expect controller key is math.MaxInt64.
 	//              (Same expression logic for other test cases)
-	controllerKey := controllerBase.generateKey()
-	assert.Equal(t, TOTAL_SCOPE, controllerKey)
+	controllerKey, err := controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, TotalScope, controllerKey)
 
 	// Start state: [100]
 	// End state: [50, 50]
@@ -319,11 +320,12 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: TOTAL_SCOPE,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, HALF_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, HalfScope, controllerKey)
 
 	// Start state: [50, 50]
 	// End state: [25, 25, 50]
@@ -331,15 +333,16 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: HALF_SCOPE,
+			controllerKey: HalfScope,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, ONE_FOURTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, OneFourthScope, controllerKey)
 
 	// Start state: [25, 25, 50]
 	// End state: [25, 25, 25, 25]
@@ -347,19 +350,20 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_FOURTH_SCOPE,
+			controllerKey: OneFourthScope,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: HalfScope,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, ThreeFourthScope, controllerKey)
 
 	// Start state: [25, 25, 25, 25]
 	// End state: [12.5, 12.5, 25, 25, 25]
@@ -367,23 +371,24 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_FOURTH_SCOPE,
+			controllerKey: OneFourthScope,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: HalfScope,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: THREE_FOURTH_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: ThreeFourthScope,
 		},
 		{
-			lowerboundKey: THREE_FOURTH_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: ThreeFourthScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, ONE_EIGHTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, OneEighthScope, controllerKey)
 
 	// Start state: [12.5, 12.5, 25, 25, 25]
 	// End state: [12.5, 12.5, 12.5, 12.5, 25, 25]
@@ -391,27 +396,28 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_EIGHTH_SCOPE,
+			controllerKey: OneEighthScope,
 		},
 		{
-			lowerboundKey: ONE_EIGHTH_SCOPE,
-			controllerKey: ONE_FOURTH_SCOPE,
+			lowerboundKey: OneEighthScope,
+			controllerKey: OneFourthScope,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: HalfScope,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: THREE_FOURTH_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: ThreeFourthScope,
 		},
 		{
-			lowerboundKey: THREE_FOURTH_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: ThreeFourthScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, THREE_EIGHTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, ThreeEighthScope, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 25, 25]
 	// End state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 25]
@@ -419,31 +425,32 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_EIGHTH_SCOPE,
+			controllerKey: OneEighthScope,
 		},
 		{
-			lowerboundKey: ONE_EIGHTH_SCOPE,
-			controllerKey: ONE_FOURTH_SCOPE,
+			lowerboundKey: OneEighthScope,
+			controllerKey: OneFourthScope,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: THREE_EIGHTH_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: ThreeEighthScope,
 		},
 		{
-			lowerboundKey: THREE_EIGHTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: ThreeEighthScope,
+			controllerKey: HalfScope,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: THREE_FOURTH_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: ThreeFourthScope,
 		},
 		{
-			lowerboundKey: THREE_FOURTH_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: ThreeFourthScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, FIVE_EIGHTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, FiveEighthScope, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 25]
 	// End state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
@@ -451,35 +458,36 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_EIGHTH_SCOPE,
+			controllerKey: OneEighthScope,
 		},
 		{
-			lowerboundKey: ONE_EIGHTH_SCOPE,
-			controllerKey: ONE_FOURTH_SCOPE,
+			lowerboundKey: OneEighthScope,
+			controllerKey: OneFourthScope,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: THREE_EIGHTH_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: ThreeEighthScope,
 		},
 		{
-			lowerboundKey: THREE_EIGHTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: ThreeEighthScope,
+			controllerKey: HalfScope,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: FIVE_EIGHTH_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: FiveEighthScope,
 		},
 		{
-			lowerboundKey: FIVE_EIGHTH_SCOPE,
-			controllerKey: THREE_FOURTH_SCOPE,
+			lowerboundKey: FiveEighthScope,
+			controllerKey: ThreeFourthScope,
 		},
 		{
-			lowerboundKey: THREE_FOURTH_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: ThreeFourthScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, SEVEN_EIGHTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, SevenEighthScope, controllerKey)
 
 	// Start state: [12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
 	// End state: [6.25, 6.25, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5]
@@ -487,39 +495,40 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_EIGHTH_SCOPE,
+			controllerKey: OneEighthScope,
 		},
 		{
-			lowerboundKey: ONE_EIGHTH_SCOPE,
-			controllerKey: ONE_FOURTH_SCOPE,
+			lowerboundKey: OneEighthScope,
+			controllerKey: OneFourthScope,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: THREE_EIGHTH_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: ThreeEighthScope,
 		},
 		{
-			lowerboundKey: THREE_EIGHTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: ThreeEighthScope,
+			controllerKey: HalfScope,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: FIVE_EIGHTH_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: FiveEighthScope,
 		},
 		{
-			lowerboundKey: FIVE_EIGHTH_SCOPE,
-			controllerKey: THREE_FOURTH_SCOPE,
+			lowerboundKey: FiveEighthScope,
+			controllerKey: ThreeFourthScope,
 		},
 		{
-			lowerboundKey: THREE_FOURTH_SCOPE,
-			controllerKey: SEVEN_EIGHTH_SCOPE,
+			lowerboundKey: ThreeFourthScope,
+			controllerKey: SevenEighthScope,
 		},
 		{
-			lowerboundKey: SEVEN_EIGHTH_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: SevenEighthScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, ONE_SIXTEENTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, OneSixteenthScope, controllerKey)
 
 	// This case shows what happens after a controller was terminated unexpected.
 	// Assume there are 3 controllers [25, 25, 50]. The second one terminated,
@@ -530,15 +539,16 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_FOURTH_SCOPE,
+			controllerKey: OneFourthScope,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: TotalScope,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, FIVE_EIGHTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, FiveEighthScope, controllerKey)
 
 	// Following cases shows how work load will impact the splitting
 	// Expression added "(number)" which shows work load count in the scope
@@ -550,17 +560,18 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: HALF_SCOPE,
+			controllerKey: HalfScope,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: TotalScope,
 			workloadNum:   2,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, ThreeFourthScope, controllerKey)
 
 	// Start state: [25(5), 25(0), 50(0)]
 	// End state: [25, 25, 25, 25]
@@ -569,22 +580,23 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_FOURTH_SCOPE,
+			controllerKey: OneFourthScope,
 			workloadNum:   5,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: HalfScope,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: TotalScope,
 			workloadNum:   0,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, THREE_FOURTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, ThreeFourthScope, controllerKey)
 
 	// Start state: [25(0), 25(2), 25(5), 25(0)]
 	// End state: [25, 12.5, 12.5, 25, 25]
@@ -592,27 +604,43 @@ func TestGenerateKey(t *testing.T) {
 	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
 		{
 			lowerboundKey: 0,
-			controllerKey: ONE_FOURTH_SCOPE,
+			controllerKey: OneFourthScope,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: ONE_FOURTH_SCOPE,
-			controllerKey: HALF_SCOPE,
+			lowerboundKey: OneFourthScope,
+			controllerKey: HalfScope,
 			workloadNum:   2,
 		},
 		{
-			lowerboundKey: HALF_SCOPE,
-			controllerKey: THREE_FOURTH_SCOPE,
+			lowerboundKey: HalfScope,
+			controllerKey: ThreeFourthScope,
 			workloadNum:   0,
 		},
 		{
-			lowerboundKey: THREE_FOURTH_SCOPE,
-			controllerKey: TOTAL_SCOPE,
+			lowerboundKey: ThreeFourthScope,
+			controllerKey: TotalScope,
 			workloadNum:   0,
 		},
 	}
-	controllerKey = controllerBase.generateKey()
-	assert.Equal(t, THREE_EIGHTH_SCOPE, controllerKey)
+	controllerKey, err = controllerBase.generateKey()
+	assert.Nil(t, err, "unexpected error when generating controllerKey")
+	assert.Equal(t, ThreeEighthScope, controllerKey)
+
+	// When there is no space to split, return err
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{
+		{
+			lowerboundKey: 0,
+			controllerKey: 1,
+		},
+		{
+			lowerboundKey: 1,
+			controllerKey: 2,
+		},
+	}
+	controllerKey, err = controllerBase.generateKey()
+	assert.NotNil(t, err, "expecting error when generating controllerKey, but not found")
+	assert.Equal(t, int64(-1), controllerKey)
 }
 
 func TestSize(t *testing.T) {
