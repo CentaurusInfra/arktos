@@ -12,8 +12,8 @@ Use cases for a Arktos multi-node dev cluster on AWS are to test features in clo
 
 1. Build the Arktos release binaries from a bash terminal from your Arktos source root directory.
 ```bash
-sudo -E make clean
-source $PWD/aws_build_version && sudo -E make quick-release
+make clean
+source $PWD/aws_build_version && make quick-release
 ```
 
 2. Create a VPC and subnet in AWS. Note down the aws zone, vpd-id, subnet-id to use.
