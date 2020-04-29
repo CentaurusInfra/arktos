@@ -24,7 +24,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/apiserver/pkg/storage/datapartition"
 	"net"
 	"net/http"
 	"net/url"
@@ -32,6 +31,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/apiserver/pkg/storage/datapartition"
 
 	"github.com/go-openapi/spec"
 	"github.com/spf13/cobra"
@@ -414,7 +415,7 @@ func buildGenericConfig(
 	}
 
 	genericConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(legacyscheme.Scheme, extensionsapiserver.Scheme, aggregatorscheme.Scheme))
-	genericConfig.OpenAPIConfig.Info.Title = "Kubernetes"
+	genericConfig.OpenAPIConfig.Info.Title = "Arktos"
 	genericConfig.LongRunningFunc = filters.BasicLongRunningRequestCheck(
 		sets.NewString("watch", "proxy"),
 		sets.NewString("attach", "exec", "proxy", "log", "portforward"),
