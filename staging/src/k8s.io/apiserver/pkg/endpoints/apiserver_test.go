@@ -3847,9 +3847,9 @@ func TestWatchTableWithMultiTenancy(t *testing.T) {
 
 			selfLinker := &setTestSelfLinker{
 				t:           t,
-				expectedSet: "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/default/namespaces/default/simple",
+				expectedSet: "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/system/namespaces/default/simple",
 				namespace:   "default",
-				tenant:      "default",
+				tenant:      metav1.TenantSystem,
 			}
 			if test.item {
 				selfLinker.expectedSet += "/id"
@@ -3864,7 +3864,7 @@ func TestWatchTableWithMultiTenancy(t *testing.T) {
 			if test.item {
 				id = "/id"
 			}
-			u, err := url.Parse(server.URL + "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/default/namespaces/default/simple")
+			u, err := url.Parse(server.URL + "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/system/namespaces/default/simple")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -5997,7 +5997,7 @@ func TestUpdateInvokesAdmissionControl(t *testing.T) {
 func TestUpdateInvokesAdmissionControlWithMultiTenancy(t *testing.T) {
 	ID := "id"
 	testUrls := []string{
-		"/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/default/namespaces/default/simple/" + ID,
+		"/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/system/namespaces/default/simple/" + ID,
 	}
 
 	for _, testUrl := range testUrls {
@@ -6015,7 +6015,7 @@ func TestUpdateInvokesAdmissionControlWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      ID,
 					Namespace: metav1.NamespaceDefault,
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				Other: "bar",
 			}
@@ -6258,7 +6258,7 @@ func TestUpdateDisallowsMismatchedNamespaceOnErrorWithMultiTenancy(t *testing.T)
 	}
 
 	client := http.Client{}
-	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/default/namespaces/default/simple/"+ID, bytes.NewReader(body))
+	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/system/namespaces/default/simple/"+ID, bytes.NewReader(body))
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -6331,7 +6331,7 @@ func TestUpdatePreventsMismatchedNamespaceWithMultiTenancy(t *testing.T) {
 	}
 
 	client := http.Client{}
-	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/default/namespaces/default/simple/"+ID, bytes.NewReader(body))
+	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/system/namespaces/default/simple/"+ID, bytes.NewReader(body))
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -6390,7 +6390,7 @@ func TestUpdateMissingWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ID,
 			Namespace: metav1.NamespaceDefault,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Other: "bar",
 	}
@@ -6400,7 +6400,7 @@ func TestUpdateMissingWithMultiTenancy(t *testing.T) {
 	}
 
 	client := http.Client{}
-	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/default/namespaces/default/simple/"+ID, bytes.NewReader(body))
+	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/system/namespaces/default/simple/"+ID, bytes.NewReader(body))
 	response, err := client.Do(request)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -6459,7 +6459,7 @@ func TestCreateNotFoundWithMultiTenancy(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	request, err := http.NewRequest("POST", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/default/namespaces/default/simple", bytes.NewBuffer(data))
+	request, err := http.NewRequest("POST", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/system/namespaces/default/simple", bytes.NewBuffer(data))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -6515,7 +6515,7 @@ func TestCreateChecksDecodeWithMultiTenancy(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	request, err := http.NewRequest("POST", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/default/namespaces/default/simple", bytes.NewBuffer(data))
+	request, err := http.NewRequest("POST", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/system/namespaces/default/simple", bytes.NewBuffer(data))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -6755,7 +6755,7 @@ func TestCreateWithNameWithMultiTenancy(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	request, err := http.NewRequest("POST", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/default/namespaces/default/simple/"+pathName+"/sub", bytes.NewBuffer(data))
+	request, err := http.NewRequest("POST", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/system/namespaces/default/simple/"+pathName+"/sub", bytes.NewBuffer(data))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -6812,7 +6812,7 @@ func TestUpdateChecksDecodeWithMultiTenancy(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/default/namespaces/default/simple/bar", bytes.NewBuffer(data))
+	request, err := http.NewRequest("PUT", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/tenants/system/namespaces/default/simple/bar", bytes.NewBuffer(data))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -8094,7 +8094,7 @@ func TestXGSubresourceWithMultiTenancy(t *testing.T) {
 	server := newTestServer(defaultAPIServer{mux, container})
 	defer server.Close()
 
-	resp, err := http.Get(server.URL + "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/default/namespaces/default/simple/" + itemID + "/subsimple")
+	resp, err := http.Get(server.URL + "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/tenants/system/namespaces/default/simple/" + itemID + "/subsimple")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

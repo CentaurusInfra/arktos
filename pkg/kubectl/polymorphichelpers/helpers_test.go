@@ -34,7 +34,7 @@ import (
 )
 
 func TestGetFirstPod(t *testing.T) {
-	testGetFirstPod(t, metav1.TenantDefault)
+	testGetFirstPod(t, metav1.TenantSystem)
 }
 
 func TestGetFirstPodWithMultiTenancy(t *testing.T) {

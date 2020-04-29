@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -36,7 +37,7 @@ import (
 )
 
 func getArbitraryResource(s schema.GroupVersionResource, name, namespace string) *unstructured.Unstructured {
-	return getArbitraryResourceWithMultiTenancy(s, name, namespace, "default")
+	return getArbitraryResourceWithMultiTenancy(s, name, namespace, metav1.TenantSystem)
 }
 
 func getArbitraryResourceWithMultiTenancy(s schema.GroupVersionResource, name, namespace string, tenant string) *unstructured.Unstructured {

@@ -101,7 +101,7 @@ type replicaCalcTestCase struct {
 }
 
 const (
-	testTenant          = metav1.TenantDefault
+	testTenant          = metav1.TenantSystem
 	testNamespace       = "test-namespace"
 	podNamePrefix       = "test-pod"
 	numContainersPerPod = 2

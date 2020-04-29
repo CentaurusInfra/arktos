@@ -45,7 +45,7 @@ import (
 )
 
 func TestCollectDataWithSecret(t *testing.T) {
-	testCollectDataWithSecret(t, metav1.TenantDefault)
+	testCollectDataWithSecret(t, metav1.TenantSystem)
 }
 
 func TestCollectDataWithSecretWithMultiTenancy(t *testing.T) {
@@ -504,7 +504,7 @@ func TestCollectDataWithConfigMap(t *testing.T) {
 	for _, tc := range cases {
 		testNamespace := "test_projected_namespace"
 		tc.configMap.ObjectMeta = metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 			Namespace: testNamespace,
 			Name:      tc.name,
 		}
@@ -514,7 +514,7 @@ func TestCollectDataWithConfigMap(t *testing.T) {
 		source.Sources[0].ConfigMap.Optional = &tc.optional
 
 		testPodUID := types.UID("test_pod_uid")
-		pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+		pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 		client := fake.NewSimpleClientset(tc.configMap)
 		_, host := newTestHost(t, client)
 
@@ -569,7 +569,7 @@ func TestCollectDataWithDownwardAPI(t *testing.T) {
 					FieldPath: "metadata.annotations['a1']"}}},
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					Name:      testPodName,
 					Namespace: testNamespace,
 					Annotations: map[string]string{
@@ -591,7 +591,7 @@ func TestCollectDataWithDownwardAPI(t *testing.T) {
 					FieldPath: "metadata.annotations['']"}}},
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					Name:      testPodName,
 					Namespace: testNamespace,
 					Annotations: map[string]string{
@@ -613,7 +613,7 @@ func TestCollectDataWithDownwardAPI(t *testing.T) {
 					FieldPath: "metadata.labels"}}},
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					Name:      testPodName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
@@ -634,7 +634,7 @@ func TestCollectDataWithDownwardAPI(t *testing.T) {
 					FieldPath: "metadata.annotations"}}},
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					Name:      testPodName,
 					Namespace: testNamespace,
 					Annotations: map[string]string{
@@ -655,7 +655,7 @@ func TestCollectDataWithDownwardAPI(t *testing.T) {
 					FieldPath: "metadata.name"}}},
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					Name:      testPodName,
 					Namespace: testNamespace,
 					UID:       testPodUID},
@@ -673,7 +673,7 @@ func TestCollectDataWithDownwardAPI(t *testing.T) {
 					FieldPath: "metadata.namespace"}}},
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					Name:      testPodName,
 					Namespace: testNamespace,
 					UID:       testPodUID},
@@ -788,7 +788,7 @@ func TestCollectDataWithServiceAccountToken(t *testing.T) {
 
 			testPodUID := types.UID("test_pod_uid")
 			pod := &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID},
 				Spec:       v1.PodSpec{ServiceAccountName: "foo"},
 			}
 			scheme.Default(pod)
@@ -881,7 +881,7 @@ func TestPlugin(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -946,7 +946,7 @@ func TestInvalidPathProjected(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -996,7 +996,7 @@ func TestPluginReboot(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -1050,7 +1050,7 @@ func TestPluginOptional(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -1148,7 +1148,7 @@ func TestPluginOptionalKeys(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -1200,7 +1200,7 @@ func makeVolumeSpec(volumeName, name string, defaultMode int32) *v1.Volume {
 func makeSecret(namespace, name string) v1.Secret {
 	return v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 			Namespace: namespace,
 			Name:      name,
 		},

@@ -32,7 +32,7 @@ import (
 func newTokenSecret(tokenID, tokenSecret string) *v1.Secret {
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:          metav1.TenantDefault,
+			Tenant:          metav1.TenantSystem,
 			Namespace:       metav1.NamespaceSystem,
 			Name:            bootstrapapi.BootstrapTokenSecretPrefix + tokenID,
 			ResourceVersion: "1",

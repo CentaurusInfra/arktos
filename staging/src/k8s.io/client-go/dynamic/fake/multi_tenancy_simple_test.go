@@ -41,7 +41,7 @@ const (
 )
 
 func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Unstructured {
-	return newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name, metav1.TenantDefault)
+	return newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name, metav1.TenantSystem)
 }
 
 func newUnstructuredWithMultiTenancy(apiVersion, kind, namespace, name string, tenant string) *unstructured.Unstructured {

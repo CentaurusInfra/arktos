@@ -760,7 +760,7 @@ func TestGetAvailableUpgrades(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      dnsName,
 					Namespace: "kube-system",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					Labels: map[string]string{
 						"k8s-app": "kube-dns",
 					},

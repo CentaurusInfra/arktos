@@ -185,7 +185,7 @@ func TestRequeueStuckDeployment(t *testing.T) {
 }
 
 func TestSyncRolloutStatus(t *testing.T) {
-	testSyncRolloutStatus(t, metav1.TenantDefault)
+	testSyncRolloutStatus(t, metav1.TenantSystem)
 }
 
 func TestSyncRolloutStatusWithMultiTenancy(t *testing.T) {

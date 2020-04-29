@@ -62,7 +62,7 @@ func newSecretCache(fakeClient clientset.Interface) *objectCache {
 }
 
 func TestSecretCache(t *testing.T) {
-	testSecretCache(t, metav1.TenantDefault)
+	testSecretCache(t, metav1.TenantSystem)
 }
 
 func TestSecretCacheWithMultiTenancy(t *testing.T) {
@@ -139,7 +139,7 @@ func testSecretCache(t *testing.T, tenant string) {
 }
 
 func TestSecretCacheMultipleRegistrations(t *testing.T) {
-	testSecretCacheMultipleRegistrations(t, metav1.TenantDefault)
+	testSecretCacheMultipleRegistrations(t, metav1.TenantSystem)
 }
 
 func TestSecretCacheMultipleRegistrationsWithMultiTenancy(t *testing.T) {

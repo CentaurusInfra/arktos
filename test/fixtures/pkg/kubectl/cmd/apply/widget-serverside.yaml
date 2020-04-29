@@ -3,9 +3,9 @@ kind: Widget
 metadata:
   name: "widget"
   namespace: "test"
-  tenant: "default"
+  tenant: "system"
   annotations:
-    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"unit-test.test.com/v1\",\"key\":\"value\",\"kind\":\"Widget\",\"metadata\":{\"annotations\":{},\"labels\":{\"foo\":\"bar\"},\"name\":\"widget\",\"namespace\":\"test\",\"tenant\":\"default\"}}\n"
+    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"unit-test.test.com/v1\",\"key\":\"value\",\"kind\":\"Widget\",\"metadata\":{\"annotations\":{},\"labels\":{\"foo\":\"bar\"},\"name\":\"widget\",\"namespace\":\"test\",\"tenant\":\"system\"}}\n"
   labels:
     foo: bar
 key: "value"

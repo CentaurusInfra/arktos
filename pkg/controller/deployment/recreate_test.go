@@ -33,7 +33,7 @@ import (
 )
 
 func TestScaleDownOldReplicaSets(t *testing.T) {
-	testScaleDownOldReplicaSets(t, metav1.TenantDefault)
+	testScaleDownOldReplicaSets(t, metav1.TenantSystem)
 }
 
 func TestScaleDownOldReplicaSetsWithMultiTenancy(t *testing.T) {
@@ -93,7 +93,7 @@ func testScaleDownOldReplicaSets(t *testing.T, tenant string) {
 }
 
 func TestOldPodsRunning(t *testing.T) {
-	testOldPodsRunning(t, metav1.TenantDefault)
+	testOldPodsRunning(t, metav1.TenantSystem)
 }
 
 func TestOldPodsRunningWithMultiTenancy(t *testing.T) {

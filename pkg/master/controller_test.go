@@ -32,7 +32,7 @@ import (
 
 func TestReconcileEndpoints(t *testing.T) {
 	ns := metav1.NamespaceDefault
-	te := metav1.TenantDefault
+	te := metav1.TenantSystem
 	om := func(name string) metav1.ObjectMeta {
 		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}
 	}
@@ -441,7 +441,7 @@ func TestReconcileEndpoints(t *testing.T) {
 
 func TestReconcileEndpointsWithServiceGroup(t *testing.T) {
 	ns := metav1.NamespaceDefault
-	te := metav1.TenantDefault
+	te := metav1.TenantSystem
 	om := func(name string) metav1.ObjectMeta {
 		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}
 	}
@@ -761,7 +761,7 @@ func TestReconcileEndpointsWithServiceGroup(t *testing.T) {
 
 func TestNonReconcileEndpoints(t *testing.T) {
 	ns := metav1.NamespaceDefault
-	te := metav1.TenantDefault
+	te := metav1.TenantSystem
 	om := func(name string) metav1.ObjectMeta {
 		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}
 	}
@@ -886,7 +886,7 @@ func TestNonReconcileEndpoints(t *testing.T) {
 }
 
 func TestCreateOrUpdateMasterService(t *testing.T) {
-	te := metav1.TenantDefault
+	te := metav1.TenantSystem
 	ns := metav1.NamespaceDefault
 	om := func(name string) metav1.ObjectMeta {
 		return metav1.ObjectMeta{Tenant: te, Namespace: ns, Name: name}

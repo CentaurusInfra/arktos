@@ -69,7 +69,7 @@ func TestUpdateOnNonExistentFile(t *testing.T) {
 }
 
 func TestReadPodsFromFileExistAlready(t *testing.T) {
-	testReadPodsFromFileExistAlready(t, metav1.TenantDefault)
+	testReadPodsFromFileExistAlready(t, metav1.TenantSystem)
 }
 
 func TestReadPodsFromFileExistAlreadyWithMultiTenancy(t *testing.T) {
@@ -127,7 +127,7 @@ var (
 )
 
 func TestWatchFileAdded(t *testing.T) {
-	testWatchFileAdded(t, metav1.TenantDefault)
+	testWatchFileAdded(t, metav1.TenantSystem)
 }
 
 func TestWatchFileAddedWithMultiTenancy(t *testing.T) {
@@ -141,7 +141,7 @@ func testWatchFileAdded(t *testing.T, tenant string) {
 }
 
 func TestWatchFileChanged(t *testing.T) {
-	testWatchFileChanged(t, metav1.TenantDefault)
+	testWatchFileChanged(t, metav1.TenantSystem)
 }
 
 func TestWatchFileChangedWithMultiTenancy(t *testing.T) {
