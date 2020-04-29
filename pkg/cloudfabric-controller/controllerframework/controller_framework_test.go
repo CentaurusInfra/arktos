@@ -324,7 +324,7 @@ func generateTestSortedControllerInstances(controllerBase *ControllerBase, contr
 	}
 
 	sortedControllerInstancesLocal := SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap)
-	_, _, _, _, _ = controllerBase.tryConsolidateControllerInstancesLocal(sortedControllerInstancesLocal)
+	controllerBase.tryConsolidateControllerInstancesLocal(sortedControllerInstancesLocal)
 	controllerBase.sortedControllerInstancesLocal = sortedControllerInstancesLocal
 }
 
@@ -355,15 +355,34 @@ func verifyControllerKeyEvenlyDistributed(t *testing.T, controllerBase *Controll
 	if isPowerOfTwo(count) {
 		expectedSizeGroupCount = 1
 	}
-	assert.Equalf(t, expectedSizeGroupCount, len(sizeMap),
-		"Expecting %v size groups, but got %v size groups with values %s",
-		expectedSizeGroupCount, len(sizeMap), func(m map[int64]int) string {
-			keys := make([]string, 0, len(m))
-			for key := range m {
-				keys = append(keys, strconv.FormatInt(key, 10))
+
+	// Get necessary value for test verification and messaging
+	valuesStr, bigger, smaller := func(m map[int64]int) (string, int64, int64) {
+		keys := make([]string, 0, len(m))
+		bigger := int64(-1)
+		smaller := int64(-1)
+		for key := range m {
+			keys = append(keys, strconv.FormatInt(key, 10))
+			if bigger == -1 {
+				bigger = key
+			} else {
+				smaller = key
 			}
-			return "[" + strings.Join(keys, ", ") + "]"
-		}(sizeMap))
+		}
+		if bigger < smaller {
+			bigger, smaller = smaller, bigger
+		}
+		return "[" + strings.Join(keys, ", ") + "]", bigger, smaller
+	}(sizeMap)
+
+	assert.Equalf(t, expectedSizeGroupCount, len(sizeMap),
+		"Expecting %v size groups, but got %v size values %s",
+		expectedSizeGroupCount, len(sizeMap), valuesStr)
+
+	if expectedSizeGroupCount == 2 {
+		assert.True(t, bigger/2 == smaller,
+			"Expecting bigger size doubled smaller size, but got size values %s", valuesStr)
+	}
 }
 
 func isPowerOfTwo(count int) bool {
