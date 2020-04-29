@@ -6042,7 +6042,7 @@ type NetworkSpec struct {
 
 	// VPCID is vpc identifier specific to network provider
 	// +optional
-	VPCID string `json:"vpcid,omitempty" protobuf:"bytes,2,opt,name=vpcid"`
+	VPCID string `json:"vpcID,omitempty" protobuf:"bytes,2,opt,name=vpcID"`
 }
 
 // NetworkPhase describes the lifecycle phase of Network

@@ -45,7 +45,7 @@ metadata:
   name: vpc-1
 spec:
   type: vpc
-  vpcid: vpc-1a2b3c4d
+  vpcID: vpc-1a2b3c4d
 ```
 When a pod is attached to the default network, nothing is needed in pod spec:
 
