@@ -92,6 +92,14 @@ func (c *FakeCoreV1) NamespacesWithMultiTenancy(tenant string) v1.NamespaceInter
 	return &FakeNamespaces{c, tenant}
 }
 
+func (c *FakeCoreV1) Networks() v1.NetworkInterface {
+	return &FakeNetworks{c, "default"}
+}
+
+func (c *FakeCoreV1) NetworksWithMultiTenancy(tenant string) v1.NetworkInterface {
+	return &FakeNetworks{c, tenant}
+}
+
 func (c *FakeCoreV1) Nodes() v1.NodeInterface {
 
 	return &FakeNodes{c}

@@ -2057,6 +2057,48 @@ message NamespaceStatus {
   optional string phase = 1;
 }
 
+// A Network specifies a network boundary
+message Network {
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // Spec defines desired state of network
+  // +optional
+  optional NetworkSpec spec = 2;
+
+  // Status is the actual state of network
+  // +optional
+  optional NetworkStatus status = 3;
+}
+
+// NetworkList is a list of Networks.
+message NetworkList {
+  // Standard list metadata.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  // Items is the list of Network objects in the list.
+  repeated Network items = 2;
+}
+
+// NetworkSpec is a description of network
+message NetworkSpec {
+  // Type is the network type
+  // +optional
+  optional string type = 1;
+
+  // VPCID is vpc identifier specific to network provider
+  // +optional
+  optional string vpcid = 2;
+}
+
+// NetworkStatus represents information about the status of a network
+message NetworkStatus {
+  // Phase is the current lifecycle phase of Network.
+  // +optional
+  optional string phase = 1;
+}
+
 // Network interface type used in the VM workload
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 message Nic {

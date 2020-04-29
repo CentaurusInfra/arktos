@@ -21,6 +21,7 @@ go_library(
         "fake_limitrange.go",
         "fake_namespace.go",
         "fake_namespace_expansion.go",
+        "fake_network.go",
         "fake_node.go",
         "fake_node_expansion.go",
         "fake_persistentvolume.go",
