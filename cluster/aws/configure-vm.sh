@@ -728,9 +728,10 @@ function setup-kubernetes-master() {
   sed -i "/volumeMounts:/a \ \ \ \ - mountPath: \/etc\/srv\/kubernetes\n      name: etc-srv-kubernetes\n      readOnly: true" /etc/kubernetes/manifests/kube-apiserver.yaml
   sed -i "/volumes:/a \ \ - hostPath:\n      path: \/etc\/srv\/kubernetes\n      type: DirectoryOrCreate\n    name: etc-srv-kubernetes" /etc/kubernetes/manifests/kube-apiserver.yaml
   if [[ ! -z $feature_gates ]]; then
-    sed -i "/KUBELET_CONFIG_ARGS/a Environment=\"KUBELET_EXTRA_ARGS=--feature-gates=${FEATURE_GATES}\"" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+    sed -i "/KUBELET_CONFIG_ARGS=/a Environment=\"KUBELET_EXTRA_ARGS=--feature-gates=${FEATURE_GATES}\"" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
     feature_gates="--$feature_gates"
   fi
+  systemctl daemon-reload
 
   kubeadm init --node-name=$KUBE_NODE_NAME --apiserver-bind-port=$API_BIND_PORT --apiserver-cert-extra-sans=$MASTER_EXTERNAL_IP \
                --ignore-preflight-errors=all $skip_phases $pod_net_cidr &> /etc/kubernetes/kubeadm-init-log
@@ -760,6 +761,11 @@ function setup-kubernetes-master() {
 
 function setup-kubernetes-worker() {
   setup-kubelet
+
+  if [[ ! -z ${FEATURE_GATES:-""} ]]; then
+    sed -i "/KUBELET_CONFIG_ARGS=/a Environment=\"KUBELET_EXTRA_ARGS=--feature-gates=${FEATURE_GATES}\"" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+  fi
+  systemctl daemon-reload
 
   KUBE_MASTER_IP=`cat /etc/kubernetes/kube_env.yaml | grep API_SERVERS | cut -d\' -f2`
   echo "Setting up kubernetes worker: version $KUBE_VER master IP: $KUBE_MASTER_IP."
