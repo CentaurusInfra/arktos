@@ -19,12 +19,19 @@ following resources are network related, which need to be isolated inside networ
 * Ingress / egress
 * Network Policy
 
+See below illustrative diagram for isolation across networks:
+![network resource isolation disgram](images/network-resource-isolation.png)
+
 Network isolation is achieved with a new API object: network:
 
 * Every pod is associated with a certain network object. If not specified it will be associated to a default network object, which is created when a space is initialized. 
 * A pod can only communicate with pods within the same network.
 * Every network has its own DNS service. An associated DNS service is automatically created when a new network object is created. (**tbd: decide when to deploy the actual DNS server pods**)
 * As a general rule, all network related resources are associated with the network object, and semantically residing within the network scope. 
+
+Pods in a network __should__ be able to access API server nodes by their IP addresses - this is required for access to kubernetes service. Network providers need to satisfy this prerequisite.
+
+(**TBD: is it possible to leverage the fact that pods are running on hosts which are already on the node network(e.g. pod being dual-homed with one nic dedicated for node network access)?**)
 
 ### Network Object
 A network object contains its type, and type-specific configurations. It's a not namespace-scoped object, so that one network object can be shared by applications in multiple namespaces in a same space.
@@ -128,6 +135,8 @@ The reasons that DNS service is per-network instead of per-space are:
 * For VPC networks IPs could be overlapped. A pod with resolved IP 192.168.0.1 could be in different networks. Therefore it's useless for the DNS clients.
 * VPC networks are isolated by nature. It will be difficult to have a shared DNS pod that's accessible to pods in various VPC networks.
 
+(**TBD: is it possible to have _shared_ DNS able to serve multiple network?**)
+
 ### Service
 
 #### Type definition
@@ -159,7 +168,7 @@ Putting service type in tenant level is out of primacy as it has following flaws
 1. kubectl query for service (e.g. ```kubectl describe service```) has no way to return meaningful content of endpoints.
 
 The well-known services (default/kubernetes, kube-system/kube-dns) present some problem here. Service kubernetes has tenant/namespace(default) scope in current implementation, unable to have multiple kubernets services with each of them in one network due to name conflict. The same rational applies to kube-dns.
-
+docs/design-proposals/multi-tenancy/images/network-resource-isolation.png
 One solution is to making its name colliding space to tenant+namespace+network, which is also breaking and inconsistent with other types (e.g. introducing network as one more parameter to call kubectl get service).
 
 Another solution is to change their name to schema that can uniquely differentiate by combining with network name; this is awkward and breaking in general. 
@@ -202,9 +211,8 @@ Service IP addresses are implicitly managed by the capable network provider. Net
 
 (**TBD: Can we support network provider to mutate service IP after it has been assigned? If so, how does the mutation propagate to Arktos?**)
 
-Network object specifies service ipam as *external* (the default is k8s - managed by Arktos):
+Network object specifies service IPAM as *external*:
 
-    ```yaml
     apiVersion: v1
     kind: Network
     metadata:
@@ -213,7 +221,6 @@ Network object specifies service ipam as *external* (the default is k8s - manage
       type: flat
       service:
         ipam: external
-    ```
 
 #### Semantic support
 
