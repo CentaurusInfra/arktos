@@ -128,6 +128,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, cimUpd
 
 	controllerKey, err := controller.generateKey()
 	if err != nil {
+		klog.Errorf("Error generating controllerKey for %s. Error %v", controllerType, err)
 		return nil, err
 	}
 	controller.controllerKey = controllerKey
