@@ -70,7 +70,7 @@ func (s *auditSinkLister) Get(name string) (*v1alpha1.AuditSink, error) {
 
 // AuditSinks returns an object that can list and get AuditSinks.
 func (s *auditSinkLister) AuditSinks() AuditSinkTenantLister {
-	return auditSinkTenantLister{indexer: s.indexer, tenant: "default"}
+	return auditSinkTenantLister{indexer: s.indexer, tenant: "system"}
 }
 
 func (s *auditSinkLister) AuditSinksWithMultiTenancy(tenant string) AuditSinkTenantLister {
@@ -104,7 +104,7 @@ func (s auditSinkTenantLister) List(selector labels.Selector) (ret []*v1alpha1.A
 // Get retrieves the AuditSink from the indexer for a given tenant and name.
 func (s auditSinkTenantLister) Get(name string) (*v1alpha1.AuditSink, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

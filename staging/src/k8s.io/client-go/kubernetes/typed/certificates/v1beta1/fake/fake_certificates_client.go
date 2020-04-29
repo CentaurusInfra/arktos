@@ -30,7 +30,7 @@ type FakeCertificatesV1beta1 struct {
 }
 
 func (c *FakeCertificatesV1beta1) CertificateSigningRequests() v1beta1.CertificateSigningRequestInterface {
-	return &FakeCertificateSigningRequests{c, "default"}
+	return &FakeCertificateSigningRequests{c, "system"}
 }
 
 func (c *FakeCertificatesV1beta1) CertificateSigningRequestsWithMultiTenancy(tenant string) v1beta1.CertificateSigningRequestInterface {

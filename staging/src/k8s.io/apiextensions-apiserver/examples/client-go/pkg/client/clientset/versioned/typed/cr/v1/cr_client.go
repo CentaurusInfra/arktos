@@ -43,7 +43,7 @@ type CrV1Client struct {
 }
 
 func (c *CrV1Client) Examples(namespace string) ExampleInterface {
-	return newExamplesWithMultiTenancy(c, namespace, "default")
+	return newExamplesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CrV1Client) ExamplesWithMultiTenancy(namespace string, tenant string) ExampleInterface {

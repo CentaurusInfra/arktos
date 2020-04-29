@@ -64,7 +64,7 @@ type resourceQuotas struct {
 
 // newResourceQuotas returns a ResourceQuotas
 func newResourceQuotas(c *CoreV1Client, namespace string) *resourceQuotas {
-	return newResourceQuotasWithMultiTenancy(c, namespace, "default")
+	return newResourceQuotasWithMultiTenancy(c, namespace, "system")
 }
 
 func newResourceQuotasWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *resourceQuotas {

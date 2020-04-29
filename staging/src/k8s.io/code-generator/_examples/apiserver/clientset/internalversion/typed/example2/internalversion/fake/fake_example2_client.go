@@ -30,7 +30,7 @@ type FakeSecondExample struct {
 }
 
 func (c *FakeSecondExample) TestTypes(namespace string) internalversion.TestTypeInterface {
-	return &FakeTestTypes{c, namespace, "default"}
+	return &FakeTestTypes{c, namespace, "system"}
 }
 
 func (c *FakeSecondExample) TestTypesWithMultiTenancy(namespace string, tenant string) internalversion.TestTypeInterface {

@@ -30,7 +30,7 @@ type FakeCoordinationV1beta1 struct {
 }
 
 func (c *FakeCoordinationV1beta1) Leases(namespace string) v1beta1.LeaseInterface {
-	return &FakeLeases{c, namespace, "default"}
+	return &FakeLeases{c, namespace, "system"}
 }
 
 func (c *FakeCoordinationV1beta1) LeasesWithMultiTenancy(namespace string, tenant string) v1beta1.LeaseInterface {

@@ -43,7 +43,7 @@ type SettingsV1alpha1Client struct {
 }
 
 func (c *SettingsV1alpha1Client) PodPresets(namespace string) PodPresetInterface {
-	return newPodPresetsWithMultiTenancy(c, namespace, "default")
+	return newPodPresetsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *SettingsV1alpha1Client) PodPresetsWithMultiTenancy(namespace string, tenant string) PodPresetInterface {

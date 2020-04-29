@@ -56,7 +56,7 @@ func (s *horizontalPodAutoscalerLister) List(selector labels.Selector) (ret []*v
 
 // HorizontalPodAutoscalers returns an object that can list and get HorizontalPodAutoscalers.
 func (s *horizontalPodAutoscalerLister) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerNamespaceLister {
-	return horizontalPodAutoscalerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return horizontalPodAutoscalerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *horizontalPodAutoscalerLister) HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) HorizontalPodAutoscalerNamespaceLister {
@@ -91,7 +91,7 @@ func (s horizontalPodAutoscalerNamespaceLister) List(selector labels.Selector) (
 // Get retrieves the HorizontalPodAutoscaler from the indexer for a given namespace and name.
 func (s horizontalPodAutoscalerNamespaceLister) Get(name string) (*v2beta2.HorizontalPodAutoscaler, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

@@ -56,7 +56,7 @@ func (s *fooLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err err
 
 // Foos returns an object that can list and get Foos.
 func (s *fooLister) Foos(namespace string) FooNamespaceLister {
-	return fooNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return fooNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *fooLister) FoosWithMultiTenancy(namespace string, tenant string) FooNamespaceLister {
@@ -91,7 +91,7 @@ func (s fooNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Foo,
 // Get retrieves the Foo from the indexer for a given namespace and name.
 func (s fooNamespaceLister) Get(name string) (*v1alpha1.Foo, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

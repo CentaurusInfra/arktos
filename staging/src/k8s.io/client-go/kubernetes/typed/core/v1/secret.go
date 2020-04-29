@@ -63,7 +63,7 @@ type secrets struct {
 
 // newSecrets returns a Secrets
 func newSecrets(c *CoreV1Client, namespace string) *secrets {
-	return newSecretsWithMultiTenancy(c, namespace, "default")
+	return newSecretsWithMultiTenancy(c, namespace, "system")
 }
 
 func newSecretsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *secrets {

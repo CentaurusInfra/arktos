@@ -64,7 +64,7 @@ type flunders struct {
 
 // newFlunders returns a Flunders
 func newFlunders(c *WardleV1beta1Client, namespace string) *flunders {
-	return newFlundersWithMultiTenancy(c, namespace, "default")
+	return newFlundersWithMultiTenancy(c, namespace, "system")
 }
 
 func newFlundersWithMultiTenancy(c *WardleV1beta1Client, namespace string, tenant string) *flunders {

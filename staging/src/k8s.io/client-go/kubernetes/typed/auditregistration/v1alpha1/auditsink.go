@@ -62,7 +62,7 @@ type auditSinks struct {
 
 // newAuditSinks returns a AuditSinks
 func newAuditSinks(c *AuditregistrationV1alpha1Client) *auditSinks {
-	return newAuditSinksWithMultiTenancy(c, "default")
+	return newAuditSinksWithMultiTenancy(c, "system")
 }
 
 func newAuditSinksWithMultiTenancy(c *AuditregistrationV1alpha1Client, tenant string) *auditSinks {

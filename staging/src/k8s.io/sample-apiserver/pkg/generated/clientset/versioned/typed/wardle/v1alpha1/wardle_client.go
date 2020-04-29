@@ -48,7 +48,7 @@ func (c *WardleV1alpha1Client) Fischers() FischerInterface {
 }
 
 func (c *WardleV1alpha1Client) Flunders(namespace string) FlunderInterface {
-	return newFlundersWithMultiTenancy(c, namespace, "default")
+	return newFlundersWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *WardleV1alpha1Client) FlundersWithMultiTenancy(namespace string, tenant string) FlunderInterface {

@@ -56,7 +56,7 @@ func (s *serviceLister) List(selector labels.Selector) (ret []*v1.Service, err e
 
 // Services returns an object that can list and get Services.
 func (s *serviceLister) Services(namespace string) ServiceNamespaceLister {
-	return serviceNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return serviceNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *serviceLister) ServicesWithMultiTenancy(namespace string, tenant string) ServiceNamespaceLister {
@@ -91,7 +91,7 @@ func (s serviceNamespaceLister) List(selector labels.Selector) (ret []*v1.Servic
 // Get retrieves the Service from the indexer for a given namespace and name.
 func (s serviceNamespaceLister) Get(name string) (*v1.Service, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

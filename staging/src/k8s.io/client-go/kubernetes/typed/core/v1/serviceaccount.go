@@ -63,7 +63,7 @@ type serviceAccounts struct {
 
 // newServiceAccounts returns a ServiceAccounts
 func newServiceAccounts(c *CoreV1Client, namespace string) *serviceAccounts {
-	return newServiceAccountsWithMultiTenancy(c, namespace, "default")
+	return newServiceAccountsWithMultiTenancy(c, namespace, "system")
 }
 
 func newServiceAccountsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *serviceAccounts {
