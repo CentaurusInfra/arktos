@@ -19,6 +19,8 @@ package controllerframework
 import (
 	"k8s.io/client-go/informers"
 	"math"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -290,8 +292,92 @@ func TestConsolidateControllerInstances_ReturnValues_MergeAndAutoExtends(t *test
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
 }
 
+// This test is to check while keep adding new controller manager instance, the scope will be evenly distributed
+func TestGenerateKeyContinuously(t *testing.T) {
+	controllerBase := new(ControllerBase)
+	controllerBase.sortedControllerInstancesLocal = []controllerInstanceLocal{}
+
+	// Totally add 1000 controller manager instance one by one
+	const TotalInstanceCount = 1000
+	for i := 0; i < TotalInstanceCount; i++ {
+		controllerKey, _ := controllerBase.generateKey()
+		controllerInstanceLocal := new(controllerInstanceLocal)
+		controllerInstanceLocal.controllerKey = controllerKey
+		generateTestSortedControllerInstances(controllerBase, controllerInstanceLocal)
+		verifyControllerKeyEvenlyDistributed(t, controllerBase)
+	}
+}
+
+func generateTestSortedControllerInstances(controllerBase *ControllerBase, controllerInstanceLocal *controllerInstanceLocal) {
+	// Generate controllerInstanceMap
+	controllerInstanceMap := make(map[string]v1.ControllerInstance)
+	index := 0
+	for _, instance := range controllerBase.sortedControllerInstancesLocal {
+		mapInstance := v1.ControllerInstance{
+			ControllerKey: instance.controllerKey,
+		}
+		controllerInstanceMap[string(index)] = mapInstance
+		index++
+	}
+	controllerInstanceMap[string(index)] = v1.ControllerInstance{
+		ControllerKey: controllerInstanceLocal.controllerKey,
+	}
+
+	sortedControllerInstancesLocal := SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap)
+	_, _, _, _, _ = controllerBase.tryConsolidateControllerInstancesLocal(sortedControllerInstancesLocal)
+	controllerBase.sortedControllerInstancesLocal = sortedControllerInstancesLocal
+}
+
+func verifyControllerKeyEvenlyDistributed(t *testing.T, controllerBase *ControllerBase) {
+	count := len(controllerBase.sortedControllerInstancesLocal)
+	var totalSize int64
+	if count > 1 {
+		// In the total scope of 0 to math.MaxInt64, since 0 is count in size, total size is math.MaxInt64 + 1.
+		// To avoid int64 overflow, deduct one here for later assert.Equal.
+		totalSize--
+	}
+	sizeMap := make(map[int64]int)
+	for i := 0; i < count; i++ {
+		instance := controllerBase.sortedControllerInstancesLocal[i]
+		size := instance.Size()
+
+		if _, containsKey := sizeMap[size]; containsKey {
+			sizeMap[size]++
+		} else {
+			sizeMap[size] = 1
+		}
+		totalSize += size
+	}
+
+	assert.Equal(t, int64(math.MaxInt64), totalSize)
+
+	expectedSizeGroupCount := 2
+	if isPowerOfTwo(count) {
+		expectedSizeGroupCount = 1
+	}
+	assert.Equalf(t, expectedSizeGroupCount, len(sizeMap),
+		"Expecting %v size groups, but got %v size groups with values %s",
+		expectedSizeGroupCount, len(sizeMap), func(m map[int64]int) string {
+			keys := make([]string, 0, len(m))
+			for key := range m {
+				keys = append(keys, strconv.FormatInt(key, 10))
+			}
+			return "[" + strings.Join(keys, ", ") + "]"
+		}(sizeMap))
+}
+
+func isPowerOfTwo(count int) bool {
+	for count > 2 {
+		if count%2 == 1 {
+			return false
+		}
+		count /= 2
+	}
+	return true
+}
+
 func TestGenerateKey(t *testing.T) {
-	const TotalScope = int64(9223372036854775807)       // 1       100%
+	const TotalScope = int64(math.MaxInt64)             // 1       100%
 	const HalfScope = int64(4611686018427387903)        // 1/2      50%
 	const OneFourthScope = int64(2305843009213693951)   // 1/4      25%
 	const ThreeFourthScope = int64(6917529027641081855) // 3/4      75%

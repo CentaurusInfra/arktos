@@ -304,16 +304,16 @@ func (c *ControllerBase) generateKey() (int64, error) {
 
 	candidate := c.sortedControllerInstancesLocal[0]
 	for i := 1; i < len(c.sortedControllerInstancesLocal); i++ {
-		item := c.sortedControllerInstancesLocal[i]
+		instance := c.sortedControllerInstancesLocal[i]
 
 		// There are two conditions to be met then change candidate:
 		// 1. if the space is bigger
 		// 2. or the space size is same, but with more work load
 		// When splitting odd size space, the sub spaces has 1 difference in size. So ignore difference of 1 when comparing two spaces' size.
 		// Which is said, we consider it is bigger when it's bigger more than 1, and we consider both are equal even they have diff 1.
-		if item.Size() > candidate.Size()+1 ||
-			(math.Abs(float64(item.Size()-candidate.Size())) <= 1 && item.workloadNum > candidate.workloadNum) {
-			candidate = item
+		if instance.Size() > candidate.Size()+1 ||
+			(math.Abs(float64(instance.Size()-candidate.Size())) <= 1 && instance.workloadNum > candidate.workloadNum) {
+			candidate = instance
 		}
 	}
 
