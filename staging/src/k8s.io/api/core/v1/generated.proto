@@ -2089,7 +2089,7 @@ message NetworkSpec {
 
   // VPCID is vpc identifier specific to network provider
   // +optional
-  optional string vpcid = 2;
+  optional string vpcID = 2;
 }
 
 // NetworkStatus represents information about the status of a network

@@ -1102,7 +1102,7 @@ func (NetworkList) SwaggerDoc() map[string]string {
 var map_NetworkSpec = map[string]string{
 	"":      "NetworkSpec is a description of network",
 	"type":  "Type is the network type",
-	"vpcid": "VPCID is vpc identifier specific to network provider",
+	"vpcID": "VPCID is vpc identifier specific to network provider",
 }
 
 func (NetworkSpec) SwaggerDoc() map[string]string {
