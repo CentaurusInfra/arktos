@@ -360,7 +360,7 @@ func createTestCRD(t *testing.T, client apiextensionsclientset.Interface, skipCr
 		}
 		return
 	}
-	if err := wait.PollImmediate(500*time.Millisecond, time.Second*2, func() (bool, error) {
+	if err := wait.PollImmediate(500*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		return CrdExistsInDiscovery(client, crd), nil
 	}); err != nil {
 		t.Fatalf("Failed to see %s under tenant %s in discovery: %v", crd.Name, crd.Tenant, err)
@@ -368,7 +368,7 @@ func createTestCRD(t *testing.T, client apiextensionsclientset.Interface, skipCr
 }
 
 func waitForEstablishedCRD(client apiextensionsclientset.Interface, crd *apiextensionsv1beta1.CustomResourceDefinition) error {
-	return wait.PollImmediate(500*time.Millisecond, time.Second*2, func() (bool, error) {
+	return wait.PollImmediate(500*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		crd, err := client.ApiextensionsV1beta1().CustomResourceDefinitionsWithMultiTenancy(crd.Tenant).Get(crd.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err

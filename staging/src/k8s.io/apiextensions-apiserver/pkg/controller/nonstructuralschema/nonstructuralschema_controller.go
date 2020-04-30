@@ -131,6 +131,10 @@ func calculateCondition(in *apiextensions.CustomResourceDefinition) *apiextensio
 
 func (c *ConditionController) sync(key string) error {
 	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
 	inCustomResourceDefinition, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		return nil

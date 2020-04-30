@@ -67,7 +67,6 @@ import (
 	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager"
-	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/features"
@@ -199,14 +198,19 @@ func NewCustomResourceDefinitionHandler(
 var longRunningFilter = genericfilters.BasicLongRunningRequestCheck(sets.NewString("watch"), sets.NewString())
 
 func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	req, err := apifilters.NormalizeTenant(req)
-	if err != nil {
-		responsewriters.InternalError(w, req, err)
-		return
+	ctx := req.Context()
+	req, _ = apifilters.SetShortPathRequestTenant(req)
+	requestInfo, _ := apirequest.RequestInfoFrom(ctx)
+
+	crdTenant := requestInfo.Tenant
+	// SetShortPathRequestTenant does not update the tenant in a short-path request if it is a system-user request,
+	// as it may be an operation across all tenants. Also in some integration tests, the tenant in the requestInfo is not set.
+	// However, if code hits here, we know it is NOT a request across multiple tenants,
+	// so we can set the tenant here.
+	if crdTenant == metav1.TenantNone {
+		crdTenant = metav1.TenantDefault
 	}
 
-	ctx := req.Context()
-	requestInfo, _ := apirequest.RequestInfoFrom(ctx)
 	if !requestInfo.IsResourceRequest {
 		pathParts := splitPath(requestInfo.Path)
 		// only match /apis/<group>/<version>
@@ -225,11 +229,6 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	crdTenant := requestInfo.Tenant
-	// backward compatibility with behavior with no multi-tenancy
-	if crdTenant == metav1.TenantNone {
-		crdTenant = metav1.TenantDefault
-	}
 	crdName := requestInfo.Resource + "." + requestInfo.APIGroup
 	crd, err := r.crdLister.CustomResourceDefinitionsWithMultiTenancy(crdTenant).Get(crdName)
 	if apierrors.IsNotFound(err) {

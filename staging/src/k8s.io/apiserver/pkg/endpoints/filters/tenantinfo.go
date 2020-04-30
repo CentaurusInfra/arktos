@@ -29,7 +29,7 @@ import (
 func WithTenantInfo(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 
-		newReq, err := NormalizeTenant(req)
+		newReq, err := SetShortPathRequestTenant(req)
 		if err != nil {
 			responsewriters.InternalError(w, req, err)
 			return
@@ -39,8 +39,8 @@ func WithTenantInfo(handler http.Handler) http.Handler {
 	})
 }
 
-// NormalizeObjectTenant sets the tenant in request info based on the user tenant.
-func NormalizeTenant(req *http.Request) (*http.Request, error) {
+// SetShortPathRequestTenant sets the tenant in request info based on the user tenant.
+func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
 
 	ctx := req.Context()
 
@@ -49,11 +49,13 @@ func NormalizeTenant(req *http.Request) (*http.Request, error) {
 		return nil, errors.New("The user info is missing.")
 	}
 
-	tenantInRequestor := requestor.GetTenant()
-	if tenantInRequestor == metav1.TenantNone {
+	userTenant := requestor.GetTenant()
+	if userTenant == metav1.TenantNone {
 		// temporary workaround
 		// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
-		tenantInRequestor = metav1.TenantSystem
+		userTenant = metav1.TenantSystem
+		//When https://github.com/futurewei-cloud/arktos/issues/102 is done, remove the above line
+		// and enable the following two lines.
 		//responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
 		//return
 	}
@@ -64,9 +66,10 @@ func NormalizeTenant(req *http.Request) (*http.Request, error) {
 	}
 
 	// for a reqeust from a regular user, if the tenant in the object is empty, use the tenant from user info
-	// this is what we call "shor-path", which allows users to use traditional Kubernets API in the multi-tenancy Arktos
-	if requestInfo.Tenant == metav1.TenantNone && tenantInRequestor != metav1.TenantSystem {
-		requestInfo.Tenant = tenantInRequestor
+	// this is what we call "short-path", which allows users to use traditional Kubernets API in the multi-tenancy Arktos
+	resourceTenant := requestInfo.Tenant
+	if resourceTenant == metav1.TenantNone && userTenant != metav1.TenantSystem {
+		requestInfo.Tenant = userTenant
 	}
 
 	req = req.WithContext(request.WithRequestInfo(ctx, requestInfo))

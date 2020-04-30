@@ -95,6 +95,10 @@ func NewCRDFinalizer(
 
 func (c *CRDFinalizer) sync(key string) error {
 	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
 	cachedCRD, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		return nil

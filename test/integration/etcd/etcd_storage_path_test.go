@@ -175,7 +175,7 @@ func TestEtcdStoragePath(t *testing.T) {
 		}
 	}
 
-	//Temporarilu turn this check off as we now allow CRDs of the same G/V/K under different tenants.
+	//Temporarily turn this check off as we now allow CRDs of the same G/V/K under different tenants.
 	// TODO: rewrite the following check after the following issue is closed:
 	// https://github.com/futurewei-cloud/arktos/issues/227
 	/*for path, gvrs := range pathSeen {

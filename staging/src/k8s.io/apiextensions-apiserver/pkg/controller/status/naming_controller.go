@@ -368,6 +368,9 @@ func (c *NamingConditionController) deleteCustomResourceDefinition(obj interface
 
 func (c *NamingConditionController) requeueAllOtherGroupCRDs(key string) error {
 	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
 
 	pluralGroup := strings.SplitN(name, ".", 2)
 	list, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).List(labels.Everything())
