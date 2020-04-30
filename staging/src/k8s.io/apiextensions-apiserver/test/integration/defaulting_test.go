@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -335,7 +336,8 @@ func testDefaulting(t *testing.T, watchCache bool) {
 	// The contents of the watch cache are seen by list with rv=0, which is tested by this test.
 	if !watchCache {
 		t.Logf("verify WATCH sees 'c' in both status and spec")
-		w, err := fooClient.Watch(metav1.ListOptions{ResourceVersion: initialResourceVersion})
+		w := fooClient.Watch(metav1.ListOptions{ResourceVersion: initialResourceVersion})
+		err = w.GetFirstError()
 		if err != nil {
 			t.Fatal(err)
 		}

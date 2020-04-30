@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
+	restclient "k8s.io/client-go/rest"
 )
 
 func TestChangeCRD(t *testing.T) {
@@ -38,13 +40,18 @@ func TestChangeCRD(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tearDown()
-	config.QPS = 1000
-	config.Burst = 1000
-	apiExtensionsClient, err := clientset.NewForConfig(config)
+
+	configCopy := restclient.CopyConfigs(config)
+	for _, config := range configCopy.GetAllConfigs() {
+		config.QPS = 1000
+		config.Burst = 1000
+	}
+
+	apiExtensionsClient, err := clientset.NewForConfig(configCopy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dynamicClient, err := dynamic.NewForConfig(config)
+	dynamicClient, err := dynamic.NewForConfig(configCopy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +130,8 @@ func TestChangeCRD(t *testing.T) {
 				case <-stopChan:
 					return
 				default:
-					w, err := noxuNamespacedResourceClient.Watch(metav1.ListOptions{})
+					w := noxuNamespacedResourceClient.Watch(metav1.ListOptions{})
+					err = w.GetFirstError()
 					if err != nil {
 						t.Fatalf("unexpected error establishing watch: %v", err)
 					}
