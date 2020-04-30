@@ -635,6 +635,7 @@ bazel-test:
 	  -//vendor/...
 endif
 
+# Output errors logs for failed tesets
 ifeq ($(PRINT_HELP),y)
 define BAZEL_TEST_INTEGRATION_HELP_INFO
 # Integration test with bazel
