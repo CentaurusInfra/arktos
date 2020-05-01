@@ -49,7 +49,6 @@ func TestCrossGroupStorageWithMultiTenancy(t *testing.T) {
 
 	crossGroupResources := map[schema.GroupVersionKind][]Resource{}
 
-	master.Client.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}})
 	master.Client.CoreV1().NamespacesWithMultiTenancy(testTenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace, Tenant: testTenant}})
 
 	// Group by persisted GVK

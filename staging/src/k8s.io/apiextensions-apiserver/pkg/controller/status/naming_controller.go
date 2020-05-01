@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -83,11 +84,11 @@ func NewNamingConditionController(
 	return c
 }
 
-func (c *NamingConditionController) getAcceptedNamesForGroup(group string) (allResources sets.String, allKinds sets.String) {
+func (c *NamingConditionController) getAcceptedNamesForGroup(group, tenant string) (allResources sets.String, allKinds sets.String) {
 	allResources = sets.String{}
 	allKinds = sets.String{}
 
-	list, err := c.crdLister.List(labels.Everything())
+	list, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).List(labels.Everything())
 	if err != nil {
 		panic(err)
 	}
@@ -101,7 +102,7 @@ func (c *NamingConditionController) getAcceptedNamesForGroup(group string) (allR
 		// this makes sure that if we tight loop on update and run, our mutation cache will show
 		// us the version of the objects we just updated to.
 		item := curr
-		obj, exists, err := c.crdMutationCache.GetByKey(curr.Name)
+		obj, exists, err := c.crdMutationCache.GetByKey(tenant + "/" + curr.Name)
 		if exists && err == nil {
 			item = obj.(*apiextensions.CustomResourceDefinition)
 		}
@@ -119,7 +120,7 @@ func (c *NamingConditionController) getAcceptedNamesForGroup(group string) (allR
 
 func (c *NamingConditionController) calculateNamesAndConditions(in *apiextensions.CustomResourceDefinition) (apiextensions.CustomResourceDefinitionNames, apiextensions.CustomResourceDefinitionCondition, apiextensions.CustomResourceDefinitionCondition) {
 	// Get the names that have already been claimed
-	allResources, allKinds := c.getAcceptedNamesForGroup(in.Spec.Group)
+	allResources, allKinds := c.getAcceptedNamesForGroup(in.Spec.Group, in.Tenant)
 
 	namesAcceptedCondition := apiextensions.CustomResourceDefinitionCondition{
 		Type:   apiextensions.NamesAccepted,
@@ -229,7 +230,9 @@ func equalToAcceptedOrFresh(requestedName, acceptedName string, usedNames sets.S
 }
 
 func (c *NamingConditionController) sync(key string) error {
-	inCustomResourceDefinition, err := c.crdLister.Get(key)
+	tenant, name, err := cache.SplitMetaTenantKey(key)
+	inCustomResourceDefinition, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).Get(name)
+
 	if apierrors.IsNotFound(err) {
 		// CRD was deleted and has freed its names.
 		// Reconsider all other CRDs in the same group.
@@ -260,7 +263,7 @@ func (c *NamingConditionController) sync(key string) error {
 	apiextensions.SetCRDCondition(crd, namingCondition)
 	apiextensions.SetCRDCondition(crd, establishedCondition)
 
-	updatedObj, err := c.crdClient.CustomResourceDefinitions().UpdateStatus(crd)
+	updatedObj, err := c.crdClient.CustomResourceDefinitionsWithMultiTenancy(tenant).UpdateStatus(crd)
 	if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
 		// deleted or changed in the meantime, we'll get called again
 		return nil
@@ -363,15 +366,20 @@ func (c *NamingConditionController) deleteCustomResourceDefinition(obj interface
 	c.enqueue(castObj)
 }
 
-func (c *NamingConditionController) requeueAllOtherGroupCRDs(name string) error {
+func (c *NamingConditionController) requeueAllOtherGroupCRDs(key string) error {
+	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
 	pluralGroup := strings.SplitN(name, ".", 2)
-	list, err := c.crdLister.List(labels.Everything())
+	list, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).List(labels.Everything())
 	if err != nil {
 		return err
 	}
 	for _, curr := range list {
 		if curr.Spec.Group == pluralGroup[1] && curr.Name != name {
-			c.queue.Add(curr.Name)
+			c.queue.Add(tenant + "/" + curr.Name)
 		}
 	}
 	return nil
