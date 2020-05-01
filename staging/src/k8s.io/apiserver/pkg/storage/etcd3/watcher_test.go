@@ -96,8 +96,8 @@ func testWatch(t *testing.T, recursive bool) {
 	}}
 	for i, tt := range tests {
 		aw := store.watch(ctx, tt.key, "0", tt.pred, recursive)
-		if aw.GetFirstError() != nil {
-			t.Fatalf("Watch failed: %v", aw.GetFirstError())
+		if aw.GetErrors() != nil {
+			t.Fatalf("Watch failed: %v", aw.GetErrors())
 		}
 		var prevObj *example.Pod
 		for _, watchTest := range tt.watchTests {
@@ -133,8 +133,8 @@ func TestDeleteTriggerWatch(t *testing.T) {
 	defer cluster.Terminate(t)
 	key, storedObj := testPropogateStore(ctx, t, store, &example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}})
 	aw := store.Watch(ctx, key, storedObj.ResourceVersion, storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	if err := store.Delete(ctx, key, &example.Pod{}, nil, storage.ValidateAllObjectFunc); err != nil {
 		t.Fatalf("Delete failed: %v", err)
@@ -151,8 +151,8 @@ func TestWatchFromZero(t *testing.T) {
 	key, storedObj := testPropogateStore(ctx, t, store, &example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "ns"}})
 
 	aw := store.Watch(ctx, key, "0", storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	testCheckResult(t, 0, watch.Added, aw, storedObj)
 	aw.Stop()
@@ -169,8 +169,8 @@ func TestWatchFromZero(t *testing.T) {
 
 	// Make sure when we watch from 0 we receive an ADDED event
 	aw = store.Watch(ctx, key, "0", storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	testCheckResult(t, 1, watch.Added, aw, out)
 	aw.Stop()
@@ -197,8 +197,8 @@ func TestWatchFromZero(t *testing.T) {
 
 	// Make sure we can still watch from 0 and receive an ADDED event
 	aw = store.Watch(ctx, key, "0", storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	testCheckResult(t, 2, watch.Added, aw, out)
 }
@@ -211,13 +211,13 @@ func TestWatchFromNoneZero(t *testing.T) {
 	key, storedObj := testPropogateStore(ctx, t, store, &example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}})
 
 	aw := store.Watch(ctx, key, storedObj.ResourceVersion, storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	out := &example.Pod{}
 	store.GuaranteedUpdate(ctx, key, out, true, nil, storage.SimpleUpdate(
 		func(runtime.Object) (runtime.Object, error) {
-			return &example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "bar"}}, aw.GetFirstError()
+			return &example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "bar"}}, aw.GetErrors()
 		}))
 	testCheckResult(t, 0, watch.Modified, aw, out)
 }
@@ -229,8 +229,8 @@ func TestWatchError(t *testing.T) {
 	invalidStore := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte("test!")}, nil)
 	ctx := context.Background()
 	aw := invalidStore.Watch(ctx, "/abc", "0", storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	validStore := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte("test!")}, nil)
 	validStore.GuaranteedUpdate(ctx, "/abc", &example.Pod{}, true, nil, storage.SimpleUpdate(
@@ -248,8 +248,8 @@ func TestWatchContextCancel(t *testing.T) {
 	// When we watch with a canceled context, we should detect that it's context canceled.
 	// We won't take it as error and also close the watcher.
 	aw := store.watcher.Watch(canceledCtx, "/abc", 0, false, storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatal(aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatal(aw.GetErrors())
 	}
 
 	select {
@@ -291,8 +291,8 @@ func TestWatchDeleteEventObjectHaveLatestRV(t *testing.T) {
 	key, storedObj := testPropogateStore(ctx, t, store, &example.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}})
 
 	aw := store.Watch(ctx, key, storedObj.ResourceVersion, storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	etcdW := cluster.RandClient().Watch(ctx, "/", clientv3.WithPrefix())
 

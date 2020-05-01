@@ -1217,7 +1217,7 @@ func (e *Store) WatchPredicate(ctx context.Context, p storage.SelectionPredicate
 
 // Convert watchers to decorated watcher
 func (e *Store) convertToDecoratedWatcher(aw watch.AggregatedWatchInterface) (watch.Interface, error) {
-	err := aw.GetFirstError()
+	err := aw.GetErrors()
 	if err != nil {
 		aw.Stop()
 		return nil, err

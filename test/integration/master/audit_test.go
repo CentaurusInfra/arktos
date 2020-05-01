@@ -245,7 +245,7 @@ func configMapOperations(t *testing.T, kubeclient kubernetes.Interface) {
 	expectNoError(t, err, "failed to get audit-configmap")
 
 	configMapChanAgg := kubeclient.CoreV1().ConfigMaps(namespace).Watch(watchOptions)
-	expectNoError(t, configMapChanAgg.GetFirstError(), "failed to create watch for config maps")
+	expectNoError(t, configMapChanAgg.GetErrors(), "failed to create watch for config maps")
 	for range configMapChanAgg.ResultChan() {
 		// Block until watchOptions.TimeoutSeconds expires.
 		// If the test finishes before watchOptions.TimeoutSeconds expires, the watch audit

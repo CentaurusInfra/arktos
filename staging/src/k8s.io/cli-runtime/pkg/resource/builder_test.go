@@ -1510,8 +1510,8 @@ func TestWatch(t *testing.T) {
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-service.yaml"}}).Flatten().
 		Do().Watch("12")
 
-	if aw.GetFirstError() != nil {
-		t.Fatalf("unexpected error: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("unexpected error: %v", aw.GetErrors())
 	}
 
 	defer aw.Stop()
@@ -1538,7 +1538,7 @@ func TestWatchMultipleError(t *testing.T) {
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-controller.yaml"}}).Flatten().
 		Do().Watch("")
 
-	if aw.GetFirstError() == nil {
+	if aw.GetErrors() == nil {
 		t.Fatalf("unexpected non-error")
 	}
 }

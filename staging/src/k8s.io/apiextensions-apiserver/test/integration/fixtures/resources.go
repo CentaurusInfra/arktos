@@ -333,8 +333,8 @@ func isWatchCachePrimed(crd *apiextensionsv1beta1.CustomResourceDefinition, dyna
 	for _, v := range versions {
 		noxuWatch := resourceClientForVersion(crd, dynamicClientSet, ns, v).Watch(
 			metav1.ListOptions{ResourceVersion: createdInstance.GetResourceVersion()})
-		if noxuWatch.GetFirstError() != nil {
-			return false, noxuWatch.GetFirstError()
+		if noxuWatch.GetErrors() != nil {
+			return false, noxuWatch.GetErrors()
 		}
 		defer noxuWatch.Stop()
 
