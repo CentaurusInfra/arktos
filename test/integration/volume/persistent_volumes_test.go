@@ -1146,12 +1146,12 @@ func createClients(ns *v1.Namespace, t *testing.T, s *httptest.Server, syncPerio
 	}
 
 	watchPV := testClient.CoreV1().PersistentVolumes().Watch(metav1.ListOptions{})
-	err = watchPV.GetFirstError()
+	err = watchPV.GetErrors()
 	if err != nil {
 		t.Fatalf("Failed to watch PersistentVolumes: %v", err)
 	}
 	watchPVC := testClient.CoreV1().PersistentVolumeClaims(ns.Name).Watch(metav1.ListOptions{})
-	err = watchPVC.GetFirstError()
+	err = watchPVC.GetErrors()
 	if err != nil {
 		t.Fatalf("Failed to watch PersistentVolumeClaims: %v", err)
 	}

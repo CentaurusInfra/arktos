@@ -57,7 +57,7 @@ func WatchRecreateDeployment(c clientset.Interface, d *apps.Deployment) error {
 	}
 
 	w := c.AppsV1().Deployments(d.Namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: d.Name, ResourceVersion: d.ResourceVersion}))
-	err := w.GetFirstError()
+	err := w.GetErrors()
 	if err != nil {
 		return err
 	}

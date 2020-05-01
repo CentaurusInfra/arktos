@@ -154,7 +154,7 @@ func runAppArmorTest(f *framework.Framework, shouldRun bool, profile string) v1.
 	} else {
 		// Pod should remain in the pending state. Wait for the Reason to be set to "AppArmor".
 		w := f.PodClient().Watch(metav1.SingleObject(metav1.ObjectMeta{Name: pod.Name}))
-		framework.ExpectNoError(w.GetFirstError())
+		framework.ExpectNoError(w.GetErrors())
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
 		defer cancel()
 		_, err := watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {

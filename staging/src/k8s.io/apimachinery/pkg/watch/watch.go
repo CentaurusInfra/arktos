@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/grafov/bcast"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
 	"sync"
 
@@ -44,7 +45,7 @@ type AggregatedWatchInterface interface {
 	ResultChan() <-chan Event
 
 	AddWatchInterface(Interface, error)
-	GetFirstError() error
+	GetErrors() error
 	GetWatchersCount() int
 }
 
@@ -198,15 +199,15 @@ func (a *AggregatedWatcher) ResultChan() <-chan Event {
 	return a.aggChan
 }
 
-// Tmp solution for client can handles only 1 error
-func (a *AggregatedWatcher) GetFirstError() error {
+func (a *AggregatedWatcher) GetErrors() error {
+	aggErr := []error{}
 	for _, err := range a.errs {
 		if err != nil {
-			return err
+			aggErr = append(aggErr, err)
 		}
 	}
 
-	return nil
+	return utilerrors.NewAggregate(aggErr)
 }
 
 func (a *AggregatedWatcher) GetWatchersCount() int {

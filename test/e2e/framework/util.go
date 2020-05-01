@@ -654,8 +654,8 @@ func WaitForNamespacesDeleted(c clientset.Interface, namespaces []string, timeou
 
 func waitForServiceAccountInNamespace(c clientset.Interface, ns, serviceAccountName string, timeout time.Duration) error {
 	aggWatch := c.CoreV1().ServiceAccounts(ns).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: serviceAccountName}))
-	if aggWatch.GetFirstError() != nil {
-		return aggWatch.GetFirstError()
+	if aggWatch.GetErrors() != nil {
+		return aggWatch.GetErrors()
 	}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
@@ -1141,8 +1141,8 @@ func WaitForRCToStabilize(c clientset.Interface, ns, name string, timeout time.D
 		"metadata.namespace": ns,
 	}.AsSelector().String()}
 	aggWatcher := c.CoreV1().ReplicationControllers(ns).Watch(options)
-	if aggWatcher.GetFirstError() != nil {
-		return aggWatcher.GetFirstError()
+	if aggWatcher.GetErrors() != nil {
+		return aggWatcher.GetErrors()
 	}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()

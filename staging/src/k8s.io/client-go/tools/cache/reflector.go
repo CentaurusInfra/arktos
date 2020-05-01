@@ -396,7 +396,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
 		aggregatedWatcher := r.listerWatcher.Watch(options)
-		err := aggregatedWatcher.GetFirstError()
+		err := aggregatedWatcher.GetErrors()
 		if err != nil {
 			switch err {
 			case io.EOF:

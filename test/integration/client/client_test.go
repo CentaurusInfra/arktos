@@ -591,8 +591,8 @@ func TestMultiWatch(t *testing.T) {
 				ResourceVersion: rv,
 			}
 			w := client.CoreV1().Pods("default").Watch(options)
-			if w.GetFirstError() != nil {
-				panic(fmt.Sprintf("watch error for %v: %v", name, w.GetFirstError()))
+			if w.GetErrors() != nil {
+				panic(fmt.Sprintf("watch error for %v: %v", name, w.GetErrors()))
 			}
 			defer w.Stop()
 			watchesStarted.Done()

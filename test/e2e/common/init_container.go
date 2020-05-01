@@ -92,7 +92,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		e2elog.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
 		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
+		framework.ExpectNoError(w.GetErrors(), "error watching a pod")
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
 		defer cancel()
@@ -163,7 +163,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		e2elog.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
 		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
+		framework.ExpectNoError(w.GetErrors(), "error watching a pod")
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
 		defer cancel()
@@ -235,7 +235,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		e2elog.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
 		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
+		framework.ExpectNoError(w.GetErrors(), "error watching a pod")
 
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
@@ -353,7 +353,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		startedPod := podClient.Create(pod)
 
 		w := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
-		framework.ExpectNoError(w.GetFirstError(), "error watching a pod")
+		framework.ExpectNoError(w.GetErrors(), "error watching a pod")
 
 		wr := watch.NewRecorder(w)
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)

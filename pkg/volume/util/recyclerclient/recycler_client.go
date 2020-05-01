@@ -206,8 +206,8 @@ func (c *realRecyclerClient) WatchPod(name, namespace string, stopChannel chan s
 	}
 
 	podWatch := c.client.CoreV1().Pods(namespace).Watch(options)
-	if podWatch.GetFirstError() != nil {
-		return nil, podWatch.GetFirstError()
+	if podWatch.GetErrors() != nil {
+		return nil, podWatch.GetErrors()
 	}
 
 	eventSelector, _ := fields.ParseSelector("involvedObject.name=" + name)
@@ -215,9 +215,9 @@ func (c *realRecyclerClient) WatchPod(name, namespace string, stopChannel chan s
 		FieldSelector: eventSelector.String(),
 		Watch:         true,
 	})
-	if eventWatch.GetFirstError() != nil {
+	if eventWatch.GetErrors() != nil {
 		podWatch.Stop()
-		return nil, eventWatch.GetFirstError()
+		return nil, eventWatch.GetErrors()
 	}
 
 	eventCh := make(chan watch.Event, 30)

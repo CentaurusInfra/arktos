@@ -646,7 +646,7 @@ func TestBootstrapping(t *testing.T) {
 	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 
 	watcher := clientset.RbacV1().ClusterRoles().Watch(metav1.ListOptions{ResourceVersion: "0"})
-	err := watcher.GetFirstError()
+	err := watcher.GetErrors()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
