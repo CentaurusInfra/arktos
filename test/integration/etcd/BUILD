@@ -30,7 +30,7 @@ go_test(
         "//staging/src/k8s.io/apimachinery/pkg/watch:go_default_library",
         "//staging/src/k8s.io/client-go/dynamic:go_default_library",
         "//test/integration/framework:go_default_library",
-        "//vendor/github.com/coreos/etcd/clientv3:go_default_library",
+        "//vendor/go.etcd.io/etcd/clientv3:go_default_library",
     ],
 )
 
@@ -77,8 +77,8 @@ go_library(
         "//staging/src/k8s.io/client-go/restmapper:go_default_library",
         "//test/integration:go_default_library",
         "//test/integration/framework:go_default_library",
-        "//vendor/github.com/coreos/etcd/clientv3:go_default_library",
-        "//vendor/github.com/coreos/etcd/clientv3/concurrency:go_default_library",
+        "//vendor/go.etcd.io/etcd/clientv3:go_default_library",
+        "//vendor/go.etcd.io/etcd/clientv3/concurrency:go_default_library",
         "//vendor/k8s.io/utils/pointer:go_default_library",
     ],
 )

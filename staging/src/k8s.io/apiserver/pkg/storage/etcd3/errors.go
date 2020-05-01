@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ package etcd3
 import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	etcdrpc "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	etcdrpc "go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
