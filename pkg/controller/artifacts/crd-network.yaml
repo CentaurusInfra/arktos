@@ -27,7 +27,6 @@ spec:
           properties:
             type:
               type: string
-              enum: [flat, vpc]
             vpcID:
               type: string
         status:
@@ -35,7 +34,7 @@ spec:
           properties:
             phase:
               type: string
-              enum: [Pending, OK, Failed, Unknown, Terminating]
+              enum: [Pending, Ready, Failed, Unknown, Terminating]
             message:
               type: string
   additionalPrinterColumns:
