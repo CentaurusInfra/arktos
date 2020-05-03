@@ -108,7 +108,7 @@ func (c *dynamicClient) Resource(resource schema.GroupVersionResource) Namespace
 }
 
 func (c *dynamicResourceClient) Namespace(ns string) ResourceInterface {
-	return c.NamespaceWithMultiTenancy(ns, metav1.TenantDefault)
+	return c.NamespaceWithMultiTenancy(ns, metav1.TenantSystem)
 }
 
 func (c *dynamicResourceClient) NamespaceWithMultiTenancy(ns string, tenant string) ResourceInterface {
@@ -392,7 +392,7 @@ func (c *dynamicResourceClient) makeURLSegments(name string) []string {
 	}
 	url = append(url, c.resource.Version)
 
-	if len(c.tenant) > 0 && c.tenant != metav1.TenantDefault {
+	if len(c.tenant) > 0 && c.tenant != metav1.TenantSystem {
 		url = append(url, "tenants", c.tenant)
 	}
 

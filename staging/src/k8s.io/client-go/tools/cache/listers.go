@@ -180,7 +180,7 @@ func (s *genericLister) List(selector labels.Selector) (ret []runtime.Object, er
 }
 
 func (s *genericLister) ByNamespace(namespace string) GenericNamespaceLister {
-	return &genericNamespaceLister{indexer: s.indexer, tenant: metav1.TenantDefault, namespace: namespace, resource: s.resource}
+	return &genericNamespaceLister{indexer: s.indexer, tenant: metav1.TenantSystem, namespace: namespace, resource: s.resource}
 }
 
 func (s *genericLister) ByNamespaceWithMultiTenancy(namespace string, tenant string) GenericNamespaceLister {
@@ -217,7 +217,7 @@ func (s *genericTenantLister) List(selector labels.Selector) (ret []runtime.Obje
 
 func (s *genericTenantLister) Get(name string) (runtime.Object, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == metav1.TenantDefault {
+	if s.tenant == metav1.TenantSystem {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)
@@ -246,7 +246,7 @@ func (s *genericNamespaceLister) List(selector labels.Selector) (ret []runtime.O
 
 func (s *genericNamespaceLister) Get(name string) (runtime.Object, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == metav1.TenantDefault {
+	if s.tenant == metav1.TenantSystem {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

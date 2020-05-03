@@ -80,7 +80,7 @@ type configMapManager struct {
 }
 
 func (c *configMapManager) GetConfigMap(namespace, name string) (*v1.ConfigMap, error) {
-	object, err := c.manager.GetObject(metav1.TenantDefault, namespace, name)
+	object, err := c.manager.GetObject(metav1.TenantSystem, namespace, name)
 	if err != nil {
 		return nil, err
 	}

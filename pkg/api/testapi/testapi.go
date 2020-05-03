@@ -358,7 +358,7 @@ func (g TestGroup) SelfLink(resource, name string) string {
 // For ex, this is of the form:
 // /api/v1/watch/namespaces/foo/pods/pod0 for v1.
 func (g TestGroup) ResourcePathWithPrefix(prefix, resource, namespace, name string) string {
-	return g.ResourcePathWithPrefixWithMultiTenancy(prefix, resource, metav1.TenantDefault, namespace, name)
+	return g.ResourcePathWithPrefixWithMultiTenancy(prefix, resource, metav1.TenantSystem, namespace, name)
 }
 
 func (g TestGroup) ResourcePathWithPrefixWithMultiTenancy(prefix, resource, tenant, namespace, name string) string {
@@ -374,7 +374,7 @@ func (g TestGroup) ResourcePathWithPrefixWithMultiTenancy(prefix, resource, tena
 	if prefix != "" {
 		path = path + "/" + prefix
 	}
-	if tenant != "" && tenant != metav1.TenantDefault {
+	if tenant != "" && tenant != metav1.TenantSystem {
 		path = path + "/tenants/" + tenant
 	}
 	if namespace != "" {
@@ -395,7 +395,7 @@ func (g TestGroup) ResourcePathWithPrefixWithMultiTenancy(prefix, resource, tena
 // For example, this is of the form:
 // /api/v1/namespaces/foo/pods/pod0 for v1.
 func (g TestGroup) ResourcePath(resource, namespace, name string) string {
-	return g.ResourcePathWithPrefixWithMultiTenancy("", resource, metav1.TenantDefault, namespace, name)
+	return g.ResourcePathWithPrefixWithMultiTenancy("", resource, metav1.TenantSystem, namespace, name)
 }
 
 func (g TestGroup) ResourcePathWithMultiTenancy(resource, tenant, namespace, name string) string {
@@ -405,7 +405,7 @@ func (g TestGroup) ResourcePathWithMultiTenancy(resource, tenant, namespace, nam
 // SubResourcePath returns the appropriate path for the given resource, namespace,
 // name and subresource.
 func (g TestGroup) SubResourcePath(resource, namespace, name, sub string) string {
-	return g.SubResourcePathWithMultiTenancy(resource, metav1.TenantDefault, namespace, name, sub)
+	return g.SubResourcePathWithMultiTenancy(resource, metav1.TenantSystem, namespace, name, sub)
 }
 
 func (g TestGroup) SubResourcePathWithMultiTenancy(resource, tenant, namespace, name, sub string) string {

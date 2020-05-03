@@ -29,8 +29,8 @@ const (
 	TenantDefault string = "default"
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll string = ""
-	// TenantNodeLease is the tenant where we place node lease objects (used for node heartbeats)
-	TenantNodeLease string = "system"
+	// TenantSystem is the tenant where the cluster operators belong to
+	TenantSystem string = "system"
 
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
 	NamespaceDefault string = "default"

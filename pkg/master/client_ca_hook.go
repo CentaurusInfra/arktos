@@ -124,7 +124,7 @@ func writeConfigMap(client corev1client.ConfigMapsGetter, name string, data map[
 	existing, err := client.ConfigMaps(metav1.NamespaceSystem).Get(name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		_, err := client.ConfigMaps(metav1.NamespaceSystem).Create(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: metav1.NamespaceSystem, Name: name},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: metav1.NamespaceSystem, Name: name},
 			Data:       data,
 		})
 		return err

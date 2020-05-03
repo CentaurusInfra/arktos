@@ -56,7 +56,7 @@ func Register(plugins *admission.Plugins) {
 	plugins.Register(PluginName, func(config io.Reader) (admission.Interface, error) {
 		return NewLifecycle(
 			sets.NewString(metav1.NamespaceDefault, metav1.NamespaceSystem, metav1.NamespacePublic),
-			sets.NewString(metav1.TenantDefault, metav1.TenantSystem),
+			sets.NewString(metav1.TenantSystem, metav1.TenantSystem),
 		)
 	})
 }
@@ -82,7 +82,7 @@ var _ = initializer.WantsExternalKubeInformerFactory(&Lifecycle{})
 var _ = initializer.WantsExternalKubeClientSet(&Lifecycle{})
 
 func (l *Lifecycle) tenantLifecycleAdmit(a admission.Attributes) error {
-	if a.GetTenant() == metav1.TenantNone || a.GetTenant() == metav1.TenantDefault {
+	if a.GetTenant() == metav1.TenantNone || a.GetTenant() == metav1.TenantSystem {
 		return nil
 	}
 
