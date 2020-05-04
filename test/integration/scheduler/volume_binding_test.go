@@ -250,16 +250,16 @@ func TestVolumeBinding(t *testing.T) {
 
 		// Validate PVC/PV binding
 		for _, pvc := range test.pvcs {
-			validatePVCPhase(t, config.client, pvc.name, metav1.TenantDefault, config.ns, v1.ClaimBound, false)
+			validatePVCPhase(t, config.client, pvc.name, metav1.TenantSystem, config.ns, v1.ClaimBound, false)
 		}
 		for _, pvc := range test.unboundPvcs {
-			validatePVCPhase(t, config.client, pvc.name, metav1.TenantDefault, config.ns, v1.ClaimPending, false)
+			validatePVCPhase(t, config.client, pvc.name, metav1.TenantSystem, config.ns, v1.ClaimPending, false)
 		}
 		for _, pv := range test.pvs {
-			validatePVPhase(t, config.client, metav1.TenantDefault, pv.name, v1.VolumeBound)
+			validatePVPhase(t, config.client, metav1.TenantSystem, pv.name, v1.VolumeBound)
 		}
 		for _, pv := range test.unboundPvs {
-			validatePVPhase(t, config.client, metav1.TenantDefault, pv.name, v1.VolumeAvailable)
+			validatePVPhase(t, config.client, metav1.TenantSystem, pv.name, v1.VolumeAvailable)
 		}
 
 		// Force delete objects, but they still may not be immediately removed
@@ -493,10 +493,10 @@ func testVolumeBindingStress(t *testing.T, schedulerResyncPeriod time.Duration, 
 
 	// Validate PVC/PV binding
 	for _, pvc := range pvcs {
-		validatePVCPhase(t, config.client, pvc.Name, metav1.TenantDefault, config.ns, v1.ClaimBound, dynamic)
+		validatePVCPhase(t, config.client, pvc.Name, metav1.TenantSystem, config.ns, v1.ClaimBound, dynamic)
 	}
 	for _, pv := range pvs {
-		validatePVPhase(t, config.client, metav1.TenantDefault, pv.Name, v1.VolumeBound)
+		validatePVPhase(t, config.client, metav1.TenantSystem, pv.Name, v1.VolumeBound)
 	}
 }
 
@@ -602,7 +602,7 @@ func testVolumeBindingWithAffinity(t *testing.T, anti bool, numNodes, numPods, n
 
 	// Validate PVC binding
 	for _, pvc := range pvcs {
-		validatePVCPhase(t, config.client, pvc.Name, metav1.TenantDefault, config.ns, v1.ClaimBound, false)
+		validatePVCPhase(t, config.client, pvc.Name, metav1.TenantSystem, config.ns, v1.ClaimBound, false)
 	}
 }
 
@@ -804,16 +804,16 @@ func TestVolumeProvision(t *testing.T) {
 
 		// Validate PVC/PV binding
 		for _, pvc := range test.boundPvcs {
-			validatePVCPhase(t, config.client, pvc.name, metav1.TenantDefault, config.ns, v1.ClaimBound, false)
+			validatePVCPhase(t, config.client, pvc.name, metav1.TenantSystem, config.ns, v1.ClaimBound, false)
 		}
 		for _, pvc := range test.unboundPvcs {
-			validatePVCPhase(t, config.client, pvc.name, metav1.TenantDefault, config.ns, v1.ClaimPending, false)
+			validatePVCPhase(t, config.client, pvc.name, metav1.TenantSystem, config.ns, v1.ClaimPending, false)
 		}
 		for _, pvc := range test.provisionedPvcs {
-			validatePVCPhase(t, config.client, pvc.name, metav1.TenantDefault, config.ns, v1.ClaimBound, true)
+			validatePVCPhase(t, config.client, pvc.name, metav1.TenantSystem, config.ns, v1.ClaimBound, true)
 		}
 		for _, pv := range test.pvs {
-			validatePVPhase(t, config.client, metav1.TenantDefault, pv.name, v1.VolumeBound)
+			validatePVPhase(t, config.client, metav1.TenantSystem, pv.name, v1.VolumeBound)
 		}
 
 		// Force delete objects, but they still may not be immediately removed
@@ -971,9 +971,9 @@ func initPVController(context *testContext, provisionDelaySeconds int) (*persist
 }
 
 func deleteTestObjects(client clientset.Interface, ns string, option *metav1.DeleteOptions) {
-	client.CoreV1().PodsWithMultiTenancy(ns, metav1.TenantDefault).DeleteCollection(option, metav1.ListOptions{})
-	client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(ns, metav1.TenantDefault).DeleteCollection(option, metav1.ListOptions{})
-	client.CoreV1().PersistentVolumesWithMultiTenancy(metav1.TenantDefault).DeleteCollection(option, metav1.ListOptions{})
+	client.CoreV1().PodsWithMultiTenancy(ns, metav1.TenantSystem).DeleteCollection(option, metav1.ListOptions{})
+	client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(ns, metav1.TenantSystem).DeleteCollection(option, metav1.ListOptions{})
+	client.CoreV1().PersistentVolumesWithMultiTenancy(metav1.TenantSystem).DeleteCollection(option, metav1.ListOptions{})
 	client.StorageV1().StorageClasses().DeleteCollection(option, metav1.ListOptions{})
 }
 
@@ -1004,7 +1004,7 @@ func makePV(name, scName, pvcName, ns, node string) *v1.PersistentVolume {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Annotations: map[string]string{},
-			Tenant:      metav1.TenantDefault,
+			Tenant:      metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			Capacity: v1.ResourceList{
@@ -1041,7 +1041,7 @@ func makePV(name, scName, pvcName, ns, node string) *v1.PersistentVolume {
 		pv.Spec.ClaimRef = &v1.ObjectReference{
 			Name:      pvcName,
 			Namespace: ns,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		}
 	}
 
@@ -1053,7 +1053,7 @@ func makePVC(name, ns string, scName *string, volumeName string) *v1.PersistentV
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{
@@ -1090,7 +1090,7 @@ func makePod(name, ns string, pvcs []string) *v1.Pod {
 			Labels: map[string]string{
 				"app": "volume-binding-test",
 			},
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{

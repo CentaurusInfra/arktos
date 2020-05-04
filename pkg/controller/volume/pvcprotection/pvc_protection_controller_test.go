@@ -108,7 +108,7 @@ func pvc() *v1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultPVCName,
 			Namespace: defaultNS,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 	}
 }

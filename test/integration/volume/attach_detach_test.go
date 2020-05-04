@@ -50,7 +50,7 @@ func fakePodWithVol(namespace string) *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "fakepod",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -86,7 +86,7 @@ func fakePodWithPVC(name, pvcName, namespace string) (*v1.Pod, *v1.PersistentVol
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -119,7 +119,7 @@ func fakePodWithPVC(name, pvcName, namespace string) (*v1.Pod, *v1.PersistentVol
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      pvcName,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{
@@ -617,7 +617,7 @@ func createPVForPVC(t *testing.T, testClient *clientset.Clientset, pvc *v1.Persi
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   fmt.Sprintf("fakepv-%s", pvc.Name),
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			Capacity:    pvc.Spec.Resources.Requests,
@@ -630,7 +630,7 @@ func createPVForPVC(t *testing.T, testClient *clientset.Clientset, pvc *v1.Persi
 			ClaimRef: &v1.ObjectReference{
 				Name:      pvc.Name,
 				Namespace: pvc.Namespace,
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			StorageClassName: *pvc.Spec.StorageClassName,
 		},

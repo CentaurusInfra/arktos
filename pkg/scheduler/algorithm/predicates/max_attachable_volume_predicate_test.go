@@ -37,7 +37,7 @@ import (
 func onePVCPod(filterName string) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -56,7 +56,7 @@ func onePVCPod(filterName string) *v1.Pod {
 func splitPVCPod(filterName string) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -82,7 +82,7 @@ func splitPVCPod(filterName string) *v1.Pod {
 func TestVolumeCountConflicts(t *testing.T) {
 	oneVolPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -96,7 +96,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	twoVolPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -115,7 +115,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	splitVolsPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -134,7 +134,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	nonApplicablePod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -148,7 +148,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	deletedPVCPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -164,7 +164,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	twoDeletedPVCPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -187,7 +187,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	deletedPVPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -204,7 +204,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	// deletedPVPod2 is a different pod than deletedPVPod but using the same PVC
 	deletedPVPod2 := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -221,7 +221,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	// anotherDeletedPVPod is a different pod than deletedPVPod and uses another PVC
 	anotherDeletedPVPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -237,13 +237,13 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	emptyPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{},
 	}
 	unboundPVCPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -260,7 +260,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	// Different pod than unboundPVCPod, but using the same unbound PVC
 	unboundPVCPod2 := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -278,7 +278,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	// pod with unbound PVC that's different to unboundPVC
 	anotherUnboundPVCPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -294,7 +294,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	twoVolCinderPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -313,7 +313,7 @@ func TestVolumeCountConflicts(t *testing.T) {
 	}
 	oneVolCinderPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -878,7 +878,7 @@ func getFakePVInfo(filterName string) FakePersistentVolumeInfo {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "some" + filterName + "Vol",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeSpec{
 				PersistentVolumeSource: v1.PersistentVolumeSource{
@@ -889,7 +889,7 @@ func getFakePVInfo(filterName string) FakePersistentVolumeInfo {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "someNon" + filterName + "Vol",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeSpec{
 				PersistentVolumeSource: v1.PersistentVolumeSource{},
@@ -903,42 +903,42 @@ func getFakePVCInfo(filterName string) FakePersistentVolumeClaimInfo {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "some" + filterName + "Vol",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeClaimSpec{VolumeName: "some" + filterName + "Vol"},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "someNon" + filterName + "Vol",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeClaimSpec{VolumeName: "someNon" + filterName + "Vol"},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "pvcWithDeletedPV",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeClaimSpec{VolumeName: "pvcWithDeletedPV"},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "anotherPVCWithDeletedPV",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeClaimSpec{VolumeName: "anotherPVCWithDeletedPV"},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "unboundPVC",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeClaimSpec{VolumeName: ""},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "anotherUnboundPVC",
-				Tenant: metav1.TenantDefault,
+				Tenant: metav1.TenantSystem,
 			},
 			Spec: v1.PersistentVolumeClaimSpec{VolumeName: ""},
 		},
