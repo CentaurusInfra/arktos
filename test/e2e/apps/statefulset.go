@@ -583,7 +583,7 @@ var _ = SIGDescribe("StatefulSet", func() {
 			watcher := f.ClientSet.CoreV1().Pods(ns).Watch(metav1.ListOptions{
 				LabelSelector: psLabels.AsSelector().String(),
 			})
-			framework.ExpectNoError(watcher.GetFirstError())
+			framework.ExpectNoError(watcher.GetErrors())
 
 			ginkgo.By("Creating stateful set " + ssName + " in namespace " + ns)
 			ss := framework.NewStatefulSet(ssName, ns, headlessSvcName, 1, nil, nil, psLabels)
@@ -627,7 +627,7 @@ var _ = SIGDescribe("StatefulSet", func() {
 			watcher = f.ClientSet.CoreV1().Pods(ns).Watch(metav1.ListOptions{
 				LabelSelector: psLabels.AsSelector().String(),
 			})
-			framework.ExpectNoError(watcher.GetFirstError())
+			framework.ExpectNoError(watcher.GetErrors())
 
 			sst.BreakHTTPProbe(ss)
 			sst.WaitForStatusReadyReplicas(ss, 0)
@@ -748,7 +748,7 @@ var _ = SIGDescribe("StatefulSet", func() {
 			var initialStatefulPodUID types.UID
 			ginkgo.By("Waiting until stateful pod " + statefulPodName + " will be recreated and deleted at least once in namespace " + f.Namespace.Name)
 			w := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: statefulPodName}))
-			framework.ExpectNoError(w.GetFirstError())
+			framework.ExpectNoError(w.GetErrors())
 			ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.StatefulPodTimeout)
 			defer cancel()
 			// we need to get UID from pod in any state and wait until stateful set controller will remove pod at least once

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,11 +33,13 @@ type crdBuilder struct {
 	curr apiextensions.CustomResourceDefinition
 }
 
+var testTenant = "test-te"
+
 func newCRD(name string) *crdBuilder {
 	tokens := strings.SplitN(name, ".", 2)
 	return &crdBuilder{
 		curr: apiextensions.CustomResourceDefinition{
-			ObjectMeta: metav1.ObjectMeta{Name: name},
+			ObjectMeta: metav1.ObjectMeta{Name: name, Tenant: testTenant},
 			Spec: apiextensions.CustomResourceDefinitionSpec{
 				Group: tokens[1],
 				Names: apiextensions.CustomResourceDefinitionNames{

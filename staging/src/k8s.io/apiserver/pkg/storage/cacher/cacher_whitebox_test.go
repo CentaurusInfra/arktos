@@ -410,8 +410,8 @@ func TestWatcherNotGoingBackInTime(t *testing.T) {
 
 	// Create watcher that will be slowing down reading.
 	aw1 := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
-	if aw1.GetFirstError() != nil {
-		t.Fatalf("Failed to create watch: %v", aw1.GetFirstError())
+	if aw1.GetErrors() != nil {
+		t.Fatalf("Failed to create watch: %v", aw1.GetErrors())
 	}
 	defer aw1.Stop()
 	go func() {
@@ -432,8 +432,8 @@ func TestWatcherNotGoingBackInTime(t *testing.T) {
 
 	// Create fast watcher and ensure it will get each object exactly once.
 	aw2 := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
-	if aw2.GetFirstError() != nil {
-		t.Fatalf("Failed to create watch: %v", aw2.GetFirstError())
+	if aw2.GetErrors() != nil {
+		t.Fatalf("Failed to create watch: %v", aw2.GetErrors())
 	}
 	defer aw2.Stop()
 
@@ -509,8 +509,8 @@ func TestCacheWatcherStoppedOnDestroy(t *testing.T) {
 	cacher.ready.wait()
 
 	aw := cacher.Watch(context.Background(), "pods/ns", "0", storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Failed to create watch: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Failed to create watch: %v", aw.GetErrors())
 	}
 
 	watchClosed := make(chan struct{})
@@ -591,8 +591,8 @@ func testCacherSendBookmarkEvents(t *testing.T, watchCacheEnabled, allowWatchBoo
 
 	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
 	aw := cacher.Watch(ctx, "pods/ns", "0", pred)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Failed to create watch: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Failed to create watch: %v", aw.GetErrors())
 	}
 
 	resourceVersion := uint64(1000)
@@ -705,8 +705,8 @@ func TestDispatchingBookmarkEventsWithConcurrentStop(t *testing.T) {
 		pred.AllowWatchBookmarks = true
 		ctx, _ := context.WithTimeout(context.Background(), time.Second)
 		aw := cacher.Watch(ctx, "pods/ns", "999", pred)
-		if aw.GetFirstError() != nil {
-			t.Fatalf("Failed to create watch: %v", aw.GetFirstError())
+		if aw.GetErrors() != nil {
+			t.Fatalf("Failed to create watch: %v", aw.GetErrors())
 		}
 		bookmark := &watchCacheEvent{
 			Type:            watch.Bookmark,

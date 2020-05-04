@@ -169,7 +169,7 @@ func TestDynamicClientWatch(t *testing.T) {
 		FieldSelector:   fields.OneTermEqualSelector("metadata.name", "event-9").String(),
 	})
 
-	err = w.GetFirstError()
+	err = w.GetErrors()
 	if err != nil {
 		t.Fatalf("Failed watch: %v", err)
 	}

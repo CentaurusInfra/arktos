@@ -59,7 +59,7 @@ func GetFirstPod(client coreclient.PodsGetter, tenant, namespace string, selecto
 	// Watch until we observe a pod
 	options.ResourceVersion = podList.ResourceVersion
 	w := client.PodsWithMultiTenancy(namespace, tenant).Watch(options)
-	if w.GetFirstError() != nil {
+	if w.GetErrors() != nil {
 		return nil, 0, err
 	}
 	defer w.Stop()

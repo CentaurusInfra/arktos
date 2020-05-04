@@ -80,10 +80,10 @@ var _ = SIGDescribe("CustomResourceDefinition Watch", func() {
 			noxuResourceClient := newNamespacedCustomResourceClient(ns, f.DynamicClient, noxuDefinition)
 
 			watchA := watchCRWithName(noxuResourceClient, watchCRNameA)
-			framework.ExpectNoError(watchA.GetFirstError(), "failed to watch custom resource: %s", watchCRNameA)
+			framework.ExpectNoError(watchA.GetErrors(), "failed to watch custom resource: %s", watchCRNameA)
 
 			watchB := watchCRWithName(noxuResourceClient, watchCRNameB)
-			framework.ExpectNoError(watchB.GetFirstError(), "failed to watch custom resource: %s", watchCRNameB)
+			framework.ExpectNoError(watchB.GetErrors(), "failed to watch custom resource: %s", watchCRNameB)
 
 			testCrA := fixtures.NewNoxuInstance(ns, watchCRNameA)
 			testCrB := fixtures.NewNoxuInstance(ns, watchCRNameB)

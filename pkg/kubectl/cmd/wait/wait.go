@@ -293,7 +293,7 @@ func IsDeleted(info *resource.Info, o *WaitOptions) (runtime.Object, bool, error
 		watchOptions.FieldSelector = nameSelector
 		watchOptions.ResourceVersion = gottenObjList.GetResourceVersion()
 		objWatch := o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).Watch(watchOptions)
-		if objWatch.GetFirstError() != nil {
+		if objWatch.GetErrors() != nil {
 			return gottenObj, false, err
 		}
 
@@ -388,7 +388,7 @@ func (w ConditionalWait) IsConditionMet(info *resource.Info, o *WaitOptions) (ru
 		watchOptions.FieldSelector = nameSelector
 		watchOptions.ResourceVersion = resourceVersion
 		objWatch := o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).Watch(watchOptions)
-		if objWatch.GetFirstError() != nil {
+		if objWatch.GetErrors() != nil {
 			return gottenObj, false, err
 		}
 

@@ -121,7 +121,7 @@ var _ = SIGDescribe("[Feature:PodPreset] PodPreset", func() {
 			ResourceVersion: pods.ListMeta.ResourceVersion,
 		}
 		w := podClient.Watch(options)
-		framework.ExpectNoError(w.GetFirstError(), "failed to set up watch")
+		framework.ExpectNoError(w.GetErrors(), "failed to set up watch")
 
 		ginkgo.By("submitting the pod to kubernetes")
 		podClient.Create(pod)
@@ -241,7 +241,7 @@ var _ = SIGDescribe("[Feature:PodPreset] PodPreset", func() {
 			ResourceVersion: pods.ListMeta.ResourceVersion,
 		}
 		w := podClient.Watch(options)
-		framework.ExpectNoError(w.GetFirstError(), "failed to set up watch")
+		framework.ExpectNoError(w.GetErrors(), "failed to set up watch")
 
 		ginkgo.By("submitting the pod to kubernetes")
 		podClient.Create(originalPod)

@@ -551,8 +551,8 @@ func TestWatch(t *testing.T) {
 		defer srv.Close()
 
 		aw := cl.Resource(resource).Namespace(tc.namespace).Watch(metav1.ListOptions{})
-		if aw.GetFirstError() != nil {
-			t.Errorf("unexpected error when watching %q: %v", tc.name, aw.GetFirstError())
+		if aw.GetErrors() != nil {
+			t.Errorf("unexpected error when watching %q: %v", tc.name, aw.GetErrors())
 			continue
 		}
 

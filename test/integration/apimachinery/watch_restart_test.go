@@ -98,8 +98,8 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 		return func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", secret.Name).String()
 			res := c.CoreV1().Secrets(secret.Namespace).Watch(options)
-			if res.GetFirstError() != nil {
-				t.Fatalf("Failed to create a watcher on Secrets: %v", res.GetFirstError())
+			if res.GetErrors() != nil {
+				t.Fatalf("Failed to create a watcher on Secrets: %v", res.GetErrors())
 			}
 			return res
 		}

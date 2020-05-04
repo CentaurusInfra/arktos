@@ -64,9 +64,9 @@ import (
 	utilwaitgroup "k8s.io/apimachinery/pkg/util/waitgroup"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager"
-	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/features"
@@ -199,11 +199,18 @@ var longRunningFilter = genericfilters.BasicLongRunningRequestCheck(sets.NewStri
 
 func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	requestInfo, ok := apirequest.RequestInfoFrom(ctx)
-	if !ok {
-		responsewriters.InternalError(w, req, fmt.Errorf("no RequestInfo found in the context"))
-		return
+	req, _ = apifilters.SetShortPathRequestTenant(req)
+	requestInfo, _ := apirequest.RequestInfoFrom(ctx)
+
+	crdTenant := requestInfo.Tenant
+	// SetShortPathRequestTenant does not update the tenant in a short-path request if it is a system-user request,
+	// as it may be an operation across all tenants. Also in some integration tests, the tenant in the requestInfo is not set.
+	// However, if code hits here, we know it is NOT a request across multiple tenants,
+	// so we can set the tenant here.
+	if crdTenant == metav1.TenantNone {
+		crdTenant = metav1.TenantDefault
 	}
+
 	if !requestInfo.IsResourceRequest {
 		pathParts := splitPath(requestInfo.Path)
 		// only match /apis/<group>/<version>
@@ -223,7 +230,7 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	crdName := requestInfo.Resource + "." + requestInfo.APIGroup
-	crd, err := r.crdLister.Get(crdName)
+	crd, err := r.crdLister.CustomResourceDefinitionsWithMultiTenancy(crdTenant).Get(crdName)
 	if apierrors.IsNotFound(err) {
 		r.delegate.ServeHTTP(w, req)
 		return
@@ -375,9 +382,9 @@ func (r *crdHandler) updateCustomResourceDefinition(oldObj, newObj interface{}) 
 	if !apiextensions.IsCRDConditionTrue(newCRD, apiextensions.Established) &&
 		apiextensions.IsCRDConditionTrue(newCRD, apiextensions.NamesAccepted) {
 		if r.masterCount > 1 {
-			r.establishingController.QueueCRD(newCRD.Name, 5*time.Second)
+			r.establishingController.QueueCRD(newCRD.Tenant+"/"+newCRD.Name, 5*time.Second)
 		} else {
-			r.establishingController.QueueCRD(newCRD.Name, 0)
+			r.establishingController.QueueCRD(newCRD.Tenant+"/"+newCRD.Name, 0)
 		}
 	}
 

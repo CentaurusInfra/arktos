@@ -49,7 +49,6 @@ func TestCrossGroupStorageWithMultiTenancy(t *testing.T) {
 
 	crossGroupResources := map[schema.GroupVersionKind][]Resource{}
 
-	master.Client.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}})
 	master.Client.CoreV1().NamespacesWithMultiTenancy(testTenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace, Tenant: testTenant}})
 
 	// Group by persisted GVK
@@ -124,7 +123,7 @@ func TestCrossGroupStorageWithMultiTenancy(t *testing.T) {
 					t.Fatalf("error finding resource via %s: %v", resource.Mapping.Resource.GroupVersion().String(), err)
 				}
 				watches[resource.Mapping.Resource] = clients[resource.Mapping.Resource].Watch(metav1.ListOptions{ResourceVersion: actual.GetResourceVersion()})
-				err = watches[resource.Mapping.Resource].GetFirstError()
+				err = watches[resource.Mapping.Resource].GetErrors()
 				if err != nil {
 					t.Fatalf("error opening watch via %s: %v", resource.Mapping.Resource.GroupVersion().String(), err)
 				}

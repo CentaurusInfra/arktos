@@ -28,44 +28,51 @@ import (
 // WithTenantInfo set the tenant in the requestInfo for short-path requests based on the user info from the authentication result.
 func WithTenantInfo(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ctx := req.Context()
 
-		requestor, exists := request.UserFrom(ctx)
-		if !exists {
-			responsewriters.InternalError(w, req, errors.New("The user info is missing."))
+		newReq, err := SetShortPathRequestTenant(req)
+		if err != nil {
+			responsewriters.InternalError(w, req, err)
 			return
 		}
 
-		tenantInRequestor := requestor.GetTenant()
-		if tenantInRequestor == metav1.TenantNone {
-			// temporary workaround
-			// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
-			tenantInRequestor = metav1.TenantSystem
-			//responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
-			//return
-		}
-
-		requestInfo, exists := request.RequestInfoFrom(ctx)
-		if !exists {
-			responsewriters.InternalError(w, req, errors.New("The request info is missing."))
-			return
-		}
-
-		requestInfo.Tenant = normalizeTenant(tenantInRequestor, requestInfo.Tenant)
-		req = req.WithContext(request.WithRequestInfo(ctx, requestInfo))
-
-		handler.ServeHTTP(w, req)
+		handler.ServeHTTP(w, newReq)
 	})
 }
 
-// normalizeObjectTenant decides what the object tenant should be based on what the user tenant is.
-func normalizeTenant(userTenant, objectTenant string) string {
-	// for a reqeust from a regular user, if the tenant in the object is empty, use the tenant from user info
-	// this is what we call "shor-path", which allows users to use traditional Kubernets API in the multi-tenancy Arktos
-	if objectTenant == metav1.TenantNone && userTenant != metav1.TenantSystem {
-		return userTenant
+// SetShortPathRequestTenant sets the tenant in request info based on the user tenant.
+func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
+
+	ctx := req.Context()
+
+	requestor, exists := request.UserFrom(ctx)
+	if !exists {
+		return nil, errors.New("The user info is missing.")
 	}
 
-	// in the other cases, we continue to use the tenant in the request info
-	return objectTenant
+	userTenant := requestor.GetTenant()
+	if userTenant == metav1.TenantNone {
+		// temporary workaround
+		// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
+		userTenant = metav1.TenantSystem
+		//When https://github.com/futurewei-cloud/arktos/issues/102 is done, remove the above line
+		// and enable the following two lines.
+		//responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
+		//return
+	}
+
+	requestInfo, exists := request.RequestInfoFrom(ctx)
+	if !exists {
+		return nil, errors.New("The request info is missing.")
+	}
+
+	// for a reqeust from a regular user, if the tenant in the object is empty, use the tenant from user info
+	// this is what we call "short-path", which allows users to use traditional Kubernets API in the multi-tenancy Arktos
+	resourceTenant := requestInfo.Tenant
+	if resourceTenant == metav1.TenantNone && userTenant != metav1.TenantSystem {
+		requestInfo.Tenant = userTenant
+	}
+
+	req = req.WithContext(request.WithRequestInfo(ctx, requestInfo))
+
+	return req, nil
 }

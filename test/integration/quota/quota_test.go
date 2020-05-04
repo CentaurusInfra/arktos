@@ -154,7 +154,7 @@ func TestQuota(t *testing.T) {
 
 func waitForQuota(t *testing.T, quota *v1.ResourceQuota, clientset *clientset.Clientset) {
 	w := clientset.CoreV1().ResourceQuotas(quota.Namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: quota.Name}))
-	err := w.GetFirstError()
+	err := w.GetErrors()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -214,7 +214,7 @@ func scale(t *testing.T, namespace string, clientset *clientset.Clientset) {
 	}
 
 	w := clientset.CoreV1().ReplicationControllers(namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: rc.Name}))
-	err := w.GetFirstError()
+	err := w.GetErrors()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

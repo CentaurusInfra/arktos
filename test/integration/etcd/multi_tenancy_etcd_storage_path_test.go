@@ -48,9 +48,6 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 
 	client := &allClient{dynamicClient: master.Dynamic}
 
-	if _, err := master.Client.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}}); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := master.Client.CoreV1().NamespacesWithMultiTenancy(testTenant).Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace, Tenant: testTenant}}); err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +161,10 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 		}
 	}
 
-	for path, gvrs := range pathSeen {
+	//Temporarily turn this check off as we now allow CRDs of the same G/V/K under different tenants.
+	// TODO: rewrite the following check after the following issue is closed:
+	// https://github.com/futurewei-cloud/arktos/issues/227
+	/*for path, gvrs := range pathSeen {
 		if len(gvrs) != 1 {
 			gvrStrings := []string{}
 			for _, key := range gvrs {
@@ -172,7 +172,7 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 			}
 			t.Errorf("invalid test data, please ensure all expectedEtcdPath are unique, path %s has duplicate GVRs:\n%s", path, gvrStrings)
 		}
-	}
+	}*/
 }
 
 func (c *allClient) createWithMultiTenancy(stub, te string, ns string, mapping *meta.RESTMapping, all *[]cleanupData) error {

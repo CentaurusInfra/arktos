@@ -81,7 +81,7 @@ var expectedErrors = regexp.MustCompile(`container .* in pod .* is (terminated|w
 // already deleted pods aren't covered.
 func CopyAllLogs(ctx context.Context, cs clientset.Interface, ns string, to LogOutput) error {
 	watcher := cs.CoreV1().Pods(ns).Watch(meta.ListOptions{})
-	err := watcher.GetFirstError()
+	err := watcher.GetErrors()
 	if err != nil {
 		return errors.Wrap(err, "cannot create Pod event watcher")
 	}
@@ -217,7 +217,7 @@ func CopyAllLogs(ctx context.Context, cs clientset.Interface, ns string, to LogO
 // when namespace name is empty.
 func WatchPods(ctx context.Context, cs clientset.Interface, ns string, to io.Writer) error {
 	watcher := cs.CoreV1().Pods(ns).Watch(meta.ListOptions{})
-	err := watcher.GetFirstError()
+	err := watcher.GetErrors()
 	if err != nil {
 		return errors.Wrap(err, "cannot create Pod event watcher")
 	}
