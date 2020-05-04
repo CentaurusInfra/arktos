@@ -25,8 +25,6 @@ import (
 )
 
 const (
-	// TenantDefault means the object is in the default tenant which is applied when not specified by clients
-	TenantDefault string = "default"
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll string = ""
 	// TenantSystem is the tenant where the cluster operators belong to
