@@ -43,7 +43,7 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 			Name:      "metric-test-pod",
 			UID:       "metric-test-pod-uid",
 			Namespace: "metric-test",
-			Tenant: metav1.TenantDefault,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PodSpec{
 			NodeName: "metric-test-host",
@@ -72,7 +72,7 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 			Name:      "metric-test-pvc",
 			Namespace: "metric-test",
 			UID:       "metric-test-pvc-1",
-			Tenant: metav1.TenantDefault,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany, v1.ReadWriteOnce},
@@ -89,8 +89,8 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 	}
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			UID:  "test-metric-pv-1",
-			Name: "test-metric-pv-1",
+			UID:    "test-metric-pv-1",
+			Name:   "test-metric-pv-1",
 			Tenant: metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeSpec{
@@ -103,9 +103,9 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce, v1.ReadOnlyMany},
 			// this one we're pretending is already bound
 			ClaimRef: &v1.ObjectReference{
-				UID: "metric-test-pvc-1",
+				UID:       "metric-test-pvc-1",
 				Namespace: "metric-test",
-				Tenant: metav1.TenantDefault,
+				Tenant:    metav1.TenantDefault,
 			},
 		},
 	}

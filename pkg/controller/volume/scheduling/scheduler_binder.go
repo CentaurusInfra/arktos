@@ -360,7 +360,7 @@ func getPodName(pod *v1.Pod) string {
 
 func getPVNameFromPVC(pvc *v1.PersistentVolumeClaim) string {
 	var key string
-	if pvc.Tenant ==  "" || pvc.Tenant == v1.TenantDefault {
+	if pvc.Tenant == v1.TenantDefault {
 		key = pvc.Spec.VolumeName
 	} else {
 		key = fmt.Sprintf("%s/%s", pvc.Tenant, pvc.Spec.VolumeName)
@@ -706,7 +706,7 @@ func (b *volumeBinder) findMatchingVolumes(pod *v1.Pod, claimsToBind []*v1.Persi
 		allPVs := b.pvCache.ListPVs(storageClassName)
 		pvcName, err := cache.MetaNamespaceKeyFunc(pvc)
 		if err != nil {
-			return false, nil, nil, fmt.Errorf("failed to get pvc name: %v", err)
+			return false, nil, nil, fmt.Errorf("failed to get pvc %v name: %v", pvc, err)
 		}
 
 		// Find a matching PV
@@ -744,7 +744,7 @@ func (b *volumeBinder) checkVolumeProvisions(pod *v1.Pod, claimsToProvision []*v
 	for _, claim := range claimsToProvision {
 		pvcName, err := cache.MetaNamespaceKeyFunc(claim)
 		if err != nil {
-			return false, nil, fmt.Errorf("failed to get pvc name: %v", err)
+			return false, nil, fmt.Errorf("failed to get pvc %v name: %v", claim, err)
 		}
 		className := v1helper.GetPersistentVolumeClaimClass(claim)
 		if className == "" {
