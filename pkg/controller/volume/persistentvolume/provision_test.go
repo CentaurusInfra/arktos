@@ -20,11 +20,12 @@ import (
 	"errors"
 	"testing"
 
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	api "k8s.io/kubernetes/pkg/apis/core"
+
 	v1 "k8s.io/api/core/v1"
 	storage "k8s.io/api/storage/v1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	pvtesting "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/testing"
 	pvutil "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/util"
 )
