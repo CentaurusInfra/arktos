@@ -50,7 +50,7 @@ type reaction struct {
 func pv() *v1.PersistentVolume {
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: defaultPVName,
+			Name:   defaultPVName,
 			Tenant: metav1.TenantSystem,
 		},
 	}
@@ -59,7 +59,7 @@ func pv() *v1.PersistentVolume {
 func boundPV() *v1.PersistentVolume {
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: defaultPVName,
+			Name:   defaultPVName,
 			Tenant: metav1.TenantSystem,
 		},
 		Status: v1.PersistentVolumeStatus{
