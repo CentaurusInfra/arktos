@@ -55,7 +55,7 @@ function create-and-upload-hollow-node-image {
     run-cmd-with-retries "${build_cmd[@]}"
   else
     # Build+push the image through makefile.
-    build_cmd=("sudo" "-E" "make" "${KUBEMARK_IMAGE_MAKE_TARGET}")
+    build_cmd=("make" "${KUBEMARK_IMAGE_MAKE_TARGET}")
     MAKE_DIR="${KUBE_ROOT}/cluster/images/kubemark"
     KUBEMARK_BIN="$(kube::util::find-binary-for-platform kubemark linux/amd64)"
     if [[ -z "${KUBEMARK_BIN}" ]]; then
@@ -222,7 +222,11 @@ function start-hollow-nodes {
 
 detect-project &> /dev/null
 
+
+
 create-kubemark-master
+
+MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
 
 start-hollow-nodes
 
