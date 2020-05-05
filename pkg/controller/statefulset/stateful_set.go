@@ -170,7 +170,7 @@ func (ssc *StatefulSetController) addPod(obj interface{}) {
 
 	// If it has a ControllerRef, that's all that matters.
 	if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
-		set := ssc.resolveControllerRef(pod.Namespace, controllerRef)
+		set := ssc.resolveControllerRef(pod.Tenant, pod.Namespace, controllerRef)
 		if set == nil {
 			return
 		}
@@ -208,14 +208,14 @@ func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
 	controllerRefChanged := !reflect.DeepEqual(curControllerRef, oldControllerRef)
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
-		if set := ssc.resolveControllerRef(oldPod.Namespace, oldControllerRef); set != nil {
+		if set := ssc.resolveControllerRef(oldPod.Tenant, oldPod.Namespace, oldControllerRef); set != nil {
 			ssc.enqueueStatefulSet(set)
 		}
 	}
 
 	// If it has a ControllerRef, that's all that matters.
 	if curControllerRef != nil {
-		set := ssc.resolveControllerRef(curPod.Namespace, curControllerRef)
+		set := ssc.resolveControllerRef(curPod.Tenant, curPod.Namespace, curControllerRef)
 		if set == nil {
 			return
 		}
@@ -263,7 +263,7 @@ func (ssc *StatefulSetController) deletePod(obj interface{}) {
 		// No controller should care about orphans being deleted.
 		return
 	}
-	set := ssc.resolveControllerRef(pod.Namespace, controllerRef)
+	set := ssc.resolveControllerRef(pod.Tenant, pod.Namespace, controllerRef)
 	if set == nil {
 		return
 	}
@@ -279,7 +279,7 @@ func (ssc *StatefulSetController) deletePod(obj interface{}) {
 func (ssc *StatefulSetController) getPodsForStatefulSet(set *apps.StatefulSet, selector labels.Selector) ([]*v1.Pod, error) {
 	// List all pods to include the pods that don't match the selector anymore but
 	// has a ControllerRef pointing to this StatefulSet.
-	pods, err := ssc.podLister.Pods(set.Namespace).List(labels.Everything())
+	pods, err := ssc.podLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func (ssc *StatefulSetController) getPodsForStatefulSet(set *apps.StatefulSet, s
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing Pods (see #42639).
 	canAdoptFunc := controller.RecheckDeletionTimestamp(func() (metav1.Object, error) {
-		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(set.Name, metav1.GetOptions{})
+		fresh, err := ssc.kubeClient.AppsV1().StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -320,7 +320,7 @@ func (ssc *StatefulSetController) adoptOrphanRevisions(set *apps.StatefulSet) er
 		}
 	}
 	if hasOrphans {
-		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(set.Name, metav1.GetOptions{})
+		fresh, err := ssc.kubeClient.AppsV1().StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -354,13 +354,13 @@ func (ssc *StatefulSetController) getStatefulSetsForPod(pod *v1.Pod) []*apps.Sta
 // resolveControllerRef returns the controller referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching controller
 // of the correct Kind.
-func (ssc *StatefulSetController) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) *apps.StatefulSet {
+func (ssc *StatefulSetController) resolveControllerRef(tenant string, namespace string, controllerRef *metav1.OwnerReference) *apps.StatefulSet {
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
 	if controllerRef.Kind != controllerKind.Kind {
 		return nil
 	}
-	set, err := ssc.setLister.StatefulSets(namespace).Get(controllerRef.Name)
+	set, err := ssc.setLister.StatefulSetsWithMultiTenancy(namespace, tenant).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}
@@ -412,11 +412,11 @@ func (ssc *StatefulSetController) sync(key string) error {
 		klog.V(4).Infof("Finished syncing statefulset %q (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	set, err := ssc.setLister.StatefulSets(namespace).Get(name)
+	set, err := ssc.setLister.StatefulSetsWithMultiTenancy(namespace, tenant).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("StatefulSet has been deleted %v", key)
 		return nil

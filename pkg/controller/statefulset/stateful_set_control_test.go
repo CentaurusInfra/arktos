@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -121,7 +122,7 @@ func CreatesPods(t *testing.T, set *apps.StatefulSet, invariants invariantFunc) 
 		t.Errorf("Failed to turn up StatefulSet : %s", err)
 	}
 	var err error
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -149,7 +150,7 @@ func ScalesUp(t *testing.T, set *apps.StatefulSet, invariants invariantFunc) {
 		t.Errorf("Failed to scale StatefulSet : %s", err)
 	}
 	var err error
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -196,7 +197,7 @@ func ReplacesPods(t *testing.T, set *apps.StatefulSet, invariants invariantFunc)
 		t.Errorf("Failed to turn up StatefulSet : %s", err)
 	}
 	var err error
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -207,7 +208,7 @@ func ReplacesPods(t *testing.T, set *apps.StatefulSet, invariants invariantFunc)
 	if err != nil {
 		t.Error(err)
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -216,14 +217,14 @@ func ReplacesPods(t *testing.T, set *apps.StatefulSet, invariants invariantFunc)
 	spc.podsIndexer.Delete(pods[2])
 	spc.podsIndexer.Delete(pods[4])
 	for i := 0; i < 5; i += 2 {
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			t.Error(err)
 		}
 		if err = ssc.UpdateStatefulSet(set, pods); err != nil {
 			t.Errorf("Failed to update StatefulSet : %s", err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("Error getting updated StatefulSet: %v", err)
 		}
@@ -233,7 +234,7 @@ func ReplacesPods(t *testing.T, set *apps.StatefulSet, invariants invariantFunc)
 		if err = ssc.UpdateStatefulSet(set, pods); err != nil {
 			t.Errorf("Failed to update StatefulSet : %s", err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("Error getting updated StatefulSet: %v", err)
 		}
@@ -241,14 +242,14 @@ func ReplacesPods(t *testing.T, set *apps.StatefulSet, invariants invariantFunc)
 			t.Error(err)
 		}
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
 	if err := ssc.UpdateStatefulSet(set, pods); err != nil {
 		t.Errorf("Failed to update StatefulSet : %s", err)
 	}
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -265,7 +266,7 @@ func RecreatesFailedPod(t *testing.T, set *apps.StatefulSet, invariants invarian
 	if err != nil {
 		t.Error(err)
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -275,7 +276,7 @@ func RecreatesFailedPod(t *testing.T, set *apps.StatefulSet, invariants invarian
 	if err := invariants(set, spc); err != nil {
 		t.Error(err)
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -287,7 +288,7 @@ func RecreatesFailedPod(t *testing.T, set *apps.StatefulSet, invariants invarian
 	if err := invariants(set, spc); err != nil {
 		t.Error(err)
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -309,7 +310,7 @@ func CreatePodFailure(t *testing.T, set *apps.StatefulSet, invariants invariantF
 		t.Errorf("Failed to turn up StatefulSet : %s", err)
 	}
 	var err error
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -335,7 +336,7 @@ func UpdatePodFailure(t *testing.T, set *apps.StatefulSet, invariants invariantF
 		t.Fatalf("Unexpected error: %v", err)
 	}
 	var err error
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -350,7 +351,7 @@ func UpdatePodFailure(t *testing.T, set *apps.StatefulSet, invariants invariantF
 	}
 
 	// now mutate a pod's identity
-	pods, err := spc.podsLister.List(labels.Everything())
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(labels.Everything())
 	if err != nil {
 		t.Fatalf("Error listing pods: %v", err)
 	}
@@ -380,7 +381,7 @@ func UpdateSetStatusFailure(t *testing.T, set *apps.StatefulSet, invariants inva
 		t.Errorf("Failed to turn up StatefulSet : %s", err)
 	}
 	var err error
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -404,7 +405,7 @@ func PodRecreateDeleteFailure(t *testing.T, set *apps.StatefulSet, invariants in
 	if err != nil {
 		t.Error(err)
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -414,7 +415,7 @@ func PodRecreateDeleteFailure(t *testing.T, set *apps.StatefulSet, invariants in
 	if err := invariants(set, spc); err != nil {
 		t.Error(err)
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -433,7 +434,7 @@ func PodRecreateDeleteFailure(t *testing.T, set *apps.StatefulSet, invariants in
 	if err := invariants(set, spc); err != nil {
 		t.Error(err)
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -453,7 +454,7 @@ func TestStatefulSetControlScaleDownDeleteError(t *testing.T) {
 		t.Errorf("Failed to turn up StatefulSet : %s", err)
 	}
 	var err error
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -465,7 +466,7 @@ func TestStatefulSetControlScaleDownDeleteError(t *testing.T) {
 	if err := scaleDownStatefulSetControl(set, ssc, spc, invariants); err != nil {
 		t.Errorf("Failed to turn down StatefulSet %s", err)
 	}
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		t.Fatalf("Error getting updated StatefulSet: %v", err)
 	}
@@ -623,7 +624,7 @@ func TestStatefulSetControlRollingUpdate(t *testing.T) {
 		if err := scaleUpStatefulSetControl(set, ssc, spc, test.invariants); err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err := spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err := spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -635,11 +636,11 @@ func TestStatefulSetControlRollingUpdate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -800,7 +801,7 @@ func TestStatefulSetControlOnDeleteUpdate(t *testing.T) {
 		if err := scaleUpStatefulSetControl(set, ssc, spc, test.invariants); err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err := spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err := spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -813,11 +814,11 @@ func TestStatefulSetControlOnDeleteUpdate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -833,7 +834,7 @@ func TestStatefulSetControlOnDeleteUpdate(t *testing.T) {
 		if err := scaleDownStatefulSetControl(set, ssc, spc, test.invariants); err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -841,11 +842,11 @@ func TestStatefulSetControlOnDeleteUpdate(t *testing.T) {
 		if err := scaleUpStatefulSetControl(set, ssc, spc, test.invariants); err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -1069,7 +1070,7 @@ func TestStatefulSetControlRollingUpdateWithPartition(t *testing.T) {
 		if err := scaleUpStatefulSetControl(set, ssc, spc, test.invariants); err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err := spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err := spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -1081,11 +1082,11 @@ func TestStatefulSetControlRollingUpdateWithPartition(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -1216,7 +1217,7 @@ func TestStatefulSetControlLimitsHistory(t *testing.T) {
 		if err := scaleUpStatefulSetControl(set, ssc, spc, test.invariants); err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err := spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err := spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -1229,11 +1230,11 @@ func TestStatefulSetControlLimitsHistory(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %s", test.name, err)
 			}
-			pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+			pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 			if err != nil {
 				t.Fatalf("%s: %s", test.name, err)
 			}
-			set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+			set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 			if err != nil {
 				t.Fatalf("%s: %s", test.name, err)
 			}
@@ -1292,7 +1293,7 @@ func TestStatefulSetControlRollback(t *testing.T) {
 		if err := scaleUpStatefulSetControl(set, ssc, spc, test.invariants); err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err := spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err := spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -1304,11 +1305,11 @@ func TestStatefulSetControlRollback(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -1330,11 +1331,11 @@ func TestStatefulSetControlRollback(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			t.Fatalf("%s: %s", test.name, err)
 		}
@@ -1593,7 +1594,7 @@ func (spc *fakeStatefulPodControl) setPodPending(set *apps.StatefulSet, ordinal 
 	if err != nil {
 		return nil, err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -1605,7 +1606,7 @@ func (spc *fakeStatefulPodControl) setPodPending(set *apps.StatefulSet, ordinal 
 	pod.Status.Phase = v1.PodPending
 	fakeResourceVersion(pod)
 	spc.podsIndexer.Update(pod)
-	return spc.podsLister.Pods(set.Namespace).List(selector)
+	return spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 }
 
 func (spc *fakeStatefulPodControl) setPodRunning(set *apps.StatefulSet, ordinal int) ([]*v1.Pod, error) {
@@ -1613,7 +1614,7 @@ func (spc *fakeStatefulPodControl) setPodRunning(set *apps.StatefulSet, ordinal 
 	if err != nil {
 		return nil, err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -1625,7 +1626,7 @@ func (spc *fakeStatefulPodControl) setPodRunning(set *apps.StatefulSet, ordinal 
 	pod.Status.Phase = v1.PodRunning
 	fakeResourceVersion(pod)
 	spc.podsIndexer.Update(pod)
-	return spc.podsLister.Pods(set.Namespace).List(selector)
+	return spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 }
 
 func (spc *fakeStatefulPodControl) setPodReady(set *apps.StatefulSet, ordinal int) ([]*v1.Pod, error) {
@@ -1633,7 +1634,7 @@ func (spc *fakeStatefulPodControl) setPodReady(set *apps.StatefulSet, ordinal in
 	if err != nil {
 		return nil, err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -1646,7 +1647,7 @@ func (spc *fakeStatefulPodControl) setPodReady(set *apps.StatefulSet, ordinal in
 	podutil.UpdatePodCondition(&pod.Status, &condition)
 	fakeResourceVersion(pod)
 	spc.podsIndexer.Update(pod)
-	return spc.podsLister.Pods(set.Namespace).List(selector)
+	return spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 }
 
 func (spc *fakeStatefulPodControl) addTerminatingPod(set *apps.StatefulSet, ordinal int) ([]*v1.Pod, error) {
@@ -1662,7 +1663,7 @@ func (spc *fakeStatefulPodControl) addTerminatingPod(set *apps.StatefulSet, ordi
 	if err != nil {
 		return nil, err
 	}
-	return spc.podsLister.Pods(set.Namespace).List(selector)
+	return spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 }
 
 func (spc *fakeStatefulPodControl) setPodTerminated(set *apps.StatefulSet, ordinal int) ([]*v1.Pod, error) {
@@ -1675,7 +1676,7 @@ func (spc *fakeStatefulPodControl) setPodTerminated(set *apps.StatefulSet, ordin
 	if err != nil {
 		return nil, err
 	}
-	return spc.podsLister.Pods(set.Namespace).List(selector)
+	return spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 }
 
 func (spc *fakeStatefulPodControl) CreateStatefulPod(set *apps.StatefulSet, pod *v1.Pod) error {
@@ -1767,7 +1768,7 @@ func assertMonotonicInvariants(set *apps.StatefulSet, spc *fakeStatefulPodContro
 	if err != nil {
 		return err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return err
 	}
@@ -1786,7 +1787,7 @@ func assertMonotonicInvariants(set *apps.StatefulSet, spc *fakeStatefulPodContro
 		}
 
 		for _, claim := range getPersistentVolumeClaims(set, pods[ord]) {
-			claim, err := spc.claimsLister.PersistentVolumeClaims(set.Namespace).Get(claim.Name)
+			claim, err := spc.claimsLister.PersistentVolumeClaimsWithMultiTenancy(set.Namespace, set.Tenant).Get(claim.Name)
 			if err != nil {
 				return err
 			}
@@ -1807,7 +1808,7 @@ func assertBurstInvariants(set *apps.StatefulSet, spc *fakeStatefulPodControl) e
 	if err != nil {
 		return err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return err
 	}
@@ -1818,7 +1819,7 @@ func assertBurstInvariants(set *apps.StatefulSet, spc *fakeStatefulPodControl) e
 		}
 
 		for _, claim := range getPersistentVolumeClaims(set, pods[ord]) {
-			claim, err := spc.claimsLister.PersistentVolumeClaims(set.Namespace).Get(claim.Name)
+			claim, err := spc.claimsLister.PersistentVolumeClaimsWithMultiTenancy(set.Namespace, set.Tenant).Get(claim.Name)
 			if err != nil {
 				return err
 			}
@@ -1841,7 +1842,7 @@ func assertUpdateInvariants(set *apps.StatefulSet, spc *fakeStatefulPodControl) 
 	if err != nil {
 		return err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return err
 	}
@@ -1853,7 +1854,7 @@ func assertUpdateInvariants(set *apps.StatefulSet, spc *fakeStatefulPodControl) 
 		}
 
 		for _, claim := range getPersistentVolumeClaims(set, pods[ord]) {
-			claim, err := spc.claimsLister.PersistentVolumeClaims(set.Namespace).Get(claim.Name)
+			claim, err := spc.claimsLister.PersistentVolumeClaimsWithMultiTenancy(set.Namespace, set.Tenant).Get(claim.Name)
 			if err != nil {
 				return err
 			}
@@ -1905,7 +1906,7 @@ func scaleUpStatefulSetControl(set *apps.StatefulSet,
 		return err
 	}
 	for set.Status.ReadyReplicas < *set.Spec.Replicas {
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			return err
 		}
@@ -1947,7 +1948,7 @@ func scaleUpStatefulSetControl(set *apps.StatefulSet,
 		if err = ssc.UpdateStatefulSet(set, pods); err != nil {
 			return err
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			return err
 		}
@@ -1964,7 +1965,7 @@ func scaleDownStatefulSetControl(set *apps.StatefulSet, ssc StatefulSetControlIn
 		return err
 	}
 	for set.Status.Replicas > *set.Spec.Replicas {
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			return err
 		}
@@ -1973,7 +1974,7 @@ func scaleDownStatefulSetControl(set *apps.StatefulSet, ssc StatefulSetControlIn
 			if err := ssc.UpdateStatefulSet(set, pods); err != nil {
 				return err
 			}
-			set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+			set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 			if err != nil {
 				return err
 			}
@@ -1983,11 +1984,11 @@ func scaleDownStatefulSetControl(set *apps.StatefulSet, ssc StatefulSetControlIn
 			if err = ssc.UpdateStatefulSet(set, pods); err != nil {
 				return err
 			}
-			set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+			set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 			if err != nil {
 				return err
 			}
-			pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+			pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 			if err != nil {
 				return err
 			}
@@ -2000,7 +2001,7 @@ func scaleDownStatefulSetControl(set *apps.StatefulSet, ssc StatefulSetControlIn
 		if err := ssc.UpdateStatefulSet(set, pods); err != nil {
 			return err
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			return err
 		}
@@ -2056,7 +2057,7 @@ func updateStatefulSetControl(set *apps.StatefulSet,
 	if err != nil {
 		return err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return err
 	}
@@ -2064,16 +2065,16 @@ func updateStatefulSetControl(set *apps.StatefulSet,
 		return err
 	}
 
-	set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+	set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 	if err != nil {
 		return err
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return err
 	}
 	for !updateComplete(set, pods) {
-		pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			return err
 		}
@@ -2111,14 +2112,14 @@ func updateStatefulSetControl(set *apps.StatefulSet,
 		if err = ssc.UpdateStatefulSet(set, pods); err != nil {
 			return err
 		}
-		set, err = spc.setsLister.StatefulSets(set.Namespace).Get(set.Name)
+		set, err = spc.setsLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name)
 		if err != nil {
 			return err
 		}
 		if err := invariants(set, spc); err != nil {
 			return err
 		}
-		pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			return err
 		}

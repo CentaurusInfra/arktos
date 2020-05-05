@@ -36,6 +36,8 @@ import (
 	"k8s.io/kubernetes/pkg/controller/history"
 )
 
+var testTenant = "johndoe"
+
 func TestGetParentNameAndOrdinal(t *testing.T) {
 	set := newStatefulSet(3)
 	pod := newStatefulSetPod(set, 1)
@@ -340,7 +342,7 @@ func newPod() *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo-0",
 			Namespace: v1.NamespaceDefault,
-			Tenant:    v1.TenantDefault,
+			Tenant:    testTenant,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -357,7 +359,7 @@ func newPVC(name string) v1.PersistentVolumeClaim {
 	return v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
-			Tenant: v1.TenantDefault,
+			Tenant: testTenant,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			Resources: v1.ResourceRequirements{
@@ -411,7 +413,7 @@ func newStatefulSetWithVolumes(replicas int, name string, petMounts []v1.VolumeM
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: v1.NamespaceDefault,
-			Tenant:    v1.TenantDefault,
+			Tenant:    testTenant,
 			UID:       types.UID("test"),
 		},
 		Spec: apps.StatefulSetSpec{

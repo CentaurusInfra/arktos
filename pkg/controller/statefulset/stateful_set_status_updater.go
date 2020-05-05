@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,11 +54,11 @@ func (ssu *realStatefulSetStatusUpdater) UpdateStatefulSetStatus(
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		set.Status = *status
-		_, updateErr := ssu.client.AppsV1().StatefulSets(set.Namespace).UpdateStatus(set)
+		_, updateErr := ssu.client.AppsV1().StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).UpdateStatus(set)
 		if updateErr == nil {
 			return nil
 		}
-		if updated, err := ssu.setLister.StatefulSets(set.Namespace).Get(set.Name); err == nil {
+		if updated, err := ssu.setLister.StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name); err == nil {
 			// make a copy so we don't mutate the shared cache
 			set = updated.DeepCopy()
 		} else {

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -106,7 +107,7 @@ func TestStatefulSetControllerRespectsTermination(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -157,7 +158,7 @@ func TestStatefulSetControllerBlocksScaling(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -168,7 +169,7 @@ func TestStatefulSetControllerBlocksScaling(t *testing.T) {
 	spc.DeleteStatefulPod(set, pods[0])
 	ssc.enqueueStatefulSet(set)
 	fakeWorker(ssc)
-	pods, err = spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err = spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Error(err)
 	}
@@ -225,7 +226,7 @@ func TestStatefulSetControllerDeletionTimestampRace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -617,7 +618,7 @@ func scaleUpStatefulSetController(set *apps.StatefulSet, ssc *StatefulSetControl
 		return err
 	}
 	for set.Status.ReadyReplicas < *set.Spec.Replicas {
-		pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+		pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 		if err != nil {
 			return err
 		}
@@ -663,7 +664,7 @@ func scaleDownStatefulSetController(set *apps.StatefulSet, ssc *StatefulSetContr
 	if err != nil {
 		return err
 	}
-	pods, err := spc.podsLister.Pods(set.Namespace).List(selector)
+	pods, err := spc.podsLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(selector)
 	if err != nil {
 		return err
 	}
