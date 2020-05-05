@@ -222,8 +222,6 @@ function start-hollow-nodes {
 
 detect-project &> /dev/null
 
-
-
 create-kubemark-master
 
 MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
