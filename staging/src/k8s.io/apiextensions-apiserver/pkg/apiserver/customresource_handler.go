@@ -197,19 +197,28 @@ func NewCustomResourceDefinitionHandler(
 // and on the client side (by restarting the watch)
 var longRunningFilter = genericfilters.BasicLongRunningRequestCheck(sets.NewString("watch"), sets.NewString())
 
+func (r *crdHandler) getCrd(crdName string, crdTenant string) (*apiextensions.CustomResourceDefinition, error) {
+	if crdTenant == metav1.TenantNone {
+		crdTenant = metav1.TenantDefault
+	}
+
+	crd, err := r.crdLister.CustomResourceDefinitionsWithMultiTenancy(metav1.TenantDefault).Get(crdName)
+	if err == nil {
+		sharingPolicy, _ := crd.GetAnnotations()["futurewei.k8s.io/crd-sharing-policy"]
+		if strings.ToLower(sharingPolicy) == "forced" {
+			return crd, nil
+		}
+	}
+
+	crd, err = r.crdLister.CustomResourceDefinitionsWithMultiTenancy(crdTenant).Get(crdName)
+
+	return crd, err
+}
+
 func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	req, _ = apifilters.SetShortPathRequestTenant(req)
 	requestInfo, _ := apirequest.RequestInfoFrom(ctx)
-
-	crdTenant := requestInfo.Tenant
-	// SetShortPathRequestTenant does not update the tenant in a short-path request if it is a system-user request,
-	// as it may be an operation across all tenants. Also in some integration tests, the tenant in the requestInfo is not set.
-	// However, if code hits here, we know it is NOT a request across multiple tenants,
-	// so we can set the tenant here.
-	if crdTenant == metav1.TenantNone {
-		crdTenant = metav1.TenantDefault
-	}
 
 	if !requestInfo.IsResourceRequest {
 		pathParts := splitPath(requestInfo.Path)
@@ -230,7 +239,7 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	crdName := requestInfo.Resource + "." + requestInfo.APIGroup
-	crd, err := r.crdLister.CustomResourceDefinitionsWithMultiTenancy(crdTenant).Get(crdName)
+	crd, err := r.getCrd(crdName, requestInfo.Tenant)
 	if apierrors.IsNotFound(err) {
 		r.delegate.ServeHTTP(w, req)
 		return
