@@ -279,7 +279,7 @@ func (ssc *StatefulSetController) deletePod(obj interface{}) {
 func (ssc *StatefulSetController) getPodsForStatefulSet(set *apps.StatefulSet, selector labels.Selector) ([]*v1.Pod, error) {
 	// List all pods to include the pods that don't match the selector anymore but
 	// has a ControllerRef pointing to this StatefulSet.
-	pods, err := ssc.podLister.Pods(set.Namespace).List(labels.Everything())
+	pods, err := ssc.podLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func (ssc *StatefulSetController) getPodsForStatefulSet(set *apps.StatefulSet, s
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing Pods (see #42639).
 	canAdoptFunc := controller.RecheckDeletionTimestamp(func() (metav1.Object, error) {
-		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(set.Name, metav1.GetOptions{})
+		fresh, err := ssc.kubeClient.AppsV1().StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -320,7 +320,7 @@ func (ssc *StatefulSetController) adoptOrphanRevisions(set *apps.StatefulSet) er
 		}
 	}
 	if hasOrphans {
-		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(set.Name, metav1.GetOptions{})
+		fresh, err := ssc.kubeClient.AppsV1().StatefulSetsWithMultiTenancy(set.Namespace, set.Tenant).Get(set.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -412,11 +412,11 @@ func (ssc *StatefulSetController) sync(key string) error {
 		klog.V(4).Infof("Finished syncing statefulset %q (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	set, err := ssc.setLister.StatefulSets(namespace).Get(name)
+	set, err := ssc.setLister.StatefulSetsWithMultiTenancy(namespace, tenant).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("StatefulSet has been deleted %v", key)
 		return nil
