@@ -2,7 +2,7 @@
 
 This doc is to describe how to run e2e test in your local dev environment. Please note, local dev environment is not fitting for many existing e2e test cases. So if those tests failed, it's not a surprise.
 
-1 Install kubetest
+## Install kubetest
 
 E2e test is launched by kubetest. Please visit [kubetest](https://github.com/kubernetes/test-infra/blob/master/kubetest/README.md) to understand it. There is the latest info how to install kubetest if the script in this doc is not working.
 
@@ -17,16 +17,17 @@ GO111MODULE=on go install ./kubetest
 
 kubetest will be installed in $GOPATH/bin/. You may want to add $GOPATH/bin/ to $PATH for easily invoking binaries under the path.
 
-2 	kubetest has a limitation: it only runs under directory of Kubernetes.
-   	You can rename arktos directory to kubernetes.
-   Another way which may be better, is to create a soft link to arktos:
+## Run under kubernetes
+kubetest has a limitation: it only runs under directory of Kubernetes.
+You can rename arktos directory to kubernetes.
+Another way which may be better, is to create a soft link to arktos:
    
 ```bash
 cd $GOPATH/src/k8s.io
 ln -s ./arktos kubernetes
 ```
 
-3 Start local cluster
+## Start local cluster
 
 ```bash
 cd $GOPATH/src/k8s.io/kubernetes
@@ -34,16 +35,19 @@ make quick-release
 ./hack/arktos-up.sh
 ```
 
-In the end of the output, you will see some content like "cluster/kubectl.sh config set-cluster local --server=https://ip-172-30-0-88:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt"
+"make quick-release" is needed to build ginkgo for e2e test.
 
-The url https://ip-172-30-0-88:6443 is the master node's url which will be needed later. You need to change its value to what you see from output.
+In the end of the output, you will see some content like "cluster/kubectl.sh config set-cluster local --server=https://ip-172-30-0-88:6443"
+
+The local-host-ip "ip-172-30-0-88" will be needed in the followed script. You need to change its value to what you see from output.
 
 
-4 Launch another terminal window and execute test
+## Launch another terminal window and execute test
 
 ```bash
+cd $GOPATH/src/k8s.io/kubernetes
 export KUBECONFIG=/var/run/kubernetes/admin.kubeconfig
-export KUBE_MASTER_URL=https://ip-172-30-0-88:6443
+export KUBE_MASTER_URL=https://<local-host-ip>:6443
 kubetest --test --test_args="--ginkgo.focus=RollingUpdateDeployment.?should.?delete.?old.?pods.?and.?create.?new.?ones --delete-namespace=false" --provider=local
 ```
 
