@@ -24,6 +24,7 @@ import (
 	"time"
 
 	v1alpha1 "k8s.io/api/rbac/v1alpha1"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -104,8 +105,7 @@ func (c *clusterRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.Cluste
 		return
 	}
 
-	if !strings.Contains(err.Error(), "forbidden") ||
-		!strings.Contains(err.Error(), "no relationship found between node") {
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
 		return
 	}
 
@@ -128,7 +128,7 @@ func (c *clusterRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.Cluste
 			return
 		}
 
-		if err != nil && strings.Contains(err.Error(), "forbidden") &&
+		if err != nil && errors.IsForbidden(err) &&
 			strings.Contains(err.Error(), "no relationship found between node") {
 			klog.V(6).Infof("Skip error %v in list", err)
 			continue
@@ -153,7 +153,7 @@ func (c *clusterRoleBindings) Watch(opts v1.ListOptions) watch.AggregatedWatchIn
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
-		if err != nil && opts.AllowPartialWatch {
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
 			// watch error was not returned properly in error message. Skip when partial watch is allowed
 			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
 			continue
