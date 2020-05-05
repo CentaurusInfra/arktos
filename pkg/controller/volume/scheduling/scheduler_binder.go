@@ -18,6 +18,7 @@ package scheduling
 
 import (
 	"fmt"
+	"k8s.io/client-go/tools/cache"
 	"sort"
 	"time"
 
@@ -354,11 +355,27 @@ func (b *volumeBinder) BindPodVolumes(assumedPod *v1.Pod) (err error) {
 }
 
 func getPodName(pod *v1.Pod) string {
-	return pod.Namespace + "/" + pod.Name
+	return pod.Tenant + "/" + pod.Namespace + "/" + pod.Name
+}
+
+func getPVNameFromPVC(pvc *v1.PersistentVolumeClaim) string {
+	var key string
+	if pvc.Tenant == v1.TenantDefault {
+		key = pvc.Spec.VolumeName
+	} else {
+		key = fmt.Sprintf("%s/%s", pvc.Tenant, pvc.Spec.VolumeName)
+	}
+	return key
 }
 
 func getPVCName(pvc *v1.PersistentVolumeClaim) string {
-	return pvc.Namespace + "/" + pvc.Name
+	pvcName, _ := cache.MetaNamespaceKeyFunc(pvc)
+	return pvcName
+}
+
+func getPVName(pv *v1.PersistentVolume) string {
+	pvName, _ := cache.MetaNamespaceKeyFunc(pv)
+	return pvName
 }
 
 // bindAPIUpdate gets the cached bindings and PVCs to provision in podBindingCache
@@ -397,7 +414,7 @@ func (b *volumeBinder) bindAPIUpdate(podName string, bindings []*bindingInfo, cl
 		// TODO: does it hurt if we make an api call and nothing needs to be updated?
 		claimKey := claimToClaimKey(binding.pvc)
 		klog.V(2).Infof("claim %q bound to volume %q", claimKey, binding.pv.Name)
-		newPV, err := b.kubeClient.CoreV1().PersistentVolumes().Update(binding.pv)
+		newPV, err := b.kubeClient.CoreV1().PersistentVolumesWithMultiTenancy(binding.pv.Tenant).Update(binding.pv)
 		if err != nil {
 			klog.V(4).Infof("updating PersistentVolume[%s]: binding to %q failed: %v", binding.pv.Name, claimKey, err)
 			return err
@@ -411,8 +428,12 @@ func (b *volumeBinder) bindAPIUpdate(podName string, bindings []*bindingInfo, cl
 	// Update claims objects to trigger volume provisioning. Let the PV controller take care of the rest
 	// PV controller is expect to signal back by removing related annotations if actual provisioning fails
 	for i, claim = range claimsToProvision {
-		klog.V(5).Infof("bindAPIUpdate: Pod %q, PVC %q", podName, getPVCName(claim))
-		newClaim, err := b.kubeClient.CoreV1().PersistentVolumeClaims(claim.Namespace).Update(claim)
+		pvcName, err := cache.MetaNamespaceKeyFunc(claim)
+		if err != nil {
+			return err
+		}
+		klog.V(5).Infof("bindAPIUpdate: Pod %q, PVC %q", podName, pvcName)
+		newClaim, err := b.kubeClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(claim.Namespace, claim.Tenant).Update(claim)
 		if err != nil {
 			return err
 		}
@@ -468,8 +489,11 @@ func (b *volumeBinder) checkBindings(pod *v1.Pod, bindings []*bindingInfo, claim
 		if err != nil {
 			return false, fmt.Errorf("failed to check binding: %v", err)
 		}
-
-		pvc, err := b.pvcCache.GetAPIPVC(getPVCName(binding.pvc))
+		pvcName, err := cache.MetaNamespaceKeyFunc(binding.pvc)
+		if err != nil {
+			return false, fmt.Errorf("failed to get pvc name: %v", err)
+		}
+		pvc, err := b.pvcCache.GetAPIPVC(pvcName)
 		if err != nil {
 			return false, fmt.Errorf("failed to check binding: %v", err)
 		}
@@ -497,7 +521,11 @@ func (b *volumeBinder) checkBindings(pod *v1.Pod, bindings []*bindingInfo, claim
 	}
 
 	for _, claim := range claimsToProvision {
-		pvc, err := b.pvcCache.GetAPIPVC(getPVCName(claim))
+		pvcName, err := cache.MetaNamespaceKeyFunc(claim)
+		if err != nil {
+			return false, fmt.Errorf("failed to get pvc name: %v", err)
+		}
+		pvc, err := b.pvcCache.GetAPIPVC(pvcName)
 		if err != nil {
 			return false, fmt.Errorf("failed to check provisioning pvc: %v", err)
 		}
@@ -546,23 +574,27 @@ func (b *volumeBinder) checkBindings(pod *v1.Pod, bindings []*bindingInfo, claim
 	return true, nil
 }
 
-func (b *volumeBinder) isVolumeBound(namespace string, vol *v1.Volume) (bool, *v1.PersistentVolumeClaim, error) {
+func (b *volumeBinder) isVolumeBound(namespace string, tenant string, vol *v1.Volume) (bool, *v1.PersistentVolumeClaim, error) {
 	if vol.PersistentVolumeClaim == nil {
 		return true, nil, nil
 	}
 
 	pvcName := vol.PersistentVolumeClaim.ClaimName
-	return b.isPVCBound(namespace, pvcName)
+	return b.isPVCBound(tenant, namespace, pvcName)
 }
 
-func (b *volumeBinder) isPVCBound(namespace, pvcName string) (bool, *v1.PersistentVolumeClaim, error) {
+func (b *volumeBinder) isPVCBound(tenant string, namespace, pvcName string) (bool, *v1.PersistentVolumeClaim, error) {
 	claim := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 	}
-	pvcKey := getPVCName(claim)
+	pvcKey, err := cache.MetaNamespaceKeyFunc(claim)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to get pvc name: %v", err)
+	}
 	pvc, err := b.pvcCache.GetPVC(pvcKey)
 	if err != nil || pvc == nil {
 		return false, nil, fmt.Errorf("error getting PVC %q: %v", pvcKey, err)
@@ -588,7 +620,7 @@ func (b *volumeBinder) isPVCFullyBound(pvc *v1.PersistentVolumeClaim) bool {
 // arePodVolumesBound returns true if all volumes are fully bound
 func (b *volumeBinder) arePodVolumesBound(pod *v1.Pod) bool {
 	for _, vol := range pod.Spec.Volumes {
-		if isBound, _, _ := b.isVolumeBound(pod.Namespace, &vol); !isBound {
+		if isBound, _, _ := b.isVolumeBound(pod.Namespace, pod.Tenant, &vol); !isBound {
 			// Pod has at least one PVC that needs binding
 			return false
 		}
@@ -604,7 +636,7 @@ func (b *volumeBinder) getPodVolumes(pod *v1.Pod) (boundClaims []*v1.PersistentV
 	unboundClaimsDelayBinding = []*v1.PersistentVolumeClaim{}
 
 	for _, vol := range pod.Spec.Volumes {
-		volumeBound, pvc, err := b.isVolumeBound(pod.Namespace, &vol)
+		volumeBound, pvc, err := b.isVolumeBound(pod.Namespace, pod.Tenant, &vol)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -635,7 +667,8 @@ func (b *volumeBinder) getPodVolumes(pod *v1.Pod) (boundClaims []*v1.PersistentV
 func (b *volumeBinder) checkBoundClaims(claims []*v1.PersistentVolumeClaim, node *v1.Node, podName string) (bool, error) {
 	for _, pvc := range claims {
 		pvName := pvc.Spec.VolumeName
-		pv, err := b.pvCache.GetPV(pvName)
+
+		pv, err := b.pvCache.GetPV(getPVNameFromPVC(pvc))
 		if err != nil {
 			return false, err
 		}
@@ -671,7 +704,10 @@ func (b *volumeBinder) findMatchingVolumes(pod *v1.Pod, claimsToBind []*v1.Persi
 			storageClassName = *storageClass
 		}
 		allPVs := b.pvCache.ListPVs(storageClassName)
-		pvcName := getPVCName(pvc)
+		pvcName, err := cache.MetaNamespaceKeyFunc(pvc)
+		if err != nil {
+			return false, nil, nil, fmt.Errorf("failed to get pvc %v name: %v", pvc, err)
+		}
 
 		// Find a matching PV
 		pv, err := pvutil.FindMatchingVolume(pvc, allPVs, node, chosenPVs, true)
@@ -706,7 +742,10 @@ func (b *volumeBinder) checkVolumeProvisions(pod *v1.Pod, claimsToProvision []*v
 	provisionedClaims = []*v1.PersistentVolumeClaim{}
 
 	for _, claim := range claimsToProvision {
-		pvcName := getPVCName(claim)
+		pvcName, err := cache.MetaNamespaceKeyFunc(claim)
+		if err != nil {
+			return false, nil, fmt.Errorf("failed to get pvc %v name: %v", claim, err)
+		}
 		className := v1helper.GetPersistentVolumeClaimClass(claim)
 		if className == "" {
 			return false, nil, fmt.Errorf("no class for claim %q", pvcName)
@@ -741,13 +780,15 @@ func (b *volumeBinder) checkVolumeProvisions(pod *v1.Pod, claimsToProvision []*v
 
 func (b *volumeBinder) revertAssumedPVs(bindings []*bindingInfo) {
 	for _, bindingInfo := range bindings {
-		b.pvCache.Restore(bindingInfo.pv.Name)
+		pvName := getPVName(bindingInfo.pv)
+		b.pvCache.Restore(pvName)
 	}
 }
 
 func (b *volumeBinder) revertAssumedPVCs(claims []*v1.PersistentVolumeClaim) {
 	for _, claim := range claims {
-		b.pvcCache.Restore(getPVCName(claim))
+		pvcName, _:= cache.MetaNamespaceKeyFunc(claim)
+		b.pvcCache.Restore(pvcName)
 	}
 }
 
@@ -777,5 +818,6 @@ func (a byPVCSize) Less(i, j int) bool {
 }
 
 func claimToClaimKey(claim *v1.PersistentVolumeClaim) string {
-	return fmt.Sprintf("%s/%s", claim.Namespace, claim.Name)
+	key, _ := cache.MetaNamespaceKeyFunc(claim)
+	return key
 }

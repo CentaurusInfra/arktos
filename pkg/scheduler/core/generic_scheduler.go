@@ -1195,7 +1195,7 @@ func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeCla
 			continue
 		}
 		pvcName := volume.PersistentVolumeClaim.ClaimName
-		pvc, err := pvcLister.PersistentVolumeClaims(namespace).Get(pvcName)
+		pvc, err := pvcLister.PersistentVolumeClaimsWithMultiTenancy(namespace, pod.Tenant).Get(pvcName)
 		if err != nil {
 			// The error has already enough context ("persistentvolumeclaim "myclaim" not found")
 			return err

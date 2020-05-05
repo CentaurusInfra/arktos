@@ -202,7 +202,7 @@ func (resizeMap *volumeResizeMap) UpdatePVSize(pvcr *PVCWithResizeRequest, newSi
 		return fmt.Errorf("Error Creating two way merge patch for PV %q with error : %v", pvClone.Name, err)
 	}
 
-	_, updateErr := resizeMap.kubeClient.CoreV1().PersistentVolumes().Patch(pvClone.Name, commontypes.StrategicMergePatchType, patchBytes)
+	_, updateErr := resizeMap.kubeClient.CoreV1().PersistentVolumesWithMultiTenancy(oldPv.Tenant).Patch(pvClone.Name, commontypes.StrategicMergePatchType, patchBytes)
 
 	if updateErr != nil {
 		klog.V(4).Infof("Error updating pv %q with error : %v", pvClone.Name, updateErr)
