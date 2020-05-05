@@ -114,7 +114,7 @@ func identityMatches(set *apps.StatefulSet, pod *v1.Pod) bool {
 		set.Name == parent &&
 		pod.Name == getPodName(set, ordinal) &&
 		pod.Namespace == set.Namespace &&
-		pod.Tenant == pod.Tenant &&
+		pod.Tenant == set.Tenant &&
 		pod.Labels[apps.StatefulSetPodNameLabel] == pod.Name
 }
 

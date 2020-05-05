@@ -257,6 +257,7 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 	updateRevision *apps.ControllerRevision,
 	collisionCount int32,
 	pods []*v1.Pod) (*apps.StatefulSetStatus, error) {
+
 	// get the current and update revisions of the set.
 	currentSet, err := ApplyRevision(set, currentRevision)
 	if err != nil {

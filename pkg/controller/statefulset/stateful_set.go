@@ -170,7 +170,7 @@ func (ssc *StatefulSetController) addPod(obj interface{}) {
 
 	// If it has a ControllerRef, that's all that matters.
 	if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
-		set := ssc.resolveControllerRef(pod.Namespace, controllerRef)
+		set := ssc.resolveControllerRef(pod.Tenant, pod.Namespace, controllerRef)
 		if set == nil {
 			return
 		}
@@ -208,14 +208,14 @@ func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
 	controllerRefChanged := !reflect.DeepEqual(curControllerRef, oldControllerRef)
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
-		if set := ssc.resolveControllerRef(oldPod.Namespace, oldControllerRef); set != nil {
+		if set := ssc.resolveControllerRef(oldPod.Tenant, oldPod.Namespace, oldControllerRef); set != nil {
 			ssc.enqueueStatefulSet(set)
 		}
 	}
 
 	// If it has a ControllerRef, that's all that matters.
 	if curControllerRef != nil {
-		set := ssc.resolveControllerRef(curPod.Namespace, curControllerRef)
+		set := ssc.resolveControllerRef(curPod.Tenant, curPod.Namespace, curControllerRef)
 		if set == nil {
 			return
 		}
@@ -263,7 +263,7 @@ func (ssc *StatefulSetController) deletePod(obj interface{}) {
 		// No controller should care about orphans being deleted.
 		return
 	}
-	set := ssc.resolveControllerRef(pod.Namespace, controllerRef)
+	set := ssc.resolveControllerRef(pod.Tenant, pod.Namespace, controllerRef)
 	if set == nil {
 		return
 	}
@@ -354,13 +354,13 @@ func (ssc *StatefulSetController) getStatefulSetsForPod(pod *v1.Pod) []*apps.Sta
 // resolveControllerRef returns the controller referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching controller
 // of the correct Kind.
-func (ssc *StatefulSetController) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) *apps.StatefulSet {
+func (ssc *StatefulSetController) resolveControllerRef(tenant string, namespace string, controllerRef *metav1.OwnerReference) *apps.StatefulSet {
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
 	if controllerRef.Kind != controllerKind.Kind {
 		return nil
 	}
-	set, err := ssc.setLister.StatefulSets(namespace).Get(controllerRef.Name)
+	set, err := ssc.setLister.StatefulSetsWithMultiTenancy(namespace, tenant).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}

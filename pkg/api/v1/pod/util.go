@@ -270,6 +270,7 @@ func GetPodConditionFromList(conditions []v1.PodCondition, conditionType v1.PodC
 	if conditions == nil {
 		return -1, nil
 	}
+
 	for i := range conditions {
 		if conditions[i].Type == conditionType {
 			return i, &conditions[i]
