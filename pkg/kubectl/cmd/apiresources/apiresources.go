@@ -223,13 +223,14 @@ func (o *APIResourceOptions) RunAPIResources(cmd *cobra.Command, f cmdutil.Facto
 				errs = append(errs, err)
 			}
 		case "":
-			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\t%s\t%s\n",
 				r.APIResource.Name,
 				strings.Join(r.APIResource.ShortNames, ","),
 				r.APIGroup,
 				r.APIResource.Tenanted,
 				r.APIResource.Namespaced,
-				r.APIResource.Kind); err != nil {
+				r.APIResource.Kind,
+				r.APIResource.Tenant); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -242,7 +243,7 @@ func (o *APIResourceOptions) RunAPIResources(cmd *cobra.Command, f cmdutil.Facto
 }
 
 func printContextHeaders(out io.Writer, output string) error {
-	columnNames := []string{"NAME", "SHORTNAMES", "APIGROUP", "TENANTED", "NAMESPACED", "KIND"}
+	columnNames := []string{"NAME", "SHORTNAMES", "APIGROUP", "TENANTED", "NAMESPACED", "KIND", "TENANT"}
 	if output == "wide" {
 		columnNames = append(columnNames, "VERBS")
 	}
@@ -259,7 +260,7 @@ func (s sortableGroupResource) Less(i, j int) bool {
 	if ret > 0 {
 		return false
 	} else if ret == 0 {
-		return strings.Compare(s[i].APIResource.Name, s[j].APIResource.Name) < 0
+		return strings.Compare(s[i].APIResource.Name+"/"+s[i].APIResource.Tenant, s[j].APIResource.Name+"/"+s[i].APIResource.Tenant) < 0
 	}
 	return true
 }

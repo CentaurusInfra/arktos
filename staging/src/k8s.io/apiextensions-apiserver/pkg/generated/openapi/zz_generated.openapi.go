@@ -1100,8 +1100,14 @@ func schema_pkg_apis_meta_v1_APIResource(ref common.ReferenceCallback) common.Op
 							Format:      "",
 						},
 					},
+					"tenant": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 				},
-				Required: []string{"name", "singularName", "namespaced", "kind", "verbs", "tenanted"},
+				Required: []string{"name", "singularName", "namespaced", "kind", "verbs", "tenanted", "tenant"},
 			},
 		},
 	}

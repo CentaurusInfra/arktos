@@ -39,14 +39,12 @@ func WithTenantInfo(handler http.Handler) http.Handler {
 	})
 }
 
-// SetShortPathRequestTenant sets the tenant in request info based on the user tenant.
-func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
-
+func GetUserTenant(req *http.Request) (string, error) {
 	ctx := req.Context()
 
 	requestor, exists := request.UserFrom(ctx)
 	if !exists {
-		return nil, errors.New("The user info is missing.")
+		return "", errors.New("The user info is missing.")
 	}
 
 	userTenant := requestor.GetTenant()
@@ -55,11 +53,21 @@ func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
 		// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
 		userTenant = metav1.TenantSystem
 		//When https://github.com/futurewei-cloud/arktos/issues/102 is done, remove the above line
-		// and enable the following two lines.
-		//responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
-		//return
+		// and enable the following line.
+		//return "", errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())
 	}
 
+	return userTenant, nil
+}
+
+// SetShortPathRequestTenant sets the tenant in request info based on the user tenant.
+func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
+	userTenant, err := GetUserTenant(req)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := req.Context()
 	requestInfo, exists := request.RequestInfoFrom(ctx)
 	if !exists {
 		return nil, errors.New("The request info is missing.")

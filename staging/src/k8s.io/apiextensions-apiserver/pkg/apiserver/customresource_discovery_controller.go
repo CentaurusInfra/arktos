@@ -86,6 +86,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 	}
 	foundVersion := false
 	foundGroup := false
+
 	for _, crd := range crds {
 		if !apiextensions.IsCRDConditionTrue(crd, apiextensions.Established) {
 			continue
@@ -101,6 +102,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			if !v.Served {
 				continue
 			}
+
 			// If there is any Served version, that means the group should show up in discovery
 			foundGroup = true
 
@@ -141,6 +143,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			ShortNames:         crd.Status.AcceptedNames.ShortNames,
 			Categories:         crd.Status.AcceptedNames.Categories,
 			StorageVersionHash: storageVersionHash,
+			Tenant:             crd.Tenant,
 		})
 
 		subresources, err := apiextensions.GetSubresourcesForVersion(crd, version.Version)
@@ -154,6 +157,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Kind:       crd.Status.AcceptedNames.Kind,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
+				Tenant:     crd.Tenant,
 			})
 		}
 
@@ -166,6 +170,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 				Namespaced: crd.Spec.Scope == apiextensions.NamespaceScoped,
 				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
+				Tenant:     crd.Tenant,
 			})
 		}
 	}
@@ -191,7 +196,8 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 		c.versionHandler.unsetDiscovery(version)
 		return nil
 	}
-	c.versionHandler.setDiscovery(version, discovery.NewAPIVersionHandler(Codecs, version, discovery.APIResourceListerFunc(func(filter func(metav1.APIResource) bool) []metav1.APIResource {
+
+	c.versionHandler.setDiscovery(version, discovery.NewAPIVersionHandler(Codecs, version, discovery.APIResourceListerFunc(func() []metav1.APIResource {
 		return apiResourcesForDiscovery
 	})))
 

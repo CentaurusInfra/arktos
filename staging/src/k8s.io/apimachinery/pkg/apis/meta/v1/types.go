@@ -1053,6 +1053,8 @@ type APIResource struct {
 	StorageVersionHash string `json:"storageVersionHash,omitempty" protobuf:"bytes,10,opt,name=storageVersionHash"`
 	// tenanted indicates if a resource is tenanted or not.
 	Tenanted bool `json:"tenanted" protobuf:"varint,11,opt,name=tenanted"`
+
+	Tenant string `json:"tenant" protobuf:"varint,12,opt,name=tenant"`
 }
 
 // Verbs masks the value so protobuf can generate
