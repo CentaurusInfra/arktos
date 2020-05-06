@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/gofuzz"
+	fuzz "github.com/google/gofuzz"
 
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -156,7 +156,7 @@ func TestDefaulting(t *testing.T) {
 		{Group: "authentication.k8s.io", Version: "v1", Kind: "TokenRequest"}:                                   {},
 	}
 
-	f := fuzz.New().NilChance(.7).NumElements(1, 1).RandSource(rand.NewSource(1))
+	f := fuzz.New().NilChance(.5).NumElements(1, 1).RandSource(rand.NewSource(1))
 	f.Funcs(
 		func(s *runtime.RawExtension, c fuzz.Continue) {},
 		func(s *metav1.LabelSelector, c fuzz.Continue) {
