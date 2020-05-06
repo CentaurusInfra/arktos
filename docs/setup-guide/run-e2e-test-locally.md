@@ -2,7 +2,13 @@
 
 This doc is to describe how to run e2e test in your local dev environment. Please note, local dev environment is not fitting for many existing e2e test cases. So if those tests failed, it's not a surprise.
 
+## Prerequisites
+
+Arktos dev environment need to be ready. Please refer to [Set up developer environment](setup-dev-env.md).
+
 ## Install kubetest
+
+_(If you used one-stop script to setup arktos dev environment, this step is not necessary.)_
 
 E2e test is launched by kubetest. Please visit [kubetest](https://github.com/kubernetes/test-infra/blob/master/kubetest/README.md) to understand it. There is the latest info how to install kubetest if the script in this doc is not working.
 
@@ -18,6 +24,9 @@ GO111MODULE=on go install ./kubetest
 kubetest will be installed in $GOPATH/bin/. You may want to add $GOPATH/bin/ to $PATH for easily invoking binaries under the path.
 
 ## Run under kubernetes
+
+_(If you used one-stop script to setup arktos dev environment, this step is not necessary.)_
+
 kubetest has a limitation: it only runs under directory of Kubernetes.
 You can rename arktos directory to kubernetes.
 Another way which may be better, is to create a soft link to arktos:
