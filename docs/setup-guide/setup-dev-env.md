@@ -34,8 +34,7 @@ $ source ~/.profile
 ```
 $ sudo apt install build-essential
 ```
-
-### Install Docker 
+### Install Docker
 ```
 # sudo apt-get update -y -q
 
@@ -59,12 +58,12 @@ $ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 # sudo gpasswd -a $USER docker
 ```
 
-### Install crictl 
+### Install crictl
 ```
 $ cd /tmp
 $ wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.17.0/crictl-v1.17.0-linux-amd64.tar.gz
-# sudo tar zxvf crictl-v1.17.0-linux-amd64.tar.gz -C /usr/local/bin 
-$ rm -f crictl-v1.17.0-linux-amd64.tar.gz 
+# sudo tar zxvf crictl-v1.17.0-linux-amd64.tar.gz -C /usr/local/bin
+$ rm -f crictl-v1.17.0-linux-amd64.tar.gz
 
 $ touch /tmp/crictl.yaml
 $ echo runtime-endpoint: unix:///run/containerd/containerd.sock >> /tmp/crictl.yaml
