@@ -1,6 +1,6 @@
 ## Set up developer environment
 
-Note: tested on Ubuntu 16.04 x86 image 
+Note: tested on AWS EC2 Ubuntu 16.04 x86 image 
 
 ### Clone repo
 ```
