@@ -186,7 +186,7 @@ func (c *assumeCache) add(obj interface{}) {
 
 	objInfo := &objInfo{name: name, latestObj: obj, apiObj: obj}
 	c.store.Update(objInfo)
-	klog.V(10).Infof("Adding %v %v to assume cache: %+v ", c.description, name, obj)
+	klog.V(10).Infof("Added %v %v to assume cache: %+v ", c.description, name, obj)
 }
 
 func (c *assumeCache) update(oldObj interface{}, newObj interface{}) {

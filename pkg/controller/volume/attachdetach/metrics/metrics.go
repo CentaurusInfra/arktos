@@ -159,7 +159,7 @@ func (collector *attachDetachStateCollector) getVolumeInUseCount() volumeCount {
 			continue
 		}
 		for _, podVolume := range pod.Spec.Volumes {
-			volumeSpec, err := util.CreateVolumeSpec(podVolume, pod.Namespace, collector.pvcLister, collector.pvLister)
+			volumeSpec, err := util.CreateVolumeSpec(podVolume, pod.Tenant, pod.Namespace, collector.pvcLister, collector.pvLister)
 			if err != nil {
 				continue
 			}

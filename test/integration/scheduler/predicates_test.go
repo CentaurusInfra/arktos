@@ -823,7 +823,7 @@ func TestInterPodAffinity(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Test Failed: error, %v, while creating pod during test: %v", err, test.test)
 			}
-			err = wait.Poll(pollInterval, wait.ForeverTestTimeout, podScheduled(cs, createdPod.Namespace, createdPod.Name))
+			err = wait.Poll(pollInterval, wait.ForeverTestTimeout, podScheduled(cs, createdPod.Tenant, createdPod.Namespace, createdPod.Name))
 			if err != nil {
 				t.Errorf("Test Failed: error, %v, while waiting for pod during test, %v", err, test)
 			}
@@ -836,9 +836,9 @@ func TestInterPodAffinity(t *testing.T) {
 		}
 
 		if test.fits {
-			err = wait.Poll(pollInterval, wait.ForeverTestTimeout, podScheduled(cs, testPod.Namespace, testPod.Name))
+			err = wait.Poll(pollInterval, wait.ForeverTestTimeout, podScheduled(cs, testPod.Tenant, testPod.Namespace, testPod.Name))
 		} else {
-			err = wait.Poll(pollInterval, wait.ForeverTestTimeout, podUnschedulable(cs, testPod.Namespace, testPod.Name))
+			err = wait.Poll(pollInterval, wait.ForeverTestTimeout, podUnschedulable(cs, testPod.Tenant, testPod.Namespace, testPod.Name))
 		}
 		if err != nil {
 			t.Errorf("Test Failed: %v, err %v, test.fits %v", test.test, err, test.fits)
