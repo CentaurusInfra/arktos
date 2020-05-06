@@ -613,9 +613,9 @@ func podIsGettingEvicted(c clientset.Interface, podNamespace, podName string) wa
 }
 
 // podScheduled returns true if a node is assigned to the given pod.
-func podScheduled(c clientset.Interface, podNamespace, podName string) wait.ConditionFunc {
+func podScheduled(c clientset.Interface, tenant string, podNamespace, podName string) wait.ConditionFunc {
 	return func() (bool, error) {
-		pod, err := c.CoreV1().Pods(podNamespace).Get(podName, metav1.GetOptions{})
+		pod, err := c.CoreV1().PodsWithMultiTenancy(podNamespace, tenant).Get(podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -632,9 +632,9 @@ func podScheduled(c clientset.Interface, podNamespace, podName string) wait.Cond
 
 // podUnschedulable returns a condition function that returns true if the given pod
 // gets unschedulable status.
-func podUnschedulable(c clientset.Interface, podNamespace, podName string) wait.ConditionFunc {
+func podUnschedulable(c clientset.Interface, tenant string, podNamespace, podName string) wait.ConditionFunc {
 	return func() (bool, error) {
-		pod, err := c.CoreV1().Pods(podNamespace).Get(podName, metav1.GetOptions{})
+		pod, err := c.CoreV1().PodsWithMultiTenancy(podNamespace, tenant).Get(podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -670,7 +670,7 @@ func podSchedulingError(c clientset.Interface, podNamespace, podName string) wai
 // waitForPodToScheduleWithTimeout waits for a pod to get scheduled and returns
 // an error if it does not scheduled within the given timeout.
 func waitForPodToScheduleWithTimeout(cs clientset.Interface, pod *v1.Pod, timeout time.Duration) error {
-	return wait.Poll(100*time.Millisecond, timeout, podScheduled(cs, pod.Namespace, pod.Name))
+	return wait.Poll(100*time.Millisecond, timeout, podScheduled(cs, pod.Tenant, pod.Namespace, pod.Name))
 }
 
 // waitForPodToSchedule waits for a pod to get scheduled and returns an error if
@@ -682,7 +682,7 @@ func waitForPodToSchedule(cs clientset.Interface, pod *v1.Pod) error {
 // waitForPodUnscheduleWithTimeout waits for a pod to fail scheduling and returns
 // an error if it does not become unschedulable within the given timeout.
 func waitForPodUnschedulableWithTimeout(cs clientset.Interface, pod *v1.Pod, timeout time.Duration) error {
-	return wait.Poll(100*time.Millisecond, timeout, podUnschedulable(cs, pod.Namespace, pod.Name))
+	return wait.Poll(100*time.Millisecond, timeout, podUnschedulable(cs, pod.Tenant, pod.Namespace, pod.Name))
 }
 
 // waitForPodUnschedule waits for a pod to fail scheduling and returns

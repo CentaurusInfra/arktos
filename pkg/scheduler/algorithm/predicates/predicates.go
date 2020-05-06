@@ -184,7 +184,7 @@ func (c *CachedPersistentVolumeInfo) GetPersistentVolumeInfo(pvID string) (*v1.P
 // PersistentVolumeClaimInfo interface represents anything that can get a PVC object in
 // specified namespace with specified name.
 type PersistentVolumeClaimInfo interface {
-	GetPersistentVolumeClaimInfo(namespace string, name string) (*v1.PersistentVolumeClaim, error)
+	GetPersistentVolumeClaimInfo(tenant, namespace, name string) (*v1.PersistentVolumeClaim, error)
 }
 
 // CachedPersistentVolumeClaimInfo implements PersistentVolumeClaimInfo
@@ -193,8 +193,8 @@ type CachedPersistentVolumeClaimInfo struct {
 }
 
 // GetPersistentVolumeClaimInfo fetches the claim in specified namespace with specified name
-func (c *CachedPersistentVolumeClaimInfo) GetPersistentVolumeClaimInfo(namespace string, name string) (*v1.PersistentVolumeClaim, error) {
-	return c.PersistentVolumeClaims(namespace).Get(name)
+func (c *CachedPersistentVolumeClaimInfo) GetPersistentVolumeClaimInfo(tenant, namespace, name string) (*v1.PersistentVolumeClaim, error) {
+	return c.PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(name)
 }
 
 // CachedNodeInfo implements NodeInfo
@@ -417,7 +417,7 @@ func getMaxVolLimitFromEnv() int {
 	return -1
 }
 
-func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []v1.Volume, namespace string, filteredVolumes map[string]bool) error {
+func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []v1.Volume, tenant string, namespace string, filteredVolumes map[string]bool) error {
 	for i := range volumes {
 		vol := &volumes[i]
 		if id, ok := c.filter.FilterVolume(vol); ok {
@@ -428,12 +428,12 @@ func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []v1.Volume, namespace s
 				return fmt.Errorf("PersistentVolumeClaim had no name")
 			}
 
-			// Until we know real ID of the volume use namespace/pvcName as substitute
+			// Until we know real ID of the volume use tenant/namespace/pvcName as substitute
 			// with a random prefix (calculated and stored inside 'c' during initialization)
 			// to avoid conflicts with existing volume IDs.
-			pvID := fmt.Sprintf("%s-%s/%s", c.randomVolumeIDPrefix, namespace, pvcName)
+			pvID := fmt.Sprintf("%s-%s/%s/%s", c.randomVolumeIDPrefix, tenant, namespace, pvcName)
 
-			pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(namespace, pvcName)
+			pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(tenant, namespace, pvcName)
 			if err != nil || pvc == nil {
 				// if the PVC is not found, log the error and count the PV towards the PV limit
 				klog.V(4).Infof("Unable to look up PVC info for %s/%s, assuming PVC matches predicate when counting limits: %v", namespace, pvcName, err)
@@ -478,7 +478,7 @@ func (c *MaxPDVolumeCountChecker) predicate(pod *v1.Pod, meta PredicateMetadata,
 	}
 
 	newVolumes := make(map[string]bool)
-	if err := c.filterVolumes(pod.Spec.Volumes, pod.Namespace, newVolumes); err != nil {
+	if err := c.filterVolumes(pod.Spec.Volumes, pod.Tenant, pod.Namespace, newVolumes); err != nil {
 		return false, nil, err
 	}
 
@@ -490,7 +490,7 @@ func (c *MaxPDVolumeCountChecker) predicate(pod *v1.Pod, meta PredicateMetadata,
 	// count unique volumes
 	existingVolumes := make(map[string]bool)
 	for _, existingPod := range nodeInfo.Pods() {
-		if err := c.filterVolumes(existingPod.Spec.Volumes, existingPod.Namespace, existingVolumes); err != nil {
+		if err := c.filterVolumes(existingPod.Spec.Volumes, pod.Tenant, existingPod.Namespace, existingVolumes); err != nil {
 			return false, nil, err
 		}
 	}
@@ -661,7 +661,7 @@ func (c *VolumeZoneChecker) predicate(pod *v1.Pod, meta PredicateMetadata, nodeI
 			if pvcName == "" {
 				return false, nil, fmt.Errorf("PersistentVolumeClaim had no name")
 			}
-			pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(namespace, pvcName)
+			pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(pod.Tenant, namespace, pvcName)
 			if err != nil {
 				return false, nil, err
 			}

@@ -127,7 +127,12 @@ func (c *Controller) processPV(pvName string) error {
 		klog.V(4).Infof("Finished processing PV %s (%v)", pvName, time.Since(startTime))
 	}()
 
-	pv, err := c.pvLister.Get(pvName)
+	tenant, name, err := cache.SplitMetaTenantKey(pvName)
+	if err != nil {
+		return fmt.Errorf("error parsing PV key %q: %v", pvName, err)
+	}
+
+	pv, err := c.pvLister.PersistentVolumesWithMultiTenancy(tenant).Get(name)
 	if apierrs.IsNotFound(err) {
 		klog.V(4).Infof("PV %s not found, ignoring", pvName)
 		return nil
@@ -162,7 +167,7 @@ func (c *Controller) addFinalizer(pv *v1.PersistentVolume) error {
 	}
 	pvClone := pv.DeepCopy()
 	pvClone.ObjectMeta.Finalizers = append(pvClone.ObjectMeta.Finalizers, volumeutil.PVProtectionFinalizer)
-	_, err := c.client.CoreV1().PersistentVolumes().Update(pvClone)
+	_, err := c.client.CoreV1().PersistentVolumesWithMultiTenancy(pvClone.Tenant).Update(pvClone)
 	if err != nil {
 		klog.V(3).Infof("Error adding protection finalizer to PV %s: %v", pv.Name, err)
 		return err
@@ -174,7 +179,7 @@ func (c *Controller) addFinalizer(pv *v1.PersistentVolume) error {
 func (c *Controller) removeFinalizer(pv *v1.PersistentVolume) error {
 	pvClone := pv.DeepCopy()
 	pvClone.ObjectMeta.Finalizers = slice.RemoveString(pvClone.ObjectMeta.Finalizers, volumeutil.PVProtectionFinalizer, nil)
-	_, err := c.client.CoreV1().PersistentVolumes().Update(pvClone)
+	_, err := c.client.CoreV1().PersistentVolumesWithMultiTenancy(pvClone.Tenant).Update(pvClone)
 	if err != nil {
 		klog.V(3).Infof("Error removing protection finalizer from PV %s: %v", pv.Name, err)
 		return err
@@ -204,6 +209,13 @@ func (c *Controller) pvAddedUpdated(obj interface{}) {
 	klog.V(4).Infof("Got event on PV %s", pv.Name)
 
 	if protectionutil.NeedToAddFinalizer(pv, volumeutil.PVProtectionFinalizer) || protectionutil.IsDeletionCandidate(pv, volumeutil.PVProtectionFinalizer) {
-		c.queue.Add(pv.Name)
+		c.queue.Add(pvToVolumeKey(pv))
 	}
 }
+
+func pvToVolumeKey(pv *v1.PersistentVolume) string {
+	key, _ := cache.MetaNamespaceKeyFunc(pv)
+	return key
+}
+
+

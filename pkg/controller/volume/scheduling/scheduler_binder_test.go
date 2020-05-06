@@ -19,6 +19,7 @@ package scheduling
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/tools/cache"
 	"reflect"
 	"testing"
 	"time"
@@ -264,7 +265,7 @@ func (env *testEnv) initVolumes(cachedPVs []*v1.PersistentVolume, apiPVs []*v1.P
 
 func (env *testEnv) updateVolumes(t *testing.T, pvs []*v1.PersistentVolume, waitCache bool) {
 	for _, pv := range pvs {
-		if _, err := env.client.CoreV1().PersistentVolumes().Update(pv); err != nil {
+		if _, err := env.client.CoreV1().PersistentVolumesWithMultiTenancy(pv.Tenant).Update(pv); err != nil {
 			t.Fatalf("failed to update PV %q", pv.Name)
 		}
 	}
@@ -288,7 +289,7 @@ func (env *testEnv) updateVolumes(t *testing.T, pvs []*v1.PersistentVolume, wait
 
 func (env *testEnv) updateClaims(t *testing.T, pvcs []*v1.PersistentVolumeClaim, waitCache bool) {
 	for _, pvc := range pvcs {
-		if _, err := env.client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Update(pvc); err != nil {
+		if _, err := env.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pvc.Namespace, pvc.Tenant).Update(pvc); err != nil {
 			t.Fatalf("failed to update PVC %q", getPVCName(pvc))
 		}
 	}
@@ -397,17 +398,18 @@ func (env *testEnv) validateAssume(t *testing.T, name string, pod *v1.Pod, bindi
 	// Check pv cache
 	pvCache := env.internalBinder.pvCache
 	for _, b := range bindings {
-		pv, err := pvCache.GetPV(b.pv.Name)
+		pvName, _ := cache.MetaNamespaceKeyFunc(b.pv)
+		pv, err := pvCache.GetPV(pvName)
 		if err != nil {
-			t.Errorf("Test %q failed: GetPV %q returned error: %v", name, b.pv.Name, err)
+			t.Errorf("Test %q failed: GetPV %q returned error: %v", name, pvName, err)
 			continue
 		}
 		if pv.Spec.ClaimRef == nil {
-			t.Errorf("Test %q failed: PV %q ClaimRef is nil", name, b.pv.Name)
+			t.Errorf("Test %q failed: PV %q ClaimRef is nil", name, pvName)
 			continue
 		}
 		if pv.Spec.ClaimRef.Name != b.pvc.Name {
-			t.Errorf("Test %q failed: expected PV.ClaimRef.Name %q, got %q", name, b.pvc.Name, pv.Spec.ClaimRef.Name)
+			t.Errorf("Test %q failed: expected PV.ClaimRef.Name %q, got %q", name, pvName, pv.Spec.ClaimRef.Name)
 		}
 		if pv.Spec.ClaimRef.Namespace != b.pvc.Namespace {
 			t.Errorf("Test %q failed: expected PV.ClaimRef.Namespace %q, got %q", name, b.pvc.Namespace, pv.Spec.ClaimRef.Namespace)
@@ -465,9 +467,10 @@ func (env *testEnv) validateBind(
 	// Check pv cache
 	pvCache := env.internalBinder.pvCache
 	for _, pv := range expectedPVs {
-		cachedPV, err := pvCache.GetPV(pv.Name)
+		pvName := getPVName(pv)
+		cachedPV, err := pvCache.GetPV(pvName)
 		if err != nil {
-			t.Errorf("Test %q failed: GetPV %q returned error: %v", name, pv.Name, err)
+			t.Errorf("Test %q failed: GetPV %q returned error: %v", name, pvName, err)
 		}
 		// Cache may be overridden by API object with higher version, compare but ignore resource version.
 		newCachedPV := cachedPV.DeepCopy()
@@ -531,6 +534,7 @@ func makeTestPVC(name, size, node string, pvcBoundState int, pvName, resourceVer
 			UID:             types.UID("pvc-uid"),
 			ResourceVersion: resourceVersion,
 			SelfLink:        testapi.Default.SelfLink("pvc", name),
+			Tenant:          metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			Resources: v1.ResourceRequirements{
@@ -564,6 +568,7 @@ func makeBadPVC() *v1.PersistentVolumeClaim {
 			Namespace:       "testns",
 			UID:             types.UID("pvc-uid"),
 			ResourceVersion: "1",
+			Tenant:          metav1.TenantDefault,
 			// Don't include SefLink, so that GetReference will fail
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
@@ -584,6 +589,7 @@ func makeTestPV(name, node, capacity, version string, boundToPVC *v1.PersistentV
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			ResourceVersion: version,
+			Tenant:          metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			Capacity: v1.ResourceList{
@@ -608,6 +614,7 @@ func makeTestPV(name, node, capacity, version string, boundToPVC *v1.PersistentV
 			Name:            boundToPVC.Name,
 			Namespace:       boundToPVC.Namespace,
 			UID:             boundToPVC.UID,
+			Tenant:          boundToPVC.Tenant,
 		}
 		metav1.SetMetaDataAnnotation(&pv.ObjectMeta, pvutil.AnnBoundByController, "yes")
 	}
@@ -647,6 +654,7 @@ func makePod(pvcs []*v1.PersistentVolumeClaim) *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pod",
 			Namespace: "testns",
+			Tenant:    metav1.TenantDefault,
 		},
 	}
 
@@ -672,6 +680,7 @@ func makePodWithoutPVC() *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pod",
 			Namespace: "testns",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -1491,7 +1500,7 @@ func TestBindPodVolumes(t *testing.T) {
 				newPVC := pvc.DeepCopy()
 				newPVC.Spec.VolumeName = pv.Name
 				metav1.SetMetaDataAnnotation(&newPVC.ObjectMeta, pvutil.AnnBindCompleted, "yes")
-				if _, err := testEnv.client.CoreV1().PersistentVolumeClaims(newPVC.Namespace).Update(newPVC); err != nil {
+				if _, err := testEnv.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(newPVC.Namespace, newPVC.Tenant).Update(newPVC); err != nil {
 					t.Errorf("failed to update PVC %q: %v", newPVC.Name, err)
 				}
 			},
@@ -1502,20 +1511,20 @@ func TestBindPodVolumes(t *testing.T) {
 			delayFunc: func(t *testing.T, testEnv *testEnv, pod *v1.Pod, pvs []*v1.PersistentVolume, pvcs []*v1.PersistentVolumeClaim) {
 				pvc := pvcs[0]
 				// Update PVC to be fully bound to PV
-				newPVC, err := testEnv.client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+				newPVC, err := testEnv.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pvc.Namespace, pvc.Tenant).Get(pvc.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Errorf("failed to get PVC %q: %v", pvc.Name, err)
 					return
 				}
 				dynamicPV := makeTestPV("dynamic-pv", "node1", "1G", "1", newPVC, waitClass)
-				dynamicPV, err = testEnv.client.CoreV1().PersistentVolumes().Create(dynamicPV)
+				dynamicPV, err = testEnv.client.CoreV1().PersistentVolumesWithMultiTenancy(dynamicPV.Tenant).Create(dynamicPV)
 				if err != nil {
 					t.Errorf("failed to create PV %q: %v", dynamicPV.Name, err)
 					return
 				}
 				newPVC.Spec.VolumeName = dynamicPV.Name
 				metav1.SetMetaDataAnnotation(&newPVC.ObjectMeta, pvutil.AnnBindCompleted, "yes")
-				if _, err := testEnv.client.CoreV1().PersistentVolumeClaims(newPVC.Namespace).Update(newPVC); err != nil {
+				if _, err := testEnv.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(newPVC.Namespace, newPVC.Tenant).Update(newPVC); err != nil {
 					t.Errorf("failed to update PVC %q: %v", newPVC.Name, err)
 				}
 			},
@@ -1568,7 +1577,7 @@ func TestBindPodVolumes(t *testing.T) {
 			delayFunc: func(t *testing.T, testEnv *testEnv, pod *v1.Pod, pvs []*v1.PersistentVolume, pvcs []*v1.PersistentVolumeClaim) {
 				pvc := pvcs[0]
 				// Delete PVC will fail check
-				if err := testEnv.client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(pvc.Name, &metav1.DeleteOptions{}); err != nil {
+				if err := testEnv.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pvc.Namespace, pvc.Tenant).Delete(pvc.Name, &metav1.DeleteOptions{}); err != nil {
 					t.Errorf("failed to delete PVC %q: %v", pvc.Name, err)
 				}
 			},
@@ -1591,7 +1600,7 @@ func TestBindPodVolumes(t *testing.T) {
 				newPVC := pvcs[0].DeepCopy()
 				newPVC.Spec.VolumeName = pvNode2.Name
 				metav1.SetMetaDataAnnotation(&newPVC.ObjectMeta, pvutil.AnnBindCompleted, "yes")
-				if _, err := testEnv.client.CoreV1().PersistentVolumeClaims(newPVC.Namespace).Update(newPVC); err != nil {
+				if _, err := testEnv.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(newPVC.Namespace, newPVC.Tenant).Update(newPVC); err != nil {
 					t.Errorf("failed to update PVC %q: %v", newPVC.Name, err)
 				}
 			},
@@ -1628,13 +1637,13 @@ func TestBindPodVolumes(t *testing.T) {
 
 		// Before Execute
 		if scenario.apiPV != nil {
-			_, err := testEnv.client.CoreV1().PersistentVolumes().Update(scenario.apiPV)
+			_, err := testEnv.client.CoreV1().PersistentVolumesWithMultiTenancy(scenario.apiPV.Tenant).Update(scenario.apiPV)
 			if err != nil {
 				t.Fatalf("Test %q failed: failed to update PV %q", name, scenario.apiPV.Name)
 			}
 		}
 		if scenario.apiPVC != nil {
-			_, err := testEnv.client.CoreV1().PersistentVolumeClaims(scenario.apiPVC.Namespace).Update(scenario.apiPVC)
+			_, err := testEnv.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(scenario.apiPVC.Namespace, scenario.apiPVC.Tenant).Update(scenario.apiPVC)
 			if err != nil {
 				t.Fatalf("Test %q failed: failed to update PVC %q", name, getPVCName(scenario.apiPVC))
 			}
