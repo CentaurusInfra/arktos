@@ -6,13 +6,13 @@ This doc is to describe how to run e2e test in your local dev environment. Pleas
 
 Arktos dev environment need to be ready. Please refer to [Set up developer environment](setup-dev-env.md).
 
+E2e test is launched by kubetest. kubetest has limitations: it only runs under directory of kubernetes, and kubernetes must exist under folder $GOPATH/src/k8s.io/.
+
+To run e2e test successfully, You have to move arktos directory to be under $GOPATH/src/k8s.io/ and rename it to kubernetes. 
+
 ## Install kubetest
 
-_(If you used one-stop script to setup arktos dev environment, this step is not necessary.)_
-
-E2e test is launched by kubetest. Please visit [kubetest](https://github.com/kubernetes/test-infra/blob/master/kubetest/README.md) to understand it. There is the latest info how to install kubetest if the script in this doc is not working.
-
-(This doc suggests and assumes arktos is installed under $GOPATH/src/k8s.io/)
+ Please visit [kubetest](https://github.com/kubernetes/test-infra/blob/master/kubetest/README.md) to understand it. There is the latest info how to install kubetest if the script in this doc is not working.
 
 ```bash
 cd $GOPATH/src/k8s.io
@@ -22,19 +22,6 @@ GO111MODULE=on go install ./kubetest
 ```
 
 kubetest will be installed in $GOPATH/bin/. You may want to add $GOPATH/bin/ to $PATH for easily invoking binaries under the path.
-
-## Run under kubernetes
-
-_(If you used one-stop script to setup arktos dev environment, this step is not necessary.)_
-
-kubetest has a limitation: it only runs under directory of Kubernetes.
-You can rename arktos directory to kubernetes.
-Another way which may be better, is to create a soft link to arktos:
-   
-```bash
-cd $GOPATH/src/k8s.io
-ln -s ./arktos kubernetes
-```
 
 ## Start local cluster
 
@@ -46,7 +33,7 @@ make quick-release
 
 "make quick-release" is needed to build ginkgo for e2e test.
 
-In the end of the output, you will see some content like "cluster/kubectl.sh config set-cluster local --server=https://ip-172-30-0-88:6443"
+In the end of the output, you will see content like "cluster/kubectl.sh config set-cluster local --server=https://ip-172-30-0-88:6443"
 
 The local-host-ip "ip-172-30-0-88" will be needed in the followed script. You need to change its value to what you see from output.
 

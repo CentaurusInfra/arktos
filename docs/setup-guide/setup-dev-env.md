@@ -1,18 +1,4 @@
-## One stop set up developer environment
-
-To help easily building up arktos dev environment, we build a script which will install typical arktos dev needed components in one stop.
-
-The script was test on empty vm AWS EC2 and GCP, for Ubuntu 16.04 x86 image.
-
-The script will run about 15 minutes. After it restarts the vm, arktos dev environment is ready.  
-
-```bash
-$ wget https://raw.githubusercontent.com/futurewei-cloud/arktos/master/hack/arktos-dev-env-setup.sh && chmod 755 arktos-dev-env-setup.sh && ./arktos-dev-env-setup.sh
-```
-
 ## Set up developer environment
-
-Alternatively, following steps are to install necessary arktos dev needed components one by one. 
 
 Note: tested on Ubuntu 16.04 x86 image 
 
