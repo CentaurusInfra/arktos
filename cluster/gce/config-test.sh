@@ -410,10 +410,10 @@ STORAGE_BACKEND=${STORAGE_BACKEND:-}
 # Storage media type: application/json and application/vnd.kubernetes.protobuf are supported.
 STORAGE_MEDIA_TYPE=${STORAGE_MEDIA_TYPE:-}
 
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-kubenet}" # none, kubenet
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet, cni
 
 # Network Policy plugin specific settings.
-NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-none}" # calico
+NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-bridge}" # calico, flannel, bridge
 
 NON_MASQUERADE_CIDR="0.0.0.0/0"
 
