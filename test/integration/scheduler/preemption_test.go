@@ -465,7 +465,7 @@ func TestPreemptionStarvation(t *testing.T) {
 		// Make sure that all pending pods are being marked unschedulable.
 		for _, p := range pendingPods {
 			if err := wait.Poll(100*time.Millisecond, wait.ForeverTestTimeout,
-				podUnschedulable(cs, p.Namespace, p.Name)); err != nil {
+				podUnschedulable(cs, p.Tenant, p.Namespace, p.Name)); err != nil {
 				t.Errorf("Pod %v/%v didn't get marked unschedulable: %v", p.Namespace, p.Name, err)
 			}
 		}

@@ -20,14 +20,17 @@ limitations under the License.
 package v1alpha1
 
 import (
+	strings "strings"
 	"time"
 
 	v1alpha1 "k8s.io/api/node/v1alpha1"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 )
 
 // RuntimeClassesGetter has a method to return a RuntimeClassInterface.
@@ -89,6 +92,38 @@ func (c *runtimeClasses) List(opts v1.ListOptions) (result *v1alpha1.RuntimeClas
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Resource("runtimeclasses").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -107,6 +142,11 @@ func (c *runtimeClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -115,6 +155,7 @@ func (c *runtimeClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 // Create takes the representation of a runtimeClass and creates it.  Returns the server's representation of the runtimeClass, and an error, if there is any.
 func (c *runtimeClasses) Create(runtimeClass *v1alpha1.RuntimeClass) (result *v1alpha1.RuntimeClass, err error) {
 	result = &v1alpha1.RuntimeClass{}
+
 	err = c.client.Post().
 		Resource("runtimeclasses").
 		Body(runtimeClass).
@@ -127,6 +168,7 @@ func (c *runtimeClasses) Create(runtimeClass *v1alpha1.RuntimeClass) (result *v1
 // Update takes the representation of a runtimeClass and updates it. Returns the server's representation of the runtimeClass, and an error, if there is any.
 func (c *runtimeClasses) Update(runtimeClass *v1alpha1.RuntimeClass) (result *v1alpha1.RuntimeClass, err error) {
 	result = &v1alpha1.RuntimeClass{}
+
 	err = c.client.Put().
 		Resource("runtimeclasses").
 		Name(runtimeClass.Name).

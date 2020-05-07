@@ -20,14 +20,17 @@ limitations under the License.
 package v1
 
 import (
+	strings "strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 )
 
 // PersistentVolumesGetter has a method to return a PersistentVolumeInterface.
@@ -99,6 +102,39 @@ func (c *persistentVolumes) List(opts metav1.ListOptions) (result *v1.Persistent
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Tenant(c.te).
+			Resource("persistentvolumes").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -118,6 +154,11 @@ func (c *persistentVolumes) Watch(opts metav1.ListOptions) watch.AggregatedWatch
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -126,8 +167,14 @@ func (c *persistentVolumes) Watch(opts metav1.ListOptions) watch.AggregatedWatch
 // Create takes the representation of a persistentVolume and creates it.  Returns the server's representation of the persistentVolume, and an error, if there is any.
 func (c *persistentVolumes) Create(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
+
+	objectTenant := persistentVolume.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("persistentvolumes").
 		Body(persistentVolume).
 		Do().
@@ -139,8 +186,14 @@ func (c *persistentVolumes) Create(persistentVolume *v1.PersistentVolume) (resul
 // Update takes the representation of a persistentVolume and updates it. Returns the server's representation of the persistentVolume, and an error, if there is any.
 func (c *persistentVolumes) Update(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
+
+	objectTenant := persistentVolume.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("persistentvolumes").
 		Name(persistentVolume.Name).
 		Body(persistentVolume).
@@ -155,8 +208,14 @@ func (c *persistentVolumes) Update(persistentVolume *v1.PersistentVolume) (resul
 
 func (c *persistentVolumes) UpdateStatus(persistentVolume *v1.PersistentVolume) (result *v1.PersistentVolume, err error) {
 	result = &v1.PersistentVolume{}
+
+	objectTenant := persistentVolume.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("persistentvolumes").
 		Name(persistentVolume.Name).
 		SubResource("status").

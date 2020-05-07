@@ -1,4 +1,5 @@
 # Copyright 2018 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,11 +36,11 @@ _CRI_TARBALL_ARCH_SHA256 = {
     "s390x": "8b7b5749cba88ef337997ae90aa04380e3cab2c040b44b505b2fcd691c4935e4",
 }
 
-ETCD_VERSION = "3.3.10"
+ETCD_VERSION = "3.4.4"
 _ETCD_TARBALL_ARCH_SHA256 = {
-    "amd64": "1620a59150ec0a0124a65540e23891243feb2d9a628092fb1edcc23974724a45",
-    "arm64": "5ec97b0b872adce275b8130d19db314f7f2b803aeb24c4aae17a19e2d66853c4",
-    "ppc64le": "148fe96f0ec1813c5db9916199e96a913174304546bc8447a2d2f9fee4b8f6c2",
+    "amd64": "35abe668022073dfe6239aa42fd15ded9810f7ccee281af0b9d0646dd270de47",
+    "arm64": "52444314c01f7dad7d319a7b87ea7a5a7e48af96584c48639922a4b2f32329a4",
+    "ppc64le": "b7e43e08e123d0b30c7fddc8b903c0d7c8de49e28db8c87cf5cc4a24b68a715d",
 }
 
 # Dependencies needed for a Kubernetes "release", e.g. building docker images,

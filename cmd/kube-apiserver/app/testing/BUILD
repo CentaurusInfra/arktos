@@ -19,6 +19,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/registry/generic/registry:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/server/healthz:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/storage/storagebackend:go_default_library",
+        "//staging/src/k8s.io/client-go/datapartition:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
         "//vendor/github.com/spf13/pflag:go_default_library",

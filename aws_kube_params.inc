@@ -5,7 +5,7 @@ export KUBE_AWS_INSTANCE_PREFIX=arktos
 export KUBE_AWS_ZONE=us-east-2b
 export VPC_ID=vpc-0bb8ff51fd37c59b1
 export SUBNET_ID=subnet-00550372a5041fc32
-export NUM_NODES=5
+export NUM_NODES=2
 export KUBEMARK_NUM_NODES=100
 
 export KUBEMARK_MASTER_SIZE=t2.xlarge

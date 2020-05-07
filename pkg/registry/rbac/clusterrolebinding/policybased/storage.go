@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	kapihelper "k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/apis/rbac"
@@ -71,8 +72,13 @@ func (s *Storage) Create(ctx context.Context, obj runtime.Object, createValidati
 		return s.StandardStorage.Create(ctx, obj, createValidation, options)
 	}
 
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+	if !ok {
+		return nil, errors.NewBadRequest("tenant is required")
+	}
+
 	clusterRoleBinding := obj.(*rbac.ClusterRoleBinding)
-	if rbacregistry.BindingAuthorized(ctx, clusterRoleBinding.RoleRef, metav1.NamespaceNone, s.authorizer) {
+	if rbacregistry.BindingAuthorized(ctx, clusterRoleBinding.RoleRef, tenant, metav1.NamespaceNone, s.authorizer) {
 		return s.StandardStorage.Create(ctx, obj, createValidation, options)
 	}
 
@@ -104,8 +110,13 @@ func (s *Storage) Update(ctx context.Context, name string, obj rest.UpdatedObjec
 			return obj, nil
 		}
 
+		tenant, ok := genericapirequest.TenantFrom(ctx)
+		if !ok {
+			return nil, errors.NewBadRequest("tenant is required")
+		}
+
 		// if we're explicitly authorized to bind this clusterrole, return
-		if rbacregistry.BindingAuthorized(ctx, clusterRoleBinding.RoleRef, metav1.NamespaceNone, s.authorizer) {
+		if rbacregistry.BindingAuthorized(ctx, clusterRoleBinding.RoleRef, tenant, metav1.NamespaceNone, s.authorizer) {
 			return obj, nil
 		}
 

@@ -20,6 +20,7 @@ package testing
 import (
 	"fmt"
 	"io/ioutil"
+	"k8s.io/client-go/datapartition"
 	"net"
 	"os"
 	"path"
@@ -220,6 +221,9 @@ func StartTestServer(t Logger, instanceOptions *TestServerInstanceOptions, custo
 	}
 	result.ServerOpts = s
 	result.TearDownFn = tearDown
+
+	// Mock API Server Config Manager
+	datapartition.GetAPIServerConfigManagerMock()
 
 	return result, nil
 }

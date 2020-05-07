@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -129,7 +130,12 @@ func calculateCondition(in *apiextensions.CustomResourceDefinition) *apiextensio
 }
 
 func (c *ConditionController) sync(key string) error {
-	inCustomResourceDefinition, err := c.crdLister.Get(key)
+	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
+	inCustomResourceDefinition, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
@@ -165,7 +171,7 @@ func (c *ConditionController) sync(key string) error {
 		apiextensions.SetCRDCondition(crd, *cond)
 	}
 
-	_, err = c.crdClient.CustomResourceDefinitions().UpdateStatus(crd)
+	_, err = c.crdClient.CustomResourceDefinitionsWithMultiTenancy(tenant).UpdateStatus(crd)
 	if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
 		// deleted or changed in the meantime, we'll get called again
 		return nil

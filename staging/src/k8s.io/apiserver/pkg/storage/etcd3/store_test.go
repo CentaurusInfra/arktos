@@ -164,8 +164,8 @@ func TestCreateWithTTL(t *testing.T) {
 	}
 
 	aw := store.Watch(ctx, key, out.ResourceVersion, storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	testCheckEventType(t, watch.Deleted, aw)
 }
@@ -513,8 +513,8 @@ func TestGuaranteedUpdateWithTTL(t *testing.T) {
 	}
 
 	aw := store.Watch(ctx, key, out.ResourceVersion, storage.Everything)
-	if aw.GetFirstError() != nil {
-		t.Fatalf("Watch failed: %v", aw.GetFirstError())
+	if aw.GetErrors() != nil {
+		t.Fatalf("Watch failed: %v", aw.GetErrors())
 	}
 	testCheckEventType(t, watch.Deleted, aw)
 }

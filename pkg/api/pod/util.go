@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -385,6 +386,15 @@ func dropDisabledFields(
 		// does not specify any values for these fields.
 		podSpec.PreemptionPolicy = nil
 	}
+
+	if !utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) && !inPlacePodVerticalScalingInUse(oldPodSpec) {
+		// Drop ResourcesAllocated and ResizePolicy fields. Don't drop updates to Resources field because
+		// template spec Resources field is mutable for certain controllers. Let ValidatePodUpdate handle it.
+		for i := range podSpec.Containers {
+			podSpec.Containers[i].ResourcesAllocated = nil
+			podSpec.Containers[i].ResizePolicy = nil
+		}
+	}
 }
 
 // dropDisabledRunAsGroupField removes disabled fields from PodSpec related
@@ -548,6 +558,44 @@ func procMountInUse(podSpec *api.PodSpec) bool {
 		}
 	}
 	return false
+}
+
+// ContainerVisitor is called with each container spec, and returns true
+// if visiting should continue.
+type ContainerVisitor func(container *api.Container) (shouldContinue bool)
+
+// VisitContainers invokes the visitor function with a pointer to the container
+// spec of every container in the given pod spec. If visitor returns false,
+// visiting is short-circuited. VisitContainers returns true if visiting completes,
+// false if visiting was short-circuited.
+func VisitContainers(podSpec *api.PodSpec, visitor ContainerVisitor) bool {
+	for i := range podSpec.InitContainers {
+		if !visitor(&podSpec.InitContainers[i]) {
+			return false
+		}
+	}
+	for i := range podSpec.Containers {
+		if !visitor(&podSpec.Containers[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// inPlacePodVerticalScalingInUse returns true if the pod spec is non-nil and has ResizePolicy or ResourcesAllocated set
+func inPlacePodVerticalScalingInUse(podSpec *api.PodSpec) bool {
+	if podSpec == nil {
+		return false
+	}
+	var inUse bool
+	VisitContainers(podSpec, func(c *api.Container) bool {
+		if c.ResourcesAllocated != nil || len(c.ResizePolicy) > 0 {
+			inUse = true
+			return false
+		}
+		return true
+	})
+	return inUse
 }
 
 // appArmorInUse returns true if the pod has apparmor related information

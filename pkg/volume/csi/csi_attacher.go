@@ -167,7 +167,7 @@ func (c *csiAttacher) waitForVolumeAttachmentInternal(volumeHandle, attachID str
 	}
 
 	watcher := c.k8s.StorageV1().VolumeAttachments().Watch(meta.SingleObject(meta.ObjectMeta{Name: attachID, ResourceVersion: attach.ResourceVersion}))
-	err = watcher.GetFirstError()
+	err = watcher.GetErrors()
 	if err != nil {
 		return "", fmt.Errorf("watch error:%v for volume %v", err, volumeHandle)
 	}
@@ -491,7 +491,7 @@ func (c *csiAttacher) waitForVolumeDetachmentInternal(volumeHandle, attachID str
 	}
 
 	watcher := c.k8s.StorageV1().VolumeAttachments().Watch(meta.SingleObject(meta.ObjectMeta{Name: attachID, ResourceVersion: attach.ResourceVersion}))
-	err = watcher.GetFirstError()
+	err = watcher.GetErrors()
 	if err != nil {
 		return fmt.Errorf("watch error:%v for volume %v", err, volumeHandle)
 	}

@@ -25,6 +25,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/client-go/datapartition"
 	"math/rand"
 	"net/http"
 	"os"
@@ -238,6 +239,11 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		if err := StartControllers(controllerContext, saTokenControllerInitFunc, NewControllerInitializers(controllerContext.LoopMode), unsecuredMux); err != nil {
 			klog.Fatalf("error starting controllers: %v", err)
 		}
+
+		// start API Server Config Manager
+		client := rootClientBuilder.ClientOrDie("apiserver-configuration-manager")
+		datapartition.StartAPIServerConfigManager(controllerContext.InformerFactory.Core().V1().Endpoints(),
+			client, controllerContext.Stop)
 
 		controllerContext.InformerFactory.Start(controllerContext.Stop)
 		controllerContext.GenericInformerFactory.Start(controllerContext.Stop)

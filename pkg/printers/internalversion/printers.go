@@ -205,10 +205,10 @@ func AddHandlers(h printers.PrintHandler) {
 
 	dataPartitionConfigColumnDefinition := []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
-		{Name: "StartTenant", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["startTenant"]},
-		{Name: "IsStartTenantValid", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["isStartTenantValid"]},
-		{Name: "EndTenant", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["endTenant"]},
-		{Name: "IsEndTenantValid", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["isEndTenantValid"]},
+		{Name: "RangeStart", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["rangeStart"]},
+		{Name: "IsRangeStartValid", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["isRangeStartValid"]},
+		{Name: "RangeEnd", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["rangeEnd"]},
+		{Name: "IsRangeEndValid", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["isRangeEndValid"]},
 		{Name: "ServiceGroupId", Type: "string", Description: apiv1.DataPartitionConfig{}.SwaggerDoc()["serviceGroupId"]},
 	}
 
@@ -1079,10 +1079,10 @@ func printDataPartition(obj *api.DataPartitionConfig, options printers.PrintOpti
 		Object: runtime.RawExtension{Object: obj},
 	}
 	row.Cells = append(row.Cells, obj.Name)
-	row.Cells = append(row.Cells, obj.StartTenant)
-	row.Cells = append(row.Cells, obj.IsStartTenantValid)
-	row.Cells = append(row.Cells, obj.EndTenant)
-	row.Cells = append(row.Cells, obj.IsEndTenantValid)
+	row.Cells = append(row.Cells, obj.RangeStart)
+	row.Cells = append(row.Cells, obj.IsRangeStartValid)
+	row.Cells = append(row.Cells, obj.RangeEnd)
+	row.Cells = append(row.Cells, obj.IsRangeEndValid)
 	row.Cells = append(row.Cells, obj.ServiceGroupId)
 	return []metav1beta1.TableRow{row}, nil
 }

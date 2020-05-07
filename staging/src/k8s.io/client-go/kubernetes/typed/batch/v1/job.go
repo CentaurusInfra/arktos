@@ -20,14 +20,17 @@ limitations under the License.
 package v1
 
 import (
+	strings "strings"
 	"time"
 
 	v1 "k8s.io/api/batch/v1"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 )
 
 // JobsGetter has a method to return a JobInterface.
@@ -102,6 +105,39 @@ func (c *jobs) List(opts metav1.ListOptions) (result *v1.JobList, err error) {
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Tenant(c.te).Namespace(c.ns).
+			Resource("jobs").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -122,6 +158,11 @@ func (c *jobs) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -130,8 +171,14 @@ func (c *jobs) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a job and creates it.  Returns the server's representation of the job, and an error, if there is any.
 func (c *jobs) Create(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	objectTenant := job.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Body(job).
@@ -144,8 +191,14 @@ func (c *jobs) Create(job *v1.Job) (result *v1.Job, err error) {
 // Update takes the representation of a job and updates it. Returns the server's representation of the job, and an error, if there is any.
 func (c *jobs) Update(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	objectTenant := job.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(job.Name).
@@ -161,8 +214,14 @@ func (c *jobs) Update(job *v1.Job) (result *v1.Job, err error) {
 
 func (c *jobs) UpdateStatus(job *v1.Job) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	objectTenant := job.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(job.Name).

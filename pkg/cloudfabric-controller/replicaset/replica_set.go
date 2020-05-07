@@ -30,11 +30,12 @@ package replicaset
 
 import (
 	"fmt"
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"reflect"
 	"sort"
 	"sync"
 	"time"
+
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 
 	"github.com/grafov/bcast"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -116,7 +117,7 @@ type ReplicaSetController struct {
 func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) *ReplicaSetController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	return NewBaseController(rsInformer, podInformer, kubeClient, burstReplicas,
 		apps.SchemeGroupVersion.WithKind("ReplicaSet"),
@@ -204,8 +205,6 @@ func (rsc *ReplicaSetController) Run(workers int, stopCh <-chan struct{}) {
 	}
 
 	go rsc.ControllerBase.WatchInstanceUpdate(stopCh)
-
-	go wait.Until(rsc.ControllerBase.ReportHealth, time.Minute, stopCh)
 
 	klog.Infof("All work started for controller %s instance %s", rsc.GetControllerType(), rsc.GetControllerName())
 

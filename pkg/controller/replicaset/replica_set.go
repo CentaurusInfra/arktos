@@ -110,7 +110,7 @@ type ReplicaSetController struct {
 func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int) *ReplicaSetController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	return NewBaseController(rsInformer, podInformer, kubeClient, burstReplicas,
 		apps.SchemeGroupVersion.WithKind("ReplicaSet"),
 		"replicaset_controller",

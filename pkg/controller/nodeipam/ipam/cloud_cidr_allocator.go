@@ -91,7 +91,7 @@ func NewCloudCIDRAllocator(client clientset.Interface, cloud cloudprovider.Inter
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cidrAllocator"})
 	eventBroadcaster.StartLogging(klog.Infof)
 	klog.V(0).Infof("Sending events to api server.")
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	gceCloud, ok := cloud.(*gce.Cloud)
 	if !ok {

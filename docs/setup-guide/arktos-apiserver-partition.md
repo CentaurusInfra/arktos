@@ -12,22 +12,30 @@ This document serves as a manual to set up data partitioned Arktos cluster acros
 
 1. Multiple controller instances (currently we suppport replicaset controller and deployment controller) can be running in parralled in different processes (named as workload controller manager). Each of them handles a portion of the requests to controller 
 
-
 ## How to set up partitioned Arktos environment
 
 ### Prerequsite
 
 Currently we require setting up developer environment. See [dev environment setup](setup-dev-env.md)
 
-### Start ETCD and 1st Api Server, plus Kube CM, Workload Controller Manager, Kube Scheduler
+### Plan
+
+. Get hostname and ip for all hosts where you plan to launch additional api server. For example host-2 that has ip address 100.1.1.2
+. Set environment variable on host-1
+
+```
+export APISERVERS_EXTRA="host-2:100.1.1.2"
+```
+
+### Start ETCD and 1st Api Server, plus Kube CM, Workload Controller Manager, Kube Scheduler on host-1
 
 ```
 $ cd $GOPATH/src/arktos
 $ ./hack/arktos-up.sh
 ```
-Note: this will soon be changed.
+Note: Updated to automatically pick up new api servers on 4/24/2020.
 
-### Start apiserver on a worker host
+### Start another apiserver on host-2
 
 . Verify we can access etcd from the worker host
 ```
@@ -36,89 +44,36 @@ $ curl http://<1st master server ip>:2379/v2/keys
 # {"action":"get","node":{"dir":true}}
 ```
 
-. Start 2nd Api server (in a different host)
+. Copy all files from 1st API Server /var/run/kubernetes to host where you planed to run api server
+
+. Start Api server (in a different host)
 ```
 # configure api server with data partition
 $ export APISERVER_SERVICEGROUPID=2
+$ export REUSE_CERTS=true
 $ ./hack/arktos-apiserver-partition.sh start_apiserver <ETCD server ip>
 ```
 
-### Get kubeconfig from master servers to client host
-On 1st and 2nd api server hosts, run the following command and get kubeconfig file that connects to the api server
+### Start a new workload controller managers on host-2
+. Copy workload controller manager config and binary files
+. Start workload controller manager
+```
+$ workload-controller-manager --kubeconfig /var/run/kubernetes/workload-controller.kubeconfig --controllerconfig=/var/run/kubernetes/controllerconfig.json > /tmp/workload-controller-manager.log 2>&1
+```
 
-. Create a folder for kubeconfig
-```
-$ mkdir -p /home/ubuntu/kubeconfig
-```
-. Get kubeconfig files used by Kube Controller Manager, Workload Controller Manager, and Kubectl
+### Aggregated watch with kubectl
+. Create KubeConfig for all api servers that needs to be connected together
 ```
 $ cd $GOPATH/src/arktos
 $ ./hack/create-kubeconfig.sh command /home/ubuntu/kubeconfig/kubeconfig-<apiserver#>.config
 # Copy generated print out from the above command and run it in shell
 ```
-. Get kubeconfig files used by Scheduler 
+. Copy both kubeconfig files into the hosts where you want to use kubectl to access api servers
+. Watch all api servers listed in kubeconfig
 ```
-$ ./hack/create-kubeconfig.sh command /var/run/kubernetes/scheduler.kubeconfig /home/ubuntu/kubeconfig/scheduler-<apiserver#>.kubeconfig
-# Copy generated print out from the above command and run it in shell
+kubectl get deployments --kubeconfig "<kubeconfigfilepath1 kubeconfigfilepath2 ... kubeconfigfilepathn>" --all-namespaces --all-tenants -w
 ```
-. Get kubeconfig files used by Kubelet
-```
-$ ./hack/create-kubeconfig.sh command /var/run/kubernetes/kubelet.kubeconfig  /home/ubuntu/kubeconfig/kubelet-<apiserver#>.kubeconfig
-# Copy generated print out from the above command and run it in shell
-```
-. Get kubeconfig files used by KubeProxy
-```
-$ ./hack/create-kubeconfig.sh command /var/run/kubernetes/kube-proxy.kubeconfig /home/ubuntu/kubeconfig/kube-proxy-<apiserver#>.kubeconfig
-# Copy generated print out from the above command and run it in shell
-```
-
-. Copy both kubeconfig files into the hosts where you want to access api servers. Expected kubeconfig files as listed below:
-```
--rw-r--r--  1 root   root    6078 Apr  3 21:46 kubeconfig-1.config
--rw-r--r--  1 root   root   12146 Apr  3 22:01 kubeconfig-2.config
--rw-r--r--  1 root   root    6106 Apr  3 21:51 kubelet-1.kubeconfig
--rw-r--r--  1 root   root    6097 Apr  3 22:01 kubelet-2.kubeconfig
--rw-r--r--  1 root   root    6082 Apr  3 21:52 kube-proxy-1.kubeconfig
--rw-r--r--  1 root   root    6081 Apr  3 22:01 kube-proxy-2.kubeconfig
--rw-r--r--  1 root   root    6054 Apr  3 21:50 scheduler-1.kubeconfig
--rw-r--r--  1 root   root    6053 Apr  3 22:01 scheduler-2.kubeconfig
-```
-
-### Run workload controller managers with multiple apiserver configs
-Kill existing workload controller manager first. Make sure delete controller instance from etcd, otherwise, it takes 5 minutes to discover the instance is dead.
-```
-$ ./hack/arktos-apiserver-partition.sh start_workload_controller_manager /home/ubuntu/kubeconfig/kubeconfig-1.config /home/ubuntu/kubeconfig/kubeconfig-2.config
-```
-
-### Run kube controller managers with multiple apiserver configs
-```
-$ ./hack/arktos-apiserver-partition.sh start_kube_controller_manager /home/ubuntu/kubeconfig/kubeconfig-1.config /home/ubuntu/kubeconfig/kubeconfig-2.config
-```
-
-### Run the kube scheduler with multiple apiserver configs
-```
-$ ./hack/arktos-apiserver-partition.sh start_kube_scheduler /home/ubuntu/kubeconfig/scheduler-1.config /home/ubuntu/kubeconfig/scheduler-2.config
-```
-
-### Run the kubelet with multiple apiserver configs
-```
-$ ./hack/arktos-apiserver-partition.sh start_kubelet /home/ubuntu/kubeconfig/kubelet-1.config /home/ubuntu/kubeconfig/kubelet-2.config
-```
-
-### Run the kube proxy with multiple apiserver configs
-```
-$ ./hack/arktos-apiserver-partition.sh start_kube_proxy /home/ubuntu/kubeconfig/kube-proxy-1.config /home/ubuntu/kubeconfig/kube-proxy-2.config
-```
-
-### Skip building steps
-Copy existing binaries to a folder, for example, /home/ubuntu/output/
-Run the following commands to skip building
-```
-$ export BINARY_DIR=/home/ubuntu/output/
-$ bash ./hack/arktos-apiserver-partition.sh start_XXX ...
-```
-Note: make sure to add the last "/".
-
+Note: Kubectl currently does not support automatically detect api servers during watch as it is a rare case.
 
 ## Testing Senario
 
@@ -131,10 +86,10 @@ Sample data partition spec:
 apiVersion: v1
 kind: DataPartitionConfig
 serviceGroupId: "1"
-startTenant: "A"
-isStartTenantValid: false 
-endTenant: "m"
-isEndTenantValid: true
+rangeStart: "A"
+isRangeStartValid: false 
+rangeEnd: "m"
+isRangeEndValid: true
 metadata:
   name: "partition-1"
 ```

@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -118,6 +119,7 @@ func autoConvert_internalversion_ListOptions_To_v1_ListOptions(in *ListOptions, 
 		return err
 	}
 	out.Watch = in.Watch
+	out.AllowPartialWatch = in.AllowPartialWatch
 	out.AllowWatchBookmarks = in.AllowWatchBookmarks
 	out.ResourceVersion = in.ResourceVersion
 	out.TimeoutSeconds = (*int64)(unsafe.Pointer(in.TimeoutSeconds))
@@ -134,6 +136,7 @@ func autoConvert_v1_ListOptions_To_internalversion_ListOptions(in *v1.ListOption
 		return err
 	}
 	out.Watch = in.Watch
+	out.AllowPartialWatch = in.AllowPartialWatch
 	out.AllowWatchBookmarks = in.AllowWatchBookmarks
 	out.ResourceVersion = in.ResourceVersion
 	out.TimeoutSeconds = (*int64)(unsafe.Pointer(in.TimeoutSeconds))

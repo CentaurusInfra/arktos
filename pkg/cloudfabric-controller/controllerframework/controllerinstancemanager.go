@@ -76,7 +76,7 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage("job_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
@@ -210,12 +210,12 @@ func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) 
 		}
 		controllerinstance, ok = tombstone.Obj.(*v1.ControllerInstance)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a pod %#v. CIM %v", obj, cim.instanceId))
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a controller instance %#v. CIM %v", obj, cim.instanceId))
 			return
 		}
 	}
 
-	klog.V(3).Infof("Received event for delete controller instance %v. CIM %v", controllerinstance.Name, cim.instanceId)
+	klog.V(3).Infof("Received event for deleting controller instance %v. CIM %v", controllerinstance.Name, cim.instanceId)
 	cim.mux.Lock()
 	klog.V(4).Infof("mux acquired deleteControllerInstance. CIM %v", cim.instanceId)
 	defer func() {

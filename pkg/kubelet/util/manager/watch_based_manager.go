@@ -103,6 +103,7 @@ func (c *objectCache) newReflector(tenant, namespace, name string) *objectCacheI
 		c.newObject(),
 		store,
 		0,
+		true,
 	)
 	stopCh := make(chan struct{})
 	go reflector.Run(stopCh)

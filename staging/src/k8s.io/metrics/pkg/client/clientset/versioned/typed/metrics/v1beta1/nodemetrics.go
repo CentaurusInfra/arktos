@@ -20,11 +20,14 @@ limitations under the License.
 package v1beta1
 
 import (
+	strings "strings"
 	"time"
 
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 	v1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	scheme "k8s.io/metrics/pkg/client/clientset/versioned/scheme"
 )
@@ -83,6 +86,38 @@ func (c *nodeMetricses) List(opts v1.ListOptions) (result *v1beta1.NodeMetricsLi
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Resource("nodes").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -101,6 +136,11 @@ func (c *nodeMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfac
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch

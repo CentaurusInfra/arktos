@@ -109,6 +109,7 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/uuid:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/admission:go_default_library",
+        "//staging/src/k8s.io/client-go/datapartition:go_default_library",
         "//staging/src/k8s.io/client-go/discovery/cached/memory:go_default_library",
         "//staging/src/k8s.io/client-go/dynamic:go_default_library",
         "//staging/src/k8s.io/client-go/informers:go_default_library",

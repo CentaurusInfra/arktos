@@ -333,8 +333,8 @@ func isWatchCachePrimed(crd *apiextensionsv1beta1.CustomResourceDefinition, dyna
 	for _, v := range versions {
 		noxuWatch := resourceClientForVersion(crd, dynamicClientSet, ns, v).Watch(
 			metav1.ListOptions{ResourceVersion: createdInstance.GetResourceVersion()})
-		if noxuWatch.GetFirstError() != nil {
-			return false, noxuWatch.GetFirstError()
+		if noxuWatch.GetErrors() != nil {
+			return false, noxuWatch.GetErrors()
 		}
 		defer noxuWatch.Stop()
 
@@ -356,7 +356,7 @@ func isWatchCachePrimed(crd *apiextensionsv1beta1.CustomResourceDefinition, dyna
 
 // DeleteCustomResourceDefinition deletes a CRD and waits until it disappears from discovery.
 func DeleteCustomResourceDefinition(crd *apiextensionsv1beta1.CustomResourceDefinition, apiExtensionsClient clientset.Interface) error {
-	if err := apiExtensionsClient.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, nil); err != nil {
+	if err := apiExtensionsClient.ApiextensionsV1beta1().CustomResourceDefinitionsWithMultiTenancy(crd.Tenant).Delete(crd.Name, nil); err != nil {
 		return err
 	}
 	for _, version := range servedVersions(crd) {

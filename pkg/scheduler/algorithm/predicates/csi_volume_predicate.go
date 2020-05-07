@@ -70,7 +70,7 @@ func (c *CSIMaxVolumeLimitChecker) attachableLimitPredicate(
 
 	// a map of unique volume name/csi volume handle and volume limit key
 	newVolumes := make(map[string]string)
-	if err := c.filterAttachableVolumes(pod.Spec.Volumes, pod.Namespace, newVolumes); err != nil {
+	if err := c.filterAttachableVolumes(pod.Spec.Volumes, pod.Tenant, pod.Namespace, newVolumes); err != nil {
 		return false, nil, err
 	}
 
@@ -81,7 +81,7 @@ func (c *CSIMaxVolumeLimitChecker) attachableLimitPredicate(
 	// a map of unique volume name/csi volume handle and volume limit key
 	attachedVolumes := make(map[string]string)
 	for _, existingPod := range nodeInfo.Pods() {
-		if err := c.filterAttachableVolumes(existingPod.Spec.Volumes, existingPod.Namespace, attachedVolumes); err != nil {
+		if err := c.filterAttachableVolumes(existingPod.Spec.Volumes, existingPod.Tenant, existingPod.Namespace, attachedVolumes); err != nil {
 			return false, nil, err
 		}
 	}
@@ -113,8 +113,7 @@ func (c *CSIMaxVolumeLimitChecker) attachableLimitPredicate(
 	return true, nil, nil
 }
 
-func (c *CSIMaxVolumeLimitChecker) filterAttachableVolumes(
-	volumes []v1.Volume, namespace string, result map[string]string) error {
+func (c *CSIMaxVolumeLimitChecker) filterAttachableVolumes(volumes []v1.Volume, tenant string, namespace string, result map[string]string) error {
 
 	for _, vol := range volumes {
 		// CSI volumes can only be used as persistent volumes
@@ -127,10 +126,10 @@ func (c *CSIMaxVolumeLimitChecker) filterAttachableVolumes(
 			return fmt.Errorf("PersistentVolumeClaim had no name")
 		}
 
-		pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(namespace, pvcName)
+		pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(tenant, namespace, pvcName)
 
 		if err != nil {
-			klog.V(4).Infof("Unable to look up PVC info for %s/%s", namespace, pvcName)
+			klog.V(4).Infof("Unable to look up PVC info for %s/%s/%s", tenant, namespace, pvcName)
 			continue
 		}
 

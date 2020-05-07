@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -120,7 +120,7 @@ func TestCrossGroupStorage(t *testing.T) {
 					t.Fatalf("error finding resource via %s: %v", resource.Mapping.Resource.GroupVersion().String(), err)
 				}
 				watches[resource.Mapping.Resource] = clients[resource.Mapping.Resource].Watch(metav1.ListOptions{ResourceVersion: actual.GetResourceVersion()})
-				err = watches[resource.Mapping.Resource].GetFirstError()
+				err = watches[resource.Mapping.Resource].GetErrors()
 				if err != nil {
 					t.Fatalf("error opening watch via %s: %v", resource.Mapping.Resource.GroupVersion().String(), err)
 				}

@@ -55,7 +55,7 @@ function create-and-upload-hollow-node-image {
     run-cmd-with-retries "${build_cmd[@]}"
   else
     # Build+push the image through makefile.
-    build_cmd=("sudo" "-E" "make" "${KUBEMARK_IMAGE_MAKE_TARGET}")
+    build_cmd=("make" "${KUBEMARK_IMAGE_MAKE_TARGET}")
     MAKE_DIR="${KUBE_ROOT}/cluster/images/kubemark"
     KUBEMARK_BIN="$(kube::util::find-binary-for-platform kubemark linux/amd64)"
     if [[ -z "${KUBEMARK_BIN}" ]]; then
@@ -210,9 +210,10 @@ function start-hollow-nodes {
   echo -e "${color_yellow}STARTING SETUP FOR HOLLOW-NODES${color_norm}"
   create-and-upload-hollow-node-image
   if [ "${CLOUD_PROVIDER}" = "aws" ]; then
-    create-kube-hollow-node-resources-aws
-    sed -i "s/https:\/\/${MASTER_INTERNAL_IP}/https:\/\/${MASTER_PUBLIC_IP}/" $LOCAL_KUBECONFIG
-    MASTER_IP=${MASTER_PUBLIC_IP}
+    (
+      MASTER_IP=${MASTER_INTERNAL_IP}
+      create-kube-hollow-node-resources
+    )
   else
     create-kube-hollow-node-resources
   fi
@@ -220,6 +221,7 @@ function start-hollow-nodes {
 }
 
 detect-project &> /dev/null
+
 create-kubemark-master
 
 MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')

@@ -2054,6 +2054,33 @@ const (
 	PullIfNotPresent PullPolicy = "IfNotPresent"
 )
 
+// ContainerResizePolicy describes how container resources resize is handled.
+// Only one of the following container resize policies may be specified.
+// If none of the following policies is specified, it defaults to NoRestart.
+type ContainerResizePolicy string
+
+// These are the valid container resize policies
+// NoRestart policy tells Kubelet to call UpdateContainerResources CRI API to resize
+// the resources without restarting the container. This is the default behavior.
+// RestartContainer policy tells Kubelet to stop and start the container when new
+// resources are applied. This is needed for legacy applications e.g. java apps
+// using -xmxN flag which are unable to use resized memory without restarting.
+const (
+	// Resize the container in-place without restarting it.
+	NoRestart ContainerResizePolicy = "NoRestart"
+	// Resize the container in-place by restarting it after resize.
+	RestartContainer ContainerResizePolicy = "RestartContainer"
+)
+
+// ResizePolicy represents the resource resize policy for a single container.
+type ResizePolicy struct {
+	// Name of the resource type to which this resize policy applies.
+	// Supported values: cpu, memory.
+	ResourceName ResourceName `json:"resourceName" protobuf:"bytes,1,opt,name=resourceName,casttype=ResourceName"`
+	// Container resize policy applicable to the above resource.
+	Policy ContainerResizePolicy `json:"policy" protobuf:"bytes,2,opt,name=policy,casttype=ContainerResizePolicy"`
+}
+
 // PreemptionPolicy describes a policy for if/when to preempt a pod.
 type PreemptionPolicy string
 
@@ -2194,10 +2221,17 @@ type Container struct {
 	// +patchStrategy=merge
 	Env []EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
 	// Compute Resources required by this container.
-	// Cannot be updated.
-	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/ //TODO: Mutable - update doc
 	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	// Node compute resources allocated to the container.
+	// More info: TODO: update doc
+	// +optional
+	ResourcesAllocated ResourceList `json:"resourcesAllocated,omitempty" protobuf:"bytes,22,rep,name=resourcesAllocated,casttype=ResourceList,castkey=ResourceName"`
+	// Resources resize policy for the container.
+	// More info: TODO: update doc
+	// +optional
+	ResizePolicy []ResizePolicy `json:"resizePolicy,omitempty" protobuf:"bytes,23,rep,name=resizePolicy"`
 	// Pod volumes to mount into the container's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -2512,6 +2546,10 @@ type ContainerStatus struct {
 	// Container's ID in the format 'docker://<container_id>'.
 	// +optional
 	ContainerID string `json:"containerID,omitempty" protobuf:"bytes,8,opt,name=containerID"`
+	// Compute resource requests and limits applied to the container.
+	// More info: TODO: Update doc
+	// +optional
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,9,opt,name=resources"`
 }
 
 type VmState string
@@ -5959,17 +5997,17 @@ type DataPartitionConfig struct {
 
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Start tenant is inclusive
-	StartTenant string `json:"startTenant" protobuf:"bytes,2,opt,name=startTenant"`
+	// Range start is inclusive
+	RangeStart string `json:"rangeStart" protobuf:"bytes,2,opt,name=rangeStart"`
 
 	// Whether this is an open end start
-	IsStartTenantValid bool `json:"isStartTenantValid,omitempty" protobuf:"varint,3,opt,name=isStartTenantValid"`
+	IsRangeStartValid bool `json:"isRangeStartValid,omitempty" protobuf:"varint,3,opt,name=isRangeStartValid"`
 
-	// End tenant is exclusive
-	EndTenant string `json:"endTenant" protobuf:"bytes,4,opt,name=endTenant"`
+	// Range end is exclusive
+	RangeEnd string `json:"rangeEnd" protobuf:"bytes,4,opt,name=rangeEnd"`
 
 	// Whether this is an open end end
-	IsEndTenantValid bool `json:"isEndTenantValid,omitempty" protobuf:"varint,5,opt,name=isEndTenantValid"`
+	IsRangeEndValid bool `json:"isRangeEndValid,omitempty" protobuf:"varint,5,opt,name=isRangeEndValid"`
 
 	// Which service group is using this data configuration
 	ServiceGroupId string `json:"serviceGroupId" protobuf:"bytes,6,opt,name=serviceGroupId"`

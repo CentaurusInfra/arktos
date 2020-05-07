@@ -25,8 +25,9 @@ import (
 	"k8s.io/klog"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -122,7 +123,7 @@ func NewExpandController(
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	expc.recorder = eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "volume_expand"})
 	blkutil := volumepathhandler.NewBlockVolumePathHandler()
 

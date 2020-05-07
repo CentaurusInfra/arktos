@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,3 +22,7 @@ package v1beta1
 // CustomResourceDefinitionListerExpansion allows custom methods to be added to
 // CustomResourceDefinitionLister.
 type CustomResourceDefinitionListerExpansion interface{}
+
+// CustomResourceDefinitionTenantListerExpansion allows custom methods to be added to
+// CustomResourceDefinitionTenantLister.
+type CustomResourceDefinitionTenantListerExpansion interface{}

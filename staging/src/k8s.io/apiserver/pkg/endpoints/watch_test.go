@@ -665,8 +665,8 @@ func TestWatchHTTPDynamicClientErrors(t *testing.T) {
 	client := dynamic.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig)).Resource(newGroupVersion.WithResource("simple"))
 
 	ag := client.Watch(metav1.ListOptions{})
-	if ag.GetFirstError() != nil {
-		t.Fatal(ag.GetFirstError())
+	if ag.GetErrors() != nil {
+		t.Fatal(ag.GetErrors())
 	}
 
 	errStatus := errors.NewInternalError(fmt.Errorf("we got an error")).Status()

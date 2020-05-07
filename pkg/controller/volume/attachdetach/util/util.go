@@ -30,7 +30,7 @@ import (
 
 // CreateVolumeSpec creates and returns a mutatable volume.Spec object for the
 // specified volume. It dereference any PVC to get PV objects, if needed.
-func CreateVolumeSpec(podVolume v1.Volume, podNamespace string, pvcLister corelisters.PersistentVolumeClaimLister, pvLister corelisters.PersistentVolumeLister) (*volume.Spec, error) {
+func CreateVolumeSpec(podVolume v1.Volume, podTenant string, podNamespace string, pvcLister corelisters.PersistentVolumeClaimLister, pvLister corelisters.PersistentVolumeLister) (*volume.Spec, error) {
 	if pvcSource := podVolume.VolumeSource.PersistentVolumeClaim; pvcSource != nil {
 		klog.V(10).Infof(
 			"Found PVC, ClaimName: %q/%q",
@@ -38,18 +38,19 @@ func CreateVolumeSpec(podVolume v1.Volume, podNamespace string, pvcLister coreli
 			pvcSource.ClaimName)
 
 		// If podVolume is a PVC, fetch the real PV behind the claim
-		pvName, pvcUID, err := getPVCFromCacheExtractPV(
-			podNamespace, pvcSource.ClaimName, pvcLister)
+		pvName, pvcUID, err := getPVCFromCacheExtractPV(podTenant, podNamespace, pvcSource.ClaimName, pvcLister)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error processing PVC %q/%q: %v",
+				"error processing PVC %q/%q/%q: %v",
+				podTenant,
 				podNamespace,
 				pvcSource.ClaimName,
 				err)
 		}
 
 		klog.V(10).Infof(
-			"Found bound PV for PVC (ClaimName %q/%q pvcUID %v): pvName=%q",
+			"Found bound PV for PVC (ClaimName %q/%q/%q pvcUID %v): pvName=%q",
+			podTenant,
 			podNamespace,
 			pvcSource.ClaimName,
 			pvcUID,
@@ -60,16 +61,18 @@ func CreateVolumeSpec(podVolume v1.Volume, podNamespace string, pvcLister coreli
 			pvName, pvcSource.ReadOnly, pvcUID, pvLister)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error processing PVC %q/%q: %v",
+				"error processing PVC %q/%q/%q: %v",
+				podTenant,
 				podNamespace,
 				pvcSource.ClaimName,
 				err)
 		}
 
 		klog.V(10).Infof(
-			"Extracted volumeSpec (%v) from bound PV (pvName %q) and PVC (ClaimName %q/%q pvcUID %v)",
+			"Extracted volumeSpec (%v) from bound PV (pvName %q) and PVC (ClaimName %q/%q/%q pvcUID %v)",
 			volumeSpec.Name(),
 			pvName,
+			podTenant,
 			podNamespace,
 			pvcSource.ClaimName,
 			pvcUID)
@@ -90,8 +93,8 @@ func CreateVolumeSpec(podVolume v1.Volume, podNamespace string, pvcLister coreli
 // This method returns an error if a PVC object does not exist in the cache
 // with the given namespace/name.
 // This method returns an error if the PVC object's phase is not "Bound".
-func getPVCFromCacheExtractPV(namespace string, name string, pvcLister corelisters.PersistentVolumeClaimLister) (string, types.UID, error) {
-	pvc, err := pvcLister.PersistentVolumeClaims(namespace).Get(name)
+func getPVCFromCacheExtractPV(tenant string, namespace string, name string, pvcLister corelisters.PersistentVolumeClaimLister) (string, types.UID, error) {
+	pvc, err := pvcLister.PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(name)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to find PVC %s/%s in PVCInformer cache: %v", namespace, name, err)
 	}
@@ -193,7 +196,7 @@ func ProcessPodVolumes(pod *v1.Pod, addVolumes bool, desiredStateOfWorld cache.D
 
 	// Process volume spec for each volume defined in pod
 	for _, podVolume := range pod.Spec.Volumes {
-		volumeSpec, err := CreateVolumeSpec(podVolume, pod.Namespace, pvcLister, pvLister)
+		volumeSpec, err := CreateVolumeSpec(podVolume, pod.Tenant, pod.Namespace, pvcLister, pvLister)
 		if err != nil {
 			klog.V(10).Infof(
 				"Error processing volume %q for pod %q/%q: %v",

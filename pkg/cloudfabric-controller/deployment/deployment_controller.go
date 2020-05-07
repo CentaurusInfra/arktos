@@ -104,7 +104,7 @@ type DeploymentController struct {
 func NewDeploymentController(dInformer appsinformers.DeploymentInformer, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, client clientset.Interface, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) (*DeploymentController, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
 		if err := metrics.RegisterMetricAndTrackRateLimiterUsage("deployment_controller", client.CoreV1().RESTClient().GetRateLimiter()); err != nil {
@@ -171,8 +171,6 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 	}
 
 	go dc.WatchInstanceUpdate(stopCh)
-
-	go wait.Until(dc.ReportHealth, time.Minute, stopCh)
 
 	klog.Infof("All work started for controller %s instance %s", dc.GetControllerType(), dc.GetControllerName())
 

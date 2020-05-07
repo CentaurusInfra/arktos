@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -155,9 +156,24 @@ func TestEtcdSupportedVersion(t *testing.T) {
 		expectedError     error
 	}{
 		{
-			kubernetesVersion: "1.99.0",
+			kubernetesVersion: "1.x.0",
 			expectedVersion:   nil,
-			expectedError:     errors.New("Unsupported or unknown Kubernetes version(1.99.0)"),
+			expectedError:     errors.New("illegal version string \"1.x.0\""),
+		},
+		{
+			kubernetesVersion: "1.14.0",
+			expectedVersion:   version.MustParseSemantic("3.4.4-0"),
+			expectedError:     nil,
+		},
+		{
+			kubernetesVersion: "1.14.1",
+			expectedVersion:   version.MustParseSemantic("3.4.4-0"),
+			expectedError:     nil,
+		},
+		{
+			kubernetesVersion: "1.16.0",
+			expectedVersion:   nil,
+			expectedError:     errors.New("Unsupported or unknown Kubernetes version(1.16.0)"),
 		},
 		{
 			kubernetesVersion: MinimumControlPlaneVersion.WithPatch(1).String(),

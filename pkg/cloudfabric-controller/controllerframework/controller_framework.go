@@ -17,6 +17,7 @@ limitations under the License.
 package controllerframework
 
 import (
+	generalErrors "errors"
 	"fmt"
 	"math"
 	"strings"
@@ -57,6 +58,14 @@ type controllerInstanceLocal struct {
 	isLocked      bool
 }
 
+func (c *controllerInstanceLocal) Size() int64 {
+	size := c.controllerKey - c.lowerboundKey
+	if c.lowerboundKey == 0 && c.controllerKey != math.MaxInt64 {
+		size++
+	}
+	return size
+}
+
 type ControllerBase struct {
 	controllerType            string
 	controllerName            string
@@ -87,7 +96,7 @@ var (
 func NewControllerBase(controllerType string, client clientset.Interface, cimUpdateCh *bcast.Member, informerResetChGrp *bcast.Group) (*ControllerBase, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
 		if err := metrics.RegisterMetricAndTrackRateLimiterUsage(controllerType+"_controller", client.CoreV1().RESTClient().GetRateLimiter()); err != nil {
@@ -117,7 +126,12 @@ func NewControllerBase(controllerType string, client clientset.Interface, cimUpd
 		InformerResetChGrp:             informerResetChGrp,
 	}
 
-	controller.controllerKey = controller.generateKey()
+	controllerKey, err := controller.generateKey()
+	if err != nil {
+		klog.Errorf("Error generating controllerKey for %s. Error %v", controllerType, err)
+		return nil, err
+	}
+	controller.controllerKey = controllerKey
 	controller.controllerName = generateControllerName()
 	controller.unlockControllerInstanceHandler = controller.unlockControllerInstance
 
@@ -279,39 +293,43 @@ func (c *ControllerBase) IsDoneProcessingCurrentWorkloads() (bool, int) {
 	return true, 0
 }
 
-func (c *ControllerBase) generateKey() int64 {
+// Generate controllerKey for new controller instance. It is to find and split a scope for new controller instance.
+// Scope Splitting Principles:
+// 1. We always find existing scope with biggest size, and split it.
+// 2. If there are more than one scope at the biggest size, we chose the one with most ongoing work load, and split it.
+// 3. If both existing scope size and ongoing work are even, we choose first scope and split it.
+func (c *ControllerBase) generateKey() (int64, error) {
 	if len(c.sortedControllerInstancesLocal) == 0 {
-		return math.MaxInt64
+		return math.MaxInt64, nil
 	}
 
-	min, max := c.getMaxInterval()
-	return (max - min) / 2
-}
+	candidate := c.sortedControllerInstancesLocal[0]
+	for i := 1; i < len(c.sortedControllerInstancesLocal); i++ {
+		instance := c.sortedControllerInstancesLocal[i]
 
-func (c *ControllerBase) getMaxInterval() (int64, int64) {
-	min := int64(0)
-	max := int64(math.MaxInt64)
-
-	maxWorkloadNum := (int32)(-1)
-	intervalFound := false
-
-	for i := 0; i < len(c.sortedControllerInstancesLocal); i++ {
-		item := c.sortedControllerInstancesLocal[i]
-
-		if item.workloadNum > maxWorkloadNum {
-			maxWorkloadNum = item.workloadNum
-			max = item.controllerKey
-			min = item.lowerboundKey
-			intervalFound = true
+		// There are two conditions to be met then change candidate:
+		// 1. if the space is bigger
+		// 2. or the space size is same, but with more work load
+		// When splitting odd size space, the sub spaces has 1 difference in size. So ignore difference of 1 when comparing two spaces' size.
+		// Which is said, we consider it is bigger when it's bigger more than 1, and we consider both are equal even they have diff 1.
+		if instance.Size() > candidate.Size()+1 ||
+			(math.Abs(float64(instance.Size()-candidate.Size())) <= 1 && instance.workloadNum > candidate.workloadNum) {
+			candidate = instance
 		}
 	}
 
-	if !intervalFound && len(c.sortedControllerInstancesLocal) > 0 {
-		min = c.sortedControllerInstancesLocal[0].lowerboundKey
-		max = c.sortedControllerInstancesLocal[0].controllerKey
+	spaceToSplit := candidate.controllerKey - candidate.lowerboundKey
+
+	// Add one to space to guarantee the first half will have more than second half when space to split is not even.
+	// But don't apply if the scope starting from 0 because it already got extra space from number 0.
+	if spaceToSplit != math.MaxInt64 && candidate.lowerboundKey != 0 {
+		spaceToSplit++
 	}
 
-	return min, max
+	if spaceToSplit <= 1 {
+		return -1, generalErrors.New("no enough space to split for new controller manager instance")
+	}
+	return candidate.lowerboundKey + spaceToSplit/2, nil
 }
 
 func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMap map[string]v1.ControllerInstance) {

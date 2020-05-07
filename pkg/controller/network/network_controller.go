@@ -28,13 +28,17 @@ package network
 
 import (
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsbinding"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -46,8 +50,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/controller"
-	"os"
-	"time"
 
 	"k8s.io/klog"
 )
@@ -71,7 +73,7 @@ type NetworkController struct {
 func NewNetworkController(podInformer coreinformers.PodInformer, kubeClient clientset.Interface) *NetworkController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	nc := &NetworkController{
 		kubeClient:      kubeClient,

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1327,7 +1328,7 @@ func (c *Cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 	c.kubeClient = clientBuilder.ClientOrDie("aws-cloud-provider")
 	c.eventBroadcaster = record.NewBroadcaster()
 	c.eventBroadcaster.StartLogging(klog.Infof)
-	c.eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: c.kubeClient.CoreV1().Events("")})
+	c.eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: c.kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	c.eventRecorder = c.eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "aws-cloud-provider"})
 }
 

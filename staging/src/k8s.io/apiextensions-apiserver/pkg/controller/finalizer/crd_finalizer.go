@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -93,7 +94,12 @@ func NewCRDFinalizer(
 }
 
 func (c *CRDFinalizer) sync(key string) error {
-	cachedCRD, err := c.crdLister.Get(key)
+	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
+	cachedCRD, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
@@ -115,7 +121,7 @@ func (c *CRDFinalizer) sync(key string) error {
 		Reason:  "InstanceDeletionInProgress",
 		Message: "CustomResource deletion is in progress",
 	})
-	crd, err = c.crdClient.CustomResourceDefinitions().UpdateStatus(crd)
+	crd, err = c.crdClient.CustomResourceDefinitionsWithMultiTenancy(tenant).UpdateStatus(crd)
 	if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
 		// deleted or changed in the meantime, we'll get called again
 		return nil
@@ -130,7 +136,7 @@ func (c *CRDFinalizer) sync(key string) error {
 		cond, deleteErr := c.deleteInstances(crd)
 		apiextensions.SetCRDCondition(crd, cond)
 		if deleteErr != nil {
-			crd, err = c.crdClient.CustomResourceDefinitions().UpdateStatus(crd)
+			crd, err = c.crdClient.CustomResourceDefinitionsWithMultiTenancy(tenant).UpdateStatus(crd)
 			if err != nil {
 				utilruntime.HandleError(err)
 			}
@@ -146,7 +152,7 @@ func (c *CRDFinalizer) sync(key string) error {
 	}
 
 	apiextensions.CRDRemoveFinalizer(crd, apiextensions.CustomResourceCleanupFinalizer)
-	crd, err = c.crdClient.CustomResourceDefinitions().UpdateStatus(crd)
+	crd, err = c.crdClient.CustomResourceDefinitionsWithMultiTenancy(tenant).UpdateStatus(crd)
 	if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
 		// deleted or changed in the meantime, we'll get called again
 		return nil
@@ -157,7 +163,7 @@ func (c *CRDFinalizer) sync(key string) error {
 
 	// and now issue another delete, which should clean it all up if no finalizers remain or no-op if they do
 	// TODO(liggitt): just return in 1.16, once n-1 apiservers automatically delete when finalizers are all removed
-	err = c.crdClient.CustomResourceDefinitions().Delete(crd.Name, nil)
+	err = c.crdClient.CustomResourceDefinitionsWithMultiTenancy(tenant).Delete(crd.Name, nil)
 	if apierrors.IsNotFound(err) {
 		return nil
 	}

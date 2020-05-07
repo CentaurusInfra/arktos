@@ -20,14 +20,17 @@ limitations under the License.
 package v1alpha1
 
 import (
+	strings "strings"
 	"time"
 
 	v1alpha1 "k8s.io/api/rbac/v1alpha1"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 )
 
 // ClusterRolesGetter has a method to return a ClusterRoleInterface.
@@ -98,6 +101,39 @@ func (c *clusterRoles) List(opts v1.ListOptions) (result *v1alpha1.ClusterRoleLi
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Tenant(c.te).
+			Resource("clusterroles").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -117,6 +153,11 @@ func (c *clusterRoles) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -125,8 +166,14 @@ func (c *clusterRoles) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 // Create takes the representation of a clusterRole and creates it.  Returns the server's representation of the clusterRole, and an error, if there is any.
 func (c *clusterRoles) Create(clusterRole *v1alpha1.ClusterRole) (result *v1alpha1.ClusterRole, err error) {
 	result = &v1alpha1.ClusterRole{}
+
+	objectTenant := clusterRole.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("clusterroles").
 		Body(clusterRole).
 		Do().
@@ -138,8 +185,14 @@ func (c *clusterRoles) Create(clusterRole *v1alpha1.ClusterRole) (result *v1alph
 // Update takes the representation of a clusterRole and updates it. Returns the server's representation of the clusterRole, and an error, if there is any.
 func (c *clusterRoles) Update(clusterRole *v1alpha1.ClusterRole) (result *v1alpha1.ClusterRole, err error) {
 	result = &v1alpha1.ClusterRole{}
+
+	objectTenant := clusterRole.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("clusterroles").
 		Name(clusterRole.Name).
 		Body(clusterRole).

@@ -64,6 +64,12 @@ if [[ "${KUBERNETES_PROVIDER:-}" == "gce" ]]; then
       --filter="(name ~ '${NODE_INSTANCE_PREFIX}.*' OR name ~ '${WINDOWS_NODE_INSTANCE_PREFIX}.*') AND zone:($(gcloud -q compute zones list --project="${PROJECT}" --filter=region=${REGION} --format=csv[no-heading]\(name\) | tr "\n" "," | sed  "s/,$//"))" | wc -l)
     echo "Computing number of nodes, NODE_INSTANCE_PREFIX=${NODE_INSTANCE_PREFIX}, REGION=${REGION}, EXPECTED_NUM_NODES=${EXPECTED_NUM_NODES}"
   fi
+elif [[ "${KUBERNETES_PROVIDER:-}" == "aws" ]]; then
+  if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
+    EXPECTED_NUM_NODES="${NUM_NODES}"
+  else
+    EXPECTED_NUM_NODES="0"
+  fi
 else
   EXPECTED_NUM_NODES="${NUM_NODES}"
 fi

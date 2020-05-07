@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,35 +53,31 @@ const (
 	testKubeletHostname = "127.0.0.1"
 )
 
-
-
 func TestRuntimeServiceCondition(t *testing.T) {
 	zeroTime := time.Time{}
 	checkTime := time.Date(2019, 10, 24, 0, 0, 0, 0, time.UTC)
 	recordEventFunc := func(eventType, event string) {}
 	nowFunc := func() time.Time { return checkTime }
 
-	cases := []struct{
-		desc string
-		node *v1.Node
+	cases := []struct {
+		desc                    string
+		node                    *v1.Node
 		runtimeServiceStateFunc func() (map[string]map[string]bool, error)
-		expectedConditions []v1.NodeCondition
+		expectedConditions      []v1.NodeCondition
 	}{
 		{
 			desc: "fresh empty node status should get unknown conditions",
 			node: &v1.Node{
 				Status: v1.NodeStatus{
-					Conditions: []v1.NodeCondition{
-					},
+					Conditions: []v1.NodeCondition{},
 				},
 			},
 			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
-				return map[string] map[string]bool{
-				}, nil
+				return map[string]map[string]bool{}, nil
 			},
 			expectedConditions: []v1.NodeCondition{
-				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionUnknown, "", "",  checkTime, checkTime),
-				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionUnknown, "", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionUnknown, "", "", checkTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionUnknown, "", "", checkTime, checkTime),
 			},
 		},
 		{
@@ -94,14 +91,14 @@ func TestRuntimeServiceCondition(t *testing.T) {
 				},
 			},
 			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
-				return map[string] map[string]bool{
-					"container": { "fake-container": true },
-					"vm": {"fake-vm": false},
+				return map[string]map[string]bool{
+					"container": {"fake-container": true},
+					"vm":        {"fake-vm": false},
 				}, nil
 			},
 			expectedConditions: []v1.NodeCondition{
-				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "",  zeroTime, checkTime),
-				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "",  zeroTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionFalse, "test runtime turned off", "", zeroTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionTrue, "test runtime turned on", "", zeroTime, checkTime),
 			},
 		},
 		{
@@ -115,14 +112,14 @@ func TestRuntimeServiceCondition(t *testing.T) {
 				},
 			},
 			runtimeServiceStateFunc: func() (map[string]map[string]bool, error) {
-				return map[string] map[string]bool{
-					"container": { "fake-container": false },
-					"vm": {"fake-vm": true},
+				return map[string]map[string]bool{
+					"container": {"fake-container": false},
+					"vm":        {"fake-vm": true},
 				}, nil
 			},
 			expectedConditions: []v1.NodeCondition{
-				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionFalse, "None of container runtime is ready", "",  checkTime, checkTime),
-				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionTrue, "At least one vm runtime is ready", "",  checkTime, checkTime),
+				makeRuntimeServiceCondition("ContainerRuntimeReady", v1.ConditionFalse, "None of container runtime is ready", "", checkTime, checkTime),
+				makeRuntimeServiceCondition("VmRuntimeReady", v1.ConditionTrue, "At least one vm runtime is ready", "", checkTime, checkTime),
 			},
 		},
 	}
@@ -1805,7 +1802,7 @@ func makeDiskPressureCondition(pressure bool, transition, heartbeat time.Time) *
 	}
 }
 
-func makeRuntimeServiceCondition(typ v1.NodeConditionType, status v1.ConditionStatus, reason, message string,  transition, heartbeat time.Time) v1.NodeCondition {
+func makeRuntimeServiceCondition(typ v1.NodeConditionType, status v1.ConditionStatus, reason, message string, transition, heartbeat time.Time) v1.NodeCondition {
 	return v1.NodeCondition{
 		Type:               typ,
 		Status:             status,

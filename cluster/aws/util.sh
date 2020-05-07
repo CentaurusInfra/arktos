@@ -121,7 +121,6 @@ VPC_CIDR=${VPC_CIDR_BASE}.0.0/16
 SUBNET_CIDR=${VPC_CIDR_BASE}.0.0/24
 
 if [[ -n "${KUBE_SUBNET_CIDR:-}" ]]; then
-  echo "Using subnet CIDR override: ${KUBE_SUBNET_CIDR}"
   SUBNET_CIDR=${KUBE_SUBNET_CIDR}
 fi
 if [[ -z "${MASTER_INTERNAL_IP:-}" ]]; then
@@ -242,17 +241,6 @@ function detect-master() {
   echo "Using master: $KUBE_MASTER (external IP: $KUBE_MASTER_IP)"
 }
 
-# Reads kube-env metadata from master
-#
-# Assumed vars:
-#   KUBE_MASTER_IP
-#   AWS_SSH_KEY
-#   SSH_USER
-function get-master-env() {
-  ssh -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${KUBE_MASTER_IP} sudo cat /etc/kubernetes/kube_env.yaml
-}
-
-
 function query-running-minions () {
   local query=$1
   $AWS_CMD describe-instances \
@@ -303,9 +291,13 @@ function detect-nodes () {
     KUBE_NODE_IP_ADDRESSES+=("${minion_ip}")
   done
 
-  if [[ -z "$KUBE_NODE_IP_ADDRESSES" ]]; then
-    echo "Could not detect Kubernetes minion nodes.  Make sure you've launched a cluster with 'kube-up.sh'"
-    exit 1
+  if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
+    if [[ -z "$KUBE_NODE_IP_ADDRESSES" ]]; then
+      echo "Could not detect Kubernetes minion nodes.  Make sure you've launched a cluster with 'kube-up.sh'"
+      exit 1
+    fi
+  else
+    echo "Nodes not created because KUBE_CREATE_NODES is set to false"
   fi
 }
 
@@ -572,8 +564,14 @@ function ensure-master-ip {
 # Sets DHCP_OPTION_SET_ID
 function create-dhcp-option-set () {
   if [[ -z ${DHCP_OPTION_SET_ID-} ]]; then
-    DHCP_OPTION_SET_ID=$($AWS_CMD describe-dhcp-options --filters Name=tag-key,Values=KubernetesCluster --query DhcpOptions[0].DhcpOptionsId)
-    echo "Using pre-existing, user-specified DHCP options $DHCP_OPTION_SET_ID"
+    local k8s_dhcp_opt_set=$($AWS_CMD describe-dhcp-options --filters Name=tag-key,Values=KubernetesCluster --query DhcpOptions[0].DhcpOptionsId)
+    if [[ ${k8s_dhcp_opt_set} == "None" ]]; then
+      echo "No KubernetesCluster DHCP options found"
+      DHCP_OPTION_SET_ID=""
+    else
+      DHCP_OPTION_SET_ID=${k8s_dhcp_opt_set}
+      echo "Using pre-existing KubernetesCluster DHCP options $DHCP_OPTION_SET_ID"
+    fi
   else
     echo "Using pre-existing, user-specified DHCP options $DHCP_OPTION_SET_ID"
   fi
@@ -605,7 +603,6 @@ function verify-prereqs {
     exit 1
   fi
 }
-
 
 # Create a temp dir that'll be deleted at the end of this bash session.
 #
@@ -822,8 +819,6 @@ function delete_security_group {
   exit 1
 }
 
-
-
 # Deletes master and minion IAM roles and instance profiles
 # usage: delete-iam-instance-profiles
 function delete-iam-profiles {
@@ -921,8 +916,23 @@ function subnet-setup {
 function start-flannel-ds {
   pushd $KUBE_TEMP
   wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-  ${KUBE_ROOT}/cluster/kubectl.sh create -f $KUBE_TEMP/kube-flannel.yml
+  ${KUBE_ROOT}/cluster/kubectl.sh --kubeconfig=${LOCAL_KUBECONFIG} create -f $KUBE_TEMP/kube-flannel.yml
   popd
+}
+
+function start-bridge-networking {
+  :
+}
+
+function start-cluster-networking {
+  case "${NETWORK_PROVIDER}" in
+    flannel)
+    start-flannel-ds
+    ;;
+    bridge)
+    start-bridge-networking
+    ;;
+  esac
 }
 
 function kube-up {
@@ -940,6 +950,8 @@ function kube-up {
   ensure-temp-dir
 
   create-bootstrap-script
+
+  write-controller-config
 
   upload-server-tars
 
@@ -980,7 +992,7 @@ function kube-up {
 
   echo "Associating route table ${ROUTE_TABLE_ID} to subnet ${SUBNET_ID}"
   $AWS_CMD associate-route-table --route-table-id $ROUTE_TABLE_ID --subnet-id $SUBNET_ID > $LOG || true
-  echo "Adding route to route table ${ROUTE_TABLE_ID}"
+  echo "Adding gateway route $IGW_ID to route table ${ROUTE_TABLE_ID}"
   $AWS_CMD create-route --route-table-id $ROUTE_TABLE_ID --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID > $LOG || true
 
   echo "Using Route Table $ROUTE_TABLE_ID"
@@ -1027,25 +1039,26 @@ function kube-up {
     detect-master
     parse-master-env
 
-    # Start minions
-    start-minions
-    wait-minions
+    if [[ "${ENABLE_CLUSTER_AUTOSCALER:-false}" == "true" ]]; then
+      # Start minions
+      start-minions
+      wait-minions
+    fi
   else
     # Create the master
     start-master
 
-    # Build ~/.kube/config
-    build-config
-
-    # Start minions
-    start-minions
-    wait-minions
+    if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
+      # Start minions
+      start-minions
+      wait-minions
+    fi
 
     # Wait for the master to be ready
     wait-master
 
-    # Start flannel networking
-    start-flannel-ds
+    # Start cluster networking
+    start-cluster-networking
   fi
 
   # Check the cluster is OK
@@ -1067,6 +1080,29 @@ function create-bootstrap-script() {
   ) > "${BOOTSTRAP_SCRIPT}"
 }
 
+# copy controller config into a temporary file.
+# Assumed vars
+function write-controller-config {
+  if [[ -f ${KUBE_ROOT}/cmd/workload-controller-manager/config/controllerconfig.json ]]; then
+    cp "${KUBE_ROOT}/cmd/workload-controller-manager/config/controllerconfig.json" "${KUBE_TEMP}/controllerconfig.json"
+  else
+    cat <<EOF >${KUBE_TEMP}/controllerconfig.json
+{
+    "controllers": [
+        {
+            "type":    "node",
+            "workers":     5
+        },
+        {
+            "type":    "replicaset",
+            "workers":    10
+        }
+    ]
+}
+EOF
+  fi
+}
+
 # Starts the master node
 function start-master() {
   # Ensure RUNTIME_CONFIG is populated
@@ -1077,10 +1113,6 @@ function start-master() {
 
   # Get or create master elastic IP
   ensure-master-ip
-
-  # We have to make sure that the cert is valid for API_SERVERS
-  # i.e. we likely have to pass ELB name / elastic IP in future
-  create-certs "${KUBE_MASTER_IP}" "${MASTER_INTERNAL_IP}"
 
   # This key is no longer needed, and this enables us to get under the 16KB size limit
   KUBECFG_CERT_BASE64=""
@@ -1100,8 +1132,18 @@ function start-master() {
     # TODO: get rid of these exceptions / harmonize with common or GCE
     echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
     echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
-    echo "MASTER_EIP: $(yaml-quote ${KUBE_MASTER_IP:-})"
+    echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
+    echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
     echo "__EOF_MASTER_KUBE_ENV_YAML"
+    echo ""
+    echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+    cat ${KUBE_ROOT}/cluster/aws/manifests/workload-controller-manager.manifest
+    echo "__EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+    echo ""
+    echo "cat > workload-controllerconfig.json << __EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
+    cat ${KUBE_TEMP}/controllerconfig.json
+    echo ""
+    echo "__EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
     echo ""
     echo "wget -O bootstrap ${BOOTSTRAP_SCRIPT_URL}"
     echo "chmod +x bootstrap"
@@ -1240,7 +1282,7 @@ function start-minions() {
       --block-device-mappings "${NODE_BLOCK_DEVICE_MAPPINGS}" \
       --user-data "fileb://${KUBE_TEMP}/node-user-data.gz"
 
-  echo "Creating autoscaling group"
+  echo "Creating autoscaling group for num nodes $NUM_NODES"
   ${AWS_ASG_CMD} create-auto-scaling-group \
       --auto-scaling-group-name ${ASG_NAME} \
       --launch-configuration-name ${ASG_NAME} \
@@ -1305,9 +1347,15 @@ function wait-master() {
     sshSts=$?
     set -e
     if [ $sshSts -eq 0 ]; then
-      mkdir -p $HOME/.kube
-      ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $HOME/.kube/config
-      sed -i "s/server: https:\/\/.*:6443/server: https:\/\/${KUBE_MASTER_IP}:6443/" $HOME/.kube/config
+      if [ -z "${LOCAL_KUBECONFIG:-}" ]; then
+        mkdir -p $HOME/.kube
+        ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $HOME/.kube/config
+        sed -i "s/server: https:\/\/.*:6443/server: https:\/\/${KUBE_MASTER_IP}:6443/" $HOME/.kube/config
+        LOCAL_KUBECONFIG="$HOME/.kube/config"
+      else
+        ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $LOCAL_KUBECONFIG
+        sed -i "s/server: https:\/\/.*:${API_BIND_PORT}/server: https:\/\/${KUBE_MASTER_IP}:${API_BIND_PORT}/" $LOCAL_KUBECONFIG
+      fi
       break
     fi
     printf "."
@@ -1315,24 +1363,6 @@ function wait-master() {
   done
 
   echo "Kubernetes cluster created."
-}
-
-# Creates the ~/.kube/config file, getting the information from the master
-# The master must be running and set in KUBE_MASTER_IP
-function build-config() {
-  export KUBE_CERT="${CERT_DIR}/pki/issued/kubecfg.crt"
-  export KUBE_KEY="${CERT_DIR}/pki/private/kubecfg.key"
-  export CA_CERT="${CERT_DIR}/pki/ca.crt"
-  export CONTEXT="${CONFIG_CONTEXT}"
-  rm -rf $HOME/.kube/config || :
-  (
-   umask 077
-
-   # Update the user's kubeconfig to include credentials for this apiserver.
-   create-kubeconfig
-
-   create-kubeconfig-for-federation
-  )
 }
 
 # Sanity check the cluster and print confirmation messages
@@ -1576,13 +1606,13 @@ function kube-down {
     find-tagged-master-ip
 
     if [[ -n "${KUBE_MASTER_IP:-}" ]]; then
-      echo "Releasing EIP $KUBE_MASTER_IP"
-#      release-elastic-ip ${KUBE_MASTER_IP}
+      echo "Releasing External IP $KUBE_MASTER_IP"
+      release-elastic-ip ${KUBE_MASTER_IP}
     fi
 
     if [[ -n "${MASTER_DISK_ID:-}" ]]; then
       echo "Deleting volume ${MASTER_DISK_ID}"
-#      $AWS_CMD delete-volume --volume-id ${MASTER_DISK_ID} > $LOG
+      $AWS_CMD delete-volume --volume-id ${MASTER_DISK_ID} > $LOG
     fi
 
     echo "Cleaning up specific resources in pre-existing VPC: $VPC_ID"
@@ -1608,7 +1638,7 @@ function kube-down {
       other_sgids=$(${AWS_CMD} describe-security-groups --group-id "${sg_id}" --query SecurityGroups[].IpPermissions[].UserIdGroupPairs[].GroupId)
       for other_sgid in ${other_sgids}; do
       echo "Revoking ingress for group: $other_sgid"
-#        $AWS_CMD revoke-security-group-ingress --group-id "${sg_id}" --source-group "${other_sgid}" --protocol all > $LOG
+        $AWS_CMD revoke-security-group-ingress --group-id "${sg_id}" --source-group "${other_sgid}" --protocol all > $LOG
       done
     done
 
@@ -1619,7 +1649,7 @@ function kube-down {
       fi
 
       echo "Deleting security group $sg_id"
-#      delete_security_group ${sg_id}
+      delete_security_group ${sg_id}
     done
 
     echo "Deleting specific route tables in VPC $VPC_ID"
@@ -1631,7 +1661,9 @@ function kube-down {
     for route_table_id in ${route_table_ids}; do
       echo "Disassociating and deleting route table $route_table_id"
       assoc_id=$($AWS_CMD describe-route-tables --route-table-id $route_table_id --query RouteTables[].Associations[].RouteTableAssociationId --output=text)
-      $AWS_CMD disassociate-route-table --association-id $assoc_id
+      if [ ! -z "$assoc_id" ]; then
+        $AWS_CMD disassociate-route-table --association-id $assoc_id
+      fi
       $AWS_CMD delete-route-table --route-table-id $route_table_id > $LOG
     done
 
@@ -1721,7 +1753,9 @@ function test-build-release {
 function test-setup {
   "${KUBE_ROOT}/cluster/kube-up.sh"
 
-  VPC_ID=$(get_vpc_id)
+  if [[ -z "${VPC_ID:-}" ]]; then
+    VPC_ID=$(get_vpc_id)
+  fi
   detect-security-groups
 
   # Open up port 80 & 8080 so common containers on minions can be reached
@@ -1792,306 +1826,4 @@ function prepare-e2e() {
 function get-tokens() {
   KUBELET_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
   KUBE_PROXY_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
-}
-
-# Generates SSL certificates for etcd-client and kube-apiserver communication. Uses cfssl program.
-#
-# Assumed vars:
-#   KUBE_TEMP: temporary directory
-#
-# Args:
-#  $1: host server name
-#  $2: host client name
-#  $3: CA certificate
-#  $4: CA key
-#
-# If CA cert/key is empty, the function will also generate certs for CA.
-#
-# Vars set:
-#   ETCD_APISERVER_CA_KEY_BASE64
-#   ETCD_APISERVER_CA_CERT_BASE64
-#   ETCD_APISERVER_SERVER_KEY_BASE64
-#   ETCD_APISERVER_SERVER_CERT_BASE64
-#   ETCD_APISERVER_CLIENT_KEY_BASE64
-#   ETCD_APISERVER_CLIENT_CERT_BASE64
-#
-function create-etcd-apiserver-certs {
-  local hostServer=${1}
-  local hostClient=${2}
-  local etcd_apiserver_ca_cert=${3:-}
-  local etcd_apiserver_ca_key=${4:-}
-
-  GEN_ETCD_CA_CERT="${etcd_apiserver_ca_cert}" GEN_ETCD_CA_KEY="${etcd_apiserver_ca_key}" \
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostServer}" "server" "etcd-apiserver-server"
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostClient}" "client" "etcd-apiserver-client"
-
-  pushd "${KUBE_TEMP}/cfssl"
-  ETCD_APISERVER_CA_KEY_BASE64=$(cat "ca-key.pem" | base64 | tr -d '\r\n')
-  ETCD_APISERVER_CA_CERT_BASE64=$(cat "ca.pem" | gzip | base64 | tr -d '\r\n')
-  ETCD_APISERVER_SERVER_KEY_BASE64=$(cat "etcd-apiserver-server-key.pem" | base64 | tr -d '\r\n')
-  ETCD_APISERVER_SERVER_CERT_BASE64=$(cat "etcd-apiserver-server.pem" | gzip | base64 | tr -d '\r\n')
-  ETCD_APISERVER_CLIENT_KEY_BASE64=$(cat "etcd-apiserver-client-key.pem" | base64 | tr -d '\r\n')
-  ETCD_APISERVER_CLIENT_CERT_BASE64=$(cat "etcd-apiserver-client.pem" | gzip | base64 | tr -d '\r\n')
-  popd
-}
-
-function build-kube-master-certs {
-  local file=$1
-  rm -f ${file}
-  cat >$file <<EOF
-KUBEAPISERVER_CERT: $(yaml-quote ${KUBEAPISERVER_CERT_BASE64:-})
-KUBEAPISERVER_KEY: $(yaml-quote ${KUBEAPISERVER_KEY_BASE64:-})
-CA_KEY: $(yaml-quote ${CA_KEY_BASE64:-})
-AGGREGATOR_CA_KEY: $(yaml-quote ${AGGREGATOR_CA_KEY_BASE64:-})
-REQUESTHEADER_CA_CERT: $(yaml-quote ${REQUESTHEADER_CA_CERT_BASE64:-})
-PROXY_CLIENT_CERT: $(yaml-quote ${PROXY_CLIENT_CERT_BASE64:-})
-PROXY_CLIENT_KEY: $(yaml-quote ${PROXY_CLIENT_KEY_BASE64:-})
-ETCD_APISERVER_CA_KEY: $(yaml-quote ${ETCD_APISERVER_CA_KEY_BASE64:-})
-ETCD_APISERVER_CA_CERT: $(yaml-quote ${ETCD_APISERVER_CA_CERT_BASE64:-})
-ETCD_APISERVER_SERVER_KEY: $(yaml-quote ${ETCD_APISERVER_SERVER_KEY_BASE64:-})
-ETCD_APISERVER_SERVER_CERT: $(yaml-quote ${ETCD_APISERVER_SERVER_CERT_BASE64:-})
-ETCD_APISERVER_CLIENT_KEY: $(yaml-quote ${ETCD_APISERVER_CLIENT_KEY_BASE64:-})
-ETCD_APISERVER_CLIENT_CERT: $(yaml-quote ${ETCD_APISERVER_CLIENT_CERT_BASE64:-})
-EOF
-}
-
-# Create certificate pairs for the cluster.
-# $1: The public IP for the master.
-#
-# These are used for static cert distribution (e.g. static clustering) at
-# cluster creation time. This will be obsoleted once we implement dynamic
-# clustering.
-#
-# The following certificate pairs are created:
-#
-#  - ca (the cluster's certificate authority)
-#  - server
-#  - kubelet
-#  - kubecfg (for kubectl)
-#
-# TODO(roberthbailey): Replace easyrsa with a simple Go program to generate
-# the certs that we need.
-#
-# Assumed vars
-#   KUBE_TEMP
-#   MASTER_NAME
-#
-# Vars set:
-#   CERT_DIR
-#   CA_CERT_BASE64
-#   MASTER_CERT_BASE64
-#   MASTER_KEY_BASE64
-#   KUBELET_CERT_BASE64
-#   KUBELET_KEY_BASE64
-#   KUBECFG_CERT_BASE64
-#   KUBECFG_KEY_BASE64
-function create-certs {
-  local -r primary_cn="${1}"
-
-  # Determine extra certificate names for master
-  local octets=($(echo "${SERVICE_CLUSTER_IP_RANGE}" | sed -e 's|/.*||' -e 's/\./ /g'))
-  ((octets[3]+=1))
-  local -r service_ip=$(echo "${octets[*]}" | sed 's/ /./g')
-  local sans=""
-  for extra in $@; do
-    if [[ -n "${extra}" ]]; then
-      sans="${sans}IP:${extra},"
-    fi
-  done
-  sans="${sans}IP:${service_ip},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.${DNS_DOMAIN},DNS:${MASTER_NAME}"
-
-  echo "Generating certs for alternate-names: ${sans}"
-
-  setup-easyrsa
-  PRIMARY_CN="${primary_cn}" SANS="${sans}" generate-certs
-  AGGREGATOR_PRIMARY_CN="${primary_cn}" AGGREGATOR_SANS="${sans}" generate-aggregator-certs
-
-  # By default, linux wraps base64 output every 76 cols, so we use 'tr -d' to remove whitespaces.
-  # Note 'base64 -w0' doesn't work on Mac OS X, which has different flags.
-  CA_KEY_BASE64=$(cat "${CERT_DIR}/pki/private/ca.key" | base64 | tr -d '\r\n')
-  CA_CERT_BASE64=$(cat "${CERT_DIR}/pki/ca.crt" | base64 | tr -d '\r\n')
-  MASTER_CERT_BASE64=$(cat "${CERT_DIR}/pki/issued/${MASTER_NAME}.crt" | base64 | tr -d '\r\n')
-  MASTER_KEY_BASE64=$(cat "${CERT_DIR}/pki/private/${MASTER_NAME}.key" | base64 | tr -d '\r\n')
-  KUBELET_CERT_BASE64=$(cat "${CERT_DIR}/pki/issued/kubelet.crt" | base64 | tr -d '\r\n')
-  KUBELET_KEY_BASE64=$(cat "${CERT_DIR}/pki/private/kubelet.key" | base64 | tr -d '\r\n')
-  KUBECFG_CERT_BASE64=$(cat "${CERT_DIR}/pki/issued/kubecfg.crt" | base64 | tr -d '\r\n')
-  KUBECFG_KEY_BASE64=$(cat "${CERT_DIR}/pki/private/kubecfg.key" | base64 | tr -d '\r\n')
-  KUBEAPISERVER_CERT_BASE64=$(cat "${CERT_DIR}/pki/issued/kube-apiserver.crt" | base64 | tr -d '\r\n')
-  KUBEAPISERVER_KEY_BASE64=$(cat "${CERT_DIR}/pki/private/kube-apiserver.key" | base64 | tr -d '\r\n')
-
-  # Setting up an addition directory (beyond pki) as it is the simplest way to
-  # ensure we get a different CA pair to sign the proxy-client certs and which
-  # we can send CA public key to the user-apiserver to validate communication.
-  AGGREGATOR_CA_KEY_BASE64=$(cat "${AGGREGATOR_CERT_DIR}/pki/private/ca.key" | base64 | tr -d '\r\n')
-  REQUESTHEADER_CA_CERT_BASE64=$(cat "${AGGREGATOR_CERT_DIR}/pki/ca.crt" | base64 | tr -d '\r\n')
-  PROXY_CLIENT_CERT_BASE64=$(cat "${AGGREGATOR_CERT_DIR}/pki/issued/proxy-client.crt" | base64 | tr -d '\r\n')
-  PROXY_CLIENT_KEY_BASE64=$(cat "${AGGREGATOR_CERT_DIR}/pki/private/proxy-client.key" | base64 | tr -d '\r\n')
-}
-
-# Set up easy-rsa directory structure.
-#
-# Assumed vars
-#   KUBE_TEMP
-#
-# Vars set:
-#   CERT_DIR
-#   AGGREGATOR_CERT_DIR
-function setup-easyrsa {
-  local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
-  # Note: This was heavily cribbed from make-ca-cert.sh
-  (set -x
-    cd "${KUBE_TEMP}"
-    curl -L -O --connect-timeout 20 --retry 6 --retry-delay 2 https://storage.googleapis.com/kubernetes-release/easy-rsa/easy-rsa.tar.gz
-    tar xzf easy-rsa.tar.gz
-    mkdir easy-rsa-master/kubelet
-    cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/kubelet
-    mkdir easy-rsa-master/aggregator
-    cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/aggregator) &>${cert_create_debug_output} || true
-  CERT_DIR="${KUBE_TEMP}/easy-rsa-master/easyrsa3"
-  AGGREGATOR_CERT_DIR="${KUBE_TEMP}/easy-rsa-master/aggregator"
-  if [ ! -x "${CERT_DIR}/easyrsa" -o ! -x "${AGGREGATOR_CERT_DIR}/easyrsa" ]; then
-    # TODO(roberthbailey,porridge): add better error handling here,
-    # see https://github.com/kubernetes/kubernetes/issues/55229
-    cat "${cert_create_debug_output}" >&2
-    echo "=== Failed to setup easy-rsa: Aborting ===" >&2
-    exit 2
-  fi
-}
-
-# Runs the easy RSA commands to generate certificate files.
-# The generated files are IN ${CERT_DIR}
-#
-# Assumed vars
-#   KUBE_TEMP
-#   MASTER_NAME
-#   CERT_DIR
-#   PRIMARY_CN: Primary canonical name
-#   SANS: Subject alternate names
-#
-#
-function generate-certs {
-  local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
-  # Note: This was heavily cribbed from make-ca-cert.sh
-  (set -x
-    cd "${CERT_DIR}"
-    ./easyrsa init-pki
-    # this puts the cert into pki/ca.crt and the key into pki/private/ca.key
-    ./easyrsa --batch "--req-cn=${PRIMARY_CN}@$(date +%s)" build-ca nopass
-    ./easyrsa --subject-alt-name="${SANS}" build-server-full "${MASTER_NAME}" nopass
-    ./easyrsa build-client-full kube-apiserver nopass
-
-    kube::util::ensure-cfssl "${KUBE_TEMP}/cfssl"
-
-    # make the config for the signer
-    echo '{"signing":{"default":{"expiry":"43800h","usages":["signing","key encipherment","client auth"]}}}' > "ca-config.json"
-    # create the kubelet client cert with the correct groups
-    echo '{"CN":"kubelet","names":[{"O":"system:nodes"}],"hosts":[""],"key":{"algo":"rsa","size":2048}}' | "${CFSSL_BIN}" gencert -ca=pki/ca.crt -ca-key=pki/private/ca.key -config=ca-config.json - | "${CFSSLJSON_BIN}" -bare kubelet
-    mv "kubelet-key.pem" "pki/private/kubelet.key"
-    mv "kubelet.pem" "pki/issued/kubelet.crt"
-    rm -f "kubelet.csr"
-
-    # Make a superuser client cert with subject "O=system:masters, CN=kubecfg"
-    ./easyrsa --dn-mode=org \
-      --req-cn=kubecfg --req-org=system:masters \
-      --req-c= --req-st= --req-city= --req-email= --req-ou= \
-      build-client-full kubecfg nopass) &>${cert_create_debug_output} || true
-  local output_file_missing=0
-  local output_file
-  for output_file in \
-    "${CERT_DIR}/pki/private/ca.key" \
-    "${CERT_DIR}/pki/ca.crt" \
-    "${CERT_DIR}/pki/issued/${MASTER_NAME}.crt" \
-    "${CERT_DIR}/pki/private/${MASTER_NAME}.key" \
-    "${CERT_DIR}/pki/issued/kubelet.crt" \
-    "${CERT_DIR}/pki/private/kubelet.key" \
-    "${CERT_DIR}/pki/issued/kubecfg.crt" \
-    "${CERT_DIR}/pki/private/kubecfg.key" \
-    "${CERT_DIR}/pki/issued/kube-apiserver.crt" \
-    "${CERT_DIR}/pki/private/kube-apiserver.key"
-  do
-    if [[ ! -s "${output_file}" ]]; then
-      echo "Expected file ${output_file} not created" >&2
-      output_file_missing=1
-    fi
-  done
-  if (( $output_file_missing )); then
-    # TODO(roberthbailey,porridge): add better error handling here,
-    # see https://github.com/kubernetes/kubernetes/issues/55229
-    cat "${cert_create_debug_output}" >&2
-    echo "=== Failed to generate master certificates: Aborting ===" >&2
-    exit 2
-  fi
-}
-
-# Runs the easy RSA commands to generate aggregator certificate files.
-# The generated files are in ${AGGREGATOR_CERT_DIR}
-#
-# Assumed vars
-#   KUBE_TEMP
-#   AGGREGATOR_MASTER_NAME
-#   AGGREGATOR_CERT_DIR
-#   AGGREGATOR_PRIMARY_CN: Primary canonical name
-#   AGGREGATOR_SANS: Subject alternate names
-#
-#
-function generate-aggregator-certs {
-  local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
-  # Note: This was heavily cribbed from make-ca-cert.sh
-  (set -x
-    cd "${KUBE_TEMP}/easy-rsa-master/aggregator"
-    ./easyrsa init-pki
-    # this puts the cert into pki/ca.crt and the key into pki/private/ca.key
-    ./easyrsa --batch "--req-cn=${AGGREGATOR_PRIMARY_CN}@$(date +%s)" build-ca nopass
-    ./easyrsa --subject-alt-name="${AGGREGATOR_SANS}" build-server-full "${AGGREGATOR_MASTER_NAME}" nopass
-    ./easyrsa build-client-full aggregator-apiserver nopass
-
-    kube::util::ensure-cfssl "${KUBE_TEMP}/cfssl"
-
-    # make the config for the signer
-    echo '{"signing":{"default":{"expiry":"43800h","usages":["signing","key encipherment","client auth"]}}}' > "ca-config.json"
-    # create the aggregator client cert with the correct groups
-    echo '{"CN":"aggregator","hosts":[""],"key":{"algo":"rsa","size":2048}}' | "${CFSSL_BIN}" gencert -ca=pki/ca.crt -ca-key=pki/private/ca.key -config=ca-config.json - | "${CFSSLJSON_BIN}" -bare proxy-client
-    mv "proxy-client-key.pem" "pki/private/proxy-client.key"
-    mv "proxy-client.pem" "pki/issued/proxy-client.crt"
-    rm -f "proxy-client.csr"
-
-    # Make a superuser client cert with subject "O=system:masters, CN=kubecfg"
-    ./easyrsa --dn-mode=org \
-      --req-cn=proxy-clientcfg --req-org=system:aggregator \
-      --req-c= --req-st= --req-city= --req-email= --req-ou= \
-      build-client-full proxy-clientcfg nopass) &>${cert_create_debug_output} || true
-  local output_file_missing=0
-  local output_file
-  for output_file in \
-    "${AGGREGATOR_CERT_DIR}/pki/private/ca.key" \
-    "${AGGREGATOR_CERT_DIR}/pki/ca.crt" \
-    "${AGGREGATOR_CERT_DIR}/pki/issued/proxy-client.crt" \
-    "${AGGREGATOR_CERT_DIR}/pki/private/proxy-client.key"
-  do
-    if [[ ! -s "${output_file}" ]]; then
-      echo "Expected file ${output_file} not created" >&2
-      output_file_missing=1
-    fi
-  done
-  if (( $output_file_missing )); then
-    # TODO(roberthbailey,porridge): add better error handling here,
-    # see https://github.com/kubernetes/kubernetes/issues/55229
-    cat "${cert_create_debug_output}" >&2
-    echo "=== Failed to generate aggregator certificates: Aborting ===" >&2
-    exit 2
-  fi
-}
-
-#
-# Using provided master env, extracts value from provided key.
-#
-# Args:
-# $1 master env (kube-env of master; result of calling get-master-env)
-# $2 env key to use
-function get-env-val() {
-  local match=`(echo "${1}" | grep -E "^${2}:") || echo ""`
-  if [[ -z ${match} ]]; then
-    echo ""
-  fi
-  echo ${match} | cut -d : -f 2 | cut -d \' -f 2
 }

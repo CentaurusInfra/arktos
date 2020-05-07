@@ -30,15 +30,13 @@ func GetDataPartitionUpdateChGrp() *bcast.Group {
 	}
 
 	mux.Lock()
+	defer mux.Unlock()
 	if datapartitionUpdateChGrp != nil {
 		return datapartitionUpdateChGrp
 	}
 
-	if datapartitionUpdateChGrp == nil {
-		datapartitionUpdateChGrp = bcast.NewGroup()
-		go datapartitionUpdateChGrp.Broadcast(0)
-	}
-	mux.Unlock()
+	datapartitionUpdateChGrp = bcast.NewGroup()
+	go datapartitionUpdateChGrp.Broadcast(0)
 
 	return datapartitionUpdateChGrp
 }

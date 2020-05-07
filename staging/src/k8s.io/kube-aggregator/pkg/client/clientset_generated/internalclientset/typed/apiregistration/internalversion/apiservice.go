@@ -20,12 +20,15 @@ limitations under the License.
 package internalversion
 
 import (
+	strings "strings"
 	"time"
 
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 	apiregistration "k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	scheme "k8s.io/kube-aggregator/pkg/client/clientset_generated/internalclientset/scheme"
 )
@@ -90,6 +93,38 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Resource("apiservices").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -108,6 +143,11 @@ func (c *aPIServices) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -116,6 +156,7 @@ func (c *aPIServices) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 // Create takes the representation of a aPIService and creates it.  Returns the server's representation of the aPIService, and an error, if there is any.
 func (c *aPIServices) Create(aPIService *apiregistration.APIService) (result *apiregistration.APIService, err error) {
 	result = &apiregistration.APIService{}
+
 	err = c.client.Post().
 		Resource("apiservices").
 		Body(aPIService).
@@ -128,6 +169,7 @@ func (c *aPIServices) Create(aPIService *apiregistration.APIService) (result *ap
 // Update takes the representation of a aPIService and updates it. Returns the server's representation of the aPIService, and an error, if there is any.
 func (c *aPIServices) Update(aPIService *apiregistration.APIService) (result *apiregistration.APIService, err error) {
 	result = &apiregistration.APIService{}
+
 	err = c.client.Put().
 		Resource("apiservices").
 		Name(aPIService.Name).
@@ -143,6 +185,7 @@ func (c *aPIServices) Update(aPIService *apiregistration.APIService) (result *ap
 
 func (c *aPIServices) UpdateStatus(aPIService *apiregistration.APIService) (result *apiregistration.APIService, err error) {
 	result = &apiregistration.APIService{}
+
 	err = c.client.Put().
 		Resource("apiservices").
 		Name(aPIService.Name).

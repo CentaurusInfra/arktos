@@ -204,7 +204,7 @@ var _ = SIGDescribe("[Feature:DynamicAudit]", func() {
 					framework.ExpectNoError(err, "failed to get audit-pod")
 
 					podChan := f.PodClient().Watch(watchOptions)
-					framework.ExpectNoError(podChan.GetFirstError(), "failed to create watch for pods")
+					framework.ExpectNoError(podChan.GetErrors(), "failed to create watch for pods")
 					for range podChan.ResultChan() {
 					}
 

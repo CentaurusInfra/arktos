@@ -66,7 +66,7 @@ var _ = SIGDescribe("LimitRange", func() {
 			ResourceVersion: limitRanges.ListMeta.ResourceVersion,
 		}
 		w := f.ClientSet.CoreV1().LimitRanges(f.Namespace.Name).Watch(metav1.ListOptions{})
-		framework.ExpectNoError(w.GetFirstError(), "failed to set up watch")
+		framework.ExpectNoError(w.GetErrors(), "failed to set up watch")
 
 		ginkgo.By("Submitting a LimitRange")
 		limitRange, err = f.ClientSet.CoreV1().LimitRanges(f.Namespace.Name).Create(limitRange)

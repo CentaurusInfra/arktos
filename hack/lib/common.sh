@@ -209,21 +209,28 @@ function kube::common::set_service_accounts {
 
 function kube::common::generate_certs {
     # Create CA signers
-    if [[ "${ENABLE_SINGLE_CA_SIGNER:-}" = true ]]; then
-        kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"client auth","server auth"'
-        sudo cp "${CERT_DIR}/server-ca.key" "${CERT_DIR}/client-ca.key"
-        sudo cp "${CERT_DIR}/server-ca.crt" "${CERT_DIR}/client-ca.crt"
-        sudo cp "${CERT_DIR}/server-ca-config.json" "${CERT_DIR}/client-ca-config.json"
+    # no need to regenerate CA in every run - optimize
+    if [ "${REGENERATE_CA:-}" = true ] || ! [ -e "${CERT_DIR}/server-ca.key" ] || ! [ -e "${CERT_DIR}/server-ca.crt" ] ||
+       ! [ -e "${CERT_DIR}/client-ca.key" ] || ! [ -e "${CERT_DIR}/client-ca.crt" ] ||
+       ! [ -e "${CERT_DIR}/server-ca-config.json" ] || ! [ -e "${CERT_DIR}/client-ca-config.json" ]; then
+      if [[ "${ENABLE_SINGLE_CA_SIGNER:-}" = true ]]; then
+          kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"client auth","server auth"'
+          sudo cp "${CERT_DIR}/server-ca.key" "${CERT_DIR}/client-ca.key"
+          sudo cp "${CERT_DIR}/server-ca.crt" "${CERT_DIR}/client-ca.crt"
+          sudo cp "${CERT_DIR}/server-ca-config.json" "${CERT_DIR}/client-ca-config.json"
+      else
+          kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"server auth"'
+          kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" client '"client auth"'
+      fi
     else
-        kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" server '"server auth"'
-        kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" client '"client auth"'
+      echo "Skip generating CA as CA files existed and REGENERATE_CA != true. To regenerate CA files, export REGENERATE_CA=true"
     fi
 
     # Create auth proxy client ca
     kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
 
     # serving cert for kube-apiserver
-    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${PUBLIC_IP:-}"
+    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
 
     # Create client certs signed with client-ca, given id, given CN and a number of groups
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' controller system:kube-controller-manager
@@ -242,7 +249,6 @@ function kube::common::generate_certs {
 }
 
 function kube::common::start_apiserver()  {
-
     CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
     
     #Increment ports to enable running muliple kube-apiserver simultaneously
@@ -523,11 +529,6 @@ function kube::common::start_kubescheduler {
 }
 
 function kube::common::start_kubelet {
-    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    kubeconfigfilepaths="${CERT_DIR}/kubelet.kubeconfig"
-    if [[ $# -gt 1 ]] ; then
-       kubeconfigfilepaths=$@
-    fi
     KUBELET_LOG=${LOG_DIR}/kubelet.log
     mkdir -p "${POD_MANIFEST_PATH}" &>/dev/null || sudo mkdir -p "${POD_MANIFEST_PATH}"
 
@@ -598,7 +599,7 @@ function kube::common::start_kubelet {
       "--hostname-override=${HOSTNAME_OVERRIDE}"
       "${cloud_config_arg[@]}"
       "--address=0.0.0.0"
-      --kubeconfig "${kubeconfigfilepaths}"
+      --kubeconfig "${CERT_DIR}"/kubelet.kubeconfig
       "--feature-gates=${FEATURE_GATES}"
       "--cpu-cfs-quota=${CPU_CFS_QUOTA}"
       "--enable-controller-attach-detach=${ENABLE_CONTROLLER_ATTACH_DETACH}"
@@ -622,9 +623,7 @@ function kube::common::start_kubelet {
       ${KUBELET_FLAGS}
     )
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
-        kube::common::generate_kubelet_certs
-    fi
+    kube::common::generate_kubelet_certs
 
     # shellcheck disable=SC2024
     sudo -E "${GO_OUT}/hyperkube" kubelet "${all_kubelet_flags[@]}" >"${KUBELET_LOG}" 2>&1 &
@@ -665,9 +664,7 @@ EOF
       done
     fi >>/tmp/kube-proxy.yaml
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
-        kube::common::generate_kubeproxy_certs
-    fi
+    kube::common::generate_kubeproxy_certs
 
     # shellcheck disable=SC2024
     sudo "${GO_OUT}/hyperkube" kube-proxy \
@@ -678,15 +675,19 @@ EOF
 }
 
 function kube::common::generate_kubelet_certs {
-    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
+  if [[ "${REUSE_CERTS}" != true ]]; then
+        CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+        kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
+        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
+  fi
 }
 
 function kube::common::generate_kubeproxy_certs {
-    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
-    kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
+    if [[ "${REUSE_CERTS}" != true ]]; then
+        CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+        kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
+        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
+    fi
 }
 
 

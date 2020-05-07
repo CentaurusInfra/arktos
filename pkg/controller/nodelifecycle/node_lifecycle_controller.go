@@ -291,7 +291,7 @@ func NewNodeLifecycleController(
 	klog.Infof("Sending events to api server.")
 	eventBroadcaster.StartRecordingToSink(
 		&v1core.EventSinkImpl{
-			Interface: v1core.New(kubeClient.CoreV1().RESTClient()).EventsWithMultiTenancy("", ""),
+			Interface: v1core.New(kubeClient.CoreV1().RESTClient()).EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll),
 		})
 
 	if kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {

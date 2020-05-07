@@ -10,12 +10,10 @@ unset KUBE_GIT_COMMIT
 
 kube::version::get_version_vars
 
-KUBE_GIT_MAJOR=${KUBE_GIT_MAJOR:-1}
-KUBE_GIT_MINOR=${KUBE_GIT_MINOR:-15}
-if [[ -z "${KUBE_GIT_VERSION}" ]]; then
-  short_commit=${KUBE_GIT_COMMIT:0:8}
-  KUBE_GIT_VERSION="v${KUBE_GIT_MAJOR}.${KUBE_GIT_MINOR}.0-${short_commit}"
-fi
+KUBE_GIT_MAJOR="1"
+KUBE_GIT_MINOR="15"
+short_commit=${KUBE_GIT_COMMIT:0:8}
+KUBE_GIT_VERSION="v${KUBE_GIT_MAJOR}.${KUBE_GIT_MINOR}.0-${short_commit}"
 
 export KUBE_GIT_MAJOR
 export KUBE_GIT_MINOR

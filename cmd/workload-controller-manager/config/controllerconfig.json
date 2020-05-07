@@ -1,4 +1,5 @@
 {
+    "reportHealthIntervalInSecond": 10,
     "controllers": [
         {
             "type":    "node",

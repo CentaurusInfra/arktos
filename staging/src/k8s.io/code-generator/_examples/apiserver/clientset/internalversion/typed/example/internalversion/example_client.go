@@ -23,8 +23,10 @@ import (
 	"time"
 
 	rand "k8s.io/apimachinery/pkg/util/rand"
+	apiserverupdate "k8s.io/client-go/apiserverupdate"
 	rest "k8s.io/client-go/rest"
 	"k8s.io/code-generator/_examples/apiserver/clientset/internalversion/scheme"
+	klog "k8s.io/klog"
 )
 
 type ExampleInterface interface {
@@ -36,6 +38,7 @@ type ExampleInterface interface {
 // ExampleClient is used to interact with features provided by the example.apiserver.code-generator.k8s.io group.
 type ExampleClient struct {
 	restClients []rest.Interface
+	configs     *rest.Config
 }
 
 func (c *ExampleClient) TestTypes(namespace string) TestTypeInterface {
@@ -62,7 +65,14 @@ func NewForConfig(c *rest.Config) (*ExampleClient, error) {
 		clients[i] = client
 	}
 
-	return &ExampleClient{clients}, nil
+	obj := &ExampleClient{
+		restClients: clients,
+		configs:     configs,
+	}
+
+	obj.run()
+
+	return obj, nil
 }
 
 // NewForConfigOrDie creates a new ExampleClient for the given config and
@@ -78,7 +88,7 @@ func NewForConfigOrDie(c *rest.Config) *ExampleClient {
 // New creates a new ExampleClient for the given RESTClient.
 func New(c rest.Interface) *ExampleClient {
 	clients := []rest.Interface{c}
-	return &ExampleClient{clients}
+	return &ExampleClient{restClients: clients}
 }
 
 func setConfigDefaults(configs *rest.Config) error {
@@ -132,4 +142,28 @@ func (c *ExampleClient) RESTClients() []rest.Interface {
 	}
 
 	return c.restClients
+}
+
+// run watch api server instance updates and recreate connections to new set of api servers
+func (c *ExampleClient) run() {
+	go func(c *ExampleClient) {
+		member := c.configs.WatchUpdate()
+		watcherForUpdateComplete := apiserverupdate.GetClientSetsWatcher()
+		watcherForUpdateComplete.AddWatcher()
+
+		for range member.Read {
+			// create new client
+			clients := make([]rest.Interface, len(c.configs.GetAllConfigs()))
+			for i, config := range c.configs.GetAllConfigs() {
+				client, err := rest.RESTClientFor(config)
+				if err != nil {
+					klog.Fatalf("Cannot create rest client for [%+v], err %v", config, err)
+					return
+				}
+				clients[i] = client
+			}
+			c.restClients = clients
+			watcherForUpdateComplete.NotifyDone()
+		}
+	}(c)
 }

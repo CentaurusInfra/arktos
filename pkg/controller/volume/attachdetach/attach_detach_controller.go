@@ -25,8 +25,9 @@ import (
 	"time"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -160,7 +161,7 @@ func NewAttachDetachController(
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "attachdetach-controller"})
 	blkutil := volumepathhandler.NewBlockVolumePathHandler()
 
@@ -433,11 +434,12 @@ func (adc *attachDetachController) populateDesiredStateOfWorld() error {
 			// The volume specs present in the ActualStateOfWorld are nil, let's replace those
 			// with the correct ones found on pods. The present in the ASW with no corresponding
 			// pod will be detached and the spec is irrelevant.
-			volumeSpec, err := util.CreateVolumeSpec(podVolume, podToAdd.Namespace, adc.pvcLister, adc.pvLister)
+			volumeSpec, err := util.CreateVolumeSpec(podVolume, podToAdd.Tenant, podToAdd.Namespace, adc.pvcLister, adc.pvLister)
 			if err != nil {
 				klog.Errorf(
-					"Error creating spec for volume %q, pod %q/%q: %v",
+					"Error creating spec for volume %q, pod %q/%q/%q: %v",
 					podVolume.Name,
+					podToAdd.Tenant,
 					podToAdd.Namespace,
 					podToAdd.Name,
 					err)
@@ -615,12 +617,12 @@ func (adc *attachDetachController) processNextItem() bool {
 
 func (adc *attachDetachController) syncPVCByKey(key string) error {
 	klog.V(5).Infof("syncPVCByKey[%s]", key)
-	namespace, name, err := kcache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := kcache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		klog.V(4).Infof("error getting namespace & name of pvc %q to get pvc from informer: %v", key, err)
 		return nil
 	}
-	pvc, err := adc.pvcLister.PersistentVolumeClaims(namespace).Get(name)
+	pvc, err := adc.pvcLister.PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		klog.V(4).Infof("error getting pvc %q from informer: %v", key, err)
 		return nil

@@ -174,7 +174,7 @@ func NewNoExecuteTaintManager(c clientset.Interface, getPod GetPodFunc, getNode 
 	eventBroadcaster.StartLogging(klog.Infof)
 	if c != nil {
 		klog.V(0).Infof("Sending events to api server.")
-		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: c.CoreV1().EventsWithMultiTenancy("", "")})
+		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: c.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	} else {
 		klog.Fatalf("kubeClient is nil when starting NodeController")
 	}

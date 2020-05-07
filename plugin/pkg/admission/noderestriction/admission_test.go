@@ -25,15 +25,18 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/authentication/user"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/component-base/featuregate"
+	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	authenticationapi "k8s.io/kubernetes/pkg/apis/authentication"
 	"k8s.io/kubernetes/pkg/apis/coordination"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -1226,6 +1229,207 @@ func Test_nodePlugin_Admit(t *testing.T) {
 				t.Errorf("nodePlugin.Admit() error = %v, expected %v", err, tt.err)
 			}
 		})
+	}
+}
+
+func Test_nodePlugin_Admit_PodSpecUpdate(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.InPlacePodVerticalScaling, true)()
+
+	nodeName := "somenode"
+	tests := []struct {
+		name      string
+		newPod    api.Pod
+		oldPod    api.Pod
+		expectErr string
+	}{
+		{
+			"Node updates ResourcesAllocated CPU - valid",
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("200m"),
+								api.ResourceMemory:  resource.MustParse("500Mi"),
+								api.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("100m"),
+								api.ResourceMemory:  resource.MustParse("500Mi"),
+								api.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				},
+			},
+			"",
+		},
+		{
+			"Node updates ResourcesAllocated memory - valid",
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("100m"),
+								api.ResourceMemory:  resource.MustParse("1000Mi"),
+								api.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("100m"),
+								api.ResourceMemory:  resource.MustParse("500Mi"),
+								api.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				},
+			},
+			"",
+		},
+		{
+			"Node updates ResourcesAllocated storage - invalid",
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("100m"),
+								api.ResourceMemory:  resource.MustParse("500Mi"),
+								api.ResourceStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("100m"),
+								api.ResourceMemory:  resource.MustParse("500Mi"),
+								api.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				},
+			},
+			"unexpected operation node",
+		},
+		{
+			"Node updates imagePullPolicy - invalid",
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image:           "foo:V1",
+							ImagePullPolicy: api.PullAlways,
+						},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image:           "foo:V1",
+							ImagePullPolicy: api.PullIfNotPresent,
+						},
+					},
+				},
+			},
+			"unexpected operation node",
+		},
+		{
+			"Node updates ResourcesAllocated memory for pod bound to another node - invalid",
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: "someothernode",
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("100m"),
+								api.ResourceMemory:  resource.MustParse("1000Mi"),
+								api.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "test"},
+				Spec: api.PodSpec{
+					NodeName: nodeName,
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							ResourcesAllocated: api.ResourceList{
+								api.ResourceCPU:     resource.MustParse("100m"),
+								api.ResourceMemory:  resource.MustParse("500Mi"),
+								api.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				},
+			},
+			"can only update pods with spec.nodeName set to itself",
+		},
+		//TODO: more tests - Test_nodePlugin_Admit
+	}
+
+	c := NewPlugin(nodeidentifier.NewDefaultNodeIdentifier())
+	for _, tc := range tests {
+		attributes := admission.NewAttributesRecord(&tc.newPod, &tc.oldPod, api.Kind("Pod").WithVersion("version"),
+			tc.newPod.Tenant, tc.newPod.Namespace, tc.newPod.Name, api.Resource("pods").WithVersion("version"),
+			"", admission.Update, nil, false, nil)
+		err := c.admitPod(nodeName, attributes)
+		if (err == nil) != (len(tc.expectErr) == 0) {
+			t.Errorf("Testcase %s: nodePlugin.admitPodUpdate() error = %v, expected %v", tc.name, err, tc.expectErr)
+			return
+		}
+		if len(tc.expectErr) > 0 && !strings.Contains(err.Error(), tc.expectErr) {
+			t.Errorf("Testcase %s: nodePlugin.admitPodUpdate() error = %v, expected %v", tc.name, err, tc.expectErr)
+		}
 	}
 }
 

@@ -75,7 +75,7 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 	if eventRecorder == nil {
 		broadcaster := record.NewBroadcaster()
 		broadcaster.StartLogging(klog.Infof)
-		broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: p.KubeClient.CoreV1().EventsWithMultiTenancy("", "")})
+		broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: p.KubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 		eventRecorder = broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "persistentvolume-controller"})
 	}
 
@@ -310,12 +310,12 @@ func (ctrl *PersistentVolumeController) volumeWorker() {
 		key := keyObj.(string)
 		klog.V(5).Infof("volumeWorker[%s]", key)
 
-		_, name, err := cache.SplitMetaNamespaceKey(key)
+		tenant, name, err := cache.SplitMetaTenantKey(key)
 		if err != nil {
-			klog.V(4).Infof("error getting name of volume %q to get volume from informer: %v", key, err)
+			klog.V(4).Infof("error getting tenant and name of volume %q to get volume from informer: %v", key, err)
 			return false
 		}
-		volume, err := ctrl.volumeLister.Get(name)
+		volume, err := ctrl.volumeLister.PersistentVolumesWithMultiTenancy(tenant).Get(name)
 		if err == nil {
 			// The volume still exists in informer cache, the event must have
 			// been add/update/sync
@@ -368,12 +368,12 @@ func (ctrl *PersistentVolumeController) claimWorker() {
 		key := keyObj.(string)
 		klog.V(5).Infof("claimWorker[%s]", key)
 
-		namespace, name, err := cache.SplitMetaNamespaceKey(key)
+		tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 		if err != nil {
-			klog.V(4).Infof("error getting namespace & name of claim %q to get claim from informer: %v", key, err)
+			klog.V(4).Infof("error getting tenant, namespace & name of claim %q to get claim from informer: %v", key, err)
 			return false
 		}
-		claim, err := ctrl.claimLister.PersistentVolumeClaims(namespace).Get(name)
+		claim, err := ctrl.claimLister.PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(name)
 		if err == nil {
 			// The claim still exists in informer cache, the event must have
 			// been add/update/sync
@@ -450,7 +450,7 @@ func (ctrl *PersistentVolumeController) setClaimProvisioner(claim *v1.Persistent
 	// modify these, therefore create a copy.
 	claimClone := claim.DeepCopy()
 	metav1.SetMetaDataAnnotation(&claimClone.ObjectMeta, pvutil.AnnStorageProvisioner, provisionerName)
-	newClaim, err := ctrl.kubeClient.CoreV1().PersistentVolumeClaims(claim.Namespace).Update(claimClone)
+	newClaim, err := ctrl.kubeClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(claim.Namespace, claim.Tenant).Update(claimClone)
 	if err != nil {
 		return newClaim, err
 	}
@@ -526,6 +526,7 @@ func storeObjectUpdate(store cache.Store, obj interface{}, className string) (bo
 	if oldObjResourceVersion > objResourceVersion {
 		klog.V(4).Infof("storeObjectUpdate: ignoring %s %q version %s", className, objName, objAccessor.GetResourceVersion())
 		return false, nil
+
 	}
 
 	klog.V(4).Infof("storeObjectUpdate updating %s %q with version %s", className, objName, objAccessor.GetResourceVersion())

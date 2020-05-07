@@ -20,12 +20,15 @@ limitations under the License.
 package v1alpha1
 
 import (
+	strings "strings"
 	"time"
 
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 	v1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
 	scheme "k8s.io/sample-controller/pkg/generated/clientset/versioned/scheme"
 )
@@ -102,6 +105,39 @@ func (c *foos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Tenant(c.te).Namespace(c.ns).
+			Resource("foos").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -122,6 +158,11 @@ func (c *foos) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -130,8 +171,14 @@ func (c *foos) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 // Create takes the representation of a foo and creates it.  Returns the server's representation of the foo, and an error, if there is any.
 func (c *foos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	objectTenant := foo.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Body(foo).
@@ -144,8 +191,14 @@ func (c *foos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 // Update takes the representation of a foo and updates it. Returns the server's representation of the foo, and an error, if there is any.
 func (c *foos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	objectTenant := foo.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(foo.Name).
@@ -161,8 +214,14 @@ func (c *foos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 
 func (c *foos) UpdateStatus(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	objectTenant := foo.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(foo.Name).

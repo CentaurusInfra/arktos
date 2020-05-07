@@ -67,8 +67,10 @@ MASTER_ROOT_DISK_SIZE=${MASTER_ROOT_DISK_SIZE:-40}
 # The minions root EBS volume size (used to house Docker images)
 NODE_ROOT_DISK_TYPE="${NODE_ROOT_DISK_TYPE:-gp2}"
 NODE_ROOT_DISK_SIZE=${NODE_ROOT_DISK_SIZE:-32}
+KUBE_CREATE_NODES="${KUBE_CREATE_NODES:-true}"
 
 MASTER_NAME="${INSTANCE_PREFIX}-master"
+AGGREGATOR_MASTER_NAME="${INSTANCE_PREFIX}-aggregator"
 MASTER_TAG="${INSTANCE_PREFIX}-master"
 NODE_TAG="${INSTANCE_PREFIX}-minion"
 NODE_SCOPES=""
@@ -78,10 +80,12 @@ CLUSTER_IP_RANGE="${CLUSTER_IP_RANGE:-10.245.0.0/16}"
 MASTER_IP_RANGE="${MASTER_IP_RANGE:-10.246.0.0/24}"
 SSH_CIDR="${SSH_CIDR:-0.0.0.0/0}" # IP to restrict ssh access to nodes/master
 HTTP_API_CIDR="${HTTP_API_CIDR:-0.0.0.0/0}" # IP to restrict HTTP API access
+API_BIND_PORT=${KUBE_API_BIND_PORT:-6443}
 # If set to an Elastic IP address, the master instance will be associated with this IP.
 # Otherwise a new Elastic IP will be acquired
 # (We used to accept 'auto' to mean 'allocate elastic ip', but that is now the default)
 MASTER_RESERVED_IP="${MASTER_RESERVED_IP:-}"
+REGISTER_MASTER_KUBELET=${REGISTER_MASTER:-true}
 RUNTIME_CONFIG="${KUBE_RUNTIME_CONFIG:-}"
 
 # Optional: Cluster monitoring to setup as part of the cluster bring up:
@@ -139,7 +143,7 @@ COREOS_CHANNEL="${COREOS_CHANNEL:-alpha}"
 CONTAINER_RUNTIME="${KUBE_CONTAINER_RUNTIME:-docker}"
 RKT_VERSION="${KUBE_RKT_VERSION:-1.14.0}"
 
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-flannel}" # flannel
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-kubenet}" # kubenet
 
 # Optional: if set to true, kube-up will configure the cluster to run e2e tests.
 E2E_STORAGE_TEST_ENVIRONMENT=${KUBE_E2E_STORAGE_TEST_ENVIRONMENT:-false}

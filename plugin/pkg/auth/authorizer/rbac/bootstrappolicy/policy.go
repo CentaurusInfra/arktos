@@ -141,7 +141,7 @@ func NodeRules() []rbacv1.PolicyRule {
 
 		// TODO: add to the Node authorizer and restrict to endpoints referenced by pods or PVs bound to the node
 		// Needed for glusterfs volumes
-		rbacv1helpers.NewRule("get").Groups(legacyGroup).Resources("endpoints").RuleOrDie(),
+		rbacv1helpers.NewRule("get", "list", "watch").Groups(legacyGroup).Resources("endpoints").RuleOrDie(),
 		// Used to create a certificatesigningrequest for a node-specific client certificate, and watch
 		// for it to be signed. This allows the kubelet to rotate it's own certificate.
 		rbacv1helpers.NewRule("create", "get", "list", "watch").Groups(certificatesGroup).Resources("certificatesigningrequests").RuleOrDie(),
@@ -184,6 +184,11 @@ func NodeRules() []rbacv1.PolicyRule {
 	// RuntimeClass
 	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) {
 		nodePolicyRules = append(nodePolicyRules, rbacv1helpers.NewRule("get", "list", "watch").Groups("node.k8s.io").Resources("runtimeclasses").RuleOrDie())
+	}
+
+	// InPlacePodVerticalScaling
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		nodePolicyRules = append(nodePolicyRules, rbacv1helpers.NewRule("update").Groups(legacyGroup).Resources("pods").RuleOrDie())
 	}
 	return nodePolicyRules
 }
@@ -363,7 +368,7 @@ func ClusterRoles() []rbacv1.ClusterRole {
 			ObjectMeta: metav1.ObjectMeta{Name: "system:node-proxier"},
 			Rules: []rbacv1.PolicyRule{
 				// Used to build serviceLister
-				rbacv1helpers.NewRule("list", "watch").Groups(legacyGroup).Resources("services", "endpoints").RuleOrDie(),
+				rbacv1helpers.NewRule("get", "list", "watch").Groups(legacyGroup).Resources("services", "endpoints").RuleOrDie(),
 				rbacv1helpers.NewRule("get").Groups(legacyGroup).Resources("nodes").RuleOrDie(),
 
 				eventsRule(),
@@ -452,7 +457,7 @@ func ClusterRoles() []rbacv1.ClusterRole {
 
 				// this is for leaderlease access
 				// TODO: scope this to the kube-system namespace
-				rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("endpoints").RuleOrDie(),
+				rbacv1helpers.NewRule("create", "get", "list", "watch").Groups(legacyGroup).Resources("endpoints").RuleOrDie(),
 				rbacv1helpers.NewRule("get", "update", "patch", "delete").Groups(legacyGroup).Resources("endpoints").Names("kube-scheduler").RuleOrDie(),
 
 				// fundamental resources

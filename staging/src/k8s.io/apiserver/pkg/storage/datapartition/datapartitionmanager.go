@@ -227,7 +227,7 @@ func (m *DataPartitionConfigManager) notifyDataPartitionChanges(newDp *v1.DataPa
 }
 
 func isDataPartitionEqual(dp1 v1.DataPartitionConfig, dp2 *v1.DataPartitionConfig) bool {
-	if dp1.IsEndTenantValid != dp2.IsEndTenantValid || dp1.EndTenant != dp2.EndTenant || dp1.StartTenant != dp2.StartTenant || dp1.IsStartTenantValid != dp2.IsStartTenantValid {
+	if dp1.IsRangeEndValid != dp2.IsRangeEndValid || dp1.RangeEnd != dp2.RangeEnd || dp1.RangeStart != dp2.RangeStart || dp1.IsRangeStartValid != dp2.IsRangeStartValid {
 		return false
 	}
 

@@ -1958,6 +1958,33 @@ const (
 	PullIfNotPresent PullPolicy = "IfNotPresent"
 )
 
+// ContainerResizePolicy describes how container resources resize is handled.
+// Only one of the following container resize policies may be specified.
+// If none of the following policies is specified, it defaults to NoRestart.
+type ContainerResizePolicy string
+
+// These are the valid container resize policies
+// NoRestart policy tells Kubelet to call UpdateContainerResources CRI API to resize
+// the resources without restarting the container. This is the default behavior.
+// RestartContainer policy tells Kubelet to stop and start the container with when
+// new resources are applied. This is needed for legacy applications e.g. java apps
+// using -xmxN flag which are unable to use the resized memory without restarting.
+const (
+	// Resize the container in-place without restarting it.
+	NoRestart ContainerResizePolicy = "NoRestart"
+	// Resize the container in-place by restarting it after resize.
+	RestartContainer ContainerResizePolicy = "RestartContainer"
+)
+
+// ResizePolicy represents the resource resize policy for a single container.
+type ResizePolicy struct {
+	// Name of the resource type to which this resize policy applies.
+	// Supported values: cpu, memory.
+	ResourceName ResourceName
+	// Container resize policy applicable to the above resource.
+	Policy ContainerResizePolicy
+}
+
 // PreemptionPolicy describes a policy for if/when to preempt a pod.
 type PreemptionPolicy string
 
@@ -2062,6 +2089,12 @@ type Container struct {
 	// Compute resource requirements.
 	// +optional
 	Resources ResourceRequirements
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy
 	// +optional
 	VolumeMounts []VolumeMount
 	// volumeDevices is the list of block devices to be used by the container.
@@ -2283,6 +2316,9 @@ type ContainerStatus struct {
 	ImageID      string
 	// +optional
 	ContainerID string
+	// Compute resource requests and limits applied to the container.
+	// +optional
+	Resources ResourceRequirements
 }
 
 type VmState string
@@ -5262,17 +5298,17 @@ type DataPartitionConfig struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	// Start tenant is inclusive
-	StartTenant string
+	// Range start is inclusive
+	RangeStart string
 
 	// Whether this is an open end start
-	IsStartTenantValid bool
+	IsRangeStartValid bool
 
-	// End tenant is exclusive
-	EndTenant string
+	// Range end is exclusive
+	RangeEnd string
 
 	// Whether this is an open end end
-	IsEndTenantValid bool
+	IsRangeEndValid bool
 
 	// Which service group is using this data configuration
 	ServiceGroupId string

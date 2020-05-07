@@ -48,6 +48,7 @@ func RegisterDefaults(scheme *runtime.Scheme) error {
 	scheme.AddTypeDefaultingFunc(&v1.PersistentVolumeList{}, func(obj interface{}) { SetObjectDefaults_PersistentVolumeList(obj.(*v1.PersistentVolumeList)) })
 	scheme.AddTypeDefaultingFunc(&v1.Pod{}, func(obj interface{}) { SetObjectDefaults_Pod(obj.(*v1.Pod)) })
 	scheme.AddTypeDefaultingFunc(&v1.PodList{}, func(obj interface{}) { SetObjectDefaults_PodList(obj.(*v1.PodList)) })
+	scheme.AddTypeDefaultingFunc(&v1.PodStatusResult{}, func(obj interface{}) { SetObjectDefaults_PodStatusResult(obj.(*v1.PodStatusResult)) })
 	scheme.AddTypeDefaultingFunc(&v1.PodTemplate{}, func(obj interface{}) { SetObjectDefaults_PodTemplate(obj.(*v1.PodTemplate)) })
 	scheme.AddTypeDefaultingFunc(&v1.PodTemplateList{}, func(obj interface{}) { SetObjectDefaults_PodTemplateList(obj.(*v1.PodTemplateList)) })
 	scheme.AddTypeDefaultingFunc(&v1.ReplicationController{}, func(obj interface{}) { SetObjectDefaults_ReplicationController(obj.(*v1.ReplicationController)) })
@@ -242,6 +243,7 @@ func SetObjectDefaults_Pod(in *v1.Pod) {
 		}
 		SetDefaults_ResourceList(&a.Resources.Limits)
 		SetDefaults_ResourceList(&a.Resources.Requests)
+		SetDefaults_ResourceList(&a.ResourcesAllocated)
 		if a.LivenessProbe != nil {
 			SetDefaults_Probe(a.LivenessProbe)
 			if a.LivenessProbe.Handler.HTTPGet != nil {
@@ -284,6 +286,7 @@ func SetObjectDefaults_Pod(in *v1.Pod) {
 		}
 		SetDefaults_ResourceList(&a.Resources.Limits)
 		SetDefaults_ResourceList(&a.Resources.Requests)
+		SetDefaults_ResourceList(&a.ResourcesAllocated)
 		if a.LivenessProbe != nil {
 			SetDefaults_Probe(a.LivenessProbe)
 			if a.LivenessProbe.Handler.HTTPGet != nil {
@@ -318,12 +321,35 @@ func SetObjectDefaults_Pod(in *v1.Pod) {
 		SetDefaults_ResourceList(&a.Resources.Limits)
 		SetDefaults_ResourceList(&a.Resources.Requests)
 	}
+	for i := range in.Status.InitContainerStatuses {
+		a := &in.Status.InitContainerStatuses[i]
+		SetDefaults_ResourceList(&a.Resources.Limits)
+		SetDefaults_ResourceList(&a.Resources.Requests)
+	}
+	for i := range in.Status.ContainerStatuses {
+		a := &in.Status.ContainerStatuses[i]
+		SetDefaults_ResourceList(&a.Resources.Limits)
+		SetDefaults_ResourceList(&a.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_PodList(in *v1.PodList) {
 	for i := range in.Items {
 		a := &in.Items[i]
 		SetObjectDefaults_Pod(a)
+	}
+}
+
+func SetObjectDefaults_PodStatusResult(in *v1.PodStatusResult) {
+	for i := range in.Status.InitContainerStatuses {
+		a := &in.Status.InitContainerStatuses[i]
+		SetDefaults_ResourceList(&a.Resources.Limits)
+		SetDefaults_ResourceList(&a.Resources.Requests)
+	}
+	for i := range in.Status.ContainerStatuses {
+		a := &in.Status.ContainerStatuses[i]
+		SetDefaults_ResourceList(&a.Resources.Limits)
+		SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 }
 
@@ -397,6 +423,7 @@ func SetObjectDefaults_PodTemplate(in *v1.PodTemplate) {
 		}
 		SetDefaults_ResourceList(&a.Resources.Limits)
 		SetDefaults_ResourceList(&a.Resources.Requests)
+		SetDefaults_ResourceList(&a.ResourcesAllocated)
 		if a.LivenessProbe != nil {
 			SetDefaults_Probe(a.LivenessProbe)
 			if a.LivenessProbe.Handler.HTTPGet != nil {
@@ -439,6 +466,7 @@ func SetObjectDefaults_PodTemplate(in *v1.PodTemplate) {
 		}
 		SetDefaults_ResourceList(&a.Resources.Limits)
 		SetDefaults_ResourceList(&a.Resources.Requests)
+		SetDefaults_ResourceList(&a.ResourcesAllocated)
 		if a.LivenessProbe != nil {
 			SetDefaults_Probe(a.LivenessProbe)
 			if a.LivenessProbe.Handler.HTTPGet != nil {
@@ -554,6 +582,7 @@ func SetObjectDefaults_ReplicationController(in *v1.ReplicationController) {
 			}
 			SetDefaults_ResourceList(&a.Resources.Limits)
 			SetDefaults_ResourceList(&a.Resources.Requests)
+			SetDefaults_ResourceList(&a.ResourcesAllocated)
 			if a.LivenessProbe != nil {
 				SetDefaults_Probe(a.LivenessProbe)
 				if a.LivenessProbe.Handler.HTTPGet != nil {
@@ -596,6 +625,7 @@ func SetObjectDefaults_ReplicationController(in *v1.ReplicationController) {
 			}
 			SetDefaults_ResourceList(&a.Resources.Limits)
 			SetDefaults_ResourceList(&a.Resources.Requests)
+			SetDefaults_ResourceList(&a.ResourcesAllocated)
 			if a.LivenessProbe != nil {
 				SetDefaults_Probe(a.LivenessProbe)
 				if a.LivenessProbe.Handler.HTTPGet != nil {

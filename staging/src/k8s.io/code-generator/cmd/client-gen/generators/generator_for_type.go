@@ -141,6 +141,9 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"subresourcePath":          "",
 		"GroupGoName":              g.groupGoName,
 		"Version":                  namer.IC(g.version),
+		"klogInfof":                c.Universe.Type(types.Name{Package: "k8s.io/klog", Name: "V"}),
+		"errorIsForbidden":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "IsForbidden"}),
+		"stringsContains":          c.Universe.Type(types.Name{Package: "strings", Name: "Contains"}),
 		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
 		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
 		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
@@ -461,7 +464,41 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 		Timeout(timeout).
 		Do().
 		Into(result)
-	
+	if err == nil {
+		return
+	}
+
+	if !($.errorIsForbidden|raw$(err) && $.stringsContains|raw$(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
+			$if .tenanted$Tenant(c.te).$end$
+			Resource("$.type|resource$").
+			VersionedParams(&opts, $.schemeParameterCodec|raw$).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && $.errorIsForbidden|raw$(err) &&
+			$.stringsContains|raw$(err.Error(), "no relationship found between node") {
+			$.klogInfof|raw$(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
+
 	return
 }
 `
@@ -566,10 +603,22 @@ var createSubresourceTemplate = `
 // Create takes the representation of a $.inputType|private$ and creates it.  Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Create($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Post().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
@@ -585,10 +634,22 @@ var createTemplate = `
 // Create takes the representation of a $.inputType|private$ and creates it.  Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Create($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Post().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Body($.inputType|private$).
 		Do().
@@ -602,10 +663,22 @@ var updateSubresourceTemplate = `
 // Update takes the top resource name and the representation of a $.inputType|private$ and updates it. Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Update($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$		
 	err = c.client.Put().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
@@ -621,10 +694,22 @@ var updateTemplate = `
 // Update takes the representation of a $.inputType|private$ and updates it. Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *$.type|privatePlural$) Update($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Put().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.inputType|private$.Name).
 		Body($.inputType|private$).
@@ -641,10 +726,22 @@ var updateStatusTemplate = `
 
 func (c *$.type|privatePlural$) UpdateStatus($.type|private$ *$.type|raw$) (result *$.type|raw$, err error) {
 	result = &$.type|raw${}
+	$if .tenanted$
+	objectTenant := $.type|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
+	$if .namespaced$
+	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+	$end$	
 	err = c.client.Put().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(objectTenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(objectTenant).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$.Name).
 		SubResource("status").
@@ -674,6 +771,11 @@ func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatch
 			VersionedParams(&opts, $.schemeParameterCodec|raw$).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && $.errorIsForbidden|raw$(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			$.klogInfof|raw$(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch

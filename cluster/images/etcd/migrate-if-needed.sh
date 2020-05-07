@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,20 +18,17 @@
 # NOTES
 # This script performs etcd upgrade based on the following environmental
 # variables:
-# TARGET_STORAGE - API of etcd to be used (supported: 'etcd2', 'etcd3')
-# TARGET_VERSION - etcd release to be used (supported: '2.2.1', '2.3.7', '3.0.17', '3.1.12', '3.2.24', "3.3.10")
+# TARGET_STORAGE - API of etcd to be used (supported: 'etcd3')
+# TARGET_VERSION - etcd release to be used (supported: '3.4.4')
 # DATA_DIRECTORY - directory with etcd data
 #
 # The current etcd version and storage format is detected based on the
 # contents of "${DATA_DIRECTORY}/version.txt" file (if the file doesn't
-# exist, we default it to "2.2.1/etcd2".
+# exist, we default it to "3.4.4/etcd3".
 #
-# The update workflow support the following upgrade steps:
-# - 2.2.1/etcd2 -> 2.3.7/etcd2
-# - 2.3.7/etcd2 -> 3.0.17/etcd2
-# - 3.0.17/etcd3 -> 3.1.12/etcd3
-# - 3.1.12/etcd3 -> 3.2.24/etcd3
-# - 3.2.24/etcd3 -> 3.3.10/etcd3
+# There is no upgrade process now.
+# If later we have etcd versions to upgrade, the The workflow will support the following upgrade steps:
+# - 3.4.4/etcd3 -> 3.4.x/etcd3
 #
 # NOTE: The releases supported in this script has to match release binaries
 # present in the etcd image (to make this script work correctly).
@@ -43,7 +41,7 @@ set -o nounset
 
 # NOTE: BUNDLED_VERSION has to match release binaries present in the
 # etcd image (to make this script work correctly).
-BUNDLED_VERSIONS="2.2.1, 2.3.7, 3.0.17, 3.1.12, 3.2.24, 3.3.10"
+BUNDLED_VERSIONS="3.4.4"
 
 ETCD_NAME="${ETCD_NAME:-etcd-$(hostname)}"
 if [ -z "${DATA_DIRECTORY:-}" ]; then

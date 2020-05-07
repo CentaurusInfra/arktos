@@ -20,14 +20,17 @@ limitations under the License.
 package v2beta2
 
 import (
+	strings "strings"
 	"time"
 
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 )
 
 // HorizontalPodAutoscalersGetter has a method to return a HorizontalPodAutoscalerInterface.
@@ -102,6 +105,39 @@ func (c *horizontalPodAutoscalers) List(opts v1.ListOptions) (result *v2beta2.Ho
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Tenant(c.te).Namespace(c.ns).
+			Resource("horizontalpodautoscalers").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -122,6 +158,11 @@ func (c *horizontalPodAutoscalers) Watch(opts v1.ListOptions) watch.AggregatedWa
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -130,8 +171,14 @@ func (c *horizontalPodAutoscalers) Watch(opts v1.ListOptions) watch.AggregatedWa
 // Create takes the representation of a horizontalPodAutoscaler and creates it.  Returns the server's representation of the horizontalPodAutoscaler, and an error, if there is any.
 func (c *horizontalPodAutoscalers) Create(horizontalPodAutoscaler *v2beta2.HorizontalPodAutoscaler) (result *v2beta2.HorizontalPodAutoscaler, err error) {
 	result = &v2beta2.HorizontalPodAutoscaler{}
+
+	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Body(horizontalPodAutoscaler).
@@ -144,8 +191,14 @@ func (c *horizontalPodAutoscalers) Create(horizontalPodAutoscaler *v2beta2.Horiz
 // Update takes the representation of a horizontalPodAutoscaler and updates it. Returns the server's representation of the horizontalPodAutoscaler, and an error, if there is any.
 func (c *horizontalPodAutoscalers) Update(horizontalPodAutoscaler *v2beta2.HorizontalPodAutoscaler) (result *v2beta2.HorizontalPodAutoscaler, err error) {
 	result = &v2beta2.HorizontalPodAutoscaler{}
+
+	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(horizontalPodAutoscaler.Name).
@@ -161,8 +214,14 @@ func (c *horizontalPodAutoscalers) Update(horizontalPodAutoscaler *v2beta2.Horiz
 
 func (c *horizontalPodAutoscalers) UpdateStatus(horizontalPodAutoscaler *v2beta2.HorizontalPodAutoscaler) (result *v2beta2.HorizontalPodAutoscaler, err error) {
 	result = &v2beta2.HorizontalPodAutoscaler{}
+
+	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(horizontalPodAutoscaler.Name).

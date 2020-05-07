@@ -78,9 +78,13 @@ func (s *Storage) Create(ctx context.Context, obj runtime.Object, createValidati
 	if !ok {
 		return nil, errors.NewBadRequest("namespace is required")
 	}
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+	if !ok {
+		return nil, errors.NewBadRequest("tenant is required")
+	}
 
 	roleBinding := obj.(*rbac.RoleBinding)
-	if rbacregistry.BindingAuthorized(ctx, roleBinding.RoleRef, namespace, s.authorizer) {
+	if rbacregistry.BindingAuthorized(ctx, roleBinding.RoleRef, tenant, namespace, s.authorizer) {
 		return s.StandardStorage.Create(ctx, obj, createValidation, options)
 	}
 
@@ -111,6 +115,10 @@ func (s *Storage) Update(ctx context.Context, name string, obj rest.UpdatedObjec
 		if !ok {
 			return nil, errors.NewBadRequest("namespace is required")
 		}
+		tenant, ok := genericapirequest.TenantFrom(ctx)
+		if !ok {
+			return nil, errors.NewBadRequest("tenant is required")
+		}
 
 		roleBinding := obj.(*rbac.RoleBinding)
 
@@ -120,7 +128,7 @@ func (s *Storage) Update(ctx context.Context, name string, obj rest.UpdatedObjec
 		}
 
 		// if we're explicitly authorized to bind this role, return
-		if rbacregistry.BindingAuthorized(ctx, roleBinding.RoleRef, namespace, s.authorizer) {
+		if rbacregistry.BindingAuthorized(ctx, roleBinding.RoleRef, tenant, namespace, s.authorizer) {
 			return obj, nil
 		}
 

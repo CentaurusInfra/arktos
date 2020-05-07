@@ -20,14 +20,17 @@ limitations under the License.
 package v1alpha1
 
 import (
+	strings "strings"
 	"time"
 
 	v1alpha1 "k8s.io/api/storage/v1alpha1"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
+	klog "k8s.io/klog"
 )
 
 // VolumeAttachmentsGetter has a method to return a VolumeAttachmentInterface.
@@ -99,6 +102,39 @@ func (c *volumeAttachments) List(opts v1.ListOptions) (result *v1alpha1.VolumeAt
 		Timeout(timeout).
 		Do().
 		Into(result)
+	if err == nil {
+		return
+	}
+
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
+		return
+	}
+
+	// Found api server that works with this list, keep the client
+	for _, client := range c.clients {
+		if client == c.client {
+			continue
+		}
+
+		err = client.Get().
+			Tenant(c.te).
+			Resource("volumeattachments").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+
+		if err == nil {
+			c.client = client
+			return
+		}
+
+		if err != nil && errors.IsForbidden(err) &&
+			strings.Contains(err.Error(), "no relationship found between node") {
+			klog.V(6).Infof("Skip error %v in list", err)
+			continue
+		}
+	}
 
 	return
 }
@@ -118,6 +154,11 @@ func (c *volumeAttachments) Watch(opts v1.ListOptions) watch.AggregatedWatchInte
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
+			// watch error was not returned properly in error message. Skip when partial watch is allowed
+			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
+			continue
+		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch
@@ -126,8 +167,14 @@ func (c *volumeAttachments) Watch(opts v1.ListOptions) watch.AggregatedWatchInte
 // Create takes the representation of a volumeAttachment and creates it.  Returns the server's representation of the volumeAttachment, and an error, if there is any.
 func (c *volumeAttachments) Create(volumeAttachment *v1alpha1.VolumeAttachment) (result *v1alpha1.VolumeAttachment, err error) {
 	result = &v1alpha1.VolumeAttachment{}
+
+	objectTenant := volumeAttachment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("volumeattachments").
 		Body(volumeAttachment).
 		Do().
@@ -139,8 +186,14 @@ func (c *volumeAttachments) Create(volumeAttachment *v1alpha1.VolumeAttachment) 
 // Update takes the representation of a volumeAttachment and updates it. Returns the server's representation of the volumeAttachment, and an error, if there is any.
 func (c *volumeAttachments) Update(volumeAttachment *v1alpha1.VolumeAttachment) (result *v1alpha1.VolumeAttachment, err error) {
 	result = &v1alpha1.VolumeAttachment{}
+
+	objectTenant := volumeAttachment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("volumeattachments").
 		Name(volumeAttachment.Name).
 		Body(volumeAttachment).
@@ -155,8 +208,14 @@ func (c *volumeAttachments) Update(volumeAttachment *v1alpha1.VolumeAttachment) 
 
 func (c *volumeAttachments) UpdateStatus(volumeAttachment *v1alpha1.VolumeAttachment) (result *v1alpha1.VolumeAttachment, err error) {
 	result = &v1alpha1.VolumeAttachment{}
+
+	objectTenant := volumeAttachment.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
-		Tenant(c.te).
+		Tenant(objectTenant).
 		Resource("volumeattachments").
 		Name(volumeAttachment.Name).
 		SubResource("status").

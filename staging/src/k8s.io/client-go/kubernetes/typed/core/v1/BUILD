@@ -45,6 +45,7 @@ go_library(
         "//staging/src/k8s.io/api/autoscaling/v1:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/api/policy/v1beta1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/fields:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime:go_default_library",
@@ -52,9 +53,11 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/net:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/rand:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/watch:go_default_library",
+        "//staging/src/k8s.io/client-go/apiserverupdate:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/scheme:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
         "//staging/src/k8s.io/client-go/tools/reference:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
     ],
 )
 

@@ -24,8 +24,8 @@ import (
 
 	"k8s.io/klog"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/authentication/user"
@@ -209,7 +209,7 @@ func (g *RoleGetter) GetRole(namespace, name string) (*rbacv1.Role, error) {
 }
 
 func (g *RoleGetter) GetRoleWithMultiTenancy(tenant, namespace, name string) (*rbacv1.Role, error) {
-	return g.Lister.RolesWithMultiTenancy(tenant, namespace).Get(name)
+	return g.Lister.RolesWithMultiTenancy(namespace, tenant).Get(name)
 }
 
 type RoleBindingLister struct {
@@ -229,7 +229,11 @@ type ClusterRoleGetter struct {
 }
 
 func (g *ClusterRoleGetter) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
-	return g.Lister.Get(name)
+	return g.Lister.ClusterRoles().Get(name)
+}
+
+func (g *ClusterRoleGetter) GetClusterRoleWithMultiTenancy(tenant, name string) (*rbacv1.ClusterRole, error) {
+	return g.Lister.ClusterRolesWithMultiTenancy(tenant).Get(name)
 }
 
 type ClusterRoleBindingLister struct {

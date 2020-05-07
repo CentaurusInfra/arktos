@@ -19,6 +19,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/datapartition"
 	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment"
 	"net/http"
@@ -130,14 +131,16 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 		klog.Fatalf("error building controller context: %v", err)
 	}
 
+	reportHealthIntervalInSecond := c.ControllerTypeConfig.GetReportHealthIntervalInSecond()
+	startAPIServerConfigManager(controllerContext)
 	startControllerInstanceManager(controllerContext)
 	replicatSetWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("replicaset")
 	if isOK {
-		startReplicaSetController(controllerContext, replicatSetWorkerNumber)
+		startReplicaSetController(controllerContext, reportHealthIntervalInSecond, replicatSetWorkerNumber)
 	}
 	deploymentWorkerNumber, isOK := c.ControllerTypeConfig.GetWorkerNumber("deployment")
 	if isOK {
-		startDeploymentController(controllerContext, deploymentWorkerNumber)
+		startDeploymentController(controllerContext, reportHealthIntervalInSecond, deploymentWorkerNumber)
 	}
 
 	controllerContext.InformerFactory.Start(controllerContext.Stop)
@@ -227,7 +230,7 @@ func GetAvailableResources(clientBuilder controller.ControllerClientBuilder) (ma
 	return allResources, nil
 }
 
-func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handler, bool, error) {
+func startReplicaSetController(ctx ControllerContext, reportHealthIntervalInSecond int, workerNum int) (http.Handler, bool, error) {
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}] {
 		return nil, false, nil
 	}
@@ -248,18 +251,21 @@ func startReplicaSetController(ctx ControllerContext, workerNum int) (http.Handl
 
 	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
 
-	go replicaset.NewReplicaSetController(
+	controller := replicaset.NewReplicaSetController(
 		rsInformer,
 		podInformer,
 		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
 		replicaset.BurstReplicas,
 		cimChangeCh,
 		rsResetChGrp,
-	).Run(workerNum, ctx.Stop)
+	)
+	go controller.Run(workerNum, ctx.Stop)
+	go wait.Until(controller.ReportHealth, time.Second*time.Duration(reportHealthIntervalInSecond), ctx.Stop)
+
 	return nil, true, nil
 }
 
-func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handler, bool, error) {
+func startDeploymentController(ctx ControllerContext, reportHealthIntervalInSecond int, workerNum int) (http.Handler, bool, error) {
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}] {
 		return nil, false, nil
 	}
@@ -285,7 +291,7 @@ func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handl
 
 	cimChangeCh := ctx.ControllerInstanceUpdateChGrp.Join()
 
-	dc, err := deployment.NewDeploymentController(
+	controller, err := deployment.NewDeploymentController(
 		deploymentInformer,
 		rsInformer,
 		podInformer,
@@ -296,7 +302,8 @@ func startDeploymentController(ctx ControllerContext, workerNum int) (http.Handl
 	if err != nil {
 		return nil, true, fmt.Errorf("error creating Deployment controller: %v", err)
 	}
-	go dc.Run(workerNum, ctx.Stop)
+	go controller.Run(workerNum, ctx.Stop)
+	go wait.Until(controller.ReportHealth, time.Second*time.Duration(reportHealthIntervalInSecond), ctx.Stop)
 	return nil, true, nil
 }
 
@@ -311,6 +318,17 @@ func startControllerInstanceManager(ctx ControllerContext) (bool, error) {
 		ctx.InformerFactory.Core().V1().ControllerInstances(),
 		ctx.ClientBuilder.ClientOrDie("controller-instance-manager"),
 		ctx.ControllerInstanceUpdateChGrp).Run(ctx.Stop)
+
+	return true, nil
+}
+
+func startAPIServerConfigManager(ctx ControllerContext) (bool, error) {
+	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "endpoints"}] {
+		return false, nil
+	}
+
+	datapartition.StartAPIServerConfigManager(ctx.InformerFactory.Core().V1().Endpoints(),
+		ctx.ClientBuilder.ClientOrDie("apiserver-configuration-manager"), ctx.Stop)
 
 	return true, nil
 }

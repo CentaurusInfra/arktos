@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"k8s.io/client-go/apiserverupdate"
 	"math/rand"
 	"net"
 	"net/url"
@@ -96,6 +97,18 @@ type Reflector struct {
 
 	// aggChan is the aggregate channel of reset channels
 	aggChan chan interface{}
+
+	// clientSetUpdateChan is the channel to get client set updates
+	clientSetUpdateChan *bcast.Member
+
+	// listFromResourceVersion is the resource version that list should start from
+	// Default is "0" so that it only reads from cache. After encounter "too old resource version",
+	// it will be set to "" to get all data from storage; and then reset to "0" to get from cache in
+	// later list and watch
+	listFromResourceVersion string
+
+	// There are some watch that can only happen to certain api servers
+	allowPartialWatch bool
 }
 
 var (
@@ -119,7 +132,7 @@ func NewNamespaceKeyedIndexerAndReflector(lw ListerWatcher, expectedType interfa
 // resyncPeriod, so that you can use reflectors to periodically process everything as
 // well as incrementally processing the things that change.
 func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration) *Reflector {
-	return NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
+	return NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod, false)
 }
 
 // NewReflectorWithReset creates a new Reflector object which will keep the given store up to
@@ -130,23 +143,26 @@ func NewReflector(lw ListerWatcher, expectedType interface{}, store Store, resyn
 // well as incrementally processing the things that change. Also,  it introduces a  reset
 // chan for any incoming bound changes
 func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, filterBounds []filterBound) *Reflector {
-	r := NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod)
+	r := NewNamedReflector(naming.GetNameFromCallsite(internalPackages...), lw, expectedType, store, resyncPeriod, false)
 	r.filterBounds = filterBounds
 	return r
 }
 
 // NewNamedReflector same as NewReflector, but with a specified name for logging
-func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration) *Reflector {
+func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, allowPartialWatch bool) *Reflector {
 	r := &Reflector{
-		name:          name,
-		listerWatcher: lw,
-		store:         store,
-		expectedType:  reflect.TypeOf(expectedType),
-		period:        time.Second,
-		resyncPeriod:  resyncPeriod,
-		clock:         &clock.RealClock{},
-		filterBounds:  make([]filterBound, 0),
-		aggChan:       make(chan interface{}),
+		name:                    name,
+		listerWatcher:           lw,
+		store:                   store,
+		expectedType:            reflect.TypeOf(expectedType),
+		period:                  time.Second,
+		resyncPeriod:            resyncPeriod,
+		clock:                   &clock.RealClock{},
+		filterBounds:            make([]filterBound, 0),
+		aggChan:                 make(chan interface{}),
+		clientSetUpdateChan:     apiserverupdate.WatchClientSetUpdate(),
+		listFromResourceVersion: "0",
+		allowPartialWatch:       allowPartialWatch,
 	}
 	return r
 }
@@ -187,8 +203,8 @@ func (r *Reflector) Run(stopCh <-chan struct{}) {
 
 			for {
 				if err := r.ListAndWatch(stopCh); err != nil {
-					if err == errorResetRequested {
-						klog.V(4).Infof("Reset message received, redo ListAndWatch with resetCh")
+					if err == errorResetFilterBoundRequested || err == errorClientSetResetRequested {
+						klog.V(4).Infof("Filter bounds reset message received, redo ListAndWatch with resetCh")
 						continue
 					}
 					utilruntime.HandleError(err)
@@ -210,7 +226,11 @@ var (
 	// channel passed in from a client of the reflector.
 	errorStopRequested = errors.New("Stop requested")
 
-	errorResetRequested = errors.New("Reset requested")
+	// Used to indicate that watching stopped because filtering bounds are updated
+	errorResetFilterBoundRequested = errors.New("Reset requested")
+
+	// Used to indicate that watching stopped because api server clients are updated
+	errorClientSetResetRequested = errors.New("Clientset reset requested")
 )
 
 // resyncChan returns a channel which will receive something when a resync is
@@ -231,14 +251,14 @@ func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 // and then use the resource version to watch.
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
-	klog.V(5).Infof("ListAndWatch %v. filter bounds %+v", r.expectedType, r.filterBounds)
+	klog.V(3).Infof("ListAndWatch %v. filter bounds %+v. name %s", r.expectedType, r.filterBounds, r.name)
 	var resourceVersion string
 
 	// Explicitly set "0" as resource version - it's fine for the List()
 	// to be served from cache and potentially be delayed relative to
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
 	// When ResourceVersion is empty, list will get from api server cache
-	options := metav1.ListOptions{ResourceVersion: "0"}
+	options := metav1.ListOptions{ResourceVersion: r.listFromResourceVersion}
 
 	if len(r.filterBounds) > 0 {
 		if r.hasInitBounds() {
@@ -281,6 +301,8 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 				pager.PageSize = r.WatchListPageSize
 			}
 			// Pager falls back to full list if paginated list calls fail due to an "Expired" error.
+			// Set resource version to "" as it cannot be limited to the cached ones due to the introduction of
+			// 	api server data partition
 			list, err = pager.List(context.Background(), options)
 			close(listCh)
 		}()
@@ -367,13 +389,14 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			// watch bookmarks, it will ignore this field).
 			// Disabled in Alpha release of watch bookmarks feature.
 			AllowWatchBookmarks: false,
+			AllowPartialWatch:   r.allowPartialWatch,
 		}
 
 		if len(r.filterBounds) > 0 {
 			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
 		aggregatedWatcher := r.listerWatcher.Watch(options)
-		err := aggregatedWatcher.GetFirstError()
+		err := aggregatedWatcher.GetErrors()
 		if err != nil {
 			switch err {
 			case io.EOF:
@@ -399,7 +422,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		}
 
 		if err := r.watchHandler(aggregatedWatcher, &resourceVersion, resyncerrc, stopCh); err != nil {
-			if err == errorResetRequested {
+			if err == errorResetFilterBoundRequested || err == errorClientSetResetRequested {
 				select {
 				case cancelCh <- struct{}{}:
 					klog.V(4).Infof("Sent message to Resync cancelCh.")
@@ -413,6 +436,14 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 				case apierrs.IsResourceExpired(err):
 					klog.V(4).Infof("%s: watch of %v ended with: %v", r.name, r.expectedType, err)
 				default:
+					if strings.Contains(err.Error(), "too old resource version") {
+						// Watching stopped because it trying to get older resource
+						// version that api server can provide, set listFromResourceVersion
+						// to allow temporary list from storage directly and avoid too old
+						// resource version in follow up watch
+						r.listFromResourceVersion = ""
+						return err
+					}
 					klog.Warningf("%s: watch of %v ended with: %v", r.name, r.expectedType, err)
 				}
 			}
@@ -443,6 +474,9 @@ loop:
 	for {
 		if len(r.filterBounds) > 0 {
 			select {
+			case <-r.clientSetUpdateChan.Read:
+				klog.Infof("Got client set update message. Restarting ListAndWatch %v", r.expectedType)
+				return errorClientSetResetRequested
 			case <-stopCh:
 				return errorStopRequested
 			case signal, ok := <-r.aggChan:
@@ -452,7 +486,7 @@ loop:
 				}
 				r.setBounds(signal)
 
-				return errorResetRequested
+				return errorResetFilterBoundRequested
 			case err := <-errc:
 				return err
 			case event, ok := <-w.ResultChan():
@@ -468,6 +502,9 @@ loop:
 			}
 		} else {
 			select {
+			case <-r.clientSetUpdateChan.Read:
+				klog.Infof("Got client set update message. Restarting ListAndWatch %v", r.expectedType)
+				return errorClientSetResetRequested
 			case <-stopCh:
 				return errorStopRequested
 			case err := <-errc:
@@ -534,6 +571,9 @@ func (r *Reflector) watchHandlerHelper(event watch.Event, resourceVersion *strin
 	}
 	*resourceVersion = newResourceVersion
 	r.setLastSyncResourceVersion(newResourceVersion)
+	if r.listFromResourceVersion == "" {
+		r.listFromResourceVersion = "0"
+	}
 	eventCount++
 	return nil, eventCount
 }

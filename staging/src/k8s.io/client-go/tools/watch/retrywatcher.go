@@ -120,7 +120,7 @@ func (rw *RetryWatcher) doReceive() (bool, time.Duration) {
 		return false, 0
 	}
 
-	err := aggWatchers.GetFirstError()
+	err := aggWatchers.GetErrors()
 	switch err {
 	case nil:
 		break

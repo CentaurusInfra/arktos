@@ -433,6 +433,12 @@ message ListOptions {
   // +optional
   optional bool watch = 3;
 
+  // Whether needs to watch all api server data partition. Used to for some data that is only
+  // available for one partition. Hence could fail on watching other partition
+  // Generally used in client only to indicate partial failure is allowed
+  // +optional
+  optional bool allowPartialWatch = 10;
+
   // allowWatchBookmarks requests watch events with type "BOOKMARK".
   // Servers that do not implement bookmarks may ignore this flag and
   // bookmarks are sent at the server's discretion. Clients should not

@@ -88,7 +88,7 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		framework.ExpectNoError(err, "failed to get audit-pod")
 
 		podChan := f.PodClient().Watch(watchOptions)
-		framework.ExpectNoError(podChan.GetFirstError(), "failed to create watch for pods")
+		framework.ExpectNoError(podChan.GetErrors(), "failed to create watch for pods")
 		podChan.Stop()
 
 		f.PodClient().Update(pod.Name, updatePod)
@@ -213,7 +213,7 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		framework.ExpectNoError(err, "failed to get audit-deployment")
 
 		deploymentChan := f.ClientSet.AppsV1().Deployments(namespace).Watch(watchOptions)
-		framework.ExpectNoError(deploymentChan.GetFirstError(), "failed to create watch for deployments")
+		framework.ExpectNoError(deploymentChan.GetErrors(), "failed to create watch for deployments")
 		deploymentChan.Stop()
 
 		_, err = f.ClientSet.AppsV1().Deployments(namespace).Update(d)
@@ -346,7 +346,7 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		framework.ExpectNoError(err, "failed to get audit-configmap")
 
 		configMapChan := f.ClientSet.CoreV1().ConfigMaps(namespace).Watch(watchOptions)
-		framework.ExpectNoError(configMapChan.GetFirstError(), "failed to create watch for config maps")
+		framework.ExpectNoError(configMapChan.GetErrors(), "failed to create watch for config maps")
 		configMapChan.Stop()
 
 		_, err = f.ClientSet.CoreV1().ConfigMaps(namespace).Update(configMap)
@@ -478,7 +478,7 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 		framework.ExpectNoError(err, "failed to get audit-secret")
 
 		secretChan := f.ClientSet.CoreV1().Secrets(namespace).Watch(watchOptions)
-		framework.ExpectNoError(secretChan.GetFirstError(), "failed to create watch for secrets")
+		framework.ExpectNoError(secretChan.GetErrors(), "failed to create watch for secrets")
 		secretChan.Stop()
 
 		_, err = f.ClientSet.CoreV1().Secrets(namespace).Update(secret)
