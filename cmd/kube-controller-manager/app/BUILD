@@ -121,6 +121,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/server/mux:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/feature:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/term:go_default_library",
+        "//staging/src/k8s.io/arktos-ext/pkg/generated/clientset/versioned:go_default_library",
         "//staging/src/k8s.io/client-go/datapartition:go_default_library",
         "//staging/src/k8s.io/client-go/discovery/cached:go_default_library",
         "//staging/src/k8s.io/client-go/discovery/cached/memory:go_default_library",

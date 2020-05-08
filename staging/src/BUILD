@@ -19,6 +19,7 @@ filegroup(
         "//staging/src/k8s.io/apiextensions-apiserver:all-srcs",
         "//staging/src/k8s.io/apimachinery:all-srcs",
         "//staging/src/k8s.io/apiserver:all-srcs",
+        "//staging/src/k8s.io/arktos-ext:all-srcs",
         "//staging/src/k8s.io/cli-runtime:all-srcs",
         "//staging/src/k8s.io/client-go:all-srcs",
         "//staging/src/k8s.io/cloud-provider:all-srcs",

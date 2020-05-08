@@ -1,4 +1,5 @@
 # Copyright The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ staging_repos = [
     "k8s.io/apiextensions-apiserver",
     "k8s.io/apimachinery",
     "k8s.io/apiserver",
+    "k8s.io/arktos-ext",
     "k8s.io/cli-runtime",
     "k8s.io/client-go",
     "k8s.io/cloud-provider",
