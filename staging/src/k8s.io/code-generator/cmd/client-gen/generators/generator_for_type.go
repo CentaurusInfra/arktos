@@ -142,6 +142,7 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"GroupGoName":              g.groupGoName,
 		"Version":                  namer.IC(g.version),
 		"klogInfof":                c.Universe.Type(types.Name{Package: "k8s.io/klog", Name: "V"}),
+		"errorIsForbidden":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "IsForbidden"}),
 		"stringsContains":          c.Universe.Type(types.Name{Package: "strings", Name: "Contains"}),
 		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
 		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
@@ -467,8 +468,7 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 		return
 	}
 
-	if !$.stringsContains|raw$(err.Error(), "forbidden") ||
-		!$.stringsContains|raw$(err.Error(), "no relationship found between node") {
+	if !($.errorIsForbidden|raw$(err) && $.stringsContains|raw$(err.Error(), "no relationship found between node")) {
 		return
 	}
 
@@ -492,7 +492,7 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 			return
 		}
 
-		if err != nil && $.stringsContains|raw$(err.Error(), "forbidden") &&
+		if err != nil && $.errorIsForbidden|raw$(err) &&
 			$.stringsContains|raw$(err.Error(), "no relationship found between node") {
 			$.klogInfof|raw$(6).Infof("Skip error %v in list", err)
 			continue
@@ -771,7 +771,7 @@ func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatch
 			VersionedParams(&opts, $.schemeParameterCodec|raw$).
 			Timeout(timeout).
 			Watch()
-		if err != nil && opts.AllowPartialWatch {
+		if err != nil && opts.AllowPartialWatch && $.errorIsForbidden|raw$(err) {
 			// watch error was not returned properly in error message. Skip when partial watch is allowed
 			$.klogInfof|raw$(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
 			continue

@@ -18,7 +18,6 @@ package persistentvolume
 
 import (
 	"fmt"
-
 	"k8s.io/api/core/v1"
 	storage "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -108,6 +107,7 @@ func GetBindVolumeToClaim(volume *v1.PersistentVolume, claim *v1.PersistentVolum
 	if volume.Spec.ClaimRef == nil ||
 		volume.Spec.ClaimRef.Name != claim.Name ||
 		volume.Spec.ClaimRef.Namespace != claim.Namespace ||
+		volume.Spec.ClaimRef.Tenant != claim.Tenant ||
 		volume.Spec.ClaimRef.UID != claim.UID {
 
 		claimRef, err := reference.GetReference(scheme.Scheme, claim)
@@ -128,13 +128,13 @@ func GetBindVolumeToClaim(volume *v1.PersistentVolume, claim *v1.PersistentVolum
 }
 
 // IsVolumeBoundToClaim returns true, if given volume is pre-bound or bound
-// to specific claim. Both claim.Name and claim.Namespace must be equal.
+// to specific claim. Both claim.Name and claim.Namespace and claim.Tenant must be equal.
 // If claim.UID is present in volume.Spec.ClaimRef, it must be equal too.
 func IsVolumeBoundToClaim(volume *v1.PersistentVolume, claim *v1.PersistentVolumeClaim) bool {
 	if volume.Spec.ClaimRef == nil {
 		return false
 	}
-	if claim.Name != volume.Spec.ClaimRef.Name || claim.Namespace != volume.Spec.ClaimRef.Namespace {
+	if claim.Tenant != volume.Spec.ClaimRef.Tenant || claim.Name != volume.Spec.ClaimRef.Name || claim.Namespace != volume.Spec.ClaimRef.Namespace {
 		return false
 	}
 	if volume.Spec.ClaimRef.UID != "" && claim.UID != volume.Spec.ClaimRef.UID {

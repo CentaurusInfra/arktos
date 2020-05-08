@@ -50,6 +50,7 @@ func fakePodWithVol(namespace string) *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "fakepod",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -85,6 +86,7 @@ func fakePodWithPVC(name, pvcName, namespace string) (*v1.Pod, *v1.PersistentVol
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -117,6 +119,7 @@ func fakePodWithPVC(name, pvcName, namespace string) (*v1.Pod, *v1.PersistentVol
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      pvcName,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{
@@ -171,7 +174,7 @@ func TestPodDeletionWithDswp(t *testing.T) {
 
 	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
 
-	if _, err := testClient.CoreV1().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.CoreV1().PodsWithMultiTenancy(ns.Name, pod.Tenant).Create(pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
@@ -221,7 +224,7 @@ func initCSIObjects(stopCh chan struct{}, informers clientgoinformers.SharedInfo
 	}
 }
 
-func TestPodUpdateWithWithADC(t *testing.T) {
+func TestPodUpdateWithADC(t *testing.T) {
 	_, server, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 	namespaceName := "test-pod-update"
@@ -249,7 +252,7 @@ func TestPodUpdateWithWithADC(t *testing.T) {
 
 	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
 
-	if _, err := testClient.CoreV1().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.CoreV1().PodsWithMultiTenancy(ns.Name, pod.Tenant).Create(pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
@@ -279,7 +282,7 @@ func TestPodUpdateWithWithADC(t *testing.T) {
 
 	pod.Status.Phase = v1.PodSucceeded
 
-	if _, err := testClient.CoreV1().Pods(ns.Name).UpdateStatus(pod); err != nil {
+	if _, err := testClient.CoreV1().PodsWithMultiTenancy(ns.Name, pod.Tenant).UpdateStatus(pod); err != nil {
 		t.Errorf("Failed to update pod : %v", err)
 	}
 
@@ -318,7 +321,7 @@ func TestPodUpdateWithKeepTerminatedPodVolumes(t *testing.T) {
 
 	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
 
-	if _, err := testClient.CoreV1().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.CoreV1().PodsWithMultiTenancy(ns.Name, pod.Tenant).Create(pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
@@ -348,7 +351,7 @@ func TestPodUpdateWithKeepTerminatedPodVolumes(t *testing.T) {
 
 	pod.Status.Phase = v1.PodSucceeded
 
-	if _, err := testClient.CoreV1().Pods(ns.Name).UpdateStatus(pod); err != nil {
+	if _, err := testClient.CoreV1().PodsWithMultiTenancy(ns.Name, pod.Tenant).UpdateStatus(pod); err != nil {
 		t.Errorf("Failed to update pod : %v", err)
 	}
 
@@ -497,7 +500,7 @@ func TestPodAddedByDswp(t *testing.T) {
 
 	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
 
-	if _, err := testClient.CoreV1().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.CoreV1().PodsWithMultiTenancy(ns.Name, pod.Tenant).Create(pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
@@ -575,10 +578,10 @@ func TestPVCBoundWithADC(t *testing.T) {
 	pvcs := []*v1.PersistentVolumeClaim{}
 	for i := 0; i < 3; i++ {
 		pod, pvc := fakePodWithPVC(fmt.Sprintf("fakepod-pvcnotbound-%d", i), fmt.Sprintf("fakepvc-%d", i), namespaceName)
-		if _, err := testClient.CoreV1().Pods(pod.Namespace).Create(pod); err != nil {
+		if _, err := testClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Create(pod); err != nil {
 			t.Errorf("Failed to create pod : %v", err)
 		}
-		if _, err := testClient.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc); err != nil {
+		if _, err := testClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pvc.Namespace, pvc.Tenant).Create(pvc); err != nil {
 			t.Errorf("Failed to create pvc : %v", err)
 		}
 		pvcs = append(pvcs, pvc)
@@ -586,7 +589,7 @@ func TestPVCBoundWithADC(t *testing.T) {
 	// pod with no pvc
 	podNew := fakePodWithVol(namespaceName)
 	podNew.SetName("fakepod")
-	if _, err := testClient.CoreV1().Pods(podNew.Namespace).Create(podNew); err != nil {
+	if _, err := testClient.CoreV1().PodsWithMultiTenancy(podNew.Namespace, podNew.Tenant).Create(podNew); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
@@ -613,7 +616,8 @@ func TestPVCBoundWithADC(t *testing.T) {
 func createPVForPVC(t *testing.T, testClient *clientset.Clientset, pvc *v1.PersistentVolumeClaim) {
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("fakepv-%s", pvc.Name),
+			Name:   fmt.Sprintf("fakepv-%s", pvc.Name),
+			Tenant: metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			Capacity:    pvc.Spec.Resources.Requests,
@@ -623,11 +627,15 @@ func createPVForPVC(t *testing.T, testClient *clientset.Clientset, pvc *v1.Persi
 					Path: "/var/www/html",
 				},
 			},
-			ClaimRef:         &v1.ObjectReference{Name: pvc.Name, Namespace: pvc.Namespace},
+			ClaimRef: &v1.ObjectReference{
+				Name:      pvc.Name,
+				Namespace: pvc.Namespace,
+				Tenant:    metav1.TenantDefault,
+			},
 			StorageClassName: *pvc.Spec.StorageClassName,
 		},
 	}
-	if _, err := testClient.CoreV1().PersistentVolumes().Create(pv); err != nil {
+	if _, err := testClient.CoreV1().PersistentVolumesWithMultiTenancy(pv.Tenant).Create(pv); err != nil {
 		t.Errorf("Failed to create pv : %v", err)
 	}
 }

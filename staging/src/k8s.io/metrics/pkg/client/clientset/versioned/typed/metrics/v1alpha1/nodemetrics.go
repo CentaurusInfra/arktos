@@ -23,6 +23,7 @@ import (
 	strings "strings"
 	"time"
 
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
@@ -89,8 +90,7 @@ func (c *nodeMetricses) List(opts v1.ListOptions) (result *v1alpha1.NodeMetricsL
 		return
 	}
 
-	if !strings.Contains(err.Error(), "forbidden") ||
-		!strings.Contains(err.Error(), "no relationship found between node") {
+	if !(errors.IsForbidden(err) && strings.Contains(err.Error(), "no relationship found between node")) {
 		return
 	}
 
@@ -112,7 +112,7 @@ func (c *nodeMetricses) List(opts v1.ListOptions) (result *v1alpha1.NodeMetricsL
 			return
 		}
 
-		if err != nil && strings.Contains(err.Error(), "forbidden") &&
+		if err != nil && errors.IsForbidden(err) &&
 			strings.Contains(err.Error(), "no relationship found between node") {
 			klog.V(6).Infof("Skip error %v in list", err)
 			continue
@@ -136,7 +136,7 @@ func (c *nodeMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfac
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
 			Watch()
-		if err != nil && opts.AllowPartialWatch {
+		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
 			// watch error was not returned properly in error message. Skip when partial watch is allowed
 			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)
 			continue

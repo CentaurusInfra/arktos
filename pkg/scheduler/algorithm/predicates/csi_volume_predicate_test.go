@@ -31,6 +31,9 @@ import (
 func TestCSIVolumeCountPredicate(t *testing.T) {
 	// for pods with CSI pvcs
 	oneVolPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -44,6 +47,9 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 		},
 	}
 	twoVolPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -65,6 +71,9 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 	}
 
 	runningPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -79,6 +88,9 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 	}
 
 	pendingVolumePod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -94,6 +106,9 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 
 	// Different pod than pendingVolumePod, but using the same unbound PVC
 	unboundPVCPod2 := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -108,6 +123,9 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 	}
 
 	missingPVPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -122,6 +140,9 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 	}
 
 	noSCPVCPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -134,7 +155,11 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 			},
 		},
 	}
+
 	gceTwoVolPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant: metav1.TenantDefault,
+		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
 				{
@@ -245,11 +270,12 @@ func TestCSIVolumeCountPredicate(t *testing.T) {
 
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.AttachVolumeLimit, true)()
 	expectedFailureReasons := []PredicateFailureReason{ErrMaxVolumeCountExceeded}
+
 	// running attachable predicate tests with feature gate and limit present on nodes
 	for _, test := range tests {
 		node := getNodeWithPodAndVolumeLimits(test.existingPods, int64(test.maxVols), test.driverNames...)
 		pred := NewCSIMaxVolumeLimitPredicate(getFakeCSIPVInfo(test.filterName, test.driverNames...),
-			getFakeCSIPVCInfo(test.filterName, "csi-sc", test.driverNames...),
+			getFakeCSIPVCInfo(metav1.TenantDefault, test.filterName, "csi-sc", test.driverNames...),
 			getFakeCSIStorageClassInfo("csi-sc", test.driverNames[0]))
 
 		fits, reasons, err := pred(test.newPod, GetPredicateMetadata(test.newPod, nil), node)
@@ -271,7 +297,10 @@ func getFakeCSIPVInfo(volumeName string, driverNames ...string) FakePersistentVo
 		for j := 0; j < 4; j++ {
 			volumeHandle := fmt.Sprintf("%s-%s-%d", volumeName, driver, j)
 			pv := v1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: volumeHandle},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   volumeHandle,
+					Tenant: metav1.TenantDefault,
+				},
 				Spec: v1.PersistentVolumeSpec{
 					PersistentVolumeSource: v1.PersistentVolumeSource{
 						CSI: &v1.CSIPersistentVolumeSource{
@@ -288,31 +317,43 @@ func getFakeCSIPVInfo(volumeName string, driverNames ...string) FakePersistentVo
 	return pvInfos
 }
 
-func getFakeCSIPVCInfo(volumeName, scName string, driverNames ...string) FakePersistentVolumeClaimInfo {
+func getFakeCSIPVCInfo(tenant, volumeName, scName string, driverNames ...string) FakePersistentVolumeClaimInfo {
 	pvcInfos := FakePersistentVolumeClaimInfo{}
 	for _, driver := range driverNames {
 		for j := 0; j < 4; j++ {
 			v := fmt.Sprintf("%s-%s-%d", volumeName, driver, j)
 			pvc := v1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Name: v},
-				Spec:       v1.PersistentVolumeClaimSpec{VolumeName: v},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   v,
+					Tenant: tenant,
+				},
+				Spec: v1.PersistentVolumeClaimSpec{VolumeName: v},
 			}
 			pvcInfos = append(pvcInfos, pvc)
 		}
 	}
 
 	pvcInfos = append(pvcInfos, v1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: volumeName + "-4"},
-		Spec:       v1.PersistentVolumeClaimSpec{StorageClassName: &scName},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   volumeName + "-4",
+			Tenant: tenant,
+		},
+		Spec: v1.PersistentVolumeClaimSpec{StorageClassName: &scName},
 	})
 	pvcInfos = append(pvcInfos, v1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: volumeName + "-5"},
-		Spec:       v1.PersistentVolumeClaimSpec{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   volumeName + "-5",
+			Tenant: tenant,
+		},
+		Spec: v1.PersistentVolumeClaimSpec{},
 	})
 	// a pvc with missing PV but available storageclass.
 	pvcInfos = append(pvcInfos, v1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: volumeName + "-6"},
-		Spec:       v1.PersistentVolumeClaimSpec{StorageClassName: &scName, VolumeName: "missing-in-action"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   volumeName + "-6",
+			Tenant: tenant,
+		},
+		Spec: v1.PersistentVolumeClaimSpec{StorageClassName: &scName, VolumeName: "missing-in-action"},
 	})
 	return pvcInfos
 }

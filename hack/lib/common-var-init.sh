@@ -16,7 +16,7 @@
 # Start of Common environment variables used in arktos-up.sh& arktos-apiserver-partition.sh
 # --------------------------------------------------------------------------------------------
 APISERVERS_EXTRA=${APISERVERS_EXTRA:-""}
-if [ ${APISERVERS_EXTRA} != "" ]; then
+if [[ ${APISERVERS_EXTRA} != "" ]]; then
     APISERVERS_EXTRA=${APISERVERS_EXTRA/:/\",\"}
 fi
 

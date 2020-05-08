@@ -12,6 +12,7 @@ go_library(
     importpath = "k8s.io/sample-controller/pkg/generated/clientset/versioned/typed/samplecontroller/v1alpha1",
     visibility = ["//visibility:public"],
     deps = [
+        "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/rand:go_default_library",

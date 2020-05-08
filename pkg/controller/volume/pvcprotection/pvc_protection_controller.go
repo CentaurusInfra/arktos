@@ -124,13 +124,13 @@ func (c *Controller) processNextWorkItem() bool {
 	}
 	defer c.queue.Done(pvcKey)
 
-	pvcNamespace, pvcName, err := cache.SplitMetaNamespaceKey(pvcKey.(string))
+	pvcTenant, pvcNamespace, pvcName, err := cache.SplitMetaTenantNamespaceKey(pvcKey.(string))
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Error parsing PVC key %q: %v", pvcKey, err))
 		return true
 	}
 
-	err = c.processPVC(pvcNamespace, pvcName)
+	err = c.processPVC(pvcTenant, pvcNamespace, pvcName)
 	if err == nil {
 		c.queue.Forget(pvcKey)
 		return true
@@ -142,14 +142,14 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
-func (c *Controller) processPVC(pvcNamespace, pvcName string) error {
-	klog.V(4).Infof("Processing PVC %s/%s", pvcNamespace, pvcName)
+func (c *Controller) processPVC(pvcTenant string, pvcNamespace, pvcName string) error {
+	klog.V(4).Infof("Processing PVC %s/%s/%s", pvcTenant, pvcNamespace, pvcName)
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished processing PVC %s/%s (%v)", pvcNamespace, pvcName, time.Since(startTime))
+		klog.V(4).Infof("Finished processing PVC %s/%s/%s (%v)", pvcTenant, pvcNamespace, pvcName, time.Since(startTime))
 	}()
 
-	pvc, err := c.pvcLister.PersistentVolumeClaims(pvcNamespace).Get(pvcName)
+	pvc, err := c.pvcLister.PersistentVolumeClaimsWithMultiTenancy(pvcNamespace, pvcTenant).Get(pvcName)
 	if apierrs.IsNotFound(err) {
 		klog.V(4).Infof("PVC %s/%s not found, ignoring", pvcNamespace, pvcName)
 		return nil
@@ -187,7 +187,7 @@ func (c *Controller) addFinalizer(pvc *v1.PersistentVolumeClaim) error {
 	}
 	claimClone := pvc.DeepCopy()
 	claimClone.ObjectMeta.Finalizers = append(claimClone.ObjectMeta.Finalizers, volumeutil.PVCProtectionFinalizer)
-	_, err := c.client.CoreV1().PersistentVolumeClaims(claimClone.Namespace).Update(claimClone)
+	_, err := c.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(claimClone.Namespace, claimClone.Tenant).Update(claimClone)
 	if err != nil {
 		klog.V(3).Infof("Error adding protection finalizer to PVC %s/%s: %v", pvc.Namespace, pvc.Name, err)
 		return err
@@ -199,7 +199,7 @@ func (c *Controller) addFinalizer(pvc *v1.PersistentVolumeClaim) error {
 func (c *Controller) removeFinalizer(pvc *v1.PersistentVolumeClaim) error {
 	claimClone := pvc.DeepCopy()
 	claimClone.ObjectMeta.Finalizers = slice.RemoveString(claimClone.ObjectMeta.Finalizers, volumeutil.PVCProtectionFinalizer, nil)
-	_, err := c.client.CoreV1().PersistentVolumeClaims(claimClone.Namespace).Update(claimClone)
+	_, err := c.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(claimClone.Namespace, claimClone.Tenant).Update(claimClone)
 	if err != nil {
 		klog.V(3).Infof("Error removing protection finalizer from PVC %s/%s: %v", pvc.Namespace, pvc.Name, err)
 		return err
@@ -282,7 +282,7 @@ func (c *Controller) podAddedDeletedUpdated(obj interface{}, deleted bool) {
 	// Enqueue all PVCs that the pod uses
 	for _, volume := range pod.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
-			c.queue.Add(pod.Namespace + "/" + volume.PersistentVolumeClaim.ClaimName)
+			c.queue.Add(pod.Tenant + "/" + pod.Namespace + "/" + volume.PersistentVolumeClaim.ClaimName)
 		}
 	}
 }
