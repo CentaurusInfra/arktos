@@ -40,6 +40,21 @@ The "type" field is the only mandatory field in a network object. For now there 
 
 A command-line parameter named "default-network-template-path" of tenant controller will decide which default network will be created for a new space.
 
+The content of default network template file should reflect the Network object in json format, with ```{{.}}``` the replacement of tenant name, like
+```json
+{
+    "metadata": {
+        "name": "default",
+        "tenant": "{{.}}"
+	"finalizers": ["arktos.futurewei.com/network"]
+    },
+    "spec": {
+        "type": "vpc",
+        "vpcID": "{{.}}-default-network"
+    }
+}
+```
+
 Below is the definition of a flat network:
 
 ```yaml

@@ -215,7 +215,6 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 		klog.Infof("skipped the creation of default network in tenant %q", tenantName)
 	} else {
 		klog.Infof("creating the default network in tenant %q", tenantName)
-		// todo: get the default network template from cli config
 		defaultNetwork := arktosv1.Network{}
 		if err = tc.getDefaultNetwork(tenantName, &defaultNetwork); err != nil {
 			createFailures = append(createFailures, err)
