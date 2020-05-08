@@ -35,6 +35,7 @@ func (o *TenantControllerOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.DurationVar(&o.TenantSyncPeriod.Duration, "tenant-sync-period", o.TenantSyncPeriod.Duration, "The period for syncing tenant life-cycle updates")
 	fs.Int32Var(&o.ConcurrentTenantSyncs, "concurrent-tenant-syncs", o.ConcurrentTenantSyncs, "The number of tenant objects that are allowed to sync concurrently. Larger number = more responsive tenant termination, but more CPU (and network) load")
+	fs.StringVar(&o.DefaultNetworkTemplatePath, "default-network-template-path", o.DefaultNetworkTemplatePath, "The path to the template file for the default network spec in JSON of tenants. Empty means system won't create  the default network for new tenants")
 }
 
 // ApplyTo fills up TenantController config with options.
@@ -45,6 +46,7 @@ func (o *TenantControllerOptions) ApplyTo(cfg *tenantconfig.TenantControllerConf
 
 	cfg.TenantSyncPeriod = o.TenantSyncPeriod
 	cfg.ConcurrentTenantSyncs = o.ConcurrentTenantSyncs
+	cfg.DefaultNetworkTemplatePath = o.DefaultNetworkTemplatePath
 
 	return nil
 }
