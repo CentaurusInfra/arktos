@@ -920,6 +920,11 @@ function start-flannel-ds {
   popd
 }
 
+function start-weave-ds {
+  local kubectl_ver="$(${KUBE_ROOT}/cluster/kubectl.sh version | base64 | tr -d '\n')"
+  ${KUBE_ROOT}/cluster/kubectl.sh --kubeconfig=${LOCAL_KUBECONFIG} create -f "https://cloud.weave.works/k8s/net?k8s-version=$kubectl_ver"
+}
+
 function start-bridge-networking {
   :
 }
@@ -928,6 +933,9 @@ function start-cluster-networking {
   case "${NETWORK_PROVIDER}" in
     flannel)
     start-flannel-ds
+    ;;
+    weave)
+    start-weave-ds
     ;;
     bridge)
     start-bridge-networking
@@ -1070,6 +1078,11 @@ function kube-up {
 function create-bootstrap-script() {
   ensure-temp-dir
 
+  POD_NETWORK_CIDR=""
+  if [[ $NETWORK_PROVIDER == "flannel" ]]; then
+    POD_NETWORK_CIDR="10.244.0.0/16"
+  fi
+
   BOOTSTRAP_SCRIPT="${KUBE_TEMP}/bootstrap-script"
 
   (
@@ -1134,6 +1147,7 @@ function start-master() {
     echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
     echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
     echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
+    echo "POD_NETWORK_CIDR: $(yaml-quote ${POD_NETWORK_CIDR:-})"
     echo "__EOF_MASTER_KUBE_ENV_YAML"
     echo ""
     echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
