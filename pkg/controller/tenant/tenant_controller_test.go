@@ -73,6 +73,20 @@ func TestTenantCreation(t *testing.T) {
 			NetworkTemplatePath: "",
 			ExpectedNetwork: nil,
 		},
+		"terminating-tenant-not-create-default-network": {
+			Tenant: &v1.Tenant{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-tenant-3",
+				},
+				Status: v1.TenantStatus {
+					Phase: v1.TenantTerminating,
+				},
+			},
+			ExpectCreatedNamespaces: tenant_default_namespaces[:],
+			NetworkTemplate: `{"metadata":{"name":"default","tenant":"{{.}}"},"spec":{"type":"test-type","vpcID":"{{.}}-12345"}}`,
+			NetworkTemplatePath: "test.tmpl",
+			ExpectedNetwork: nil,
+		},
 	}
 
 	for k, tc := range testcases {

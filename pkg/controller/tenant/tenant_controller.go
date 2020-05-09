@@ -211,8 +211,11 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 	}
 
 	// create default network object, if applicable
-	if len(tc.defaultNetworkTemplatePath) == 0 {
-		klog.Infof("skipped the creation of default network in tenant %q", tenantName)
+	tenant, _ := tc.lister.Get(tenantName)	// no error as its caller, processQueue, has checked.
+	if tenant.Status.Phase == v1.TenantTerminating {
+		klog.Infof("Tenant %q is terminating; skipped the creation of default network", tenantName)
+	} else if len(tc.defaultNetworkTemplatePath) == 0 {
+		klog.Infof("No default network template path; skipped the creation of default network in tenant %q", tenantName)
 	} else {
 		klog.Infof("creating the default network in tenant %q", tenantName)
 		defaultNetwork := arktosv1.Network{}
