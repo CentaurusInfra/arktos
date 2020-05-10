@@ -165,15 +165,17 @@ Here are some examples:
  
  1. **isolation**. Each regular tenant can independently create/delete/update their CRDs and custom resources based on the CRDs. There will be NO CRD G/V/K collision between two regular tenants. Actually, the CRDs and custom resources of one regular tenant are invisible to another regular tenant.  
 
- 2. **Managebility**. A cluster operator (he should be user under the system tenant) can introduce a new CRD, where he can choose to:
+ 2. **Manageability**. A cluster operator (he should be user under the system tenant) can introduce a new CRD, where he can choose to:
   * make it usable only to the system tenant.
   * or, make it usable only to a spefic set of to regular tenants and the system tenants, 
   * or, usable to all the regular tenants. 
   * Additionally, the applicable range of a CRD can be changed by the cluster operator at any time in a simple and quick manner. That will be useful to CRD test and rolling update.  
+
+  (*** What the managebility should look like is not finalized as we are still working on it. )
  
  Note: it does not contradict the principle of isolation. The isolation principle is about two regular tenants, while this principle is about the system tenant and regular tenants. 
 
- 3. **Autonomy**. The tenant admin has the final say on what CRD will be used in his tenant space when there is an overlap between the tenant's CRD and that of the system tenant. The tenant can choose MultiTenancyCRD policy to be :
+ 3. **Autonomy**. It means that the tenant can install his own CRD and deploy the resources and CRD operators within his own tenant's world, without the help from the cluster admins. Autonomy also means that the tenant admin has the final say on what CRD will be used in his tenant space when there is an overlap between the tenant's CRD and that of the system tenant. The tenant can choose MultiTenancyCRD policy to be :
   * NeverUseSystemCRD
   * SystemCRDFirst
   * LocalCRDFirst
@@ -187,7 +189,9 @@ Here are some examples:
     * An existing CRD operator image can work in Arktos without re-compiling or image rebuilding.
     * An existing CRD operator source code build and work in Arktos. So developers can create new operators or revise existing operators in Arktos without learning new APIs.
 
-However, we need to point out that, Arktos does not allow a regular tenant to access cluster-scope resources, such as nodes and daemonsets. So a CRD definition or a CRD operator that needs access to the cluster-scope resources will no longer be supported in a regular tenant's space. Surely, they can continue to work in the system tenant's space. For the same reason, a regular tenant is not allowed to create a cluster-scope CRD. If regular tenant specifies its CRD to be cluster-scoped, the CRD will be changed to tenant-scoped. 
+    Note that the backward compability is only ensure when the CRD operator is working in a given tenant's space. If we would like to an operator to work across multiple tenants, code changes are needed to collect infor from different tenants and differentiate them.
+
+However, we need to point out that, certain resources are not accessible from regular tenants, such as nodes and daemonsets, which are deed as above the tenant level. So a CRD definition or a CRD operator that needs access to those resources will no longer be supported in a regular tenant's space. Surely, they can continue to work in the system tenant's space. For the same reason, a regular tenant is not allowed to create such above-tenant-level CRD in Arktos. 
  
  
 #### Detailed Design
@@ -294,11 +298,11 @@ Here is how it works:
 ### Other CRD Designs discussed
 
 We have considered the design to copy the system CRD to each tenant's world for simplicity in CRD searching logic. In this design, when the system tenant decides to publish a CRD, the system copies the CRD to spaces of applicable regular tenants. Yet I am moving away from it as it is less flexible and responsive than desired. Consider the following scenarios:
-* When copying a CRD from system's space to tenant's space, the tenant's own CRD is overwritten. If the system CRD contains some tricky bugs and the tenant would like to revert to his own copy CRD after a period, he has to retrieve the CRD source file and apply it. If the orginal CRD yaml file is gone, he cannot even revert. While with current design, it can be done by just changing MultiTenancyCRDPolicy of the tenant.
+* When copying a CRD from system's space to tenant's space, the tenant's own CRD is overwritten. If the system CRD contains some tricky bugs and the tenant would like to revert to his own copy CRD after a period, he has to retrieve the CRD source file and apply it. If the original CRD yaml file is gone, he cannot even revert. While with current design, it can be done by just changing MultiTenancyCRDPolicy of the tenant.
 * If the system tenant would like to recall a published CRD, it needs to remove the CRD from each affected tenant. Yet with the no-copy design, it involves only one deletion in the system space.
 
 Besides, the copy-CRD-to-tenant design also has the following disadvantages comparing to design given earlier:
 1. delay in deployment. It costs time and resources to copying.
 2. It needs a new controller to watch for the CRD, which will copy the CRD to tenant spaces or remove CRD from tenant spaces. 
 
-The advantage of copy-CRD-to-tenant scheme is simplicity, as all the CRDs that the tenant has access are in the tenant's own space and we don't need to worry about authorization. However, as explained above, the logic to search matching CRD is in the api server side, not the client side. Therefore, no concern about client authorization is necessary. Besides, per the pseudo-code given above, the complixity of the CRD matching is acceptable. 
+The advantage of copy-CRD-to-tenant scheme is simplicity, as all the CRDs that the tenant has access are in the tenant's own space and we don't need to worry about authorization. However, as explained above, the logic to search matching CRD is in the api server side, not the client side. Therefore, no concern about client authorization is necessary. Besides, per the pseudo-code given above, the complexity of the CRD matching is acceptable. 
