@@ -375,10 +375,10 @@ KUBE_UP_AUTOMATIC_CLEANUP=${KUBE_UP_AUTOMATIC_CLEANUP:-false}
 STORAGE_BACKEND=${STORAGE_BACKEND:-}
 
 # Networking plugin specific settings.
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-kubenet}" # none, kubenet
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with container runtime, update to cni and flannel
 
 # Network Policy plugin specific settings.
-NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-none}" # calico
+NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-flannel}" # calico kubenet doesn't work with container runtime, update to cni and flannel
 
 NON_MASQUERADE_CIDR="0.0.0.0/0"
 

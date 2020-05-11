@@ -252,6 +252,72 @@ function install-node-problem-detector {
   rm -f "${KUBE_HOME}/${npd_tar}"
 }
 
+function install-cni-network {
+  mkdir -p /etc/cni/net.d
+  case "${NETWORK_POLICY_PROVIDER:-flannel}" in
+    flannel)
+    setup-flannel-cni-conf
+    install-flannel-yml
+    ;;
+    bridge)
+    setup-bridge-cni-conf
+    ;;
+  esac
+}
+
+function setup-bridge-cni-conf {
+  cat > /etc/cni/net.d/bridge.conf <<EOF
+{
+  "cniVersion": "0.3.1",
+  "name": "containerd-net",
+  "type": "bridge",
+  "bridge": "cni0",
+  "isGateway": true,
+  "ipMasq": true,
+  "ipam": {
+    "type": "host-local",
+    "subnet": "10.88.0.0/16",
+    "routes": [
+      { "dst": "0.0.0.0/0" }
+    ]
+  }
+}
+EOF
+}
+
+function setup-flannel-cni-conf {
+  cat > /etc/cni/net.d/10-flannel.conflist <<EOF
+{
+  "cniVersion": "0.3.1",
+  "name": "cbr0",
+  "plugins": [
+    {
+      "type": "flannel",
+      "delegate": {
+        "hairpinMode": true,
+        "isDefaultGateway": true
+      }
+    },
+    {
+      "type": "portmap",
+      "capabilities": {
+        "portMappings": true
+      }
+    }
+  ]
+}
+EOF
+}
+
+####downloading flannel yaml
+function install-flannel-yml {
+  echo "downloading flannel"
+  download-or-bust "" "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+  local -r flannel_dir="${KUBE_HOME}/flannel"
+  mkdir -p "${flannel_dir}"
+  mv "${KUBE_HOME}/kube-flannel.yml" "${flannel_dir}"
+}
+
 function install-cni-binaries {
   if [[ -n "${CNI_VERSION:-}" ]]; then
       local -r cni_tar="cni-plugins-amd64-${CNI_VERSION}.tgz"
@@ -452,6 +518,7 @@ function install-kube-binary-config {
   if [[ "${NETWORK_PROVIDER:-}" == "kubenet" ]] || \
      [[ "${NETWORK_PROVIDER:-}" == "cni" ]]; then
     install-cni-binaries
+    install-cni-network
   fi
 
   # Put kube-system pods manifests in ${KUBE_HOME}/kube-manifests/.
