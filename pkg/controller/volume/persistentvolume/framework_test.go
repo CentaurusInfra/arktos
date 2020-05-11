@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -244,7 +245,7 @@ func newVolume(name, capacity, boundToClaimUID, boundToClaimName string, phase v
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			ResourceVersion: "1",
-			Tenant: metav1.TenantDefault,
+			Tenant:          metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			Capacity: v1.ResourceList{
@@ -270,7 +271,7 @@ func newVolume(name, capacity, boundToClaimUID, boundToClaimName string, phase v
 			UID:        types.UID(boundToClaimUID),
 			Namespace:  testNamespace,
 			Name:       boundToClaimName,
-			Tenant: metav1.TenantDefault,
+			Tenant:     metav1.TenantDefault,
 		}
 	}
 
@@ -360,7 +361,7 @@ func newClaim(name, claimUID, capacity, boundToVolume string, phase v1.Persisten
 			Namespace:       testNamespace,
 			UID:             types.UID(claimUID),
 			ResourceVersion: "1",
-			Tenant: metav1.TenantDefault,
+			Tenant:          metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce, v1.ReadOnlyMany},
@@ -867,7 +868,7 @@ func (plugin *mockVolumePlugin) Provision(selectedNode *v1.Node, allowedTopologi
 		accessModes := plugin.provisionOptions.PVC.Spec.AccessModes
 		pv = &v1.PersistentVolume{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: plugin.provisionOptions.PVName,
+				Name:   plugin.provisionOptions.PVName,
 				Tenant: metav1.TenantDefault,
 			},
 			Spec: v1.PersistentVolumeSpec{
