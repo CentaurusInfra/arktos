@@ -60,6 +60,7 @@ func newHeadlessService(namespace string) *v1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "fake-service-name",
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.ServiceSpec{
 			ClusterIP: "None",
@@ -82,6 +83,7 @@ func newSTS(name, namespace string, replicas int) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			PodManagementPolicy: appsv1.ParallelPodManagement,
@@ -143,6 +145,7 @@ func newStatefulSetPVC(name string) v1.PersistentVolumeClaim {
 			Annotations: map[string]string{
 				"volume.alpha.kubernetes.io/storage-class": "anything",
 			},
+			Tenant: metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{
@@ -191,7 +194,7 @@ func runControllerAndInformers(sc *statefulset.StatefulSetController, informers 
 }
 
 func createHeadlessService(t *testing.T, clientSet clientset.Interface, headlessService *v1.Service) {
-	_, err := clientSet.CoreV1().Services(headlessService.Namespace).Create(headlessService)
+	_, err := clientSet.CoreV1().ServicesWithMultiTenancy(headlessService.Namespace, headlessService.Tenant).Create(headlessService)
 	if err != nil {
 		t.Fatalf("failed creating headless service: %v", err)
 	}
@@ -201,14 +204,14 @@ func createSTSsPods(t *testing.T, clientSet clientset.Interface, stss []*appsv1.
 	var createdSTSs []*appsv1.StatefulSet
 	var createdPods []*v1.Pod
 	for _, sts := range stss {
-		createdSTS, err := clientSet.AppsV1().StatefulSets(sts.Namespace).Create(sts)
+		createdSTS, err := clientSet.AppsV1().StatefulSetsWithMultiTenancy(sts.Namespace, sts.Tenant).Create(sts)
 		if err != nil {
 			t.Fatalf("failed to create sts %s: %v", sts.Name, err)
 		}
 		createdSTSs = append(createdSTSs, createdSTS)
 	}
 	for _, pod := range pods {
-		createdPod, err := clientSet.CoreV1().Pods(pod.Namespace).Create(pod)
+		createdPod, err := clientSet.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Create(pod)
 		if err != nil {
 			t.Fatalf("failed to create pod %s: %v", pod.Name, err)
 		}
@@ -220,7 +223,7 @@ func createSTSsPods(t *testing.T, clientSet clientset.Interface, stss []*appsv1.
 
 // Verify .Status.Replicas is equal to .Spec.Replicas
 func waitSTSStable(t *testing.T, clientSet clientset.Interface, sts *appsv1.StatefulSet) {
-	stsClient := clientSet.AppsV1().StatefulSets(sts.Namespace)
+	stsClient := clientSet.AppsV1().StatefulSetsWithMultiTenancy(sts.Namespace, sts.Tenant)
 	desiredGeneration := sts.Generation
 	if err := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		newSTS, err := stsClient.Get(sts.Name, metav1.GetOptions{})
@@ -296,7 +299,7 @@ func updateSTS(t *testing.T, stsClient typedappsv1.StatefulSetInterface, stsName
 
 // Update .Spec.Replicas to replicas and verify .Status.Replicas is changed accordingly
 func scaleSTS(t *testing.T, c clientset.Interface, sts *appsv1.StatefulSet, replicas int32) {
-	stsClient := c.AppsV1().StatefulSets(sts.Namespace)
+	stsClient := c.AppsV1().StatefulSetsWithMultiTenancy(sts.Namespace, sts.Tenant)
 	if err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		newSTS, err := stsClient.Get(sts.Name, metav1.GetOptions{})
 		if err != nil {

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ type reaction struct {
 func pv() *v1.PersistentVolume {
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: defaultPVName,
+			Name:   defaultPVName,
 			Tenant: metav1.TenantDefault,
 		},
 	}
@@ -58,7 +59,7 @@ func pv() *v1.PersistentVolume {
 func boundPV() *v1.PersistentVolume {
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: defaultPVName,
+			Name:   defaultPVName,
 			Tenant: metav1.TenantDefault,
 		},
 		Status: v1.PersistentVolumeStatus{

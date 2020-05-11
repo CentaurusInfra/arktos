@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,7 +49,7 @@ func TestSpecReplicasChange(t *testing.T) {
 
 	// Add a template annotation change to test STS's status does update
 	// without .Spec.Replicas change
-	stsClient := c.AppsV1().StatefulSets(ns.Name)
+	stsClient := c.AppsV1().StatefulSetsWithMultiTenancy(ns.Name, ns.Tenant)
 	var oldGeneration int64
 	newSTS := updateSTS(t, stsClient, sts.Name, func(sts *appsv1.StatefulSet) {
 		oldGeneration = sts.Generation
@@ -85,7 +86,7 @@ func TestDeletingAndFailedPods(t *testing.T) {
 	waitSTSStable(t, c, sts)
 
 	// Verify STS creates 2 pods
-	podClient := c.CoreV1().Pods(ns.Name)
+	podClient := c.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 	pods := getPods(t, podClient, labelMap)
 	if len(pods.Items) != 2 {
 		t.Fatalf("len(pods) = %d, want 2", len(pods.Items))
@@ -97,7 +98,7 @@ func TestDeletingAndFailedPods(t *testing.T) {
 	updatePod(t, podClient, deletingPod.Name, func(pod *v1.Pod) {
 		pod.Finalizers = []string{"fake.example.com/blockDeletion"}
 	})
-	if err := c.CoreV1().Pods(ns.Name).Delete(deletingPod.Name, &metav1.DeleteOptions{}); err != nil {
+	if err := c.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant).Delete(deletingPod.Name, &metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("error deleting pod %s: %v", deletingPod.Name, err)
 	}
 

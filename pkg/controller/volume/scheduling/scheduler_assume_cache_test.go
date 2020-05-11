@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ func makePV(name, version, storageClass string) *v1.PersistentVolume {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			ResourceVersion: version,
-			Tenant: metav1.TenantDefault,
+			Tenant:          metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			StorageClassName: storageClass,
@@ -312,7 +313,7 @@ func makeClaim(name, version, namespace string) *v1.PersistentVolumeClaim {
 			Namespace:       namespace,
 			ResourceVersion: version,
 			Annotations:     map[string]string{},
-			Tenant: metav1.TenantDefault,
+			Tenant:          metav1.TenantDefault,
 		},
 	}
 }
