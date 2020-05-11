@@ -2811,6 +2811,32 @@ function start-lb-controller {
   fi
 }
 
+###start cluster networking: flannel, bridge
+function start-cluster-networking {
+  case "${NETWORK_POLICY_PROVIDER:-flannel}" in
+    flannel)
+    start-flannel-ds
+    ;;
+    bridge)
+    start-bridge-networking
+    ;;
+  esac
+}
+
+function start-flannel-ds {
+  if [[ -f "${KUBE_HOME}/flannel/kube-flannel.yml" ]]; then
+    echo "installing flannel ds"
+    kubectl apply -f "${KUBE_HOME}/flannel/kube-flannel.yml"
+  else 
+    echo "failed to install flannel ds, cannot find required yaml file"
+  fi
+}
+
+function start-bridge-networking {
+  :
+}
+
+
 # Setup working directory for kubelet.
 function setup-kubelet-dir {
     echo "Making /var/lib/kubelet executable for kubelet"
@@ -3109,6 +3135,8 @@ function main() {
     start-lb-controller
     update-legacy-addon-node-labels &
     apply-encryption-config &
+    start-cluster-networking   ####start cluster networking if not using default kubenet
+
   else
     if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
       start-kube-proxy
