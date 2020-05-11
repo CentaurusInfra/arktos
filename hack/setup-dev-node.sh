@@ -1,4 +1,3 @@
-ubuntu@ip-172-31-20-207:~/go/src/github.com/arktos/hack$ cat setup-dev-node.sh
 #!/usr/bin/env bash
 
 # Copyright 2020 Authors of Arktos.
