@@ -790,7 +790,7 @@ function construct-linux-kubelet-flags {
       fi
     else
       # Otherwise use the configured value.
-      flags+=" --network-plugin="
+      flags+=" --network-plugin=${NETWORK_PROVIDER}"
 
     fi
   fi

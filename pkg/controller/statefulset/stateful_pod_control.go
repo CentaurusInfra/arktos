@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,7 +78,7 @@ func (spc *realStatefulPodControl) CreateStatefulPod(set *apps.StatefulSet, pod 
 		return err
 	}
 	// If we created the PVCs attempt to create the Pod
-	_, err := spc.client.CoreV1().Pods(set.Namespace).Create(pod)
+	_, err := spc.client.CoreV1().PodsWithMultiTenancy(set.Namespace, set.Tenant).Create(pod)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
 		return err
@@ -113,12 +114,12 @@ func (spc *realStatefulPodControl) UpdateStatefulPod(set *apps.StatefulSet, pod 
 
 		attemptedUpdate = true
 		// commit the update, retrying on conflicts
-		_, updateErr := spc.client.CoreV1().Pods(set.Namespace).Update(pod)
+		_, updateErr := spc.client.CoreV1().PodsWithMultiTenancy(set.Namespace, set.Tenant).Update(pod)
 		if updateErr == nil {
 			return nil
 		}
 
-		if updated, err := spc.podLister.Pods(set.Namespace).Get(pod.Name); err == nil {
+		if updated, err := spc.podLister.PodsWithMultiTenancy(set.Namespace, set.Tenant).Get(pod.Name); err == nil {
 			// make a copy so we don't mutate the shared cache
 			pod = updated.DeepCopy()
 		} else {
@@ -134,7 +135,7 @@ func (spc *realStatefulPodControl) UpdateStatefulPod(set *apps.StatefulSet, pod 
 }
 
 func (spc *realStatefulPodControl) DeleteStatefulPod(set *apps.StatefulSet, pod *v1.Pod) error {
-	err := spc.client.CoreV1().Pods(set.Namespace).Delete(pod.Name, nil)
+	err := spc.client.CoreV1().PodsWithMultiTenancy(set.Namespace, set.Tenant).Delete(pod.Name, nil)
 	spc.recordPodEvent("delete", set, pod, err)
 	return err
 }
@@ -179,10 +180,10 @@ func (spc *realStatefulPodControl) recordClaimEvent(verb string, set *apps.State
 func (spc *realStatefulPodControl) createPersistentVolumeClaims(set *apps.StatefulSet, pod *v1.Pod) error {
 	var errs []error
 	for _, claim := range getPersistentVolumeClaims(set, pod) {
-		_, err := spc.pvcLister.PersistentVolumeClaims(claim.Namespace).Get(claim.Name)
+		_, err := spc.pvcLister.PersistentVolumeClaimsWithMultiTenancy(claim.Namespace, claim.Tenant).Get(claim.Name)
 		switch {
 		case apierrors.IsNotFound(err):
-			_, err := spc.client.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(&claim)
+			_, err := spc.client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(claim.Namespace, claim.Tenant).Create(&claim)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("Failed to create PVC %s: %s", claim.Name, err))
 			}

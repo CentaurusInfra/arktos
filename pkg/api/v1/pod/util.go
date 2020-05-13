@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -270,6 +271,7 @@ func GetPodConditionFromList(conditions []v1.PodCondition, conditionType v1.PodC
 	if conditions == nil {
 		return -1, nil
 	}
+
 	for i := range conditions {
 		if conditions[i].Type == conditionType {
 			return i, &conditions[i]

@@ -248,7 +248,7 @@ func TestPersistentVolumeBindRace(t *testing.T) {
 		counter++
 		newPvc := pvc.DeepCopy()
 		newPvc.ObjectMeta = metav1.ObjectMeta{
-			Name: fmt.Sprintf("fake-pvc-race-%d", counter),
+			Name:   fmt.Sprintf("fake-pvc-race-%d", counter),
 			Tenant: metav1.TenantDefault,
 		}
 		claim, err := testClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(ns.Name, newPvc.Tenant).Create(newPvc)
@@ -286,7 +286,7 @@ func TestPersistentVolumeBindRace(t *testing.T) {
 	if pv.Spec.ClaimRef == nil {
 		t.Fatalf("Unexpected nil claimRef")
 	}
-	if pv.Spec.ClaimRef.Tenant!= claimRef.Tenant || pv.Spec.ClaimRef.Namespace != claimRef.Namespace || pv.Spec.ClaimRef.Name != claimRef.Name {
+	if pv.Spec.ClaimRef.Tenant != claimRef.Tenant || pv.Spec.ClaimRef.Namespace != claimRef.Namespace || pv.Spec.ClaimRef.Name != claimRef.Name {
 		t.Fatalf("Bind mismatch! Expected %s/%s/%s but got %s/%s/%s", claimRef.Tenant, claimRef.Namespace, claimRef.Name, pv.Spec.ClaimRef.Tenant, pv.Spec.ClaimRef.Namespace, pv.Spec.ClaimRef.Name)
 	}
 }
@@ -366,7 +366,7 @@ func TestPersistentVolumeClaimLabelSelector(t *testing.T) {
 	if pv.Spec.ClaimRef == nil {
 		t.Fatalf("True PV should be bound")
 	}
-	if pv.Spec.ClaimRef.Tenant!= pvc.Tenant || pv.Spec.ClaimRef.Namespace != pvc.Namespace || pv.Spec.ClaimRef.Name != pvc.Name {
+	if pv.Spec.ClaimRef.Tenant != pvc.Tenant || pv.Spec.ClaimRef.Namespace != pvc.Namespace || pv.Spec.ClaimRef.Name != pvc.Name {
 		t.Fatalf("Bind mismatch! Expected %s/%s/%s but got %s/%s/%s", pvc.Tenant, pvc.Namespace, pvc.Name, pv.Spec.ClaimRef.Tenant, pv.Spec.ClaimRef.Namespace, pv.Spec.ClaimRef.Name)
 	}
 }
@@ -466,7 +466,7 @@ func TestPersistentVolumeClaimLabelSelectorMatchExpressions(t *testing.T) {
 	if pv.Spec.ClaimRef == nil {
 		t.Fatalf("True PV should be bound")
 	}
-	if pv.Spec.ClaimRef.Tenant!= pvc.Tenant || pv.Spec.ClaimRef.Namespace != pvc.Namespace || pv.Spec.ClaimRef.Name != pvc.Name {
+	if pv.Spec.ClaimRef.Tenant != pvc.Tenant || pv.Spec.ClaimRef.Namespace != pvc.Namespace || pv.Spec.ClaimRef.Name != pvc.Name {
 		t.Fatalf("Bind mismatch! Expected %s/%s/%s but got %s/%s/%s", pvc.Tenant, pvc.Namespace, pvc.Name, pv.Spec.ClaimRef.Tenant, pv.Spec.ClaimRef.Namespace, pv.Spec.ClaimRef.Name)
 	}
 }
@@ -1165,7 +1165,7 @@ func createClients(ns *v1.Namespace, t *testing.T, s *httptest.Server, syncPerio
 func createPV(name, path, cap string, mode []v1.PersistentVolumeAccessMode, reclaim v1.PersistentVolumeReclaimPolicy) *v1.PersistentVolume {
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:   name,
 			Tenant: metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeSpec{
@@ -1182,7 +1182,7 @@ func createPVC(name, namespace, cap string, mode []v1.PersistentVolumeAccessMode
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Tenant: metav1.TenantDefault,
+			Tenant:    metav1.TenantDefault,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			Resources:        v1.ResourceRequirements{Requests: v1.ResourceList{v1.ResourceName(v1.ResourceStorage): resource.MustParse(cap)}},
