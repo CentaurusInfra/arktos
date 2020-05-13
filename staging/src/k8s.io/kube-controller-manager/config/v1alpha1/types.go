@@ -453,6 +453,8 @@ type TenantControllerConfiguration struct {
 	// concurrentTenantSyncs is the number of tenant objects that are
 	// allowed to sync concurrently.
 	ConcurrentTenantSyncs int32 `json:"concurrentTenantSyncs,omitempty"`
+	// DefaultNetworkTemplatePath is the path to json-formatted template file of default network in tenant space
+	DefaultNetworkTemplatePath string `json:"defaultNetworkTemplatePath,omitempty"`
 }
 
 // TTLAfterFinishedControllerConfiguration contains elements describing TTLAfterFinishedController.

@@ -93,11 +93,13 @@ func Convert_v1_GroupResource_To_v1alpha1_GroupResource(in *v1.GroupResource, ou
 func autoConvert_v1alpha1_TenantControllerConfiguration_To_config_TenantControllerConfiguration(in *v1alpha1.TenantControllerConfiguration, out *config.TenantControllerConfiguration, s conversion.Scope) error {
 	out.TenantSyncPeriod = in.TenantSyncPeriod
 	out.ConcurrentTenantSyncs = in.ConcurrentTenantSyncs
+	out.DefaultNetworkTemplatePath = in.DefaultNetworkTemplatePath
 	return nil
 }
 
 func autoConvert_config_TenantControllerConfiguration_To_v1alpha1_TenantControllerConfiguration(in *config.TenantControllerConfiguration, out *v1alpha1.TenantControllerConfiguration, s conversion.Scope) error {
 	out.TenantSyncPeriod = in.TenantSyncPeriod
 	out.ConcurrentTenantSyncs = in.ConcurrentTenantSyncs
+	out.DefaultNetworkTemplatePath = in.DefaultNetworkTemplatePath
 	return nil
 }

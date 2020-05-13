@@ -40,6 +40,22 @@ The "type" field is the only mandatory field in a network object. For now there 
 
 A command-line parameter named "default-network-template-path" of tenant controller will decide which default network will be created for a new space.
 
+For flat network env, each space should still have its own default network, as kube-dns service is isolated across tenants.
+
+The content of default network template file should reflect the Network object in json format, with ```{{.}}``` the replacement of tenant name, like
+```json
+{
+    "metadata": {
+        "name": "default",
+        "finalizers": ["arktos.futurewei.com/network"]
+    },
+    "spec": {
+        "type": "vpc",
+        "vpcID": "{{.}}-default-network"
+    }
+}
+```
+
 Below is the definition of a flat network:
 
 ```yaml
@@ -60,7 +76,7 @@ metadata:
   name: vpc-1
 spec:
   type: vpc
-  vpc-id: vpc-1a2b3c4d
+  vpcID: vpc-1a2b3c4d
 ```
 When a pod is attached to the default network, nothing is needed in pod spec:
 

@@ -33,6 +33,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
@@ -359,10 +360,19 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 	}
 	tenantKubeClient := clientset.NewForConfigOrDie(tnKubeConfigs)
 
+	crConfigs := *tnKubeConfigs
+	for _, cfg := range crConfigs.GetAllConfigs() {
+		cfg.ContentType = "application/json"
+		cfg.AcceptContentTypes = "application/json"
+	}
+	networkClient := arktos.NewForConfigOrDie(&crConfigs)
+
 	tenantController := tenantcontroller.NewTenantController(
 		tenantKubeClient,
 		ctx.InformerFactory.Core().V1().Tenants(),
 		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
+		networkClient,
+		ctx.ComponentConfig.TenantController.DefaultNetworkTemplatePath,
 	)
 	go tenantController.Run(int(ctx.ComponentConfig.TenantController.ConcurrentTenantSyncs), ctx.Stop)
 

@@ -17,7 +17,11 @@ limitations under the License.
 package tenant
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/json"
+	"text/template"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -26,6 +30,8 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -52,18 +58,29 @@ type tenantController struct {
 	kubeClient clientset.Interface
 	// sync handler for injection
 	syncHandler func(key string) error
+
+	// client for network CR api calls
+	networkClient arktos.Interface
+	// default network spec template file path
+	defaultNetworkTemplatePath string
+	// templateGetter for injection
+	templateGetter func(path string) (string, error)
 }
 
 // NewTenantController creates a new iinstance of tenantcontroller
 func NewTenantController(
 	kubeClient clientset.Interface,
 	tenantInformer coreinformers.TenantInformer,
-	resyncPeriod time.Duration) *tenantController {
+	resyncPeriod time.Duration,
+	networkClient arktos.Interface,
+	defaultNetworkTemplatePath string) *tenantController {
 
 	// create the controller so we can inject the enqueue function
 	tenantController := &tenantController{
-		kubeClient: kubeClient,
-		queue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tenant"),
+		kubeClient:                 kubeClient,
+		networkClient:              networkClient,
+		queue:                      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tenant"),
+		defaultNetworkTemplatePath: defaultNetworkTemplatePath,
 	}
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
@@ -82,7 +99,7 @@ func NewTenantController(
 	tenantController.lister = tenantInformer.Lister()
 	tenantController.listerSynced = tenantInformer.Informer().HasSynced
 	tenantController.syncHandler = tenantController.syncTenant
-
+	tenantController.templateGetter = readTemplate
 	return tenantController
 }
 
@@ -193,6 +210,24 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 		}
 	}
 
+	// create default network object, if applicable
+	tenant, _ := tc.lister.Get(tenantName)	// no error as its caller, processQueue, has checked.
+	if tenant.Status.Phase == v1.TenantTerminating {
+		klog.Infof("Tenant %q is terminating; skipped the creation of default network", tenantName)
+	} else if len(tc.defaultNetworkTemplatePath) == 0 {
+		klog.Infof("No default network template path; skipped the creation of default network in tenant %q", tenantName)
+	} else {
+		klog.Infof("creating the default network in tenant %q", tenantName)
+		defaultNetwork := arktosv1.Network{}
+		if err = tc.getDefaultNetwork(tenantName, &defaultNetwork); err != nil {
+			createFailures = append(createFailures, err)
+		} else {
+			if _, err = tc.networkClient.ArktosV1().NetworksWithMultiTenancy(tenantName).Create(&defaultNetwork); err != nil && !errors.IsAlreadyExists(err) {
+				createFailures = append(createFailures, err)
+			}
+		}
+	}
+
 	if len(createFailures) != 0 {
 		ret := utilerrors.Flatten(utilerrors.NewAggregate(createFailures))
 		klog.Errorf("Errors happened in tenant initialization of %v: %v", tenantName, ret)
@@ -200,4 +235,38 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 	}
 
 	return nil
+}
+
+func (tc *tenantController) getDefaultNetwork(tenant string, net *arktosv1.Network) error {
+	// todo: validate content of template file
+	tmpl, err := tc.templateGetter(tc.defaultNetworkTemplatePath)
+	if err != nil {
+		return err
+	}
+	t, err := template.New("default").Parse(tmpl)
+	if err != nil {
+		return err
+	}
+
+	var bytesJson bytes.Buffer
+	if err = t.Execute(&bytesJson, tenant); err != nil {
+		return err
+	}
+
+	if err = json.Unmarshal(bytesJson.Bytes(), net); err != nil {
+		return err
+	}
+
+	// always override with the right tenant
+	net.ObjectMeta.Tenant = tenant
+	return nil
+}
+
+func readTemplate(path string) (string, error) {
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
 }
