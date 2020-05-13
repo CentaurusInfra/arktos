@@ -253,7 +253,13 @@ func (tc *tenantController) getDefaultNetwork(tenant string, net *arktosv1.Netwo
 		return err
 	}
 
-	return json.Unmarshal(bytesJson.Bytes(), net)
+	if err = json.Unmarshal(bytesJson.Bytes(), net); err != nil {
+		return err
+	}
+
+	// always override with the right tenant
+	net.ObjectMeta.Tenant = tenant
+	return nil
 }
 
 func readTemplate(path string) (string, error) {

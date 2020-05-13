@@ -49,7 +49,7 @@ func TestTenantCreation(t *testing.T) {
 				},
 			},
 			ExpectCreatedNamespaces: tenant_default_namespaces[:],
-			NetworkTemplate: `{"metadata":{"name":"default","tenant":"{{.}}"},"spec":{"type":"test-type","vpcID":"{{.}}-12345"}}`,
+			NetworkTemplate: `{"metadata":{"name":"default", "tenant":"should-be-overridden"},"spec":{"type":"test-type","vpcID":"{{.}}-12345"}}`,
 			NetworkTemplatePath: "test.tmpl",
 			ExpectedNetwork: &arktosv1.Network{
 				ObjectMeta: metav1.ObjectMeta{
@@ -69,7 +69,7 @@ func TestTenantCreation(t *testing.T) {
 				},
 			},
 			ExpectCreatedNamespaces: tenant_default_namespaces[:],
-			NetworkTemplate: `{"metadata":{"name":"default","tenant":"{{.}}"},"spec":{"type":"test-type","vpcID":"{{.}}-12345"}}`,
+			NetworkTemplate: `{"metadata":{"name":"default"},"spec":{"type":"test-type","vpcID":"{{.}}-12345"}}`,
 			NetworkTemplatePath: "",
 			ExpectedNetwork: nil,
 		},
@@ -83,7 +83,7 @@ func TestTenantCreation(t *testing.T) {
 				},
 			},
 			ExpectCreatedNamespaces: tenant_default_namespaces[:],
-			NetworkTemplate: `{"metadata":{"name":"default","tenant":"{{.}}"},"spec":{"type":"test-type","vpcID":"{{.}}-12345"}}`,
+			NetworkTemplate: `{"metadata":{"name":"default"},"spec":{"type":"test-type","vpcID":"{{.}}-12345"}}`,
 			NetworkTemplatePath: "test.tmpl",
 			ExpectedNetwork: nil,
 		},
