@@ -208,7 +208,7 @@ func TestTenantCreation(t *testing.T) {
 			}
 		})
 
-		t.Run("network CR", func(t *testing.T) {
+		t.Run("bootstrap network objects", func(t *testing.T) {
 			// verify network CR actions
 			netActions := networkClient.Actions()
 			if tc.ExpectedNetwork == nil {

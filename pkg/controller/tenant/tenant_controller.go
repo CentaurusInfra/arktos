@@ -238,31 +238,20 @@ func (tc *tenantController) createDefaultNetworkObject(tenantName string) (error
 			}
 		}
 	}
-
-	if len(failures) != 0 {
-		ret := utilerrors.Flatten(utilerrors.NewAggregate(failures))
-		klog.Errorf("Errors happened in tenant initialization of %v: %v", tenantName, ret)
-		return ret, false
-	}
-	return nil, true
+	return flattenedError(failures, tenantName)
 }
 
-func (tc *tenantController) createNamespaces(tenantName string) (error, bool) {
+func (tc *tenantController) createNamespaces(tenant string) (error, bool) {
 	failures := []error{}
 	for _, nsName := range tenantDefaultNamespaces {
 		ns := v1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{Tenant: tenantName, Name: nsName},
+			ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Name: nsName},
 		}
-		if _, err := tc.kubeClient.CoreV1().NamespacesWithMultiTenancy(tenantName).Create(&ns); err != nil && !errors.IsAlreadyExists(err) {
+		if _, err := tc.kubeClient.CoreV1().NamespacesWithMultiTenancy(tenant).Create(&ns); err != nil && !errors.IsAlreadyExists(err) {
 			failures = append(failures, err)
 		}
 	}
-	if len(failures) != 0 {
-		ret := utilerrors.Flatten(utilerrors.NewAggregate(failures))
-		klog.Errorf("Errors happened in tenant initialization of %v: %v", tenantName, ret)
-		return ret, false
-	}
-	return nil, true
+	return flattenedError(failures, tenant)
 }
 
 func (tc *tenantController) createInitialRoleAndBinding(tenant string) (error, bool) {
@@ -293,12 +282,7 @@ func (tc *tenantController) createInitialRoleAndBinding(tenant string) (error, b
 	if _, err := tc.kubeClient.RbacV1().ClusterRoleBindingsWithMultiTenancy(tenant).Create(binding); err != nil && !errors.IsAlreadyExists(err) {
 		failures = append(failures, err)
 	}
-	if len(failures) != 0 {
-		ret := utilerrors.Flatten(utilerrors.NewAggregate(failures))
-		klog.Errorf("Errors happened when creating initial cluster role and binding for tenant %s: %v", tenant, ret)
-		return ret, false
-	}
-	return nil, true
+	return flattenedError(failures, tenant)
 }
 
 func initialClusterRoleRules() rbacv1.PolicyRule {
@@ -340,4 +324,13 @@ func readTemplate(path string) (string, error) {
 	}
 
 	return string(bytes), nil
+}
+
+func flattenedError(failures []error, tenant string) (error, bool) {
+	if len(failures) != 0 {
+		ret := utilerrors.Flatten(utilerrors.NewAggregate(failures))
+		klog.Errorf("Errors happened in tenant initialization of %v: %v", tenant, ret)
+		return ret, false
+	}
+	return nil, true
 }
