@@ -245,6 +245,29 @@ For flat typed networks, regular kube-proxy may be used to provide pod access to
 For VPC-isolated networking, service IP support has to be provided w/o relying on iptable/IPVS rules on host netns. In other words, traditional kube-proxy can not used in VPC-isolated networking. A dedicated controller may be employed to establish & maintain service IP/pod IP mappings.
 (**TBD: more details required**)
 
+### Endpoints
+Each endpoints object associates with a network, the same as its service.
+
+For the services of _kubernetes_ and _kube-dns_ (in fact they are kubernetes_\{network\} and kube-dns_\{network\}), there are two special set of endpoints objects:
+
+| endpoints of | example | notes |
+| ---|--- | --- |
+| kubernetes related | kubernetes_net1 | if in default ns, it is for the kubernetes service in network net1
+| kube-dns related | kube-dns_net2 | if in kube-system ns, it is for the kube-dns service in network net2
+
+In order to prevent potential name conflicts, production system is hardened to prohibits regular users to name endpoints as kubernetes_{string} in default ns, and kube-dns_{string} in kube-system ns. They shall be reserved for controllers only.
+
+__kubernetes related EP__
+
+Query for default-ns scoped kubernetes_{network} shall get back the proper content based on the cluster kubernetes endpoints object. System does not duplicate duplicate such endpoints; instead it derives content based on the cluster kubernetes endpoints. This would incurs quite some code change to kube-apiserver.
+
+Updates originated from regular tenants are disallowed.
+
+__kube-dns related EP__
+
+kube-dns_net2 shall be managed by Endpoints controller just like a regular endpoints.
+
+__EndpointSlices__, the new type introduced in k8s v1.17, is out of current scope.
 
 ### Ingress/egress/network policies
 (**TBD: more details required**)
