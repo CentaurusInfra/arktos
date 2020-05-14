@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +35,7 @@ var rolesWithAllowStar = sets.NewString(
 	saRolePrefix+"horizontal-pod-autoscaler",
 	saRolePrefix+"clusterrole-aggregation-controller",
 	saRolePrefix+"disruption-controller",
+	saRolePrefix+"tenant-controller",
 )
 
 // TestNoStarsForControllers confirms that no controller role has star verbs, groups,

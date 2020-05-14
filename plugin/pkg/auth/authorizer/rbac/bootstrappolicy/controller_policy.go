@@ -388,7 +388,8 @@ func buildControllerRoles() ([]rbacv1.ClusterRole, []rbacv1.ClusterRoleBinding) 
 	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "tenant-controller"},
 		Rules: []rbacv1.PolicyRule{
-			rbacv1helpers.NewRule("create", "get", "list").Groups(legacyGroup).Resources("namespaces").RuleOrDie(),
+			// all * so that tenant controller could create the initial role and binding for tenant admin
+			rbacv1helpers.NewRule("*").Groups("*").Resources("*").RuleOrDie(),
 			eventsRule(),
 		},
 	})
