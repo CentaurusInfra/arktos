@@ -76,7 +76,7 @@ for k,v in yaml.load(sys.stdin).iteritems():
 
 function download-kubelet-config {
   local -r dest="$1"
-  echo "Downloading Kubelet config file, if it exists"
+  echo "Downloading Kubelet config file, if it exists" >> /var/log/master-init.log
   # Fetch kubelet config file from GCE metadata server.
   (
     umask 077
@@ -88,8 +88,25 @@ function download-kubelet-config {
       # only write to the final location if curl succeeds
       mv "${tmp_kubelet_config}" "${dest}"
     elif [[ "${REQUIRE_METADATA_KUBELET_CONFIG_FILE:-false}" == "true" ]]; then
-      echo "== Failed to download required Kubelet config file from metadata server =="
+      echo "== Failed to download required Kubelet config file from metadata server ==" >> /var/log/master-init.log
       exit 1
+    fi
+  )
+}
+
+function download-apiserver-config {
+  local -r dest="$1"
+  echo "Downloading apiserver config file, if it exists" >> /var/log/master-init.log
+  # Fetch apiserver config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_apiserver_config="/tmp/apiserver.config"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_apiserver_config}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/apiserver-config; then
+      # only write to the final location if curl succeeds
+      mv "${tmp_apiserver_config}" "${dest}"
     fi
   )
 }
@@ -115,7 +132,7 @@ for k,v in yaml.load(sys.stdin).iteritems():
 
 function download-controller-config {
   local -r dest="$1"
-  echo "Downloading controller config file, if it exists"
+  echo "Downloading controller config file, if it exists" >> /var/log/master-init.log
   # Fetch kubelet config file from GCE metadata server.
   (
     umask 077
@@ -136,7 +153,7 @@ function validate-hash {
 
   actual=$(sha1sum ${file} | awk '{ print $1 }') || true
   if [[ "${actual}" != "${expected}" ]]; then
-    echo "== ${file} corrupted, sha1 ${actual} doesn't match expected ${expected} =="
+    echo "== ${file} corrupted, sha1 ${actual} doesn't match expected ${expected} ==" >> /var/log/master-init.log
     return 1
   fi
 }
@@ -171,14 +188,14 @@ function download-or-bust {
         curl_headers="Authorization: Bearer $(get-credentials)"
       fi
       if ! curl ${curl_headers:+-H "${curl_headers}"} -f --ipv4 -Lo "${file}" --connect-timeout 20 --max-time 300 --retry 6 --retry-delay 10 ${CURL_RETRY_CONNREFUSED} "${url}"; then
-        echo "== Failed to download ${url}. Retrying. =="
+        echo "== Failed to download ${url}. Retrying. ==" >> /var/log/master-init.log
       elif [[ -n "${hash}" ]] && ! validate-hash "${file}" "${hash}"; then
-        echo "== Hash validation of ${url} failed. Retrying. =="
+        echo "== Hash validation of ${url} failed. Retrying. ==" >> /var/log/master-init.log
       else
         if [[ -n "${hash}" ]]; then
-          echo "== Downloaded ${url} (SHA1 = ${hash}) =="
+          echo "== Downloaded ${url} (SHA1 = ${hash}) ==" >> /var/log/master-init.log
         else
-          echo "== Downloaded ${url} =="
+          echo "== Downloaded ${url} ==" >> /var/log/master-init.log
         fi
         return
       fi
@@ -207,11 +224,11 @@ function install-gci-mounter-tools {
   CONTAINERIZED_MOUNTER_HOME="${KUBE_HOME}/containerized_mounter"
   local -r mounter_tar_sha="${DEFAULT_MOUNTER_TAR_SHA}"
   if is-preloaded "mounter" "${mounter_tar_sha}"; then
-    echo "mounter is preloaded."
+    echo "mounter is preloaded." >> /var/log/master-init.log
     return
   fi
 
-  echo "Downloading gci mounter tools."
+  echo "Downloading gci mounter tools." >> /var/log/master-init.log
   mkdir -p "${CONTAINERIZED_MOUNTER_HOME}"
   chmod a+x "${CONTAINERIZED_MOUNTER_HOME}"
   mkdir -p "${CONTAINERIZED_MOUNTER_HOME}/rootfs"
@@ -236,11 +253,11 @@ function install-node-problem-detector {
   local -r npd_tar="node-problem-detector-${npd_version}.tar.gz"
 
   if is-preloaded "${npd_tar}" "${npd_sha1}"; then
-    echo "${npd_tar} is preloaded."
+    echo "${npd_tar} is preloaded." >> /var/log/master-init.log
     return
   fi
 
-  echo "Downloading ${npd_tar}."
+  echo "Downloading ${npd_tar}." >> /var/log/master-init.log
   local -r npd_release_path="${NODE_PROBLEM_DETECTOR_RELEASE_PATH:-https://storage.googleapis.com/kubernetes-release}"
   download-or-bust "${npd_sha1}" "${npd_release_path}/node-problem-detector/${npd_tar}"
   local -r npd_dir="${KUBE_HOME}/node-problem-detector"
@@ -311,7 +328,7 @@ EOF
 
 ####downloading flannel yaml
 function install-flannel-yml {
-  echo "downloading flannel"
+  echo "downloading flannel" >> /var/log/master-init.log
   download-or-bust "" "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
   local -r flannel_dir="${KUBE_HOME}/flannel"
   mkdir -p "${flannel_dir}"
@@ -327,11 +344,11 @@ function install-cni-binaries {
       local -r cni_sha1="${DEFAULT_CNI_SHA1}"
   fi
   if is-preloaded "${cni_tar}" "${cni_sha1}"; then
-    echo "${cni_tar} is preloaded."
+    echo "${cni_tar} is preloaded." >> /var/log/master-init.log
     return
   fi
 
-  echo "Downloading cni binaries"
+  echo "Downloading cni binaries" >> /var/log/master-init.log
   download-or-bust "${cni_sha1}" "https://storage.googleapis.com/kubernetes-release/network-plugins/${cni_tar}"
   local -r cni_dir="${KUBE_HOME}/cni"
   mkdir -p "${cni_dir}/bin"
@@ -358,11 +375,11 @@ runtime-endpoint: ${CONTAINER_RUNTIME_ENDPOINT:-unix:///var/run/dockershim.sock}
 EOF
 
   if is-preloaded "${crictl}" "${crictl_sha1}"; then
-    echo "crictl is preloaded"
+    echo "crictl is preloaded" >> /var/log/master-init.log
     return
   fi
 
-  echo "Downloading crictl"
+  echo "Downloading crictl" >> /var/log/master-init.log
   local -r crictl_path="https://storage.googleapis.com/kubernetes-release/crictl"
   download-or-bust "${crictl_sha1}" "${crictl_path}/${crictl}"
   mv "${KUBE_HOME}/${crictl}" "${KUBE_BIN}/crictl"
@@ -376,7 +393,7 @@ function install-exec-auth-plugin {
   local -r plugin_url="${EXEC_AUTH_PLUGIN_URL}"
   local -r plugin_sha1="${EXEC_AUTH_PLUGIN_SHA1}"
 
-  echo "Downloading gke-exec-auth-plugin binary"
+  echo "Downloading gke-exec-auth-plugin binary" >> /var/log/master-init.log
   download-or-bust "${plugin_sha1}" "${plugin_url}"
   mv "${KUBE_HOME}/gke-exec-auth-plugin" "${KUBE_BIN}/gke-exec-auth-plugin"
   chmod a+x "${KUBE_BIN}/gke-exec-auth-plugin"
@@ -385,7 +402,7 @@ function install-exec-auth-plugin {
       return
   fi
   local -r license_url="${EXEC_AUTH_PLUGIN_LICENSE_URL}"
-  echo "Downloading gke-exec-auth-plugin license"
+  echo "Downloading gke-exec-auth-plugin license" >> /var/log/master-init.log
   download-or-bust "" "${license_url}"
   mv "${KUBE_HOME}/LICENSE" "${KUBE_BIN}/gke-exec-auth-plugin-license"
 }
@@ -405,11 +422,11 @@ function install-kube-manifests {
   fi
 
   if is-preloaded "${manifests_tar}" "${manifests_tar_hash}"; then
-    echo "${manifests_tar} is preloaded."
+    echo "${manifests_tar} is preloaded." >> /var/log/master-init.log
     return
   fi
 
-  echo "Downloading k8s manifests tar"
+  echo "Downloading k8s manifests tar" >> /var/log/master-init.log
   download-or-bust "${manifests_tar_hash}" "${manifests_tar_urls[@]}"
   tar xzf "${KUBE_HOME}/${manifests_tar}" -C "${dst_dir}" --overwrite
   local -r kube_addon_registry="${KUBE_ADDON_REGISTRY:-k8s.gcr.io}"
@@ -420,11 +437,13 @@ function install-kube-manifests {
       xargs sed -ri "s@(image\":\s+\")k8s.gcr.io@\1${kube_addon_registry}@"
   fi
   cp "${dst_dir}/kubernetes/gci-trusty/gci-configure-helper.sh" "${KUBE_BIN}/configure-helper.sh"
+  cp "${dst_dir}/kubernetes/gci-trusty/apiserver-configure-helper.sh" "${KUBE_BIN}/apiserver-configure-helper.sh"
   if [[ -e "${dst_dir}/kubernetes/gci-trusty/gke-internal-configure-helper.sh" ]]; then
     cp "${dst_dir}/kubernetes/gci-trusty/gke-internal-configure-helper.sh" "${KUBE_BIN}/"
   fi
 
   cp "${dst_dir}/kubernetes/gci-trusty/health-monitor.sh" "${KUBE_BIN}/health-monitor.sh"
+  cp "${dst_dir}/kubernetes/gci-trusty/configure-helper-common.sh" "${KUBE_BIN}/configure-helper-common.sh"
 
   rm -f "${KUBE_HOME}/${manifests_tar}"
   rm -f "${KUBE_HOME}/${manifests_tar}.sha1"
@@ -435,14 +454,14 @@ function install-kube-manifests {
 # $1: Full path of the docker image
 function try-load-docker-image {
   local -r img=$1
-  echo "Try to load docker image file ${img}"
+  echo "Try to load docker image file ${img}" >> /var/log/master-init.log
   # Temporarily turn off errexit, because we don't want to exit on first failure.
   set +e
   local -r max_attempts=5
   local -i attempt_num=1
   until timeout 30 ${LOAD_IMAGE_COMMAND:-docker load -i} "${img}"; do
     if [[ "${attempt_num}" == "${max_attempts}" ]]; then
-      echo "Fail to load docker image file ${img} after ${max_attempts} retries. Exit!!"
+      echo "Fail to load docker image file ${img} after ${max_attempts} retries. Exit!!" >> /var/log/master-init.log
       exit 1
     else
       attempt_num=$((attempt_num+1))
@@ -456,7 +475,7 @@ function try-load-docker-image {
 # Loads kube-system docker images. It is better to do it before starting kubelet,
 # as kubelet will restart docker daemon, which may interfere with loading images.
 function load-docker-images {
-  echo "Start loading kube-system docker images"
+  echo "Start loading kube-system docker images" >> /var/log/master-init.log
   local -r img_dir="${KUBE_HOME}/kube-docker-files"
   if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
     try-load-docker-image "${img_dir}/kube-apiserver.tar"
@@ -477,15 +496,15 @@ function install-kube-binary-config {
   if [[ -n "${SERVER_BINARY_TAR_HASH:-}" ]]; then
     local -r server_binary_tar_hash="${SERVER_BINARY_TAR_HASH}"
   else
-    echo "Downloading binary release sha1 (not found in env)"
+    echo "Downloading binary release sha1 (not found in env)" >> /var/log/master-init.log
     download-or-bust "" "${server_binary_tar_urls[@]/.tar.gz/.tar.gz.sha1}"
     local -r server_binary_tar_hash=$(cat "${server_binary_tar}.sha1")
   fi
 
   if is-preloaded "${server_binary_tar}" "${server_binary_tar_hash}"; then
-    echo "${server_binary_tar} is preloaded."
+    echo "${server_binary_tar} is preloaded." >> /var/log/master-init.log
   else
-    echo "Downloading binary release tar"
+    echo "Downloading binary release tar" >> /var/log/master-init.log
     download-or-bust "${server_binary_tar_hash}" "${server_binary_tar_urls[@]}"
     tar xzf "${KUBE_HOME}/${server_binary_tar}" -C "${KUBE_HOME}" --overwrite
     # Copy docker_tag and image files to ${KUBE_HOME}/kube-docker-files.
@@ -546,7 +565,7 @@ function install-kube-binary-config {
 }
 
 ######### Main Function ##########
-echo "Start to install kubernetes files"
+echo "Start to install kubernetes files" >> /var/log/master-init.log >> /var/log/master-init.log
 # if install fails, message-of-the-day (motd) will warn at login shell
 set-broken-motd
 
@@ -559,6 +578,7 @@ source "${KUBE_HOME}/kube-env"
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
+download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 # master certs
 if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
@@ -568,4 +588,4 @@ fi
 # binaries and kube-system manifests
 install-kube-binary-config
 
-echo "Done for installing kubernetes files"
+echo "Done for installing kubernetes files"  >> /var/log/master-init.log
