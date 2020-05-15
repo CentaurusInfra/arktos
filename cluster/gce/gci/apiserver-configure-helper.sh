@@ -27,10 +27,9 @@ set -o nounset
 set -o pipefail
 
 source "/home/kubernetes/bin/configure-helper-common.sh"
-
 ########### Main Function ###########
 function main() {
-  echo "Start to configure master instance for kubernetes" >> /var/log/master-init.log
+  echo "Start to configure apiserver instance for kubernetes" >> /var/log/master-init.log
 
   readonly UUID_MNT_PREFIX="/mnt/disks/by-uuid/google-local-ssds"
   readonly UUID_BLOCK_PREFIX="/dev/disk/by-uuid/google-local-ssds"
@@ -103,7 +102,8 @@ function main() {
       create-node-problem-detector-kubeconfig ${KUBERNETES_MASTER_NAME}
     fi
   fi
-
+  ETCD_SERVERS="${ETCD_SERVERS:-"http://${KUBERNETES_MASTER_INTERNAL_IP}:2379"}"
+  ETCD_SERVERS_OVERRIDES="${ETCD_SERVERS_OVERRIDES:-/events#http://${KUBERNETES_MASTER_INTERNAL_IP}:4002}"
   override-kubectl
   container_runtime="${CONTAINER_RUNTIME:-docker}"
   # Run the containerized mounter once to pre-cache the container image.
@@ -114,39 +114,17 @@ function main() {
   fi
   start-kubelet
 
-  if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
-    compute-master-manifest-variables
-    if [[ -z "${ETCD_SERVERS:-}" ]]; then
-      start-etcd-servers
-      start-etcd-empty-dir-cleanup-pod
-    fi
-    start-kube-apiserver
-    start-kube-controller-manager
-    start-kube-scheduler
-    wait-till-apiserver-ready
-    start-workload-controller-manager
-    start-kube-addons
-    start-cluster-autoscaler
-    start-lb-controller
-    update-legacy-addon-node-labels &
-    apply-encryption-config &
-    start-cluster-networking   ####start cluster networking if not using default kubenet
+  compute-master-manifest-variables
+  start-kube-apiserver
+  wait-till-apiserver-ready
 
-  else
-    if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
-      start-kube-proxy
-    fi
-    if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
-      start-node-problem-detector
-    fi
-  fi
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
-  echo "Done for the configuration for kubernetes" >> /var/log/master-init.log
+
+  echo "Done for the configuration for apiserver" >> /var/log/master-init.log
 }
 
-echo "${@}" >> /var/log/master-init.log
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "${@}"
 fi

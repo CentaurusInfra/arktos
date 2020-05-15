@@ -37,6 +37,7 @@ source "${KUBE_ROOT}/cluster/gce/windows/node-helper.sh"
 
 if [[ "${MASTER_OS_DISTRIBUTION}" == "trusty" || "${MASTER_OS_DISTRIBUTION}" == "gci" || "${MASTER_OS_DISTRIBUTION}" == "ubuntu" ]]; then
   source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/master-helper.sh"
+  source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/apiserver-helper.sh"
 else
   echo "Cannot operate on cluster using master os distro: ${MASTER_OS_DISTRIBUTION}" >&2
   exit 1
@@ -483,6 +484,56 @@ function load-or-gen-kube-bearertoken() {
   fi
 }
 
+# secure_random generates a secure random string of bytes. This function accepts
+# a number of secure bytes desired and returns a base64 encoded string with at
+# least the requested entropy. Rather than directly reading from /dev/urandom,
+# we use uuidgen which calls getrandom(2). getrandom(2) verifies that the
+# entropy pool has been initialized sufficiently for the desired operation
+# before reading from /dev/urandom.
+#
+# ARGS:
+#   #1: number of secure bytes to generate. We round up to the nearest factor of 32.
+function secure_random {
+  local infobytes="${1}"
+  if ((infobytes <= 0)); then
+    echo "Invalid argument to secure_random: infobytes='${infobytes}'" 1>&2
+    return 1
+  fi
+
+  local out=""
+  for (( i = 0; i < "${infobytes}"; i += 32 )); do
+    # uuids have 122 random bits, sha256 sums have 256 bits, so concatenate
+    # three uuids and take their sum. The sum is encoded in ASCII hex, hence the
+    # 64 character cut.
+    out+="$(
+     (
+       uuidgen --random;
+       uuidgen --random;
+       uuidgen --random;
+     ) | sha256sum \
+       | head -c 64
+    )";
+  done
+  # Finally, convert the ASCII hex to base64 to increase the density.
+  echo -n "${out}" | xxd -r -p | base64 -w 0
+}
+
+
+function load-or-gen-kube-clienttoken() {
+  KUBE_CONTROLLER_MANAGER_TOKEN="$(secure_random 32)"
+  WORKLOAD_CONTROLLER_MANAGER_TOKEN="$(secure_random 32)"
+  KUBE_SCHEDULER_TOKEN="$(secure_random 32)"
+  KUBE_CLUSTER_AUTOSCALER_TOKEN="$(secure_random 32)"
+  if [[ "${ENABLE_L7_LOADBALANCING:-}" == "glbc" ]]; then
+    GCE_GLBC_TOKEN="$(secure_random 32)"
+  fi
+  ADDON_MANAGER_TOKEN="$(secure_random 32)"
+  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" != "true" ]]; then
+    KUBE_BOOTSTRAP_TOKEN="$(secure_random 32)"
+  fi
+}
+
+
 # Figure out which binary use on the server and assure it is available.
 # If KUBE_VERSION is specified use binaries specified by it, otherwise
 # use local dev binaries.
@@ -607,6 +658,22 @@ function write-master-env {
   fi
 
   construct-linux-kubelet-flags true
+  build-linux-kube-env true "${KUBE_TEMP}/master-kube-env.yaml"
+  build-kubelet-config true "linux" "${KUBE_TEMP}/master-kubelet-config.yaml"
+  build-kube-master-certs "${KUBE_TEMP}/kube-master-certs.yaml"
+}
+
+function write-apiserver-env {
+  # If the user requested that the master be part of the cluster, set the
+  # environment variable to program the master kubelet to register itself.
+  if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" && -z "${KUBELET_APISERVER:-}" ]]; then
+    KUBELET_APISERVER="${MASTER_NAME}"
+  fi
+  if [[ -z "${KUBERNETES_MASTER_NAME:-}" ]]; then
+    KUBERNETES_MASTER_NAME="${MASTER_NAME}"
+  fi
+
+  construct-linux-kubelet-flags false true
   build-linux-kube-env true "${KUBE_TEMP}/master-kube-env.yaml"
   build-kubelet-config true "linux" "${KUBE_TEMP}/master-kubelet-config.yaml"
   build-kube-master-certs "${KUBE_TEMP}/kube-master-certs.yaml"
@@ -753,6 +820,7 @@ function construct-common-kubelet-flags {
 # $1: if 'true', we're rendering flags for a master, else a node
 function construct-linux-kubelet-flags {
   local master="$1"
+  local apiserver="${2:-}"
   local flags="$(construct-common-kubelet-flags)"
   # Keep in sync with CONTAINERIZED_MOUNTER_HOME in configure-helper.sh
   flags+=" --experimental-mounter-path=/home/kubernetes/containerized_mounter/mounter"
@@ -777,6 +845,9 @@ function construct-linux-kubelet-flags {
     flags+=" ${NODE_KUBELET_TEST_ARGS:-}"
     flags+=" --bootstrap-kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
     flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
+  fi
+  if [[ "${apiserver}" == "true" ]]; then
+    flags+=" --register-schedulable=false"
   fi
   if [[ -n "${NETWORK_PROVIDER:-}" || -n "${NETWORK_POLICY_PROVIDER:-}" ]]; then
     flags+=" --cni-bin-dir=/home/kubernetes/bin"
@@ -1121,6 +1192,7 @@ PROJECT_ID: $(yaml-quote ${PROJECT})
 NETWORK_PROJECT_ID: $(yaml-quote ${NETWORK_PROJECT})
 SERVICE_CLUSTER_IP_RANGE: $(yaml-quote ${SERVICE_CLUSTER_IP_RANGE})
 KUBERNETES_MASTER_NAME: $(yaml-quote ${KUBERNETES_MASTER_NAME})
+KUBERNETES_MASTER_INTERNAL_IP: $(yaml-quote ${KUBERNETES_MASTER_INTERNAL_IP})
 ALLOCATE_NODE_CIDRS: $(yaml-quote ${ALLOCATE_NODE_CIDRS:-false})
 ENABLE_CLUSTER_MONITORING: $(yaml-quote ${ENABLE_CLUSTER_MONITORING:-none})
 ENABLE_PROMETHEUS_MONITORING: $(yaml-quote ${ENABLE_PROMETHEUS_MONITORING:-false})
@@ -1296,6 +1368,13 @@ KUBERNETES_MASTER: $(yaml-quote "true")
 KUBE_USER: $(yaml-quote ${KUBE_USER})
 KUBE_PASSWORD: $(yaml-quote ${KUBE_PASSWORD})
 KUBE_BEARER_TOKEN: $(yaml-quote ${KUBE_BEARER_TOKEN})
+KUBE_CONTROLLER_MANAGER_TOKEN: $(yaml-quote ${KUBE_CONTROLLER_MANAGER_TOKEN})
+WORKLOAD_CONTROLLER_MANAGER_TOKEN: $(yaml-quote ${WORKLOAD_CONTROLLER_MANAGER_TOKEN})
+KUBE_SCHEDULER_TOKEN: $(yaml-quote ${KUBE_SCHEDULER_TOKEN})
+KUBE_CLUSTER_AUTOSCALER_TOKEN: $(yaml-quote ${KUBE_CLUSTER_AUTOSCALER_TOKEN})
+GCE_GLBC_TOKEN: $(yaml-quote ${GCE_GLBC_TOKEN:-})
+ADDON_MANAGER_TOKEN: $(yaml-quote ${ADDON_MANAGER_TOKEN})
+KUBE_BOOTSTRAP_TOKEN: $(yaml-quote ${KUBE_BOOTSTRAP_TOKEN:-})
 MASTER_CERT: $(yaml-quote ${MASTER_CERT_BASE64:-})
 MASTER_KEY: $(yaml-quote ${MASTER_KEY_BASE64:-})
 KUBECFG_CERT: $(yaml-quote ${KUBECFG_CERT_BASE64:-})
@@ -1307,6 +1386,8 @@ STORAGE_MEDIA_TYPE: $(yaml-quote ${STORAGE_MEDIA_TYPE:-})
 ENABLE_GARBAGE_COLLECTOR: $(yaml-quote ${ENABLE_GARBAGE_COLLECTOR:-})
 ENABLE_LEGACY_ABAC: $(yaml-quote ${ENABLE_LEGACY_ABAC:-})
 MASTER_ADVERTISE_ADDRESS: $(yaml-quote ${MASTER_ADVERTISE_ADDRESS:-})
+APISERVER_SERVICEGROUPID: $(yaml-quote ${APISERVER_SERVICEGROUPID})
+APISERVER_ADVERTISE_ADDRESS: $(yaml-quote ${APISERVER_ADVERTISE_ADDRESS})
 ETCD_CA_KEY: $(yaml-quote ${ETCD_CA_KEY_BASE64:-})
 ETCD_CA_CERT: $(yaml-quote ${ETCD_CA_CERT_BASE64:-})
 ETCD_PEER_KEY: $(yaml-quote ${ETCD_PEER_KEY_BASE64:-})
@@ -1879,6 +1960,55 @@ function create-static-ip() {
   done
 }
 
+# Robustly try to create a static ip.
+# $1: The name of the ip to create
+# $2: The name of the region to create the ip in.
+# $3: The name of the subnet to create the ip in
+function create-static-internalip() {
+  detect-project
+  local attempt=0
+  local REGION="$2"
+  local SUBNETWORK="$3"
+  while true; do
+    if gcloud compute addresses create "$1" \
+      --project "${PROJECT}" \
+      --region "${REGION}" \
+      --subnet "${SUBNETWORK}" -q > /dev/null; then
+      # successful operation - wait until it's visible
+      start="$(date +%s)"
+      while true; do
+        now="$(date +%s)"
+        # Timeout set to 15 minutes
+        if [[ $((now - start)) -gt 900 ]]; then
+          echo "Timeout while waiting for master private IP visibility"
+          exit 2
+        fi
+        if gcloud compute addresses describe "$1" --project "${PROJECT}" --region "${REGION}" >/dev/null 2>&1; then
+          break
+        fi
+        echo "Master private IP not visible yet. Waiting..."
+        sleep 5
+      done
+      break
+    fi
+
+    if gcloud compute addresses describe "$1" \
+      --project "${PROJECT}" \
+      --region "${REGION}" >/dev/null 2>&1; then
+      # it exists - postcondition satisfied
+      break
+    fi
+
+    if (( attempt > 4 )); then
+      echo -e "${color_red}Failed to create static private ip $1 ${color_norm}" >&2
+      exit 2
+    fi
+    attempt=$(($attempt+1))
+    echo -e "${color_yellow}Attempt $attempt failed to create static private ip $1. Retrying.${color_norm}" >&2
+    sleep $(($attempt * 5))
+  done
+}
+
 # Robustly try to create a firewall rule.
 # $1: The name of firewall rule.
 # $2: IP ranges.
@@ -1913,8 +2043,9 @@ function make-gcloud-network-argument() {
   local network="$3"
   local subnet="$4"
   local address="$5"          # optional
-  local enable_ip_alias="$6"  # optional
-  local alias_size="$7"       # optional
+  local private_network_ip="$6" # optional
+  local enable_ip_alias="$7"  # optional
+  local alias_size="$8"       # optional
 
   local networkURL="projects/${network_project}/global/networks/${network}"
   local subnetURL="projects/${network_project}/regions/${region}/subnetworks/${subnet:-}"
@@ -1930,6 +2061,9 @@ function make-gcloud-network-argument() {
       ret="${ret},address=${address:-}"
     fi
     ret="${ret},subnet=${subnetURL}"
+    if [[ -n ${private_network_ip:-} ]]; then
+      ret="${ret},private-network-ip=${private_network_ip}"
+    fi
     ret="${ret},aliases=pods-default:${alias_size}"
     ret="${ret} --no-can-ip-forward"
   else
@@ -1942,6 +2076,10 @@ function make-gcloud-network-argument() {
     ret="${ret} --can-ip-forward"
     if [[ -n ${address:-} ]] && [[ "$address" != "no-address" ]]; then
       ret="${ret} --address ${address}"
+    fi
+
+    if [[ -n ${private_network_ip:-} ]]; then
+      ret="${ret} --private-network-ip ${private_network_ip}"
     fi
   fi
 
@@ -2056,6 +2194,7 @@ function create-node-template() {
     "${NETWORK}" \
     "${SUBNETWORK:-}" \
     "${address}" \
+    "" \
     "${ENABLE_IP_ALIASES:-}" \
     "${IP_ALIAS_SIZE:-}")
 
@@ -2122,6 +2261,7 @@ function kube-up() {
 
   load-or-gen-kube-basicauth
   load-or-gen-kube-bearertoken
+  load-or-gen-kube-clienttoken
 
   # Make sure we have the tar files staged on Google Storage
   find-release-tars
@@ -2466,9 +2606,11 @@ function create-etcd-certs {
   local host=${1}
   local ca_cert=${2:-}
   local ca_key=${3:-}
-
+  local additionalServer=${4:-}
+  
+  local certServers="${host},${additionalServer}"
   GEN_ETCD_CA_CERT="${ca_cert}" GEN_ETCD_CA_KEY="${ca_key}" \
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${host}" "peer" "peer"
+    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${certServers}" "peer" "peer"
 
   pushd "${KUBE_TEMP}/cfssl"
   ETCD_CA_KEY_BASE64=$(cat "ca-key.pem" | base64 | tr -d '\r\n')
@@ -2502,11 +2644,13 @@ function create-etcd-certs {
 function create-etcd-apiserver-certs {
   local hostServer=${1}
   local hostClient=${2}
+  local additionalServer=${5}
   local etcd_apiserver_ca_cert=${3:-}
   local etcd_apiserver_ca_key=${4:-}
 
+  local certsServers="${hostServer},${additionalServer}"
   GEN_ETCD_CA_CERT="${etcd_apiserver_ca_cert}" GEN_ETCD_CA_KEY="${etcd_apiserver_ca_key}" \
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostServer}" "server" "etcd-apiserver-server"
+    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${certsServers}" "server" "etcd-apiserver-server"
     generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostClient}" "client" "etcd-apiserver-client"
 
   pushd "${KUBE_TEMP}/cfssl"
@@ -2558,7 +2702,11 @@ function create-master() {
   # Reserve the master's IP so that it can later be transferred to another VM
   # without disrupting the kubelets.
   create-static-ip "${MASTER_NAME}-ip" "${REGION}"
+  create-static-internalip "${MASTER_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+
+  MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
 
   if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
@@ -2567,18 +2715,90 @@ function create-master() {
 
   KUBERNETES_MASTER_NAME="${MASTER_RESERVED_IP}"
   MASTER_ADVERTISE_ADDRESS="${MASTER_RESERVED_IP}"
+  KUBERNETES_MASTER_INTERNAL_IP="${MASTER_RESERVED_INTERNAL_IP}"
+  APISERVER_ADVERTISE_ADDRESS="${APISERVER_ADVERTISE_ADDRESS:-}"
+  APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-0}
+  declare -a APISERVER_RESERVED_IP
+  declare -a APISERVER_NAME
+  CREATE_CERT_APISERVER_IP=""
+  if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
+    config-apiserver
+  fi
+  echo "CREATE_CERT_APISERVER_IP: ${CREATE_CERT_APISERVER_IP}"
 
-  create-certs "${MASTER_RESERVED_IP}"
-  create-etcd-certs ${MASTER_NAME}
-  create-etcd-apiserver-certs "etcd-${MASTER_NAME}" ${MASTER_NAME}
+  create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_APISERVER_IP}"
+  create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_APISERVER_IP}"
+  create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_APISERVER_IP}"
 
-  if [[ "$(get-num-nodes)" -ge "50" ]]; then
+  #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
     # unnecessary work in case master start-up fails (like creation of nodes).
-    create-master-instance "${MASTER_RESERVED_IP}"
-  else
-    create-master-instance "${MASTER_RESERVED_IP}" &
+  #  create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
+  #else
+    create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
+  #fi
+
+  ## create additional apiserver
+  if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
+    for num in $(seq ${APISERVERS_EXTRA_NUM}); do
+      APISERVER_ADVERTISE_ADDRESS="${APISERVER_RESERVED_IP[$num]}"
+      APISERVER_SERVICEGROUPID=$num
+      echo "APISERVER_SERVICEGROUPID: ${APISERVER_SERVICEGROUPID}"
+      create-apiserver-instance "${APISERVER_NAME[$num]}" "${APISERVER_RESERVED_IP[$num]}"
+    done
   fi
+}
+
+function config-apiserver() {
+  echo "Configing apiserver and configuring firewalls"
+
+
+  for num in $(seq ${APISERVERS_EXTRA_NUM}); do
+    server_name="${CLUSTER_NAME}-apiserver${num}"
+
+    echo "creating apiserver: ${server_name} firewall"
+    gcloud compute firewall-rules create "${server_name}-https" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --target-tags "${server_name}" \
+      --allow tcp:443 &
+
+    # We have to make sure the disk is created before creating the server, so
+     # run this in the foreground.
+    echo "creating apiserver: ${server_name} disks"
+    gcloud compute disks create "${server_name}-pd" \
+      --project "${PROJECT}" \
+      --zone "${ZONE}" \
+      --type "${APISERVER_DISK_TYPE}" \
+      --size "${APISERVER_DISK_SIZE}"
+
+    # Create rule for accessing and securing etcd servers.
+    if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
+      gcloud compute firewall-rules create "${server_name}-etcd" \
+        --project "${NETWORK_PROJECT}" \
+        --network "${NETWORK}" \
+        --source-tags "${server_name}" \
+        --allow "tcp:2380,tcp:2381" \
+        --target-tags "${server_name}" &
+    fi
+
+    # Generate a bearer token for this cluster. We push this separately
+    # from the other cluster variables so that the client (this
+    # computer) can forget it later. This should disappear with
+    # http://issue.k8s.io/3168
+    ####KUBE_PROXY_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
+    ####if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
+    ####  NODE_PROBLEM_DETECTOR_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
+    ####fi
+
+    APISERVER_NAME[$num]=${server_name}
+    create-static-ip "${server_name}-ip" "${REGION}"
+    APISERVER_RESERVED_IP[$num]=$(gcloud compute addresses describe "${server_name}-ip" \
+        --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
+    echo "APISERVER${num}_RESERVED_IP: ${APISERVER_RESERVED_IP[$num]}"
+    CREATE_CERT_APISERVER_IP+=" ${APISERVER_RESERVED_IP[$num]}"
+
+  done
 }
 
 # Adds master replica to etcd cluster.
@@ -2901,6 +3121,7 @@ function create-heapster-node() {
       "${NETWORK}" \
       "${SUBNETWORK:-}" \
       "" \
+      "" \
       "${ENABLE_IP_ALIASES:-}" \
       "${IP_ALIAS_SIZE:-}")
 
@@ -3154,6 +3375,9 @@ function kube-down() {
 
   set-existing-master
 
+  if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
+    delete-apiserver
+  fi
   # Un-register the master replica from etcd and events etcd.
   remove-replica-from-etcd 2379
   remove-replica-from-etcd 4002
@@ -3218,13 +3442,20 @@ function kube-down() {
   if [[ "${REMAINING_MASTER_COUNT}" -eq 0 ]]; then
     # Delete firewall rule for the master, etcd servers, and nodes.
     delete-firewall-rules "${MASTER_NAME}-https" "${MASTER_NAME}-etcd" "${NODE_TAG}-all"
-    # Delete the master's reserved IP
+    echo "Deleting master's reserved IP"
     if gcloud compute addresses describe "${MASTER_NAME}-ip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
       gcloud compute addresses delete \
         --project "${PROJECT}" \
         --region "${REGION}" \
         --quiet \
         "${MASTER_NAME}-ip"
+    fi
+    if gcloud compute addresses describe "${MASTER_NAME}-internalip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute addresses delete \
+        --project "${PROJECT}" \
+        --region "${REGION}" \
+        --quiet \
+        "${MASTER_NAME}-internalip"
     fi
   fi
 
@@ -3606,4 +3837,56 @@ function prepare-e2e() {
 # Delete the image given by $1.
 function delete-image() {
   gcloud container images delete --quiet "$1"
+}
+
+function delete-apiserver() {
+  for num in $(seq ${APISERVERS_EXTRA_NUM}); do
+    server_name="${CLUSTER_NAME}-apiserver${num}"
+
+    #echo "deleting additional apiserver: ${server_name}"
+    if gcloud compute instances describe "${server_name}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+        # Now we can safely delete the VM.
+        gcloud compute instances delete \
+          --project "${PROJECT}" \
+          --quiet \
+          --delete-disks all \
+          --zone "${ZONE}" \
+          "${server_name}"
+    fi
+
+    #echo "deleting apiserver disks: ${server_name}-pd"
+    if gcloud compute disks describe "${server_name}-pd" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute disks delete  \
+        --project "${PROJECT}" \
+        --quiet \
+        --zone "${ZONE}" \
+        "${server_name}-pd"
+    fi
+
+    #echo "deleting apiserver firewall: ${server_name}-https"
+    if gcloud compute firewall-rules describe "${server_name}-https" --network "${NETWORK}" --project "${NETWORK_PROJECT}" &>/dev/null; then
+      gcloud compute firewall-rules delete  \
+        --project "${NETWORK_PROJECT}" \
+        --quiet \
+        --network "${NETWORK}" \
+        "${server_name}-https"
+    fi
+
+
+    #echo "deleting apiserver firewall-rules: ${server_name}-etcd"
+    if gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
+      gcloud compute firewall-rules delete "${server_name}-etcd" \
+        --quiet \
+        --project "${NETWORK_PROJECT}" 
+    fi
+
+    #echo "deleting apiserver reserved IP address: ${server_name}-ip"
+    if gcloud compute addresses describe "${server_name}-ip" --project "${PROJECT}" --region "${REGION}" &>/dev/null; then
+      gcloud compute addresses delete "${server_name}-ip" \
+        --quiet \
+        --project "${PROJECT}" \
+        --region "${REGION}" 
+    fi
+
+  done
 }
