@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -44,7 +45,13 @@ import (
 	"k8s.io/klog"
 )
 
-var tenant_default_namespaces = [...]string{core.NamespaceDefault, core.NamespaceSystem, core.NamespacePublic}
+var tenantDefaultNamespaces = [...]string{core.NamespaceDefault, core.NamespaceSystem, core.NamespacePublic}
+
+const (
+	initialClusterRoleUser        = "admin"
+	initialClusterRoleName        = "admin-role"
+	initialClusterRoleBindingName = "admin-role-binding"
+)
 
 // tenantController is responsible for performing actions dependent upon a tenant phase
 type tenantController struct {
@@ -197,21 +204,25 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 		klog.V(4).Infof("Finished initializing tenant %q (%v)", tenantName, time.Since(startTime))
 	}()
 
-	createFailures := []error{}
-
-	// Create Default namespaces
-	for _, nsName := range tenant_default_namespaces {
-
-		ns := v1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{Tenant: tenantName, Name: nsName},
-		}
-		if _, err := tc.kubeClient.CoreV1().NamespacesWithMultiTenancy(tenantName).Create(&ns); err != nil && !errors.IsAlreadyExists(err) {
-			createFailures = append(createFailures, err)
-		}
+	if err, done := tc.createNamespaces(tenantName); !done {
+		return err
 	}
 
+	if err, done := tc.createInitialRoleAndBinding(tenantName); !done {
+		return err
+	}
+
+	if err, done := tc.createDefaultNetworkObject(tenantName); !done {
+		return err
+	}
+	return nil
+}
+
+func (tc *tenantController) createDefaultNetworkObject(tenantName string) (error, bool) {
+	failures := []error{}
+
 	// create default network object, if applicable
-	tenant, _ := tc.lister.Get(tenantName)	// no error as its caller, processQueue, has checked.
+	tenant, _ := tc.lister.Get(tenantName) // no error as its caller, processQueue, has checked.
 	if tenant.Status.Phase == v1.TenantTerminating {
 		klog.Infof("Tenant %q is terminating; skipped the creation of default network", tenantName)
 	} else if len(tc.defaultNetworkTemplatePath) == 0 {
@@ -219,24 +230,68 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 	} else {
 		klog.Infof("creating the default network in tenant %q", tenantName)
 		defaultNetwork := arktosv1.Network{}
-		if err = tc.getDefaultNetwork(tenantName, &defaultNetwork); err != nil {
-			createFailures = append(createFailures, err)
+		if err := tc.getDefaultNetwork(tenantName, &defaultNetwork); err != nil {
+			failures = append(failures, err)
 		} else {
 			if _, err = tc.networkClient.ArktosV1().NetworksWithMultiTenancy(tenantName).Create(&defaultNetwork); err != nil && !errors.IsAlreadyExists(err) {
-				createFailures = append(createFailures, err)
+				failures = append(failures, err)
 			}
 		}
 	}
-
-	if len(createFailures) != 0 {
-		ret := utilerrors.Flatten(utilerrors.NewAggregate(createFailures))
-		klog.Errorf("Errors happened in tenant initialization of %v: %v", tenantName, ret)
-		return ret
-	}
-
-	return nil
+	return flattenedError(failures, tenantName)
 }
 
+func (tc *tenantController) createNamespaces(tenant string) (error, bool) {
+	failures := []error{}
+	for _, nsName := range tenantDefaultNamespaces {
+		ns := v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Name: nsName},
+		}
+		if _, err := tc.kubeClient.CoreV1().NamespacesWithMultiTenancy(tenant).Create(&ns); err != nil && !errors.IsAlreadyExists(err) {
+			failures = append(failures, err)
+		}
+	}
+	return flattenedError(failures, tenant)
+}
+
+func (tc *tenantController) createInitialRoleAndBinding(tenant string) (error, bool) {
+	// tenant admin act as cluster admin for tha tenant
+	role := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   initialClusterRoleName,
+			Tenant: tenant,
+		},
+		Rules: []rbacv1.PolicyRule{initialClusterRoleRules()},
+	}
+
+	binding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   initialClusterRoleBindingName,
+			Tenant: tenant,
+		},
+		Subjects: []rbacv1.Subject{
+			{Kind: rbacv1.UserKind, Name: initialClusterRoleUser},
+		},
+		RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: initialClusterRoleName},
+	}
+
+	var failures []error
+	if _, err := tc.kubeClient.RbacV1().ClusterRolesWithMultiTenancy(tenant).Create(role); err != nil && !errors.IsAlreadyExists(err) {
+		failures = append(failures, err)
+	}
+	if _, err := tc.kubeClient.RbacV1().ClusterRoleBindingsWithMultiTenancy(tenant).Create(binding); err != nil && !errors.IsAlreadyExists(err) {
+		failures = append(failures, err)
+	}
+	return flattenedError(failures, tenant)
+}
+
+func initialClusterRoleRules() rbacv1.PolicyRule {
+	return rbacv1.PolicyRule{
+		Verbs:     []string{"*"},
+		APIGroups: []string{"*"},
+		Resources: []string{"*"},
+	}
+}
 func (tc *tenantController) getDefaultNetwork(tenant string, net *arktosv1.Network) error {
 	// todo: validate content of template file
 	tmpl, err := tc.templateGetter(tc.defaultNetworkTemplatePath)
@@ -269,4 +324,13 @@ func readTemplate(path string) (string, error) {
 	}
 
 	return string(bytes), nil
+}
+
+func flattenedError(failures []error, tenant string) (error, bool) {
+	if len(failures) != 0 {
+		ret := utilerrors.Flatten(utilerrors.NewAggregate(failures))
+		klog.Errorf("Errors happened in tenant initialization of %v: %v", tenant, ret)
+		return ret, false
+	}
+	return nil, true
 }

@@ -1260,13 +1260,11 @@ items:
     name: system:controller:tenant-controller
   rules:
   - apiGroups:
-    - ""
+    - '*'
     resources:
-    - namespaces
+    - '*'
     verbs:
-    - create
-    - get
-    - list
+    - '*'
   - apiGroups:
     - ""
     resources:
