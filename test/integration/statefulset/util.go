@@ -60,7 +60,7 @@ func newHeadlessService(namespace string) *v1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      "fake-service-name",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.ServiceSpec{
 			ClusterIP: "None",
@@ -83,7 +83,7 @@ func newSTS(name, namespace string, replicas int) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			PodManagementPolicy: appsv1.ParallelPodManagement,
@@ -145,7 +145,7 @@ func newStatefulSetPVC(name string) v1.PersistentVolumeClaim {
 			Annotations: map[string]string{
 				"volume.alpha.kubernetes.io/storage-class": "anything",
 			},
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{
