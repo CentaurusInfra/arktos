@@ -77,7 +77,7 @@ func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (aut
 	ruleCheckingVisitor := &authorizingVisitor{requestAttributes: requestAttributes}
 
 	userTenant := requestAttributes.GetUser().GetTenant()
-	if userTenant != metav1.TenantSystem && userTenant != metav1.TenantSystem && userTenant != requestAttributes.GetTenant() {
+	if userTenant != metav1.TenantSystem && userTenant != requestAttributes.GetTenant() {
 		klog.Infof("user tenant '%v' does not match the requested tenant space '%v'",
 			userTenant, requestAttributes.GetTenant())
 		return authorizer.DecisionDeny, ruleCheckingVisitor.reason, nil

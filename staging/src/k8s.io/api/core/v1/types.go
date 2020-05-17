@@ -27,7 +27,7 @@ import (
 const (
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll string = ""
-	// TenantSystem is the tenant where the cluster operators belong to
+	// TenantSystem is the system tenant where we place system components.
 	TenantSystem string = "system"
 
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
