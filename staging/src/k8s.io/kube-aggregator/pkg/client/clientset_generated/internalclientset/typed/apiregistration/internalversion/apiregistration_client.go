@@ -42,7 +42,11 @@ type ApiregistrationClient struct {
 }
 
 func (c *ApiregistrationClient) APIServices() APIServiceInterface {
-	return newAPIServices(c)
+	return newAPIServicesWithMultiTenancy(c, "default")
+}
+
+func (c *ApiregistrationClient) APIServicesWithMultiTenancy(tenant string) APIServiceInterface {
+	return newAPIServicesWithMultiTenancy(c, tenant)
 }
 
 // NewForConfig creates a new ApiregistrationClient for the given config.

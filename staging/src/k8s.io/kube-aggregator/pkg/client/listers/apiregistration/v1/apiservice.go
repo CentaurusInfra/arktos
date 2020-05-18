@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +30,9 @@ import (
 type APIServiceLister interface {
 	// List lists all APIServices in the indexer.
 	List(selector labels.Selector) (ret []*v1.APIService, err error)
+	// APIServices returns an object that can list and get APIServices.
+	APIServices() APIServiceTenantLister
+	APIServicesWithMultiTenancy(tenant string) APIServiceTenantLister
 	// Get retrieves the APIService from the index for a given name.
 	Get(name string) (*v1.APIService, error)
 	APIServiceListerExpansion
@@ -55,6 +59,55 @@ func (s *aPIServiceLister) List(selector labels.Selector) (ret []*v1.APIService,
 // Get retrieves the APIService from the index for a given name.
 func (s *aPIServiceLister) Get(name string) (*v1.APIService, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1.Resource("apiservice"), name)
+	}
+	return obj.(*v1.APIService), nil
+}
+
+// APIServices returns an object that can list and get APIServices.
+func (s *aPIServiceLister) APIServices() APIServiceTenantLister {
+	return aPIServiceTenantLister{indexer: s.indexer, tenant: "default"}
+}
+
+func (s *aPIServiceLister) APIServicesWithMultiTenancy(tenant string) APIServiceTenantLister {
+	return aPIServiceTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// APIServiceTenantLister helps list and get APIServices.
+type APIServiceTenantLister interface {
+	// List lists all APIServices in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1.APIService, err error)
+	// Get retrieves the APIService from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1.APIService, error)
+	APIServiceTenantListerExpansion
+}
+
+// aPIServiceTenantLister implements the APIServiceTenantLister
+// interface.
+type aPIServiceTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all APIServices in the indexer for a given tenant.
+func (s aPIServiceTenantLister) List(selector labels.Selector) (ret []*v1.APIService, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.APIService))
+	})
+	return ret, err
+}
+
+// Get retrieves the APIService from the indexer for a given tenant and name.
+func (s aPIServiceTenantLister) Get(name string) (*v1.APIService, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "default" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}
