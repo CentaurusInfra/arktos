@@ -669,74 +669,74 @@ function upload-server-tars() {
     fi
   else
     if [[ -z ${AWS_S3_BUCKET-} ]]; then
-          local project_hash=
-          local key=$(aws configure get aws_access_key_id)
-          if which md5 > /dev/null 2>&1; then
-            project_hash=$(md5 -q -s "${USER} ${key} ${INSTANCE_PREFIX}")
-          else
-            project_hash=$(echo -n "${USER} ${key} ${INSTANCE_PREFIX}" | md5sum | awk '{ print $1 }')
+      local project_hash=
+      local key=$(aws configure get aws_access_key_id)
+      if which md5 > /dev/null 2>&1; then
+        project_hash=$(md5 -q -s "${USER} ${key} ${INSTANCE_PREFIX}")
+      else
+        project_hash=$(echo -n "${USER} ${key} ${INSTANCE_PREFIX}" | md5sum | awk '{ print $1 }')
+      fi
+      AWS_S3_BUCKET="kubernetes-staging-${project_hash}"
+    fi
+
+    echo "Uploading to Amazon S3"
+
+    if ! aws s3api get-bucket-location --bucket ${AWS_S3_BUCKET} > /dev/null 2>&1 ; then
+      echo "Creating ${AWS_S3_BUCKET}"
+
+      # Buckets must be globally uniquely named, so always create in a known region
+      # We default to us-east-1 because that's the canonical region for S3,
+      # and then the bucket is most-simply named (s3.amazonaws.com)
+      aws s3 mb "s3://${AWS_S3_BUCKET}" --region ${AWS_S3_REGION}
+
+      echo "Confirming bucket was created..."
+
+      local attempt=0
+      while true; do
+        if ! aws s3 ls --region ${AWS_S3_REGION} "s3://${AWS_S3_BUCKET}" > /dev/null 2>&1; then
+          if (( attempt > 120 )); then
+            echo
+            echo -e "${color_red}Unable to confirm bucket creation." >&2
+            echo "Please ensure that s3://${AWS_S3_BUCKET} exists" >&2
+            echo -e "and run the script again. (sorry!)${color_norm}" >&2
+            exit 1
           fi
-          AWS_S3_BUCKET="kubernetes-staging-${project_hash}"
-      fi
+        else
+          break
+        fi
+        attempt=$(($attempt+1))
+        sleep 1
+      done
+    fi
 
-      echo "Uploading to Amazon S3"
+    local s3_bucket_location=$(aws s3api get-bucket-location --bucket ${AWS_S3_BUCKET})
+    local s3_url_base=https://s3-${s3_bucket_location}.amazonaws.com
+    if [[ "${s3_bucket_location}" == "None" ]]; then
+      # "US Classic" does not follow the pattern
+      s3_url_base=https://s3.amazonaws.com
+      s3_bucket_location=us-east-1
+    elif [[ "${s3_bucket_location}" == "cn-north-1" ]]; then
+      s3_url_base=https://s3.cn-north-1.amazonaws.com.cn
+    fi
 
-      if ! aws s3api get-bucket-location --bucket ${AWS_S3_BUCKET} > /dev/null 2>&1 ; then
-        echo "Creating ${AWS_S3_BUCKET}"
+    local -r staging_path="devel"
 
-        # Buckets must be globally uniquely named, so always create in a known region
-        # We default to us-east-1 because that's the canonical region for S3,
-        # and then the bucket is most-simply named (s3.amazonaws.com)
-        aws s3 mb "s3://${AWS_S3_BUCKET}" --region ${AWS_S3_REGION}
+    local -r local_dir="${KUBE_TEMP}/s3/"
+    mkdir ${local_dir}
 
-        echo "Confirming bucket was created..."
+    echo "+++ Staging server tars to S3 Storage: ${AWS_S3_BUCKET}/${staging_path}"
+    cp -a "${SERVER_BINARY_TAR}" ${local_dir}
+    cp -a "${BOOTSTRAP_SCRIPT}" ${local_dir}
 
-        local attempt=0
-        while true; do
-          if ! aws s3 ls --region ${AWS_S3_REGION} "s3://${AWS_S3_BUCKET}" > /dev/null 2>&1; then
-            if (( attempt > 120 )); then
-              echo
-              echo -e "${color_red}Unable to confirm bucket creation." >&2
-              echo "Please ensure that s3://${AWS_S3_BUCKET} exists" >&2
-              echo -e "and run the script again. (sorry!)${color_norm}" >&2
-              exit 1
-            fi
-          else
-            break
-          fi
-          attempt=$(($attempt+1))
-          sleep 1
-        done
-      fi
+    aws s3 sync --region ${s3_bucket_location} --exact-timestamps ${local_dir} "s3://${AWS_S3_BUCKET}/${staging_path}/"
 
-      local s3_bucket_location=$(aws s3api get-bucket-location --bucket ${AWS_S3_BUCKET})
-      local s3_url_base=https://s3-${s3_bucket_location}.amazonaws.com
-      if [[ "${s3_bucket_location}" == "None" ]]; then
-        # "US Classic" does not follow the pattern
-        s3_url_base=https://s3.amazonaws.com
-        s3_bucket_location=us-east-1
-      elif [[ "${s3_bucket_location}" == "cn-north-1" ]]; then
-        s3_url_base=https://s3.cn-north-1.amazonaws.com.cn
-      fi
+    local server_binary_path="${staging_path}/${SERVER_BINARY_TAR##*/}"
+    aws s3api put-object-acl --region ${s3_bucket_location} --bucket ${AWS_S3_BUCKET} --key "${server_binary_path}" --grant-read 'uri="http://acs.amazonaws.com/groups/global/AllUsers"'
+    SERVER_BINARY_TAR_URL="${s3_url_base}/${AWS_S3_BUCKET}/${server_binary_path}"
 
-      local -r staging_path="devel"
-
-      local -r local_dir="${KUBE_TEMP}/s3/"
-      mkdir ${local_dir}
-
-      echo "+++ Staging server tars to S3 Storage: ${AWS_S3_BUCKET}/${staging_path}"
-      cp -a "${SERVER_BINARY_TAR}" ${local_dir}
-      cp -a "${BOOTSTRAP_SCRIPT}" ${local_dir}
-
-      aws s3 sync --region ${s3_bucket_location} --exact-timestamps ${local_dir} "s3://${AWS_S3_BUCKET}/${staging_path}/"
-
-      local server_binary_path="${staging_path}/${SERVER_BINARY_TAR##*/}"
-      aws s3api put-object-acl --region ${s3_bucket_location} --bucket ${AWS_S3_BUCKET} --key "${server_binary_path}" --grant-read 'uri="http://acs.amazonaws.com/groups/global/AllUsers"'
-      SERVER_BINARY_TAR_URL="${s3_url_base}/${AWS_S3_BUCKET}/${server_binary_path}"
-
-      local bootstrap_script_path="${staging_path}/${BOOTSTRAP_SCRIPT##*/}"
-      aws s3api put-object-acl --region ${s3_bucket_location} --bucket ${AWS_S3_BUCKET} --key "${bootstrap_script_path}" --grant-read 'uri="http://acs.amazonaws.com/groups/global/AllUsers"'
-      BOOTSTRAP_SCRIPT_URL="${s3_url_base}/${AWS_S3_BUCKET}/${bootstrap_script_path}"
+    local bootstrap_script_path="${staging_path}/${BOOTSTRAP_SCRIPT##*/}"
+    aws s3api put-object-acl --region ${s3_bucket_location} --bucket ${AWS_S3_BUCKET} --key "${bootstrap_script_path}" --grant-read 'uri="http://acs.amazonaws.com/groups/global/AllUsers"'
+    BOOTSTRAP_SCRIPT_URL="${s3_url_base}/${AWS_S3_BUCKET}/${bootstrap_script_path}"
   fi
 
   echo "Uploaded server tars:"
