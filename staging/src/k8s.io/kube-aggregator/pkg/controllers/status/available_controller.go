@@ -156,7 +156,12 @@ func NewAvailableConditionController(
 }
 
 func (c *AvailableConditionController) sync(key string) error {
-	originalAPIService, err := c.apiServiceLister.Get(key)
+	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
+	originalAPIService, err := c.apiServiceLister.APIServicesWithMultiTenancy(tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
@@ -179,7 +184,7 @@ func (c *AvailableConditionController) sync(key string) error {
 		return err
 	}
 
-	service, err := c.serviceLister.Services(apiService.Spec.Service.Namespace).Get(apiService.Spec.Service.Name)
+	service, err := c.serviceLister.ServicesWithMultiTenancy(apiService.Spec.Service.Namespace, tenant).Get(apiService.Spec.Service.Name)
 	if apierrors.IsNotFound(err) {
 		availableCondition.Status = apiregistration.ConditionFalse
 		availableCondition.Reason = "ServiceNotFound"
@@ -216,7 +221,7 @@ func (c *AvailableConditionController) sync(key string) error {
 			return err
 		}
 
-		endpoints, err := c.endpointsLister.Endpoints(apiService.Spec.Service.Namespace).Get(apiService.Spec.Service.Name)
+		endpoints, err := c.endpointsLister.EndpointsWithMultiTenancy(apiService.Spec.Service.Namespace, tenant).Get(apiService.Spec.Service.Name)
 		if apierrors.IsNotFound(err) {
 			availableCondition.Status = apiregistration.ConditionFalse
 			availableCondition.Reason = "EndpointsNotFound"
@@ -424,13 +429,13 @@ func (c *AvailableConditionController) enqueue(obj *apiregistration.APIService) 
 
 func (c *AvailableConditionController) addAPIService(obj interface{}) {
 	castObj := obj.(*apiregistration.APIService)
-	klog.V(4).Infof("Adding %s", castObj.Name)
+	klog.V(4).Infof("Adding %s/%s", castObj.Tenant, castObj.Name)
 	c.enqueue(castObj)
 }
 
 func (c *AvailableConditionController) updateAPIService(obj, _ interface{}) {
 	castObj := obj.(*apiregistration.APIService)
-	klog.V(4).Infof("Updating %s", castObj.Name)
+	klog.V(4).Infof("Updating %s/%s", castObj.Tenant, castObj.Name)
 	c.enqueue(castObj)
 }
 
@@ -448,7 +453,7 @@ func (c *AvailableConditionController) deleteAPIService(obj interface{}) {
 			return
 		}
 	}
-	klog.V(4).Infof("Deleting %q", castObj.Name)
+	klog.V(4).Infof("Deleting %q/%q", castObj.Tenant, castObj.Name)
 	c.enqueue(castObj)
 }
 
@@ -461,7 +466,7 @@ func (c *AvailableConditionController) getAPIServicesFor(obj runtime.Object) []*
 	}
 
 	var ret []*apiregistration.APIService
-	apiServiceList, _ := c.apiServiceLister.List(labels.Everything())
+	apiServiceList, _ := c.apiServiceLister.APIServicesWithMultiTenancy(metadata.GetTenant()).List(labels.Everything())
 	for _, apiService := range apiServiceList {
 		if apiService.Spec.Service == nil {
 			continue

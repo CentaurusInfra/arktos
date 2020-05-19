@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,11 +19,14 @@ package routes
 
 import (
 	"net/http"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/server/mux"
+
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 )
 
 // ListedPathProvider is an interface for providing paths that should be reported at /.
@@ -65,5 +69,18 @@ type IndexLister struct {
 
 // ServeHTTP serves the available paths.
 func (i IndexLister) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	responsewriters.WriteRawJSON(i.StatusCode, metav1.RootPaths{Paths: i.PathProvider.ListedPaths()}, w)
+	userTenant, _ := apifilters.GetTenantFromQueryThenContext(r)
+	tenantedPathMark := "?tenant="
+	tenantPathSuffix := tenantedPathMark + userTenant
+	rootPaths := []string{}
+	for _, path := range i.PathProvider.ListedPaths() {
+		if !strings.Contains(path, tenantedPathMark) {
+			rootPaths = append(rootPaths, path)
+		} else {
+			if strings.HasSuffix(path, tenantPathSuffix) {
+				rootPaths = append(rootPaths, strings.TrimSuffix(path, tenantPathSuffix))
+			}
+		}
+	}
+	responsewriters.WriteRawJSON(i.StatusCode, metav1.RootPaths{Paths: rootPaths}, w)
 }

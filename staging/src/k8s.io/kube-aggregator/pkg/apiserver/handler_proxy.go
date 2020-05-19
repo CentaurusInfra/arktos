@@ -219,7 +219,7 @@ func (r *proxyHandler) updateAPIService(apiService *apiregistrationapi.APIServic
 	kubeConfig := &restclient.KubeConfig{
 		TLSClientConfig: restclient.TLSClientConfig{
 			Insecure:   apiService.Spec.InsecureSkipTLSVerify,
-			ServerName: apiService.Spec.Service.Name + "." + apiService.Spec.Service.Namespace + ".svc",
+			ServerName: apiService.Spec.Service.Name + "." + apiService.Spec.Service.Namespace + "." + apiService.Tenant + ".svc",
 			CertData:   r.proxyClientCert,
 			KeyData:    r.proxyClientKey,
 			CAData:     apiService.Spec.CABundle,
@@ -230,7 +230,7 @@ func (r *proxyHandler) updateAPIService(apiService *apiregistrationapi.APIServic
 	}
 
 	newInfo := proxyHandlingInfo{
-		name:             apiService.Name,
+		name:             apiService.Tenant + "/" + apiService.Name,
 		restConfig:       restclient.NewAggregatedConfig(kubeConfig),
 		serviceName:      apiService.Spec.Service.Name,
 		serviceNamespace: apiService.Spec.Service.Namespace,
