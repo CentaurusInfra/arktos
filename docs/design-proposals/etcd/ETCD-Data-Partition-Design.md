@@ -15,7 +15,7 @@ One of the goals of Arktos is to greatly increase the size of storage by
 serving single Arktos cluster from multiple ETCD clusters.
 
 With current community design, each ETCD cluster has its own revision number,
-starting from 0 and increased by 1 for each sequential write. Simply putting
+starting from 1 and increases by 1 for each sequential write. Simply putting
 multiple ETCD clusters work together will have revision number collision and
 tracking issue. 
 
@@ -44,7 +44,7 @@ number, watch from revision number, etc.
 ### ETCD Revision Generation
 
 * We updated the existing ETCD revision number generation algorithm from "starting from
-1 and always increasing by 1" to include the factors of timestamp, cluster id, and write event.
+1 and always increases by 1" to include the factors of timestamp, cluster id, and write event.
  - Event number: bit 0-12
  - Cluster id: bit 13-18
  - Timestamp in millisecond: bit 19-62
