@@ -62,6 +62,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
+	"k8s.io/apiserver/pkg/authentication/user"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 )
 
 // setUp is a convience function for setting up for (most) tests.
@@ -142,6 +144,15 @@ func (fakeLocalhost443Listener) Addr() net.Addr {
 		IP:   net.IPv4(127, 0, 0, 1),
 		Port: 443,
 	}
+}
+
+func handlerWithUserInfo(handler http.Handler, userInfo *user.DefaultInfo) http.Handler {
+	new_handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req = req.WithContext(genericapirequest.WithUser(req.Context(), userInfo))
+		handler.ServeHTTP(w, req)
+	})
+
+	return new_handler
 }
 
 // TestLegacyRestStorageStrategies ensures that all Storage objects which are using the generic registry Store have
@@ -309,7 +320,7 @@ func TestAPIVersionOfDiscoveryEndpoints(t *testing.T) {
 	master, etcdserver, _, assert := newMaster(t)
 	defer etcdserver.Terminate(t)
 
-	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
+	server := httptest.NewServer(handlerWithUserInfo(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux, fakeuser.FakeSuperUserInfo))
 
 	// /api exists in release-1.1
 	resp, err := http.Get(server.URL + "/api")
@@ -384,7 +395,7 @@ func TestStorageVersionHashes(t *testing.T) {
 	master, etcdserver, _, _ := newMaster(t)
 	defer etcdserver.Terminate(t)
 
-	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
+	server := httptest.NewServer(handlerWithUserInfo(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux, fakeuser.FakeSuperUserInfo))
 
 	kubeConfig := &restclient.KubeConfig{
 		Host:          server.URL,
@@ -428,7 +439,7 @@ func TestStorageVersionHashEqualities(t *testing.T) {
 	master, etcdserver, _, assert := newMaster(t)
 	defer etcdserver.Terminate(t)
 
-	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
+	server := httptest.NewServer(handlerWithUserInfo(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux, fakeuser.FakeSuperUserInfo))
 
 	// Test 1: extensions/v1beta1/replicasets and apps/v1/replicasets have
 	// the same storage version hash.

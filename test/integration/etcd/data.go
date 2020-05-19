@@ -580,7 +580,8 @@ func GetCustomResourceDefinitionData() []*apiextensionsv1beta1.CustomResourceDef
 		// namespaced with legacy version field
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "foos.cr.bar.com",
+				Name:   "foos.cr.bar.com",
+				Tenant: metav1.TenantDefault,
 			},
 			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 				Group:   "cr.bar.com",
@@ -595,7 +596,8 @@ func GetCustomResourceDefinitionData() []*apiextensionsv1beta1.CustomResourceDef
 		// Tenant-Scoped with legacy version field
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "moons.dreamwalk.com",
+				Name:   "moons.dreamwalk.com",
+				Tenant: metav1.TenantDefault,
 			},
 			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 				Group:   "dreamwalk.com",
@@ -610,7 +612,8 @@ func GetCustomResourceDefinitionData() []*apiextensionsv1beta1.CustomResourceDef
 		// cluster scoped with legacy version field
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pants.custom.fancy.com",
+				Name:   "pants.custom.fancy.com",
+				Tenant: metav1.TenantDefault,
 			},
 			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 				Group:   "custom.fancy.com",
@@ -625,7 +628,8 @@ func GetCustomResourceDefinitionData() []*apiextensionsv1beta1.CustomResourceDef
 		// cluster scoped with legacy version field and pruning.
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "integers.random.numbers.com",
+				Name:   "integers.random.numbers.com",
+				Tenant: metav1.TenantDefault,
 			},
 			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 				Group:   "random.numbers.com",
@@ -651,7 +655,8 @@ func GetCustomResourceDefinitionData() []*apiextensionsv1beta1.CustomResourceDef
 		// cluster scoped with versions field
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pandas.awesome.bears.com",
+				Name:   "pandas.awesome.bears.com",
+				Tenant: metav1.TenantDefault,
 			},
 			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 				Group: "awesome.bears.com",

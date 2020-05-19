@@ -405,7 +405,7 @@ func CrdExistsInDiscovery(client apiextensionsclientset.Interface, crd *apiexten
 }
 
 func crdVersionExistsInDiscovery(client apiextensionsclientset.Interface, crd *apiextensionsv1beta1.CustomResourceDefinition, version string) bool {
-	resourceList, err := client.Discovery().ServerResourcesForGroupVersion(crd.Spec.Group + "/" + version)
+	resourceList, err := client.Discovery().ServerResourcesForGroupVersion(crd.Tenant + ":" + crd.Spec.Group + "/" + version)
 	if err != nil {
 		return false
 	}
