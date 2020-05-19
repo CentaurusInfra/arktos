@@ -23,6 +23,7 @@ go_library(
         "//staging/src/k8s.io/client-go/tools/cache:go_default_library",
         "//staging/src/k8s.io/client-go/util/workqueue:go_default_library",
         "//staging/src/k8s.io/kube-aggregator/pkg/apis/apiregistration:go_default_library",
+        "//staging/src/k8s.io/kube-aggregator/pkg/controllers/autoregister:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
     ],
 )
