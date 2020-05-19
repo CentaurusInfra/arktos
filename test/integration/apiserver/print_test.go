@@ -164,10 +164,7 @@ func TestServerSidePrint(t *testing.T) {
 			extensionsv1beta1.SchemeGroupVersion.WithResource("replicasets"),
 		},
 	)
-	defer closeFn()
-
 	ns := framework.CreateTestingNamespace("server-print", s, t)
-	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	tableParam := fmt.Sprintf("application/json;as=Table;g=%s;v=%s, application/json", metav1beta1.GroupName, metav1beta1.SchemeGroupVersion.Version)
 	printer := newFakePrinter(printersinternal.AddHandlers)
@@ -184,9 +181,6 @@ func TestServerSidePrint(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	defer func() {
-		os.Remove(cacheDir)
-	}()
 
 	cachedClient, err := diskcached.NewCachedDiscoveryClientForConfig(restConfig, cacheDir, "", time.Duration(10*time.Minute))
 	if err != nil {
@@ -263,6 +257,11 @@ func TestServerSidePrint(t *testing.T) {
 			}
 		}
 	}
+
+	// tear down
+	os.Remove(cacheDir)
+	framework.DeleteTestingNamespace(ns, s, t)
+	closeFn()
 }
 
 type fakePrinter struct {

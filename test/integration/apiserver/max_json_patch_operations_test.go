@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +33,6 @@ import (
 // Tests that the apiserver limits the number of operations in a json patch.
 func TestMaxJSONPatchOperations(t *testing.T) {
 	stopCh := make(chan struct{})
-	defer close(stopCh)
 	clientSet, _ := framework.StartTestServer(t, stopCh, framework.TestServerSetup{
 		ModifyServerRunOptions: func(opts *options.ServerRunOptions) {
 			opts.GenericServerRunOptions.MaxRequestBodyBytes = 1024 * 1024
@@ -66,4 +66,7 @@ func TestMaxJSONPatchOperations(t *testing.T) {
 	if !strings.Contains(err.Error(), "The allowed maximum operations in a JSON patch is") {
 		t.Errorf("expected the error message to be about maximum operations, got %v", err)
 	}
+
+	// tear down
+	close(stopCh)
 }

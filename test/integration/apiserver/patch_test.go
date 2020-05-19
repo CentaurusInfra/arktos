@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,11 +36,7 @@ import (
 // Tests that the apiserver retries patches
 func TestPatchConflicts(t *testing.T) {
 	s, clientSet, closeFn := setup(t)
-	defer closeFn()
-
 	ns := framework.CreateTestingNamespace("status-code", s, t)
-	defer framework.DeleteTestingNamespace(ns, s, t)
-
 	numOfConcurrentPatches := 100
 
 	UIDs := make([]types.UID, numOfConcurrentPatches)
@@ -74,7 +71,6 @@ func TestPatchConflicts(t *testing.T) {
 	for i := 0; i < numOfConcurrentPatches; i++ {
 		wg.Add(1)
 		go func(i int) {
-			defer wg.Done()
 			labelName := fmt.Sprintf("label-%d", i)
 			value := uuid.NewRandom().String()
 
@@ -116,6 +112,8 @@ func TestPatchConflicts(t *testing.T) {
 			}
 
 			atomic.AddInt32(&successes, 1)
+
+			wg.Done()
 		}(i)
 	}
 	wg.Wait()
@@ -126,6 +124,8 @@ func TestPatchConflicts(t *testing.T) {
 		t.Logf("Got %d successful patches for %s", successes, "secrets")
 	}
 
+	framework.DeleteTestingNamespace(ns, s, t)
+	closeFn()
 }
 
 func findOwnerRefByUID(ownerRefs []metav1.OwnerReference, uid types.UID) bool {

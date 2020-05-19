@@ -81,10 +81,6 @@ func setUpTwoApiservers(t *testing.T) (*httptest.Server, framework.CloseFunc, cl
 
 func TestSetupMultipleApiServers(t *testing.T) {
 	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
-	defer deleteSinglePartitionConfigFile(t, configFilename2)
-	defer closeFn1()
-	defer closeFn2()
 	t.Logf("server 1 %+v, clientset 2 %+v", s1, clientset1)
 	t.Logf("server 2 %+v, clientset 2 %+v", s2, clientset2)
 
@@ -93,6 +89,12 @@ func TestSetupMultipleApiServers(t *testing.T) {
 	assert.NotNil(t, clientset1)
 	assert.NotNil(t, clientset2)
 	assert.NotEqual(t, s1.URL, s2.URL)
+
+	// tear down
+	deleteSinglePartitionConfigFile(t, configFilename1)
+	deleteSinglePartitionConfigFile(t, configFilename2)
+	closeFn2()
+	closeFn1()
 }
 
 func labelMap() map[string]string {
@@ -331,16 +333,10 @@ func startEventBroadCaster(t *testing.T, cs clientset.Interface) {
 // Ideally, we should test all kinds - TODO - should be able to leverage generated test data
 func TestGetCanGetAlldata(t *testing.T) {
 	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
-	defer deleteSinglePartitionConfigFile(t, configFilename2)
-	defer closeFn1()
-	defer closeFn2()
 
 	// create pods via 2 different api servers
 	pod1 := createPod(t, clientset1, tenant1, "te", "pod1")
-	defer framework.DeleteTestingTenant(tenant1, s1, t)
 	pod2 := createPod(t, clientset2, tenant2, "te", "pod1")
-	defer framework.DeleteTestingTenant(tenant2, s2, t)
 	assert.NotNil(t, pod1)
 	assert.NotNil(t, pod2)
 	assert.NotEqual(t, pod1.UID, pod2.UID)
@@ -389,19 +385,21 @@ func TestGetCanGetAlldata(t *testing.T) {
 	deletePod(t, clientset1, pod2)
 	deleteRS(t, clientset2, rs1)
 	deleteRS(t, clientset2, rs2)
+
+	framework.DeleteTestingTenant(tenant2, s2, t)
+	framework.DeleteTestingTenant(tenant1, s1, t)
+	closeFn2()
+	closeFn1()
+	deleteSinglePartitionConfigFile(t, configFilename2)
+	deleteSinglePartitionConfigFile(t, configFilename1)
 }
 
 func TestListCanGetAlldata(t *testing.T) {
 	s1, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
-	defer deleteSinglePartitionConfigFile(t, configFilename2)
-	defer closeFn1()
-	defer closeFn2()
 
 	// create 2 pods in same tenant and namespace via different api server
 	namespace := "te"
 	pod1 := createPod(t, clientset1, tenant1, namespace, "pod1")
-	defer framework.DeleteTestingTenant(tenant1, s1, t)
 	pod2 := createPod(t, clientset2, tenant1, namespace, "pod2")
 	assert.NotNil(t, pod1)
 	assert.NotNil(t, pod2)
@@ -458,20 +456,20 @@ func TestListCanGetAlldata(t *testing.T) {
 	deletePod(t, clientset1, pod2)
 	deleteRS(t, clientset2, rs1)
 	deleteRS(t, clientset2, rs2)
+
+	framework.DeleteTestingTenant(tenant1, s1, t)
+	closeFn2()
+	closeFn1()
+	deleteSinglePartitionConfigFile(t, configFilename2)
+	deleteSinglePartitionConfigFile(t, configFilename1)
 }
 
 func TestPostCanUpdateAlldata(t *testing.T) {
 	s1, closeFn1, clientset1, configFilename1, s2, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
-	defer deleteSinglePartitionConfigFile(t, configFilename2)
-	defer closeFn1()
-	defer closeFn2()
 
 	// create pods via 2 different api servers
 	pod1 := createPod(t, clientset1, tenant1, "te", "pod1")
-	defer framework.DeleteTestingTenant(tenant1, s1, t)
 	pod2 := createPod(t, clientset2, tenant2, "te", "pod1")
-	defer framework.DeleteTestingTenant(tenant2, s2, t)
 	assert.NotNil(t, pod1)
 	assert.NotNil(t, pod2)
 	assert.NotEqual(t, pod1.UID, pod2.UID)
@@ -519,21 +517,23 @@ func TestPostCanUpdateAlldata(t *testing.T) {
 	// tear down
 	deletePod(t, clientset1, pod1)
 	deletePod(t, clientset1, pod2)
+
+	framework.DeleteTestingTenant(tenant2, s2, t)
+	framework.DeleteTestingTenant(tenant1, s1, t)
+	closeFn2()
+	closeFn1()
+	deleteSinglePartitionConfigFile(t, configFilename1)
+	deleteSinglePartitionConfigFile(t, configFilename2)
 }
 
 func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	_, closeFn1, clientset1, configFilename1, _, closeFn2, clientset2, configFilename2 := setUpTwoApiservers(t)
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
-	defer deleteSinglePartitionConfigFile(t, configFilename2)
-	defer closeFn1()
-	defer closeFn2()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
 	informer1 := informers.NewSharedInformerFactory(clientset1, resyncPeriod)
 	stopCh := make(chan struct{})
 	informer1.Start(stopCh)
-	defer close(stopCh)
 
 	// create informer 2 from server 2
 	informer2 := informers.NewSharedInformerFactory(clientset2, resyncPeriod)
@@ -549,12 +549,10 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	namespace := "ns1"
 	rsClient1 := clientset1.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
 	w1 := rsClient1.Watch(metav1.ListOptions{})
-	defer w1.Stop()
 	assert.Nil(t, w1.GetErrors())
 
 	rsClient2 := clientset2.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
 	w2 := rsClient2.Watch(metav1.ListOptions{})
-	defer w2.Stop()
 	assert.Nil(t, w2.GetErrors())
 
 	// create rs via 2 different api servers
@@ -589,6 +587,14 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 	// tear down
 	deleteRS(t, clientset1, rs1)
 	deleteRS(t, clientset1, rs2)
+
+	w2.Stop()
+	w1.Stop()
+	close(stopCh)
+	closeFn2()
+	closeFn1()
+	deleteSinglePartitionConfigFile(t, configFilename1)
+	deleteSinglePartitionConfigFile(t, configFilename2)
 }
 
 func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
@@ -603,17 +609,11 @@ func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
 	aggClientSet, err := clientset.NewForConfig(aggConfig)
 	assert.Nil(t, err)
 
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
-	defer deleteSinglePartitionConfigFile(t, configFilename2)
-	defer closeFn1()
-	defer closeFn2()
-
 	// create informer 1 from aggregated clientset
 	resyncPeriod := 12 * time.Hour
 	informer1 := informers.NewSharedInformerFactory(aggClientSet, resyncPeriod)
 	stopCh := make(chan struct{})
 	informer1.Start(stopCh)
-	defer close(stopCh)
 
 	startEventBroadCaster(t, aggClientSet)
 	informer1.WaitForCacheSync(stopCh)
@@ -645,20 +645,22 @@ func TestAggregatedWatchInformerCanGetAllData(t *testing.T) {
 	// tear down
 	deleteRS(t, aggClientSet, rs1)
 	deleteRS(t, aggClientSet, rs2)
+	close(stopCh)
+	closeFn2()
+	closeFn1()
+	deleteSinglePartitionConfigFile(t, configFilename1)
+	deleteSinglePartitionConfigFile(t, configFilename2)
 }
 
 // Test apiserver sync data like ["registry/replicasets/", "registry/replicasets/tenant2")
 func TestPartitionWithLeftUnbounded(t *testing.T) {
 	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", tenant2, "0")
-	defer deleteSinglePartitionConfigFile(t, configFilename)
-	defer closeFn()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
 	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
 	stopCh := make(chan struct{})
 	informer.Start(stopCh)
-	defer close(stopCh)
 
 	startEventBroadCaster(t, clientset)
 	informer.WaitForCacheSync(stopCh)
@@ -667,7 +669,6 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
 	w := rsClient.Watch(metav1.ListOptions{})
-	defer w.Stop()
 	assert.Nil(t, w.GetErrors())
 
 	rs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
@@ -724,20 +725,22 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 	}
 	assert.True(t, rsFound)
 
+	// tear down
+	w.Stop()
+	close(stopCh)
+	closeFn()
+	deleteSinglePartitionConfigFile(t, configFilename)
 }
 
 // Test apiserver sync data like ["registry/replicasets/tenant2", "")
 func TestPartitionRightUnbounded(t *testing.T) {
 	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, "", "0")
-	defer deleteSinglePartitionConfigFile(t, configFilename)
-	defer closeFn()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
 	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
 	stopCh := make(chan struct{})
 	informer.Start(stopCh)
-	defer close(stopCh)
 
 	startEventBroadCaster(t, clientset)
 	informer.WaitForCacheSync(stopCh)
@@ -746,7 +749,6 @@ func TestPartitionRightUnbounded(t *testing.T) {
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
 	w := rsClient.Watch(metav1.ListOptions{})
-	defer w.Stop()
 	assert.Nil(t, w.GetErrors())
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
@@ -801,20 +803,23 @@ func TestPartitionRightUnbounded(t *testing.T) {
 		}
 	}
 	assert.True(t, rsFound)
+
+	// tear down
+	w.Stop()
+	close(stopCh)
+	closeFn()
+	deleteSinglePartitionConfigFile(t, configFilename)
 }
 
 // Test apiserver sync data like ["registry/pods/tenant2", "registry/pods/tenant3")
 func TestPartitionLeftRightBounded(t *testing.T) {
 	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, tenant2, tenant3, "0")
-	defer deleteSinglePartitionConfigFile(t, configFilename)
-	defer closeFn()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
 	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
 	stopCh := make(chan struct{})
 	informer.Start(stopCh)
-	defer close(stopCh)
 
 	startEventBroadCaster(t, clientset)
 	informer.WaitForCacheSync(stopCh)
@@ -823,7 +828,6 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
 	w := rsClient.Watch(metav1.ListOptions{})
-	defer w.Stop()
 	assert.Nil(t, w.GetErrors())
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
@@ -873,20 +877,21 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 
 	// tear down
 	deleteRS(t, clientset, rs)
+	w.Stop()
+	close(stopCh)
+	closeFn()
+	deleteSinglePartitionConfigFile(t, configFilename)
 }
 
 // Test apiserver sync data like ["registry/replicasets/", "registry/replicasets/")
 func TestPartitionUnBounded(t *testing.T) {
 	_, closeFn, clientset, configFilename := setUpSingleApiserver(t, "", "", "0")
-	defer deleteSinglePartitionConfigFile(t, configFilename)
-	defer closeFn()
 
 	// create informer 1 from server 1
 	resyncPeriod := 12 * time.Hour
 	informer := informers.NewSharedInformerFactory(clientset, resyncPeriod)
 	stopCh := make(chan struct{})
 	informer.Start(stopCh)
-	defer close(stopCh)
 
 	startEventBroadCaster(t, clientset)
 	informer.WaitForCacheSync(stopCh)
@@ -895,7 +900,6 @@ func TestPartitionUnBounded(t *testing.T) {
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
 	w := rsClient.Watch(metav1.ListOptions{})
-	defer w.Stop()
 	assert.Nil(t, w.GetErrors())
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
@@ -943,6 +947,12 @@ func TestPartitionUnBounded(t *testing.T) {
 		}
 	}
 	assert.True(t, rsFound)
+
+	// tear down
+	w.Stop()
+	close(stopCh)
+	closeFn()
+	deleteSinglePartitionConfigFile(t, configFilename)
 }
 
 // Both use partition manager. Can only run sequentially as DP manager is singleton
@@ -959,16 +969,12 @@ func testDataPartitionReset(t *testing.T) {
 	masterConfig := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, "", serviceGroupId)
 	_, s, closeFn := framework.RunAMasterWithDataPartition(masterConfig)
 	stopCh := make(chan struct{})
-	defer close(stopCh)
 	go masterConfig.ExtraConfig.DataPartitionManager.Run(stopCh)
 	config := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s.URL})
 	clientSet, err := clientset.NewForConfig(config)
 	if err != nil {
 		t.Fatalf("Error in create clientset: %v", err)
 	}
-
-	defer deleteSinglePartitionConfigFile(t, configFilename)
-	defer closeFn()
 
 	// create informer from server
 	resyncPeriod := 20 * time.Second
@@ -986,7 +992,6 @@ func testDataPartitionReset(t *testing.T) {
 	namespace := "ns1"
 	rsClient1 := clientSet.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
 	w1 := rsClient1.Watch(metav1.ListOptions{})
-	defer w1.Stop()
 	assert.Nil(t, w1.GetErrors())
 
 	// create rs with tenant in data partition
@@ -1047,6 +1052,12 @@ func testDataPartitionReset(t *testing.T) {
 
 	// check rs2 in informer 1 list
 	assert.True(t, checkReplicaSetExistence3(rslist3, rs2))
+
+	// tear down
+	w1.Stop()
+	close(stopCh)
+	closeFn()
+	deleteSinglePartitionConfigFile(t, configFilename)
 }
 
 func testOneApiServerCluster(t *testing.T) {
@@ -1055,13 +1066,10 @@ func testOneApiServerCluster(t *testing.T) {
 
 	// 1. set up api server 1
 	prefix, configFilename := createSingleApiServerPartitionFile(t, "A", "z")
-	defer deleteSinglePartitionConfigFile(t, configFilename)
 	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, masterAddr1, serviceGroupId)
 	masterConfig1.ExtraConfig.MasterCount = masterCount
 	_, s1, closeFn1 := framework.RunAMaster(masterConfig1)
-	defer closeFn1()
 	stopCh1 := make(chan struct{})
-	defer close(stopCh1)
 	//go masterConfig1.ExtraConfig.DataPartitionManager.Run(stopCh1)
 	config1 := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s1.URL})
 	clientSet1, err := clientset.NewForConfig(config1)
@@ -1086,9 +1094,7 @@ func testOneApiServerCluster(t *testing.T) {
 	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename, masterAddr2, serviceGroupId)
 	masterConfig2.ExtraConfig.MasterCount = masterCount
 	_, s2, closeFn2 := framework.RunAMaster(masterConfig2)
-	defer closeFn2()
 	stopCh2 := make(chan struct{})
-	defer close(stopCh2)
 	config2 := restclient.NewAggregatedConfig(&restclient.KubeConfig{Host: s2.URL})
 	clientSet2, err := clientset.NewForConfig(config2)
 	if err != nil {
@@ -1111,7 +1117,6 @@ func testOneApiServerCluster(t *testing.T) {
 	namespace := "ns1"
 	rsClient1 := clientSet1.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
 	w1 := rsClient1.Watch(metav1.ListOptions{})
-	defer w1.Stop()
 	assert.Nil(t, w1.GetErrors())
 
 	// create rs with tenant in data partition
@@ -1162,6 +1167,13 @@ func testOneApiServerCluster(t *testing.T) {
 	// tear down
 	deleteRS(t, clientSet1, rs1)
 	deleteRS(t, clientSet1, rs2)
+
+	w1.Stop()
+	close(stopCh2)
+	closeFn2()
+	close(stopCh1)
+	closeFn1()
+	deleteSinglePartitionConfigFile(t, configFilename)
 }
 
 // Cannot test data partition as DP manager is singleton - needs to test in e2e tests
@@ -1172,7 +1184,6 @@ func TestTwoApiServerCluster(t *testing.T) {
 
 	t.Log("1. set up api server 1 with serviceGroup1Id")
 	prefix, configFilename1 := createSingleApiServerPartitionFile(t, "A", "m")
-	defer deleteSinglePartitionConfigFile(t, configFilename1)
 
 	masterConfig1 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr1, serviceGroup1Id)
 	masterConfig1.ExtraConfig.MasterCount = masterCount
@@ -1182,7 +1193,6 @@ func TestTwoApiServerCluster(t *testing.T) {
 	masterConfig2 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr2, serviceGroup2Id)
 	masterConfig2.ExtraConfig.MasterCount = masterCount
 	_, _, closeFn2 := framework.RunAMaster(masterConfig2)
-	defer closeFn2()
 
 	t.Log("3. set up api server 3 with serviceGroup1Id")
 	masterAddr3 := "172.10.10.1"
@@ -1195,7 +1205,6 @@ func TestTwoApiServerCluster(t *testing.T) {
 	masterConfig4 := framework.NewIntegrationServerWithPartitionConfig(prefix, configFilename1, masterAddr4, serviceGroup2Id)
 	masterConfig4.ExtraConfig.MasterCount = masterCount
 	_, _, closeFn4 := framework.RunAMaster(masterConfig4)
-	defer closeFn4()
 
 	t.Log("5. set up api server with serviceGroup2Id")
 	masterAddr5 := "100.1.1.9"
@@ -1258,6 +1267,11 @@ func TestTwoApiServerCluster(t *testing.T) {
 	assert.Equal(t, 2, len(e.Subsets[0].Addresses))
 	assert.Equal(t, masterAddr4, e.Subsets[0].Addresses[0].IP)
 	assert.Equal(t, masterAddr2, e.Subsets[0].Addresses[1].IP)
+
+	// tear down
+	closeFn4()
+	closeFn2()
+	deleteSinglePartitionConfigFile(t, configFilename1)
 }
 
 func setUpSingleApiserver(t *testing.T, begin, end string, serviceGroupId string) (*httptest.Server, framework.CloseFunc, clientset.Interface, string) {

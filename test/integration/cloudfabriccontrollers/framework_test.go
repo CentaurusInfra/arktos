@@ -27,9 +27,7 @@ import (
 func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	// case 1. start controller manager 1
 	s, closeFn1, cim1, rsc1, informers1, client1 := RmSetup(t)
-	defer closeFn1()
 	stopCh1 := RunControllerAndInformers(t, cim1, rsc1, informers1, 0)
-	defer close(stopCh1)
 
 	// check replicaset controller status in controller manager 1
 	controllerInstanceList, err := client1.CoreV1().ControllerInstances().List(metav1.ListOptions{})
@@ -47,7 +45,7 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	cim2, rsc2, informers2, client2 := RmSetupControllerMaster(t, s)
 	stopCh2 := RunControllerAndInformers(t, cim2, rsc2, informers2, 0)
-	defer close(stopCh2)
+
 	time.Sleep(5 * time.Second)
 
 	// check replicaset controller status in controller manager 2
@@ -88,7 +86,7 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	// case 3. start controller manager 3
 	cim3, rsc3, informers3, client3 := RmSetupControllerMaster(t, s)
 	stopCh3 := RunControllerAndInformers(t, cim3, rsc3, informers3, 0)
-	defer close(stopCh3)
+
 	time.Sleep(5 * time.Second)
 	t.Logf("rm 3 instance id: %v", rsc3.GetControllerName())
 
@@ -131,7 +129,6 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	rsControllerInstanceRead3, err = client3.CoreV1().ControllerInstances().Get(rsc3.GetControllerName(), metav1.GetOptions{})
 	assert.Nil(t, err)
 
-	CleanupControllers(rsc1.ControllerBase, rsc2.ControllerBase, rsc3.ControllerBase)
 	//assert.False(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
 
 	/*
@@ -164,4 +161,11 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 		assert.False(t, rsControllerInstanceRead2.IsLocked, "Unexpected 2st controller instance status")
 		assert.False(t, rsControllerInstanceRead3.IsLocked, "Unexpected 3rd controller instance status")
 	*/
+
+	// tear down
+	CleanupControllers(rsc1.ControllerBase, rsc2.ControllerBase, rsc3.ControllerBase)
+	close(stopCh3)
+	close(stopCh2)
+	close(stopCh1)
+	closeFn1()
 }

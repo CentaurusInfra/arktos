@@ -105,12 +105,13 @@ func verifyStatusCode(t *testing.T, verb, URL, body string, expectedStatusCode i
 	if err != nil {
 		t.Fatalf("unexpected error: %v in req: %v", err, req)
 	}
-	defer resp.Body.Close()
 	b, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != expectedStatusCode {
 		t.Errorf("Expected status %v, but got %v", expectedStatusCode, resp.StatusCode)
 		t.Errorf("Body: %v", string(b))
 	}
+
+	resp.Body.Close()
 }
 
 func newRS(namespace string) *apps.ReplicaSet {
@@ -153,10 +154,8 @@ var cascDel = `
 // Tests that the apiserver returns 202 status code as expected.
 func Test202StatusCode(t *testing.T) {
 	s, clientSet, closeFn := setup(t)
-	defer closeFn()
 
 	ns := framework.CreateTestingNamespace("status-code", s, t)
-	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	rsClient := clientSet.AppsV1().ReplicaSets(ns.Name)
 
@@ -196,6 +195,10 @@ func Test202StatusCode(t *testing.T) {
 		t.Fatalf("Failed to create rs: %v", err)
 	}
 	verifyStatusCode(t, "DELETE", s.URL+path.Join("/apis/apps/v1/namespaces", ns.Name, "replicasets", rs.Name), cascDel, 202)
+
+	// tear down
+	framework.DeleteTestingNamespace(ns, s, t)
+	closeFn()
 }
 
 func TestListResourceVersion0(t *testing.T) {
@@ -214,14 +217,11 @@ func TestListResourceVersion0(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.APIListChunking, true)()
 			etcdOptions := framework.DefaultEtcdOptions()
 			etcdOptions.EnableWatchCache = tc.watchCacheEnabled
 			s, clientSet, closeFn := setupWithOptions(t, &framework.MasterConfigOptions{EtcdOptions: etcdOptions})
-			defer closeFn()
 
 			ns := framework.CreateTestingNamespace("list-paging", s, t)
-			defer framework.DeleteTestingNamespace(ns, s, t)
 
 			rsClient := clientSet.AppsV1().ReplicaSets(ns.Name)
 
@@ -250,18 +250,18 @@ func TestListResourceVersion0(t *testing.T) {
 			if len(items) != 10 {
 				t.Errorf("Expected list size of 10 but got %d", len(items))
 			}
+
+			// tear down
+			featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.APIListChunking, true)()
+			closeFn()
+			framework.DeleteTestingNamespace(ns, s, t)
 		})
 	}
 }
 
 func TestAPIListChunking(t *testing.T) {
-	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.APIListChunking, true)()
 	s, clientSet, closeFn := setup(t)
-	defer closeFn()
-
 	ns := framework.CreateTestingNamespace("list-paging", s, t)
-	defer framework.DeleteTestingNamespace(ns, s, t)
-
 	rsClient := clientSet.AppsV1().ReplicaSets(ns.Name)
 
 	for i := 0; i < 4; i++ {
@@ -320,6 +320,11 @@ func TestAPIListChunking(t *testing.T) {
 	if !reflect.DeepEqual(names, []string{"test-0", "test-1", "test-2", "test-3"}) {
 		t.Errorf("unexpected items: %#v", list)
 	}
+
+	// tear down
+	framework.DeleteTestingNamespace(ns, s, t)
+	closeFn()
+	featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.APIListChunking, true)()
 }
 
 func makeSecret(name string) *v1.Secret {
@@ -335,13 +340,11 @@ func makeSecret(name string) *v1.Secret {
 
 func TestNameInFieldSelector(t *testing.T) {
 	s, clientSet, closeFn := setup(t)
-	defer closeFn()
 
 	numNamespaces := 3
 	namespaces := make([]*v1.Namespace, 0, numNamespaces)
 	for i := 0; i < 3; i++ {
 		ns := framework.CreateTestingNamespace(fmt.Sprintf("ns%d", i), s, t)
-		defer framework.DeleteTestingNamespace(ns, s, t)
 		namespaces = append(namespaces, ns)
 
 		_, err := clientSet.CoreV1().Secrets(ns.Name).Create(makeSecret("foo"))
@@ -352,6 +355,7 @@ func TestNameInFieldSelector(t *testing.T) {
 		if err != nil {
 			t.Errorf("Couldn't create secret: %v", err)
 		}
+		framework.DeleteTestingNamespace(ns, s, t)
 	}
 
 	testcases := []struct {
@@ -403,19 +407,20 @@ func TestNameInFieldSelector(t *testing.T) {
 			t.Errorf("%s: Unexpected number of secrets: %d, expected: %d", tc.selector, len(secrets.Items), tc.expectedSecrets)
 		}
 	}
+
+	// tear down
+	closeFn()
 }
 
 func TestAPICRDProtobuf(t *testing.T) {
 	testNamespace := "test-api-crd-protobuf"
 	tearDown, config, _, err := fixtures.StartDefaultServer(t)
 	if err != nil {
+		tearDown()
 		t.Fatal(err)
 	}
-	defer tearDown()
 
 	s, _, closeFn := setup(t)
-	defer closeFn()
-
 	apiExtensionClient, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
 		t.Fatal(err)
@@ -551,23 +556,25 @@ func TestAPICRDProtobuf(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer w.Close()
 			tc.wantBody(t, w)
+			w.Close()
 		})
 	}
+
+	// tear down
+	closeFn()
+	tearDown()
 }
 
 func TestTransform(t *testing.T) {
 	testNamespace := "test-transform"
 	tearDown, config, _, err := fixtures.StartDefaultServer(t)
 	if err != nil {
+		tearDown()
 		t.Fatal(err)
 	}
-	defer tearDown()
 
 	s, clientset, closeFn := setup(t)
-	defer closeFn()
-
 	apiExtensionClient, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
 		t.Fatal(err)
@@ -1164,10 +1171,14 @@ func TestTransform(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer w.Close()
 			tc.wantBody(t, w)
+			w.Close()
 		})
 	}
+
+	// tear down
+	closeFn()
+	tearDown()
 }
 
 func expectTableWatchEvents(t *testing.T, count, columns int, policy metav1.IncludeObjectPolicy, d *json.Decoder) [][]byte {
