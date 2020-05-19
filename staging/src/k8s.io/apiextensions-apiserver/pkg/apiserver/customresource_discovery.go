@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,26 +22,34 @@ import (
 	"strings"
 	"sync"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apiserver/pkg/endpoints/discovery"
+	apidiscovery "k8s.io/apiserver/pkg/endpoints/discovery"
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 )
 
 type versionDiscoveryHandler struct {
 	// TODO, writing is infrequent, optimize this
 	discoveryLock sync.RWMutex
-	discovery     map[schema.GroupVersion]*discovery.APIVersionHandler
+	discoveryMap  map[string]map[schema.GroupVersion]*apidiscovery.APIVersionHandler
 
 	delegate http.Handler
 }
 
 func (r *versionDiscoveryHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	tenant, err := apifilters.GetTenantFromQueryThenContext(req)
 	pathParts := splitPath(req.URL.Path)
 	// only match /apis/<group>/<version>
-	if len(pathParts) != 3 || pathParts[0] != "apis" {
+	if len(pathParts) != 3 || pathParts[0] != "apis" || err != nil {
 		r.delegate.ServeHTTP(w, req)
 		return
 	}
-	discovery, ok := r.getDiscovery(schema.GroupVersion{Group: pathParts[1], Version: pathParts[2]})
+
+	// the following three lines will be gone after the work of moving TenantDefault to TenantSystem is checked in
+	if tenant == metav1.TenantSystem {
+		tenant = metav1.TenantDefault
+	}
+	discovery, ok := r.getDiscovery(tenant, schema.GroupVersion{Group: pathParts[1], Version: pathParts[2]})
 	if !ok {
 		r.delegate.ServeHTTP(w, req)
 		return
@@ -49,44 +58,64 @@ func (r *versionDiscoveryHandler) ServeHTTP(w http.ResponseWriter, req *http.Req
 	discovery.ServeHTTP(w, req)
 }
 
-func (r *versionDiscoveryHandler) getDiscovery(gv schema.GroupVersion) (*discovery.APIVersionHandler, bool) {
+func (r *versionDiscoveryHandler) getDiscovery(tenant string, gv schema.GroupVersion) (*apidiscovery.APIVersionHandler, bool) {
 	r.discoveryLock.RLock()
 	defer r.discoveryLock.RUnlock()
 
-	ret, ok := r.discovery[gv]
-	return ret, ok
+	if r.discoveryMap[tenant] != nil && r.discoveryMap[tenant][gv] != nil {
+		return r.discoveryMap[tenant][gv], true
+	}
+
+	return nil, false
 }
 
-func (r *versionDiscoveryHandler) setDiscovery(gv schema.GroupVersion, discovery *discovery.APIVersionHandler) {
+func (r *versionDiscoveryHandler) setDiscovery(tenant string, gv schema.GroupVersion, discovery *apidiscovery.APIVersionHandler) {
 	r.discoveryLock.Lock()
 	defer r.discoveryLock.Unlock()
 
-	r.discovery[gv] = discovery
+	if _, ok := r.discoveryMap[tenant]; !ok {
+		gvMap := make(map[schema.GroupVersion]*apidiscovery.APIVersionHandler)
+		gvMap[gv] = discovery
+		r.discoveryMap[tenant] = map[schema.GroupVersion]*apidiscovery.APIVersionHandler{gv: discovery}
+		return
+	}
+
+	r.discoveryMap[tenant][gv] = discovery
 }
 
-func (r *versionDiscoveryHandler) unsetDiscovery(gv schema.GroupVersion) {
+func (r *versionDiscoveryHandler) unsetDiscovery(tenant string, gv schema.GroupVersion) {
 	r.discoveryLock.Lock()
 	defer r.discoveryLock.Unlock()
-
-	delete(r.discovery, gv)
+	if r.discoveryMap[tenant] != nil && r.discoveryMap[tenant][gv] != nil {
+		delete(r.discoveryMap[tenant], gv)
+		if len(r.discoveryMap[tenant]) == 0 {
+			delete(r.discoveryMap, tenant)
+		}
+	}
 }
 
 type groupDiscoveryHandler struct {
 	// TODO, writing is infrequent, optimize this
 	discoveryLock sync.RWMutex
-	discovery     map[string]*discovery.APIGroupHandler
+	discoveryMap  map[string]map[string]*apidiscovery.APIGroupHandler
 
 	delegate http.Handler
 }
 
 func (r *groupDiscoveryHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	tenant, err := apifilters.GetTenantFromQueryThenContext(req)
 	pathParts := splitPath(req.URL.Path)
 	// only match /apis/<group>
-	if len(pathParts) != 2 || pathParts[0] != "apis" {
+	if len(pathParts) != 2 || pathParts[0] != "apis" || err != nil {
 		r.delegate.ServeHTTP(w, req)
 		return
 	}
-	discovery, ok := r.getDiscovery(pathParts[1])
+
+	// the following three lines will be gone after the work of moving TenantDefault to TenantSystem is checked in
+	if tenant == metav1.TenantSystem {
+		tenant = metav1.TenantDefault
+	}
+	discovery, ok := r.getDiscovery(tenant, pathParts[1])
 	if !ok {
 		r.delegate.ServeHTTP(w, req)
 		return
@@ -95,26 +124,41 @@ func (r *groupDiscoveryHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 	discovery.ServeHTTP(w, req)
 }
 
-func (r *groupDiscoveryHandler) getDiscovery(group string) (*discovery.APIGroupHandler, bool) {
+func (r *groupDiscoveryHandler) getDiscovery(tenant string, group string) (*apidiscovery.APIGroupHandler, bool) {
 	r.discoveryLock.RLock()
 	defer r.discoveryLock.RUnlock()
 
-	ret, ok := r.discovery[group]
-	return ret, ok
+	if r.discoveryMap[tenant] != nil && r.discoveryMap[tenant][group] != nil {
+		return r.discoveryMap[tenant][group], true
+	}
+
+	return nil, false
 }
 
-func (r *groupDiscoveryHandler) setDiscovery(group string, discovery *discovery.APIGroupHandler) {
+func (r *groupDiscoveryHandler) setDiscovery(tenant string, group string, discovery *apidiscovery.APIGroupHandler) {
 	r.discoveryLock.Lock()
 	defer r.discoveryLock.Unlock()
 
-	r.discovery[group] = discovery
+	if _, ok := r.discoveryMap[tenant]; !ok {
+		tenantMap := make(map[string]*apidiscovery.APIGroupHandler)
+		tenantMap[group] = discovery
+		r.discoveryMap[tenant] = tenantMap
+		return
+	}
+
+	r.discoveryMap[tenant][group] = discovery
 }
 
-func (r *groupDiscoveryHandler) unsetDiscovery(group string) {
+func (r *groupDiscoveryHandler) unsetDiscovery(tenant string, group string) {
 	r.discoveryLock.Lock()
 	defer r.discoveryLock.Unlock()
 
-	delete(r.discovery, group)
+	if r.discoveryMap[tenant] != nil && r.discoveryMap[tenant][group] != nil {
+		delete(r.discoveryMap[tenant], group)
+		if len(r.discoveryMap[tenant]) == 0 {
+			delete(r.discoveryMap, tenant)
+		}
+	}
 }
 
 // splitPath returns the segments for a URL path.
