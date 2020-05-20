@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +35,8 @@ import (
 	listers "k8s.io/kube-aggregator/pkg/client/listers/apiregistration/internalversion"
 )
 
+var testTenant = "test-tenant"
+
 func TestAPIs(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -54,7 +57,7 @@ func TestAPIs(t *testing.T) {
 			name: "simple add",
 			apiservices: []*apiregistration.APIService{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.foo"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v1.foo"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -71,7 +74,7 @@ func TestAPIs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.bar"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v1.bar"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -125,7 +128,7 @@ func TestAPIs(t *testing.T) {
 			name: "sorting",
 			apiservices: []*apiregistration.APIService{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.foo"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v1.foo"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -143,7 +146,7 @@ func TestAPIs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v2.bar"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v2.bar"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -160,7 +163,7 @@ func TestAPIs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v2.foo"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v2.foo"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -178,7 +181,7 @@ func TestAPIs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.bar"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v1.bar"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -240,7 +243,7 @@ func TestAPIs(t *testing.T) {
 			name: "unavailable service",
 			apiservices: []*apiregistration.APIService{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.foo"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v1.foo"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -292,7 +295,7 @@ func TestAPIs(t *testing.T) {
 		server := httptest.NewServer(handler)
 		defer server.Close()
 
-		resp, err := http.Get(server.URL + "/apis")
+		resp, err := http.Get(server.URL + "/apis" + "?tenant=" + testTenant)
 		if err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue
@@ -330,7 +333,7 @@ func TestAPIGroupMissing(t *testing.T) {
 	defer server.Close()
 
 	// this call should delegate
-	resp, err := http.Get(server.URL + "/apis/groupName/foo")
+	resp, err := http.Get(server.URL + "/apis/groupName/foo" + "?tenant=" + testTenant)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +342,7 @@ func TestAPIGroupMissing(t *testing.T) {
 	}
 
 	// groupName still has no api services for it (like it was deleted), it should delegate
-	resp, err = http.Get(server.URL + "/apis/groupName/")
+	resp, err = http.Get(server.URL + "/apis/groupName/" + "?tenant=" + testTenant)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +351,7 @@ func TestAPIGroupMissing(t *testing.T) {
 	}
 
 	// missing group should delegate still has no api services for it (like it was deleted)
-	resp, err = http.Get(server.URL + "/apis/missing")
+	resp, err = http.Get(server.URL + "/apis/missing" + "?tenant=" + testTenant)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,7 +372,7 @@ func TestAPIGroup(t *testing.T) {
 			group: "foo",
 			apiservices: []*apiregistration.APIService{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.foo"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v1.foo"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -387,7 +390,7 @@ func TestAPIGroup(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v2.bar"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v2.bar"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -404,7 +407,7 @@ func TestAPIGroup(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v2.foo"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v2.foo"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -422,7 +425,7 @@ func TestAPIGroup(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.bar"},
+					ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "v1.bar"},
 					Spec: apiregistration.APIServiceSpec{
 						Service: &apiregistration.ServiceReference{
 							Namespace: "ns",
@@ -474,7 +477,7 @@ func TestAPIGroup(t *testing.T) {
 		server := httptest.NewServer(handler)
 		defer server.Close()
 
-		resp, err := http.Get(server.URL + "/apis/" + tc.group)
+		resp, err := http.Get(server.URL + "/apis/" + tc.group + "?tenant=" + testTenant)
 		if err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue
