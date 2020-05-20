@@ -1033,7 +1033,7 @@ function kube-up {
     subnet-setup
   fi  
 
-  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then    
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     IGW_ID=$(get_igw_id $VPC_ID)
     if [[ -z "$IGW_ID" ]]; then
       echo "Creating Internet Gateway."
@@ -1045,7 +1045,7 @@ function kube-up {
   fi
   echo "Using Internet Gateway $IGW_ID"
 
-  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then    
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     echo "Associating route table."
     ROUTE_TABLE_ID=$($AWS_CMD describe-route-tables \
                               --filters Name=vpc-id,Values=${VPC_ID} \
@@ -1917,7 +1917,7 @@ function kube-down-for-preset-machines {
   scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${CLEANUP_SCRIPT} ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
   execute-ssh ${KUBE_MASTER_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
   reboot-remote-vm ${KUBE_MASTER_IP}
-  execute-ssh ${KUBE_MASTER_IP} "sudo rm -rf /var/lib/kubelet"  
+  execute-ssh ${KUBE_MASTER_IP} "sudo rm -rf /var/lib/kubelet"
 
   scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${CLEANUP_SCRIPT} ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
   execute-ssh ${KUBE_MINION1_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
