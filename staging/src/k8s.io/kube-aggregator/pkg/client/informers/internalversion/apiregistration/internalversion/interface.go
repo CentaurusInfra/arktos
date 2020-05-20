@@ -48,5 +48,5 @@ func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace s
 
 // APIServices returns a APIServiceInformer.
 func (v *version) APIServices() APIServiceInformer {
-	return &aPIServiceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &aPIServiceInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }

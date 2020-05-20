@@ -42,6 +42,7 @@ type APIServiceInformer interface {
 type aPIServiceInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	tenant           string
 }
 
 // NewAPIServiceInformer constructs a new informer for APIService type.
@@ -51,23 +52,31 @@ func NewAPIServiceInformer(client internalclientset.Interface, resyncPeriod time
 	return NewFilteredAPIServiceInformer(client, resyncPeriod, indexers, nil)
 }
 
+func NewAPIServiceInformerWithMultiTenancy(client internalclientset.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
+	return NewFilteredAPIServiceInformerWithMultiTenancy(client, resyncPeriod, indexers, nil, tenant)
+}
+
 // NewFilteredAPIServiceInformer constructs a new informer for APIService type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredAPIServiceInformer(client internalclientset.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+	return NewFilteredAPIServiceInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "system")
+}
+
+func NewFilteredAPIServiceInformerWithMultiTenancy(client internalclientset.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.Apiregistration().APIServices().List(options)
+				return client.Apiregistration().APIServicesWithMultiTenancy(tenant).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.Apiregistration().APIServices().Watch(options)
+				return client.Apiregistration().APIServicesWithMultiTenancy(tenant).Watch(options)
 			},
 		},
 		&apiregistration.APIService{},
@@ -77,7 +86,7 @@ func NewFilteredAPIServiceInformer(client internalclientset.Interface, resyncPer
 }
 
 func (f *aPIServiceInformer) defaultInformer(client internalclientset.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredAPIServiceInformer(client, resyncPeriod, cache.Indexers{}, f.tweakListOptions)
+	return NewFilteredAPIServiceInformerWithMultiTenancy(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *aPIServiceInformer) Informer() cache.SharedIndexInformer {
