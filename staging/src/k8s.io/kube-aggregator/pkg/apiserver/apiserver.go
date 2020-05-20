@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,12 +29,13 @@ import (
 	"k8s.io/client-go/pkg/version"
 
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
-	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+	v1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	aggregatorscheme "k8s.io/kube-aggregator/pkg/apiserver/scheme"
 	"k8s.io/kube-aggregator/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kube-aggregator/pkg/client/informers/internalversion"
 	listers "k8s.io/kube-aggregator/pkg/client/listers/apiregistration/internalversion"
+	apiserviceregister "k8s.io/kube-aggregator/pkg/controllers/autoregister"
 	openapicontroller "k8s.io/kube-aggregator/pkg/controllers/openapi"
 	openapiaggregator "k8s.io/kube-aggregator/pkg/controllers/openapi/aggregator"
 	statuscontrollers "k8s.io/kube-aggregator/pkg/controllers/status"
@@ -238,7 +240,9 @@ func (c completedConfig) NewWithDelegate(delegationTarget genericapiserver.Deleg
 func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) error {
 	// if the proxyHandler already exists, it needs to be updated. The aggregation bits do not
 	// since they are wired against listers because they require multiple resources to respond
-	if proxyHandler, exists := s.proxyHandlers[apiService.Name]; exists {
+	tenantedApiServiceName := apiserviceregister.NameWithMultiTenancy(apiService)
+	tenantedGroup := apiserviceregister.GroupWithMultiTenancy(apiService)
+	if proxyHandler, exists := s.proxyHandlers[tenantedApiServiceName]; exists {
 		proxyHandler.updateAPIService(apiService)
 		if s.openAPIAggregationController != nil {
 			s.openAPIAggregationController.UpdateAPIService(proxyHandler, apiService)
@@ -247,6 +251,10 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 	}
 
 	proxyPath := "/apis/" + apiService.Spec.Group + "/" + apiService.Spec.Version
+	suffix := ""
+	if apiService.Tenant != metav1.TenantSystem {
+		suffix = "?tenant=" + apiService.Tenant
+	}
 	// v1. is a special case for the legacy API.  It proxies to a wider set of endpoints.
 	if apiService.Name == legacyAPIServiceName {
 		proxyPath = "/api"
@@ -264,9 +272,9 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 	if s.openAPIAggregationController != nil {
 		s.openAPIAggregationController.AddAPIService(proxyHandler, apiService)
 	}
-	s.proxyHandlers[apiService.Name] = proxyHandler
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(proxyPath, proxyHandler)
-	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandlePrefix(proxyPath+"/", proxyHandler)
+	s.proxyHandlers[tenantedApiServiceName] = proxyHandler
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(proxyPath+suffix, proxyHandler)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandlePrefix(proxyPath+suffix+"/", proxyHandler)
 
 	// if we're dealing with the legacy group, we're done here
 	if apiService.Name == legacyAPIServiceName {
@@ -274,7 +282,7 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 	}
 
 	// if we've already registered the path with the handler, we don't want to do it again.
-	if s.handledGroups.Has(apiService.Spec.Group) {
+	if s.handledGroups.Has(tenantedGroup) {
 		return nil
 	}
 
@@ -287,31 +295,39 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 		delegate:  s.delegateHandler,
 	}
 	// aggregation is protected
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(groupPath, groupDiscoveryHandler)
-	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandle(groupPath+"/", groupDiscoveryHandler)
-	s.handledGroups.Insert(apiService.Spec.Group)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(groupPath+suffix, groupDiscoveryHandler)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandle(groupPath+suffix+"/", groupDiscoveryHandler)
+	s.handledGroups.Insert(tenantedGroup)
 	return nil
 }
 
 // RemoveAPIService removes the APIService from being handled.  It is not thread-safe, so only call it on one thread at a time please.
 // It's a slow moving API, so it's ok to run the controller on a single thread.
-func (s *APIAggregator) RemoveAPIService(apiServiceName string) {
-	version := apiregistration.APIServiceNameToGroupVersion(apiServiceName)
+func (s *APIAggregator) RemoveAPIService(tenantedApiServiceName string) {
+	tenant, apiServiceName, version := apiregistration.APIServiceNameToGroupVersionTenant(tenantedApiServiceName)
+	tenantedGroup := tenant + "/" + version.Group
+	tenatedApiServiceName := tenant + "/" + apiServiceName
 
 	proxyPath := "/apis/" + version.Group + "/" + version.Version
+	suffix := ""
+	if tenant != metav1.TenantSystem {
+		suffix = "?tenant=" + tenant
+	}
 	// v1. is a special case for the legacy API.  It proxies to a wider set of endpoints.
 	if apiServiceName == legacyAPIServiceName {
 		proxyPath = "/api"
 	}
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath)
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + "/")
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + suffix)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + suffix + "/")
 	if s.openAPIAggregationController != nil {
-		s.openAPIAggregationController.RemoveAPIService(apiServiceName)
+		s.openAPIAggregationController.RemoveAPIService(tenatedApiServiceName)
 	}
-	delete(s.proxyHandlers, apiServiceName)
+	delete(s.proxyHandlers, tenantedGroup)
 
-	// TODO unregister group level discovery when there are no more versions for the group
-	// We don't need this right away because the handler properly delegates when no versions are present
+	groupPath := "/apis/" + version.Group
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(groupPath + suffix)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(groupPath + suffix + "/")
+	delete(s.handledGroups, tenantedGroup)
 }
 
 // DefaultAPIResourceConfigSource returns default configuration for an APIResource.
