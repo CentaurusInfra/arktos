@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,12 +33,15 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 )
 
+const testTenant = "johndoe"
+
 func newPod(podName string, nodeName string, label map[string]string) *v1.Pod {
 	pod := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    label,
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 		},
 		Spec: v1.PodSpec{
 			NodeName: nodeName,
@@ -499,6 +503,7 @@ func TestGetTargetNodeName(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod1",
 						Namespace: "default",
+						Tenant:    testTenant,
 					},
 					Spec: v1.PodSpec{
 						NodeName: "node-1",
@@ -511,6 +516,7 @@ func TestGetTargetNodeName(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod2",
 						Namespace: "default",
+						Tenant:    testTenant,
 					},
 					Spec: v1.PodSpec{
 						Affinity: &v1.Affinity{
@@ -539,6 +545,7 @@ func TestGetTargetNodeName(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod3",
 						Namespace: "default",
+						Tenant:    testTenant,
 					},
 					Spec: v1.PodSpec{
 						Affinity: &v1.Affinity{
@@ -567,6 +574,7 @@ func TestGetTargetNodeName(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod4",
 						Namespace: "default",
+						Tenant:    testTenant,
 					},
 					Spec: v1.PodSpec{},
 				},
