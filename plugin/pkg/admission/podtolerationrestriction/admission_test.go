@@ -47,7 +47,7 @@ func TestPodAdmission(t *testing.T) {
 	CPU500m := resource.MustParse("500m")
 
 	burstablePod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantSystem},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
@@ -62,7 +62,7 @@ func TestPodAdmission(t *testing.T) {
 	}
 
 	guaranteedPod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantSystem},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
@@ -77,7 +77,7 @@ func TestPodAdmission(t *testing.T) {
 	}
 
 	bestEffortPod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantSystem},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
@@ -235,7 +235,7 @@ func TestPodAdmission(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "testNamespace",
 					Namespace:   "",
-					Tenant:      metav1.TenantDefault,
+					Tenant:      metav1.TenantSystem,
 					Annotations: map[string]string{},
 				},
 			}
@@ -268,7 +268,7 @@ func TestPodAdmission(t *testing.T) {
 			handler.pluginConfig = &pluginapi.Configuration{Default: test.defaultClusterTolerations, Whitelist: test.clusterWhitelist}
 			pod := test.pod
 			pod.Spec.Tolerations = test.podTolerations
-			err = admissiontesting.WithReinvocationTesting(t, handler).Admit(admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "testNamespace", namespace.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+			err = admissiontesting.WithReinvocationTesting(t, handler).Admit(admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "testNamespace", namespace.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 			if test.admit && err != nil {
 				t.Errorf("Test: %s, expected no error but got: %s", test.testName, err)
 			} else if !test.admit && err == nil {
@@ -312,7 +312,7 @@ func TestIgnoreUpdatingInitializedPod(t *testing.T) {
 	handler.SetReadyFunc(func() bool { return true })
 
 	pod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantSystem},
 		Spec:       api.PodSpec{},
 	}
 	podToleration := api.Toleration{
@@ -336,7 +336,7 @@ func TestIgnoreUpdatingInitializedPod(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testNamespace",
 			Namespace: "",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 	}
 	namespace.Annotations = map[string]string{NSDefaultTolerations: string(tolerationsStr)}
@@ -346,7 +346,7 @@ func TestIgnoreUpdatingInitializedPod(t *testing.T) {
 	}
 
 	// if the update of initialized pod is not ignored, an error will be returned because the pod's Tolerations conflicts with namespace's Tolerations.
-	err = admissiontesting.WithReinvocationTesting(t, handler).Admit(admission.NewAttributesRecord(pod, pod, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "testNamespace", pod.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Update, &metav1.CreateOptions{}, false, nil), nil)
+	err = admissiontesting.WithReinvocationTesting(t, handler).Admit(admission.NewAttributesRecord(pod, pod, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "testNamespace", pod.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Update, &metav1.CreateOptions{}, false, nil), nil)
 	if err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}

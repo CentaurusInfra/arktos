@@ -51,7 +51,7 @@ func pv() *v1.PersistentVolume {
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   defaultPVName,
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 	}
 }
@@ -60,7 +60,7 @@ func boundPV() *v1.PersistentVolume {
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   defaultPVName,
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Status: v1.PersistentVolumeStatus{
 			Phase: v1.VolumeBound,

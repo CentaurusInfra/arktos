@@ -122,7 +122,7 @@ func (tc *legacyTestCase) computeCPUCurrent() {
 }
 
 func (tc *legacyTestCase) prepareTestClient(t *testing.T) (*fake.Clientset, *scalefake.FakeScaleClient) {
-	tenant := metav1.TenantDefault
+	tenant := metav1.TenantSystem
 	namespace := "test-namespace"
 	hpaName := "test-hpa"
 	podNamePrefix := "test-pod"

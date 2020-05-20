@@ -56,7 +56,7 @@ func (s *podDisruptionBudgetLister) List(selector labels.Selector) (ret []*v1bet
 
 // PodDisruptionBudgets returns an object that can list and get PodDisruptionBudgets.
 func (s *podDisruptionBudgetLister) PodDisruptionBudgets(namespace string) PodDisruptionBudgetNamespaceLister {
-	return podDisruptionBudgetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return podDisruptionBudgetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *podDisruptionBudgetLister) PodDisruptionBudgetsWithMultiTenancy(namespace string, tenant string) PodDisruptionBudgetNamespaceLister {
@@ -91,7 +91,7 @@ func (s podDisruptionBudgetNamespaceLister) List(selector labels.Selector) (ret 
 // Get retrieves the PodDisruptionBudget from the indexer for a given namespace and name.
 func (s podDisruptionBudgetNamespaceLister) Get(name string) (*v1beta1.PodDisruptionBudget, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

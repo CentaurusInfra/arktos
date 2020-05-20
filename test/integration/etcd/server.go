@@ -334,7 +334,7 @@ func JSONToUnstructuredWithMultiTenancy(stub, tenant, namespace string, mapping 
 	if mapping.Scope == meta.RESTScopeTenant {
 		ns = ""
 		if te == "" {
-			te = metav1.TenantDefault
+			te = metav1.TenantSystem
 		}
 	}
 

@@ -31,7 +31,7 @@ import (
 )
 
 func TestServiceAccountCreation(t *testing.T) {
-	testServiceAccountCreation(t, metav1.TenantDefault)
+	testServiceAccountCreation(t, metav1.TenantSystem)
 }
 
 func TestServiceAccountCreationWithMultiTenancy(t *testing.T) {

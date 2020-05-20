@@ -30,7 +30,7 @@ import (
 // TestAdmission verifies all create requests for pods result in every container's image pull policy
 // set to Always
 func TestAdmission(t *testing.T) {
-	testAdmission(t, metav1.TenantDefault)
+	testAdmission(t, metav1.TenantSystem)
 }
 
 func TestAdmissionWithMultiTenancy(t *testing.T) {
@@ -74,7 +74,7 @@ func testAdmission(t *testing.T, tenant string) {
 }
 
 func TestValidate(t *testing.T) {
-	testValidate(t, metav1.TenantDefault)
+	testValidate(t, metav1.TenantSystem)
 }
 
 func TestValidateWithMultiTenancy(t *testing.T) {
@@ -114,7 +114,7 @@ func testValidate(t *testing.T, tenant string) {
 // TestOtherResources ensures that this admission controller is a no-op for other resources,
 // subresources, and non-pods.
 func TestOtherResources(t *testing.T) {
-	testOtherResources(t, metav1.TenantDefault)
+	testOtherResources(t, metav1.TenantSystem)
 }
 
 func TestOtherResourcesWithMultiTenancy(t *testing.T) {

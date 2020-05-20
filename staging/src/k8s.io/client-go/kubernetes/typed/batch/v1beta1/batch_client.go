@@ -43,7 +43,7 @@ type BatchV1beta1Client struct {
 }
 
 func (c *BatchV1beta1Client) CronJobs(namespace string) CronJobInterface {
-	return newCronJobsWithMultiTenancy(c, namespace, "default")
+	return newCronJobsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *BatchV1beta1Client) CronJobsWithMultiTenancy(namespace string, tenant string) CronJobInterface {

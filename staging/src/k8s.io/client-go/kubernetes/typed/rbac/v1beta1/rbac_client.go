@@ -46,7 +46,7 @@ type RbacV1beta1Client struct {
 }
 
 func (c *RbacV1beta1Client) ClusterRoles() ClusterRoleInterface {
-	return newClusterRolesWithMultiTenancy(c, "default")
+	return newClusterRolesWithMultiTenancy(c, "system")
 }
 
 func (c *RbacV1beta1Client) ClusterRolesWithMultiTenancy(tenant string) ClusterRoleInterface {
@@ -54,7 +54,7 @@ func (c *RbacV1beta1Client) ClusterRolesWithMultiTenancy(tenant string) ClusterR
 }
 
 func (c *RbacV1beta1Client) ClusterRoleBindings() ClusterRoleBindingInterface {
-	return newClusterRoleBindingsWithMultiTenancy(c, "default")
+	return newClusterRoleBindingsWithMultiTenancy(c, "system")
 }
 
 func (c *RbacV1beta1Client) ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingInterface {
@@ -62,7 +62,7 @@ func (c *RbacV1beta1Client) ClusterRoleBindingsWithMultiTenancy(tenant string) C
 }
 
 func (c *RbacV1beta1Client) Roles(namespace string) RoleInterface {
-	return newRolesWithMultiTenancy(c, namespace, "default")
+	return newRolesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *RbacV1beta1Client) RolesWithMultiTenancy(namespace string, tenant string) RoleInterface {
@@ -70,7 +70,7 @@ func (c *RbacV1beta1Client) RolesWithMultiTenancy(namespace string, tenant strin
 }
 
 func (c *RbacV1beta1Client) RoleBindings(namespace string) RoleBindingInterface {
-	return newRoleBindingsWithMultiTenancy(c, namespace, "default")
+	return newRoleBindingsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *RbacV1beta1Client) RoleBindingsWithMultiTenancy(namespace string, tenant string) RoleBindingInterface {

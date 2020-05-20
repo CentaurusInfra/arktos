@@ -248,7 +248,7 @@ func makeEvent(nodeName, eventtype, reason, message string) *apiv1.Event {
 	t := metav1.Time{Time: time.Now()}
 	tenant := ref.Tenant
 	if tenant == "" {
-		tenant = metav1.TenantDefault
+		tenant = metav1.TenantSystem
 	}
 
 	namespace := ref.Namespace

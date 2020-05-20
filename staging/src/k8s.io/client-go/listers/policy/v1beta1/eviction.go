@@ -56,7 +56,7 @@ func (s *evictionLister) List(selector labels.Selector) (ret []*v1beta1.Eviction
 
 // Evictions returns an object that can list and get Evictions.
 func (s *evictionLister) Evictions(namespace string) EvictionNamespaceLister {
-	return evictionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return evictionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *evictionLister) EvictionsWithMultiTenancy(namespace string, tenant string) EvictionNamespaceLister {
@@ -91,7 +91,7 @@ func (s evictionNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.
 // Get retrieves the Eviction from the indexer for a given namespace and name.
 func (s evictionNamespaceLister) Get(name string) (*v1beta1.Eviction, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

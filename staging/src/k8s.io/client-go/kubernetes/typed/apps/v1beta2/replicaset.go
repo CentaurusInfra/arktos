@@ -64,7 +64,7 @@ type replicaSets struct {
 
 // newReplicaSets returns a ReplicaSets
 func newReplicaSets(c *AppsV1beta2Client, namespace string) *replicaSets {
-	return newReplicaSetsWithMultiTenancy(c, namespace, "default")
+	return newReplicaSetsWithMultiTenancy(c, namespace, "system")
 }
 
 func newReplicaSetsWithMultiTenancy(c *AppsV1beta2Client, namespace string, tenant string) *replicaSets {

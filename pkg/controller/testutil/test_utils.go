@@ -38,7 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 	ref "k8s.io/client-go/tools/reference"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -397,7 +397,7 @@ func (f *FakeRecorder) makeEvent(ref *v1.ObjectReference, eventtype, reason, mes
 	t := metav1.Time{Time: f.clock.Now()}
 	tenant := ref.Tenant
 	if tenant == "" {
-		tenant = metav1.TenantDefault
+		tenant = metav1.TenantSystem
 	}
 
 	namespace := ref.Namespace
@@ -458,7 +458,7 @@ func NewNode(name string) *v1.Node {
 func NewPod(name, host string) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    "default",
+			Tenant:    metav1.TenantSystem,
 			Namespace: "default",
 			Name:      name,
 		},

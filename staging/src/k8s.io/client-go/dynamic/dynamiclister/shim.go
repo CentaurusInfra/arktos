@@ -65,7 +65,7 @@ func (s *dynamicListerShim) ByTenant(tenant string) cache.GenericTenantLister {
 }
 
 func (s *dynamicListerShim) ByNamespace(namespace string) cache.GenericNamespaceLister {
-	return s.ByNamespaceWithMultiTenancy(namespace, metav1.TenantDefault)
+	return s.ByNamespaceWithMultiTenancy(namespace, metav1.TenantSystem)
 }
 
 func (s *dynamicListerShim) ByNamespaceWithMultiTenancy(namespace string, tenant string) cache.GenericNamespaceLister {

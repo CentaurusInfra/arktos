@@ -155,7 +155,7 @@ func (c *objectCache) key(tenant, namespace, name string) string {
 	if len(namespace) > 0 {
 		result = namespace + "/" + result
 	}
-	if len(tenant) > 0 && tenant != metav1.TenantDefault {
+	if len(tenant) > 0 && tenant != metav1.TenantSystem {
 		result = tenant + "/" + result
 	}
 	return result

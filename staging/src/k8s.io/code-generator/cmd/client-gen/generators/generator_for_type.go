@@ -153,7 +153,7 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"aggregatedWatcher":        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "NewAggregatedWatcher"}),
 		"RESTClientInterface":      c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
 		"schemeParameterCodec":     c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
-		"DefaultTenant":            metav1.TenantDefault,
+		"DefaultTenant":            metav1.TenantSystem,
 	}
 
 	sw.Do(getterComment, m)

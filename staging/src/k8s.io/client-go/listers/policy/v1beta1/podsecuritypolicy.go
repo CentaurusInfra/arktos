@@ -70,7 +70,7 @@ func (s *podSecurityPolicyLister) Get(name string) (*v1beta1.PodSecurityPolicy, 
 
 // PodSecurityPolicies returns an object that can list and get PodSecurityPolicies.
 func (s *podSecurityPolicyLister) PodSecurityPolicies() PodSecurityPolicyTenantLister {
-	return podSecurityPolicyTenantLister{indexer: s.indexer, tenant: "default"}
+	return podSecurityPolicyTenantLister{indexer: s.indexer, tenant: "system"}
 }
 
 func (s *podSecurityPolicyLister) PodSecurityPoliciesWithMultiTenancy(tenant string) PodSecurityPolicyTenantLister {
@@ -104,7 +104,7 @@ func (s podSecurityPolicyTenantLister) List(selector labels.Selector) (ret []*v1
 // Get retrieves the PodSecurityPolicy from the indexer for a given tenant and name.
 func (s podSecurityPolicyTenantLister) Get(name string) (*v1beta1.PodSecurityPolicy, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

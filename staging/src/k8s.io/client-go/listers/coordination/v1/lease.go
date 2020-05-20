@@ -56,7 +56,7 @@ func (s *leaseLister) List(selector labels.Selector) (ret []*v1.Lease, err error
 
 // Leases returns an object that can list and get Leases.
 func (s *leaseLister) Leases(namespace string) LeaseNamespaceLister {
-	return leaseNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return leaseNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *leaseLister) LeasesWithMultiTenancy(namespace string, tenant string) LeaseNamespaceLister {
@@ -91,7 +91,7 @@ func (s leaseNamespaceLister) List(selector labels.Selector) (ret []*v1.Lease, e
 // Get retrieves the Lease from the indexer for a given namespace and name.
 func (s leaseNamespaceLister) Get(name string) (*v1.Lease, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

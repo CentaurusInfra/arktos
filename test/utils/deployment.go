@@ -170,7 +170,7 @@ func WaitForDeploymentComplete(c clientset.Interface, d *apps.Deployment, logf L
 // WaitForDeploymentRevisionAndImage waits for the deployment's and its new RS's revision and container image to match the given revision and image.
 // Note that deployment revision and its new RS revision should be updated shortly, so we only wait for 1 minute here to fail early.
 func WaitForDeploymentRevisionAndImage(c clientset.Interface, ns, deploymentName string, revision, image string, logf LogfFn, pollInterval, pollTimeout time.Duration) error {
-	return WaitForDeploymentRevisionAndImageWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, revision, image, logf, pollInterval, pollTimeout)
+	return WaitForDeploymentRevisionAndImageWithMultiTenancy(c, metav1.TenantSystem, ns, deploymentName, revision, image, logf, pollInterval, pollTimeout)
 }
 
 func WaitForDeploymentRevisionAndImageWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, revision, image string, logf LogfFn, pollInterval, pollTimeout time.Duration) error {
@@ -210,7 +210,7 @@ func WaitForDeploymentRevisionAndImageWithMultiTenancy(c clientset.Interface, te
 
 // CheckDeploymentRevisionAndImage checks if the input deployment's and its new replica set's revision and image are as expected.
 func CheckDeploymentRevisionAndImage(c clientset.Interface, namespace, deploymentName, revision, image string) error {
-	return CheckDeploymentRevisionAndImageWithMultiTenancy(c, metav1.TenantDefault, namespace, deploymentName, revision, image)
+	return CheckDeploymentRevisionAndImageWithMultiTenancy(c, metav1.TenantSystem, namespace, deploymentName, revision, image)
 }
 
 func CheckDeploymentRevisionAndImageWithMultiTenancy(c clientset.Interface, tenant, namespace, deploymentName, revision, image string) error {
@@ -264,7 +264,7 @@ func containsImage(containers []v1.Container, imageName string) bool {
 type UpdateDeploymentFunc func(d *apps.Deployment)
 
 func UpdateDeploymentWithRetries(c clientset.Interface, namespace, name string, applyUpdate UpdateDeploymentFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.Deployment, error) {
-	return UpdateDeploymentWithRetriesWithMultiTenancy(c, metav1.TenantDefault, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)
+	return UpdateDeploymentWithRetriesWithMultiTenancy(c, metav1.TenantSystem, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)
 }
 
 func UpdateDeploymentWithRetriesWithMultiTenancy(c clientset.Interface, tenant, namespace, name string, applyUpdate UpdateDeploymentFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.Deployment, error) {
@@ -291,7 +291,7 @@ func UpdateDeploymentWithRetriesWithMultiTenancy(c clientset.Interface, tenant, 
 }
 
 func WaitForObservedDeployment(c clientset.Interface, ns, deploymentName string, desiredGeneration int64) error {
-	return WaitForObservedDeploymentWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, desiredGeneration)
+	return WaitForObservedDeploymentWithMultiTenancy(c, metav1.TenantSystem, ns, deploymentName, desiredGeneration)
 }
 
 func WaitForObservedDeploymentWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, desiredGeneration int64) error {
@@ -302,7 +302,7 @@ func WaitForObservedDeploymentWithMultiTenancy(c clientset.Interface, tenant, ns
 
 // WaitForDeploymentRollbackCleared waits for given deployment either started rolling back or doesn't need to rollback.
 func WaitForDeploymentRollbackCleared(c clientset.Interface, ns, deploymentName string, pollInterval, pollTimeout time.Duration) error {
-	return WaitForDeploymentRollbackClearedWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, pollInterval, pollTimeout)
+	return WaitForDeploymentRollbackClearedWithMultiTenancy(c, metav1.TenantSystem, ns, deploymentName, pollInterval, pollTimeout)
 }
 
 func WaitForDeploymentRollbackClearedWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, pollInterval, pollTimeout time.Duration) error {
@@ -325,7 +325,7 @@ func WaitForDeploymentRollbackClearedWithMultiTenancy(c clientset.Interface, ten
 
 // WaitForDeploymentUpdatedReplicasGTE waits for given deployment to be observed by the controller and has at least a number of updatedReplicas
 func WaitForDeploymentUpdatedReplicasGTE(c clientset.Interface, ns, deploymentName string, minUpdatedReplicas int32, desiredGeneration int64, pollInterval, pollTimeout time.Duration) error {
-	return WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, minUpdatedReplicas, desiredGeneration, pollInterval, pollTimeout)
+	return WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(c, metav1.TenantSystem, ns, deploymentName, minUpdatedReplicas, desiredGeneration, pollInterval, pollTimeout)
 }
 
 func WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName string, minUpdatedReplicas int32, desiredGeneration int64, pollInterval, pollTimeout time.Duration) error {
@@ -345,7 +345,7 @@ func WaitForDeploymentUpdatedReplicasGTEWithMultiTenancy(c clientset.Interface, 
 }
 
 func WaitForDeploymentWithCondition(c clientset.Interface, ns, deploymentName, reason string, condType apps.DeploymentConditionType, logf LogfFn, pollInterval, pollTimeout time.Duration) error {
-	return WaitForDeploymentWithConditionWithMultiTenancy(c, metav1.TenantDefault, ns, deploymentName, reason, condType, logf, pollInterval, pollTimeout)
+	return WaitForDeploymentWithConditionWithMultiTenancy(c, metav1.TenantSystem, ns, deploymentName, reason, condType, logf, pollInterval, pollTimeout)
 }
 
 func WaitForDeploymentWithConditionWithMultiTenancy(c clientset.Interface, tenant, ns, deploymentName, reason string, condType apps.DeploymentConditionType, logf LogfFn, pollInterval, pollTimeout time.Duration) error {

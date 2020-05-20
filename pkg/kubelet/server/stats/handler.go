@@ -274,7 +274,7 @@ func (h *handler) handlePodContainer(request *restful.Request, response *restful
 
 	// Default parameters.
 	params := map[string]string{
-		"tenant":    metav1.TenantDefault,
+		"tenant":    metav1.TenantSystem,
 		"namespace": metav1.NamespaceDefault,
 		"uid":       "",
 	}

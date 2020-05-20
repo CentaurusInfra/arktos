@@ -136,7 +136,7 @@ func (g *genFakeForType) GenerateType(c *generator.Context, t *types.Type, w io.
 		"watchInterface":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
 		"aggregatedWatcher":        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "NewAggregatedWatcher"}),
 		"aggregatedWatchInterface": c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "AggregatedWatchInterface"}),
-		"DefaultTenant":            metav1.TenantDefault,
+		"DefaultTenant":            metav1.TenantSystem,
 
 		"NewRootListAction":              c.Universe.Function(types.Name{Package: pkgClientGoTesting, Name: "NewRootListAction"}),
 		"NewListAction":                  c.Universe.Function(types.Name{Package: pkgClientGoTesting, Name: "NewListAction"}),

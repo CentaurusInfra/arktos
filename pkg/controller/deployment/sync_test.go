@@ -39,7 +39,7 @@ func intOrStrP(val int) *intstr.IntOrString {
 }
 
 func TestScale(t *testing.T) {
-	testScale(t, metav1.TenantDefault)
+	testScale(t, metav1.TenantSystem)
 }
 
 func TestScaleWithMultiTenancy(t *testing.T) {
@@ -349,7 +349,7 @@ func testScale(t *testing.T, tenant string) {
 }
 
 func TestDeploymentController_cleanupDeployment(t *testing.T) {
-	testDeploymentController_cleanupDeployment(t, metav1.TenantDefault)
+	testDeploymentController_cleanupDeployment(t, metav1.TenantSystem)
 }
 
 func TestDeploymentController_cleanupDeploymentWithMultiTenancy(t *testing.T) {

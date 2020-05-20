@@ -64,7 +64,7 @@ type ingresses struct {
 
 // newIngresses returns a Ingresses
 func newIngresses(c *ExtensionsV1beta1Client, namespace string) *ingresses {
-	return newIngressesWithMultiTenancy(c, namespace, "default")
+	return newIngressesWithMultiTenancy(c, namespace, "system")
 }
 
 func newIngressesWithMultiTenancy(c *ExtensionsV1beta1Client, namespace string, tenant string) *ingresses {

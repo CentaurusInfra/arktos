@@ -70,7 +70,7 @@ func (s *subjectAccessReviewLister) Get(name string) (*v1beta1.SubjectAccessRevi
 
 // SubjectAccessReviews returns an object that can list and get SubjectAccessReviews.
 func (s *subjectAccessReviewLister) SubjectAccessReviews() SubjectAccessReviewTenantLister {
-	return subjectAccessReviewTenantLister{indexer: s.indexer, tenant: "default"}
+	return subjectAccessReviewTenantLister{indexer: s.indexer, tenant: "system"}
 }
 
 func (s *subjectAccessReviewLister) SubjectAccessReviewsWithMultiTenancy(tenant string) SubjectAccessReviewTenantLister {
@@ -104,7 +104,7 @@ func (s subjectAccessReviewTenantLister) List(selector labels.Selector) (ret []*
 // Get retrieves the SubjectAccessReview from the indexer for a given tenant and name.
 func (s subjectAccessReviewTenantLister) Get(name string) (*v1beta1.SubjectAccessReview, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

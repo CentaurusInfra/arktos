@@ -159,7 +159,7 @@ func TestControllerSyncJobWithMultiTenancy(t *testing.T) {
 }
 
 func TestControllerSyncJob(t *testing.T) {
-	testControllerSyncJob(t, metav1.TenantDefault)
+	testControllerSyncJob(t, metav1.TenantSystem)
 }
 
 func testControllerSyncJob(t *testing.T, tenant string) {
@@ -400,7 +400,7 @@ func TestSyncJobPastDeadlineWithMultiTenancy(t *testing.T) {
 }
 
 func TestSyncJobPastDeadline(t *testing.T) {
-	testSyncJobPastDeadline(t, metav1.TenantDefault)
+	testSyncJobPastDeadline(t, metav1.TenantSystem)
 }
 
 func testSyncJobPastDeadline(t *testing.T, tenant string) {
@@ -510,7 +510,7 @@ func TestSyncPastDeadlineJobFinishedWithMultiTenancy(t *testing.T) {
 }
 
 func TestSyncPastDeadlineJobFinished(t *testing.T) {
-	testSyncPastDeadlineJobFinished(t, metav1.TenantDefault)
+	testSyncPastDeadlineJobFinished(t, metav1.TenantSystem)
 }
 
 func testSyncPastDeadlineJobFinished(t *testing.T, tenant string) {
@@ -556,7 +556,7 @@ func TestSyncJobCompleteWithMultiTenancy(t *testing.T) {
 }
 
 func TestSyncJobComplete(t *testing.T) {
-	testSyncJobComplete(t, metav1.TenantDefault)
+	testSyncJobComplete(t, metav1.TenantSystem)
 }
 
 func testSyncJobComplete(t *testing.T, tenant string) {
@@ -592,7 +592,7 @@ func TestSyncJobDeletedWithMultiTenancy(t *testing.T) {
 }
 
 func TestSyncJobDeleted(t *testing.T) {
-	testSyncJobDeleted(t, metav1.TenantDefault)
+	testSyncJobDeleted(t, metav1.TenantSystem)
 }
 
 func testSyncJobDeleted(t *testing.T, tenant string) {
@@ -624,7 +624,7 @@ func TestSyncJobUpdateRequeueWithMultiTenancy(t *testing.T) {
 }
 
 func TestSyncJobUpdateRequeue(t *testing.T) {
-	testSyncJobUpdateRequeue(t, metav1.TenantDefault)
+	testSyncJobUpdateRequeue(t, metav1.TenantSystem)
 }
 
 func testSyncJobUpdateRequeue(t *testing.T, tenant string) {
@@ -744,7 +744,7 @@ func TestGetPodsForJobWithMultiTenancy(t *testing.T) {
 }
 
 func TestGetPodsForJob(t *testing.T) {
-	testGetPodsForJob(t, metav1.TenantDefault)
+	testGetPodsForJob(t, metav1.TenantSystem)
 }
 
 func testGetPodsForJob(t *testing.T, tenant string) {
@@ -798,7 +798,7 @@ func TestGetPodsForJobAdoptWithMultiTenancy(t *testing.T) {
 }
 
 func TestGetPodsForJobAdopt(t *testing.T) {
-	testGetPodsForJobAdopt(t, metav1.TenantDefault)
+	testGetPodsForJobAdopt(t, metav1.TenantSystem)
 }
 
 func testGetPodsForJobAdopt(t *testing.T, tenant string) {
@@ -832,7 +832,7 @@ func TestGetPodsForJobNoAdoptIfBeingDeletedWithMultiTenancy(t *testing.T) {
 }
 
 func TestGetPodsForJobNoAdoptIfBeingDeleted(t *testing.T) {
-	testGetPodsForJobNoAdoptIfBeingDeleted(t, metav1.TenantDefault)
+	testGetPodsForJobNoAdoptIfBeingDeleted(t, metav1.TenantSystem)
 }
 
 func testGetPodsForJobNoAdoptIfBeingDeleted(t *testing.T, tenant string) {
@@ -870,7 +870,7 @@ func TestGetPodsForJobNoAdoptIfBeingDeletedRaceWithMultiTenancy(t *testing.T) {
 }
 
 func TestGetPodsForJobNoAdoptIfBeingDeletedRace(t *testing.T) {
-	testGetPodsForJobNoAdoptIfBeingDeletedRace(t, metav1.TenantDefault)
+	testGetPodsForJobNoAdoptIfBeingDeletedRace(t, metav1.TenantSystem)
 }
 
 func testGetPodsForJobNoAdoptIfBeingDeletedRace(t *testing.T, tenant string) {
@@ -941,7 +941,7 @@ func TestAddPodWithMultiTenancy(t *testing.T) {
 }
 
 func TestAddPod(t *testing.T) {
-	testAddPod(t, metav1.TenantDefault)
+	testAddPod(t, metav1.TenantSystem)
 }
 
 func testAddPod(t *testing.T, tenant string) {
@@ -994,7 +994,7 @@ func TestAddPodOrphanWithMultiTenancy(t *testing.T) {
 }
 
 func TestAddPodOrphan(t *testing.T) {
-	testAddPodOrphan(t, metav1.TenantDefault)
+	testAddPodOrphan(t, metav1.TenantSystem)
 }
 
 func testAddPodOrphan(t *testing.T, tenant string) {
@@ -1030,7 +1030,7 @@ func TestUpdatePodWithMultiTenancy(t *testing.T) {
 }
 
 func TestUpdatePod(t *testing.T) {
-	testUpdatePod(t, metav1.TenantDefault)
+	testUpdatePod(t, metav1.TenantSystem)
 }
 
 func testUpdatePod(t *testing.T, tenant string) {
@@ -1087,7 +1087,7 @@ func TestUpdatePodOrphanWithNewLabelsWithMultiTenancy(t *testing.T) {
 }
 
 func TestUpdatePodOrphanWithNewLabels(t *testing.T) {
-	testUpdatePodOrphanWithNewLabels(t, metav1.TenantDefault)
+	testUpdatePodOrphanWithNewLabels(t, metav1.TenantSystem)
 }
 
 func testUpdatePodOrphanWithNewLabels(t *testing.T, tenant string) {
@@ -1122,7 +1122,7 @@ func TestUpdatePodChangeControllerRefWithMultiTenancy(t *testing.T) {
 }
 
 func TestUpdatePodChangeControllerRef(t *testing.T) {
-	testUpdatePodChangeControllerRef(t, metav1.TenantDefault)
+	testUpdatePodChangeControllerRef(t, metav1.TenantSystem)
 }
 
 func testUpdatePodChangeControllerRef(t *testing.T, tenant string) {
@@ -1156,7 +1156,7 @@ func TestUpdatePodReleaseWithMultiTenancy(t *testing.T) {
 }
 
 func TestUpdatePodRelease(t *testing.T) {
-	testUpdatePodRelease(t, metav1.TenantDefault)
+	testUpdatePodRelease(t, metav1.TenantSystem)
 }
 
 func testUpdatePodRelease(t *testing.T, tenant string) {
@@ -1190,7 +1190,7 @@ func TestDeletePodWithMultiTenancy(t *testing.T) {
 }
 
 func TestDeletePod(t *testing.T) {
-	testDeletePod(t, metav1.TenantDefault)
+	testDeletePod(t, metav1.TenantSystem)
 }
 
 func testDeletePod(t *testing.T, tenant string) {
@@ -1243,7 +1243,7 @@ func TestDeletePodOrphanWithMultiTenancy(t *testing.T) {
 }
 
 func TestDeletePodOrphan(t *testing.T) {
-	testDeletePodOrphan(t, metav1.TenantDefault)
+	testDeletePodOrphan(t, metav1.TenantSystem)
 }
 
 func testDeletePodOrphan(t *testing.T, tenant string) {
@@ -1291,7 +1291,7 @@ func TestSyncJobExpectationsWithMultiTenancy(t *testing.T) {
 }
 
 func TestSyncJobExpectations(t *testing.T) {
-	testSyncJobExpectations(t, metav1.TenantDefault)
+	testSyncJobExpectations(t, metav1.TenantSystem)
 }
 
 func testSyncJobExpectations(t *testing.T, tenant string) {
@@ -1363,7 +1363,7 @@ func TestWatchJobs(t *testing.T) {
 	go manager.Run(1, stopCh)
 
 	// We're sending new job to see if it reaches syncHandler.
-	testJob.Tenant = "default"
+	testJob.Tenant = metav1.TenantSystem
 	testJob.Namespace = "bar"
 	testJob.Name = "foo"
 	fakeWatch.Add(&testJob)
@@ -1376,7 +1376,7 @@ func TestWatchPodsWithMultiTenancy(t *testing.T) {
 }
 
 func TestWatchPods(t *testing.T) {
-	testWatchPods(t, metav1.TenantDefault)
+	testWatchPods(t, metav1.TenantSystem)
 }
 
 func testWatchPods(t *testing.T, tenant string) {
@@ -1438,7 +1438,7 @@ func TestJobBackoffResetWithMultiTenancy(t *testing.T) {
 }
 
 func TestJobBackoffReset(t *testing.T) {
-	testJobBackoffReset(t, metav1.TenantDefault)
+	testJobBackoffReset(t, metav1.TenantSystem)
 }
 
 func testJobBackoffReset(t *testing.T, tenant string) {
@@ -1535,7 +1535,7 @@ func TestJobBackoffWithMultiTenancy(t *testing.T) {
 }
 
 func TestJobBackoff(t *testing.T) {
-	testJobBackoff(t, metav1.TenantDefault)
+	testJobBackoff(t, metav1.TenantSystem)
 }
 
 func testJobBackoff(t *testing.T, tenant string) {
@@ -1591,7 +1591,7 @@ func TestJobBackoffForOnFailureWithMultiTenancy(t *testing.T) {
 }
 
 func TestJobBackoffForOnFailure(t *testing.T) {
-	testJobBackoffForOnFailure(t, metav1.TenantDefault)
+	testJobBackoffForOnFailure(t, metav1.TenantSystem)
 }
 
 func testJobBackoffForOnFailure(t *testing.T, tenant string) {

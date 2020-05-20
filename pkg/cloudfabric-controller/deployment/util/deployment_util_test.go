@@ -1330,7 +1330,7 @@ func TestAnnotationUtils(t *testing.T) {
 }
 
 func TestReplicasAnnotationsNeedUpdate(t *testing.T) {
-	testReplicasAnnotationsNeedUpdate(t, metav1.TenantDefault)
+	testReplicasAnnotationsNeedUpdate(t, metav1.TenantSystem)
 }
 
 func TestReplicasAnnotationsNeedUpdateWithMultiTenancy(t *testing.T) {

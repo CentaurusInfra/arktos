@@ -34,13 +34,13 @@ import (
 
 func TestNewServicesSourceApi_UpdatesAndMultipleServices(t *testing.T) {
 	service1v1 := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "s1"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "s1"},
 		Spec:       v1.ServiceSpec{Ports: []v1.ServicePort{{Protocol: "TCP", Port: 10}}}}
 	service1v2 := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "s1"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "s1"},
 		Spec:       v1.ServiceSpec{Ports: []v1.ServicePort{{Protocol: "TCP", Port: 20}}}}
 	service2 := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "s2"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "s2"},
 		Spec:       v1.ServiceSpec{Ports: []v1.ServicePort{{Protocol: "TCP", Port: 30}}}}
 
 	// Setup fake api client.
@@ -83,7 +83,7 @@ func TestNewServicesSourceApi_UpdatesAndMultipleServices(t *testing.T) {
 
 func TestNewEndpointsSourceApi_UpdatesAndMultipleEndpoints(t *testing.T) {
 	endpoints1v1 := &v1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "e1"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "e1"},
 		Subsets: []v1.EndpointSubset{{
 			Addresses: []v1.EndpointAddress{
 				{IP: "1.2.3.4"},
@@ -92,7 +92,7 @@ func TestNewEndpointsSourceApi_UpdatesAndMultipleEndpoints(t *testing.T) {
 		}},
 	}
 	endpoints1v2 := &v1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "e1"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "e1"},
 		Subsets: []v1.EndpointSubset{{
 			Addresses: []v1.EndpointAddress{
 				{IP: "1.2.3.4"},
@@ -102,7 +102,7 @@ func TestNewEndpointsSourceApi_UpdatesAndMultipleEndpoints(t *testing.T) {
 		}},
 	}
 	endpoints2 := &v1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "e2"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "e2"},
 		Subsets: []v1.EndpointSubset{{
 			Addresses: []v1.EndpointAddress{
 				{IP: "5.6.7.8"},
@@ -177,18 +177,18 @@ func newEpsHandler(t *testing.T, eps []*v1.Endpoints, done func()) EndpointsHand
 
 func TestInitialSync(t *testing.T) {
 	svc1 := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "foo"},
 		Spec:       v1.ServiceSpec{Ports: []v1.ServicePort{{Protocol: "TCP", Port: 10}}},
 	}
 	svc2 := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "bar"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "bar"},
 		Spec:       v1.ServiceSpec{Ports: []v1.ServicePort{{Protocol: "TCP", Port: 10}}},
 	}
 	eps1 := &v1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "foo"},
 	}
 	eps2 := &v1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "testnamespace", Name: "bar"},
+		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "bar"},
 	}
 
 	var wg sync.WaitGroup

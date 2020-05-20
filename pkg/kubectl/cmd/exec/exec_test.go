@@ -53,7 +53,7 @@ func (f *fakeRemoteExecutor) Execute(method string, url *url.URL, config *restcl
 	return f.execErr
 }
 func TestPodAndContainer(t *testing.T) {
-	testPodAndContainer(t, metav1.TenantDefault)
+	testPodAndContainer(t, metav1.TenantSystem)
 }
 
 func TestPodAndContainerWithMultiTenancy(t *testing.T) {
@@ -183,7 +183,7 @@ func testPodAndContainer(t *testing.T, tenant string) {
 }
 
 func TestExec(t *testing.T) {
-	testExec(t, metav1.TenantDefault)
+	testExec(t, metav1.TenantSystem)
 }
 
 func TestExecWithMultiTenancy(t *testing.T) {
@@ -305,7 +305,7 @@ func execPod(tenant string) *corev1.Pod {
 }
 
 func podFetchPath(tenant string) string {
-	if tenant == metav1.TenantDefault {
+	if tenant == metav1.TenantSystem {
 		return "/namespaces/test/pods/foo"
 	} else {
 		return "/tenants/" + tenant + "/namespaces/test/pods/foo"

@@ -56,7 +56,7 @@ func (s *podLister) List(selector labels.Selector) (ret []*v1.Pod, err error) {
 
 // Pods returns an object that can list and get Pods.
 func (s *podLister) Pods(namespace string) PodNamespaceLister {
-	return podNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return podNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *podLister) PodsWithMultiTenancy(namespace string, tenant string) PodNamespaceLister {
@@ -91,7 +91,7 @@ func (s podNamespaceLister) List(selector labels.Selector) (ret []*v1.Pod, err e
 // Get retrieves the Pod from the indexer for a given namespace and name.
 func (s podNamespaceLister) Get(name string) (*v1.Pod, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

@@ -65,7 +65,7 @@ func TestIgnoresNonCreate(t *testing.T) {
 
 func TestIgnoresNonPodResource(t *testing.T) {
 	pod := &api.Pod{}
-	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "myns", "myname", api.Resource("CustomResource").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "myns", "myname", api.Resource("CustomResource").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	handler := admissiontesting.WithReinvocationTesting(t, NewServiceAccount())
 	err := handler.Admit(attrs, nil)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestIgnoresNonPodResource(t *testing.T) {
 }
 
 func TestIgnoresNilObject(t *testing.T) {
-	attrs := admission.NewAttributesRecord(nil, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attrs := admission.NewAttributesRecord(nil, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	handler := admissiontesting.WithReinvocationTesting(t, NewServiceAccount())
 	err := handler.Admit(attrs, nil)
 	if err != nil {
@@ -84,7 +84,7 @@ func TestIgnoresNilObject(t *testing.T) {
 
 func TestIgnoresNonPodObject(t *testing.T) {
 	obj := &api.Namespace{}
-	attrs := admission.NewAttributesRecord(obj, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attrs := admission.NewAttributesRecord(obj, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	handler := admissiontesting.WithReinvocationTesting(t, NewServiceAccount())
 	err := handler.Admit(attrs, nil)
 	if err != nil {
@@ -105,7 +105,7 @@ func TestIgnoresMirrorPod(t *testing.T) {
 			},
 		},
 	}
-	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	err := admissiontesting.WithReinvocationTesting(t, NewServiceAccount()).Admit(attrs, nil)
 	if err != nil {
 		t.Errorf("Expected mirror pod without service account or secrets allowed, got err: %v", err)
@@ -123,7 +123,7 @@ func TestRejectsMirrorPodWithServiceAccount(t *testing.T) {
 			ServiceAccountName: "default",
 		},
 	}
-	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	err := admissiontesting.WithReinvocationTesting(t, NewServiceAccount()).Admit(attrs, nil)
 	if err == nil {
 		t.Errorf("Expected a mirror pod to be prevented from referencing a service account")
@@ -143,7 +143,7 @@ func TestRejectsMirrorPodWithSecretVolumes(t *testing.T) {
 			},
 		},
 	}
-	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	err := admissiontesting.WithReinvocationTesting(t, NewServiceAccount()).Admit(attrs, nil)
 	if err == nil {
 		t.Errorf("Expected a mirror pod to be prevented from referencing a secret volume")
@@ -168,7 +168,7 @@ func TestRejectsMirrorPodWithServiceAccountTokenVolumeProjections(t *testing.T) 
 			},
 		},
 	}
-	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attrs := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "myns", "myname", api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	err := admissiontesting.WithReinvocationTesting(t, NewServiceAccount()).Admit(attrs, nil)
 	if err == nil {
 		t.Errorf("Expected a mirror pod to be prevented from referencing a ServiceAccountToken volume projection")
@@ -176,7 +176,7 @@ func TestRejectsMirrorPodWithServiceAccountTokenVolumeProjections(t *testing.T) 
 }
 
 func TestAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t *testing.T) {
-	testAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t, metav1.TenantDefault)
+	testAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t, metav1.TenantSystem)
 }
 
 func TestAssignsDefaultServiceAccountAndToleratesMissingAPITokenWithMultiTenancy(t *testing.T) {
@@ -213,7 +213,7 @@ func testAssignsDefaultServiceAccountAndToleratesMissingAPIToken(t *testing.T, t
 }
 
 func TestAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t *testing.T) {
-	testAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t, metav1.TenantDefault)
+	testAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t, metav1.TenantSystem)
 }
 
 func TestAssignsDefaultServiceAccountAndRejectsMissingAPITokenWithMultiTenancy(t *testing.T) {
@@ -247,7 +247,7 @@ func testAssignsDefaultServiceAccountAndRejectsMissingAPIToken(t *testing.T, ten
 }
 
 func TestFetchesUncachedServiceAccount(t *testing.T) {
-	testFetchesUncachedServiceAccount(t, metav1.TenantDefault)
+	testFetchesUncachedServiceAccount(t, metav1.TenantSystem)
 }
 
 func TestFetchesUncachedServiceAccountWithMultiTenancy(t *testing.T) {
@@ -284,7 +284,7 @@ func testFetchesUncachedServiceAccount(t *testing.T, tenant string) {
 }
 
 func TestDeniesInvalidServiceAccount(t *testing.T) {
-	testDeniesInvalidServiceAccount(t, metav1.TenantDefault)
+	testDeniesInvalidServiceAccount(t, metav1.TenantSystem)
 }
 
 func TestDeniesInvalidServiceAccountWithMultiTenancy(t *testing.T) {
@@ -310,7 +310,7 @@ func testDeniesInvalidServiceAccount(t *testing.T, tenant string) {
 	}
 }
 func TestAutomountsAPIToken(t *testing.T) {
-	testAutomountsAPIToken(t, metav1.TenantDefault)
+	testAutomountsAPIToken(t, metav1.TenantSystem)
 }
 
 func TestAutomountsAPITokenWithMultiTenancy(t *testing.T) {
@@ -430,7 +430,7 @@ func testAutomountsAPIToken(t *testing.T, tenant string) {
 }
 
 func TestRespectsExistingMount(t *testing.T) {
-	testRespectsExistingMount(t, metav1.TenantDefault)
+	testRespectsExistingMount(t, metav1.TenantSystem)
 }
 
 func TestRespectsExistingMountWithMultiTenancy(t *testing.T) {
@@ -549,7 +549,7 @@ func testRespectsExistingMount(t *testing.T, tenant string) {
 }
 
 func TestAllowsReferencedSecret(t *testing.T) {
-	testAllowsReferencedSecret(t, metav1.TenantDefault)
+	testAllowsReferencedSecret(t, metav1.TenantSystem)
 }
 
 func TestAllowsReferencedSecretWithMultiTenancy(t *testing.T) {
@@ -639,7 +639,7 @@ func testAllowsReferencedSecret(t *testing.T, tenant string) {
 }
 
 func TestRejectsUnreferencedSecretVolumes(t *testing.T) {
-	testRejectsUnreferencedSecretVolumes(t, metav1.TenantDefault)
+	testRejectsUnreferencedSecretVolumes(t, metav1.TenantSystem)
 }
 
 func TestRejectsUnreferencedSecretVolumesWithMultiTenancy(t *testing.T) {
@@ -726,7 +726,7 @@ func testRejectsUnreferencedSecretVolumes(t *testing.T, tenant string) {
 }
 
 func TestAllowUnreferencedSecretVolumesForPermissiveSAs(t *testing.T) {
-	testAllowUnreferencedSecretVolumesForPermissiveSAs(t, metav1.TenantDefault)
+	testAllowUnreferencedSecretVolumesForPermissiveSAs(t, metav1.TenantSystem)
 }
 
 func TestAllowUnreferencedSecretVolumesForPermissiveSAsWithMultiTenancy(t *testing.T) {
@@ -767,7 +767,7 @@ func testAllowUnreferencedSecretVolumesForPermissiveSAs(t *testing.T, tenant str
 }
 
 func TestAllowsReferencedImagePullSecrets(t *testing.T) {
-	testAllowsReferencedImagePullSecrets(t, metav1.TenantDefault)
+	testAllowsReferencedImagePullSecrets(t, metav1.TenantSystem)
 }
 
 func TestAllowsReferencedImagePullSecretsWithMultiTenancy(t *testing.T) {
@@ -807,7 +807,7 @@ func testAllowsReferencedImagePullSecrets(t *testing.T, tenant string) {
 	}
 }
 func TestRejectsUnreferencedImagePullSecrets(t *testing.T) {
-	testRejectsUnreferencedImagePullSecrets(t, metav1.TenantDefault)
+	testRejectsUnreferencedImagePullSecrets(t, metav1.TenantSystem)
 }
 
 func TestRejectsUnreferencedImagePullSecretsWithMultiTenancy(t *testing.T) {
@@ -845,7 +845,7 @@ func testRejectsUnreferencedImagePullSecrets(t *testing.T, tenant string) {
 }
 
 func TestDoNotAddImagePullSecrets(t *testing.T) {
-	testDoNotAddImagePullSecrets(t, metav1.TenantDefault)
+	testDoNotAddImagePullSecrets(t, metav1.TenantSystem)
 }
 
 func TestDoNotAddImagePullSecretsWithMultiTenancy(t *testing.T) {
@@ -891,7 +891,7 @@ func testDoNotAddImagePullSecrets(t *testing.T, tenant string) {
 }
 
 func TestAddImagePullSecrets(t *testing.T) {
-	testAddImagePullSecrets(t, metav1.TenantDefault)
+	testAddImagePullSecrets(t, metav1.TenantSystem)
 }
 
 func TestAddImagePullSecretsWithMultiTenancy(t *testing.T) {
@@ -937,7 +937,7 @@ func testAddImagePullSecrets(t *testing.T, tenant string) {
 }
 
 func TestMultipleReferencedSecrets(t *testing.T) {
-	testMultipleReferencedSecrets(t, metav1.TenantDefault)
+	testMultipleReferencedSecrets(t, metav1.TenantSystem)
 }
 
 func TestMultipleReferencedSecretsWithMultiTenancy(t *testing.T) {
@@ -1043,7 +1043,7 @@ func newSecret(secretType corev1.SecretType, tenant, namespace, name, serviceAcc
 }
 
 func TestGetServiceAccountTokens(t *testing.T) {
-	testGetServiceAccountTokens(t, metav1.TenantDefault)
+	testGetServiceAccountTokens(t, metav1.TenantSystem)
 }
 
 func TestGetServiceAccountTokensWithMultiTenancy(t *testing.T) {
@@ -1096,7 +1096,7 @@ func testGetServiceAccountTokens(t *testing.T, tenant string) {
 }
 
 func TestAutomountIsBackwardsCompatible(t *testing.T) {
-	testAutomountIsBackwardsCompatible(t, metav1.TenantDefault)
+	testAutomountIsBackwardsCompatible(t, metav1.TenantSystem)
 }
 
 func TestAutomountIsBackwardsCompatibleWithMultiTenancy(t *testing.T) {

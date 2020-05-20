@@ -64,7 +64,7 @@ type jobs struct {
 
 // newJobs returns a Jobs
 func newJobs(c *BatchV1Client, namespace string) *jobs {
-	return newJobsWithMultiTenancy(c, namespace, "default")
+	return newJobsWithMultiTenancy(c, namespace, "system")
 }
 
 func newJobsWithMultiTenancy(c *BatchV1Client, namespace string, tenant string) *jobs {

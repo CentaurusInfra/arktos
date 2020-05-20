@@ -53,7 +53,7 @@ func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Uns
 			"apiVersion": apiVersion,
 			"kind":       kind,
 			"metadata": map[string]interface{}{
-				"tenant":    metav1.TenantDefault,
+				"tenant":    metav1.TenantSystem,
 				"namespace": namespace,
 				"name":      name,
 				"uid":       "some-UID-value",
@@ -104,7 +104,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -145,7 +145,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -171,8 +171,8 @@ func TestWaitForDeletion(t *testing.T) {
 			},
 			timeout: 10 * time.Second,
 			uidMap: UIDMap{
-				ResourceLocation{Tenant: metav1.TenantDefault, Namespace: "ns-foo", Name: "name-foo"}:                                                                               types.UID("some-UID-value"),
-				ResourceLocation{GroupResource: schema.GroupResource{Group: "group", Resource: "theresource"}, Tenant: metav1.TenantDefault, Namespace: "ns-foo", Name: "name-foo"}: types.UID("some-nonmatching-UID-value"),
+				ResourceLocation{Tenant: metav1.TenantSystem, Namespace: "ns-foo", Name: "name-foo"}:                                                                               types.UID("some-UID-value"),
+				ResourceLocation{GroupResource: schema.GroupResource{Group: "group", Resource: "theresource"}, Tenant: metav1.TenantSystem, Namespace: "ns-foo", Name: "name-foo"}: types.UID("some-nonmatching-UID-value"),
 			},
 
 			validateActions: func(t *testing.T, actions []clienttesting.Action) {
@@ -193,7 +193,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -227,7 +227,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -285,7 +285,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -323,7 +323,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo-1",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				{
 					Mapping: &meta.RESTMapping{
@@ -331,7 +331,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo-2",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -377,7 +377,7 @@ func TestWaitForDeletion(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -478,7 +478,7 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -525,7 +525,7 @@ func TestWaitForCondition(t *testing.T) {
 						Resource: schema.GroupVersionResource{Group: "group", Version: "version", Resource: "theresource"},
 					},
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -549,7 +549,7 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -586,7 +586,7 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -644,7 +644,7 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -685,7 +685,7 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {
@@ -723,7 +723,7 @@ func TestWaitForCondition(t *testing.T) {
 					},
 					Name:      "name-foo",
 					Namespace: "ns-foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			},
 			fakeClient: func() *dynamicfakeclient.FakeDynamicClient {

@@ -68,7 +68,7 @@ func ValidTenant(ctx context.Context, resource metav1.Object) bool {
 	// When we are here, we know that the resource need a valid tenant value.
 	// If the tenant value is empty, we set it to "default".
 	if tenant == "" {
-		tenant = metav1.TenantDefault
+		tenant = metav1.TenantSystem
 	}
 
 	if len(resource.GetTenant()) == 0 {

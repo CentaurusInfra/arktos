@@ -356,7 +356,7 @@ func getPodName(name, namespace, tenant string) string {
 		namespace = metav1.NamespaceDefault
 	}
 	if tenant == "" {
-		tenant = metav1.TenantDefault
+		tenant = metav1.TenantSystem
 	}
 	return name + "_" + namespace + "_" + tenant
 }

@@ -53,7 +53,7 @@ func NewContext() context.Context {
 // NewDefaultContext instantiates a base context object for request flows in the default tenant/namespace
 func NewDefaultContext() context.Context {
 	ctx := WithNamespace(NewContext(), metav1.NamespaceDefault)
-	ctx = WithTenant(ctx, metav1.TenantDefault)
+	ctx = WithTenant(ctx, metav1.TenantSystem)
 	return ctx
 }
 
@@ -71,7 +71,7 @@ func WithTenant(parent context.Context, tenant string) context.Context {
 func TenantFrom(ctx context.Context) (string, bool) {
 	// for backward compatibility with code before multi-tenancy, we set the tenant value as "default" if tenantKey is not set
 	if ctx.Value(tenantKey) == nil {
-		return metav1.TenantDefault, true
+		return metav1.TenantSystem, true
 	}
 	tenant, ok := ctx.Value(tenantKey).(string)
 	return tenant, ok

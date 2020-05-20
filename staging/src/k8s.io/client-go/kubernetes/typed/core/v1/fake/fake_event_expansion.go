@@ -122,7 +122,7 @@ func (c *FakeEvents) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v
 }
 
 func (c *FakeEvents) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector {
-	return c.GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID, v1.TenantDefault)
+	return c.GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID, v1.TenantSystem)
 }
 
 func (c *FakeEvents) GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant string) fields.Selector {

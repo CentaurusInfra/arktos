@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,7 +37,7 @@ import (
 func noDefault(*core.Pod) error { return nil }
 
 func TestDecodeSinglePod(t *testing.T) {
-	testDecodeSinglePod(t, metav1.TenantDefault)
+	testDecodeSinglePod(t, metav1.TenantSystem)
 }
 
 func TestDecodeSinglePodWithMultiTenancy(t *testing.T) {
@@ -110,7 +110,7 @@ func testDecodeSinglePod(t *testing.T, tenant string) {
 }
 
 func TestDecodePodList(t *testing.T) {
-	testDecodePodList(t, metav1.TenantDefault)
+	testDecodePodList(t, metav1.TenantSystem)
 }
 
 func TestDecodePodListWithMultiTenancy(t *testing.T) {
@@ -202,7 +202,7 @@ func TestGetSelfLink(t *testing.T) {
 			name:             "foo",
 			namespace:        "",
 			tenant:           "",
-			expectedSelfLink: "/api/v1/tenants/default/namespaces/default/pods/foo",
+			expectedSelfLink: "/api/v1/tenants/system/namespaces/default/pods/foo",
 		},
 		{
 			desc:             "tenant specified, No namespace specified",
@@ -216,7 +216,7 @@ func TestGetSelfLink(t *testing.T) {
 			name:             "foo",
 			namespace:        "bar",
 			tenant:           "",
-			expectedSelfLink: "/api/v1/tenants/default/namespaces/bar/pods/foo",
+			expectedSelfLink: "/api/v1/tenants/system/namespaces/bar/pods/foo",
 		},
 		{
 			desc:             "Namespace and tenant specified",

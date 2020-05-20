@@ -235,7 +235,7 @@ func TestUntilWithSync(t *testing.T) {
 		{
 			name: "precondition can stop the loop",
 			lw: func() *cache.ListWatch {
-				fakeclient := fakeclient.NewSimpleClientset(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "first"}})
+				fakeclient := fakeclient.NewSimpleClientset(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "first"}})
 
 				return &cache.ListWatch{
 					ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -247,7 +247,7 @@ func TestUntilWithSync(t *testing.T) {
 				}
 			}(),
 			preconditionFunc: func(store cache.Store) (bool, error) {
-				_, exists, err := store.Get(&metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "", Name: "first"})
+				_, exists, err := store.Get(&metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "", Name: "first"})
 				if err != nil {
 					return true, err
 				}
@@ -265,7 +265,7 @@ func TestUntilWithSync(t *testing.T) {
 		{
 			name: "precondition lets it proceed to regular condition",
 			lw: func() *cache.ListWatch {
-				fakeclient := fakeclient.NewSimpleClientset(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "first"}})
+				fakeclient := fakeclient.NewSimpleClientset(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "first"}})
 
 				return &cache.ListWatch{
 					ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -286,7 +286,7 @@ func TestUntilWithSync(t *testing.T) {
 				panic("no other events are expected")
 			},
 			expectedErr:   nil,
-			expectedEvent: &watch.Event{Type: watch.Added, Object: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "first"}}},
+			expectedEvent: &watch.Event{Type: watch.Added, Object: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "first"}}},
 		},
 	}
 

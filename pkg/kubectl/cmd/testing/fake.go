@@ -207,7 +207,7 @@ func (obj *ExternalNamespacedType2) GroupVersionKind() schema.GroupVersionKind {
 
 // NewInternalNamespacedType returns an initialized instance of InternalNamespacedType
 func NewInternalNamespacedType(kind, apiversion, name, namespace string) *InternalNamespacedType {
-	return NewInternalNamespacedTypeWithMultiTenancy(kind, apiversion, name, namespace, metav1.TenantDefault)
+	return NewInternalNamespacedTypeWithMultiTenancy(kind, apiversion, name, namespace, metav1.TenantSystem)
 }
 
 // NewInternalNamespacedType returns an initialized instance of InternalNamespacedType

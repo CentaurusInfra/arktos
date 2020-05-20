@@ -62,7 +62,7 @@ type CoreV1Client struct {
 }
 
 func (c *CoreV1Client) Actions(namespace string) ActionInterface {
-	return newActionsWithMultiTenancy(c, namespace, "default")
+	return newActionsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) ActionsWithMultiTenancy(namespace string, tenant string) ActionInterface {
@@ -74,7 +74,7 @@ func (c *CoreV1Client) ComponentStatuses() ComponentStatusInterface {
 }
 
 func (c *CoreV1Client) ConfigMaps(namespace string) ConfigMapInterface {
-	return newConfigMapsWithMultiTenancy(c, namespace, "default")
+	return newConfigMapsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) ConfigMapsWithMultiTenancy(namespace string, tenant string) ConfigMapInterface {
@@ -90,7 +90,7 @@ func (c *CoreV1Client) DataPartitionConfigs() DataPartitionConfigInterface {
 }
 
 func (c *CoreV1Client) Endpoints(namespace string) EndpointsInterface {
-	return newEndpointsWithMultiTenancy(c, namespace, "default")
+	return newEndpointsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) EndpointsWithMultiTenancy(namespace string, tenant string) EndpointsInterface {
@@ -98,7 +98,7 @@ func (c *CoreV1Client) EndpointsWithMultiTenancy(namespace string, tenant string
 }
 
 func (c *CoreV1Client) Events(namespace string) EventInterface {
-	return newEventsWithMultiTenancy(c, namespace, "default")
+	return newEventsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) EventsWithMultiTenancy(namespace string, tenant string) EventInterface {
@@ -106,7 +106,7 @@ func (c *CoreV1Client) EventsWithMultiTenancy(namespace string, tenant string) E
 }
 
 func (c *CoreV1Client) LimitRanges(namespace string) LimitRangeInterface {
-	return newLimitRangesWithMultiTenancy(c, namespace, "default")
+	return newLimitRangesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) LimitRangesWithMultiTenancy(namespace string, tenant string) LimitRangeInterface {
@@ -114,7 +114,7 @@ func (c *CoreV1Client) LimitRangesWithMultiTenancy(namespace string, tenant stri
 }
 
 func (c *CoreV1Client) Namespaces() NamespaceInterface {
-	return newNamespacesWithMultiTenancy(c, "default")
+	return newNamespacesWithMultiTenancy(c, "system")
 }
 
 func (c *CoreV1Client) NamespacesWithMultiTenancy(tenant string) NamespaceInterface {
@@ -126,7 +126,7 @@ func (c *CoreV1Client) Nodes() NodeInterface {
 }
 
 func (c *CoreV1Client) PersistentVolumes() PersistentVolumeInterface {
-	return newPersistentVolumesWithMultiTenancy(c, "default")
+	return newPersistentVolumesWithMultiTenancy(c, "system")
 }
 
 func (c *CoreV1Client) PersistentVolumesWithMultiTenancy(tenant string) PersistentVolumeInterface {
@@ -134,7 +134,7 @@ func (c *CoreV1Client) PersistentVolumesWithMultiTenancy(tenant string) Persiste
 }
 
 func (c *CoreV1Client) PersistentVolumeClaims(namespace string) PersistentVolumeClaimInterface {
-	return newPersistentVolumeClaimsWithMultiTenancy(c, namespace, "default")
+	return newPersistentVolumeClaimsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) PersistentVolumeClaimsWithMultiTenancy(namespace string, tenant string) PersistentVolumeClaimInterface {
@@ -142,7 +142,7 @@ func (c *CoreV1Client) PersistentVolumeClaimsWithMultiTenancy(namespace string, 
 }
 
 func (c *CoreV1Client) Pods(namespace string) PodInterface {
-	return newPodsWithMultiTenancy(c, namespace, "default")
+	return newPodsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) PodsWithMultiTenancy(namespace string, tenant string) PodInterface {
@@ -150,7 +150,7 @@ func (c *CoreV1Client) PodsWithMultiTenancy(namespace string, tenant string) Pod
 }
 
 func (c *CoreV1Client) PodTemplates(namespace string) PodTemplateInterface {
-	return newPodTemplatesWithMultiTenancy(c, namespace, "default")
+	return newPodTemplatesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) PodTemplatesWithMultiTenancy(namespace string, tenant string) PodTemplateInterface {
@@ -158,7 +158,7 @@ func (c *CoreV1Client) PodTemplatesWithMultiTenancy(namespace string, tenant str
 }
 
 func (c *CoreV1Client) ReplicationControllers(namespace string) ReplicationControllerInterface {
-	return newReplicationControllersWithMultiTenancy(c, namespace, "default")
+	return newReplicationControllersWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) ReplicationControllersWithMultiTenancy(namespace string, tenant string) ReplicationControllerInterface {
@@ -166,7 +166,7 @@ func (c *CoreV1Client) ReplicationControllersWithMultiTenancy(namespace string, 
 }
 
 func (c *CoreV1Client) ResourceQuotas(namespace string) ResourceQuotaInterface {
-	return newResourceQuotasWithMultiTenancy(c, namespace, "default")
+	return newResourceQuotasWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) ResourceQuotasWithMultiTenancy(namespace string, tenant string) ResourceQuotaInterface {
@@ -174,7 +174,7 @@ func (c *CoreV1Client) ResourceQuotasWithMultiTenancy(namespace string, tenant s
 }
 
 func (c *CoreV1Client) Secrets(namespace string) SecretInterface {
-	return newSecretsWithMultiTenancy(c, namespace, "default")
+	return newSecretsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) SecretsWithMultiTenancy(namespace string, tenant string) SecretInterface {
@@ -182,7 +182,7 @@ func (c *CoreV1Client) SecretsWithMultiTenancy(namespace string, tenant string) 
 }
 
 func (c *CoreV1Client) Services(namespace string) ServiceInterface {
-	return newServicesWithMultiTenancy(c, namespace, "default")
+	return newServicesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) ServicesWithMultiTenancy(namespace string, tenant string) ServiceInterface {
@@ -190,7 +190,7 @@ func (c *CoreV1Client) ServicesWithMultiTenancy(namespace string, tenant string)
 }
 
 func (c *CoreV1Client) ServiceAccounts(namespace string) ServiceAccountInterface {
-	return newServiceAccountsWithMultiTenancy(c, namespace, "default")
+	return newServiceAccountsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoreV1Client) ServiceAccountsWithMultiTenancy(namespace string, tenant string) ServiceAccountInterface {

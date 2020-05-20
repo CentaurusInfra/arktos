@@ -85,7 +85,7 @@ func newCacheBasedSecretManager(store Store) Manager {
 }
 
 func TestSecretStore(t *testing.T) {
-	testSecretStore(t, metav1.TenantDefault)
+	testSecretStore(t, metav1.TenantSystem)
 }
 
 func TestSecretStoreWithMultiTenancy(t *testing.T) {
@@ -127,7 +127,7 @@ func testSecretStore(t *testing.T, tenant string) {
 }
 
 func TestSecretStoreDeletingSecret(t *testing.T) {
-	testSecretStoreDeletingSecret(t, metav1.TenantDefault)
+	testSecretStoreDeletingSecret(t, metav1.TenantSystem)
 }
 
 func TestSecretStoreDeletingSecretWithMultiTenancy(t *testing.T) {
@@ -164,7 +164,7 @@ func testSecretStoreDeletingSecret(t *testing.T, tenant string) {
 }
 
 func TestSecretStoreGetAlwaysRefresh(t *testing.T) {
-	testSecretStoreGetAlwaysRefresh(t, metav1.TenantDefault)
+	testSecretStoreGetAlwaysRefresh(t, metav1.TenantSystem)
 }
 
 func TestSecretStoreGetAlwaysRefreshWithMultiTenancy(t *testing.T) {
@@ -199,7 +199,7 @@ func testSecretStoreGetAlwaysRefresh(t *testing.T, tenant string) {
 }
 
 func TestSecretStoreGetNeverRefresh(t *testing.T) {
-	testSecretStoreGetNeverRefresh(t, metav1.TenantDefault)
+	testSecretStoreGetNeverRefresh(t, metav1.TenantSystem)
 }
 
 func TestSecretStoreGetNeverRefreshWithMultiTenancy(t *testing.T) {
@@ -231,7 +231,7 @@ func testSecretStoreGetNeverRefresh(t *testing.T, tenant string) {
 }
 
 func TestCustomTTL(t *testing.T) {
-	testCustomTTL(t, metav1.TenantDefault)
+	testCustomTTL(t, metav1.TenantSystem)
 }
 
 func TestCustomTTLWithMultiTenancy(t *testing.T) {
@@ -417,7 +417,7 @@ func podWithSecrets(tenant, ns, podName string, toAttach secretsToAttach) *v1.Po
 }
 
 func TestCacheInvalidation(t *testing.T) {
-	testCacheInvalidation(t, metav1.TenantDefault)
+	testCacheInvalidation(t, metav1.TenantSystem)
 }
 
 func TestCacheInvalidationWithMultiTenancy(t *testing.T) {
@@ -480,7 +480,7 @@ func testCacheInvalidation(t *testing.T, tenant string) {
 }
 
 func TestRegisterIdempotence(t *testing.T) {
-	testRegisterIdempotence(t, metav1.TenantDefault)
+	testRegisterIdempotence(t, metav1.TenantSystem)
 }
 
 func TestRegisterIdempotenceWithMultiTenancy(t *testing.T) {
@@ -523,7 +523,7 @@ func testRegisterIdempotence(t *testing.T, tenant string) {
 }
 
 func TestCacheRefcounts(t *testing.T) {
-	testCacheRefcounts(t, metav1.TenantDefault)
+	testCacheRefcounts(t, metav1.TenantSystem)
 }
 
 func TestCacheRefcountsWithMultiTenancy(t *testing.T) {
@@ -616,7 +616,7 @@ func testCacheRefcounts(t *testing.T, tenant string) {
 }
 
 func TestCacheBasedSecretManager(t *testing.T) {
-	testCacheBasedSecretManager(t, metav1.TenantDefault)
+	testCacheBasedSecretManager(t, metav1.TenantSystem)
 }
 
 func TestCacheBasedSecretManagerWithMultiTenancy(t *testing.T) {

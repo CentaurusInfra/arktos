@@ -128,7 +128,7 @@ func createdTokenSecret(tenant string, overrideName ...string) *v1.Secret {
 // namedTokenSecret returns the ServiceAccountToken secret posted when creating a new token secret with the given name.
 func namedCreatedTokenSecret(tenant string, name string) *v1.Secret {
 	namespaceKey := tenant + "/" + metav1.NamespaceDefault
-	if tenant == metav1.TenantDefault {
+	if tenant == metav1.TenantSystem {
 		namespaceKey = metav1.NamespaceDefault
 	}
 	return &v1.Secret{
@@ -153,7 +153,7 @@ func namedCreatedTokenSecret(tenant string, name string) *v1.Secret {
 // serviceAccountTokenSecret returns an existing ServiceAccountToken secret named "token-secret-1"
 func serviceAccountTokenSecret(tenant string) *v1.Secret {
 	namespaceKey := tenant + "/" + metav1.NamespaceDefault
-	if tenant == metav1.TenantDefault {
+	if tenant == metav1.TenantSystem {
 		namespaceKey = metav1.NamespaceDefault
 	}
 	return &v1.Secret{

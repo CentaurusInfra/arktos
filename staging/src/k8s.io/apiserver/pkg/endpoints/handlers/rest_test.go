@@ -717,7 +717,7 @@ func TestPatchResourceWithConflict(t *testing.T) {
 }
 
 func TestPatchWithAdmissionRejection(t *testing.T) {
-	tenant := metav1.TenantDefault
+	tenant := metav1.TenantSystem
 	testPatchWithAdmissionRejection(t, tenant)
 }
 
@@ -791,7 +791,7 @@ func testPatchWithAdmissionRejection(t *testing.T, tenant string) {
 }
 
 func TestPatchWithVersionConflictThenAdmissionFailure(t *testing.T) {
-	tenant := metav1.TenantDefault
+	tenant := metav1.TenantSystem
 	testPatchWithVersionConflictThenAdmissionFailure(t, tenant)
 }
 

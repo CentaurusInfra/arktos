@@ -63,7 +63,7 @@ type networkPolicies struct {
 
 // newNetworkPolicies returns a NetworkPolicies
 func newNetworkPolicies(c *ExtensionsV1beta1Client, namespace string) *networkPolicies {
-	return newNetworkPoliciesWithMultiTenancy(c, namespace, "default")
+	return newNetworkPoliciesWithMultiTenancy(c, namespace, "system")
 }
 
 func newNetworkPoliciesWithMultiTenancy(c *ExtensionsV1beta1Client, namespace string, tenant string) *networkPolicies {

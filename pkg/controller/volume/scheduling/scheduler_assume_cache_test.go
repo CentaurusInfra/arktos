@@ -31,7 +31,7 @@ func makePV(name, version, storageClass string) *v1.PersistentVolume {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			ResourceVersion: version,
-			Tenant:          metav1.TenantDefault,
+			Tenant:          metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			StorageClassName: storageClass,
@@ -313,7 +313,7 @@ func makeClaim(name, version, namespace string) *v1.PersistentVolumeClaim {
 			Namespace:       namespace,
 			ResourceVersion: version,
 			Annotations:     map[string]string{},
-			Tenant:          metav1.TenantDefault,
+			Tenant:          metav1.TenantSystem,
 		},
 	}
 }

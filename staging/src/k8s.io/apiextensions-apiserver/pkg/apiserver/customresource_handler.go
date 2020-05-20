@@ -208,7 +208,7 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// However, if code hits here, we know it is NOT a request across multiple tenants,
 	// so we can set the tenant here.
 	if crdTenant == metav1.TenantNone {
-		crdTenant = metav1.TenantDefault
+		crdTenant = metav1.TenantSystem
 	}
 
 	if !requestInfo.IsResourceRequest {

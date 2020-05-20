@@ -39,7 +39,7 @@ import (
 )
 
 func TestNewDeployment(t *testing.T) {
-	testNewDeployment(t, metav1.TenantDefault, "deployment-1")
+	testNewDeployment(t, metav1.TenantSystem, "deployment-1")
 }
 
 func TestNewDeploymentWithMultiTenancy(t *testing.T) {
@@ -131,7 +131,7 @@ func testNewDeployment(t *testing.T, tenant string, name string) {
 // and rollback endpoint is no longer supported.
 
 func TestDeploymentRollingUpdate(t *testing.T) {
-	testDeploymentRollingUpdate(t, metav1.TenantDefault, "deployment-1")
+	testDeploymentRollingUpdate(t, metav1.TenantSystem, "deployment-1")
 }
 
 func TestDeploymentRollingUpdateWithMultiTenancy(t *testing.T) {
@@ -256,7 +256,7 @@ func testDeploymentRollingUpdate(t *testing.T, tenant string, name string) {
 
 // selectors are IMMUTABLE for all API versions except apps/v1beta1 and extensions/v1beta1
 func TestDeploymentSelectorImmutability(t *testing.T) {
-	testDeploymentSelectorImmutability(t, metav1.TenantDefault)
+	testDeploymentSelectorImmutability(t, metav1.TenantSystem)
 }
 
 func TestDeploymentSelectorImmutabilityWithMultiTenancy(t *testing.T) {
@@ -348,7 +348,7 @@ func testDeploymentSelectorImmutability(t *testing.T, tenant string) {
 
 // Paused deployment should not start new rollout
 func TestPausedDeployment(t *testing.T) {
-	testPausedDeployment(t, metav1.TenantDefault)
+	testPausedDeployment(t, metav1.TenantSystem)
 }
 
 func TestPausedDeploymentWithMultiTenancy(t *testing.T) {
@@ -460,7 +460,7 @@ func testPausedDeployment(t *testing.T, tenant string) {
 }
 
 func TestScalePausedDeployment(t *testing.T) {
-	testScalePausedDeployment(t, metav1.TenantDefault)
+	testScalePausedDeployment(t, metav1.TenantSystem)
 }
 
 func TestScalePausedDeploymentWithMultiTenancy(t *testing.T) {
@@ -555,7 +555,7 @@ func testScalePausedDeployment(t *testing.T, tenant string) {
 
 // Deployment rollout shouldn't be blocked on hash collisions
 func TestDeploymentHashCollision(t *testing.T) {
-	testDeploymentHashCollision(t, metav1.TenantDefault)
+	testDeploymentHashCollision(t, metav1.TenantSystem)
 }
 
 func TestDeploymentHashCollisionWithMultiTenancy(t *testing.T) {
@@ -628,7 +628,7 @@ func testDeploymentHashCollision(t *testing.T, tenant string) {
 // Deployment supports rollback even when there's old replica set without revision.
 // TODO: drop this test when extensions/v1beta1 is no longer served
 func TestRollbackDeploymentRSNoRevision(t *testing.T) {
-	testRollbackDeploymentRSNoRevision(t, metav1.TenantDefault)
+	testRollbackDeploymentRSNoRevision(t, metav1.TenantSystem)
 }
 
 func TestRollbackDeploymentRSNoRevisionWithMultiTenancy(t *testing.T) {
@@ -796,7 +796,7 @@ func checkPodsHashLabel(pods *v1.PodList) (string, error) {
 
 // Deployment should have a timeout condition when it fails to progress after given deadline.
 func TestFailedDeployment(t *testing.T) {
-	testFailedDeployment(t, metav1.TenantDefault)
+	testFailedDeployment(t, metav1.TenantSystem)
 }
 
 func TestFailedDeploymentWithMultiTenancy(t *testing.T) {
@@ -853,7 +853,7 @@ func testFailedDeployment(t *testing.T, tenant string) {
 }
 
 func TestOverlappingDeployments(t *testing.T) {
-	testOverlappingDeployments(t, metav1.TenantDefault)
+	testOverlappingDeployments(t, metav1.TenantSystem)
 }
 
 func TestOverlappingDeploymentsWithMultiTenancy(t *testing.T) {
@@ -946,7 +946,7 @@ func testOverlappingDeployments(t *testing.T, tenant string) {
 }
 
 func TestScaledRolloutDeployment(t *testing.T) {
-	testScaledRolloutDeployment(t, metav1.TenantDefault)
+	testScaledRolloutDeployment(t, metav1.TenantSystem)
 }
 
 func TestScaledRolloutDeploymentWithMultiTenancy(t *testing.T) {
@@ -1149,7 +1149,7 @@ func testScaledRolloutDeployment(t *testing.T, tenant string) {
 }
 
 func TestSpecReplicasChangeDeployment(t *testing.T) {
-	testSpecReplicasChangeDeployment(t, metav1.TenantDefault)
+	testSpecReplicasChangeDeployment(t, metav1.TenantSystem)
 }
 
 func TestSpecReplicasChangeDeploymentWithMultiTenancy(t *testing.T) {
@@ -1216,7 +1216,7 @@ func testSpecReplicasChangeDeployment(t *testing.T, tenant string) {
 }
 
 func TestDeploymentAvailableCondition(t *testing.T) {
-	testDeploymentAvailableCondition(t, metav1.TenantDefault)
+	testDeploymentAvailableCondition(t, metav1.TenantSystem)
 }
 
 func TestDeploymentAvailableConditionWithMultiTenancy(t *testing.T) {
@@ -1349,7 +1349,7 @@ func testRSControllerRefPatch(t *testing.T, tester *deploymentTester, rs *apps.R
 }
 
 func TestGeneralReplicaSetAdoption(t *testing.T) {
-	testGeneralReplicaSetAdoption(t, metav1.TenantDefault)
+	testGeneralReplicaSetAdoption(t, metav1.TenantSystem)
 }
 
 func TestGeneralReplicaSetAdoptionWithMultiTenancy(t *testing.T) {
@@ -1453,7 +1453,7 @@ func testScalingUsingScaleSubresourceDeployment(t *testing.T, tester *deployment
 }
 
 func TestDeploymentScaleSubresource(t *testing.T) {
-	testDeploymentScaleSubresource(t, metav1.TenantDefault)
+	testDeploymentScaleSubresource(t, metav1.TenantSystem)
 }
 
 func TestDeploymentScaleSubresourceWithMultiTenancy(t *testing.T) {
@@ -1508,7 +1508,7 @@ func testDeploymentScaleSubresource(t *testing.T, tenant string) {
 // is orphaned, even without PodTemplateSpec change. Refer comment below for more info:
 // https://github.com/kubernetes/kubernetes/pull/59212#discussion_r166465113
 func TestReplicaSetOrphaningAndAdoptionWhenLabelsChange(t *testing.T) {
-	testReplicaSetOrphaningAndAdoptionWhenLabelsChange(t, metav1.TenantDefault)
+	testReplicaSetOrphaningAndAdoptionWhenLabelsChange(t, metav1.TenantSystem)
 }
 
 func TestReplicaSetOrphaningAndAdoptionWhenLabelsChangeWithMultiTenancy(t *testing.T) {

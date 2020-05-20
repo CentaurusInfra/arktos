@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/imdario/mergo"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
 	restclient "k8s.io/client-go/rest"
@@ -330,7 +331,7 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 	}
 
 	if len(configContext.Tenant) == 0 {
-		return "default", false, nil
+		return metav1.TenantSystem, false, nil
 	}
 
 	return configContext.Tenant, false, nil
@@ -549,7 +550,7 @@ func (config *inClusterClientConfig) Tenant() (string, bool, error) {
 		}
 	}
 
-	return "default", false, nil
+	return metav1.TenantSystem, false, nil
 }
 
 func (config *inClusterClientConfig) Namespace() (string, bool, error) {
