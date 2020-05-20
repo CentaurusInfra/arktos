@@ -58,6 +58,27 @@ if [[ "${OS_DISTRIBUTION}" == "ubuntu" ]]; then
   OS_DISTRIBUTION=xenial
 fi
 
+# Set preset variables if have
+if [[ -z ${PRESET_INSTANCES_ENABLED:-} ]]; then
+  PRESET_INSTANCES_ENABLED=$FALSE
+fi
+if [[ $PRESET_INSTANCES_ENABLED == $TRUE ]]; then
+  KUBE_MASTER_IP=$PRESET_KUBE_MASTER_IP
+  MASTER_INTERNAL_IP=$PRESET_MASTER_INTERNAL_IP
+  KUBE_MINION1_IP=$PRESET_KUBE_MINION1_IP    
+  if [[ -n ${PRESET_KUBE_MINION2_IP:-} ]]; then
+    KUBE_MINION2_IP=$PRESET_KUBE_MINION2_IP
+    NUM_NODES=2
+  else
+    NUM_NODES=1
+  fi
+  if [[ -z ${JENKINS_HOME:-} ]]; then    
+    ACCESS_FILE=${HOME}/ArktosE2E
+  else
+    ACCESS_FILE=${JENKINS_HOME}/secrets/ArktosE2E
+  fi
+fi
+
 # Loads the distro-specific utils script.
 # If the distro is not recommended, prints warnings or exits.
 function load_distro_utils () {
@@ -112,12 +133,12 @@ function get_subnet_cidr() {
 }
 
 if [[ -z "${KUBE_SUBNET_CIDR:-}" ]]; then
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
+    get_subnet_cidr $SUBNET_ID    
+  else
     KUBE_SUBNET_CIDR=$PRESET_KUBE_SUBNET_CIDR
     KUBE_VPC_CIDR_BASE=$PRESET_KUBE_VPC_CIDR_BASE
-  else
-    get_subnet_cidr $SUBNET_ID
-  fi  
+  fi
 fi
 
 VPC_CIDR_BASE=${KUBE_VPC_CIDR_BASE:-172.20}
@@ -601,29 +622,9 @@ function create-dhcp-option-set () {
   $AWS_CMD associate-dhcp-options --dhcp-options-id ${DHCP_OPTION_SET_ID} --vpc-id ${VPC_ID} > $LOG
 }
 
-function set-preset-variables-if-have {
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
-    return
-  fi
-  KUBE_MASTER_IP=$PRESET_KUBE_MASTER_IP
-  MASTER_INTERNAL_IP=$PRESET_MASTER_INTERNAL_IP
-  KUBE_MINION1_IP=$PRESET_KUBE_MINION1_IP    
-  if [[ -n ${PRESET_KUBE_MINION2_IP:-} ]]; then
-    KUBE_MINION2_IP=$PRESET_KUBE_MINION2_IP
-    NUM_NODES=2
-  else
-    NUM_NODES=1
-  fi
-  if [[ -z ${JENKINS_HOME:-} ]]; then    
-    ACCESS_FILE=${HOME}/ArktosE2E
-  else
-    ACCESS_FILE=${JENKINS_HOME}/secrets/ArktosE2E
-  fi
-}
-
 # Verify prereqs
 function verify-prereqs {
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" && "$(which aws)" == "" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE && "$(which aws)" == "" ]]; then
     echo "Can't find aws in PATH, please fix and retry."
     exit 1
   fi
@@ -658,16 +659,7 @@ function upload-server-tars() {
   SERVER_BINARY_TAR_HASH=$(sha1sum-file "${SERVER_BINARY_TAR}")
   BOOTSTRAP_SCRIPT_HASH=$(sha1sum-file "${BOOTSTRAP_SCRIPT}")
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    SERVER_BINARY_TAR_URL=$PRESET_SERVER_BINARY_TAR_URL
-    BOOTSTRAP_SCRIPT_URL=$PRESET_BOOTSTRAP_SCRIPT_URL
-
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
-    if [[ -n ${KUBE_MINION2_IP:-} ]]; then
-      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
-    fi
-  else
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     if [[ -z ${AWS_S3_BUCKET-} ]]; then
       local project_hash=
       local key=$(aws configure get aws_access_key_id)
@@ -737,6 +729,15 @@ function upload-server-tars() {
     local bootstrap_script_path="${staging_path}/${BOOTSTRAP_SCRIPT##*/}"
     aws s3api put-object-acl --region ${s3_bucket_location} --bucket ${AWS_S3_BUCKET} --key "${bootstrap_script_path}" --grant-read 'uri="http://acs.amazonaws.com/groups/global/AllUsers"'
     BOOTSTRAP_SCRIPT_URL="${s3_url_base}/${AWS_S3_BUCKET}/${bootstrap_script_path}"
+  else
+    SERVER_BINARY_TAR_URL=$PRESET_SERVER_BINARY_TAR_URL
+    BOOTSTRAP_SCRIPT_URL=$PRESET_BOOTSTRAP_SCRIPT_URL
+
+    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
+    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
+    if [[ -n ${KUBE_MINION2_IP:-} ]]; then
+      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
+    fi    
   fi
 
   echo "Uploaded server tars:"
@@ -893,6 +894,16 @@ function conceal-no-such-entity-response {
   exit 1
 }
 
+function execute-ssh {
+  local ip="$1"
+  local cmd="$2"
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then    
+    ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${ip} ${cmd}
+  else
+    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${ip} ${cmd}
+  fi 
+}
+
 function ssh-key-setup {
   if [[ ! -f "$AWS_SSH_KEY" ]]; then
     ssh-keygen -f "$AWS_SSH_KEY" -N ''
@@ -987,7 +998,7 @@ function kube-up {
   detect-image
   detect-minion-image
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     detect-root-device
   fi
 
@@ -1001,42 +1012,40 @@ function kube-up {
   
   upload-server-tars
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     ensure-iam-profiles
   fi
 
   load-or-gen-kube-basicauth
   load-or-gen-kube-bearertoken
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     ssh-key-setup
   fi
 
   vpc-setup
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     create-dhcp-option-set
   fi  
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     subnet-setup
   fi  
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    IGW_ID=$PRESET_IGW_ID
-  else
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then    
     IGW_ID=$(get_igw_id $VPC_ID)
     if [[ -z "$IGW_ID" ]]; then
       echo "Creating Internet Gateway."
       IGW_ID=$($AWS_CMD create-internet-gateway --query InternetGateway.InternetGatewayId)
       $AWS_CMD attach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID > $LOG
     fi
+  else
+    IGW_ID=$PRESET_IGW_ID
   fi
   echo "Using Internet Gateway $IGW_ID"
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    ROUTE_TABLE_ID=$PRESET_ROUTE_TABLE_ID
-  else
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then    
     echo "Associating route table."
     ROUTE_TABLE_ID=$($AWS_CMD describe-route-tables \
                               --filters Name=vpc-id,Values=${VPC_ID} \
@@ -1054,13 +1063,12 @@ function kube-up {
     $AWS_CMD associate-route-table --route-table-id $ROUTE_TABLE_ID --subnet-id $SUBNET_ID > $LOG || true
     echo "Adding gateway route $IGW_ID to route table ${ROUTE_TABLE_ID}"
     $AWS_CMD create-route --route-table-id $ROUTE_TABLE_ID --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID > $LOG || true
+  else
+    ROUTE_TABLE_ID=$PRESET_ROUTE_TABLE_ID
   fi
   echo "Using Route Table $ROUTE_TABLE_ID"
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    MASTER_SG_ID=$PRESET_MASTER_SG_ID
-    NODE_SG_ID=$PRESET_NODE_SG_ID
-  else
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     # Create security groups
     MASTER_SG_ID=$(get_security_group_id "${MASTER_SG_NAME}")
     if [[ -z "${MASTER_SG_ID}" ]]; then
@@ -1097,6 +1105,9 @@ function kube-up {
 
     # Allow access to API via proxy - TODO: Limit to our CIDR
     authorize-security-group-ingress "${MASTER_SG_ID}" "--protocol tcp --port 8001"
+  else
+    MASTER_SG_ID=$PRESET_MASTER_SG_ID
+    NODE_SG_ID=$PRESET_NODE_SG_ID    
   fi
 
   # KUBE_USE_EXISTING_MASTER is used to add minions to an existing master
@@ -1116,7 +1127,7 @@ function kube-up {
     if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
       # Start minions
       start-minions
-      if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+      if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
         wait-minions
       fi
     fi
@@ -1193,7 +1204,7 @@ EOF
 # Starts the master node
 function start-master() {
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     # Ensure RUNTIME_CONFIG is populated
     build-runtime-config
 
@@ -1210,46 +1221,7 @@ function start-master() {
 
   write-master-env
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    (
-      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
-      echo "#! /bin/bash"
-      echo "mkdir -p /var/cache/kubernetes-install"
-      echo "cd /var/cache/kubernetes-install"
-
-      echo "cat > kube_env.yaml << __EOF_MASTER_KUBE_ENV_YAML"
-      cat ${KUBE_TEMP}/master-kube-env.yaml
-      echo "AUTO_UPGRADE: 'true'"
-      # TODO: get rid of these exceptions / harmonize with common or GCE
-      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
-      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
-      echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
-      echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
-      echo "POD_NETWORK_CIDR: $(yaml-quote ${POD_NETWORK_CIDR:-})"
-      echo "__EOF_MASTER_KUBE_ENV_YAML"
-      echo ""
-      echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
-      cat ${KUBE_ROOT}/cluster/aws/manifests/workload-controller-manager.manifest
-      echo "__EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
-      echo ""
-      echo "cat > workload-controllerconfig.json << __EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
-      cat ${KUBE_TEMP}/controllerconfig.json
-      echo ""
-      echo "__EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
-      echo ""
-      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
-      echo "chmod +x bootstrap"
-      echo "mkdir -p /etc/kubernetes"
-      echo "mv kube_env.yaml /etc/kubernetes"
-      echo "mv bootstrap /etc/kubernetes/"
-    ) > "${KUBE_TEMP}/master-user-data"
-
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/master-user-data ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
-    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MASTER_IP} "sudo mkdir -p /mnt/master-pd && chmod 755 /tmp/master-user-data && sudo /tmp/master-user-data"
-    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MASTER_IP} "sudo /etc/kubernetes/bootstrap &>/tmp/bootstrap.log & disown"
-
-    echo "Master is running: public_ip= $KUBE_MASTER_IP"
-  else
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     (
       # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
       echo "#! /bin/bash"
@@ -1348,6 +1320,45 @@ function start-master() {
       ip=$(get_instance_public_ip ${master_id})
       echo "Started master: public_ip= $ip"
     done
+  else
+    (
+      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
+      echo "#! /bin/bash"
+      echo "mkdir -p /var/cache/kubernetes-install"
+      echo "cd /var/cache/kubernetes-install"
+
+      echo "cat > kube_env.yaml << __EOF_MASTER_KUBE_ENV_YAML"
+      cat ${KUBE_TEMP}/master-kube-env.yaml
+      echo "AUTO_UPGRADE: 'true'"
+      # TODO: get rid of these exceptions / harmonize with common or GCE
+      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
+      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
+      echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
+      echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
+      echo "POD_NETWORK_CIDR: $(yaml-quote ${POD_NETWORK_CIDR:-})"
+      echo "__EOF_MASTER_KUBE_ENV_YAML"
+      echo ""
+      echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+      cat ${KUBE_ROOT}/cluster/aws/manifests/workload-controller-manager.manifest
+      echo "__EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+      echo ""
+      echo "cat > workload-controllerconfig.json << __EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
+      cat ${KUBE_TEMP}/controllerconfig.json
+      echo ""
+      echo "__EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
+      echo ""
+      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
+      echo "chmod +x bootstrap"
+      echo "mkdir -p /etc/kubernetes"
+      echo "mv kube_env.yaml /etc/kubernetes"
+      echo "mv bootstrap /etc/kubernetes/"
+    ) > "${KUBE_TEMP}/master-user-data"
+
+    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/master-user-data ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
+    execute-ssh ${KUBE_MASTER_IP} "sudo mkdir -p /mnt/master-pd && chmod 755 /tmp/master-user-data && sudo /tmp/master-user-data"
+    execute-ssh ${KUBE_MASTER_IP} "sudo /etc/kubernetes/bootstrap &>/tmp/bootstrap.log & disown"
+
+    echo "Master is running: public_ip= $KUBE_MASTER_IP"    
   fi
 }
 
@@ -1360,39 +1371,7 @@ function start-minions() {
 
   write-node-env
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    (
-      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
-      echo "#! /bin/bash"
-      echo "mkdir -p /var/cache/kubernetes-install"
-      echo "cd /var/cache/kubernetes-install"
-      echo "cat > kube_env.yaml << __EOF_KUBE_ENV_YAML"
-      cat ${KUBE_TEMP}/node-kube-env.yaml
-      echo "AUTO_UPGRADE: 'true'"
-      # TODO: get rid of these exceptions / harmonize with common or GCE
-      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
-      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
-      echo "__EOF_KUBE_ENV_YAML"
-      echo ""
-      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
-      echo "chmod +x bootstrap"
-      echo "mkdir -p /etc/kubernetes"
-      echo "mv kube_env.yaml /etc/kubernetes"
-      echo "mv bootstrap /etc/kubernetes/"
-    ) > "${KUBE_TEMP}/node-user-data"
-
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
-    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION1_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
-    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION1_IP} "sudo /etc/kubernetes/bootstrap"
-    echo "Minion1 is running"
-
-    if [[ -n ${KUBE_MINION2_IP:-} ]]; then
-      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
-      ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION2_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
-      ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION2_IP} "sudo /etc/kubernetes/bootstrap"
-      echo "Minion2 is running"
-    fi
-  else
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     (
       # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
       echo "#! /bin/bash"
@@ -1457,6 +1436,38 @@ function start-minions() {
         --tags ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=Name,Value=${NODE_INSTANCE_PREFIX} \
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=Role,Value=${NODE_TAG} \
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=KubernetesCluster,Value=${CLUSTER_ID}
+  else
+    (
+      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
+      echo "#! /bin/bash"
+      echo "mkdir -p /var/cache/kubernetes-install"
+      echo "cd /var/cache/kubernetes-install"
+      echo "cat > kube_env.yaml << __EOF_KUBE_ENV_YAML"
+      cat ${KUBE_TEMP}/node-kube-env.yaml
+      echo "AUTO_UPGRADE: 'true'"
+      # TODO: get rid of these exceptions / harmonize with common or GCE
+      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
+      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
+      echo "__EOF_KUBE_ENV_YAML"
+      echo ""
+      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
+      echo "chmod +x bootstrap"
+      echo "mkdir -p /etc/kubernetes"
+      echo "mv kube_env.yaml /etc/kubernetes"
+      echo "mv bootstrap /etc/kubernetes/"
+    ) > "${KUBE_TEMP}/node-user-data"
+
+    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
+    execute-ssh ${KUBE_MINION1_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
+    execute-ssh ${KUBE_MINION1_IP} "sudo /etc/kubernetes/bootstrap"
+    echo "Minion1 is running"
+
+    if [[ -n ${KUBE_MINION2_IP:-} ]]; then
+      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
+      execute-ssh ${KUBE_MINION2_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
+      execute-ssh ${KUBE_MINION2_IP} "sudo /etc/kubernetes/bootstrap"
+      echo "Minion2 is running"
+    fi    
   fi
 }
 
@@ -1469,7 +1480,7 @@ function wait-minions {
   if [[ -n "${NODE_SPOT_PRICE:-}" ]]; then
     max_attempts=90
   fi
-  while true; do    
+  while true; do
     detect-node-names > $LOG
     if [[ ${#NODE_IDS[@]} == ${NUM_NODES} ]]; then
       echo -e " ${color_green}${#NODE_IDS[@]} minions started; ready${color_norm}"
@@ -1494,7 +1505,7 @@ function wait-minions {
 
 # Wait for the master to be started
 function wait-master() {
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     detect-master > $LOG
   fi
 
@@ -1511,29 +1522,17 @@ function wait-master() {
   fi
   while : ; do
     set +e
-    if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-      ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MASTER_IP} "ls /home/${SSH_USER}/.kube/config" &> /dev/null
-    else
-      ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${KUBE_MASTER_IP} "ls /home/${SSH_USER}/.kube/config" &> /dev/null
-    fi 
+    execute-ssh ${KUBE_MASTER_IP} "ls /home/${SSH_USER}/.kube/config" &> /dev/null
     sshSts=$?
     set -e
     if [ $sshSts -eq 0 ]; then
       if [ -z "${LOCAL_KUBECONFIG:-}" ]; then
         mkdir -p $HOME/.kube
-        if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-          ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $HOME/.kube/config
-        else
-          ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $HOME/.kube/config
-        fi
+        execute-ssh ${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $HOME/.kube/config
         sed -i "s/server: https:\/\/.*:6443/server: https:\/\/${KUBE_MASTER_IP}:6443/" $HOME/.kube/config
         LOCAL_KUBECONFIG="$HOME/.kube/config"
       else
-        if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-          ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $LOCAL_KUBECONFIG
-        else
-          ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $LOCAL_KUBECONFIG
-        fi        
+        execute-ssh @${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $LOCAL_KUBECONFIG
         sed -i "s/server: https:\/\/.*:${API_BIND_PORT}/server: https:\/\/${KUBE_MASTER_IP}:${API_BIND_PORT}/" $LOCAL_KUBECONFIG
       fi
       break
@@ -1549,7 +1548,7 @@ function wait-master() {
 function check-cluster() {
   echo "Sanity checking cluster..."
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     sleep 5
     
     detect-nodes > $LOG
@@ -1889,11 +1888,7 @@ function kube-down {
 function reboot-remote-vm {
   local ip="$1"
 
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${ip} "sudo reboot" || true
-  else
-    ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${ip} "sudo reboot" || true
-  fi 
+  execute-ssh ${ip} "sudo reboot" || true
 
   echo "Waiting for vm reboot."
   echo
@@ -1904,11 +1899,7 @@ function reboot-remote-vm {
   local sshSts=0
   while : ; do
     set +e
-    if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-      ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${ip} "ls /" &> /dev/null
-    else
-      ssh -o 'StrictHostKeyChecking no' -t ${SSH_USER}@${ip} "ls /" &> /dev/null
-    fi 
+    execute-ssh ${ip} "ls /" &> /dev/null
     sshSts=$?
     set -e
     if [ $sshSts -eq 0 ]; then      
@@ -1924,20 +1915,20 @@ function kube-down-for-preset-machines {
   create-cleanup-script
 
   scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${CLEANUP_SCRIPT} ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
-  ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MASTER_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
+  execute-ssh ${KUBE_MASTER_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
   reboot-remote-vm ${KUBE_MASTER_IP}
-  ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MASTER_IP} "sudo rm -rf /var/lib/kubelet"  
+  execute-ssh ${KUBE_MASTER_IP} "sudo rm -rf /var/lib/kubelet"  
 
   scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${CLEANUP_SCRIPT} ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
-  ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION1_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
+  execute-ssh ${KUBE_MINION1_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
   reboot-remote-vm ${KUBE_MINION1_IP}
-  ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION1_IP} "sudo rm -rf /var/lib/kubelet"
+  execute-ssh ${KUBE_MINION1_IP} "sudo rm -rf /var/lib/kubelet"
 
   if [[ -n ${KUBE_MINION2_IP:-} ]]; then
     scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${CLEANUP_SCRIPT} ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
-    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION2_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
+    execute-ssh ${KUBE_MINION2_IP} "chmod 755 /tmp/cleanup-script && sudo /tmp/cleanup-script && rm -rf /tmp/cleanup-script"
     reboot-remote-vm ${KUBE_MINION2_IP}
-    ssh -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SSH_USER}@${KUBE_MINION2_IP} "sudo rm -rf /var/lib/kubelet"
+    execute-ssh ${KUBE_MINION2_IP} "sudo rm -rf /var/lib/kubelet"
   fi
 }
 

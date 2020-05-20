@@ -39,7 +39,7 @@ for k,v in yaml.load(sys.stdin).iteritems():
 function stop-flannel-ds {
   pushd /tmp
   wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-  kubectl --kubeconfig=/home/ubuntu/.kube/config delete -f /tmp/kube-flannel.yml || true
+  kubectl --kubeconfig=$HOME/.kube/config delete -f /tmp/kube-flannel.yml || true
   rm -rf /tmp/kube-flannel.yml
   popd
 }
@@ -66,7 +66,7 @@ function remove-files-dirs() {
   rm -rf /etc/kubernetes
   rm -rf /etc/srv/kubernetes
   rm -rf /etc/systemd/system/kubelet.service.d
-  rm -rf /home/ubuntu/.kube/
+  rm -rf $HOME/.kube/
   rm -rf /lib/systemd/system/kubelet.service
   rm -rf /mnt/master-pd
   rm -rf /root/.kube

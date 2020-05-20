@@ -240,7 +240,7 @@ find-master-pd() {
 # formats an unformatted disk, and mkdir -p will leave a directory be if it
 # already exists.
 mount-master-pd() {
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" != "yes" ]]; then
+  if [[ $PRESET_INSTANCES_ENABLED != "true" ]]; then
     find-master-pd
     if [[ -z "${MASTER_PD_DEVICE:-}" ]]; then
       return
@@ -296,10 +296,10 @@ function try-download-release() {
   fi
 
   echo "Downloading binary release tar (${server_binary_tar_urls[@]})"
-  if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
-    cp ${SERVER_BINARY_TAR_URL} ./
-  else
+  if [[ $PRESET_INSTANCES_ENABLED != "true" ]]; then    
     download-or-bust "${server_binary_tar_hash}" "${server_binary_tar_urls[@]}"
+  else
+    cp ${SERVER_BINARY_TAR_URL} ./
   fi
 
   echo "Unpacking and checking integrity of binary release tar"
@@ -747,9 +747,9 @@ function setup-kubernetes-master() {
     sudo mkdir -p /root/.kube
     sudo cp -i /etc/kubernetes/admin.conf /root/.kube/config
     sudo chown $(id -u):$(id -g) /root/.kube/config
-    sudo mkdir -p /home/ubuntu/.kube
-    sudo cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
-    sudo chown ubuntu:ubuntu /home/ubuntu/.kube/config
+    sudo mkdir -p $HOME/.kube
+    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    sudo chown ubuntu:ubuntu $HOME/.kube/config
 
     start-workload-controller-manager
 

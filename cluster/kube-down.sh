@@ -28,8 +28,6 @@ fi
 
 source "${KUBE_ROOT}/cluster/kube-util.sh"
 
-set-preset-variables-if-have
-
 echo "Bringing down cluster using provider: $KUBERNETES_PROVIDER"
 
 echo "... calling verify-prereqs" >&2
@@ -37,7 +35,7 @@ verify-prereqs
 echo "... calling verify-kube-binaries" >&2
 verify-kube-binaries
 echo "... calling kube-down" >&2
-if [[ "${PRESET_INSTANCES_ENABLED:-}" == "yes" ]]; then
+if [[ $PRESET_INSTANCES_ENABLED == $TRUE ]]; then
     kube-down-for-preset-machines
 else
     kube-down
