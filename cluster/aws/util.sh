@@ -1125,7 +1125,7 @@ function kube-up {
     start-master
 
     if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
-      # Start minions
+      # Start minions. The kube bootstrap script will be executed during minions starting.
       start-minions
       if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
         wait-minions
@@ -1219,40 +1219,44 @@ function start-master() {
   KUBECFG_CERT_BASE64=""
   KUBECFG_KEY_BASE64=""
 
-  write-master-env
+  write-master-env  
 
-  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
-    (
-      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
-      echo "#! /bin/bash"
-      echo "mkdir -p /var/cache/kubernetes-install"
-      echo "cd /var/cache/kubernetes-install"
+  (
+    # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
+    echo "#! /bin/bash"
+    echo "mkdir -p /var/cache/kubernetes-install"
+    echo "cd /var/cache/kubernetes-install"
 
-      echo "cat > kube_env.yaml << __EOF_MASTER_KUBE_ENV_YAML"
-      cat ${KUBE_TEMP}/master-kube-env.yaml
-      echo "AUTO_UPGRADE: 'true'"
-      # TODO: get rid of these exceptions / harmonize with common or GCE
-      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
-      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
-      echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
-      echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
-      echo "POD_NETWORK_CIDR: $(yaml-quote ${POD_NETWORK_CIDR:-})"
-      echo "__EOF_MASTER_KUBE_ENV_YAML"
-      echo ""
-      echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
-      cat ${KUBE_ROOT}/cluster/aws/manifests/workload-controller-manager.manifest
-      echo "__EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
-      echo ""
-      echo "cat > workload-controllerconfig.json << __EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
-      cat ${KUBE_TEMP}/controllerconfig.json
-      echo ""
-      echo "__EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
-      echo ""
+    echo "cat > kube_env.yaml << __EOF_MASTER_KUBE_ENV_YAML"
+    cat ${KUBE_TEMP}/master-kube-env.yaml
+    echo "AUTO_UPGRADE: 'true'"
+    # TODO: get rid of these exceptions / harmonize with common or GCE
+    echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
+    echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
+    echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
+    echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
+    echo "POD_NETWORK_CIDR: $(yaml-quote ${POD_NETWORK_CIDR:-})"
+    echo "__EOF_MASTER_KUBE_ENV_YAML"
+    echo ""
+    echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+    cat ${KUBE_ROOT}/cluster/aws/manifests/workload-controller-manager.manifest
+    echo "__EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
+    echo ""
+    echo "cat > workload-controllerconfig.json << __EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
+    cat ${KUBE_TEMP}/controllerconfig.json
+    echo ""
+    echo "__EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
+    echo ""
+    if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
       echo "wget -O bootstrap ${BOOTSTRAP_SCRIPT_URL}"
-      echo "chmod +x bootstrap"
-      echo "mkdir -p /etc/kubernetes"
-      echo "mv kube_env.yaml /etc/kubernetes"
-      echo "mv bootstrap /etc/kubernetes/"
+    else
+      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
+    fi
+    echo "chmod +x bootstrap"
+    echo "mkdir -p /etc/kubernetes"
+    echo "mv kube_env.yaml /etc/kubernetes"
+    echo "mv bootstrap /etc/kubernetes/"
+    if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
       echo "cat > /etc/rc.local << EOF_RC_LOCAL"
       echo "#!/bin/sh -e"
       # We want to be sure that we don't pass an argument to bootstrap
@@ -1260,8 +1264,10 @@ function start-master() {
       echo "exit 0"
       echo "EOF_RC_LOCAL"
       echo "/etc/kubernetes/bootstrap"
-    ) > "${KUBE_TEMP}/master-user-data"
+    fi
+  ) > "${KUBE_TEMP}/master-user-data"
 
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     # Compress the data to fit under the 16KB limit (cloud-init accepts compressed data)
     gzip "${KUBE_TEMP}/master-user-data"
 
@@ -1321,39 +1327,6 @@ function start-master() {
       echo "Started master: public_ip= $ip"
     done
   else
-    (
-      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
-      echo "#! /bin/bash"
-      echo "mkdir -p /var/cache/kubernetes-install"
-      echo "cd /var/cache/kubernetes-install"
-
-      echo "cat > kube_env.yaml << __EOF_MASTER_KUBE_ENV_YAML"
-      cat ${KUBE_TEMP}/master-kube-env.yaml
-      echo "AUTO_UPGRADE: 'true'"
-      # TODO: get rid of these exceptions / harmonize with common or GCE
-      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
-      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
-      echo "API_BIND_PORT: $(yaml-quote ${API_BIND_PORT:-6443})"
-      echo "MASTER_EXTERNAL_IP: $(yaml-quote ${KUBE_MASTER_IP:-})"
-      echo "POD_NETWORK_CIDR: $(yaml-quote ${POD_NETWORK_CIDR:-})"
-      echo "__EOF_MASTER_KUBE_ENV_YAML"
-      echo ""
-      echo "cat > workload-controller-manager.manifest << __EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
-      cat ${KUBE_ROOT}/cluster/aws/manifests/workload-controller-manager.manifest
-      echo "__EOF_WORKLOAD_CONTROLLER_MANAGER_MANIFEST"
-      echo ""
-      echo "cat > workload-controllerconfig.json << __EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
-      cat ${KUBE_TEMP}/controllerconfig.json
-      echo ""
-      echo "__EOF_WORKLOAD_CONTROLLER_CONFIG_JSON"
-      echo ""
-      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
-      echo "chmod +x bootstrap"
-      echo "mkdir -p /etc/kubernetes"
-      echo "mv kube_env.yaml /etc/kubernetes"
-      echo "mv bootstrap /etc/kubernetes/"
-    ) > "${KUBE_TEMP}/master-user-data"
-
     scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/master-user-data ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
     execute-ssh ${KUBE_MASTER_IP} "sudo mkdir -p /mnt/master-pd && chmod 755 /tmp/master-user-data && sudo /tmp/master-user-data"
     execute-ssh ${KUBE_MASTER_IP} "sudo /etc/kubernetes/bootstrap &>/tmp/bootstrap.log & disown"
@@ -1371,25 +1344,29 @@ function start-minions() {
 
   write-node-env
 
-  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
-    (
-      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
-      echo "#! /bin/bash"
-      echo "mkdir -p /var/cache/kubernetes-install"
-      echo "cd /var/cache/kubernetes-install"
-      echo "cat > kube_env.yaml << __EOF_KUBE_ENV_YAML"
-      cat ${KUBE_TEMP}/node-kube-env.yaml
-      echo "AUTO_UPGRADE: 'true'"
-      # TODO: get rid of these exceptions / harmonize with common or GCE
-      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
-      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
-      echo "__EOF_KUBE_ENV_YAML"
-      echo ""
+  (
+    # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
+    echo "#! /bin/bash"
+    echo "mkdir -p /var/cache/kubernetes-install"
+    echo "cd /var/cache/kubernetes-install"
+    echo "cat > kube_env.yaml << __EOF_KUBE_ENV_YAML"
+    cat ${KUBE_TEMP}/node-kube-env.yaml
+    echo "AUTO_UPGRADE: 'true'"
+    # TODO: get rid of these exceptions / harmonize with common or GCE
+    echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
+    echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
+    echo "__EOF_KUBE_ENV_YAML"
+    echo ""
+    if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
       echo "wget -O bootstrap ${BOOTSTRAP_SCRIPT_URL}"
-      echo "chmod +x bootstrap"
-      echo "mkdir -p /etc/kubernetes"
-      echo "mv kube_env.yaml /etc/kubernetes"
-      echo "mv bootstrap /etc/kubernetes/"
+    else
+      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
+    fi
+    echo "chmod +x bootstrap"
+    echo "mkdir -p /etc/kubernetes"
+    echo "mv kube_env.yaml /etc/kubernetes"
+    echo "mv bootstrap /etc/kubernetes/"
+    if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
       echo "cat > /etc/rc.local << EOF_RC_LOCAL"
       echo "#!/bin/sh -e"
       # We want to be sure that we don't pass an argument to bootstrap
@@ -1397,8 +1374,10 @@ function start-minions() {
       echo "exit 0"
       echo "EOF_RC_LOCAL"
       echo "/etc/kubernetes/bootstrap"
-    ) > "${KUBE_TEMP}/node-user-data"
+    fi
+  ) > "${KUBE_TEMP}/node-user-data"
 
+  if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     # Compress the data to fit under the 16KB limit (cloud-init accepts compressed data)
     gzip "${KUBE_TEMP}/node-user-data"
 
@@ -1437,26 +1416,6 @@ function start-minions() {
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=Role,Value=${NODE_TAG} \
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=KubernetesCluster,Value=${CLUSTER_ID}
   else
-    (
-      # We pipe this to the ami as a startup script in the user-data field.  Requires a compatible ami
-      echo "#! /bin/bash"
-      echo "mkdir -p /var/cache/kubernetes-install"
-      echo "cd /var/cache/kubernetes-install"
-      echo "cat > kube_env.yaml << __EOF_KUBE_ENV_YAML"
-      cat ${KUBE_TEMP}/node-kube-env.yaml
-      echo "AUTO_UPGRADE: 'true'"
-      # TODO: get rid of these exceptions / harmonize with common or GCE
-      echo "DOCKER_STORAGE: $(yaml-quote ${DOCKER_STORAGE:-})"
-      echo "API_SERVERS: $(yaml-quote ${MASTER_INTERNAL_IP:-})"
-      echo "__EOF_KUBE_ENV_YAML"
-      echo ""
-      echo "cp ${BOOTSTRAP_SCRIPT_URL} bootstrap"
-      echo "chmod +x bootstrap"
-      echo "mkdir -p /etc/kubernetes"
-      echo "mv kube_env.yaml /etc/kubernetes"
-      echo "mv bootstrap /etc/kubernetes/"
-    ) > "${KUBE_TEMP}/node-user-data"
-
     scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
     execute-ssh ${KUBE_MINION1_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
     execute-ssh ${KUBE_MINION1_IP} "sudo /etc/kubernetes/bootstrap"
@@ -1902,11 +1861,11 @@ function reboot-remote-vm {
     execute-ssh ${ip} "ls /" &> /dev/null
     sshSts=$?
     set -e
+    sleep 5
     if [ $sshSts -eq 0 ]; then      
       break
     fi
-    printf "."
-    sleep 5
+    printf "."    
   done
   echo "done vm reboot."
 }

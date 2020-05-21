@@ -51,16 +51,11 @@ function stop-containers {
   docker rmi $(docker images -q)
 }
 
-function stop-services() {
-  systemctl stop kubelet
-}
-
 function remove-packages() {
   apt-get autoremove -y -q kubernetes-cni cri-tools
 }
 
-function remove-files-dirs() {  
-  rm -rf /etc/apt/sources.list.d/kubernetes.list
+function remove-files-dirs() {
   rm -rf /etc/motd
   rm -rf /etc/systemd/system/multi-user.target.wants/kubelet.service
   rm -rf /etc/kubernetes
@@ -83,9 +78,6 @@ function remove-files-dirs() {
   rm -rf /usr/share/sosreport/sos/plugins/__pycache__/kubernetes.cpython-35.pyc
   rm -rf /usr/share/sosreport/sos/plugins/kubernetes.py  
   rm -rf /usr/bin/kubelet
-  rm -rf /usr/share/google
-  rm -rf /var/cache/apt/archives/kubernetes-cni_0.7.5-00_amd64.deb
-  rm -rf /var/lib/cni/flannel
   rm -rf /var/log/containers/* 
   rm -rf /var/log/workload-controller-manager.log 
   rm -rf /var/cache/kubernetes-install
@@ -93,7 +85,6 @@ function remove-files-dirs() {
 
   rm -rf /usr/share/sosreport/sos/plugins/__pycache__/etcd.cpython-35.pyc
   rm -rf /usr/share/sosreport/sos/plugins/etcd.py
-  rm -rf /usr/share/mime/application/x-netcdf.xml
   rm -rf /var/lib/etcd
   rm -rf /var/etcd  
 }
@@ -106,7 +97,6 @@ set-kube-env
 
 stop-flannel-ds
 stop-containers
-stop-services
 remove-packages
 remove-files-dirs
 
