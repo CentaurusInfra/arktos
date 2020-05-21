@@ -248,26 +248,27 @@ For VPC-isolated networking, service IP support has to be provided w/o relying o
 ### Endpoints
 Each endpoints object associates with a network, the same as its service.
 
-For the services of _kubernetes_ and _kube-dns_ (in fact they are kubernetes_\{network\} and kube-dns_\{network\}), there are two special set of endpoints objects:
+For the services of _kubernetes_ and _kube-dns_ (in fact they are kubernetes-{network} and kube-dns-{network}), there are two special set of endpoints objects:
 
-| endpoints of | example | notes |
-| ---|--- | --- |
-| kubernetes related | kubernetes_net1 | if in default ns, it is for the kubernetes service in network net1
-| kube-dns related | kube-dns_net2 | if in kube-system ns, it is for the kube-dns service in network net2
+* kubernetes related EPs
 
-In order to prevent potential name conflicts, production system is hardened to prohibits regular users to name endpoints as kubernetes_{string} in default ns, and kube-dns_{string} in kube-system ns. They shall be reserved for controllers only.
+They are in default namespace, named as kubernetes-{network\, for the kubernetes service of the network.
 
-__kubernetes related EP__
-
-Query for default-ns scoped kubernetes_{network} shall get back the proper content based on the cluster kubernetes endpoints object. System does not duplicate duplicate such endpoints; instead it derives content based on the cluster kubernetes endpoints. This would incurs quite some code change to kube-apiserver.
+Query for default-ns scoped kubernetes-{network} shall get back the proper content based on the cluster kubernetes endpoints object. System does not duplicate such endpoints; instead it derives content based on the cluster kubernetes endpoints. This would incurs quite some code change to kube-apiserver.
 
 Updates originated from regular tenants are disallowed.
 
-__kube-dns related EP__
+Alternative is to duplicate in every network, when network is being provisioned. It is burdensome to keep all synced to the root one (which is maintained by api-server). 
 
-kube-dns_net2 shall be managed by Endpoints controller just like a regular endpoints.
+* kube-dns related EPs
+
+They are in kube-system namespace, named as ube-dns-{network\}, for the kube-dns service of the network.
+
+kube-dns-{network} shall be managed by Endpoints controller just like a regular endpoints.
 
 __EndpointSlices__, the new type introduced in k8s v1.17, is out of current scope.
+
+
 
 ### Ingress/egress/network policies
 (**TBD: more details required**)
