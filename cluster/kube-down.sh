@@ -35,6 +35,11 @@ verify-prereqs
 echo "... calling verify-kube-binaries" >&2
 verify-kube-binaries
 echo "... calling kube-down" >&2
-kube-down
+if [[ $PRESET_INSTANCES_ENABLED == $TRUE ]]; then
+    kube-down-for-preset-machines
+else
+    kube-down
+fi
 
 echo "Done"
+exit 0
