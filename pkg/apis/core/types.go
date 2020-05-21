@@ -2151,6 +2151,10 @@ type Nic struct {
 	// default to false
 	// +optional
 	Ipv6Enabled bool
+	// To provision the server instance with a NIC for a network, specify the UUID of the network in the uuid attribute in a networks object
+	// Required if omit the port attribute
+	// +optional
+	Uuid string
 }
 
 type VmPowerSpec string
@@ -2162,6 +2166,85 @@ const (
 	VmPowerSpecShutdown  VmPowerSpec = "shutdown"
 	VmPowerSpecSuspended VmPowerSpec = "suspended"
 )
+
+// Enables fine grained control of the block device mapping for an instance
+// This is typically used for booting servers from volumes
+type BlockDeviceMappingV2 struct {
+	BootIndex           int64
+	DeleteOnTermination bool
+	DestinationType     string
+	DeviceName          string
+	DeviceType          string
+	DiskBus             string
+	GuestFormat         string
+	NoDevice            bool
+	SourceType          string
+	Uuid                string
+	VolumeSize          int64
+	Tag                 string
+	VolumeType          string
+}
+
+type OpenStackPersonality struct {
+	Path     string
+	Contents string
+}
+
+type OpenStackSecurityGroup struct {
+	Name string
+}
+
+type GlobalScheduling struct {
+	// IPv4 address that should be used to access this server
+	// +optional
+	AccessIpv4 string
+	// IPv6 address that should be used to access this serve
+	// +ooptional
+	AccessIpv6 string
+	// The administrative password of the server
+	// +optional
+	AdminPass string
+	// The availability zone from which to launch the server
+	// +optional
+	AvailabilityZone string
+	// Enables fine grained control of the block device mapping for an instance
+	// +optional
+	MappingV2 []BlockDeviceMappingV2
+	// Indicates whether a config drive enables metadata injection
+	// +optional
+	ConfigDrive bool
+	// Metadata key and value pairs
+	// +optional
+	Metadata map[string]string
+	// Controls how the API partitions the disk when you create, rebuild, or resize servers
+	// A valid value is:
+	//		AUTO
+	// 		MANUAL
+	// +optional
+	DiskConfig string
+	// The file path and contents, text only, to inject into the server at launch
+	// +optional
+	Personality []OpenStackPersonality
+	// One or more security groups. Specify the name of the security group in the name attribute
+	// +optional
+	SecurityGroup []OpenStackSecurityGroup
+	// A free form description of the server. Limited to 255 characters in length
+	// +optional
+	Description string
+	// +optional
+	Tags []string
+	// A list of trusted certificate IDs, which are used during image signature verification to verify the signing certificate
+	// +optional
+	TrustedImageCertificates []string
+	// The name of the compute service host on which the server is to be created
+	// +optional
+	Host string
+	// The hostname of the hypervisor on which the server is to be created
+	// +optional
+	HypervisorHostname string
+
+	// scheduler_hints
+}
 
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
@@ -2203,6 +2286,9 @@ type VirtualMachine struct {
 	// cloud-init user data script
 	// +optional
 	CloudInitUserDataScript string
+	// Global Scheduling
+	// +optional
+	Scheduling GlobalScheduling
 }
 
 // Handler defines a specific action that should be taken
