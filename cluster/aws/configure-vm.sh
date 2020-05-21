@@ -747,9 +747,9 @@ function setup-kubernetes-master() {
     sudo mkdir -p /root/.kube
     sudo cp -i /etc/kubernetes/admin.conf /root/.kube/config
     sudo chown $(id -u):$(id -g) /root/.kube/config
-    sudo mkdir -p $HOME/.kube
-    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-    sudo chown ubuntu:ubuntu $HOME/.kube/config
+    sudo mkdir -p /home/ubuntu/.kube
+    sudo cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
+    sudo chown ubuntu:ubuntu /home/ubuntu/.kube/config
 
     start-workload-controller-manager
 

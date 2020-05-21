@@ -1263,7 +1263,7 @@ function start-master() {
       echo "/etc/kubernetes/bootstrap"
       echo "exit 0"
       echo "EOF_RC_LOCAL"
-      echo "/etc/kubernetes/bootstrap"
+      echo "/etc/kubernetes/bootstrap > /tmp/bootstrap.log"
     fi
   ) > "${KUBE_TEMP}/master-user-data"
 
@@ -1373,7 +1373,7 @@ function start-minions() {
       echo "/etc/kubernetes/bootstrap"
       echo "exit 0"
       echo "EOF_RC_LOCAL"
-      echo "/etc/kubernetes/bootstrap"
+      echo "/etc/kubernetes/bootstrap > /tmp/bootstrap.log"
     fi
   ) > "${KUBE_TEMP}/node-user-data"
 
