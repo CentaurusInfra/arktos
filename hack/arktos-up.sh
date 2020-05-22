@@ -665,7 +665,6 @@ fi
 # echo "Kata Setup done."
 # echo "*******************************************"
 
-# Test
 print_success
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then
