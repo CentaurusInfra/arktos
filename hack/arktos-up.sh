@@ -664,7 +664,7 @@ fi
 # "${KUBE_ROOT}"/hack/install-kata.sh
 # echo "Kata Setup done."
 # echo "*******************************************"
-
+# cathy
 print_success
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then
