@@ -252,7 +252,7 @@ For the services of _kubernetes_ and _kube-dns_ (in fact they are kubernetes-{ne
 
 * kubernetes related EPs
 
-They are in default namespace, named as kubernetes-{network\, for the kubernetes service of the network.
+They are in default namespace, named as kubernetes-{network}, for the kubernetes service of the network.
 
 Query for default-ns scoped kubernetes-{network} shall get back the proper content based on the cluster kubernetes endpoints object. System does not duplicate such endpoints; instead it derives content based on the cluster kubernetes endpoints. This would incurs quite some code change to kube-apiserver.
 
@@ -262,7 +262,7 @@ Alternative is to duplicate in every network, when network is being provisioned.
 
 * kube-dns related EPs
 
-They are in kube-system namespace, named as ube-dns-{network\}, for the kube-dns service of the network.
+They are in kube-system namespace, named as kube-dns-{network}, for the kube-dns service of the network.
 
 kube-dns-{network} shall be managed by Endpoints controller just like a regular endpoints.
 
