@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +37,7 @@ var _ = ginkgo.Describe("[sig-node] ConfigMap", func() {
 		Testname: ConfigMap, from environment field
 		Description: Create a Pod with an environment variable value set using a value from ConfigMap. A ConfigMap value MUST be accessible in the container environment.
 	*/
-	framework.ConformanceIt("should be consumable via environment variable [NodeConformance]", func() {
+	framework.ConformanceIt("should be consumable via environment variable [NodeConformance] [Arktos-CI]", func() {
 		name := "configmap-test-" + string(uuid.NewUUID())
 		configMap := newConfigMap(f, name)
 		ginkgo.By(fmt.Sprintf("Creating configMap %v/%v", f.Namespace.Name, configMap.Name))

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@ var _ = SIGDescribe("Job", func() {
 	backoffLimit := int32(6) // default value
 
 	// Simplest case: all pods succeed promptly
-	ginkgo.It("should run a job to completion when tasks succeed", func() {
+	ginkgo.It("should run a job to completion when tasks succeed [Arktos-CI]", func() {
 		ginkgo.By("Creating a job")
 		job := jobutil.NewTestJob("succeed", "all-succeed", v1.RestartPolicyNever, parallelism, completions, nil, backoffLimit)
 		job, err := jobutil.CreateJob(f.ClientSet, f.Namespace.Name, job)
@@ -59,7 +60,7 @@ var _ = SIGDescribe("Job", func() {
 	})
 
 	// Pods sometimes fail, but eventually succeed.
-	ginkgo.It("should run a job to completion when tasks sometimes fail and are locally restarted", func() {
+	ginkgo.It("should run a job to completion when tasks sometimes fail and are locally restarted [Arktos-CI]", func() {
 		ginkgo.By("Creating a job")
 		// One failure, then a success, local restarts.
 		// We can't use the random failure approach used by the

@@ -284,7 +284,7 @@ var _ = SIGDescribe("Kubectl client", func() {
 			Testname: Kubectl, replication controller
 			Description: Create a Pod and a container with a given image. Configure replication controller to run 2 replicas. The number of running instances of the Pod MUST equal the number of replicas set on the replication controller which is 2.
 		*/
-		framework.ConformanceIt("should create and stop a replication controller [Arktos-CI]", func() {
+		framework.ConformanceIt("should create and stop a replication controller ", func() {
 			defer cleanupKubectlInputs(nautilus, ns, updateDemoSelector)
 
 			ginkgo.By("creating a replication controller")
@@ -1026,7 +1026,7 @@ metadata:
 			Testname: Kubectl, describe pod or rc
 			Description: Deploy a redis controller and a redis service. Kubectl describe pods SHOULD return the name, namespace, labels, state and other information as expected. Kubectl describe on rc, service, node and namespace SHOULD also return proper information.
 		*/
-		framework.ConformanceIt("should check if kubectl describe prints relevant information for rc and pods ", func() {
+		framework.ConformanceIt("should check if kubectl describe prints relevant information for rc and pods [Arktos-CI]", func() {
 			controllerJSON := commonutils.SubstituteImageName(string(readTestFileOrDie(redisControllerFilename)))
 			serviceJSON := readTestFileOrDie(redisServiceFilename)
 

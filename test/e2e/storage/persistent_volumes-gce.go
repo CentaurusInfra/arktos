@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -120,7 +121,7 @@ var _ = utils.SIGDescribe("PersistentVolumes GCEPD", func() {
 
 	// Attach a persistent disk to a pod using a PVC.
 	// Delete the PVC and then the pod.  Expect the pod to succeed in unmounting and detaching PD on delete.
-	ginkgo.It("should test that deleting a PVC before the pod does not cause pod deletion to fail on PD detach", func() {
+	ginkgo.It("should test that deleting a PVC before the pod does not cause pod deletion to fail on PD detach [Arktos-CI]", func() {
 
 		ginkgo.By("Deleting the Claim")
 		framework.ExpectNoError(framework.DeletePersistentVolumeClaim(c, pvc.Name, ns), "Unable to delete PVC ", pvc.Name)
