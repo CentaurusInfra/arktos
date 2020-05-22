@@ -20,6 +20,7 @@ package cacher
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/diff"
 	"net/http"
 	"reflect"
 	"sync"
@@ -410,6 +411,7 @@ func (c *Cacher) Delete(ctx context.Context, key string, out runtime.Object, pre
 
 // Watch implements storage.Interface.
 func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	klog.V(6).Infof("Cacher Watch key %s, resource version %s, selection predicate [%+v]", key, resourceVersion, pred)
 	watchRV, err := c.versioner.ParseResourceVersion(resourceVersion)
 	aggWc := watch.NewAggregatedWatcher()
 	if err != nil {
@@ -473,6 +475,7 @@ func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, 
 		watchRV = initEvents[len(initEvents)-1].ResourceVersion
 	}
 
+	klog.V(6).Infof("Cacher Watch key %s, initEvents [%+v], watchRV %v", key, initEvents, watchRV)
 	func() {
 		c.Lock()
 		defer c.Unlock()
@@ -1240,8 +1243,10 @@ func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEven
 				return
 			}
 			// only send events newer than resourceVersion
-			if event.ResourceVersion > resourceVersion {
+			if diff.RevisionIsNewer(event.ResourceVersion, resourceVersion) {
 				c.sendWatchCacheEvent(event)
+				klog.V(6).Infof("Sent event resourceVersion %v, event resource version %v, event type %v, object [%+v]",
+					resourceVersion, event.ResourceVersion, event.Type, event.Object)
 			}
 		case <-ctx.Done():
 			return
