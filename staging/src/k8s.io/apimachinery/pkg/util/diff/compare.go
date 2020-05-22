@@ -45,7 +45,7 @@ func RevisionIsNewer(revision1, revision2 uint64) bool {
 // Note: the definition of less than, equal to, and larger than is defined as follows:
 // If they are from same cluster id, their value will be directly compared
 // If they are not from same cluster id, we use allowedNTPDiffInSecond to check whether
-//     the l
+//     the two revisions happened roughly in the same time
 func revisionCompare(revision1, revision2 uint64) (result int, isSameCluster bool) {
 	clusterId1 := extractClusterId(revision1)
 	clusterId2 := extractClusterId(revision2)
