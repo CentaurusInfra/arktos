@@ -121,7 +121,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		and at least one container is still running or is in the process of being restarted
 		when Pod has restart policy as RestartAlways.
 	*/
-	framework.ConformanceIt("should invoke init containers on a RestartAlways pod", func() {
+	framework.ConformanceIt("should invoke init containers on a RestartAlways pod [Arktos-CI]", func() {
 		ginkgo.By("creating the pod")
 		name := "pod-init-" + string(uuid.NewUUID())
 		value := strconv.Itoa(time.Now().Nanosecond())

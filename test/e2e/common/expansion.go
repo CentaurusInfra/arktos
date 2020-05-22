@@ -88,7 +88,7 @@ var _ = framework.KubeDescribe("Variable Expansion", func() {
 		Testname: Environment variables, command expansion
 		Description: Create a Pod with environment variables and container command using them. Container command using the  defined environment variables MUST expand to proper values.
 	*/
-	framework.ConformanceIt("should allow substituting values in a container's command [NodeConformance]", func() {
+	framework.ConformanceIt("should allow substituting values in a container's command [NodeConformance] [Arktos-CI]", func() {
 		podName := "var-expansion-" + string(uuid.NewUUID())
 		pod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{

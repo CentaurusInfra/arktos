@@ -1405,7 +1405,7 @@ metadata:
 			Testname: Kubectl, version
 			Description: The command ‘kubectl version’ MUST return the major, minor versions,  GitCommit, etc of the Client and the Server that the kubectl is configured to connect to.
 		*/
-		framework.ConformanceIt("should check is all data is printed ", func() {
+		framework.ConformanceIt("should check is all data is printed [Arktos-CI]", func() {
 			version := framework.RunKubectlOrDie("version")
 			requiredItems := []string{"Client Version:", "Server Version:", "Major:", "Minor:", "GitCommit:"}
 			for _, item := range requiredItems {

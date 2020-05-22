@@ -110,7 +110,7 @@ var _ = SIGDescribe("Services", func() {
 		Testname: Kubernetes Service
 		Description: By default when a kubernetes cluster is running there MUST be a ‘kubernetes’ service running in the cluster.
 	*/
-	framework.ConformanceIt("should provide secure master service ", func() {
+	framework.ConformanceIt("should provide secure master service [Arktos-CI]", func() {
 		_, err := cs.CoreV1().Services(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to fetch the service object for the service named kubernetes")
 	})
