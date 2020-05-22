@@ -37,6 +37,8 @@ spec:
               enum: [Pending, Ready, Failed, Unknown, Terminating]
             message:
               type: string
+            dnsServiceIP:
+              type: string
   additionalPrinterColumns:
   - name: Type
     type: string
@@ -47,3 +49,6 @@ spec:
   - name: Phase
     type: string
     JSONPath: .status.phase
+  - name: DNS
+    type: string
+    JSONPath: .status.dnsServiceIP
