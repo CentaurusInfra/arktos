@@ -2146,6 +2146,12 @@ type CommonInfo struct {
 	// Compute Resources required by this container.
 	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList `json:"resourcesAllocated,omitempty" protobuf:"bytes,6,rep,name=resourcesAllocated,casttype=ResourceList,castkey=ResourceName"`
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy `json:"resizePolicy,omitempty" protobuf:"bytes,7,rep,name=resizePolicy"`
 	// Pod volumes to mount into the workload's filesystem.
 	// +optional
 	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" protobuf:"bytes,4,opt,name=volumeMounts"`
@@ -2366,6 +2372,12 @@ type VirtualMachine struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList `json:"resourcesAllocated,omitempty" protobuf:"bytes,15,rep,name=resourcesAllocated,casttype=ResourceList,castkey=ResourceName"`
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy `json:"resizePolicy,omitempty" protobuf:"bytes,16,rep,name=resizePolicy"`
 	// Pod volumes to mount into the workload's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -2602,6 +2614,9 @@ type VirtualMachineStatus struct {
 	Ready bool `json:"ready,omitempty" protobuf:"varint,8,opt,name=ready"`
 	// +optional
 	RestartCount int32 `json:"restartCount,omitempty" protobuf:"varint,9,opt,name=restartCount"`
+	// Compute resource requests and limits applied to the VM
+	// +optional
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,10,opt,name=resources"`
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -3245,6 +3260,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 			ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
 			ps.WorkloadInfo[0].ImagePullPolicy = ps.VirtualMachine.ImagePullPolicy
 			ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
+			ps.WorkloadInfo[0].ResourcesAllocated = ps.VirtualMachine.ResourcesAllocated
+			ps.WorkloadInfo[0].ResizePolicy = ps.VirtualMachine.ResizePolicy
 			ps.WorkloadInfo[0].VolumeMounts = ps.VirtualMachine.VolumeMounts
 		} else {
 			ps.WorkloadInfo = make([]CommonInfo, len(ps.Containers))
@@ -3253,6 +3270,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 				ps.WorkloadInfo[i].Image = ps.Containers[i].Image
 				ps.WorkloadInfo[i].ImagePullPolicy = ps.Containers[i].ImagePullPolicy
 				ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
+				ps.WorkloadInfo[i].ResourcesAllocated = ps.Containers[i].ResourcesAllocated
+				ps.WorkloadInfo[i].ResizePolicy = ps.Containers[i].ResizePolicy
 				ps.WorkloadInfo[i].VolumeMounts = ps.Containers[i].VolumeMounts
 			}
 		}

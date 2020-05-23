@@ -589,7 +589,7 @@ func inPlacePodVerticalScalingInUse(podSpec *api.PodSpec) bool {
 	}
 	var inUse bool
 	VisitContainers(podSpec, func(c *api.Container) bool {
-		if c.ResourcesAllocated != nil || len(c.ResizePolicy) > 0 {
+		if (c.ResourcesAllocated != nil && len(c.ResourcesAllocated) > 0) || len(c.ResizePolicy) > 0 {
 			inUse = true
 			return false
 		}

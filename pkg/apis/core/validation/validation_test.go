@@ -5630,13 +5630,19 @@ func getResourceLimits(resTypes ...string) core.ResourceList {
 	res := core.ResourceList{}
 	switch len(resTypes) {
 	case 3:
-		res[core.ResourceStorage] = resource.MustParse(resTypes[2])
+		if resTypes[2] != "" {
+			res[core.ResourceEphemeralStorage] = resource.MustParse(resTypes[2])
+		}
 		fallthrough
 	case 2:
-		res[core.ResourceMemory] = resource.MustParse(resTypes[1])
+		if resTypes[1] != "" {
+			res[core.ResourceMemory] = resource.MustParse(resTypes[1])
+		}
 		fallthrough
 	case 1:
-		res[core.ResourceCPU] = resource.MustParse(resTypes[0])
+		if resTypes[0] != "" {
+			res[core.ResourceCPU] = resource.MustParse(resTypes[0])
+		}
 		fallthrough
 	default:
 	}
@@ -8930,7 +8936,7 @@ func TestValidatePodUpdate(t *testing.T) {
 		},
 		{
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -8944,7 +8950,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -8958,11 +8964,11 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			"",
-			"Pod QOS unchanged, guaranteed -> guaranteed",
+			"Pod QoS unchanged, guaranteed -> guaranteed",
 		},
 		{
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -8976,7 +8982,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -8990,11 +8996,11 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			"",
-			"Pod QOS unchanged, burstable -> burstable",
+			"Pod QoS unchanged, burstable -> burstable",
 		},
 		{
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9008,7 +9014,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9021,24 +9027,24 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			"",
-			"Pod QOS unchanged, burstable -> burstable, add limits",
+			"Pod QoS unchanged, burstable -> burstable, add limits",
 		},
 		{
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
 							Image: "foo:V2",
 							Resources: core.ResourceRequirements{
-								Limits: getResourceLimits("200m", "200Mi"),
+								Requests: getResourceLimits("100m", "100Mi"),
 							},
 						},
 					},
 				},
 			},
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9052,11 +9058,73 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			"",
-			"Pod QOS unchanged, burstable -> burstable, remove requests",
+			"Pod QoS unchanged, burstable -> burstable, remove limits",
 		},
 		{
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+				Spec: core.PodSpec{
+					Containers: []core.Container{
+						{
+							Image: "foo:V2",
+							Resources: core.ResourceRequirements{
+								Limits:   getResourceLimits("400m", "", "1Gi"),
+								Requests: getResourceLimits("300m", "", "1Gi"),
+							},
+						},
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+				Spec: core.PodSpec{
+					Containers: []core.Container{
+						{
+							Image: "foo:V2",
+							Resources: core.ResourceRequirements{
+								Limits: getResourceLimits("200m", "500Mi", "1Gi"),
+							},
+						},
+					},
+				},
+			},
+			"",
+			"Pod QoS unchanged, burstable -> burstable, add requests",
+		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+				Spec: core.PodSpec{
+					Containers: []core.Container{
+						{
+							Image: "foo:V2",
+							Resources: core.ResourceRequirements{
+								Limits: getResourceLimits("400m", "500Mi", "2Gi"),
+							},
+						},
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+				Spec: core.PodSpec{
+					Containers: []core.Container{
+						{
+							Image: "foo:V2",
+							Resources: core.ResourceRequirements{
+								Limits:   getResourceLimits("200m", "300Mi", "2Gi"),
+								Requests: getResourceLimits("100m", "200Mi"),
+							},
+						},
+					},
+				},
+			},
+			"",
+			"Pod QoS unchanged, burstable -> burstable, remove requests",
+		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9070,7 +9138,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9083,12 +9151,12 @@ func TestValidatePodUpdate(t *testing.T) {
 					},
 				},
 			},
-			"Pod QOS is immutable",
-			"Pod QOS change, guaranteed -> burstable",
+			"Pod QoS is immutable",
+			"Pod QoS change, guaranteed -> burstable",
 		},
 		{
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9102,7 +9170,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9114,12 +9182,12 @@ func TestValidatePodUpdate(t *testing.T) {
 					},
 				},
 			},
-			"Pod QOS is immutable",
-			"Pod QOS change, burstable -> guaranteed",
+			"Pod QoS is immutable",
+			"Pod QoS change, burstable -> guaranteed",
 		},
 		{
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9133,7 +9201,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			core.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
 				Spec: core.PodSpec{
 					Containers: []core.Container{
 						{
@@ -9142,8 +9210,36 @@ func TestValidatePodUpdate(t *testing.T) {
 					},
 				},
 			},
-			"Pod QOS is immutable",
-			"Pod QOS change, besteffort -> burstable",
+			"Pod QoS is immutable",
+			"Pod QoS change, besteffort -> burstable",
+		},
+		{
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+				Spec: core.PodSpec{
+					Containers: []core.Container{
+						{
+							Image: "foo:V2",
+						},
+					},
+				},
+			},
+			core.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod"},
+				Spec: core.PodSpec{
+					Containers: []core.Container{
+						{
+							Image: "foo:V2",
+							Resources: core.ResourceRequirements{
+								Limits:   getResourceLimits("200m", "200Mi"),
+								Requests: getResourceLimits("100m", "100Mi"),
+							},
+						},
+					},
+				},
+			},
+			"Pod QoS is immutable",
+			"Pod QoS change, burstable -> besteffort",
 		},
 		{
 			core.Pod{

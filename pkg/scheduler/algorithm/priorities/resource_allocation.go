@@ -96,9 +96,15 @@ func getNonZeroRequests(pod *v1.Pod) *schedulernodeinfo.Resource {
 	result := &schedulernodeinfo.Resource{}
 	for i := range pod.Spec.Workloads() {
 		workload := &pod.Spec.Workloads()[i]
-		cpu, memory := priorityutil.GetNonzeroRequests(&workload.Resources.Requests)
-		result.MilliCPU += cpu
-		result.Memory += memory
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			cpu, memory := priorityutil.GetNonzeroRequests(&workload.ResourcesAllocated)
+			result.MilliCPU += cpu
+			result.Memory += memory
+		} else {
+			cpu, memory := priorityutil.GetNonzeroRequests(&workload.Resources.Requests)
+			result.MilliCPU += cpu
+			result.Memory += memory
+		}
 	}
 	return result
 }
