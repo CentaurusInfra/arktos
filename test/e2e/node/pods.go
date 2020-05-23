@@ -54,7 +54,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 			Testname: Pods, delete grace period
 			Description: Create a pod, make sure it is running. Create a 'kubectl local proxy', capture the port the proxy is listening. Using the http client send a ‘delete’ with gracePeriodSeconds=30. Pod SHOULD get deleted within 30 seconds.
 		*/
-		framework.ConformanceIt("should be submitted and removed [Arktos-CI]", func() {
+		framework.ConformanceIt("should be submitted and removed ", func() {
 			ginkgo.By("creating the pod")
 			name := "pod-submit-remove-" + string(uuid.NewUUID())
 			value := strconv.Itoa(time.Now().Nanosecond())
@@ -185,7 +185,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 			Testname: Pods, QOS
 			Description:  Create a Pod with CPU and Memory request and limits. Pos status MUST have QOSClass set to PodQOSGuaranteed.
 		*/
-		framework.ConformanceIt("should be submitted and removed ", func() {
+		framework.ConformanceIt("should be submitted and removed [Arktos-CI]", func() {
 			ginkgo.By("creating the pod")
 			name := "pod-qos-class-" + string(uuid.NewUUID())
 			pod := &v1.Pod{
