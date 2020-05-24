@@ -324,12 +324,12 @@ type Initializer struct {
 const (
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll string = ""
+	// Sometimes we need to explicitly indicate the operation targets at all the tenants, not the empty string of the above TenantAll
+	TenantAllExplicit string = "all"
 	// TenantNone is the argument for a context when there is no tenant.
 	TenantNone string = ""
 	// TenantSystem is the system tenant where we place system components.
 	TenantSystem string = "system"
-	// TenantPublic is the tenant where we place public info
-	TenantPublic string = "public"
 
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
 	NamespaceDefault string = "default"
