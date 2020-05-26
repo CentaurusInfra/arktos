@@ -20,7 +20,6 @@ package cache
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -78,9 +77,6 @@ func MetaNamespaceIndexFunc(obj interface{}) ([]string, error) {
 		return []string{""}, fmt.Errorf("object has no meta: %v", err)
 	}
 	indexKey := meta.GetTenant() + "/" + meta.GetNamespace()
-	if meta.GetTenant() == v1.TenantSystem {
-		indexKey = meta.GetNamespace()
-	}
 	return []string{indexKey}, nil
 }
 

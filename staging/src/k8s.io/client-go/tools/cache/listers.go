@@ -217,9 +217,6 @@ func (s *genericTenantLister) List(selector labels.Selector) (ret []runtime.Obje
 
 func (s *genericTenantLister) Get(name string) (runtime.Object, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == metav1.TenantSystem {
-		key = name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
@@ -246,9 +243,6 @@ func (s *genericNamespaceLister) List(selector labels.Selector) (ret []runtime.O
 
 func (s *genericNamespaceLister) Get(name string) (runtime.Object, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == metav1.TenantSystem {
-		key = s.namespace + "/" + name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

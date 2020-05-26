@@ -84,9 +84,6 @@ func (l *dynamicTenantLister) List(selector labels.Selector) (ret []*unstructure
 // Get retrieves a resource from the indexer for a given tenant and name.
 func (l *dynamicTenantLister) Get(name string) (*unstructured.Unstructured, error) {
 	key := l.tenant + "/" + name
-	if l.tenant == metav1.TenantSystem {
-		key = name
-	}
 	obj, exists, err := l.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
@@ -125,9 +122,6 @@ func (l *dynamicNamespaceLister) List(selector labels.Selector) (ret []*unstruct
 // Get retrieves a resource from the indexer for a given namespace and name.
 func (l *dynamicNamespaceLister) Get(name string) (*unstructured.Unstructured, error) {
 	key := l.tenant + "/" + l.namespace + "/" + name
-	if l.tenant == metav1.TenantSystem {
-		key = l.namespace + "/" + name
-	}
 	obj, exists, err := l.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

@@ -88,7 +88,7 @@ func MetaNamespaceKeyFunc(obj interface{}) (string, error) {
 	if len(meta.GetNamespace()) > 0 {
 		metaKey = meta.GetNamespace() + "/" + metaKey
 	}
-	if len(meta.GetTenant()) > 0 && meta.GetTenant() != v1.TenantSystem {
+	if len(meta.GetTenant()) > 0 {
 		metaKey = meta.GetTenant() + "/" + metaKey
 	}
 

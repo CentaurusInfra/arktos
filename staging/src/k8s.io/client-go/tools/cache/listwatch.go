@@ -83,7 +83,7 @@ type Getter interface {
 
 // NewListWatchFromClient creates a new ListWatch from the specified client, resource, namespace and field selector.
 func NewListWatchFromClient(c Getter, resource string, namespace string, fieldSelector fields.Selector) *ListWatch {
-	return NewListWatchFromClientWithMultiTenancy(c, resource, namespace, fieldSelector, metav1.TenantSystem)
+	return NewListWatchFromClientWithMultiTenancy(c, resource, namespace, fieldSelector, metav1.TenantAll)
 }
 
 func NewListWatchFromClientWithMultiTenancy(c Getter, resource string, namespace string, fieldSelector fields.Selector, tenant string) *ListWatch {
@@ -97,7 +97,7 @@ func NewListWatchFromClientWithMultiTenancy(c Getter, resource string, namespace
 // Option modifier is a function takes a ListOptions and modifies the consumed ListOptions. Provide customized modifier function
 // to apply modification to ListOptions with a field selector, a label selector, or any other desired options.
 func NewFilteredListWatchFromClient(c Getter, resource string, namespace string, optionsModifier func(options *metav1.ListOptions)) *ListWatch {
-	return NewFilteredListWatchFromClientWithMultiTenancy(c, resource, namespace, optionsModifier, metav1.TenantSystem)
+	return NewFilteredListWatchFromClientWithMultiTenancy(c, resource, namespace, optionsModifier, metav1.TenantAll)
 }
 func NewFilteredListWatchFromClientWithMultiTenancy(c Getter, resource string, namespace string, optionsModifier func(options *metav1.ListOptions), tenant string) *ListWatch {
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
