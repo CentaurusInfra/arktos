@@ -24,6 +24,9 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# redirect stdout/stderr to a file
+exec >> /var/log/master-init.log 2>&1
+
 ### Hardcoded constants
 DEFAULT_CNI_VERSION="v0.7.5"
 DEFAULT_CNI_SHA1="52e9d2de8a5f927307d9397308735658ee44ab8d"
@@ -90,6 +93,23 @@ function download-kubelet-config {
     elif [[ "${REQUIRE_METADATA_KUBELET_CONFIG_FILE:-false}" == "true" ]]; then
       echo "== Failed to download required Kubelet config file from metadata server =="
       exit 1
+    fi
+  )
+}
+
+function download-apiserver-config {
+  local -r dest="$1"
+  echo "Downloading apiserver config file, if it exists"
+  # Fetch apiserver config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_apiserver_config="/tmp/apiserver.config"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_apiserver_config}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/apiserver-config; then
+      # only write to the final location if curl succeeds
+      mv "${tmp_apiserver_config}" "${dest}"
     fi
   )
 }
@@ -420,11 +440,13 @@ function install-kube-manifests {
       xargs sed -ri "s@(image\":\s+\")k8s.gcr.io@\1${kube_addon_registry}@"
   fi
   cp "${dst_dir}/kubernetes/gci-trusty/gci-configure-helper.sh" "${KUBE_BIN}/configure-helper.sh"
+  cp "${dst_dir}/kubernetes/gci-trusty/apiserver-configure-helper.sh" "${KUBE_BIN}/apiserver-configure-helper.sh"
   if [[ -e "${dst_dir}/kubernetes/gci-trusty/gke-internal-configure-helper.sh" ]]; then
     cp "${dst_dir}/kubernetes/gci-trusty/gke-internal-configure-helper.sh" "${KUBE_BIN}/"
   fi
 
   cp "${dst_dir}/kubernetes/gci-trusty/health-monitor.sh" "${KUBE_BIN}/health-monitor.sh"
+  cp "${dst_dir}/kubernetes/gci-trusty/configure-helper-common.sh" "${KUBE_BIN}/configure-helper-common.sh"
 
   rm -f "${KUBE_HOME}/${manifests_tar}"
   rm -f "${KUBE_HOME}/${manifests_tar}.sha1"
@@ -559,6 +581,7 @@ source "${KUBE_HOME}/kube-env"
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
+download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 # master certs
 if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
@@ -568,4 +591,4 @@ fi
 # binaries and kube-system manifests
 install-kube-binary-config
 
-echo "Done for installing kubernetes files"
+echo "Done for installing kubernetes files" 

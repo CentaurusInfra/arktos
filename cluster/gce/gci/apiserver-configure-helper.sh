@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2016 The Kubernetes Authors.
-# Copyright 2020 Authors of Arktos - file modified.
+# Copyright 2020 Authors of Arktos - file created.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script is for configuring kubernetes master and node instances. It is
+# This script is for configuring additional arktos apiserver instances. It is
 # uploaded in the manifests tar ball.
 
 # TODO: this script duplicates templating logic from cluster/saltbase/salt
@@ -30,10 +29,9 @@ set -o pipefail
 exec >> /var/log/master-init.log 2>&1
 
 source "/home/kubernetes/bin/configure-helper-common.sh"
-
 ########### Main Function ###########
 function main() {
-  echo "Start to configure master instance for kubernetes"
+  echo "Start to configure apiserver instance for kubernetes"
 
   readonly UUID_MNT_PREFIX="/mnt/disks/by-uuid/google-local-ssds"
   readonly UUID_BLOCK_PREFIX="/dev/disk/by-uuid/google-local-ssds"
@@ -106,7 +104,8 @@ function main() {
       create-node-problem-detector-kubeconfig ${KUBERNETES_MASTER_NAME}
     fi
   fi
-
+  ETCD_SERVERS="${ETCD_SERVERS:-"http://${KUBERNETES_MASTER_INTERNAL_IP}:2379"}"
+  ETCD_SERVERS_OVERRIDES="${ETCD_SERVERS_OVERRIDES:-/events#http://${KUBERNETES_MASTER_INTERNAL_IP}:4002}"
   override-kubectl
   container_runtime="${CONTAINER_RUNTIME:-docker}"
   # Run the containerized mounter once to pre-cache the container image.
@@ -117,39 +116,17 @@ function main() {
   fi
   start-kubelet
 
-  if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
-    compute-master-manifest-variables
-    if [[ -z "${ETCD_SERVERS:-}" ]]; then
-      start-etcd-servers
-      start-etcd-empty-dir-cleanup-pod
-    fi
-    start-kube-apiserver
-    start-kube-controller-manager
-    start-kube-scheduler
-    wait-till-apiserver-ready
-    start-workload-controller-manager
-    start-kube-addons
-    start-cluster-autoscaler
-    start-lb-controller
-    update-legacy-addon-node-labels &
-    apply-encryption-config &
-    start-cluster-networking   ####start cluster networking if not using default kubenet
+  compute-master-manifest-variables
+  start-kube-apiserver
+  wait-till-apiserver-ready
 
-  else
-    if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
-      start-kube-proxy
-    fi
-    if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
-      start-node-problem-detector
-    fi
-  fi
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
-  echo "Done for the configuration for kubernetes"
+
+  echo "Done for the configuration for apiserver"
 }
 
-echo "${@}"
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "${@}"
 fi
