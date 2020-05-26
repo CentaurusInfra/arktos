@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -150,7 +151,7 @@ func (e *transformTest) benchmark(b *testing.B) {
 }
 
 func (e *transformTest) getETCDPath() string {
-	return fmt.Sprintf("/%s/secrets/%s/%s", e.storageConfig.Prefix, e.ns.Name, e.secret.Name)
+	return fmt.Sprintf("/%s/secrets/%s/%s/%s", e.storageConfig.Prefix, e.ns.Tenant, e.ns.Name, e.secret.Name)
 }
 
 func (e *transformTest) getRawSecretFromETCD() ([]byte, error) {
@@ -199,7 +200,8 @@ func (e *transformTest) getEncryptionConfig() (*apiserverconfigv1.ProviderConfig
 func (e *transformTest) createNamespace(name string) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:   name,
+			Tenant: metav1.TenantSystem,
 		},
 	}
 
@@ -215,6 +217,7 @@ func (e *transformTest) createSecret(name, namespace string) (*corev1.Secret, er
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    metav1.TenantSystem,
 		},
 		Data: map[string][]byte{
 			secretKey: []byte(secretVal),

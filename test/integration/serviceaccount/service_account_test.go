@@ -421,9 +421,6 @@ func startServiceAccountTestServer(t *testing.T, tenant string) (*clientset.Clie
 	// 2. A ServiceAccountToken authenticator that validates ServiceAccount tokens
 	rootTokenAuth := authenticator.TokenFunc(func(ctx context.Context, token string) (*authenticator.Response, bool, error) {
 		userTenant := tenant
-		if tenant == metav1.TenantSystem {
-			userTenant = metav1.TenantSystem
-		}
 		if token == rootToken {
 			return &authenticator.Response{User: &user.DefaultInfo{Name: rootUserName, Tenant: userTenant}}, true, nil
 		}

@@ -47,7 +47,7 @@ var kindWhiteList = sets.NewString()
 // It will start failing when a new type is added to ensure that all future types are added to this test.
 // It will also fail when a type gets moved to a different location. Be very careful in this situation because
 // it essentially means that you will be break old clusters unless you create some migration path for the old data.
-func TestEtcdStoragePath(t *testing.T) {
+func TestEtcdStoragePathA(t *testing.T) {
 	master := StartRealMasterOrDie(t, func(opts *options.ServerRunOptions) {
 		// force enable all resources so we can check storage.
 		// TODO: drop these once we stop allowing them to be served.
@@ -300,7 +300,7 @@ func (c *allClient) cleanup(all *[]cleanupData) error {
 		obj := (*all)[i].obj
 		gvr := (*all)[i].resource
 
-		if err := c.dynamicClient.Resource(gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), nil); err != nil {
+		if err := c.dynamicClient.Resource(gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Delete(obj.GetName(), nil); err != nil {
 			return err
 		}
 	}

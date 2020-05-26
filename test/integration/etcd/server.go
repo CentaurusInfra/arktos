@@ -300,20 +300,7 @@ func scope(namespaceScoped bool, tenantScoped bool) meta.RESTScope {
 // JSONToUnstructured converts a JSON stub to unstructured.Unstructured and
 // returns a dynamic resource client that can be used to interact with it
 func JSONToUnstructured(stub, namespace string, mapping *meta.RESTMapping, dynamicClient dynamic.Interface) (dynamic.ResourceInterface, *unstructured.Unstructured, error) {
-	typeMetaAdder := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(stub), &typeMetaAdder); err != nil {
-		return nil, nil, err
-	}
-
-	// we don't require GVK on the data we provide, so we fill it in here.  We could, but that seems extraneous.
-	typeMetaAdder["apiVersion"] = mapping.GroupVersionKind.GroupVersion().String()
-	typeMetaAdder["kind"] = mapping.GroupVersionKind.Kind
-
-	if mapping.Scope == meta.RESTScopeRoot || mapping.Scope == meta.RESTScopeTenant {
-		namespace = ""
-	}
-
-	return dynamicClient.Resource(mapping.Resource).Namespace(namespace), &unstructured.Unstructured{Object: typeMetaAdder}, nil
+	return JSONToUnstructuredWithMultiTenancy(stub, metav1.TenantSystem, namespace, mapping, dynamicClient)
 }
 
 func JSONToUnstructuredWithMultiTenancy(stub, tenant, namespace string, mapping *meta.RESTMapping, dynamicClient dynamic.Interface) (dynamic.ResourceInterface, *unstructured.Unstructured, error) {
