@@ -61,23 +61,23 @@ created/owned by [tenants](../multi-tenancy/multi-tenancy-overview.md). Hence, i
 objects such as nodes, as well as tenant objects as they are created and managed by system admin.
 * There will have multiple ETCD clusters called tenant partitions. They have all the data that is
 created/owned by tenants, including namespaces for a tenant, pods created in one of the namespaces
-of the tenants, etc. A ETCD tenant cluster can have objects from multiple tenants. Objects for a single
+of the tenants, etc. An ETCD tenant cluster can have objects from multiple tenants. Objects for a single
 tenant can only located in one tenant cluster.
 
 #### API Changes
 
-* We added a top level Kubernetes object named '**TenantStorage**' with path '**/api/v1/tenantstorages**'.
+* We added a top level Kubernetes object named '**StorageCluster**' with path '**/api/v1/storageclusters**'.
 In addition, we added a field named '**StorageClusterId**' into '**[Tenant](../multi-tenancy/multi-tenancy-api-resource-model.md)**' object.
   - This allows admin to view and allocate tenants to etcd clusters manually
-  - This allows api server to discover tenant clusters and decide where to create/locate objects
+  - This allows api server to discover storage clusters and decide where to create/locate objects
 
 ```yaml
 apiVersion: v1
-kind: TenantStorage 
+kind: StorageCluster 
 storageClusterId: "c1"
 serviceAddress: "172.30.0.122:2379"
 metadata:
-  name: "tenant-cluster-1"
+  name: "cluster-1"
 ```
 
 ```yaml
@@ -90,26 +90,23 @@ metadata:
 ```
 
 ```text
-$ curl http://127.0.0.1:8080/api/v1/tenantstorages
+$ curl http://127.0.0.1:8080/api/v1/storageclusters
 {
-  "kind": "TenantStorageList",
+  "kind": "StorageClusterList",
   "apiVersion": "v1",
   "metadata": {
-    "selfLink": "/api/v1/tenantstorages",
-    "resourceVersion": "833715344073826304"
+    "selfLink": "/api/v1/storageclusters",
+    "resourceVersion": "491"
   },
   "items": [
     {
       "metadata": {
-        "name": "tenant-cluster-1",
-        "selfLink": "/api/v1/tenantstorages/tenant-cluster-1",
-        "uid": "9381a173-b138-4e3d-bf64-98e8dd7043cb",
-        "hashKey": 1006587480031365457,
-        "resourceVersion": "833714719937273857",
-        "creationTimestamp": "2020-05-22T21:55:42Z",
-        "annotations": {
-          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"TenantStorage\",\"metadata\":{\"annotations\":{},\"name\":\"tenant-cluster-1\"},\"serviceAddress\":\"172.30.0.122:2379\",\"storageClusterId\":\"c1\"}\n"
-        }
+        "name": "cluster-1",
+        "selfLink": "/api/v1/storageclusters/cluster-1",
+        "uid": "984734c2-0051-44fd-a773-7fb0f039dd39",
+        "hashKey": 4581467420285698949,
+        "resourceVersion": "426",
+        "creationTimestamp": "2020-05-26T21:16:03Z"
       },
       "storageClusterId": "c1",
       "serviceAddress": "172.30.0.122:2379"
@@ -145,13 +142,13 @@ $ curl http://127.0.0.1:8080/api/v1/tenants/aa
 
 #### API Structs
 
-Using storage cluster identified by tenant storage, Api servers can have automatically connect
-to ETCD cluster(s) that hosting specific tenant data.
+Using storage cluster, Api servers can automatically connect to ETCD cluster(s)
+that hosting specific tenant data.
   
-Here are the TenantStorage data struct introduced into Arktos:
+Here are the StorageCluster data struct introduced into Arktos:
 
 ```text
-type TenantStorage struct {
+type StorageCluster struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
@@ -177,7 +174,7 @@ type TenantSpec struct {
 #### Affected Components
 
 APIServer and registry:
-* Created TenantStorage struct, also created informer
+* Created StorageCluster struct, also created informer
 * Added field StorageClusterId into TenantSpec struct
 * Added automated watch new ETCD cluster from api servers 
 
