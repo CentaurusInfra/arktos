@@ -56,7 +56,7 @@ func (s *replicaSetLister) List(selector labels.Selector) (ret []*v1beta2.Replic
 
 // ReplicaSets returns an object that can list and get ReplicaSets.
 func (s *replicaSetLister) ReplicaSets(namespace string) ReplicaSetNamespaceLister {
-	return replicaSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return replicaSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *replicaSetLister) ReplicaSetsWithMultiTenancy(namespace string, tenant string) ReplicaSetNamespaceLister {
@@ -91,9 +91,6 @@ func (s replicaSetNamespaceLister) List(selector labels.Selector) (ret []*v1beta
 // Get retrieves the ReplicaSet from the indexer for a given namespace and name.
 func (s replicaSetNamespaceLister) Get(name string) (*v1beta2.ReplicaSet, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
-		key = s.namespace + "/" + name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

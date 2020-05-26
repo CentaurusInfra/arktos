@@ -116,7 +116,7 @@ type version struct {
 
 // New returns a new Interface.
 func New(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$) Interface {
-	return &version{factory: f, tenant: "$.DefaultTenant$", namespace: namespace, tweakListOptions: tweakListOptions}
+	return &version{factory: f, tenant: "", namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
 func NewWithMultiTenancy(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, tenant string) Interface {

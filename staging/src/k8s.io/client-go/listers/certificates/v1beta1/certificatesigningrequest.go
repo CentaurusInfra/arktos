@@ -70,7 +70,7 @@ func (s *certificateSigningRequestLister) Get(name string) (*v1beta1.Certificate
 
 // CertificateSigningRequests returns an object that can list and get CertificateSigningRequests.
 func (s *certificateSigningRequestLister) CertificateSigningRequests() CertificateSigningRequestTenantLister {
-	return certificateSigningRequestTenantLister{indexer: s.indexer, tenant: "system"}
+	return certificateSigningRequestTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *certificateSigningRequestLister) CertificateSigningRequestsWithMultiTenancy(tenant string) CertificateSigningRequestTenantLister {
@@ -104,9 +104,6 @@ func (s certificateSigningRequestTenantLister) List(selector labels.Selector) (r
 // Get retrieves the CertificateSigningRequest from the indexer for a given tenant and name.
 func (s certificateSigningRequestTenantLister) Get(name string) (*v1beta1.CertificateSigningRequest, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
-		key = name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

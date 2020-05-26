@@ -56,7 +56,7 @@ func (s *flunderLister) List(selector labels.Selector) (ret []*v1alpha1.Flunder,
 
 // Flunders returns an object that can list and get Flunders.
 func (s *flunderLister) Flunders(namespace string) FlunderNamespaceLister {
-	return flunderNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return flunderNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *flunderLister) FlundersWithMultiTenancy(namespace string, tenant string) FlunderNamespaceLister {
@@ -91,9 +91,6 @@ func (s flunderNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.
 // Get retrieves the Flunder from the indexer for a given namespace and name.
 func (s flunderNamespaceLister) Get(name string) (*v1alpha1.Flunder, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
-		key = s.namespace + "/" + name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

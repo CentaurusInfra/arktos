@@ -70,7 +70,7 @@ func (s *selfSubjectRulesReviewLister) Get(name string) (*v1beta1.SelfSubjectRul
 
 // SelfSubjectRulesReviews returns an object that can list and get SelfSubjectRulesReviews.
 func (s *selfSubjectRulesReviewLister) SelfSubjectRulesReviews() SelfSubjectRulesReviewTenantLister {
-	return selfSubjectRulesReviewTenantLister{indexer: s.indexer, tenant: "system"}
+	return selfSubjectRulesReviewTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *selfSubjectRulesReviewLister) SelfSubjectRulesReviewsWithMultiTenancy(tenant string) SelfSubjectRulesReviewTenantLister {
@@ -104,9 +104,6 @@ func (s selfSubjectRulesReviewTenantLister) List(selector labels.Selector) (ret 
 // Get retrieves the SelfSubjectRulesReview from the indexer for a given tenant and name.
 func (s selfSubjectRulesReviewTenantLister) Get(name string) (*v1beta1.SelfSubjectRulesReview, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
-		key = name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

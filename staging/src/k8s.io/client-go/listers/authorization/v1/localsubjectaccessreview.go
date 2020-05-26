@@ -56,7 +56,7 @@ func (s *localSubjectAccessReviewLister) List(selector labels.Selector) (ret []*
 
 // LocalSubjectAccessReviews returns an object that can list and get LocalSubjectAccessReviews.
 func (s *localSubjectAccessReviewLister) LocalSubjectAccessReviews(namespace string) LocalSubjectAccessReviewNamespaceLister {
-	return localSubjectAccessReviewNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return localSubjectAccessReviewNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *localSubjectAccessReviewLister) LocalSubjectAccessReviewsWithMultiTenancy(namespace string, tenant string) LocalSubjectAccessReviewNamespaceLister {
@@ -91,9 +91,6 @@ func (s localSubjectAccessReviewNamespaceLister) List(selector labels.Selector) 
 // Get retrieves the LocalSubjectAccessReview from the indexer for a given namespace and name.
 func (s localSubjectAccessReviewNamespaceLister) Get(name string) (*v1.LocalSubjectAccessReview, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
-		key = s.namespace + "/" + name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

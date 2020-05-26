@@ -70,7 +70,7 @@ func (s *clusterRoleBindingLister) Get(name string) (*v1beta1.ClusterRoleBinding
 
 // ClusterRoleBindings returns an object that can list and get ClusterRoleBindings.
 func (s *clusterRoleBindingLister) ClusterRoleBindings() ClusterRoleBindingTenantLister {
-	return clusterRoleBindingTenantLister{indexer: s.indexer, tenant: "system"}
+	return clusterRoleBindingTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *clusterRoleBindingLister) ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingTenantLister {
@@ -104,9 +104,6 @@ func (s clusterRoleBindingTenantLister) List(selector labels.Selector) (ret []*v
 // Get retrieves the ClusterRoleBinding from the indexer for a given tenant and name.
 func (s clusterRoleBindingTenantLister) Get(name string) (*v1beta1.ClusterRoleBinding, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
-		key = name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

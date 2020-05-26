@@ -70,7 +70,7 @@ func (s *tokenReviewLister) Get(name string) (*v1beta1.TokenReview, error) {
 
 // TokenReviews returns an object that can list and get TokenReviews.
 func (s *tokenReviewLister) TokenReviews() TokenReviewTenantLister {
-	return tokenReviewTenantLister{indexer: s.indexer, tenant: "system"}
+	return tokenReviewTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *tokenReviewLister) TokenReviewsWithMultiTenancy(tenant string) TokenReviewTenantLister {
@@ -104,9 +104,6 @@ func (s tokenReviewTenantLister) List(selector labels.Selector) (ret []*v1beta1.
 // Get retrieves the TokenReview from the indexer for a given tenant and name.
 func (s tokenReviewTenantLister) Get(name string) (*v1beta1.TokenReview, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
-		key = name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

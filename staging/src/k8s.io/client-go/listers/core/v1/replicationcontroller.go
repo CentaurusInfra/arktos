@@ -56,7 +56,7 @@ func (s *replicationControllerLister) List(selector labels.Selector) (ret []*v1.
 
 // ReplicationControllers returns an object that can list and get ReplicationControllers.
 func (s *replicationControllerLister) ReplicationControllers(namespace string) ReplicationControllerNamespaceLister {
-	return replicationControllerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return replicationControllerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *replicationControllerLister) ReplicationControllersWithMultiTenancy(namespace string, tenant string) ReplicationControllerNamespaceLister {
@@ -91,9 +91,6 @@ func (s replicationControllerNamespaceLister) List(selector labels.Selector) (re
 // Get retrieves the ReplicationController from the indexer for a given namespace and name.
 func (s replicationControllerNamespaceLister) Get(name string) (*v1.ReplicationController, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
-		key = s.namespace + "/" + name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

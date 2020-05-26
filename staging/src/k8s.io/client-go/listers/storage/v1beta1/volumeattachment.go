@@ -70,7 +70,7 @@ func (s *volumeAttachmentLister) Get(name string) (*v1beta1.VolumeAttachment, er
 
 // VolumeAttachments returns an object that can list and get VolumeAttachments.
 func (s *volumeAttachmentLister) VolumeAttachments() VolumeAttachmentTenantLister {
-	return volumeAttachmentTenantLister{indexer: s.indexer, tenant: "system"}
+	return volumeAttachmentTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *volumeAttachmentLister) VolumeAttachmentsWithMultiTenancy(tenant string) VolumeAttachmentTenantLister {
@@ -104,9 +104,6 @@ func (s volumeAttachmentTenantLister) List(selector labels.Selector) (ret []*v1b
 // Get retrieves the VolumeAttachment from the indexer for a given tenant and name.
 func (s volumeAttachmentTenantLister) Get(name string) (*v1beta1.VolumeAttachment, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
-		key = name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

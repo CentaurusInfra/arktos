@@ -111,7 +111,7 @@ type group struct {
 
 // New returns a new Interface.
 func New(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$,) Interface {
-	return &group{factory: f, namespace: namespace, tenant: "$.DefaultTenant$", tweakListOptions: tweakListOptions}
+	return &group{factory: f, namespace: namespace, tenant: "", tweakListOptions: tweakListOptions}
 }
 
 func NewWithMultiTenancy(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, tenant string) Interface {

@@ -56,7 +56,7 @@ func (s *roleBindingLister) List(selector labels.Selector) (ret []*v1alpha1.Role
 
 // RoleBindings returns an object that can list and get RoleBindings.
 func (s *roleBindingLister) RoleBindings(namespace string) RoleBindingNamespaceLister {
-	return roleBindingNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return roleBindingNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *roleBindingLister) RoleBindingsWithMultiTenancy(namespace string, tenant string) RoleBindingNamespaceLister {
@@ -91,9 +91,6 @@ func (s roleBindingNamespaceLister) List(selector labels.Selector) (ret []*v1alp
 // Get retrieves the RoleBinding from the indexer for a given namespace and name.
 func (s roleBindingNamespaceLister) Get(name string) (*v1alpha1.RoleBinding, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
-		key = s.namespace + "/" + name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err

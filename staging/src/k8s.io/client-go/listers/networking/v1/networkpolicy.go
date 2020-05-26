@@ -56,7 +56,7 @@ func (s *networkPolicyLister) List(selector labels.Selector) (ret []*v1.NetworkP
 
 // NetworkPolicies returns an object that can list and get NetworkPolicies.
 func (s *networkPolicyLister) NetworkPolicies(namespace string) NetworkPolicyNamespaceLister {
-	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *networkPolicyLister) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyNamespaceLister {
@@ -91,9 +91,6 @@ func (s networkPolicyNamespaceLister) List(selector labels.Selector) (ret []*v1.
 // Get retrieves the NetworkPolicy from the indexer for a given namespace and name.
 func (s networkPolicyNamespaceLister) Get(name string) (*v1.NetworkPolicy, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
-		key = s.namespace + "/" + name
-	}
 	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
