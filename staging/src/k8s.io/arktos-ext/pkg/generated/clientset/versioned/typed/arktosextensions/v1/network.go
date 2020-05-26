@@ -57,7 +57,7 @@ type networks struct {
 
 // newNetworks returns a Networks
 func newNetworks(c *ArktosV1Client) *networks {
-	return newNetworksWithMultiTenancy(c, "default")
+	return newNetworksWithMultiTenancy(c, "system")
 }
 
 func newNetworksWithMultiTenancy(c *ArktosV1Client, tenant string) *networks {

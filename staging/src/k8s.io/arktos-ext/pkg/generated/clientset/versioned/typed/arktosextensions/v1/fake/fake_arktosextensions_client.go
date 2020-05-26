@@ -29,7 +29,7 @@ type FakeArktosV1 struct {
 }
 
 func (c *FakeArktosV1) Networks() v1.NetworkInterface {
-	return &FakeNetworks{c, "default"}
+	return &FakeNetworks{c, "system"}
 }
 
 func (c *FakeArktosV1) NetworksWithMultiTenancy(tenant string) v1.NetworkInterface {

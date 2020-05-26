@@ -38,7 +38,7 @@ type group struct {
 
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
-	return &group{factory: f, namespace: namespace, tenant: "default", tweakListOptions: tweakListOptions}
+	return &group{factory: f, namespace: namespace, tenant: "system", tweakListOptions: tweakListOptions}
 }
 
 func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) Interface {

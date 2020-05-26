@@ -59,7 +59,7 @@ func NewNetworkInformerWithMultiTenancy(client versioned.Interface, resyncPeriod
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredNetworkInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewFilteredNetworkInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "default")
+	return NewFilteredNetworkInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "system")
 }
 
 func NewFilteredNetworkInformerWithMultiTenancy(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
