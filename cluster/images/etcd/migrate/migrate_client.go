@@ -27,8 +27,8 @@ import (
 
 	"context"
 
-	clientv2 "github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/clientv3"
+	clientv2 "go.etcd.io/etcd/client"
+	"go.etcd.io/etcd/clientv3"
 	"k8s.io/klog"
 )
 

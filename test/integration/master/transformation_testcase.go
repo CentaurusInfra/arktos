@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,8 +28,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.etcd.io/etcd/clientv3"
 	"sigs.k8s.io/yaml"
 
 	corev1 "k8s.io/api/core/v1"

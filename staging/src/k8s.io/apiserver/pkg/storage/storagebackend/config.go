@@ -36,9 +36,9 @@ type TransportConfig struct {
 	// ServerList is the list of storage servers to connect with.
 	ServerList []string
 	// TLS credentials
-	KeyFile  string
-	CertFile string
-	CAFile   string
+	KeyFile       string
+	CertFile      string
+	TrustedCAFile string
 }
 
 // Config is configuration for creating a storage backend.

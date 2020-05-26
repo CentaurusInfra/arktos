@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,10 +40,10 @@ func TestEtcdOptionsValidate(t *testing.T) {
 					Type:   "etcd3",
 					Prefix: "/registry",
 					Transport: storagebackend.TransportConfig{
-						ServerList: nil,
-						KeyFile:    "/var/run/kubernetes/etcd.key",
-						CAFile:     "/var/run/kubernetes/etcdca.crt",
-						CertFile:   "/var/run/kubernetes/etcdce.crt",
+						ServerList:    nil,
+						KeyFile:       "/var/run/kubernetes/etcd.key",
+						TrustedCAFile: "/var/run/kubernetes/etcdca.crt",
+						CertFile:      "/var/run/kubernetes/etcdce.crt",
 					},
 					CompactionInterval:    storagebackend.DefaultCompactInterval,
 					CountMetricPollPeriod: time.Minute,
@@ -63,10 +64,10 @@ func TestEtcdOptionsValidate(t *testing.T) {
 					Type:   "etcd4",
 					Prefix: "/registry",
 					Transport: storagebackend.TransportConfig{
-						ServerList: []string{"http://127.0.0.1"},
-						KeyFile:    "/var/run/kubernetes/etcd.key",
-						CAFile:     "/var/run/kubernetes/etcdca.crt",
-						CertFile:   "/var/run/kubernetes/etcdce.crt",
+						ServerList:    []string{"http://127.0.0.1"},
+						KeyFile:       "/var/run/kubernetes/etcd.key",
+						TrustedCAFile: "/var/run/kubernetes/etcdca.crt",
+						CertFile:      "/var/run/kubernetes/etcdce.crt",
 					},
 					CompactionInterval:    storagebackend.DefaultCompactInterval,
 					CountMetricPollPeriod: time.Minute,
@@ -86,10 +87,10 @@ func TestEtcdOptionsValidate(t *testing.T) {
 				StorageConfig: storagebackend.Config{
 					Type: "etcd3",
 					Transport: storagebackend.TransportConfig{
-						ServerList: []string{"http://127.0.0.1"},
-						KeyFile:    "/var/run/kubernetes/etcd.key",
-						CAFile:     "/var/run/kubernetes/etcdca.crt",
-						CertFile:   "/var/run/kubernetes/etcdce.crt",
+						ServerList:    []string{"http://127.0.0.1"},
+						KeyFile:       "/var/run/kubernetes/etcd.key",
+						TrustedCAFile: "/var/run/kubernetes/etcdca.crt",
+						CertFile:      "/var/run/kubernetes/etcdce.crt",
 					},
 					Prefix:                "/registry",
 					CompactionInterval:    storagebackend.DefaultCompactInterval,
@@ -111,10 +112,10 @@ func TestEtcdOptionsValidate(t *testing.T) {
 					Type:   "etcd3",
 					Prefix: "/registry",
 					Transport: storagebackend.TransportConfig{
-						ServerList: []string{"http://127.0.0.1"},
-						KeyFile:    "/var/run/kubernetes/etcd.key",
-						CAFile:     "/var/run/kubernetes/etcdca.crt",
-						CertFile:   "/var/run/kubernetes/etcdce.crt",
+						ServerList:    []string{"http://127.0.0.1"},
+						KeyFile:       "/var/run/kubernetes/etcd.key",
+						TrustedCAFile: "/var/run/kubernetes/etcdca.crt",
+						CertFile:      "/var/run/kubernetes/etcdce.crt",
 					},
 					CompactionInterval:    storagebackend.DefaultCompactInterval,
 					CountMetricPollPeriod: time.Minute,

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -307,8 +308,8 @@ func (s *DefaultStorageFactory) Backends() []Backend {
 			tlsConfig.Certificates = []tls.Certificate{cert}
 		}
 	}
-	if len(s.StorageConfig.Transport.CAFile) > 0 {
-		if caCert, err := ioutil.ReadFile(s.StorageConfig.Transport.CAFile); err != nil {
+	if len(s.StorageConfig.Transport.TrustedCAFile) > 0 {
+		if caCert, err := ioutil.ReadFile(s.StorageConfig.Transport.TrustedCAFile); err != nil {
 			klog.Errorf("failed to read ca file while getting backends: %s", err)
 		} else {
 			caPool := x509.NewCertPool()
