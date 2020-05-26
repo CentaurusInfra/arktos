@@ -25,7 +25,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +46,7 @@ type reaction struct {
 }
 
 const (
-	defaultTenant   = "default"
+	defaultTenant   = metav1.TenantSystem
 	defaultNS       = "default"
 	defaultPVCName  = "pvc1"
 	defaultPodName  = "pod1"
@@ -108,7 +108,7 @@ func pvc() *v1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultPVCName,
 			Namespace: defaultNS,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 	}
 }

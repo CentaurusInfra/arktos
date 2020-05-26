@@ -184,7 +184,7 @@ func (c byAccessModes) Len() int {
 
 func claimToVolumeKey(claim *v1.PersistentVolumeClaim) string {
 	var key string
-	if claim.Tenant == v1.TenantDefault {
+	if claim.Tenant == v1.TenantSystem {
 		key = claim.Spec.VolumeName
 	} else {
 		key = fmt.Sprintf("%s/%s", claim.Tenant, claim.Spec.VolumeName)
@@ -199,7 +199,7 @@ func claimToClaimKey(claim *v1.PersistentVolumeClaim) string {
 
 func claimrefToClaimKey(claimref *v1.ObjectReference) string {
 	var key string
-	if claimref.Tenant == v1.TenantDefault {
+	if claimref.Tenant == v1.TenantSystem {
 		key = fmt.Sprintf("%s/%s", claimref.Namespace, claimref.Name)
 	} else {
 		key = fmt.Sprintf("%s/%s/%s", claimref.Tenant, claimref.Namespace, claimref.Name)

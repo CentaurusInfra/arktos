@@ -346,9 +346,9 @@ func TestGenericScheduler(t *testing.T) {
 			predicates:   map[string]algorithmpredicates.FitPredicate{"true": truePredicate},
 			prioritizers: []priorities.PriorityConfig{{Map: EqualPriorityMap, Weight: 1}},
 			nodes:        []string{"machine1", "machine2"},
-			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "existingPVC"}}},
+			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "existingPVC"}}},
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "ignore", UID: types.UID("ignore")},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "ignore", UID: types.UID("ignore")},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
 						{
@@ -393,9 +393,9 @@ func TestGenericScheduler(t *testing.T) {
 			predicates:   map[string]algorithmpredicates.FitPredicate{"true": truePredicate},
 			prioritizers: []priorities.PriorityConfig{{Map: EqualPriorityMap, Weight: 1}},
 			nodes:        []string{"machine1", "machine2"},
-			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "existingPVC", DeletionTimestamp: &metav1.Time{}}}},
+			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "existingPVC", DeletionTimestamp: &metav1.Time{}}}},
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "ignore", UID: types.UID("ignore")},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "ignore", UID: types.UID("ignore")},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
 						{

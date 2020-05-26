@@ -413,7 +413,7 @@ func TestCreateVolumeSpec_Valid_File_VolumeMounts(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantDefault, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec == nil || err != nil {
@@ -462,7 +462,7 @@ func TestCreateVolumeSpec_Valid_Block_VolumeDevices(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantDefault, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec == nil || err != nil {
@@ -511,7 +511,7 @@ func TestCreateVolumeSpec_Invalid_File_VolumeDevices(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantDefault, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec != nil || err == nil {
@@ -560,7 +560,7 @@ func TestCreateVolumeSpec_Invalid_Block_VolumeMounts(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantDefault, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec != nil || err == nil {

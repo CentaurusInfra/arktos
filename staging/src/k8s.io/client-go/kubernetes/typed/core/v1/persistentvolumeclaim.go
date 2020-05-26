@@ -64,7 +64,7 @@ type persistentVolumeClaims struct {
 
 // newPersistentVolumeClaims returns a PersistentVolumeClaims
 func newPersistentVolumeClaims(c *CoreV1Client, namespace string) *persistentVolumeClaims {
-	return newPersistentVolumeClaimsWithMultiTenancy(c, namespace, "default")
+	return newPersistentVolumeClaimsWithMultiTenancy(c, namespace, "system")
 }
 
 func newPersistentVolumeClaimsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *persistentVolumeClaims {

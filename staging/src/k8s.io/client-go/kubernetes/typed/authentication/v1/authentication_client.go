@@ -43,7 +43,7 @@ type AuthenticationV1Client struct {
 }
 
 func (c *AuthenticationV1Client) TokenReviews() TokenReviewInterface {
-	return newTokenReviewsWithMultiTenancy(c, "default")
+	return newTokenReviewsWithMultiTenancy(c, "system")
 }
 
 func (c *AuthenticationV1Client) TokenReviewsWithMultiTenancy(tenant string) TokenReviewInterface {

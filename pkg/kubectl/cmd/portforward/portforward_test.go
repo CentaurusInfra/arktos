@@ -140,7 +140,7 @@ func testPortForward(t *testing.T, flags map[string]string, args []string, tenan
 }
 
 func TestPortForward(t *testing.T) {
-	testPortForward(t, nil, []string{"foo", ":5000", ":1000"}, metav1.TenantDefault)
+	testPortForward(t, nil, []string{"foo", ":5000", ":1000"}, metav1.TenantSystem)
 }
 
 func TestPortForwardWithMultiTenancy(t *testing.T) {
@@ -604,7 +604,7 @@ func execPod(tenant string) *corev1.Pod {
 }
 
 func execPodPath(tenant string) string {
-	if tenant == metav1.TenantDefault {
+	if tenant == metav1.TenantSystem {
 		return "/namespaces/test/pods/foo"
 	} else {
 		return "/tenants/" + tenant + "/namespaces/test/pods/foo"

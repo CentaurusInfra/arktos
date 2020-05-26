@@ -35,7 +35,7 @@ func (c *FakeWardleV1alpha1) Fischers() v1alpha1.FischerInterface {
 }
 
 func (c *FakeWardleV1alpha1) Flunders(namespace string) v1alpha1.FlunderInterface {
-	return &FakeFlunders{c, namespace, "default"}
+	return &FakeFlunders{c, namespace, "system"}
 }
 
 func (c *FakeWardleV1alpha1) FlundersWithMultiTenancy(namespace string, tenant string) v1alpha1.FlunderInterface {

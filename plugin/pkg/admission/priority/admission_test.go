@@ -321,7 +321,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-priorityclass",
 				Namespace: "namespace",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -337,7 +337,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-wo-priorityclass",
 				Namespace: "namespace",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -352,7 +352,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-non-existing-priorityclass",
 				Namespace: "namespace",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -368,7 +368,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-integer-priority",
 				Namespace: "namespace",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -385,7 +385,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-system-priority",
 				Namespace: metav1.NamespaceSystem,
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -401,7 +401,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "mirror-pod-w-system-priority",
 				Namespace:   metav1.NamespaceSystem,
-				Tenant:      metav1.TenantDefault,
+				Tenant:      metav1.TenantSystem,
 				Annotations: map[string]string{api.MirrorPodAnnotationKey: ""},
 			},
 			Spec: api.PodSpec{
@@ -418,7 +418,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "mirror-pod-w-integer-priority",
 				Namespace:   "namespace",
-				Tenant:      metav1.TenantDefault,
+				Tenant:      metav1.TenantSystem,
 				Annotations: map[string]string{api.MirrorPodAnnotationKey: ""},
 			},
 			Spec: api.PodSpec{
@@ -437,7 +437,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "pod-w-system-priority",
 				Namespace:   "kube-system",
-				Tenant:      metav1.TenantDefault,
+				Tenant:      metav1.TenantSystem,
 				Annotations: map[string]string{"scheduler.alpha.kubernetes.io/critical-pod": ""},
 			},
 			Spec: api.PodSpec{
@@ -453,7 +453,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-system-priority-in-nonsystem-namespace",
 				Namespace: "non-system-namespace",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -469,7 +469,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-zero-priority-in-nonsystem-namespace",
 				Namespace: "non-system-namespace",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -485,7 +485,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-priority-matching-default-priority",
 				Namespace: "non-system-namespace",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -501,7 +501,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-w-priority-matching-resolved-default-priority",
 				Namespace: metav1.NamespaceSystem,
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -518,7 +518,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-never-preemption-policy-matching-resolved-preemption-policy",
 				Namespace: metav1.NamespaceSystem,
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -536,7 +536,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-preemption-policy-matching-resolved-preemption-policy",
 				Namespace: metav1.NamespaceSystem,
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{
@@ -554,7 +554,7 @@ func TestPodAdmission(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod-preemption-policy-not-matching-resolved-preemption-policy",
 				Namespace: metav1.NamespaceSystem,
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 			Spec: api.PodSpec{
 				Containers: []api.Container{

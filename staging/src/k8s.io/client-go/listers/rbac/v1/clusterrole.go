@@ -70,7 +70,7 @@ func (s *clusterRoleLister) Get(name string) (*v1.ClusterRole, error) {
 
 // ClusterRoles returns an object that can list and get ClusterRoles.
 func (s *clusterRoleLister) ClusterRoles() ClusterRoleTenantLister {
-	return clusterRoleTenantLister{indexer: s.indexer, tenant: "default"}
+	return clusterRoleTenantLister{indexer: s.indexer, tenant: "system"}
 }
 
 func (s *clusterRoleLister) ClusterRolesWithMultiTenancy(tenant string) ClusterRoleTenantLister {
@@ -104,7 +104,7 @@ func (s clusterRoleTenantLister) List(selector labels.Selector) (ret []*v1.Clust
 // Get retrieves the ClusterRole from the indexer for a given tenant and name.
 func (s clusterRoleTenantLister) Get(name string) (*v1.ClusterRole, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

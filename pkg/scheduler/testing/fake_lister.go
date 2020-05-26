@@ -191,7 +191,7 @@ func (f FakePersistentVolumeClaimLister) List(selector labels.Selector) (ret []*
 
 // PersistentVolumeClaims returns a FakePersistentVolumeClaimLister object.
 func (f FakePersistentVolumeClaimLister) PersistentVolumeClaims(namespace string) corelisters.PersistentVolumeClaimNamespaceLister {
-	return f.PersistentVolumeClaimsWithMultiTenancy(namespace, metav1.TenantDefault)
+	return f.PersistentVolumeClaimsWithMultiTenancy(namespace, metav1.TenantSystem)
 }
 
 func (f FakePersistentVolumeClaimLister) PersistentVolumeClaimsWithMultiTenancy(namespace string, tenant string) corelisters.PersistentVolumeClaimNamespaceLister {

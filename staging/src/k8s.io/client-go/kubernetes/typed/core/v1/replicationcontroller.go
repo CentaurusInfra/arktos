@@ -68,7 +68,7 @@ type replicationControllers struct {
 
 // newReplicationControllers returns a ReplicationControllers
 func newReplicationControllers(c *CoreV1Client, namespace string) *replicationControllers {
-	return newReplicationControllersWithMultiTenancy(c, namespace, "default")
+	return newReplicationControllersWithMultiTenancy(c, namespace, "system")
 }
 
 func newReplicationControllersWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *replicationControllers {

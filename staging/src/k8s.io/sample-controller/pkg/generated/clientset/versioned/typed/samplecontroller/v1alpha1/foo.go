@@ -64,7 +64,7 @@ type foos struct {
 
 // newFoos returns a Foos
 func newFoos(c *SamplecontrollerV1alpha1Client, namespace string) *foos {
-	return newFoosWithMultiTenancy(c, namespace, "default")
+	return newFoosWithMultiTenancy(c, namespace, "system")
 }
 
 func newFoosWithMultiTenancy(c *SamplecontrollerV1alpha1Client, namespace string, tenant string) *foos {

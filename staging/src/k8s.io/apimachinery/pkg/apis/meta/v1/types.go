@@ -322,8 +322,6 @@ type Initializer struct {
 }
 
 const (
-	// TenantDefault means the object belongs to the default tenant which is applied when the tenant is not specified by clients
-	TenantDefault string = "default"
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll string = ""
 	// TenantNone is the argument for a context when there is no tenant.

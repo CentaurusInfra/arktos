@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog"
 
 	api "k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	fakeclient "k8s.io/client-go/kubernetes/fake"
@@ -67,10 +67,10 @@ func newPluginMgr(t *testing.T, apiObject runtime.Object) (*volume.VolumePluginM
 
 func makeScaleIOSecret(name, namespace string) *api.Secret {
 	return &api.Secret{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Tenant:    "default",
+			Tenant:    metav1.TenantSystem,
 			UID:       "1234567890",
 		},
 		Type: api.SecretType("kubernetes.io/scaleio"),
@@ -168,7 +168,7 @@ func TestVolumeMounterUnmounter(t *testing.T) {
 
 	sioMounter, err := sioPlug.NewMounter(
 		volume.NewSpecFromVolume(vol),
-		&api.Pod{ObjectMeta: meta.ObjectMeta{UID: podUID, Namespace: testns, Tenant: "default"}},
+		&api.Pod{ObjectMeta: metav1.ObjectMeta{UID: podUID, Namespace: testns, Tenant: metav1.TenantSystem}},
 		volume.VolumeOptions{},
 	)
 	if err != nil {
@@ -336,7 +336,7 @@ func TestVolumeProvisioner(t *testing.T) {
 	// mount dynamic vol
 	sioMounter, err := sioPlug.NewMounter(
 		volume.NewSpecFromPersistentVolume(spec, false),
-		&api.Pod{ObjectMeta: meta.ObjectMeta{UID: podUID, Namespace: testns, Tenant: "default"}},
+		&api.Pod{ObjectMeta: metav1.ObjectMeta{UID: podUID, Namespace: testns, Tenant: metav1.TenantSystem}},
 		volume.VolumeOptions{},
 	)
 	if err != nil {

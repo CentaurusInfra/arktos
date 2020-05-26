@@ -47,7 +47,7 @@ func newHandlerForTest(c clientset.Interface) (*Lifecycle, informers.SharedInfor
 func newHandlerForTestWithClock(c clientset.Interface, cacheClock clock.Clock) (*Lifecycle, informers.SharedInformerFactory, error) {
 	f := informers.NewSharedInformerFactory(c, 5*time.Minute)
 	handler, err := newLifecycleWithClock(sets.NewString(metav1.NamespaceDefault, metav1.NamespaceSystem),
-		sets.NewString(metav1.TenantDefault, metav1.TenantSystem),
+		sets.NewString(metav1.TenantSystem, metav1.TenantSystem),
 		cacheClock)
 	if err != nil {
 		return nil, f, err
@@ -137,7 +137,7 @@ func TestAccessReviewCheckOnMissingNamespace(t *testing.T) {
 	}
 	informerFactory.Start(wait.NeverStop)
 
-	err = handler.Admit(admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{Group: "authorization.k8s.io", Version: "v1", Kind: "LocalSubjectAccesReview"}, metav1.TenantDefault, namespace, "", schema.GroupVersionResource{Group: "authorization.k8s.io", Version: "v1", Resource: "localsubjectaccessreviews"}, "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+	err = handler.Admit(admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{Group: "authorization.k8s.io", Version: "v1", Kind: "LocalSubjectAccesReview"}, metav1.TenantSystem, namespace, "", schema.GroupVersionResource{Group: "authorization.k8s.io", Version: "v1", Resource: "localsubjectaccessreviews"}, "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -145,7 +145,7 @@ func TestAccessReviewCheckOnMissingNamespace(t *testing.T) {
 
 // TestAdmissionNamespaceDoesNotExist verifies pod is not admitted if namespace does not exist.
 func TestAdmissionNamespaceDoesNotExist(t *testing.T) {
-	testAdmissionNamespaceDoesNotExist(t, metav1.TenantDefault)
+	testAdmissionNamespaceDoesNotExist(t, metav1.TenantSystem)
 }
 
 func TestAdmissionNamespaceDoesNotExistWithMultiTenancy(t *testing.T) {
@@ -197,7 +197,7 @@ func testAdmissionNamespaceDoesNotExist(t *testing.T, tenant string) {
 
 // TestAdmissionNamespaceActive verifies a resource is admitted when the namespace is active.
 func TestAdmissionNamespaceActive(t *testing.T) {
-	testAdmissionNamespaceActive(t, metav1.TenantDefault)
+	testAdmissionNamespaceActive(t, metav1.TenantSystem)
 }
 
 func TestAdmissionNamespaceActiveWithMultiTenancy(t *testing.T) {
@@ -224,7 +224,7 @@ func testAdmissionNamespaceActive(t *testing.T, tenant string) {
 
 // TestAdmissionNamespaceTerminating verifies a resource is not created when the namespace is active.
 func TestAdmissionNamespaceTerminating(t *testing.T) {
-	testAdmissionNamespaceTerminating(t, metav1.TenantDefault)
+	testAdmissionNamespaceTerminating(t, metav1.TenantSystem)
 }
 
 func TestAdmissionNamespaceTerminatingWithMultiTenancy(t *testing.T) {
@@ -322,7 +322,7 @@ func TestAdmissionTenantTerminating(t *testing.T) {
 
 // TestAdmissionNamespaceForceLiveLookup verifies live lookups are done after deleting a namespace
 func TestAdmissionNamespaceForceLiveLookup(t *testing.T) {
-	testAdmissionNamespaceForceLiveLookup(t, metav1.TenantDefault)
+	testAdmissionNamespaceForceLiveLookup(t, metav1.TenantSystem)
 }
 
 func TestAdmissionNamespaceForceLiveLookupWithMultiTenancy(t *testing.T) {

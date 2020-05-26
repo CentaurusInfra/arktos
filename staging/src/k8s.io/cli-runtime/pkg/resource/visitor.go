@@ -137,7 +137,7 @@ func (i *Info) GetWithMultiTenancy() (err error) {
 	obj, err := NewHelper(i.Clients, i.Mapping).GetWithMultiTenancy(i.Tenant, i.Namespace, i.Name, i.Export)
 	if err != nil {
 		if errors.IsNotFound(err) && len(i.Namespace) > 0 && i.Namespace != metav1.NamespaceDefault && i.Namespace != metav1.NamespaceAll &&
-			len(i.Tenant) > 0 && i.Tenant != metav1.TenantDefault && i.Tenant != metav1.TenantAll {
+			len(i.Tenant) > 0 && i.Tenant != metav1.TenantSystem && i.Tenant != metav1.TenantAll {
 			err2 := i.GetClient().Get().AbsPath("api", "v1", "tenants", i.Tenant, "namespaces", i.Namespace).Do().Error()
 			if err2 != nil && errors.IsNotFound(err2) {
 				return err2
@@ -741,7 +741,7 @@ func SetTenant(tenant string) VisitorFunc {
 		if len(info.Tenant) == 0 {
 			info.Tenant = tenant
 			if tenant == "" {
-				info.Tenant = metav1.TenantDefault
+				info.Tenant = metav1.TenantSystem
 			}
 			UpdateObjectTenant(info, nil)
 		}
@@ -788,7 +788,7 @@ func RequireTenant(tenant string) VisitorFunc {
 		if len(info.Tenant) == 0 {
 			info.Tenant = tenant
 			if tenant == "" {
-				info.Tenant = metav1.TenantDefault
+				info.Tenant = metav1.TenantSystem
 			}
 			UpdateObjectTenant(info, nil)
 			return nil
@@ -813,7 +813,7 @@ func RetrieveLatest(info *Info, err error) error {
 		return nil
 	}
 	if len(info.Tenant) == 0 && (info.Scope() == meta.RESTScopeNameNamespace || info.Scope() == meta.RESTScopeNameTenant) {
-		info.Tenant = metav1.TenantDefault
+		info.Tenant = metav1.TenantSystem
 	}
 	if len(info.Namespace) == 0 && info.Scope() == meta.RESTScopeNameNamespace {
 		return fmt.Errorf("no namespace set on resource %s %q", info.Mapping.Resource, info.Name)

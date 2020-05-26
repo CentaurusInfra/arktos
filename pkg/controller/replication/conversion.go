@@ -337,7 +337,7 @@ func (pc podControlAdapter) CreatePodsOnNode(nodeName, namespace string, templat
 
 func (pc podControlAdapter) CreatePodsWithControllerRef(namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
 
-	return pc.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantDefault, namespace, template, object, controllerRef)
+	return pc.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantSystem, namespace, template, object, controllerRef)
 }
 
 func (pc podControlAdapter) CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
@@ -349,7 +349,7 @@ func (pc podControlAdapter) CreatePodsWithControllerRefWithMultiTenancy(tenant, 
 }
 
 func (pc podControlAdapter) DeletePod(namespace string, podID string, object runtime.Object) error {
-	return pc.DeletePodWithMultiTenancy(metav1.TenantDefault, namespace, podID, object)
+	return pc.DeletePodWithMultiTenancy(metav1.TenantSystem, namespace, podID, object)
 }
 
 func (pc podControlAdapter) DeletePodWithMultiTenancy(tenant, namespace string, podID string, object runtime.Object) error {

@@ -535,7 +535,7 @@ func makeTestPVC(name, size, node string, pvcBoundState int, pvName, resourceVer
 			UID:             types.UID("pvc-uid"),
 			ResourceVersion: resourceVersion,
 			SelfLink:        testapi.Default.SelfLink("pvc", name),
-			Tenant:          metav1.TenantDefault,
+			Tenant:          metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			Resources: v1.ResourceRequirements{
@@ -569,7 +569,7 @@ func makeBadPVC() *v1.PersistentVolumeClaim {
 			Namespace:       "testns",
 			UID:             types.UID("pvc-uid"),
 			ResourceVersion: "1",
-			Tenant:          metav1.TenantDefault,
+			Tenant:          metav1.TenantSystem,
 			// Don't include SefLink, so that GetReference will fail
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
@@ -590,7 +590,7 @@ func makeTestPV(name, node, capacity, version string, boundToPVC *v1.PersistentV
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			ResourceVersion: version,
-			Tenant:          metav1.TenantDefault,
+			Tenant:          metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			Capacity: v1.ResourceList{
@@ -655,7 +655,7 @@ func makePod(pvcs []*v1.PersistentVolumeClaim) *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pod",
 			Namespace: "testns",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 	}
 
@@ -681,7 +681,7 @@ func makePodWithoutPVC() *v1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pod",
 			Namespace: "testns",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{

@@ -31,7 +31,7 @@ import (
 type UpdateReplicaSetFunc func(d *apps.ReplicaSet)
 
 func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, applyUpdate UpdateReplicaSetFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.ReplicaSet, error) {
-	return UpdateReplicaSetWithRetriesWithMultiTenancy(c, metav1.TenantDefault, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)
+	return UpdateReplicaSetWithRetriesWithMultiTenancy(c, metav1.TenantSystem, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)
 }
 
 func UpdateReplicaSetWithRetriesWithMultiTenancy(c clientset.Interface, tenant, namespace, name string, applyUpdate UpdateReplicaSetFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.ReplicaSet, error) {
@@ -73,7 +73,7 @@ func WaitRSStable(t *testing.T, clientSet clientset.Interface, rs *apps.ReplicaS
 }
 
 func UpdateReplicaSetStatusWithRetries(c clientset.Interface, namespace, name string, applyUpdate UpdateReplicaSetFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.ReplicaSet, error) {
-	return UpdateReplicaSetStatusWithRetriesWithMultiTenancy(c, metav1.TenantDefault, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)
+	return UpdateReplicaSetStatusWithRetriesWithMultiTenancy(c, metav1.TenantSystem, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)
 }
 
 func UpdateReplicaSetStatusWithRetriesWithMultiTenancy(c clientset.Interface, tenant, namespace, name string, applyUpdate UpdateReplicaSetFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.ReplicaSet, error) {

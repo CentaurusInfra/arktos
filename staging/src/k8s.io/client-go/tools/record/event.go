@@ -333,7 +333,7 @@ func (recorder *recorderImpl) makeEvent(ref *v1.ObjectReference, annotations map
 	t := metav1.Time{Time: recorder.clock.Now()}
 	tenant := ref.Tenant
 	if tenant == "" {
-		tenant = metav1.TenantDefault
+		tenant = metav1.TenantSystem
 	}
 	namespace := ref.Namespace
 	if namespace == "" {

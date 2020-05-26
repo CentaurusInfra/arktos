@@ -156,7 +156,7 @@ func init() {
 }
 
 func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfake.Clientset, *cmfake.FakeCustomMetricsClient, *emfake.FakeExternalMetricsClient, *scalefake.FakeScaleClient) {
-	tenant := metav1.TenantDefault
+	tenant := metav1.TenantSystem
 	namespace := "test-namespace"
 	hpaName := "test-hpa"
 	podNamePrefix := "test-pod"
@@ -193,7 +193,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      hpaName,
 						Namespace: namespace,
-						Tenant:    metav1.TenantDefault,
+						Tenant:    metav1.TenantSystem,
 						SelfLink:  "experimental/v1/namespaces/" + namespace + "/horizontalpodautoscalers/" + hpaName,
 					},
 					Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
@@ -2455,7 +2455,7 @@ func TestAvoidUncessaryUpdates(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-hpa",
 						Namespace: "test-namespace",
-						Tenant:    metav1.TenantDefault,
+						Tenant:    metav1.TenantSystem,
 						SelfLink:  "experimental/v1/namespaces/test-namespace/horizontalpodautoscalers/test-hpa",
 					},
 					Spec: autoscalingv2.HorizontalPodAutoscalerSpec{

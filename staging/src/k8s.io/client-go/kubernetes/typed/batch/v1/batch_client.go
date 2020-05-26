@@ -43,7 +43,7 @@ type BatchV1Client struct {
 }
 
 func (c *BatchV1Client) Jobs(namespace string) JobInterface {
-	return newJobsWithMultiTenancy(c, namespace, "default")
+	return newJobsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *BatchV1Client) JobsWithMultiTenancy(namespace string, tenant string) JobInterface {

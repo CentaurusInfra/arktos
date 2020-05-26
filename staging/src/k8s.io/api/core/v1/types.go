@@ -25,12 +25,10 @@ import (
 )
 
 const (
-	// TenantDefault means the object is in the default tenant which is applied when not specified by clients
-	TenantDefault string = "default"
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll string = ""
-	// TenantNodeLease is the tenant where we place node lease objects (used for node heartbeats)
-	TenantNodeLease string = "system"
+	// TenantSystem is the system tenant where we place system components.
+	TenantSystem string = "system"
 
 	// NamespaceDefault means the object is in the default namespace which is applied when not specified by clients
 	NamespaceDefault string = "default"

@@ -219,7 +219,7 @@ func NamespaceKeyRootFunc(ctx context.Context, prefix string) string {
 
 	te, ok := genericapirequest.TenantFrom(ctx)
 	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
-	if ok && len(te) > 0 && te != metav1.TenantDefault {
+	if ok && len(te) > 0 && te != metav1.TenantSystem {
 		key = key + "/" + te
 	}
 
@@ -241,7 +241,7 @@ func TenantKeyRootFunc(ctx context.Context, prefix string) string {
 
 	te, ok := genericapirequest.TenantFrom(ctx)
 	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
-	if ok && len(te) > 0 && te != metav1.TenantDefault {
+	if ok && len(te) > 0 && te != metav1.TenantSystem {
 		key = key + "/" + te
 	}
 

@@ -31,8 +31,8 @@ func TestTenantContext(t *testing.T) {
 	if !ok {
 		t.Fatalf("Error getting tenant")
 	}
-	if metav1.TenantDefault != result {
-		t.Fatalf("Expected: %s, Actual: %s", metav1.TenantDefault, result)
+	if metav1.TenantSystem != result {
+		t.Fatalf("Expected: %s, Actual: %s", metav1.TenantSystem, result)
 	}
 
 	ctx = NewContext()
@@ -40,8 +40,8 @@ func TestTenantContext(t *testing.T) {
 	if !ok {
 		t.Fatalf("Should be ok as we allow emtpy tenant for backward compability.")
 	}
-	if result != metav1.TenantDefault {
-		t.Fatalf("Expected: %s, Actual: %s", metav1.TenantDefault, result)
+	if result != metav1.TenantSystem {
+		t.Fatalf("Expected: %s, Actual: %s", metav1.TenantSystem, result)
 	}
 }
 

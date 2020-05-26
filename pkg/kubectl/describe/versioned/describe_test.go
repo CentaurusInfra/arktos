@@ -60,7 +60,7 @@ func TestDescribePod(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:                       "bar",
 			Namespace:                  "foo",
-			Tenant:                     metav1.TenantDefault,
+			Tenant:                     metav1.TenantSystem,
 			DeletionTimestamp:          &deletionTimestamp,
 			DeletionGracePeriodSeconds: &gracePeriod,
 		},
@@ -85,7 +85,7 @@ func TestDescribePod(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestDescribePodNode(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: corev1.PodSpec{
 			NodeName: "all-in-one",
@@ -114,7 +114,7 @@ func TestDescribePodNode(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestDescribePodTolerations(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: corev1.PodSpec{
 			Tolerations: []corev1.Toleration{
@@ -145,7 +145,7 @@ func TestDescribePodTolerations(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestDescribeSecret(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Data: map[string][]byte{
 			"username": []byte("YWRtaW4="),
@@ -173,7 +173,7 @@ func TestDescribeSecret(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := SecretDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -189,12 +189,12 @@ func TestDescribeNamespace(t *testing.T) {
 	fake := fake.NewSimpleClientset(&corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "myns",
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 	})
 	c := &describeClient{T: t, Namespace: "", Interface: fake}
 	d := NamespaceDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "", "myns", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "", "myns", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestDescribePodPriority(t *testing.T) {
 	fake := fake.NewSimpleClientset(&corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "bar",
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: corev1.PodSpec{
 			PriorityClassName: "high-priority",
@@ -217,7 +217,7 @@ func TestDescribePodPriority(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestDescribeConfigMap(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycm",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Data: map[string]string{
 			"key1": "value1",
@@ -240,7 +240,7 @@ func TestDescribeConfigMap(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := ConfigMapDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "mycm", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "mycm", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestDescribeLimitRange(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mylr",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: corev1.LimitRangeSpec{
 			Limits: []corev1.LimitRangeItem{
@@ -282,7 +282,7 @@ func TestDescribeLimitRange(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := LimitRangeDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "mylr", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "mylr", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -326,7 +326,7 @@ func TestDescribeService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
@@ -365,7 +365,7 @@ func TestDescribeService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
@@ -404,7 +404,7 @@ func TestDescribeService(t *testing.T) {
 			fake := fake.NewSimpleClientset(testCase.service)
 			c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 			d := ServiceDescriber{c}
-			out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -451,13 +451,13 @@ func TestPodDescribeResultsSorted(t *testing.T) {
 				},
 			},
 		},
-		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"}},
 	)
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
 
 	// Act
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 
 	// Assert
 	if err != nil {
@@ -960,7 +960,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test0",
 			plugin: "hostpath",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{Type: new(corev1.HostPathType)},
@@ -973,7 +973,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test1",
 			plugin: "gce",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						GCEPersistentDisk: &corev1.GCEPersistentDiskVolumeSource{},
@@ -987,7 +987,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test2",
 			plugin: "ebs",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{},
@@ -1000,7 +1000,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test3",
 			plugin: "nfs",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						NFS: &corev1.NFSVolumeSource{},
@@ -1013,7 +1013,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test4",
 			plugin: "iscsi",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						ISCSI: &corev1.ISCSIPersistentVolumeSource{},
@@ -1027,7 +1027,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test5",
 			plugin: "gluster",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Glusterfs: &corev1.GlusterfsPersistentVolumeSource{},
@@ -1040,7 +1040,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test6",
 			plugin: "rbd",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						RBD: &corev1.RBDPersistentVolumeSource{},
@@ -1053,7 +1053,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test7",
 			plugin: "quobyte",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Quobyte: &corev1.QuobyteVolumeSource{},
@@ -1066,7 +1066,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test8",
 			plugin: "cinder",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Cinder: &corev1.CinderPersistentVolumeSource{},
@@ -1079,7 +1079,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test9",
 			plugin: "fc",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						FC: &corev1.FCVolumeSource{},
@@ -1093,7 +1093,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test10",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1107,7 +1107,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test11",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1122,7 +1122,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test12",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1139,7 +1139,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test13",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1164,7 +1164,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			name:   "test14",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1200,7 +1200,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "bar",
-					Tenant:            metav1.TenantDefault,
+					Tenant:            metav1.TenantSystem,
 					DeletionTimestamp: &deletionTimestamp,
 				},
 				Spec: corev1.PersistentVolumeSpec{
@@ -1217,7 +1217,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       "bar",
-					Tenant:                     metav1.TenantDefault,
+					Tenant:                     metav1.TenantSystem,
 					GenerateName:               "test-GenerateName",
 					UID:                        "test-UID",
 					CreationTimestamp:          metav1.Time{Time: time.Now()},
@@ -1261,7 +1261,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       "bar",
-					Tenant:                     metav1.TenantDefault,
+					Tenant:                     metav1.TenantSystem,
 					GenerateName:               "test-GenerateName",
 					UID:                        "test-UID",
 					CreationTimestamp:          metav1.Time{Time: time.Now()},
@@ -1293,7 +1293,7 @@ func TestPersistentVolumeDescriber(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := fake.NewSimpleClientset(test.pv)
 			c := PersistentVolumeDescriber{fake}
-			str, err := c.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := c.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.plugin, err)
 			}
@@ -1329,7 +1329,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "default",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume1",
 					StorageClassName: &goldClassName,
@@ -1343,7 +1343,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "filesystem",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume2",
 					StorageClassName: &goldClassName,
@@ -1358,7 +1358,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "block",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume3",
 					StorageClassName: &goldClassName,
@@ -1374,7 +1374,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-type",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume4",
 					StorageClassName: &goldClassName,
@@ -1390,7 +1390,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-status",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume5",
 					StorageClassName: &goldClassName,
@@ -1406,7 +1406,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-last-probe-time",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume6",
 					StorageClassName: &goldClassName,
@@ -1422,7 +1422,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-last-transition-time",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume7",
 					StorageClassName: &goldClassName,
@@ -1438,7 +1438,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-reason",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume8",
 					StorageClassName: &goldClassName,
@@ -1454,7 +1454,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		{
 			name: "condition-message",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume9",
 					StorageClassName: &goldClassName,
@@ -1471,7 +1471,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 			name: "deletion-timestamp",
 			pvc: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:            metav1.TenantDefault,
+					Tenant:            metav1.TenantSystem,
 					Namespace:         "foo",
 					Name:              "bar",
 					DeletionTimestamp: &deletionTimestamp,
@@ -1490,7 +1490,7 @@ func TestPersistentVolumeClaimDescriber(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := fake.NewSimpleClientset(test.pvc)
 			c := PersistentVolumeClaimDescriber{fake}
-			str, err := c.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := c.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.name, err)
 			}
@@ -1516,7 +1516,7 @@ func TestDescribeDeployment(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: utilpointer.Int32Ptr(1),
@@ -1531,7 +1531,7 @@ func TestDescribeDeployment(t *testing.T) {
 		},
 	})
 	d := DeploymentDescriber{fakeClient}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -1586,7 +1586,7 @@ func TestDescribeStorageClass(t *testing.T) {
 		},
 	})
 	s := StorageClassDescriber{f}
-	out, err := s.Describe(metav1.TenantDefault, "", "foo", describe.DescriberSettings{ShowEvents: true})
+	out, err := s.Describe(metav1.TenantSystem, "", "foo", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -1612,7 +1612,7 @@ func TestDescribePodDisruptionBudget(t *testing.T) {
 	minAvailable := intstr.FromInt(22)
 	f := fake.NewSimpleClientset(&policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:            metav1.TenantDefault,
+			Tenant:            metav1.TenantSystem,
 			Namespace:         "ns1",
 			Name:              "pdb1",
 			CreationTimestamp: metav1.Time{Time: time.Now().Add(1.9e9)},
@@ -1625,7 +1625,7 @@ func TestDescribePodDisruptionBudget(t *testing.T) {
 		},
 	})
 	s := PodDisruptionBudgetDescriber{f}
-	out, err := s.Describe(metav1.TenantDefault, "ns1", "pdb1", describe.DescriberSettings{ShowEvents: true})
+	out, err := s.Describe(metav1.TenantSystem, "ns1", "pdb1", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -2292,11 +2292,11 @@ func TestDescribeHorizontalPodAutoscaler(t *testing.T) {
 			test.hpa.ObjectMeta = metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			}
 			fake := fake.NewSimpleClientset(&test.hpa)
 			desc := HorizontalPodAutoscalerDescriber{fake}
-			str, err := desc.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := desc.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.name, err)
 			}
@@ -2388,11 +2388,11 @@ func TestDescribeHorizontalPodAutoscaler(t *testing.T) {
 			test.hpa.ObjectMeta = metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			}
 			fake := fake.NewSimpleClientset(&test.hpa)
 			desc := HorizontalPodAutoscalerDescriber{fake}
-			str, err := desc.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := desc.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.name, err)
 			}
@@ -2411,7 +2411,7 @@ func TestDescribeEvents(t *testing.T) {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				Source:         corev1.EventSource{Component: "kubelet"},
 				Message:        "Item 1",
@@ -2429,7 +2429,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			}, events),
 		},
@@ -2438,7 +2438,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2451,7 +2451,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			}, events),
 		},
@@ -2470,7 +2470,7 @@ func TestDescribeEvents(t *testing.T) {
 			fake.NewSimpleClientset(&corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:     "bar",
-					Tenant:   metav1.TenantDefault,
+					Tenant:   metav1.TenantSystem,
 					SelfLink: "url/url/url/url",
 				},
 			}, events),
@@ -2480,7 +2480,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 					SelfLink:  "url/url/url/url",
 				},
 			}, events),
@@ -2490,7 +2490,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				Spec: appsv1.ReplicaSetSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2502,7 +2502,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 				Spec: corev1.ReplicationControllerSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2514,7 +2514,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			}, events),
 		},
@@ -2530,7 +2530,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			}, events),
 		},
@@ -2539,7 +2539,7 @@ func TestDescribeEvents(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    metav1.TenantDefault,
+					Tenant:    metav1.TenantSystem,
 				},
 			}, events),
 		},
@@ -2547,7 +2547,7 @@ func TestDescribeEvents(t *testing.T) {
 
 	for name, d := range m {
 		t.Run(name, func(t *testing.T) {
-			out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("unexpected error for %q: %v", name, err)
 			}
@@ -2558,7 +2558,7 @@ func TestDescribeEvents(t *testing.T) {
 				t.Errorf("events not found for %q when ShowEvents=true: %s", name, out)
 			}
 
-			out, err = d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: false})
+			out, err = d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: false})
 			if err != nil {
 				t.Errorf("unexpected error for %q: %s", name, err)
 			}
@@ -2737,7 +2737,7 @@ func TestDescribePodSecurityPolicy(t *testing.T) {
 	fake := fake.NewSimpleClientset(&policyv1beta1.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "mypsp",
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: policyv1beta1.PodSecurityPolicySpec{
 			AllowedUnsafeSysctls: []string{"kernel.*", "net.ipv4.ip_local_port_range"},
@@ -2759,7 +2759,7 @@ func TestDescribePodSecurityPolicy(t *testing.T) {
 
 	c := &describeClient{T: t, Namespace: "", Interface: fake}
 	d := PodSecurityPolicyDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "", "mypsp", describe.DescriberSettings{})
+	out, err := d.Describe(metav1.TenantSystem, "", "mypsp", describe.DescriberSettings{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2776,7 +2776,7 @@ func TestDescribeResourceQuota(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
@@ -2799,7 +2799,7 @@ func TestDescribeResourceQuota(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := ResourceQuotaDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -2818,7 +2818,7 @@ func TestDescribeNetworkPolicies(t *testing.T) {
 	}
 	expectedOut := `Name:         network-policy-1
 Namespace:    default
-Tenant:       default
+Tenant:       system
 Created on:   2017-06-04 21:45:56 -0700 PDT
 Labels:       <none>
 Annotations:  <none>
@@ -2873,7 +2873,7 @@ Spec:
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "network-policy-1",
 			Namespace:         "default",
-			Tenant:            metav1.TenantDefault,
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.NewTime(expectedTime),
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -3007,7 +3007,7 @@ Spec:
 		},
 	})
 	d := NetworkPolicyDescriber{versionedFake}
-	out, err := d.Describe(metav1.TenantDefault, "", "network-policy-1", describe.DescriberSettings{})
+	out, err := d.Describe(metav1.TenantSystem, "", "network-policy-1", describe.DescriberSettings{})
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -3021,7 +3021,7 @@ func TestDescribeServiceAccount(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Secrets: []corev1.ObjectReference{
 			{
@@ -3036,13 +3036,13 @@ func TestDescribeServiceAccount(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := ServiceAccountDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	expectedOut := `Name:                bar
 Namespace:           foo
-Tenant:              default
+Tenant:              system
 Labels:              <none>
 Annotations:         <none>
 Image pull secrets:  test-local-ref (not found)
@@ -3060,7 +3060,7 @@ func TestDescribeNode(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: corev1.NodeSpec{
 			Unschedulable: true,
@@ -3068,7 +3068,7 @@ func TestDescribeNode(t *testing.T) {
 	})
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := NodeDescriber{c}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -3089,7 +3089,7 @@ func TestDescribeStatefulSet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
@@ -3110,7 +3110,7 @@ func TestDescribeStatefulSet(t *testing.T) {
 		},
 	})
 	d := StatefulSetDescriber{fake}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -3132,7 +3132,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 				UID:       "123456",
 			},
 			TypeMeta: metav1.TypeMeta{
@@ -3154,7 +3154,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "barpod",
 				Namespace:       "foo",
-				Tenant:          metav1.TenantDefault,
+				Tenant:          metav1.TenantSystem,
 				Labels:          map[string]string{"abc": "xyz"},
 				OwnerReferences: []metav1.OwnerReference{{Name: "bar", UID: "123456", Controller: utilpointer.BoolPtr(true)}},
 			},
@@ -3174,7 +3174,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "orphan",
 				Namespace: "foo",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 				Labels:    map[string]string{"abc": "xyz"},
 			},
 			TypeMeta: metav1.TypeMeta{
@@ -3193,7 +3193,7 @@ func TestControllerRef(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "buzpod",
 				Namespace:       "foo",
-				Tenant:          metav1.TenantDefault,
+				Tenant:          metav1.TenantSystem,
 				Labels:          map[string]string{"abc": "xyz"},
 				OwnerReferences: []metav1.OwnerReference{{Name: "buz", UID: "654321", Controller: utilpointer.BoolPtr(true)}},
 			},
@@ -3210,7 +3210,7 @@ func TestControllerRef(t *testing.T) {
 			},
 		})
 	d := ReplicationControllerDescriber{f}
-	out, err := d.Describe(metav1.TenantDefault, "foo", "bar", describe.DescriberSettings{ShowEvents: false})
+	out, err := d.Describe(metav1.TenantSystem, "foo", "bar", describe.DescriberSettings{ShowEvents: false})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

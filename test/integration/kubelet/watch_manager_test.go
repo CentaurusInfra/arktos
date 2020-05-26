@@ -36,7 +36,7 @@ import (
 )
 
 func TestWatchBasedManager(t *testing.T) {
-	testWatchBasedManager(t, metav1.TenantDefault)
+	testWatchBasedManager(t, metav1.TenantSystem)
 }
 
 func TestWatchBasedManagerWithMultiTenancy(t *testing.T) {
@@ -55,7 +55,7 @@ func testWatchBasedManager(t *testing.T, tenant string) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if tenant != metav1.TenantDefault {
+	if tenant != metav1.TenantSystem {
 		if _, err := client.CoreV1().Tenants().Create((&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: tenant}})); err != nil {
 			t.Fatal(err)
 		}

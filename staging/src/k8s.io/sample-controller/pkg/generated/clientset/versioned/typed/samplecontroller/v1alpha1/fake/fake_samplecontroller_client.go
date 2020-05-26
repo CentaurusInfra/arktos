@@ -30,7 +30,7 @@ type FakeSamplecontrollerV1alpha1 struct {
 }
 
 func (c *FakeSamplecontrollerV1alpha1) Foos(namespace string) v1alpha1.FooInterface {
-	return &FakeFoos{c, namespace, "default"}
+	return &FakeFoos{c, namespace, "system"}
 }
 
 func (c *FakeSamplecontrollerV1alpha1) FoosWithMultiTenancy(namespace string, tenant string) v1alpha1.FooInterface {

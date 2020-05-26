@@ -44,7 +44,7 @@ type selfSubjectRulesReviews struct {
 
 // newSelfSubjectRulesReviews returns a SelfSubjectRulesReviews
 func newSelfSubjectRulesReviews(c *AuthorizationV1beta1Client) *selfSubjectRulesReviews {
-	return newSelfSubjectRulesReviewsWithMultiTenancy(c, "default")
+	return newSelfSubjectRulesReviewsWithMultiTenancy(c, "system")
 }
 
 func newSelfSubjectRulesReviewsWithMultiTenancy(c *AuthorizationV1beta1Client, tenant string) *selfSubjectRulesReviews {

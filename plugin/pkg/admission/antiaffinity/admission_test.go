@@ -231,7 +231,7 @@ func TestHandles(t *testing.T) {
 // TestOtherResources ensures that this admission controller is a no-op for other resources,
 // subresources, and non-pods.
 func TestOtherResources(t *testing.T) {
-	testOtherResources(t, metav1.TenantDefault)
+	testOtherResources(t, metav1.TenantSystem)
 }
 
 func TestOtherResourcesWithMultiTenancy(t *testing.T) {

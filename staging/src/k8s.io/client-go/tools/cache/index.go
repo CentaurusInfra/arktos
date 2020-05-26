@@ -78,7 +78,7 @@ func MetaNamespaceIndexFunc(obj interface{}) ([]string, error) {
 		return []string{""}, fmt.Errorf("object has no meta: %v", err)
 	}
 	indexKey := meta.GetTenant() + "/" + meta.GetNamespace()
-	if meta.GetTenant() == v1.TenantDefault {
+	if meta.GetTenant() == v1.TenantSystem {
 		indexKey = meta.GetNamespace()
 	}
 	return []string{indexKey}, nil

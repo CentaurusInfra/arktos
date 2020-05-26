@@ -63,7 +63,7 @@ type customResourceDefinitions struct {
 
 // newCustomResourceDefinitions returns a CustomResourceDefinitions
 func newCustomResourceDefinitions(c *ApiextensionsV1beta1Client) *customResourceDefinitions {
-	return newCustomResourceDefinitionsWithMultiTenancy(c, "default")
+	return newCustomResourceDefinitionsWithMultiTenancy(c, "system")
 }
 
 func newCustomResourceDefinitionsWithMultiTenancy(c *ApiextensionsV1beta1Client, tenant string) *customResourceDefinitions {

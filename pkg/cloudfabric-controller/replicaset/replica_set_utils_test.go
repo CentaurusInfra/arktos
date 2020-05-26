@@ -29,7 +29,7 @@ import (
 )
 
 func TestCalculateStatus(t *testing.T) {
-	testCalculateStatus(t, metav1.TenantDefault)
+	testCalculateStatus(t, metav1.TenantSystem)
 }
 
 func TestCalculateStatusWithMultiTenancy(t *testing.T) {
@@ -156,7 +156,7 @@ func testCalculateStatus(t *testing.T, tenant string) {
 }
 
 func TestCalculateStatusConditions(t *testing.T) {
-	testCalculateStatusConditions(t, metav1.TenantDefault)
+	testCalculateStatusConditions(t, metav1.TenantSystem)
 }
 
 func TestCalculateStatusConditionsWithMultiTenancy(t *testing.T) {

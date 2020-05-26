@@ -43,7 +43,7 @@ type AutoscalingV1Client struct {
 }
 
 func (c *AutoscalingV1Client) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerInterface {
-	return newHorizontalPodAutoscalersWithMultiTenancy(c, namespace, "default")
+	return newHorizontalPodAutoscalersWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AutoscalingV1Client) HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) HorizontalPodAutoscalerInterface {

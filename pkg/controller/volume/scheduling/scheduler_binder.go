@@ -361,7 +361,7 @@ func getPodName(pod *v1.Pod) string {
 
 func getPVNameFromPVC(pvc *v1.PersistentVolumeClaim) string {
 	var key string
-	if pvc.Tenant == v1.TenantDefault {
+	if pvc.Tenant == v1.TenantSystem {
 		key = pvc.Spec.VolumeName
 	} else {
 		key = fmt.Sprintf("%s/%s", pvc.Tenant, pvc.Spec.VolumeName)

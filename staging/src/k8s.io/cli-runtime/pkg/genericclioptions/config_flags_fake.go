@@ -78,7 +78,7 @@ func (f *TestConfigFlags) WithDiscoveryClient(c discovery.CachedDiscoveryInterfa
 }
 
 func (f *TestConfigFlags) WithNamespace(ns string) *TestConfigFlags {
-	return f.WithNamespaceWithMultiTenancy(ns, metav1.TenantDefault)
+	return f.WithNamespaceWithMultiTenancy(ns, metav1.TenantSystem)
 }
 
 func (f *TestConfigFlags) WithNamespaceWithMultiTenancy(ns, te string) *TestConfigFlags {

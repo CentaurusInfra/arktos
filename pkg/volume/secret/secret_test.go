@@ -41,7 +41,7 @@ import (
 )
 
 func TestMakePayload(t *testing.T) {
-	testMakePayload(t, metav1.TenantDefault)
+	testMakePayload(t, metav1.TenantSystem)
 }
 
 func TestMakePayloadWithMultiTenancy(t *testing.T) {
@@ -302,7 +302,7 @@ func TestCanSupport(t *testing.T) {
 }
 
 func TestPlugin(t *testing.T) {
-	testPlugin(t, metav1.TenantDefault)
+	testPlugin(t, metav1.TenantSystem)
 }
 
 func TestPluginWithMultiTenancy(t *testing.T) {
@@ -380,7 +380,7 @@ func testPlugin(t *testing.T, tenant string) {
 }
 
 func TestInvalidPathsecret(t *testing.T) {
-	testInvalidPathsecret(t, metav1.TenantDefault)
+	testInvalidPathsecret(t, metav1.TenantSystem)
 }
 
 func TestInvalidPathSecretWithMultiTenancy(t *testing.T) {
@@ -442,7 +442,7 @@ func testInvalidPathsecret(t *testing.T, tenant string) {
 // mountpoint, which is the state the system will be in after reboot.  The dir
 // should be mounter and the secret data written to it.
 func TestPluginReboot(t *testing.T) {
-	testPluginReboot(t, metav1.TenantDefault)
+	testPluginReboot(t, metav1.TenantSystem)
 }
 
 func TestPluginRebootWithMultiTenancy(t *testing.T) {
@@ -503,7 +503,7 @@ func testPluginReboot(t *testing.T, tenant string) {
 }
 
 func TestPluginOptional(t *testing.T) {
-	testPluginOptional(t, metav1.TenantDefault)
+	testPluginOptional(t, metav1.TenantSystem)
 }
 
 func TestPluginOptionalWithMultiTenancy(t *testing.T) {
@@ -602,7 +602,7 @@ func testPluginOptional(t *testing.T, tenant string) {
 }
 
 func TestPluginOptionalKeys(t *testing.T) {
-	testPluginOptionalKeys(t, metav1.TenantDefault)
+	testPluginOptionalKeys(t, metav1.TenantSystem)
 }
 
 func TestPluginOptionalKeysWithMultiTenancy(t *testing.T) {

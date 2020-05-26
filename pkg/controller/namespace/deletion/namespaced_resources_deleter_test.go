@@ -56,11 +56,11 @@ func TestFinalized(t *testing.T) {
 }
 
 func TestFinalizeNamespaceFunc(t *testing.T) {
-	testFinalizeNamespaceFunc(t, metav1.TenantDefault)
+	testFinalizeNamespaceFunc(t, metav1.TenantSystem)
 }
 
 func TestFinalizeNamespaceFuncWithMultiTenancy(t *testing.T) {
-	testFinalizeNamespaceFunc(t, metav1.TenantDefault)
+	testFinalizeNamespaceFunc(t, metav1.TenantSystem)
 }
 
 func testFinalizeNamespaceFunc(t *testing.T, tenant string) {
@@ -132,7 +132,7 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 	groupVersionResources, _ := discovery.GroupVersionResources(resources)
 	for groupVersionResource := range groupVersionResources {
 		var urlPath string
-		if tenant == metav1.TenantDefault {
+		if tenant == metav1.TenantSystem {
 			urlPath = path.Join([]string{
 				dynamic.LegacyAPIPathResolverFunc(schema.GroupVersionKind{Group: groupVersionResource.Group, Version: groupVersionResource.Version}),
 				groupVersionResource.Group,
@@ -258,7 +258,7 @@ func TestRetryOnConflictError(t *testing.T) {
 }
 
 func TestSyncNamespaceThatIsTerminatingNonExperimental(t *testing.T) {
-	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{}, metav1.TenantDefault)
+	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{}, metav1.TenantSystem)
 }
 
 func TestSyncNamespaceThatIsTerminatingNonExperimentalWithMultiTenancy(t *testing.T) {
@@ -266,14 +266,14 @@ func TestSyncNamespaceThatIsTerminatingNonExperimentalWithMultiTenancy(t *testin
 }
 
 func TestSyncNamespaceThatIsTerminatingV1(t *testing.T) {
-	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{Versions: []string{"apps/v1"}}, metav1.TenantDefault)
+	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{Versions: []string{"apps/v1"}}, metav1.TenantSystem)
 }
 
 func TestSyncNamespaceThatIsTerminatingV1WithMultiTenancy(t *testing.T) {
 	testSyncNamespaceThatIsTerminating(t, &metav1.APIVersions{Versions: []string{"apps/v1"}}, "test-te")
 }
 func TestSyncNamespaceThatIsActive(t *testing.T) {
-	testSyncNamespaceThatIsActive(t, metav1.TenantDefault)
+	testSyncNamespaceThatIsActive(t, metav1.TenantSystem)
 }
 
 func TestSyncNamespaceThatIsActiveWithMultiTenancy(t *testing.T) {

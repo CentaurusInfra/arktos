@@ -58,7 +58,7 @@ func newPod(podName string, label map[string]string, owner metav1.Object, tenant
 }
 
 func TestClaimPods(t *testing.T) {
-	testClaimPods(t, metav1.TenantDefault)
+	testClaimPods(t, metav1.TenantSystem)
 }
 
 func TestClaimPodsWithMultiTenancy(t *testing.T) {

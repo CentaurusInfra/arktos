@@ -42,7 +42,7 @@ type SecondExampleClient struct {
 }
 
 func (c *SecondExampleClient) TestTypes(namespace string) TestTypeInterface {
-	return newTestTypesWithMultiTenancy(c, namespace, "default")
+	return newTestTypesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *SecondExampleClient) TestTypesWithMultiTenancy(namespace string, tenant string) TestTypeInterface {

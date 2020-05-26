@@ -19,11 +19,13 @@ package clientcmd
 
 import (
 	"io"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sync"
+
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"k8s.io/klog"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -190,7 +192,7 @@ func (config *DeferredLoadingClientConfig) Tenant() (string, bool, error) {
 
 	if len(te) > 0 {
 		// if we got a non-default tenant from the kubeconfig, use it
-		if te != "default" {
+		if te != metav1.TenantSystem {
 			return te, false, nil
 		}
 

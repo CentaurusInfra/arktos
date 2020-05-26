@@ -44,7 +44,7 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 			Name:      "metric-test-pod",
 			UID:       "metric-test-pod-uid",
 			Namespace: "metric-test",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			NodeName: "metric-test-host",
@@ -73,7 +73,7 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 			Name:      "metric-test-pvc",
 			Namespace: "metric-test",
 			UID:       "metric-test-pvc-1",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany, v1.ReadWriteOnce},
@@ -92,7 +92,7 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			UID:    "test-metric-pv-1",
 			Name:   "test-metric-pv-1",
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			Capacity: v1.ResourceList{
@@ -106,7 +106,7 @@ func TestVolumesInUseMetricCollection(t *testing.T) {
 			ClaimRef: &v1.ObjectReference{
 				UID:       "metric-test-pvc-1",
 				Namespace: "metric-test",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 			},
 		},
 	}

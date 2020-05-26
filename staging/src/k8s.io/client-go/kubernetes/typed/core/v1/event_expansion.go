@@ -139,7 +139,7 @@ func (e *events) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v1.Ev
 // Returns the appropriate field selector based on the API version being used to communicate with the server.
 // The returned field selector can be used with List and Watch to filter desired events.
 func (e *events) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector {
-	return e.GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID, v1.TenantDefault)
+	return e.GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID, v1.TenantSystem)
 }
 func (e *events) GetFieldSelectorWithMultiTenancy(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string, involvedObjectTenant string) fields.Selector {
 	apiVersion := e.client.APIVersion().String()

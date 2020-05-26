@@ -65,7 +65,7 @@ func getResourceRequirements(requests, limits api.ResourceList) api.ResourceRequ
 
 func validPod(name string, numContainers int, resources api.ResourceRequirements) *api.Pod {
 	pod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec:       api.PodSpec{},
 	}
 	pod.Spec.Containers = make([]api.Container, 0, numContainers)
@@ -88,7 +88,7 @@ func validPodWithPriority(name string, numContainers int, resources api.Resource
 
 func validPersistentVolumeClaim(name string, resources api.ResourceRequirements) *api.PersistentVolumeClaim {
 	return &api.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec: api.PersistentVolumeClaimSpec{
 			Resources: resources,
 		},
@@ -154,7 +154,7 @@ func TestAdmissionIgnoresDelete(t *testing.T) {
 		evaluator: evaluator,
 	}
 	namespace := "default"
-	tenant := "default"
+	tenant := metav1.TenantSystem
 	err := handler.Validate(admission.NewAttributesRecord(nil, nil, api.Kind("Pod").WithVersion("version"), tenant, namespace, "name", corev1.Resource("pods").WithVersion("version"), "", admission.Delete, &metav1.DeleteOptions{}, false, nil), nil)
 	if err != nil {
 		t.Errorf("ResourceQuota should admit all deletes: %v", err)
@@ -168,7 +168,7 @@ func TestAdmissionIgnoresSubresources(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{}
 	resourceQuota.Name = "quota"
 	resourceQuota.Namespace = "test"
-	resourceQuota.Tenant = "default"
+	resourceQuota.Tenant = metav1.TenantSystem
 	resourceQuota.Status = corev1.ResourceQuotaStatus{
 		Hard: corev1.ResourceList{},
 		Used: corev1.ResourceList{},
@@ -206,7 +206,7 @@ func TestAdmissionIgnoresSubresources(t *testing.T) {
 // TestAdmitBelowQuotaLimit verifies that a pod when created has its usage reflected on the quota
 func TestAdmitBelowQuotaLimit(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("3"),
@@ -288,7 +288,7 @@ func TestAdmitBelowQuotaLimit(t *testing.T) {
 // and that dry-run requests can still be rejected if they would exceed the quota
 func TestAdmitDryRun(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("3"),
@@ -341,7 +341,7 @@ func TestAdmitDryRun(t *testing.T) {
 func TestAdmitHandlesOldObjects(t *testing.T) {
 	// in this scenario, the old quota was based on a service type=loadbalancer
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceServices:              resource.MustParse("10"),
@@ -377,11 +377,11 @@ func TestAdmitHandlesOldObjects(t *testing.T) {
 
 	// old service was a load balancer, but updated version is a node port.
 	existingService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "1"},
 		Spec:       api.ServiceSpec{Type: api.ServiceTypeLoadBalancer},
 	}
 	newService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec: api.ServiceSpec{
 			Type:  api.ServiceTypeNodePort,
 			Ports: []api.ServicePort{{Port: 1234}},
@@ -440,7 +440,7 @@ func TestAdmitHandlesOldObjects(t *testing.T) {
 
 func TestAdmitHandlesNegativePVCUpdates(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourcePersistentVolumeClaims: resource.MustParse("3"),
@@ -475,14 +475,14 @@ func TestAdmitHandlesNegativePVCUpdates(t *testing.T) {
 	informerFactory.Core().V1().ResourceQuotas().Informer().GetIndexer().Add(resourceQuota)
 
 	oldPVC := &api.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "1"},
 		Spec: api.PersistentVolumeClaimSpec{
 			Resources: getResourceRequirements(api.ResourceList{api.ResourceStorage: resource.MustParse("10Gi")}, api.ResourceList{}),
 		},
 	}
 
 	newPVC := &api.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec: api.PersistentVolumeClaimSpec{
 			Resources: getResourceRequirements(api.ResourceList{api.ResourceStorage: resource.MustParse("5Gi")}, api.ResourceList{}),
 		},
@@ -499,7 +499,7 @@ func TestAdmitHandlesNegativePVCUpdates(t *testing.T) {
 
 func TestAdmitHandlesPVCUpdates(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourcePersistentVolumeClaims: resource.MustParse("3"),
@@ -534,14 +534,14 @@ func TestAdmitHandlesPVCUpdates(t *testing.T) {
 	informerFactory.Core().V1().ResourceQuotas().Informer().GetIndexer().Add(resourceQuota)
 
 	oldPVC := &api.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "1"},
 		Spec: api.PersistentVolumeClaimSpec{
 			Resources: getResourceRequirements(api.ResourceList{api.ResourceStorage: resource.MustParse("10Gi")}, api.ResourceList{}),
 		},
 	}
 
 	newPVC := &api.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "pvc-to-update", Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec: api.PersistentVolumeClaimSpec{
 			Resources: getResourceRequirements(api.ResourceList{api.ResourceStorage: resource.MustParse("15Gi")}, api.ResourceList{}),
 		},
@@ -598,7 +598,7 @@ func TestAdmitHandlesPVCUpdates(t *testing.T) {
 func TestAdmitHandlesCreatingUpdates(t *testing.T) {
 	// in this scenario, there is an existing service
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceServices:              resource.MustParse("10"),
@@ -634,11 +634,11 @@ func TestAdmitHandlesCreatingUpdates(t *testing.T) {
 
 	// old service didn't exist, so this update is actually a create
 	oldService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: ""},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: ""},
 		Spec:       api.ServiceSpec{Type: api.ServiceTypeLoadBalancer},
 	}
 	newService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec: api.ServiceSpec{
 			Type:  api.ServiceTypeNodePort,
 			Ports: []api.ServicePort{{Port: 1234}},
@@ -695,7 +695,7 @@ func TestAdmitHandlesCreatingUpdates(t *testing.T) {
 // TestAdmitExceedQuotaLimit verifies that if a pod exceeded allowed usage that its rejected during admission.
 func TestAdmitExceedQuotaLimit(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("3"),
@@ -738,7 +738,7 @@ func TestAdmitExceedQuotaLimit(t *testing.T) {
 // We ensure that a pod that does not specify a memory limit that it fails in admission.
 func TestAdmitEnforceQuotaConstraints(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceCPU:          resource.MustParse("3"),
@@ -835,7 +835,7 @@ func TestAdmitPodInNamespaceWithoutQuota(t *testing.T) {
 // It ensures that the terminating quota is incremented, and the non-terminating quota is not.
 func TestAdmitBelowTerminatingQuotaLimit(t *testing.T) {
 	resourceQuotaNonTerminating := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota-non-terminating", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota-non-terminating", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Spec: corev1.ResourceQuotaSpec{
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
 		},
@@ -853,7 +853,7 @@ func TestAdmitBelowTerminatingQuotaLimit(t *testing.T) {
 		},
 	}
 	resourceQuotaTerminating := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota-terminating", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota-terminating", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Spec: corev1.ResourceQuotaSpec{
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
 		},
@@ -949,7 +949,7 @@ func TestAdmitBelowTerminatingQuotaLimit(t *testing.T) {
 // It verifies that best effort pods are properly scoped to the best effort quota document.
 func TestAdmitBelowBestEffortQuotaLimit(t *testing.T) {
 	resourceQuotaBestEffort := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Spec: corev1.ResourceQuotaSpec{
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeBestEffort},
 		},
@@ -963,7 +963,7 @@ func TestAdmitBelowBestEffortQuotaLimit(t *testing.T) {
 		},
 	}
 	resourceQuotaNotBestEffort := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota-not-besteffort", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota-not-besteffort", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Spec: corev1.ResourceQuotaSpec{
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotBestEffort},
 		},
@@ -1056,7 +1056,7 @@ func removeListWatch(in []testcore.Action) []testcore.Action {
 // guaranteed pod.
 func TestAdmitBestEffortQuotaLimitIgnoresBurstable(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Spec: corev1.ResourceQuotaSpec{
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeBestEffort},
 		},
@@ -1162,7 +1162,7 @@ func TestHasUsageStats(t *testing.T) {
 // namespace, it will be set.
 func TestAdmissionSetsMissingNamespace(t *testing.T) {
 	namespace := "test"
-	tenant := metav1.TenantDefault
+	tenant := metav1.TenantSystem
 	resourceQuota := &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: namespace, Tenant: tenant, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
@@ -1209,7 +1209,7 @@ func TestAdmissionSetsMissingNamespace(t *testing.T) {
 // TestAdmitRejectsNegativeUsage verifies that usage for any measured resource cannot be negative.
 func TestAdmitRejectsNegativeUsage(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourcePersistentVolumeClaims: resource.MustParse("3"),
@@ -1256,7 +1256,7 @@ func TestAdmitRejectsNegativeUsage(t *testing.T) {
 // TestAdmitWhenUnrelatedResourceExceedsQuota verifies that if resource X exceeds quota, it does not prohibit resource Y from admission.
 func TestAdmitWhenUnrelatedResourceExceedsQuota(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceServices: resource.MustParse("3"),
@@ -1365,7 +1365,7 @@ func TestAdmitLimitedResourceNoQuotaIgnoresNonMatchingResources(t *testing.T) {
 // TestAdmitLimitedResourceWithQuota verifies if a limited resource is configured with quota, it can be consumed.
 func TestAdmitLimitedResourceWithQuota(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceRequestsCPU: resource.MustParse("10"),
@@ -1413,7 +1413,7 @@ func TestAdmitLimitedResourceWithQuota(t *testing.T) {
 // TestAdmitLimitedResourceWithMultipleQuota verifies if a limited resource is configured with quota, it can be consumed if one matches.
 func TestAdmitLimitedResourceWithMultipleQuota(t *testing.T) {
 	resourceQuota1 := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota1", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota1", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceRequestsCPU: resource.MustParse("10"),
@@ -1424,7 +1424,7 @@ func TestAdmitLimitedResourceWithMultipleQuota(t *testing.T) {
 		},
 	}
 	resourceQuota2 := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota2", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota2", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceMemory: resource.MustParse("10Gi"),
@@ -1473,7 +1473,7 @@ func TestAdmitLimitedResourceWithMultipleQuota(t *testing.T) {
 // TestAdmitLimitedResourceWithQuotaThatDoesNotCover verifies if a limited resource is configured the quota must cover the resource.
 func TestAdmitLimitedResourceWithQuotaThatDoesNotCover(t *testing.T) {
 	resourceQuota := &corev1.ResourceQuota{
-		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+		ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
 				corev1.ResourceMemory: resource.MustParse("10Gi"),
@@ -1532,7 +1532,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Covering quota exists for configured limited scope PriorityClassNameExists.",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("3", "2Gi"), getResourceList("", "")), "fake-priority"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -1562,7 +1562,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "configured limited scope PriorityClassNameExists and limited cpu resource. No covering quota for cpu and pod admit fails.",
 			testPod:     validPodWithPriority("not-allowed-pod", 1, getResourceRequirements(getResourceList("3", "2Gi"), getResourceList("", "")), "fake-priority"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -1631,7 +1631,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Covering quota exist for configured limited scope resourceQuotaBestEffort",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("", ""), getResourceList("", "")), "fake-priority"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeBestEffort},
 				},
@@ -1779,7 +1779,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Two scopes,BestEffort and PriorityClassIN, in two LimitedResources. Both the scopes matches pod. Quota available only for BestEffort scope. Pod admit fails because covering quota is missing for PriorityClass scope",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("", ""), getResourceList("", "")), "cluster-services"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeBestEffort},
 				},
@@ -1821,7 +1821,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Two scopes,BestEffort and PriorityClassIN, in two LimitedResources. Both the scopes matches pod. Quota available only for PriorityClass scope. Pod admit fails because covering quota is missing for BestEffort scope",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("", ""), getResourceList("", "")), "cluster-services"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -1863,7 +1863,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Two scopes,BestEffort and PriorityClassIN, in two LimitedResources. Both the scopes matches pod. Quota available only for both the scopes. Pod admit success. No Error",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("", ""), getResourceList("", "")), "cluster-services"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota-besteffort", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeBestEffort},
 				},
@@ -1877,7 +1877,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 				},
 			},
 			anotherQuota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -1926,7 +1926,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "quota fails, though covering quota for configured limited scope PriorityClassNameExists exists.",
 			testPod:     validPodWithPriority("not-allowed-pod", 1, getResourceRequirements(getResourceList("3", "20Gi"), getResourceList("", "")), "fake-priority"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -1964,7 +1964,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Pod has different priorityclass than configured limited. Covering quota exists for configured limited scope PriorityClassIn.",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("3", "2Gi"), getResourceList("", "")), "fake-priority"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -1997,7 +1997,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Pod has limited priorityclass. Covering quota exists for configured limited scope PriorityClassIn.",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("3", "2Gi"), getResourceList("", "")), "cluster-services"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -2030,7 +2030,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Pod has limited priorityclass. Covering quota  does not exist for configured limited scope PriorityClassIn.",
 			testPod:     validPodWithPriority("not-allowed-pod", 1, getResourceRequirements(getResourceList("3", "2Gi"), getResourceList("", "")), "cluster-services"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -2063,7 +2063,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "From the above test case, just changing pod priority from cluster-services to another-priorityclass-name. expecting no error",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("3", "2Gi"), getResourceList("", "")), "another-priorityclass-name"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -2116,7 +2116,7 @@ func TestAdmitLimitedScopeWithCoverQuota(t *testing.T) {
 			description: "Pod has limited priorityclass. Covering quota exists for configured limited scope PriorityClassIn through PriorityClassNameExists",
 			testPod:     validPodWithPriority("allowed-pod", 1, getResourceRequirements(getResourceList("3", "2Gi"), getResourceList("", "")), "cluster-services"),
 			quota: &corev1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "124"},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "124"},
 				Spec: corev1.ResourceQuotaSpec{
 					ScopeSelector: &corev1.ScopeSelector{
 						MatchExpressions: []corev1.ScopedResourceSelectorRequirement{
@@ -2217,11 +2217,11 @@ func TestAdmitZeroDeltaUsageWithoutCoveringQuota(t *testing.T) {
 	}
 
 	existingService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "1"},
 		Spec:       api.ServiceSpec{Type: api.ServiceTypeLoadBalancer},
 	}
 	newService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec:       api.ServiceSpec{Type: api.ServiceTypeLoadBalancer},
 	}
 
@@ -2260,14 +2260,14 @@ func TestAdmitRejectIncreaseUsageWithoutCoveringQuota(t *testing.T) {
 	}
 
 	existingService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "1"},
 		Spec: api.ServiceSpec{
 			Type:  api.ServiceTypeNodePort,
 			Ports: []api.ServicePort{{Port: 1234}},
 		},
 	}
 	newService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec:       api.ServiceSpec{Type: api.ServiceTypeLoadBalancer},
 	}
 
@@ -2306,11 +2306,11 @@ func TestAdmitAllowDecreaseUsageWithoutCoveringQuota(t *testing.T) {
 	}
 
 	existingService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault, ResourceVersion: "1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem, ResourceVersion: "1"},
 		Spec:       api.ServiceSpec{Type: api.ServiceTypeLoadBalancer},
 	}
 	newService := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "service", Namespace: "test", Tenant: metav1.TenantSystem},
 		Spec: api.ServiceSpec{
 			Type:  api.ServiceTypeNodePort,
 			Ports: []api.ServicePort{{Port: 1234}},

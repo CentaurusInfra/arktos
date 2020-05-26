@@ -140,7 +140,7 @@ func (n ContextBasedNaming) GenerateLink(requestInfo *request.RequestInfo, obj r
 	builder.Grow(len(n.SelfLinkPathPrefix) + len(tenant) + len(namespace) + len(requestInfo.Resource) + len(name) + len(n.SelfLinkPathSuffix) + 42)
 	builder.WriteString(n.SelfLinkPathPrefix)
 	// for backward compatibility with code before multi-tenancy, the "tenants/{tenant}"" segment is skipped if tenant == "default"
-	if len(tenant) > 0 && tenant != metav1.TenantDefault {
+	if len(tenant) > 0 && tenant != metav1.TenantSystem {
 		builder.WriteString("tenants/")
 		builder.WriteString(tenant)
 		builder.WriteByte('/')

@@ -38,7 +38,7 @@ import (
 )
 
 func TestLog(t *testing.T) {
-	testLog(t, metav1.TenantDefault)
+	testLog(t, metav1.TenantSystem)
 }
 
 func TestLogWithMultiTenancy(t *testing.T) {

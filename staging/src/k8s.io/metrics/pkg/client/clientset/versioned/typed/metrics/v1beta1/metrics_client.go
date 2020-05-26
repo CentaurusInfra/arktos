@@ -48,7 +48,7 @@ func (c *MetricsV1beta1Client) NodeMetricses() NodeMetricsInterface {
 }
 
 func (c *MetricsV1beta1Client) PodMetricses(namespace string) PodMetricsInterface {
-	return newPodMetricsesWithMultiTenancy(c, namespace, "default")
+	return newPodMetricsesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *MetricsV1beta1Client) PodMetricsesWithMultiTenancy(namespace string, tenant string) PodMetricsInterface {

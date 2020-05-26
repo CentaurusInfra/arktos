@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/kubernetes/pkg/controller/testutil"
 
@@ -433,7 +433,7 @@ func TestUpdateNode(t *testing.T) {
 			pods: []v1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Tenant:    metav1.TenantDefault,
+						Tenant:    metav1.TenantSystem,
 						Namespace: "default",
 						Name:      "pod1",
 					},

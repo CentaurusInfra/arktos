@@ -35,7 +35,7 @@ func (c *FakeExampleV1) ClusterTestTypes() v1.ClusterTestTypeInterface {
 }
 
 func (c *FakeExampleV1) TestTypes(namespace string) v1.TestTypeInterface {
-	return &FakeTestTypes{c, namespace, "default"}
+	return &FakeTestTypes{c, namespace, "system"}
 }
 
 func (c *FakeExampleV1) TestTypesWithMultiTenancy(namespace string, tenant string) v1.TestTypeInterface {

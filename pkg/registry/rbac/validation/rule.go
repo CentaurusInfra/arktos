@@ -228,8 +228,8 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 	if len(namespace) > 0 {
 		// get role bindings from userTenat, system tenant and default tenant
 		var targetRoleBindings []*rbacv1.RoleBinding
-		targetTenants := []string{metav1.TenantDefault, metav1.TenantSystem}
-		if userTenant != metav1.TenantSystem && userTenant != metav1.TenantDefault {
+		targetTenants := []string{metav1.TenantSystem}
+		if userTenant != metav1.TenantSystem {
 			targetTenants = append(targetTenants, userTenant)
 		}
 		for _, tenant := range targetTenants {

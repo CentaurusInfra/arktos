@@ -64,7 +64,7 @@ type pods struct {
 
 // newPods returns a Pods
 func newPods(c *CoreV1Client, namespace string) *pods {
-	return newPodsWithMultiTenancy(c, namespace, "default")
+	return newPodsWithMultiTenancy(c, namespace, "system")
 }
 
 func newPodsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *pods {

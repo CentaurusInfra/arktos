@@ -72,7 +72,7 @@ func applyDefaults(pod *api.Pod, source string, isFile bool, nodeName types.Node
 	klog.V(5).Infof("Using namespace %q for pod %q from %s", pod.Namespace, pod.Name, source)
 
 	if pod.Tenant == "" {
-		pod.Tenant = metav1.TenantDefault
+		pod.Tenant = metav1.TenantSystem
 	}
 	klog.V(5).Infof("Using tenant %q for pod %q from %s", pod.Tenant, pod.Name, source)
 
@@ -104,7 +104,7 @@ func applyDefaults(pod *api.Pod, source string, isFile bool, nodeName types.Node
 func getSelfLink(name, namespace, tenant string) string {
 	var selfLink string
 	if len(tenant) == 0 {
-		tenant = metav1.TenantDefault
+		tenant = metav1.TenantSystem
 	}
 	if len(namespace) == 0 {
 		namespace = metav1.NamespaceDefault

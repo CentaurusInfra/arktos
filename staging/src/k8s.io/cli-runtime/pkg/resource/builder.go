@@ -992,8 +992,8 @@ func (b *Builder) checkResourceTenantNamespace(mappingScope meta.RESTScopeName) 
 	case meta.RESTScopeNameTenant:
 		selectorNamespace = ""
 		if len(b.tenant) == 0 {
-			b.tenant = metav1.TenantDefault
-			selectorTenant = metav1.TenantDefault
+			b.tenant = metav1.TenantSystem
+			selectorTenant = metav1.TenantSystem
 		}
 		if b.allTenant {
 			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")
@@ -1001,8 +1001,8 @@ func (b *Builder) checkResourceTenantNamespace(mappingScope meta.RESTScopeName) 
 
 	case meta.RESTScopeNameNamespace:
 		if len(b.tenant) == 0 {
-			b.tenant = metav1.TenantDefault
-			selectorTenant = metav1.TenantDefault
+			b.tenant = metav1.TenantSystem
+			selectorTenant = metav1.TenantSystem
 		}
 		if b.allTenant {
 			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")

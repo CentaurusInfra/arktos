@@ -45,7 +45,7 @@ type localSubjectAccessReviews struct {
 
 // newLocalSubjectAccessReviews returns a LocalSubjectAccessReviews
 func newLocalSubjectAccessReviews(c *AuthorizationV1beta1Client, namespace string) *localSubjectAccessReviews {
-	return newLocalSubjectAccessReviewsWithMultiTenancy(c, namespace, "default")
+	return newLocalSubjectAccessReviewsWithMultiTenancy(c, namespace, "system")
 }
 
 func newLocalSubjectAccessReviewsWithMultiTenancy(c *AuthorizationV1beta1Client, namespace string, tenant string) *localSubjectAccessReviews {

@@ -44,7 +44,7 @@ type tokenReviews struct {
 
 // newTokenReviews returns a TokenReviews
 func newTokenReviews(c *AuthenticationV1beta1Client) *tokenReviews {
-	return newTokenReviewsWithMultiTenancy(c, "default")
+	return newTokenReviewsWithMultiTenancy(c, "system")
 }
 
 func newTokenReviewsWithMultiTenancy(c *AuthenticationV1beta1Client, tenant string) *tokenReviews {

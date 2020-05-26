@@ -63,7 +63,7 @@ type examples struct {
 
 // newExamples returns a Examples
 func newExamples(c *CrV1Client, namespace string) *examples {
-	return newExamplesWithMultiTenancy(c, namespace, "default")
+	return newExamplesWithMultiTenancy(c, namespace, "system")
 }
 
 func newExamplesWithMultiTenancy(c *CrV1Client, namespace string, tenant string) *examples {

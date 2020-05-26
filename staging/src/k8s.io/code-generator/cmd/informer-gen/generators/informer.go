@@ -109,7 +109,7 @@ func (g *informerGenerator) GenerateType(c *generator.Context, t *types.Type, w 
 		"version":                         namer.IC(g.groupVersion.Version.String()),
 		"watchInterface":                  c.Universe.Type(watchInterface),
 		"aggregatedWatchInterface":        c.Universe.Type(aggregatedWatchInterface),
-		"DefaultTenant":                   metav1.TenantDefault,
+		"DefaultTenant":                   metav1.TenantSystem,
 	}
 
 	sw.Do(typeInformerInterface, m)

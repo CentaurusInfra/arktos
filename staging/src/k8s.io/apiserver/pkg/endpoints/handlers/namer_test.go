@@ -127,7 +127,7 @@ func TestGenerateLink(t *testing.T) {
 			requestInfo: &request.RequestInfo{
 				Name:      "name",
 				Namespace: "should-use",
-				Tenant:    metav1.TenantDefault,
+				Tenant:    metav1.TenantSystem,
 				Resource:  "pod",
 			},
 			obj:           &v1.Pod{ObjectMeta: metav1.ObjectMeta{}},

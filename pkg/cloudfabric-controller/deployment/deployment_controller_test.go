@@ -287,7 +287,7 @@ func filterInformerActions(actions []core.Action) []core.Action {
 }
 
 func TestSyncDeploymentCreatesReplicaSet(t *testing.T) {
-	testSyncDeploymentCreatesReplicaSet(t, metav1.TenantDefault)
+	testSyncDeploymentCreatesReplicaSet(t, metav1.TenantSystem)
 }
 
 func TestSyncDeploymentCreatesReplicaSetWithMultiTenancy(t *testing.T) {
@@ -314,7 +314,7 @@ func testSyncDeploymentCreatesReplicaSet(t *testing.T, tenant string) {
 }
 
 func TestSyncDeploymentDontDoAnythingDuringDeletion(t *testing.T) {
-	testSyncDeploymentDontDoAnythingDuringDeletion(t, metav1.TenantDefault)
+	testSyncDeploymentDontDoAnythingDuringDeletion(t, metav1.TenantSystem)
 }
 
 func TestSyncDeploymentDontDoAnythingDuringDeletionWithMultiTenancy(t *testing.T) {
@@ -338,7 +338,7 @@ func testSyncDeploymentDontDoAnythingDuringDeletion(t *testing.T, tenant string)
 }
 
 func TestSyncDeploymentDeletionRace(t *testing.T) {
-	testSyncDeploymentDeletionRace(t, metav1.TenantDefault)
+	testSyncDeploymentDeletionRace(t, metav1.TenantSystem)
 }
 
 func TestSyncDeploymentDeletionRaceWithMultiTenancy(t *testing.T) {
@@ -374,7 +374,7 @@ func testSyncDeploymentDeletionRace(t *testing.T, tenant string) {
 }
 
 func TestDontSyncDeploymentsWithEmptyPodSelector(t *testing.T) {
-	testDontSyncDeploymentsWithEmptyPodSelector(t, metav1.TenantDefault)
+	testDontSyncDeploymentsWithEmptyPodSelector(t, metav1.TenantSystem)
 }
 
 func TestDontSyncDeploymentsWithEmptyPodSelectorWithMultiTenancy(t *testing.T) {
@@ -399,7 +399,7 @@ func testDontSyncDeploymentsWithEmptyPodSelector(t *testing.T, tenant string) {
 }
 
 func TestReentrantRollback(t *testing.T) {
-	testReentrantRollback(t, metav1.TenantDefault)
+	testReentrantRollback(t, metav1.TenantSystem)
 }
 
 func TestReentrantRollbackWithMultiTenancy(t *testing.T) {
@@ -440,7 +440,7 @@ func testReentrantRollback(t *testing.T, tenant string) {
 // will requeue a Recreate deployment iff there is no other pod returned from the
 // client.
 func TestPodDeletionEnqueuesRecreateDeployment(t *testing.T) {
-	testPodDeletionEnqueuesRecreateDeployment(t, metav1.TenantDefault)
+	testPodDeletionEnqueuesRecreateDeployment(t, metav1.TenantSystem)
 }
 
 func TestPodDeletionEnqueuesRecreateDeploymentWithMultiTenancy(t *testing.T) {
@@ -481,7 +481,7 @@ func testPodDeletionEnqueuesRecreateDeployment(t *testing.T, tenant string) {
 // will not requeue a Recreate deployment iff there are other pods returned from the
 // client.
 func TestPodDeletionDoesntEnqueueRecreateDeployment(t *testing.T) {
-	testPodDeletionDoesntEnqueueRecreateDeployment(t, metav1.TenantDefault)
+	testPodDeletionDoesntEnqueueRecreateDeployment(t, metav1.TenantSystem)
 }
 
 func TestPodDeletionDoesntEnqueueRecreateDeploymentWithMultiTenancy(t *testing.T) {
@@ -526,7 +526,7 @@ func testPodDeletionDoesntEnqueueRecreateDeployment(t *testing.T, tenant string)
 // pod returned from the client in the case where a deployment has multiple replica
 // sets, some of which have empty owner references.
 func TestPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t *testing.T) {
-	testPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t, metav1.TenantDefault)
+	testPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t, metav1.TenantSystem)
 }
 
 func TestPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeploymentWithMultiTenancy(t *testing.T) {
@@ -571,7 +571,7 @@ func testPodDeletionPartialReplicaSetOwnershipEnqueueRecreateDeployment(t *testi
 // some of which have empty owner references.
 
 func TestPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t *testing.T) {
-	testPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t, metav1.TenantDefault)
+	testPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t, metav1.TenantSystem)
 }
 
 func TestPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeploymentWithMultiTenancy(t *testing.T) {
@@ -615,7 +615,7 @@ func testPodDeletionPartialReplicaSetOwnershipDoesntEnqueueRecreateDeployment(t 
 
 func TestGetReplicaSetsForDeployment(t *testing.T) {
 
-	testGetReplicaSetsForDeployment(t, metav1.TenantDefault)
+	testGetReplicaSetsForDeployment(t, metav1.TenantSystem)
 }
 
 func TestGetReplicaSetsForDeploymentWithMultiTenancy(t *testing.T) {
@@ -673,7 +673,7 @@ func testGetReplicaSetsForDeployment(t *testing.T, tenant string) {
 }
 
 func TestGetReplicaSetsForDeploymentAdoptRelease(t *testing.T) {
-	testGetReplicaSetsForDeploymentAdoptRelease(t, metav1.TenantDefault)
+	testGetReplicaSetsForDeploymentAdoptRelease(t, metav1.TenantSystem)
 }
 
 func TestGetReplicaSetsForDeploymentAdoptReleaseWithMultiTenancy(t *testing.T) {
@@ -717,7 +717,7 @@ func testGetReplicaSetsForDeploymentAdoptRelease(t *testing.T, tenant string) {
 }
 
 func TestGetPodMapForReplicaSets(t *testing.T) {
-	testGetPodMapForReplicaSets(t, metav1.TenantDefault)
+	testGetPodMapForReplicaSets(t, metav1.TenantSystem)
 }
 
 func TestGetPodMapForReplicaSetsWithMultiTenancy(t *testing.T) {
@@ -790,7 +790,7 @@ func testGetPodMapForReplicaSets(t *testing.T, tenant string) {
 }
 
 func TestAddReplicaSet(t *testing.T) {
-	testAddReplicaSet(t, metav1.TenantDefault)
+	testAddReplicaSet(t, metav1.TenantSystem)
 }
 
 func TestAddReplicaSetWithMultiTenancy(t *testing.T) {
@@ -846,7 +846,7 @@ func testAddReplicaSet(t *testing.T, tenant string) {
 }
 
 func TestAddReplicaSetOrphan(t *testing.T) {
-	testAddReplicaSetOrphan(t, metav1.TenantDefault)
+	testAddReplicaSetOrphan(t, metav1.TenantSystem)
 }
 
 func TestAddReplicaSetOrphanWithMultiTenancy(t *testing.T) {
@@ -883,7 +883,7 @@ func testAddReplicaSetOrphan(t *testing.T, tenant string) {
 }
 
 func TestUpdateReplicaSet(t *testing.T) {
-	testUpdateReplicaSet(t, metav1.TenantDefault)
+	testUpdateReplicaSet(t, metav1.TenantSystem)
 }
 
 func TestUpdateReplicaSetWithMultiTenancy(t *testing.T) {
@@ -946,7 +946,7 @@ func testUpdateReplicaSet(t *testing.T, tenant string) {
 }
 
 func TestUpdateReplicaSetOrphanWithNewLabels(t *testing.T) {
-	testUpdateReplicaSetOrphanWithNewLabels(t, metav1.TenantDefault)
+	testUpdateReplicaSetOrphanWithNewLabels(t, metav1.TenantSystem)
 }
 
 func TestUpdateReplicaSetOrphanWithNewLabelsWithMultiTenancy(t *testing.T) {
@@ -985,7 +985,7 @@ func testUpdateReplicaSetOrphanWithNewLabels(t *testing.T, tenant string) {
 }
 
 func TestUpdateReplicaSetChangeControllerRef(t *testing.T) {
-	testUpdateReplicaSetChangeControllerRef(t, metav1.TenantDefault)
+	testUpdateReplicaSetChangeControllerRef(t, metav1.TenantSystem)
 }
 
 func TestUpdateReplicaSetChangeControllerRefWithMultiTenancy(t *testing.T) {
@@ -1021,7 +1021,7 @@ func testUpdateReplicaSetChangeControllerRef(t *testing.T, tenant string) {
 }
 
 func TestUpdateReplicaSetRelease(t *testing.T) {
-	testUpdateReplicaSetRelease(t, metav1.TenantDefault)
+	testUpdateReplicaSetRelease(t, metav1.TenantSystem)
 }
 
 func TestUpdateReplicaSetReleaseWithMultiTenancy(t *testing.T) {
@@ -1057,7 +1057,7 @@ func testUpdateReplicaSetRelease(t *testing.T, tenant string) {
 }
 
 func TestDeleteReplicaSet(t *testing.T) {
-	testDeleteReplicaSet(t, metav1.TenantDefault)
+	testDeleteReplicaSet(t, metav1.TenantSystem)
 }
 
 func TestDeleteReplicaSetWithMultiTenancy(t *testing.T) {
@@ -1113,7 +1113,7 @@ func testDeleteReplicaSet(t *testing.T, tenant string) {
 }
 
 func TestDeleteReplicaSetOrphan(t *testing.T) {
-	testDeleteReplicaSetOrphan(t, metav1.TenantDefault)
+	testDeleteReplicaSetOrphan(t, metav1.TenantSystem)
 }
 
 func TestDeleteReplicaSetOrphanWithMultiTenancy(t *testing.T) {

@@ -966,7 +966,7 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "name": "foo",
                 "namespace": "test",
                 "resourceVersion": "10",
-                "tenant": "default"
+                "tenant": "system"
             },
             "spec": {
                 "dnsPolicy": "ClusterFirst",
@@ -985,7 +985,7 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "name": "bar",
                 "namespace": "test",
                 "resourceVersion": "11",
-                "tenant": "default"
+                "tenant": "system"
             },
             "spec": {
                 "dnsPolicy": "ClusterFirst",
@@ -1004,7 +1004,7 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
                 "name": "baz",
                 "namespace": "test",
                 "resourceVersion": "12",
-                "tenant": "default"
+                "tenant": "system"
             },
             "spec": {
                 "sessionAffinity": "None",

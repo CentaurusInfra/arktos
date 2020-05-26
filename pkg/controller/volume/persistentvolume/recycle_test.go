@@ -37,7 +37,7 @@ func TestRecycleSync(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "runningPod",
 			Namespace: testNamespace,
-			Tenant:    v1.TenantDefault,
+			Tenant:    v1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{

@@ -344,7 +344,7 @@ func TestPlugin(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -410,7 +410,7 @@ func TestPluginReboot(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -468,7 +468,7 @@ func TestPluginOptional(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -567,7 +567,7 @@ func TestPluginKeysOptional(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -647,7 +647,7 @@ func TestInvalidConfigMapSetup(t *testing.T) {
 		t.Errorf("Can't find the plugin by name")
 	}
 
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: testNamespace, UID: testPodUID}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: testNamespace, UID: testPodUID}}
 	mounter, err := plugin.NewMounter(volume.NewSpecFromVolume(volumeSpec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -687,7 +687,7 @@ func TestInvalidConfigMapSetup(t *testing.T) {
 func configMap(namespace, name string) v1.ConfigMap {
 	return v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 			Namespace: namespace,
 			Name:      name,
 		},

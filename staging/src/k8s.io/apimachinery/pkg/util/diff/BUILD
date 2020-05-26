@@ -8,13 +8,23 @@ load(
 
 go_test(
     name = "go_default_test",
-    srcs = ["diff_test.go"],
+    srcs = [
+        "compare_test.go",
+        "diff_test.go",
+    ],
     embed = [":go_default_library"],
+    deps = [
+        "//staging/src/k8s.io/apimachinery/pkg/util/rand:go_default_library",
+        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+    ],
 )
 
 go_library(
     name = "go_default_library",
-    srcs = ["diff.go"],
+    srcs = [
+        "compare.go",
+        "diff.go",
+    ],
     importmap = "k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/diff",
     importpath = "k8s.io/apimachinery/pkg/util/diff",
     deps = [

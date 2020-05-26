@@ -45,7 +45,7 @@ type AppsV1beta1Client struct {
 }
 
 func (c *AppsV1beta1Client) ControllerRevisions(namespace string) ControllerRevisionInterface {
-	return newControllerRevisionsWithMultiTenancy(c, namespace, "default")
+	return newControllerRevisionsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1beta1Client) ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionInterface {
@@ -53,7 +53,7 @@ func (c *AppsV1beta1Client) ControllerRevisionsWithMultiTenancy(namespace string
 }
 
 func (c *AppsV1beta1Client) Deployments(namespace string) DeploymentInterface {
-	return newDeploymentsWithMultiTenancy(c, namespace, "default")
+	return newDeploymentsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1beta1Client) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentInterface {
@@ -61,7 +61,7 @@ func (c *AppsV1beta1Client) DeploymentsWithMultiTenancy(namespace string, tenant
 }
 
 func (c *AppsV1beta1Client) StatefulSets(namespace string) StatefulSetInterface {
-	return newStatefulSetsWithMultiTenancy(c, namespace, "default")
+	return newStatefulSetsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1beta1Client) StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetInterface {
