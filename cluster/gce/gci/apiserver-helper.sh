@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
+<<<<<<< HEAD
 # Copyright 2020 Authors of Arktos - file created.
+=======
+# Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
+>>>>>>> b2edc86e7d3d5ed11a297c5bfeab2983856957a7
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
