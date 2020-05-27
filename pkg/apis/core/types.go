@@ -4117,6 +4117,36 @@ type NodeList struct {
 	Items []Node
 }
 
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageCluster describes the attributes on backend storage
+type StorageCluster struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+
+	// A string that specifies the storage object identity
+	StorageClusterId string
+
+	// A string that specifies the backend storage server address
+	ServiceAddress string
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageClusterList is a list of StorageCluster
+type StorageClusterList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	// Items is the list of StorageCluster objects in the list.
+	Items []StorageCluster
+}
+
 // NamespaceSpec describes the attributes on a Namespace
 type NamespaceSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage
@@ -4182,6 +4212,9 @@ type NamespaceList struct {
 type TenantSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage
 	Finalizers []FinalizerName
+
+	// StorageClusterId specifies the storage location of objects belong to this tenant
+	StorageClusterId string
 }
 
 // TenantStatus is information about the current status of a Tenant.

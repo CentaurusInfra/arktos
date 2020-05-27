@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package datapartition
+package storagecluster
 
 import (
 	"context"
@@ -28,13 +28,13 @@ import (
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 )
 
-// strategy implements behavior for DataPartitionConfig objects
+// strategy implements behavior for TenantStorage objects
 type strategy struct {
 	runtime.ObjectTyper
 	names.NameGenerator
 }
 
-// Strategy is the default logic that applies when creating and updating DataPartitionConfig
+// Strategy is the default logic that applies when creating and updating TenantStorage
 // objects via the REST API.
 var Strategy = strategy{legacyscheme.Scheme, names.SimpleNameGenerator}
 
@@ -53,13 +53,13 @@ func (strategy) TenantScoped() bool {
 }
 
 func (strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
-	_ = obj.(*api.DataPartitionConfig)
+	_ = obj.(*api.StorageCluster)
 }
 
 func (strategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
-	dataPartitionConfig := obj.(*api.DataPartitionConfig)
+	storageCluster := obj.(*api.StorageCluster)
 
-	return validation.ValidateDataPartitionConfig(dataPartitionConfig)
+	return validation.ValidateStorageCluster(storageCluster)
 }
 
 // Canonicalize normalizes the object after validation.
@@ -71,8 +71,8 @@ func (strategy) AllowCreateOnUpdate() bool {
 }
 
 func (strategy) PrepareForUpdate(ctx context.Context, newObj, oldObj runtime.Object) {
-	_ = oldObj.(*api.DataPartitionConfig)
-	_ = newObj.(*api.DataPartitionConfig)
+	_ = oldObj.(*api.StorageCluster)
+	_ = newObj.(*api.StorageCluster)
 }
 
 func (strategy) AllowUnconditionalUpdate() bool {
@@ -80,6 +80,6 @@ func (strategy) AllowUnconditionalUpdate() bool {
 }
 
 func (strategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
-	errorList := validation.ValidateDataPartitionConfig(obj.(*api.DataPartitionConfig))
-	return append(errorList, validation.ValidateDataPartitionConfigUpdate(obj.(*api.DataPartitionConfig), old.(*api.DataPartitionConfig))...)
+	errorList := validation.ValidateStorageCluster(obj.(*api.StorageCluster))
+	return append(errorList, validation.ValidateStorageClusterUpdate(obj.(*api.StorageCluster), old.(*api.StorageCluster))...)
 }

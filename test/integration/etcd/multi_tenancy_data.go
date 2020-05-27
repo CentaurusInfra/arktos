@@ -44,8 +44,12 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 	etcdStorageData := map[schema.GroupVersionResource]StorageData{
 		// k8s.io/kubernetes/pkg/api/v1
 		gvr("", "v1", "tenants"): {
-			Stub:             `{"metadata": {"name": "tenant1"}, "spec": {"finalizers": ["kubernetes"]}}`,
+			Stub:             `{"metadata": {"name": "tenant1"}, "spec": {"storageClusterId": "cluster1", "finalizers": ["kubernetes"]}}`,
 			ExpectedEtcdPath: "/registry/tenants/tenant1",
+		},
+		gvr("", "v1", "storageclusters"): {
+			Stub:             `{"metadata": {"name": "storagecluster1"}, "storageClusterId": "cluster1", "serviceAddress": "cluster1.arktos.futurewei.com:2379"}`,
+			ExpectedEtcdPath: "/registry/storageclusters/storagecluster1",
 		},
 		gvr("", "v1", "controllerinstances"): {
 			Stub:             `{"metadata": {"name": "instance1"}, "controllerType": "rs", "uid": "instance1", "hashKey": 1234, "workloadNum": 100, "isLocked": false}`,
