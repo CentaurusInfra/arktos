@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,6 +47,7 @@ func TestDaemonSetUpdatesPods(t *testing.T) {
 
 	clearExpectations(t, manager, ds, podControl)
 	syncAndValidateDaemonSets(t, manager, ds, podControl, 0, maxUnavailable, 0)
+
 	clearExpectations(t, manager, ds, podControl)
 	syncAndValidateDaemonSets(t, manager, ds, podControl, maxUnavailable, 0, 0)
 	markPodsReady(podControl.podStore)
@@ -193,8 +195,8 @@ func TestGetUnavailableNumbers(t *testing.T) {
 			}(),
 			nodeToPods: func() map[string][]*v1.Pod {
 				mapping := make(map[string][]*v1.Pod)
-				pod0 := newPod("pod-0", "node-0", simpleDaemonSetLabel, nil)
-				pod1 := newPod("pod-1", "node-1", simpleDaemonSetLabel, nil)
+				pod0 := newPod("pod-0", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
+				pod1 := newPod("pod-1", testTenant, metav1.NamespaceDefault, "node-1", simpleDaemonSetLabel, nil)
 				markPodReady(pod0)
 				markPodReady(pod1)
 				mapping["node-0"] = []*v1.Pod{pod0}
@@ -222,7 +224,7 @@ func TestGetUnavailableNumbers(t *testing.T) {
 			}(),
 			nodeToPods: func() map[string][]*v1.Pod {
 				mapping := make(map[string][]*v1.Pod)
-				pod0 := newPod("pod-0", "node-0", simpleDaemonSetLabel, nil)
+				pod0 := newPod("pod-0", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
 				markPodReady(pod0)
 				mapping["node-0"] = []*v1.Pod{pod0}
 				return mapping
@@ -248,8 +250,8 @@ func TestGetUnavailableNumbers(t *testing.T) {
 			}(),
 			nodeToPods: func() map[string][]*v1.Pod {
 				mapping := make(map[string][]*v1.Pod)
-				pod0 := newPod("pod-0", "node-0", simpleDaemonSetLabel, nil)
-				pod1 := newPod("pod-1", "node-1", simpleDaemonSetLabel, nil)
+				pod0 := newPod("pod-0", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
+				pod1 := newPod("pod-1", testTenant, metav1.NamespaceDefault, "node-1", simpleDaemonSetLabel, nil)
 				markPodReady(pod0)
 				markPodReady(pod1)
 				mapping["node-0"] = []*v1.Pod{pod0}
@@ -277,8 +279,8 @@ func TestGetUnavailableNumbers(t *testing.T) {
 			}(),
 			nodeToPods: func() map[string][]*v1.Pod {
 				mapping := make(map[string][]*v1.Pod)
-				pod0 := newPod("pod-0", "node-0", simpleDaemonSetLabel, nil)
-				pod1 := newPod("pod-1", "node-1", simpleDaemonSetLabel, nil)
+				pod0 := newPod("pod-0", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
+				pod1 := newPod("pod-1", testTenant, metav1.NamespaceDefault, "node-1", simpleDaemonSetLabel, nil)
 				now := metav1.Now()
 				markPodReady(pod0)
 				markPodReady(pod1)
