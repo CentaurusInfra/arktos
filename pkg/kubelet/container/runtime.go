@@ -380,6 +380,8 @@ type ContainerStatus struct {
 	// Message written by the container before exiting (stored in
 	// TerminationMessagePath).
 	Message string
+	// CPU and memory limits for this container
+	ResourceLimits v1.ResourceList
 }
 
 // FindContainerStatusByName returns container status in the pod status with the given name.

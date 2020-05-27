@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -729,6 +730,7 @@ func makePodWithEphemeralStorage(nodeName, ephemeralStorage string) *v1.Pod {
 				Resources: v1.ResourceRequirements{
 					Requests: req,
 				},
+				ResourcesAllocated: req,
 			}},
 			NodeName: nodeName,
 		},
@@ -882,8 +884,8 @@ func TestForgetPod(t *testing.T) {
 // excluding initContainers.
 func getResourceRequest(pod *v1.Pod) v1.ResourceList {
 	result := &schedulernodeinfo.Resource{}
-	for _, container := range pod.Spec.Containers {
-		result.Add(container.Resources.Requests)
+	for _, workload := range pod.Spec.Workloads() {
+		result.Add(workload.ResourcesAllocated)
 	}
 
 	return result.ResourceList()
@@ -973,6 +975,10 @@ func TestNodeOperators(t *testing.T) {
 										v1.ResourceMemory: mem50m,
 									},
 								},
+								ResourcesAllocated: v1.ResourceList{
+									v1.ResourceCPU:    cpuHalf,
+									v1.ResourceMemory: mem50m,
+								},
 								Ports: []v1.ContainerPort{
 									{
 										Name:          "http",
@@ -1024,6 +1030,10 @@ func TestNodeOperators(t *testing.T) {
 										v1.ResourceMemory: mem50m,
 									},
 								},
+								ResourcesAllocated: v1.ResourceList{
+									v1.ResourceCPU:    cpuHalf,
+									v1.ResourceMemory: mem50m,
+								},
 							},
 						},
 					},
@@ -1042,6 +1052,10 @@ func TestNodeOperators(t *testing.T) {
 										v1.ResourceCPU:    cpuHalf,
 										v1.ResourceMemory: mem50m,
 									},
+								},
+								ResourcesAllocated: v1.ResourceList{
+									v1.ResourceCPU:    cpuHalf,
+									v1.ResourceMemory: mem50m,
 								},
 							},
 						},
@@ -1449,7 +1463,8 @@ func makeBasePod(t testingMode, nodeName, objName, cpu, mem, extended string, po
 				Resources: v1.ResourceRequirements{
 					Requests: req,
 				},
-				Ports: ports,
+				ResourcesAllocated: req,
+				Ports:              ports,
 			}},
 			NodeName: nodeName,
 		},

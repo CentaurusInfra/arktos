@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -200,6 +201,10 @@ func TestRequestedToCapacityRatio(t *testing.T) {
 							v1.ResourceCPU:    *resource.NewMilliQuantity(requestedResources.cpu, resource.DecimalSI),
 							v1.ResourceMemory: *resource.NewQuantity(requestedResources.mem, resource.DecimalSI),
 						},
+					},
+					ResourcesAllocated: v1.ResourceList{
+						v1.ResourceCPU:    *resource.NewMilliQuantity(requestedResources.cpu, resource.DecimalSI),
+						v1.ResourceMemory: *resource.NewQuantity(requestedResources.mem, resource.DecimalSI),
 					},
 				},
 			},

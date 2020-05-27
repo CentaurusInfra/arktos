@@ -55,7 +55,8 @@ func makeBasePodWithMultiTenancy(t testingMode, nodeName, objName, cpu, mem, ext
 				Resources: v1.ResourceRequirements{
 					Requests: req,
 				},
-				Ports: ports,
+				ResourcesAllocated: req,
+				Ports:              ports,
 			}},
 			NodeName: nodeName,
 		},
@@ -111,6 +112,10 @@ func TestNewNodeInfoWithMultiTenancy(t *testing.T) {
 									v1.ResourceMemory: resource.MustParse("500"),
 								},
 							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("100m"),
+								v1.ResourceMemory: resource.MustParse("500"),
+							},
 							Ports: []v1.ContainerPort{
 								{
 									HostIP:   "127.0.0.1",
@@ -138,6 +143,10 @@ func TestNewNodeInfoWithMultiTenancy(t *testing.T) {
 									v1.ResourceCPU:    resource.MustParse("200m"),
 									v1.ResourceMemory: resource.MustParse("1Ki"),
 								},
+							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("200m"),
+								v1.ResourceMemory: resource.MustParse("1Ki"),
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -205,6 +214,10 @@ func TestNodeInfoCloneWithMultiTenancy(t *testing.T) {
 											v1.ResourceMemory: resource.MustParse("500"),
 										},
 									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("100m"),
+										v1.ResourceMemory: resource.MustParse("500"),
+									},
 									Ports: []v1.ContainerPort{
 										{
 											HostIP:   "127.0.0.1",
@@ -232,6 +245,10 @@ func TestNodeInfoCloneWithMultiTenancy(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{
@@ -277,6 +294,10 @@ func TestNodeInfoCloneWithMultiTenancy(t *testing.T) {
 											v1.ResourceMemory: resource.MustParse("500"),
 										},
 									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("100m"),
+										v1.ResourceMemory: resource.MustParse("500"),
+									},
 									Ports: []v1.ContainerPort{
 										{
 											HostIP:   "127.0.0.1",
@@ -304,6 +325,10 @@ func TestNodeInfoCloneWithMultiTenancy(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{
@@ -352,6 +377,10 @@ func TestNodeInfoAddPodWithMultiTenancy(t *testing.T) {
 								v1.ResourceMemory: resource.MustParse("500"),
 							},
 						},
+						ResourcesAllocated: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("100m"),
+							v1.ResourceMemory: resource.MustParse("500"),
+						},
 						Ports: []v1.ContainerPort{
 							{
 								HostIP:   "127.0.0.1",
@@ -379,6 +408,10 @@ func TestNodeInfoAddPodWithMultiTenancy(t *testing.T) {
 								v1.ResourceCPU:    resource.MustParse("200m"),
 								v1.ResourceMemory: resource.MustParse("1Ki"),
 							},
+						},
+						ResourcesAllocated: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("200m"),
+							v1.ResourceMemory: resource.MustParse("1Ki"),
 						},
 						Ports: []v1.ContainerPort{
 							{
@@ -440,6 +473,10 @@ func TestNodeInfoAddPodWithMultiTenancy(t *testing.T) {
 									v1.ResourceMemory: resource.MustParse("500"),
 								},
 							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("100m"),
+								v1.ResourceMemory: resource.MustParse("500"),
+							},
 							Ports: []v1.ContainerPort{
 								{
 									HostIP:   "127.0.0.1",
@@ -467,6 +504,10 @@ func TestNodeInfoAddPodWithMultiTenancy(t *testing.T) {
 									v1.ResourceCPU:    resource.MustParse("200m"),
 									v1.ResourceMemory: resource.MustParse("1Ki"),
 								},
+							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("200m"),
+								v1.ResourceMemory: resource.MustParse("1Ki"),
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -564,6 +605,10 @@ func TestNodeInfoRemovePodWithMultiTenancy(t *testing.T) {
 											v1.ResourceMemory: resource.MustParse("500"),
 										},
 									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("100m"),
+										v1.ResourceMemory: resource.MustParse("500"),
+									},
 									Ports: []v1.ContainerPort{
 										{
 											HostIP:   "127.0.0.1",
@@ -591,6 +636,10 @@ func TestNodeInfoRemovePodWithMultiTenancy(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{
@@ -623,6 +672,10 @@ func TestNodeInfoRemovePodWithMultiTenancy(t *testing.T) {
 									v1.ResourceCPU:    resource.MustParse("100m"),
 									v1.ResourceMemory: resource.MustParse("500"),
 								},
+							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("100m"),
+								v1.ResourceMemory: resource.MustParse("500"),
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -682,6 +735,10 @@ func TestNodeInfoRemovePodWithMultiTenancy(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{

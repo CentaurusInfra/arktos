@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,7 +72,8 @@ func newResourcePod(usage ...schedulernodeinfo.Resource) *v1.Pod {
 	containers := []v1.Container{}
 	for _, req := range usage {
 		containers = append(containers, v1.Container{
-			Resources: v1.ResourceRequirements{Requests: req.ResourceList()},
+			Resources:          v1.ResourceRequirements{Requests: req.ResourceList()},
+			ResourcesAllocated: req.ResourceList(),
 		})
 	}
 	return &v1.Pod{
@@ -4287,6 +4289,7 @@ func TestPodSchedulesOnNodeWithMemoryPressureCondition(t *testing.T) {
 					Resources: v1.ResourceRequirements{
 						Requests: makeAllocatableResources(100, 100, 100, 0, 0, 0),
 					},
+					ResourcesAllocated: makeAllocatableResources(100, 100, 100, 0, 0, 0),
 				},
 			},
 		},

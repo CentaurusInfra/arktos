@@ -949,6 +949,8 @@ message ContainerStatus {
     repeated Mount mounts = 14;
     // Log path of container.
     string log_path = 15;
+    // Resource configuration of the container.
+    LinuxContainerResources resources = 16;
 }
 
 message ContainerStatusResponse {
