@@ -136,6 +136,14 @@ func (Binding) SwaggerDoc() map[string]string {
 	return map_Binding
 }
 
+var map_BlockDeviceMappingV2 = map[string]string{
+	"": "Enables fine grained control of the block device mapping for an instance This is typically used for booting servers from volumes",
+}
+
+func (BlockDeviceMappingV2) SwaggerDoc() map[string]string {
+	return map_BlockDeviceMappingV2
+}
+
 var map_CSIPersistentVolumeSource = map[string]string{
 	"":                           "Represents storage that is managed by an external CSI volume driver (Beta feature)",
 	"driver":                     "Driver is the name of the driver to use for this volume. Required.",
@@ -800,6 +808,27 @@ func (GitRepoVolumeSource) SwaggerDoc() map[string]string {
 	return map_GitRepoVolumeSource
 }
 
+var map_GlobalScheduling = map[string]string{
+	"accessIpv4":               "IPv4 address that should be used to access this server",
+	"accessIpv6":               "IPv6 address that should be used to access this serve",
+	"adminPass":                "The administrative password of the server",
+	"availabilityZone":         "The availability zone from which to launch the server",
+	"mappingV2":                "Enables fine grained control of the block device mapping for an instance",
+	"configDrive":              "Indicates whether a config drive enables metadata injection",
+	"metadata":                 "Metadata key and value pairs",
+	"diskConfig":               "Controls how the API partitions the disk when you create, rebuild, or resize servers A valid value is:\n\t\tAUTO\n\t\tMANUAL",
+	"personality":              "The file path and contents, text only, to inject into the server at launch",
+	"securityGroup":            "One or more security groups. Specify the name of the security group in the name attribute",
+	"description":              "A free form description of the server. Limited to 255 characters in length",
+	"trustedImageCertificates": "A list of trusted certificate IDs, which are used during image signature verification to verify the signing certificate",
+	"host":                     "The name of the compute service host on which the server is to be created",
+	"hypervisorHostname":       "The hostname of the hypervisor on which the server is to be created",
+}
+
+func (GlobalScheduling) SwaggerDoc() map[string]string {
+	return map_GlobalScheduling
+}
+
 var map_GlusterfsPersistentVolumeSource = map[string]string{
 	"":                   "Represents a Glusterfs mount that lasts the lifetime of a pod. Glusterfs volumes do not support ownership management or SELinux relabeling.",
 	"endpoints":          "EndpointsName is the endpoint name that details Glusterfs topology. More info: https://releases.k8s.io/HEAD/examples/volumes/glusterfs/README.md#create-a-pod",
@@ -1087,6 +1116,7 @@ var map_Nic = map[string]string{
 	"ipAddress":   "IpAddress is the user specified IP, instead of dynamically allocated one",
 	"tag":         "any user specified data for the Nic",
 	"ipv6Enabled": "default to false",
+	"uuid":        "To provision the server instance with a NIC for a network, specify the UUID of the network in the uuid attribute in a networks object Required if omit the port attribute",
 }
 
 func (Nic) SwaggerDoc() map[string]string {
@@ -2455,6 +2485,7 @@ var map_VirtualMachine = map[string]string{
 	"powerSpec":               "default running",
 	"volumeDevices":           "volumeDevices is the list of block devices to be used by the container. This is a beta feature.",
 	"cloudInitUserDataScript": "cloud-init user data script",
+	"scheduling":              "Global Scheduling",
 }
 
 func (VirtualMachine) SwaggerDoc() map[string]string {

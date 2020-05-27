@@ -2312,6 +2312,10 @@ type Container struct {
 	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
 }
 
+// type OpenStackNetworks struct {
+// 	OpenId string `json:"openId,omitempty" protobuf:"bytes,1,opt,name=openId"`
+// }
+
 // Network interface type used in the VM workload
 // Nic info will be provided at the pod level so they can be used by both Container and VM workload
 type Nic struct {
@@ -2335,6 +2339,10 @@ type Nic struct {
 	// default to false
 	// +optional
 	Ipv6Enabled bool `json:"ipv6Enabled,omitempty" protobuf:"varint,6,opt,name=ipv6Enabled"`
+	// To provision the server instance with a NIC for a network, specify the UUID of the network in the uuid attribute in a networks object
+	// Required if omit the port attribute
+	// +optional
+	Uuid string `json:"uuid,omitempty" protobuf:"bytes,7,opt,name=uuid"`
 }
 
 type VmPowerSpec string
@@ -2346,6 +2354,85 @@ const (
 	VmPowerSpecShutdown  VmPowerSpec = "Shutdown"
 	VmPowerSpecSuspended VmPowerSpec = "Suspended"
 )
+
+// Enables fine grained control of the block device mapping for an instance
+// This is typically used for booting servers from volumes
+type BlockDeviceMappingV2 struct {
+	BootIndex           int64  `json:"bootIndex,omitempty" protobuf:"varint,1,opt,name=bootIndex"`
+	DeleteOnTermination bool   `json:"deleteOnTermination,omitempty" protobuf:"varint,2,opt,name=deleteOnTermination"`
+	DestinationType     string `json:"destinationType,omitempty" protobuf:"bytes,3,opt,name=destinationType"`
+	DeviceName          string `json:"deviceName,omitempty" protobuf:"bytes,4,opt,name=deviceName"`
+	DeviceType          string `json:"deviceType,omitempty" protobuf:"bytes,5,opt,name=deviceType"`
+	DiskBus             string `json:"diskBus,omitempty" protobuf:"bytes,6,opt,name=diskBus"`
+	GuestFormat         string `json:"guestFormat,omitempty" protobuf:"bytes,7,opt,name=guestFormat"`
+	NoDevice            bool   `json:"noDevice,omitempty" protobuf:"varint,8,opt,name=noDevice"`
+	SourceType          string `json:"sourceType,omitempty" protobuf:"bytes,9,opt,name=sourceType"`
+	Uuid                string `json:"uuid,omitempty" protobuf:"bytes,10,opt,name=uuid"`
+	VolumeSize          int64  `json:"volumeSize,omitempty" protobuf:"varint,11,opt,name=volumeSize"`
+	Tag                 string `json:"tag,omitempty" protobuf:"bytes,12,opt,name=tag"`
+	VolumeType          string `json:"volumeType,omitempty" protobuf:"bytes,13,opt,name=volumeType"`
+}
+
+type OpenStackPersonality struct {
+	Path     string `json:"path,omitempty" protobuf:"bytes,1,opt,name=path"`
+	Contents string `json:"contents,omitempty" protobuf:"bytes,2,opt,name=contents"`
+}
+
+type OpenStackSecurityGroup struct {
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+}
+
+type GlobalScheduling struct {
+	// IPv4 address that should be used to access this server
+	// +optional
+	AccessIpv4 string `json:"accessIpv4,omitempty" protobuf:"bytes,1,opt,name=accessIpv4"`
+	// IPv6 address that should be used to access this serve
+	// +ooptional
+	AccessIpv6 string `json:"accessIpv6,omitempty" protobuf:"bytes,2,opt,name=accessIpv6"`
+	// The administrative password of the server
+	// +optional
+	AdminPass string `json:"adminPass,omitempty" protobuf:"bytes,3,opt,name=adminPass"`
+	// The availability zone from which to launch the server
+	// +optional
+	AvailabilityZone string `json:"availabilityZone,omitempty" protobuf:"bytes,4,opt,name=availabilityZone"`
+	// Enables fine grained control of the block device mapping for an instance
+	// +optional
+	MappingV2 []BlockDeviceMappingV2 `json:"mappingV2,omitempty" protobuf:"bytes,5,rep,name=mappingV2"`
+	// Indicates whether a config drive enables metadata injection
+	// +optional
+	ConfigDrive bool `json:"configDrive,omitempty" protobuf:"varint,6,opt,name=configDrive"`
+	// Metadata key and value pairs
+	// +optional
+	Metadata map[string]string `json:"metadata,omitempty" protobuf:"bytes,7,opt,name=metadata"`
+	// Controls how the API partitions the disk when you create, rebuild, or resize servers
+	// A valid value is:
+	//		AUTO
+	// 		MANUAL
+	// +optional
+	DiskConfig string `json:"diskConfig,omitempty" protobuf:"bytes,8,opt,name=diskConfig"`
+	// The file path and contents, text only, to inject into the server at launch
+	// +optional
+	Personality []OpenStackPersonality `json:"personality,omitempty" protobuf:"bytes,9,rep,name=personality"`
+	// One or more security groups. Specify the name of the security group in the name attribute
+	// +optional
+	SecurityGroup []OpenStackSecurityGroup `json:"securityGroup,omitempty" protobuf:"bytes,10,rep,name=securityGroup"`
+	// A free form description of the server. Limited to 255 characters in length
+	// +optional
+	Description string `json:"description,omitempty" protobuf:"bytes,11,opt,name=description"`
+	// +optional
+	Tags []string `json:"tags,omitempty" protobuf:"bytes,12,rep,name=tags"`
+	// A list of trusted certificate IDs, which are used during image signature verification to verify the signing certificate
+	// +optional
+	TrustedImageCertificates []string `json:"trustedImageCertificates,omitempty" protobuf:"bytes,13,rep,name=trustedImageCertificates"`
+	// The name of the compute service host on which the server is to be created
+	// +optional
+	Host string `json:"host,omitempty" protobuf:"bytes,14,opt,name=host"`
+	// The hostname of the hypervisor on which the server is to be created
+	// +optional
+	HypervisorHostname string `json:"hypervisorHostname,omitempty" protobuf:"bytes,15,opt,name=hypervisorHostname"`
+
+	// scheduler_hints
+}
 
 // Virtual machine struct defines the information of a VM in the system
 type VirtualMachine struct {
@@ -2406,6 +2493,9 @@ type VirtualMachine struct {
 	// cloud-init user data script
 	// +optional
 	CloudInitUserDataScript string `json:"cloudInitUserDataScript,omitempty" protobuf:"bytes,14,opt,name=cloudInitUserDataScript"`
+	// Global Scheduling
+	// +optioanl
+	Scheduling GlobalScheduling `json:"scheduling,omitempty" protobuf:"bytes,15,opt,name=scheduling"`
 }
 
 // Handler defines a specific action that should be taken

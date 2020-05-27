@@ -3041,6 +3041,23 @@ func validateContainersOnlyForPod(containers []core.Container, fldPath *field.Pa
 	return allErrs
 }
 
+// validateNics makes sure UUID and PortID are not both empty
+func validateNics(nics []core.Nic, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if nics == nil || len(nics) == 0 {
+		return allErrs
+	}
+
+	for _, nicObj := range nics {
+		if len(nicObj.Uuid) == 0 && len(nicObj.PortId) == 0 {
+			allErrs = append(allErrs, field.Required(fldPath.Child("Uuid"), "Uuid and PortId cannot be both empty"))
+		}
+	}
+
+	return allErrs
+}
+
 // validateWorkloadInfo makes sure workloadInfo in the Pod is not empty
 // In addition, for VM pod, it make sure only one VM per Pod is allowed.
 // For container pod, it makes sure multiple container does not use duplicated names.
@@ -3089,6 +3106,7 @@ func validateVirtualMachine(
 	allErrs := field.ErrorList{}
 
 	vm := *virtualMachine
+	globalScheduling := vm.Scheduling
 	namePath := fldPath.Child("name")
 
 	if len(vm.Name) == 0 {
@@ -3104,6 +3122,12 @@ func validateVirtualMachine(
 	}
 	if len(vm.UserData) > 65535 {
 		allErrs = append(allErrs, field.TooLong(fldPath.Child("userData"), "", 65535))
+	}
+
+	for _, deviceMappingObj := range globalScheduling.MappingV2 {
+		if len(deviceMappingObj.SourceType) == 0 && deviceMappingObj.NoDevice == false {
+			allErrs = append(allErrs, field.Required(fldPath.Child("SourceType"), "SourceType is required unless NoDevice is true"))
+		}
 	}
 
 	return allErrs
@@ -3180,6 +3204,7 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 		allErrs = append(allErrs, validateContainers(true, spec.Containers, false, vols, fldPath.Child("containers"))...)
 		allErrs = append(allErrs, validateInitContainers(true, spec.InitContainers, spec.Containers, vols, fldPath.Child("initContainers"))...)
 		allErrs = append(allErrs, validateWorkloadInfo(true, spec.WorkloadInfo, fldPath.Child("workloadInfo"))...)
+		allErrs = append(allErrs, validateNics(spec.Nics, fldPath.Child("Nics"))...)
 		allErrs = append(allErrs, validateVirtualMachine(spec.VirtualMachine, fldPath.Child("virtualMachine"))...)
 	} else {
 		allErrs = append(allErrs, validateContainers(false, spec.Containers, false, vols, fldPath.Child("containers"))...)
