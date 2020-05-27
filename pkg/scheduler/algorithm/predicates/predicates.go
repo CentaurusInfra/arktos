@@ -746,7 +746,11 @@ func (c *VolumeZoneChecker) predicate(pod *v1.Pod, meta PredicateMetadata, nodeI
 func GetResourceRequest(pod *v1.Pod) *schedulernodeinfo.Resource {
 	result := &schedulernodeinfo.Resource{}
 	for _, workload := range pod.Spec.Workloads() {
-		result.Add(workload.Resources.Requests)
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			result.Add(workload.ResourcesAllocated)
+		} else {
+			result.Add(workload.Resources.Requests)
+		}
 	}
 
 	// take max_resource(sum_pod, any_init_container)

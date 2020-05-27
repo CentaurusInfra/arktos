@@ -185,11 +185,13 @@ func SetObjectDefaults_DaemonSet(in *v1beta2.DaemonSet) {
 	if in.Spec.Template.Spec.VirtualMachine != nil {
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
+		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.ResourcesAllocated)
 	}
 	for i := range in.Spec.Template.Spec.WorkloadInfo {
 		a := &in.Spec.Template.Spec.WorkloadInfo[i]
 		v1.SetDefaults_ResourceList(&a.Resources.Limits)
 		v1.SetDefaults_ResourceList(&a.Resources.Requests)
+		v1.SetDefaults_ResourceList(&a.ResourcesAllocated)
 	}
 }
 
@@ -343,11 +345,13 @@ func SetObjectDefaults_Deployment(in *v1beta2.Deployment) {
 	if in.Spec.Template.Spec.VirtualMachine != nil {
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
+		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.ResourcesAllocated)
 	}
 	for i := range in.Spec.Template.Spec.WorkloadInfo {
 		a := &in.Spec.Template.Spec.WorkloadInfo[i]
 		v1.SetDefaults_ResourceList(&a.Resources.Limits)
 		v1.SetDefaults_ResourceList(&a.Resources.Requests)
+		v1.SetDefaults_ResourceList(&a.ResourcesAllocated)
 	}
 }
 
@@ -501,11 +505,13 @@ func SetObjectDefaults_ReplicaSet(in *v1beta2.ReplicaSet) {
 	if in.Spec.Template.Spec.VirtualMachine != nil {
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
+		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.ResourcesAllocated)
 	}
 	for i := range in.Spec.Template.Spec.WorkloadInfo {
 		a := &in.Spec.Template.Spec.WorkloadInfo[i]
 		v1.SetDefaults_ResourceList(&a.Resources.Limits)
 		v1.SetDefaults_ResourceList(&a.Resources.Requests)
+		v1.SetDefaults_ResourceList(&a.ResourcesAllocated)
 	}
 }
 
@@ -659,11 +665,13 @@ func SetObjectDefaults_StatefulSet(in *v1beta2.StatefulSet) {
 	if in.Spec.Template.Spec.VirtualMachine != nil {
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
+		v1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.ResourcesAllocated)
 	}
 	for i := range in.Spec.Template.Spec.WorkloadInfo {
 		a := &in.Spec.Template.Spec.WorkloadInfo[i]
 		v1.SetDefaults_ResourceList(&a.Resources.Limits)
 		v1.SetDefaults_ResourceList(&a.Resources.Requests)
+		v1.SetDefaults_ResourceList(&a.ResourcesAllocated)
 	}
 	for i := range in.Spec.VolumeClaimTemplates {
 		a := &in.Spec.VolumeClaimTemplates[i]
