@@ -2302,6 +2302,27 @@ func (SnapshotParams) SwaggerDoc() map[string]string {
 	return map_SnapshotParams
 }
 
+var map_StorageCluster = map[string]string{
+	"":                 "StorageCluster describes the attributes on backend storage",
+	"metadata":         "Standard object's metadata.",
+	"storageClusterId": "A string that specifies the storage object identity",
+	"serviceAddress":   "A string that specifies the backend storage server address",
+}
+
+func (StorageCluster) SwaggerDoc() map[string]string {
+	return map_StorageCluster
+}
+
+var map_StorageClusterList = map[string]string{
+	"":         "StorageClusterList is a list of StorageCluster",
+	"metadata": "Standard list metadata.",
+	"items":    "Items is the list of StorageCluster objects in the list.",
+}
+
+func (StorageClusterList) SwaggerDoc() map[string]string {
+	return map_StorageClusterList
+}
+
 var map_StorageOSPersistentVolumeSource = map[string]string{
 	"":                "Represents a StorageOS persistent volume resource.",
 	"volumeName":      "VolumeName is the human-readable name of the StorageOS volume.  Volume names are only unique within a namespace.",
@@ -2382,8 +2403,9 @@ func (TenantList) SwaggerDoc() map[string]string {
 }
 
 var map_TenantSpec = map[string]string{
-	"":           "TenantSpec describes the attributes on a Tenant.",
-	"finalizers": "Finalizers is an opaque list of values that must be empty to permanently remove object from storage. More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/",
+	"":                 "TenantSpec describes the attributes on a Tenant.",
+	"finalizers":       "Finalizers is an opaque list of values that must be empty to permanently remove object from storage. More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/",
+	"storageClusterId": "StorageClusterId specifies the storage location of objects belong to this tenant",
 }
 
 func (TenantSpec) SwaggerDoc() map[string]string {
