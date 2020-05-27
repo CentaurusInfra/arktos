@@ -4630,12 +4630,47 @@ const (
 	FinalizerKubernetes FinalizerName = "kubernetes"
 )
 
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageCluster describes the attributes on backend storage
+type StorageCluster struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// A string that specifies the storage object identity
+	StorageClusterId string `json:"storageClusterId" protobuf:"bytes,2,opt,name=storageClusterId"`
+
+	// A string that specifies the backend storage server address
+	ServiceAddress string `json:"serviceAddress" protobuf:"bytes,3,opt,name=serviceAddress"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageClusterList is a list of StorageCluster
+type StorageClusterList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Items is the list of StorageCluster objects in the list.
+	Items []StorageCluster `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
 // TenantSpec describes the attributes on a Tenant.
 type TenantSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
 	// More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/
 	// +optional
 	Finalizers []FinalizerName `json:"finalizers,omitempty" protobuf:"bytes,1,rep,name=finalizers,casttype=FinalizerName"`
+
+	// StorageClusterId specifies the storage location of objects belong to this tenant
+	StorageClusterId string `json:"storageClusterId" protobuf:"bytes,2,name=storageClusterId"`
 }
 
 // TenantStatus is information about the current status of a Tenant.

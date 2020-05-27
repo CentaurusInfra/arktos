@@ -41,7 +41,10 @@ func TestTenantStrategy(t *testing.T) {
 	}
 	tenant := &api.Tenant{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"},
-		Status:     api.TenantStatus{Phase: api.TenantTerminating},
+		Spec: api.TenantSpec{
+			StorageClusterId: "1",
+		},
+		Status: api.TenantStatus{Phase: api.TenantTerminating},
 	}
 	Strategy.PrepareForCreate(ctx, tenant)
 	if tenant.Status.Phase != api.TenantActive {

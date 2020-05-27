@@ -46,6 +46,9 @@ func validNewTenant() *api.Tenant {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
+		Spec: api.TenantSpec{
+			StorageClusterId: "1",
+		},
 	}
 }
 
@@ -62,6 +65,9 @@ func TestCreate(t *testing.T) {
 		// invalid
 		&api.Tenant{
 			ObjectMeta: metav1.ObjectMeta{Name: "bad value"},
+			Spec: api.TenantSpec{
+				StorageClusterId: "1",
+			},
 		},
 	)
 }
@@ -155,7 +161,8 @@ func TestDeleteTenantWithIncompleteFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -186,7 +193,8 @@ func TestUpdateDeletingTenantWithIncompleteMetadataFinalizers(t *testing.T) {
 			Finalizers:        []string{"example.com/foo"},
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -220,7 +228,8 @@ func TestUpdateDeletingTenantWithIncompleteSpecFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}

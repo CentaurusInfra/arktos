@@ -63,6 +63,8 @@ type Interface interface {
 	Services() ServiceInformer
 	// ServiceAccounts returns a ServiceAccountInformer.
 	ServiceAccounts() ServiceAccountInformer
+	// StorageClusters returns a StorageClusterInformer.
+	StorageClusters() StorageClusterInformer
 	// Tenants returns a TenantInformer.
 	Tenants() TenantInformer
 }
@@ -177,6 +179,11 @@ func (v *version) Services() ServiceInformer {
 // ServiceAccounts returns a ServiceAccountInformer.
 func (v *version) ServiceAccounts() ServiceAccountInformer {
 	return &serviceAccountInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
+}
+
+// StorageClusters returns a StorageClusterInformer.
+func (v *version) StorageClusters() StorageClusterInformer {
+	return &storageClusterInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Tenants returns a TenantInformer.

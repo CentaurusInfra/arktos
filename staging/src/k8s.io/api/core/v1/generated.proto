@@ -4748,6 +4748,29 @@ message SnapshotStatus {
   optional string snapshotID = 1;
 }
 
+// StorageCluster describes the attributes on backend storage
+message StorageCluster {
+  // Standard object's metadata.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // A string that specifies the storage object identity
+  optional string storageClusterId = 2;
+
+  // A string that specifies the backend storage server address
+  optional string serviceAddress = 3;
+}
+
+// StorageClusterList is a list of StorageCluster
+message StorageClusterList {
+  // Standard list metadata.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  // Items is the list of StorageCluster objects in the list.
+  repeated StorageCluster items = 2;
+}
+
 // Represents a StorageOS persistent volume resource.
 message StorageOSPersistentVolumeSource {
   // VolumeName is the human-readable name of the StorageOS volume.  Volume
@@ -4887,6 +4910,9 @@ message TenantSpec {
   // More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/
   // +optional
   repeated string finalizers = 1;
+
+  // StorageClusterId specifies the storage location of objects belong to this tenant
+  optional string storageClusterId = 2;
 }
 
 // TenantStatus is information about the current status of a Tenant.

@@ -169,6 +169,11 @@ func (c *FakeCoreV1) ServiceAccountsWithMultiTenancy(namespace string, tenant st
 	return &FakeServiceAccounts{c, namespace, tenant}
 }
 
+func (c *FakeCoreV1) StorageClusters() v1.StorageClusterInterface {
+
+	return &FakeStorageClusters{c}
+}
+
 func (c *FakeCoreV1) Tenants() v1.TenantInterface {
 
 	return &FakeTenants{c}
