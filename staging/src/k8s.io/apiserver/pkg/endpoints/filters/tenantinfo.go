@@ -68,8 +68,12 @@ func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
 	// for a reqeust from a regular user, if the tenant in the object is empty, use the tenant from user info
 	// this is what we call "short-path", which allows users to use traditional Kubernets API in the multi-tenancy Arktos
 	resourceTenant := requestInfo.Tenant
-	if resourceTenant == metav1.TenantNone && userTenant != metav1.TenantSystem {
+	if resourceTenant == metav1.TenantNone {
 		requestInfo.Tenant = userTenant
+	}
+
+	if resourceTenant == metav1.TenantAllExplicit {
+		requestInfo.Tenant = metav1.TenantAll
 	}
 
 	req = req.WithContext(request.WithRequestInfo(ctx, requestInfo))
