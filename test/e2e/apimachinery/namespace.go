@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -231,14 +232,14 @@ var _ = SIGDescribe("Namespaces [Serial]", func() {
 		Testname: namespace-deletion-removes-pods
 		Description: Ensure that if a namespace is deleted then all pods are removed from that namespace.
 	*/
-	framework.ConformanceIt("should ensure that all pods are removed when a namespace is deleted",
+	framework.ConformanceIt("should ensure that all pods are removed when a namespace is deleted [Arktos-CI]",
 		func() { ensurePodsAreRemovedWhenNamespaceIsDeleted(f) })
 
 	/*
 		Testname: namespace-deletion-removes-services
 		Description: Ensure that if a namespace is deleted then all services are removed from that namespace.
 	*/
-	framework.ConformanceIt("should ensure that all services are removed when a namespace is deleted",
+	framework.ConformanceIt("should ensure that all services are removed when a namespace is deleted [Arktos-CI]",
 		func() { ensureServicesAreRemovedWhenNamespaceIsDeleted(f) })
 
 	ginkgo.It("should delete fast enough (90 percent of 100 namespaces in 150 seconds)",
