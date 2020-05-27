@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -119,7 +120,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 	  Description: A conformant Kubernetes distribution MUST support the creation of DaemonSets. When a DaemonSet
 	  Pod is deleted, the DaemonSet controller MUST create a replacement Pod.
 	*/
-	framework.ConformanceIt("should run and stop simple daemon", func() {
+	framework.ConformanceIt("should run and stop simple daemon [Arktos-CI]", func() {
 		label := map[string]string{daemonsetNameLabel: dsName}
 
 		ginkgo.By(fmt.Sprintf("Creating simple DaemonSet %q", dsName))

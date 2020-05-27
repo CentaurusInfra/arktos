@@ -52,7 +52,7 @@ var _ = SIGDescribe("Watchers", func() {
 			update, and delete notifications on configmaps that match a label selector and do
 			not receive notifications for configmaps which do not match that label selector.
 	*/
-	framework.ConformanceIt("should observe add, update, and delete watch notifications on configmaps", func() {
+	framework.ConformanceIt("should observe add, update, and delete watch notifications on configmaps [Arktos-CI]", func() {
 		c := f.ClientSet
 		ns := f.Namespace.Name
 

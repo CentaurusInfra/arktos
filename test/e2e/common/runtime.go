@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +45,7 @@ var _ = framework.KubeDescribe("Container Runtime", func() {
 				Testname: Container Runtime, Restart Policy, Pod Phases
 				Description: If the restart policy is set to ‘Always’, Pod MUST be restarted when terminated, If restart policy is ‘OnFailure’, Pod MUST be started only if it is terminated with non-zero exit code. If the restart policy is ‘Never’, Pod MUST never be restarted. All these three test cases MUST verify the restart counts accordingly.
 			*/
-			framework.ConformanceIt("should run with the expected status [NodeConformance]", func() {
+			framework.ConformanceIt("should run with the expected status [NodeConformance] [Arktos-CI]", func() {
 				restartCountVolumeName := "restart-count"
 				restartCountVolumePath := "/restart-count"
 				testContainer := v1.Container{
@@ -389,7 +390,7 @@ while true; do sleep 1; done
 				imagePullTest(image, false, v1.PodPending, true, false)
 			})
 
-			ginkgo.It("should be able to pull from private registry with secret [NodeConformance]", func() {
+			ginkgo.It("should be able to pull from private registry with secret [NodeConformance] [Arktos-CI]", func() {
 				image := imageutils.GetE2EImage(imageutils.AuthenticatedAlpine)
 				isWindows := false
 				if framework.NodeOSDistroIs("windows") {
