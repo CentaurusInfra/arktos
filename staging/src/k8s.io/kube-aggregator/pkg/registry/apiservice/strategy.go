@@ -52,7 +52,7 @@ func (apiServerStrategy) NamespaceScoped() bool {
 }
 
 func (apiServerStrategy) TenantScoped() bool {
-	return false
+	return true
 }
 
 func (apiServerStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
@@ -103,7 +103,7 @@ func (apiServerStatusStrategy) NamespaceScoped() bool {
 	return false
 }
 func (apiServerStatusStrategy) TenantScoped() bool {
-	return false
+	return true
 }
 
 func (apiServerStatusStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {

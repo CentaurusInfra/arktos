@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,21 +31,23 @@ import (
 	listers "k8s.io/kube-aggregator/pkg/client/listers/apiregistration/internalversion"
 )
 
+var testTenant = "test-tenant"
+
 func newAutoRegisterManagedAPIService(name string) *apiregistration.APIService {
 	return &apiregistration.APIService{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{AutoRegisterManagedLabel: string("true")}},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Tenant: testTenant, Labels: map[string]string{AutoRegisterManagedLabel: string("true")}},
 	}
 }
 
 func newAutoRegisterManagedOnStartAPIService(name string) *apiregistration.APIService {
 	return &apiregistration.APIService{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{AutoRegisterManagedLabel: string("onstart")}},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Tenant: testTenant, Labels: map[string]string{AutoRegisterManagedLabel: string("onstart")}},
 	}
 }
 
 func newAutoRegisterManagedModifiedAPIService(name string) *apiregistration.APIService {
 	return &apiregistration.APIService{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{AutoRegisterManagedLabel: string("true")}},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Tenant: testTenant, Labels: map[string]string{AutoRegisterManagedLabel: string("true")}},
 		Spec: apiregistration.APIServiceSpec{
 			Group: "something",
 		},
@@ -53,7 +56,7 @@ func newAutoRegisterManagedModifiedAPIService(name string) *apiregistration.APIS
 
 func newAutoRegisterManagedOnStartModifiedAPIService(name string) *apiregistration.APIService {
 	return &apiregistration.APIService{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{AutoRegisterManagedLabel: string("onstart")}},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Tenant: testTenant, Labels: map[string]string{AutoRegisterManagedLabel: string("onstart")}},
 		Spec: apiregistration.APIServiceSpec{
 			Group: "something",
 		},
@@ -62,7 +65,7 @@ func newAutoRegisterManagedOnStartModifiedAPIService(name string) *apiregistrati
 
 func newAPIService(name string) *apiregistration.APIService {
 	return &apiregistration.APIService{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Tenant: testTenant},
 	}
 }
 
