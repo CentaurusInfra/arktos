@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +38,7 @@ import (
 // APIHandlerManager defines the behaviour that an API handler should have.
 type APIHandlerManager interface {
 	AddAPIService(apiService *apiregistration.APIService) error
-	RemoveAPIService(apiServiceName string)
+	RemoveAPIService(tenantedApiServiceName string)
 }
 
 // APIServiceRegistrationController is responsible for registering and removing API services.
@@ -74,7 +75,12 @@ func NewAPIServiceRegistrationController(apiServiceInformer informers.APIService
 }
 
 func (c *APIServiceRegistrationController) sync(key string) error {
-	apiService, err := c.apiServiceLister.Get(key)
+	tenant, name, err := cache.SplitMetaTenantKey(key)
+	if err != nil {
+		return err
+	}
+
+	apiService, err := c.apiServiceLister.APIServicesWithMultiTenancy(tenant).Get(name)
 	if apierrors.IsNotFound(err) {
 		c.apiHandlerManager.RemoveAPIService(key)
 		return nil

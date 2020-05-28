@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +18,8 @@ limitations under the License.
 package apiregistration
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
 	"testing"
 )
@@ -184,6 +187,51 @@ func TestSortedAPIServicesByVersion(t *testing.T) {
 		}
 		if !reflect.DeepEqual(tc.expected, actual) {
 			t.Errorf("expected %s, actual %s", tc.expected, actual)
+		}
+	}
+}
+
+func TestAPIServiceNameToGroupVersionTenant(t *testing.T) {
+	tests := []*struct {
+		name                   string
+		input                  string
+		expectedTenant         string
+		expectedApiServiceName string
+		expectedGroupVersion   schema.GroupVersion
+	}{
+		{
+			name:                   "case1",
+			input:                  "test-te/ver0.group1",
+			expectedTenant:         "test-te",
+			expectedApiServiceName: "ver0.group1",
+			expectedGroupVersion:   schema.GroupVersion{Group: "group1", Version: "ver0"},
+		},
+		{
+			name:                   "case2",
+			input:                  "ver0.group1",
+			expectedTenant:         metav1.TenantSystem,
+			expectedApiServiceName: "ver0.group1",
+			expectedGroupVersion:   schema.GroupVersion{Group: "group1", Version: "ver0"},
+		},
+		{
+			name:                   "case3",
+			input:                  "test-te/ver0.group1.fancyworld.com",
+			expectedTenant:         "test-te",
+			expectedApiServiceName: "ver0.group1.fancyworld.com",
+			expectedGroupVersion:   schema.GroupVersion{Group: "group1.fancyworld.com", Version: "ver0"},
+		},
+	}
+
+	for _, tc := range tests {
+		tenant, apiServiceName, groupVersion := APIServiceNameToGroupVersionTenant(tc.input)
+		if tenant != tc.expectedTenant {
+			t.Errorf("%v: expected tenant %v, got %v", tc.name, tc.expectedTenant, tenant)
+		}
+		if apiServiceName != tc.expectedApiServiceName {
+			t.Errorf("%v: expected apiServiceName %v, got %v", tc.name, tc.expectedApiServiceName, apiServiceName)
+		}
+		if groupVersion != tc.expectedGroupVersion {
+			t.Errorf("%v: expected expectedGroupVersion %v, got %v", tc.name, tc.expectedGroupVersion, groupVersion)
 		}
 	}
 }
