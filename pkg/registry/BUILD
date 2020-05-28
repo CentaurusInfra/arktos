@@ -72,6 +72,7 @@ filegroup(
         "//pkg/registry/core/secret:all-srcs",
         "//pkg/registry/core/service:all-srcs",
         "//pkg/registry/core/serviceaccount:all-srcs",
+        "//pkg/registry/core/storagecluster:all-srcs",
         "//pkg/registry/core/tenant:all-srcs",
         "//pkg/registry/events/event:all-srcs",
         "//pkg/registry/events/rest:all-srcs",
