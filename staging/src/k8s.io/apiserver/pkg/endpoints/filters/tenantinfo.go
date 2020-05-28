@@ -91,15 +91,11 @@ func GetTenantFromUrlParam(urlString string) string {
 	return ""
 }
 
-func GetTenantFromQuery(req *http.Request) string {
-	return GetTenantFromUrlParam(req.URL.String())
-}
-
 // This func tries to get tenant from the url param
 // if not found, try to get it from the userInfo in the context
 // Note: Only non-resource request (namely the group/version handlers) will try to get tenant from url param.
 func GetTenantFromQueryThenContext(req *http.Request) (string, error) {
-	tenant := GetTenantFromQuery(req)
+	tenant := GetTenantFromUrlParam(req.URL.String())
 	if len(tenant) > 0 {
 		return tenant, nil
 	}

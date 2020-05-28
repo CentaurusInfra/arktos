@@ -252,7 +252,6 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 	}
 
 	proxyPath := "/apis/" + apiService.Spec.Group + "/" + apiService.Spec.Version
-	suffix := ""
 	if apiService.Tenant != metav1.TenantSystem {
 		proxyPath = apifilters.AddTenantParamToUrl(proxyPath, apiService.Tenant)
 	}
@@ -274,8 +273,8 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 		s.openAPIAggregationController.AddAPIService(proxyHandler, apiService)
 	}
 	s.proxyHandlers[tenantedApiServiceName] = proxyHandler
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(proxyPath+suffix, proxyHandler)
-	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandlePrefix(proxyPath+suffix+"/", proxyHandler)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(proxyPath, proxyHandler)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandlePrefix(proxyPath+"/", proxyHandler)
 
 	// if we're dealing with the legacy group, we're done here
 	if apiService.Name == legacyAPIServiceName {
@@ -296,8 +295,8 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 		delegate:  s.delegateHandler,
 	}
 	// aggregation is protected
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(groupPath+suffix, groupDiscoveryHandler)
-	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandle(groupPath+suffix+"/", groupDiscoveryHandler)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle(groupPath, groupDiscoveryHandler)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.UnlistedHandle(groupPath+"/", groupDiscoveryHandler)
 	s.handledGroups.Insert(tenantedGroup)
 	return nil
 }
@@ -310,7 +309,6 @@ func (s *APIAggregator) RemoveAPIService(tenantedApiServiceName string) {
 	tenatedApiServiceName := tenant + "/" + apiServiceName
 
 	proxyPath := "/apis/" + version.Group + "/" + version.Version
-	suffix := ""
 	if tenant != metav1.TenantSystem {
 		proxyPath = apifilters.AddTenantParamToUrl(proxyPath, tenant)
 	}
@@ -318,16 +316,16 @@ func (s *APIAggregator) RemoveAPIService(tenantedApiServiceName string) {
 	if apiServiceName == legacyAPIServiceName {
 		proxyPath = "/api"
 	}
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + suffix)
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + suffix + "/")
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + "/")
 	if s.openAPIAggregationController != nil {
 		s.openAPIAggregationController.RemoveAPIService(tenatedApiServiceName)
 	}
 	delete(s.proxyHandlers, tenantedGroup)
 
 	groupPath := "/apis/" + version.Group
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(groupPath + suffix)
-	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(groupPath + suffix + "/")
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(groupPath)
+	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(groupPath + "/")
 	delete(s.handledGroups, tenantedGroup)
 }
 
