@@ -28,6 +28,7 @@ import (
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	"k8s.io/client-go/pkg/version"
 
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	v1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
@@ -253,7 +254,7 @@ func (s *APIAggregator) AddAPIService(apiService *apiregistration.APIService) er
 	proxyPath := "/apis/" + apiService.Spec.Group + "/" + apiService.Spec.Version
 	suffix := ""
 	if apiService.Tenant != metav1.TenantSystem {
-		suffix = "?tenant=" + apiService.Tenant
+		proxyPath = apifilters.AddTenantParamToUrl(proxyPath, apiService.Tenant)
 	}
 	// v1. is a special case for the legacy API.  It proxies to a wider set of endpoints.
 	if apiService.Name == legacyAPIServiceName {
@@ -311,7 +312,7 @@ func (s *APIAggregator) RemoveAPIService(tenantedApiServiceName string) {
 	proxyPath := "/apis/" + version.Group + "/" + version.Version
 	suffix := ""
 	if tenant != metav1.TenantSystem {
-		suffix = "?tenant=" + tenant
+		proxyPath = apifilters.AddTenantParamToUrl(proxyPath, tenant)
 	}
 	// v1. is a special case for the legacy API.  It proxies to a wider set of endpoints.
 	if apiServiceName == legacyAPIServiceName {

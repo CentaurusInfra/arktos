@@ -19,11 +19,14 @@ package filters
 import (
 	"errors"
 	"net/http"
+	"net/url"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
+
+var TenantParam = "tenant"
 
 // WithTenantInfo set the tenant in the requestInfo for short-path requests based on the user info from the authentication result.
 func WithTenantInfo(handler http.Handler) http.Handler {
@@ -60,13 +63,45 @@ func GetTenantFromContext(req *http.Request) (string, error) {
 	return userTenant, nil
 }
 
+func AddTenantParamToUrl(urlString string, tenant string) string {
+	u, _ := url.Parse(urlString)
+	queries := u.Query()
+	queries.Set(TenantParam, tenant)
+	u.RawQuery = queries.Encode()
+
+	return u.String()
+}
+
+func DelTenantParamFromUrl(urlString string) string {
+	u, _ := url.Parse(urlString)
+	queries := u.Query()
+	queries.Del(TenantParam)
+	u.RawQuery = queries.Encode()
+
+	return u.String()
+}
+
+func GetTenantFromUrlParam(urlString string) string {
+	u, _ := url.Parse(urlString)
+	tenantValues, ok := u.Query()[TenantParam]
+	if ok {
+		return tenantValues[0]
+	}
+
+	return ""
+}
+
+func GetTenantFromQuery(req *http.Request) string {
+	return GetTenantFromUrlParam(req.URL.String())
+}
+
 // This func tries to get tenant from the url param
 // if not found, try to get it from the userInfo in the context
 // Note: Only non-resource request (namely the group/version handlers) will try to get tenant from url param.
 func GetTenantFromQueryThenContext(req *http.Request) (string, error) {
-	tenantKeys, ok := req.URL.Query()["tenant"]
-	if ok {
-		return string(tenantKeys[0]), nil
+	tenant := GetTenantFromQuery(req)
+	if len(tenant) > 0 {
+		return tenant, nil
 	}
 
 	return GetTenantFromContext(req)

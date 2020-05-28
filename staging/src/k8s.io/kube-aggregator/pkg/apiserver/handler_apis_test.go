@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/client-go/tools/cache"
 
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	aggregatorscheme "k8s.io/kube-aggregator/pkg/apiserver/scheme"
 	listers "k8s.io/kube-aggregator/pkg/client/listers/apiregistration/internalversion"
@@ -295,7 +296,7 @@ func TestAPIs(t *testing.T) {
 		server := httptest.NewServer(handler)
 		defer server.Close()
 
-		resp, err := http.Get(server.URL + "/apis" + "?tenant=" + testTenant)
+		resp, err := http.Get(server.URL + apifilters.AddTenantParamToUrl("/apis", testTenant))
 		if err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue
@@ -333,7 +334,7 @@ func TestAPIGroupMissing(t *testing.T) {
 	defer server.Close()
 
 	// this call should delegate
-	resp, err := http.Get(server.URL + "/apis/groupName/foo" + "?tenant=" + testTenant)
+	resp, err := http.Get(server.URL + apifilters.AddTenantParamToUrl("/apis/groupName/foo", testTenant))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +343,7 @@ func TestAPIGroupMissing(t *testing.T) {
 	}
 
 	// groupName still has no api services for it (like it was deleted), it should delegate
-	resp, err = http.Get(server.URL + "/apis/groupName/" + "?tenant=" + testTenant)
+	resp, err = http.Get(server.URL + apifilters.AddTenantParamToUrl("/apis/groupName/", testTenant))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +352,7 @@ func TestAPIGroupMissing(t *testing.T) {
 	}
 
 	// missing group should delegate still has no api services for it (like it was deleted)
-	resp, err = http.Get(server.URL + "/apis/missing" + "?tenant=" + testTenant)
+	resp, err = http.Get(server.URL + apifilters.AddTenantParamToUrl("/apis/missing", testTenant))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -477,7 +478,7 @@ func TestAPIGroup(t *testing.T) {
 		server := httptest.NewServer(handler)
 		defer server.Close()
 
-		resp, err := http.Get(server.URL + "/apis/" + tc.group + "?tenant=" + testTenant)
+		resp, err := http.Get(server.URL + apifilters.AddTenantParamToUrl("/apis/"+tc.group, testTenant))
 		if err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue

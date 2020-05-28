@@ -19,7 +19,6 @@ package routes
 
 import (
 	"net/http"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -70,15 +69,14 @@ type IndexLister struct {
 // ServeHTTP serves the available paths.
 func (i IndexLister) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	userTenant, _ := apifilters.GetTenantFromQueryThenContext(r)
-	tenantedPathMark := "?tenant="
-	tenantPathSuffix := tenantedPathMark + userTenant
 	rootPaths := []string{}
 	for _, path := range i.PathProvider.ListedPaths() {
-		if !strings.Contains(path, tenantedPathMark) {
+		pathTenant := apifilters.GetTenantFromUrlParam(path)
+		if pathTenant == metav1.TenantNone {
 			rootPaths = append(rootPaths, path)
 		} else {
-			if strings.HasSuffix(path, tenantPathSuffix) {
-				rootPaths = append(rootPaths, strings.TrimSuffix(path, tenantPathSuffix))
+			if userTenant == pathTenant {
+				rootPaths = append(rootPaths, apifilters.DelTenantParamFromUrl(path))
 			}
 		}
 	}

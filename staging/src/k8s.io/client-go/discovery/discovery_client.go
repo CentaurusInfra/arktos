@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/version"
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 )
@@ -212,7 +213,7 @@ func (d *DiscoveryClient) ServerResourcesForGroupVersion(tenantGroupVersion stri
 	if !tenantedFormat {
 		err = d.RESTClient().Get().AbsPath(url.String()).Do().Into(resources)
 	} else {
-		err = d.RESTClient().Get().AbsPath(url.String()).Param("tenant", parts[0]).Do().Into(resources)
+		err = d.RESTClient().Get().AbsPath(url.String()).Param(apifilters.TenantParam, parts[0]).Do().Into(resources)
 	}
 
 	if err != nil {
