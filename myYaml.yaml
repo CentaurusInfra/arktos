@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: static-web
+  labels:
+    role: myrole
+spec:
+  virtualMachine:
+    name: new-vm-test
+    image: 70a599e0-31e7-49b7-b260-868f441e862b
+    resources:
+      limits:
+        cpu: 1
+        memory: 64
+    keyPairName: myKeyPair
+    scheduling:
+      accessIpv4: 1.2.3.4
+      availabilityZone: us-west
