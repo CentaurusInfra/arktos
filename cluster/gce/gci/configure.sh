@@ -24,9 +24,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# redirect stdout/stderr to a file
-exec >> /var/log/master-init.log 2>&1
-
 ### Hardcoded constants
 DEFAULT_CNI_VERSION="v0.7.5"
 DEFAULT_CNI_SHA1="52e9d2de8a5f927307d9397308735658ee44ab8d"
@@ -568,6 +565,8 @@ function install-kube-binary-config {
 }
 
 ######### Main Function ##########
+# redirect stdout/stderr to a file
+exec >> /var/log/master-init.log 2>&1
 echo "Start to install kubernetes files"
 # if install fails, message-of-the-day (motd) will warn at login shell
 set-broken-motd

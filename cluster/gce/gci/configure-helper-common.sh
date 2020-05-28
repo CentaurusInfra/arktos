@@ -21,8 +21,6 @@
 # using sed. It should use an actual template parser on the manifest
 # files.
 
-# redirect stdout/stderr to a file
-exec >> /var/log/master-init.log 2>&1
 
 function setup-os-params {
   # Reset core_pattern. On GCI, the default core_pattern pipes the core dumps to

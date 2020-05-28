@@ -25,14 +25,12 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# redirect stdout/stderr to a file
-exec >> /var/log/master-init.log 2>&1
-
-source "/home/kubernetes/bin/configure-helper-common.sh"
 ########### Main Function ###########
 function main() {
+  # redirect stdout/stderr to a file
+  exec >> /var/log/master-init.log 2>&1
   echo "Start to configure apiserver instance for kubernetes"
-
+  source "/home/kubernetes/bin/configure-helper-common.sh"
   readonly UUID_MNT_PREFIX="/mnt/disks/by-uuid/google-local-ssds"
   readonly UUID_BLOCK_PREFIX="/dev/disk/by-uuid/google-local-ssds"
   readonly COREDNS_AUTOSCALER="Deployment/coredns"
