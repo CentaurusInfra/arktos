@@ -107,13 +107,13 @@ function create-apiserver-instance-internal() {
     else
       echo "${result}" >&2
       if [[ ! "${result}" =~ "try again later" ]]; then
-        echo "Failed to create master instance due to non-retryable error" >&2
+        echo "Failed to create apiserver instance due to non-retryable error" >&2
         return 1
       fi
       sleep $sleep_sec
     fi
   done
 
-  echo "Failed to create master instance despite ${retries} attempts" >&2
+  echo "Failed to create apiserver instance despite ${retries} attempts" >&2
   return 1
 }
