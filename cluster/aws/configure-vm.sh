@@ -783,9 +783,9 @@ function setup-kubernetes-worker() {
     echo "Waiting for kubeadm join command .."
     sleep 5
     attempt=$(($attempt+1))
-    if (( attempt > 120 )); then
+    if (( attempt > 60 )); then
       echo
-      echo "Waiting for kubeadm join command failed after 10 minutes elapsed"
+      echo "Waiting for kubeadm join command failed after 5 minutes elapsed"
       exit 1
     fi
   done

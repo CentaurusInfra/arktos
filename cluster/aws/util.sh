@@ -807,9 +807,9 @@ function wait-for-instance-state {
       echo "Sleeping for 3 seconds..."
       sleep 3
       attempt=$(($attempt+1))
-      if (( attempt > 200 )); then
+      if (( attempt > 100 )); then
         echo
-        echo "Waiting for instance state failed after 10 minutes elapsed"
+        echo "Waiting for instance state failed after 5 minutes elapsed"
         exit 1
       fi
     fi
@@ -1504,9 +1504,9 @@ function wait-master() {
     printf "."
     sleep 5
     attempt=$(($attempt+1))
-    if (( attempt > 240 )); then
+    if (( attempt > 60 )); then
       echo
-      echo "Waiting for master failed after 20 minutes. There might be some uncaught error during start."
+      echo "Waiting for master failed after 5 minutes. There might be some uncaught error during start."
       exit 1
     fi    
   done
