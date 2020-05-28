@@ -797,7 +797,7 @@ function wait-for-instance-state {
   instance_id=$1
   state=$2
 
-  local attempt=0
+  local start_time=$(date +%s)
   while true; do
     instance_state=$($AWS_CMD describe-instances --instance-ids ${instance_id} --query Reservations[].Instances[].State.Name)
     if [[ "$instance_state" == "${state}" ]]; then
@@ -806,8 +806,8 @@ function wait-for-instance-state {
       echo "Waiting for instance ${instance_id} to be ${state} (currently ${instance_state})"
       echo "Sleeping for 3 seconds..."
       sleep 3
-      attempt=$(($attempt+1))
-      if (( attempt > 100 )); then
+      local elapsed=$(($(date +%s) - ${start_time}))
+      if [[ ${elapsed} -gt 300 ]]; then
         echo
         echo "Waiting for instance state failed after 5 minutes elapsed"
         exit 1
@@ -1483,7 +1483,7 @@ function wait-master() {
   if [[ -f "$HOME/.ssh/known_hosts" ]]; then
     ssh-keygen -f "$HOME/.ssh/known_hosts" -R ${KUBE_MASTER_IP}
   fi
-  local attempt=0
+  local start_time=$(date +%s)
   while : ; do
     set +e
     execute-ssh ${KUBE_MASTER_IP} "ls /home/${SSH_USER}/.kube/config" &> /dev/null
@@ -1503,8 +1503,8 @@ function wait-master() {
     fi
     printf "."
     sleep 5
-    attempt=$(($attempt+1))
-    if (( attempt > 60 )); then
+    local elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 300 ]]; then
       echo
       echo "Waiting for master failed after 5 minutes. There might be some uncaught error during start."
       exit 1
