@@ -131,6 +131,7 @@ filegroup(
         "//vendor/github.com/docker/go-units:all-srcs",
         "//vendor/github.com/docker/libnetwork/ipvs:all-srcs",
         "//vendor/github.com/docker/spdystream:all-srcs",
+        "//vendor/github.com/dustin/go-humanize:all-srcs",
         "//vendor/github.com/elazarl/goproxy:all-srcs",
         "//vendor/github.com/emicklei/go-restful:all-srcs",
         "//vendor/github.com/euank/go-kmsg-parser/kmsgparser:all-srcs",

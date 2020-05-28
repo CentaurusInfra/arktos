@@ -177,13 +177,21 @@
       "state": "ɚɎ(dɅ囥糷磩窮秳ķ蟒",
       "lastTerminationState": "QZ{ʁgɸ=ǤÆ",
       "powerState": "?讦ĭÐ",
-      "restartCount": 1825936739
+      "restartCount": 1825936739,
+      "resources": {
+        "limits": {
+          "龷ȪÆl": "244"
+        },
+        "requests": {
+          "鏮嵒ƫS捕ɷD¡轫n": "583"
+        }
+      }
     },
     "nicStatuses": [
       {
         "name": "64",
         "portID": "65",
-        "state": "龷ȪÆl",
+        "state": "Ü郀",
         "reason": "66"
       }
     ]

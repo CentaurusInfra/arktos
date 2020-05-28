@@ -499,7 +499,7 @@ func (b *Builder) DefaultTenant() *Builder {
 // across all of the tenant. This overrides the tenant set by TenantParam().
 func (b *Builder) AllTenants(allTenant bool) *Builder {
 	if allTenant {
-		b.tenant = metav1.TenantAll
+		b.tenant = metav1.TenantAllExplicit
 	}
 	b.allTenant = allTenant
 	return b

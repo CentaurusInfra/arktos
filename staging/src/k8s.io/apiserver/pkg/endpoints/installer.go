@@ -501,7 +501,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			actions = appendIf(actions, action{"WATCHLIST", "watch/" + resource, tenantParams, namer, true, true}, allowWatchList)
 		}
 
-		// the folloiwing is for backward-compatible APIs before multi-tenancy, should be removed when we no longer support it
+		// the following is for backward-compatible APIs before multi-tenancy. We call it short-path, for which the tenant info will be extracted from request context.
 		resourcePath = resource
 		itemPath = resourcePath + "/{name}"
 		resourceParams = params
@@ -599,7 +599,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			actions = appendIf(actions, action{"WATCHLIST", "watch/" + resource, params, namer, true, true}, allowWatchList)
 		}
 
-		// the folloiwing is for backward-compatible APIs before multi-tenancy, should be removed when we no longer support it
+		// the following is for backward-compatible APIs before multi-tenancy. We call it short-path, for which the tenant info will be extracted from request context.
 		resourcePath = namespaceParamName + "/{namespace}/" + resource
 		itemPath = resourcePath + "/{name}"
 		resourceParams = []*restful.Parameter{namespaceParam}

@@ -270,7 +270,7 @@ var _ = SIGDescribe("StatefulSet", func() {
 			Testname: StatefulSet, Rolling Update
 			Description: StatefulSet MUST support the RollingUpdate strategy to automatically replace Pods one at a time when the Pod template changes. The StatefulSet's status MUST indicate the CurrentRevision and UpdateRevision. If the template is changed to match a prior revision, StatefulSet MUST detect this as a rollback instead of creating a new revision. This test does not depend on a preexisting default StorageClass or a dynamic provisioner.
 		*/
-		framework.ConformanceIt("should perform rolling updates and roll backs of template modifications", func() {
+		framework.ConformanceIt("should perform rolling updates and roll backs of template modifications [Arktos-CI]", func() {
 			ginkgo.By("Creating a new StatefulSet")
 			ss := framework.NewStatefulSet("ss2", ns, headlessSvcName, 3, nil, nil, labels)
 			rollbackTest(c, ns, ss)

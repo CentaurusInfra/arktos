@@ -415,6 +415,17 @@ func (ds *dockerService) ContainerStatus(_ context.Context, req *runtimeapi.Cont
 	if len(ir.RepoTags) > 0 {
 		imageName = ir.RepoTags[0]
 	}
+
+	resources := &runtimeapi.LinuxContainerResources{
+		CpuPeriod:          r.ContainerJSONBase.HostConfig.Resources.CPUPeriod,
+		CpuQuota:           r.ContainerJSONBase.HostConfig.Resources.CPUQuota,
+		CpuShares:          r.ContainerJSONBase.HostConfig.Resources.CPUShares,
+		MemoryLimitInBytes: r.ContainerJSONBase.HostConfig.Resources.Memory,
+		OomScoreAdj:        int64(r.ContainerJSONBase.HostConfig.OomScoreAdj),
+		CpusetCpus:         r.ContainerJSONBase.HostConfig.Resources.CpusetCpus,
+		CpusetMems:         r.ContainerJSONBase.HostConfig.Resources.CpusetMems,
+	}
+
 	status := &runtimeapi.ContainerStatus{
 		Id:          r.ID,
 		Metadata:    metadata,
@@ -431,6 +442,7 @@ func (ds *dockerService) ContainerStatus(_ context.Context, req *runtimeapi.Cont
 		Labels:      labels,
 		Annotations: annotations,
 		LogPath:     r.Config.Labels[containerLogPathLabelKey],
+		Resources:   resources,
 	}
 	return &runtimeapi.ContainerStatusResponse{Status: status}, nil
 }
