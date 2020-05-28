@@ -61,8 +61,8 @@ echo "== cleanup starting =="
 
 set-kube-env
 
-stop-flannel-ds
-stop-containers
+stop-flannel-ds || true
+stop-containers || true
 remove-packages
 
 echo "== cleanup done =="

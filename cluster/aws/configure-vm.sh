@@ -778,9 +778,16 @@ function setup-kubernetes-worker() {
   echo "Setting up kubernetes worker: version $KUBE_VER master IP: $KUBE_MASTER_IP."
 
   pushd /etc/kubernetes
+  local attempt=0
   until wget http://$KUBE_MASTER_IP:8085/join_string &>/dev/null; do
     echo "Waiting for kubeadm join command .."
     sleep 5
+    attempt=$(($attempt+1))
+    if (( attempt > 120 )); then
+      echo
+      echo "Waiting for kubeadm join command failed after 10 minutes elapsed"
+      exit 1
+    fi
   done
   local kubeadm_join_cmd=$(cat /etc/kubernetes/join_string)
   popd
