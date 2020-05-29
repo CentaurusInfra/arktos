@@ -18,6 +18,7 @@ package versioned
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,8 +82,8 @@ func (g *TenantGeneratorV1) validate() error {
 	if len(g.Name) == 0 {
 		return fmt.Errorf("name must be specified")
 	}
-	if len(g.StorageClusterId) == 0 {
-		return fmt.Errorf("StorageClusterId must be specified")
+	if len(strings.TrimSpace(g.StorageClusterId)) == 0 {
+		return fmt.Errorf("StorageClusterId can not be empty")
 	}
 	return nil
 }

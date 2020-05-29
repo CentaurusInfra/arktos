@@ -39,7 +39,9 @@ var (
 	  # Create a new tenant named dreamworld with storage cluster set to c1
 	  kubectl create tenant dreamworld --storagecluster=StorageCluserId=c1`))
 
-	defaultStorageClusterId = "1"
+	//TODO: to refer the default value defined in future storage cluster work, instead of hard-coded
+	//tracking issue: https://github.com/futurewei-cloud/arktos/issues/326
+	defaultStorageClusterId = "system"
 )
 
 // TenantOpts is the options for 'create tenant' sub command
@@ -68,7 +70,7 @@ func NewCmdCreateTenant(f cmdutil.Factory, ioStreams genericclioptions.IOStreams
 	}
 
 	options.CreateSubcommandOptions.PrintFlags.AddFlags(cmd)
-	cmd.Flags().StringVar(&options.storageClusterId, "storagecluster", options.storageClusterId, fmt.Sprintf("Storge Cluster Id, default %v", defaultStorageClusterId))
+	cmd.Flags().StringVar(&options.storageClusterId, "storagecluster", options.storageClusterId, fmt.Sprintf("Storge Cluster Id, by default set to %v", defaultStorageClusterId))
 
 	cmdutil.AddApplyAnnotationFlags(cmd)
 	cmdutil.AddValidateFlags(cmd)
@@ -86,6 +88,8 @@ func (o *TenantOpts) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 
 	if o.storageClusterId == "" {
 		o.storageClusterId = defaultStorageClusterId
+		// need to let the user know that we are doing something under the hood
+		cmd.Println("setting storage cluster to %v", defaultStorageClusterId)
 	}
 
 	var generator generate.StructuredGenerator
