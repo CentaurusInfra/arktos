@@ -28,6 +28,8 @@ import (
 type TenantGeneratorV1 struct {
 	// Name of Tenant
 	Name string
+
+	StorageClusterId string
 }
 
 // Ensure it supports the generator pattern that uses parameter injection
@@ -50,7 +52,8 @@ func (g TenantGeneratorV1) Generate(genericParams map[string]interface{}) (runti
 		}
 		params[key] = strVal
 	}
-	delegate := &TenantGeneratorV1{Name: params["name"]}
+
+	delegate := &TenantGeneratorV1{Name: params["name"], StorageClusterId: params["storagecluster"]}
 	return delegate.StructuredGenerate()
 }
 
@@ -58,6 +61,7 @@ func (g TenantGeneratorV1) Generate(genericParams map[string]interface{}) (runti
 func (g TenantGeneratorV1) ParamNames() []generate.GeneratorParam {
 	return []generate.GeneratorParam{
 		{Name: "name", Required: true},
+		{Name: "storagecluster", Required: true},
 	}
 }
 
@@ -68,6 +72,7 @@ func (g *TenantGeneratorV1) StructuredGenerate() (runtime.Object, error) {
 	}
 	Tenant := &v1.Tenant{}
 	Tenant.Name = g.Name
+	Tenant.Spec.StorageClusterId = g.StorageClusterId
 	return Tenant, nil
 }
 
@@ -75,6 +80,9 @@ func (g *TenantGeneratorV1) StructuredGenerate() (runtime.Object, error) {
 func (g *TenantGeneratorV1) validate() error {
 	if len(g.Name) == 0 {
 		return fmt.Errorf("name must be specified")
+	}
+	if len(g.StorageClusterId) == 0 {
+		return fmt.Errorf("StorageClusterId must be specified")
 	}
 	return nil
 }
