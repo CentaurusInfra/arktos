@@ -92,7 +92,7 @@ func StartTestServer(t *testing.T, stopCh <-chan struct{}, setup TestServerSetup
 	kubeAPIServerOptions.SecureServing.ServerCert.CertDirectory = certDir
 	kubeAPIServerOptions.InsecureServing.BindPort = 0
 	kubeAPIServerOptions.Etcd.StorageConfig.Prefix = path.Join("/", uuid.New(), "registry")
-	kubeAPIServerOptions.Etcd.StorageConfig.Transport.ServerList = []string{GetEtcdURL()}
+	kubeAPIServerOptions.Etcd.StorageConfig.Transport.SystemClusterServerList = []string{GetEtcdURL()}
 	kubeAPIServerOptions.ServiceClusterIPRange = *defaultServiceClusterIPRange
 	kubeAPIServerOptions.Authentication.RequestHeader.UsernameHeaders = []string{"X-Remote-User"}
 	kubeAPIServerOptions.Authentication.RequestHeader.GroupHeaders = []string{"X-Remote-Group"}

@@ -24,6 +24,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"net"
 	"net/http"
 	"net/url"
@@ -222,6 +223,7 @@ func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer g
 
 	kubeAPIServer.GenericAPIServer.AddPostStartHookOrDie("start-kube-apiserver-admission-initializer", admissionPostStartHook)
 	go kubeAPIServerConfig.ExtraConfig.DataPartitionManager.Run(stopCh)
+	go kubeAPIServerConfig.ExtraConfig.StorageClusterManager.Run(stopCh)
 
 	return kubeAPIServer, nil
 }
@@ -292,8 +294,8 @@ func CreateKubeAPIServerConfig(
 		return
 	}
 
-	if _, port, err := net.SplitHostPort(s.Etcd.StorageConfig.Transport.ServerList[0]); err == nil && port != "0" && len(port) != 0 {
-		if err := utilwait.PollImmediate(etcdRetryInterval, etcdRetryLimit*etcdRetryInterval, preflight.EtcdConnection{ServerList: s.Etcd.StorageConfig.Transport.ServerList}.CheckEtcdServers); err != nil {
+	if _, port, err := net.SplitHostPort(s.Etcd.StorageConfig.Transport.SystemClusterServerList[0]); err == nil && port != "0" && len(port) != 0 {
+		if err := utilwait.PollImmediate(etcdRetryInterval, etcdRetryLimit*etcdRetryInterval, preflight.EtcdConnection{ServerList: s.Etcd.StorageConfig.Transport.SystemClusterServerList}.CheckEtcdServers); err != nil {
 			lastErr = fmt.Errorf("error waiting for etcd connection: %v", err)
 			return
 		}
@@ -367,6 +369,11 @@ func CreateKubeAPIServerConfig(
 	if config.ExtraConfig.DataPartitionManager == nil {
 		config.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
 			config.ExtraConfig.ServiceGroupId, config.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
+	}
+	config.ExtraConfig.StorageClusterManager = storagecluster.GetStorageClusterManager()
+	if config.ExtraConfig.StorageClusterManager == nil {
+		config.ExtraConfig.StorageClusterManager = storagecluster.NewStorageClusterManager(
+			config.ExtraConfig.VersionedInformers.Core().V1().StorageClusters())
 	}
 
 	if nodeTunneler != nil {

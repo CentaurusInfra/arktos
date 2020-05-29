@@ -307,7 +307,7 @@ func DefaultEtcdOptions() *options.EtcdOptions {
 	// prefix code, so please don't change without ensuring
 	// sufficient coverage in other ways.
 	etcdOptions := options.NewEtcdOptions(storagebackend.NewDefaultConfig(uuid.New(), nil))
-	etcdOptions.StorageConfig.Transport.ServerList = []string{GetEtcdURL()}
+	etcdOptions.StorageConfig.Transport.SystemClusterServerList = []string{GetEtcdURL()}
 	return etcdOptions
 }
 
@@ -389,7 +389,7 @@ func RunAMasterUsingServer(masterConfig *master.Config, s *httptest.Server, mast
 // SharedEtcd creates a storage config for a shared etcd instance, with a unique prefix.
 func SharedEtcd() *storagebackend.Config {
 	cfg := storagebackend.NewDefaultConfig(path.Join(uuid.New(), "registry"), nil)
-	cfg.Transport.ServerList = []string{GetEtcdURL()}
+	cfg.Transport.SystemClusterServerList = []string{GetEtcdURL()}
 	return cfg
 }
 

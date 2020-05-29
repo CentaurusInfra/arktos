@@ -83,7 +83,7 @@ func GetEtcdClients(config storagebackend.TransportConfig) (*clientv3.Client, cl
 	}
 
 	cfg := clientv3.Config{
-		Endpoints: config.ServerList,
+		Endpoints: config.SystemClusterServerList,
 		TLS:       tlsConfig,
 	}
 

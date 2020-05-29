@@ -297,7 +297,7 @@ func NewUnsecuredEtcd3TestClientServer(t *testing.T) (*EtcdTestServer, *storageb
 		Type:   "etcd3",
 		Prefix: PathPrefix(),
 		Transport: storagebackend.TransportConfig{
-			ServerList: server.V3Client.Endpoints(),
+			SystemClusterServerList: server.V3Client.Endpoints(),
 		},
 		Paging: true,
 	}

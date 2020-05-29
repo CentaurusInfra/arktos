@@ -33,8 +33,10 @@ const (
 
 // TransportConfig holds all connection related info,  i.e. equal TransportConfig means equal servers we talk to.
 type TransportConfig struct {
-	// ServerList is the list of storage servers to connect with.
-	ServerList []string
+	// SystemCluterServerList is the list of system storage servers to connect with.
+	SystemClusterServerList []string
+	// DataClusterServersMap is the map from cluster id to a storage cluster to connect with.
+	DataClusterServersMap map[string][]string
 	// TLS credentials
 	KeyFile       string
 	CertFile      string
