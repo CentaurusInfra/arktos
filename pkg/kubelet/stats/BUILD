@@ -25,6 +25,7 @@ go_library(
         "//pkg/kubelet/stats/pidlimit:go_default_library",
         "//pkg/kubelet/status:go_default_library",
         "//pkg/kubelet/types:go_default_library",
+        "//pkg/kubelet/runtimeregistry:go_default_library",
         "//pkg/volume:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",

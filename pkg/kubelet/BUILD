@@ -95,6 +95,7 @@ go_library(
         "//pkg/kubelet/util/queue:go_default_library",
         "//pkg/kubelet/util/sliceutils:go_default_library",
         "//pkg/kubelet/volumemanager:go_default_library",
+        "//pkg/kubelet/runtimeregistry:go_default_library",
         "//pkg/scheduler/algorithm/predicates:go_default_library",
         "//pkg/scheduler/api:go_default_library",
         "//pkg/security/apparmor:go_default_library",

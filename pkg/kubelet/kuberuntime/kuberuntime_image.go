@@ -134,14 +134,14 @@ func (m *kubeGenericRuntimeManager) GetImageRef(image kubecontainer.ImageSpec) (
 func (m *kubeGenericRuntimeManager) ListImages() ([]kubecontainer.Image, error) {
 	var images []kubecontainer.Image
 
-	imageServices, err := m.GetAllImageServices()
+	imageServices, err := m.runtimeRegistry.GetAllImageServices()
 	if err != nil {
 		klog.Errorf("GetAllImageServices Failed: %v", err)
 		return nil, err
 	}
 
 	for _, imageService := range imageServices {
-		allImages, err := imageService.ListImages(nil)
+		allImages, err := imageService.ServiceApi.ListImages(nil)
 		if err != nil {
 			klog.Errorf("ListImages failed: %v", err)
 			return nil, err
@@ -164,14 +164,14 @@ func (m *kubeGenericRuntimeManager) ListImages() ([]kubecontainer.Image, error) 
 // Note that the image_gc_manager uses ImageID in the imageSpec to call the RemoveImages API
 //
 func (m *kubeGenericRuntimeManager) RemoveImage(image kubecontainer.ImageSpec) error {
-	imageServices, err := m.GetAllImageServices()
+	imageServices, err := m.runtimeRegistry.GetAllImageServices()
 	if err != nil {
 		klog.Errorf("GetAllImageServices  Failed: %v", err)
 		return err
 	}
 
 	for _, imageService := range imageServices {
-		err := imageService.RemoveImage(&runtimeapi.ImageSpec{Image: image.Image})
+		err := imageService.ServiceApi.RemoveImage(&runtimeapi.ImageSpec{Image: image.Image})
 		// log the error and continue to next imageServices
 		//
 		if err != nil {
@@ -193,7 +193,7 @@ func (m *kubeGenericRuntimeManager) RemoveImage(image kubecontainer.ImageSpec) e
 // all image services registered at the node.
 //
 func (m *kubeGenericRuntimeManager) ImageStats() (*kubecontainer.ImageStats, error) {
-	imageServices, err := m.GetAllImageServices()
+	imageServices, err := m.runtimeRegistry.GetAllImageServices()
 	if err != nil {
 		klog.Errorf("GetAllImageServices Failed: %v", err)
 		return nil, err
@@ -201,7 +201,7 @@ func (m *kubeGenericRuntimeManager) ImageStats() (*kubecontainer.ImageStats, err
 
 	stats := &kubecontainer.ImageStats{}
 	for _, imageService := range imageServices {
-		allImages, err := imageService.ListImages(nil)
+		allImages, err := imageService.ServiceApi.ListImages(nil)
 		if err != nil {
 			klog.Errorf("ListImages failed: %v", err)
 			return nil, err

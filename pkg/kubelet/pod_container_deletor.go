@@ -20,7 +20,6 @@ package kubelet
 import (
 	"sort"
 
-	internalapi "k8s.io/cri-api/pkg/apis"
 	"k8s.io/klog"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
@@ -35,17 +34,17 @@ type containerStatusbyCreatedList []*kubecontainer.ContainerStatus
 
 type podContainerDeletor struct {
 	containersToKeep int
-	runtime          internalapi.RuntimeService
+	runtime kubecontainer.Runtime
 }
 
 func (a containerStatusbyCreatedList) Len() int           { return len(a) }
 func (a containerStatusbyCreatedList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a containerStatusbyCreatedList) Less(i, j int) bool { return a[i].CreatedAt.After(a[j].CreatedAt) }
 
-func newPodContainerDeletor(runtime kubecontainer.Runtime, containersToKeep int) *podContainerDeletor {
+func newPodContainerDeletor(kubeRuntime kubecontainer.Runtime, containersToKeep int) *podContainerDeletor {
 	return &podContainerDeletor{
 		containersToKeep: containersToKeep,
-		runtime:          nil,
+		runtime: kubeRuntime,
 	}
 }
 
@@ -96,10 +95,6 @@ func (p *podContainerDeletor) deleteContainersInPod(filterContainerID string, po
 	}
 
 	for _, candidate := range getContainersToDeleteInPod(filterContainerID, podStatus, containersToKeep) {
-		p.runtime.RemoveContainer(candidate.ID.String())
+		p.runtime.DeleteContainer(candidate.ID)
 	}
-}
-
-func (p *podContainerDeletor) setRuntime(runtimeService internalapi.RuntimeService) {
-	p.runtime = runtimeService
 }

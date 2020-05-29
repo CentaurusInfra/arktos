@@ -268,6 +268,7 @@ func (im *realImageGCManager) detectImages(detectTime time.Time) (sets.String, e
 	return imagesInUse, nil
 }
 
+// TODO: handle multiple fsStats cases
 func (im *realImageGCManager) GarbageCollect() error {
 	// Get disk usage on disk holding images.
 	fsStats, err := im.statsProvider.ImageFsStats()
