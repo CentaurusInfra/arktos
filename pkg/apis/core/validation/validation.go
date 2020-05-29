@@ -5306,7 +5306,7 @@ func ValidateResourceQuotaStatusUpdate(newResourceQuota, oldResourceQuota *core.
 
 // ValidateStorageCluster tests if required fields are set.
 func ValidateStorageCluster(storage *core.StorageCluster) field.ErrorList {
-	allErrs := ValidateObjectMeta(&storage.ObjectMeta, false, false, ValidateTenantName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&storage.ObjectMeta, false, false, ValidateClusterName, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateStorageClusterId(storage.StorageClusterId, field.NewPath("storageClusterId"))...)
 	allErrs = append(allErrs, validateStorageServiceAddress(storage.ServiceAddress, field.NewPath("serviceAddress"))...)
 	return allErrs
@@ -5323,9 +5323,9 @@ func ValidateStorageClusterUpdate(newStorage, oldStorage *core.StorageCluster) f
 
 // ValidateTenant tests if required fields are set.
 func ValidateTenant(tenant *core.Tenant) field.ErrorList {
-	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, false, ValidateClusterName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, false, ValidateTenantName, field.NewPath("metadata"))
+	allErrs = append(allErrs, validateStorageClusterId(tenant.Spec.StorageClusterId, field.NewPath("spec", "storageClusterId"))...)
 	for i := range tenant.Spec.Finalizers {
-		allErrs = append(allErrs, validateStorageClusterId(tenant.Spec.StorageClusterId, field.NewPath("spec", "storageClusterId"))...)
 		allErrs = append(allErrs, validateFinalizerName(string(tenant.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
 	}
 	return allErrs

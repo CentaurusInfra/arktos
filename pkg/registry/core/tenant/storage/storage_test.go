@@ -263,6 +263,9 @@ func TestUpdateDeletingTenantWithCompleteFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 			Finalizers:        []string{"example.com/foo"},
 		},
+		Spec: api.TenantSpec{
+			StorageClusterId: "1",
+		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
 	if err := storage.store.Storage.Create(ctx, key, tenant, nil, 0, false); err != nil {
@@ -301,7 +304,8 @@ func TestFinalizeDeletingTenantWithCompleteFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -342,7 +346,8 @@ func TestFinalizeDeletingTenantWithIncompleteMetadataFinalizers(t *testing.T) {
 			Finalizers:        []string{"example.com/foo"},
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -377,7 +382,8 @@ func TestDeleteTenantWithCompleteFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -578,7 +584,8 @@ func TestDeleteWithGCFinalizers(t *testing.T) {
 				Finalizers: test.existingFinalizers,
 			},
 			Spec: api.TenantSpec{
-				Finalizers: []api.FinalizerName{},
+				StorageClusterId: "1",
+				Finalizers:       []api.FinalizerName{},
 			},
 			Status: api.TenantStatus{Phase: api.TenantActive},
 		}
