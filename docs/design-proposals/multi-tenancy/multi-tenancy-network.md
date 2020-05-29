@@ -268,9 +268,157 @@ kube-dns-{network} shall be managed by Endpoints controller just like a regular 
 
 __EndpointSlices__, the new type introduced in k8s v1.17, is out of current scope.
 
+### Network Policy
 
+By default, Arktos allows any pods to access others, across all tenants and namespaces. If network security is desired, network policy can be used to express the intents.
 
-### Ingress/egress/network policies
+If we don't allow pod accesses across tenant boundary, the existing k8s network policy suffices to provide tenant scoped network security.
+
+For example, the tenant-isolation mode can be expressed by default-deny-all + allow-all-across-namespaces, which implicitly is inferred to tenant of current network policy object.
+
+Network-isolation mode makes more sense in most cases. Below is an example for specific network, my-network, in one namespace. Similar network policies need to apply to other namespaces, too.
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-isolated-policy-for-my-network
+  tenant: foo
+  namesapce: bar
+spec:
+  podSelector:
+    matchLabels:
+      arktos.futurewei.com/network: my-network
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector: {}
+    - podSelector:
+        matchLabels:
+          arktos.futurewei.com/network: my-network
+  egress:
+  - to:
+    - namespaceSelector: {}
+    - podSelector:
+        matchLabels:
+          arktos.futurewei.com/network: my-network
+```
+
+For the default network, isolation can be achieved by:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: implicit-default-network-isolated-policy
+  tenant: foo
+  namesapce: bar
+spec:
+  podSelector:
+    matchExpressions:
+    - key: arktos.futurewei.com/network
+      operator: DoesNotExist
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector: {}
+    - podSelector:
+        matchLabels:
+          arktos.futurewei.com/network: default
+  - from:
+    - namespaceSelector: {}
+    - podSelector:
+        matchExpressions:
+        - key: arktos.futurewei.com/network
+        operator: DoesNotExist
+  egress:
+  - to:
+    - namespaceSelector: {}
+    - podSelector:
+        matchLabels:
+          arktos.futurewei.com/network: my-network
+  - to:
+    - namespaceSelector: {}
+    - podSelector:
+        matchExpressions:
+        - key: arktos.futurewei.com/network
+        operator: DoesNotExist
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: explcit-default-network-isolated-policy
+  tenant: foo
+  namesapce: bar
+spec:
+  podSelector:
+    matchLabels:
+      arktos.futurewei.com/network: default
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector: {}
+    - podSelector:
+        matchLabels:
+          arktos.futurewei.com/network: default
+  - from:
+    - namespaceSelector: {}
+    - podSelector:
+        matchExpressions:
+        - key: arktos.futurewei.com/network
+        operator: DoesNotExist
+  egress:
+  - to:
+    - namespaceSelector: {}
+    - podSelector:
+        matchLabels:
+          arktos.futurewei.com/network: my-network
+  - to:
+    - namespaceSelector: {}
+    - podSelector:
+        matchExpressions:
+        - key: arktos.futurewei.com/network
+        operator: DoesNotExist
+```
+
+Leveraging existent k8s network policy syntax in Arktos system (which is multi-tenant & has network as new resource type), is quite wordy. If reusing existing k8s network policy enforcer is not a goal, new network policy type as depicted below seems more expressive, at cost of implementing new policy enforcers.
+1. policy object is tenant scoped;
+2. policy object is not namespace scoped, though the applied pod selector has namespace selector;
+3. policy object associates with network via label; consistent with other resources;
+3. Pod selectors of ingress/egress can have tenant/namespace/network selectors.
+
+Using such new policy definition, the policy allow-all-inside-one-network fro network can be expressed as:
+```yaml
+metadata:
+  name: allow-all-inside-one-network
+  tenant: foo
+  labels:
+    arktos.futurewei.com/network: my-network
+spec:
+  namespaceSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector: {}
+  egress:
+  - to:
+    - namespaceSelector: {}
+```
+
+Arktos can start with reuse of k8s network policy and taking advantage of k8s network policy enforcers at this stage.
+
+(**TBD: consider automatic creation of network policies to ease management**)
+
+#### K8S network policy enforcers
+K8S community has quite some plugins that enforce the network policies, like Calico, Cilium, kube-router, etc. Not all would work with multitenant Arktos out of box; one of them is Calico, as it might wrongly get entries from backend storage based on namespace + pod + interface name. Some is possible to work if the controller is deployed in form of daemonset in every and each tenant. Kube-router is the one very promising; we will see how it goes when Arktos has fully functional multi-tenant support in place.
+
+### Ingress/egress
 (**TBD: more details required**)
 
 ## Architectural Views
