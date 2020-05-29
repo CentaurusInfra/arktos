@@ -755,13 +755,13 @@ func (s *ServiceController) syncService(key string) error {
 		klog.V(4).Infof("Finished syncing service %q (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
 
 	// service holds the latest service info from apiserver
-	service, err := s.serviceLister.Services(namespace).Get(name)
+	service, err := s.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
 	switch {
 	case errors.IsNotFound(err):
 		// service absence in store means watcher caught the deletion, ensure LB info is cleaned
