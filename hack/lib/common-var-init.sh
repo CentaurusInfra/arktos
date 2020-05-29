@@ -144,7 +144,7 @@ DISABLE_ADMISSION_PLUGINS=${DISABLE_ADMISSION_PLUGINS:-""}
 ADMISSION_CONTROL_CONFIG_FILE=${ADMISSION_CONTROL_CONFIG_FILE:-""}
 
 # START_MODE can be 'all', 'kubeletonly', 'nokubelet', or 'nokubeproxy'
-START_MODE=${START_MODE:-"nokubelet"}
+START_MODE=${START_MODE:-"all"}
 
 # A list of controllers to enable
 # KUBE_CONTROLLERS="${KUBE_CONTROLLERS:-"*"}"
