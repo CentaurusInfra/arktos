@@ -33,11 +33,12 @@ source "${KUBE_ROOT}/cluster/gce/gci/helper.sh"
 #   get-bearer-token
 function create-master-instance {
   local address=""
+  local private_network_ip=""
   [[ -n ${1:-} ]] && address="${1}"
-
+  [[ -n ${2:-} ]] && private_network_ip="${2}"
   write-master-env
   ensure-gci-metadata-files
-  create-master-instance-internal "${MASTER_NAME}" "${address}"
+  create-master-instance-internal "${MASTER_NAME}" "${address}" "${private_network_ip}"
 }
 
 function replicate-master-instance() {
@@ -101,6 +102,7 @@ function create-master-instance-internal() {
 
   local -r master_name="${1}"
   local -r address="${2:-}"
+  local -r private_netwrok_ip="${3:-}"
 
   local preemptible_master=""
   if [[ "${PREEMPTIBLE_MASTER:-}" == "true" ]]; then
@@ -116,12 +118,13 @@ function create-master-instance-internal() {
 
   local network=$(make-gcloud-network-argument \
     "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
-    "${address:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
+    "${address:-}" "${private_netwrok_ip:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
 
   local metadata="kube-env=${KUBE_TEMP}/master-kube-env.yaml"
   metadata="${metadata},kubelet-config=${KUBE_TEMP}/master-kubelet-config.yaml"
   metadata="${metadata},user-data=${KUBE_ROOT}/cluster/gce/gci/master.yaml"
   metadata="${metadata},configure-sh=${KUBE_ROOT}/cluster/gce/gci/configure.sh"
+  metadata="${metadata},apiserver-config=${KUBE_ROOT}/hack/apiserver.config"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
   metadata="${metadata},cluster-name=${KUBE_TEMP}/cluster-name.txt"
   metadata="${metadata},gci-update-strategy=${KUBE_TEMP}/gci-update.txt"
