@@ -66,7 +66,7 @@ func New(netClientset *arktos.Clientset, svcClientset *kubernetes.Clientset, inf
 		cacheSynced:  informer.Informer().HasSynced,
 		netClientset: netClientset,
 		svcClientset: svcClientset,
-		recorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "flat-network-controller"}),
+		recorder:     eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "flat-network-controller"}),
 	}
 }
 

@@ -36,7 +36,7 @@ const defaultWorks = 4
 var (
 	masterURL  string
 	kubeconfig string
-	workers	int
+	workers    int
 )
 
 func main() {
