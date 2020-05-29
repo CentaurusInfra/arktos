@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/server/mux"
+
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 )
 
 // ListedPathProvider is an interface for providing paths that should be reported at /.
@@ -65,5 +68,17 @@ type IndexLister struct {
 
 // ServeHTTP serves the available paths.
 func (i IndexLister) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	responsewriters.WriteRawJSON(i.StatusCode, metav1.RootPaths{Paths: i.PathProvider.ListedPaths()}, w)
+	userTenant, _ := apifilters.GetTenantFromQueryThenContext(r)
+	rootPaths := []string{}
+	for _, path := range i.PathProvider.ListedPaths() {
+		pathTenant := apifilters.GetTenantFromUrlParam(path)
+		if pathTenant == metav1.TenantNone {
+			rootPaths = append(rootPaths, path)
+		} else {
+			if userTenant == pathTenant {
+				rootPaths = append(rootPaths, apifilters.DelTenantParamFromUrl(path))
+			}
+		}
+	}
+	responsewriters.WriteRawJSON(i.StatusCode, metav1.RootPaths{Paths: rootPaths}, w)
 }

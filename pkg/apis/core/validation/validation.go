@@ -5304,10 +5304,28 @@ func ValidateResourceQuotaStatusUpdate(newResourceQuota, oldResourceQuota *core.
 	return allErrs
 }
 
+// ValidateStorageCluster tests if required fields are set.
+func ValidateStorageCluster(storage *core.StorageCluster) field.ErrorList {
+	allErrs := ValidateObjectMeta(&storage.ObjectMeta, false, false, ValidateTenantName, field.NewPath("metadata"))
+	allErrs = append(allErrs, validateStorageClusterId(storage.StorageClusterId, field.NewPath("storageClusterId"))...)
+	allErrs = append(allErrs, validateStorageServiceAddress(storage.ServiceAddress, field.NewPath("serviceAddress"))...)
+	return allErrs
+}
+
+// ValidateStorageClusterUpdate tests to make sure a storageCluster update can be applied.
+// newStorage is updated with fields that cannot be changed
+func ValidateStorageClusterUpdate(newStorage, oldStorage *core.StorageCluster) field.ErrorList {
+	allErrs := ValidateObjectMetaUpdate(&newStorage.ObjectMeta, &newStorage.ObjectMeta, field.NewPath("metadata"))
+	newStorage.StorageClusterId = oldStorage.StorageClusterId
+	allErrs = append(allErrs, validateStorageServiceAddress(newStorage.ServiceAddress, field.NewPath("serviceAddress"))...)
+	return allErrs
+}
+
 // ValidateTenant tests if required fields are set.
 func ValidateTenant(tenant *core.Tenant) field.ErrorList {
-	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, false, ValidateTenantName, field.NewPath("metadata"))
+	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, false, ValidateClusterName, field.NewPath("metadata"))
 	for i := range tenant.Spec.Finalizers {
+		allErrs = append(allErrs, validateStorageClusterId(tenant.Spec.StorageClusterId, field.NewPath("spec", "storageClusterId"))...)
 		allErrs = append(allErrs, validateFinalizerName(string(tenant.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
 	}
 	return allErrs
@@ -5318,6 +5336,7 @@ func ValidateTenant(tenant *core.Tenant) field.ErrorList {
 func ValidateTenantUpdate(newTenant *core.Tenant, oldTenant *core.Tenant) field.ErrorList {
 	allErrs := ValidateObjectMetaUpdate(&newTenant.ObjectMeta, &oldTenant.ObjectMeta, field.NewPath("metadata"))
 	newTenant.Spec.Finalizers = oldTenant.Spec.Finalizers
+	newTenant.Spec.StorageClusterId = oldTenant.Spec.StorageClusterId
 	newTenant.Status = oldTenant.Status
 	return allErrs
 }
@@ -5359,6 +5378,28 @@ func ValidateNamespace(namespace *core.Namespace) field.ErrorList {
 	for i := range namespace.Spec.Finalizers {
 		allErrs = append(allErrs, validateFinalizerName(string(namespace.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
 	}
+	return allErrs
+}
+
+// validate storage cluster id
+func validateStorageClusterId(stringValue string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if len(stringValue) > 0 {
+		allErrs = append(allErrs, ValidateDNS1123Label(stringValue, fldPath)...)
+	} else {
+		allErrs = append(allErrs, field.Required(fldPath, "must specify storage cluster id"))
+	}
+
+	return allErrs
+}
+
+// validate storage service address
+func validateStorageServiceAddress(stringValue string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if len(stringValue) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath, "must specify service address"))
+	}
+
 	return allErrs
 }
 

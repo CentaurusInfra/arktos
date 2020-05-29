@@ -19,11 +19,14 @@ package filters
 import (
 	"errors"
 	"net/http"
+	"net/url"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
 )
+
+var TenantParam = "tenant"
 
 // WithTenantInfo set the tenant in the requestInfo for short-path requests based on the user info from the authentication result.
 func WithTenantInfo(handler http.Handler) http.Handler {
@@ -39,14 +42,12 @@ func WithTenantInfo(handler http.Handler) http.Handler {
 	})
 }
 
-// SetShortPathRequestTenant sets the tenant in request info based on the user tenant.
-func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
-
+// try to get it from the userInfo in the context
+func GetTenantFromContext(req *http.Request) (string, error) {
 	ctx := req.Context()
-
 	requestor, exists := request.UserFrom(ctx)
 	if !exists {
-		return nil, errors.New("The user info is missing.")
+		return "", errors.New("The user info is missing.")
 	}
 
 	userTenant := requestor.GetTenant()
@@ -55,11 +56,61 @@ func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
 		// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
 		userTenant = metav1.TenantSystem
 		//When https://github.com/futurewei-cloud/arktos/issues/102 is done, remove the above line
-		// and enable the following two lines.
-		//responsewriters.InternalError(w, req, errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())))
-		//return
+		// and enable the following line.
+		//return "", errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())
 	}
 
+	return userTenant, nil
+}
+
+func AddTenantParamToUrl(urlString string, tenant string) string {
+	u, _ := url.Parse(urlString)
+	queries := u.Query()
+	queries.Set(TenantParam, tenant)
+	u.RawQuery = queries.Encode()
+
+	return u.String()
+}
+
+func DelTenantParamFromUrl(urlString string) string {
+	u, _ := url.Parse(urlString)
+	queries := u.Query()
+	queries.Del(TenantParam)
+	u.RawQuery = queries.Encode()
+
+	return u.String()
+}
+
+func GetTenantFromUrlParam(urlString string) string {
+	u, _ := url.Parse(urlString)
+	tenantValues, ok := u.Query()[TenantParam]
+	if ok {
+		return tenantValues[0]
+	}
+
+	return ""
+}
+
+// This func tries to get tenant from the url param
+// if not found, try to get it from the userInfo in the context
+// Note: Only non-resource request (namely the group/version handlers) will try to get tenant from url param.
+func GetTenantFromQueryThenContext(req *http.Request) (string, error) {
+	tenant := GetTenantFromUrlParam(req.URL.String())
+	if len(tenant) > 0 {
+		return tenant, nil
+	}
+
+	return GetTenantFromContext(req)
+}
+
+// SetShortPathRequestTenant sets the tenant in request info based on the user tenant.
+func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
+	userTenant, err := GetTenantFromContext(req)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := req.Context()
 	requestInfo, exists := request.RequestInfoFrom(ctx)
 	if !exists {
 		return nil, errors.New("The request info is missing.")

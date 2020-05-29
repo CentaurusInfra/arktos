@@ -68,7 +68,6 @@ func (strategy) Canonicalize(obj runtime.Object) {
 
 func (strategy) AllowCreateOnUpdate() bool {
 	return false
-	return false
 }
 
 func (strategy) PrepareForUpdate(ctx context.Context, newObj, oldObj runtime.Object) {

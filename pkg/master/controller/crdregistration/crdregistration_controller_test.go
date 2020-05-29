@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,11 +29,13 @@ import (
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 )
 
+var testTenant = "test-tenant"
+
 func TestHandleVersionUpdate(t *testing.T) {
 	tests := []struct {
-		name         string
-		startingCRDs []*apiextensions.CustomResourceDefinition
-		version      schema.GroupVersion
+		name               string
+		startingCRDs       []*apiextensions.CustomResourceDefinition
+		groupVersionTenant GroupVersionTenant
 
 		expectedAdded   []*apiregistration.APIService
 		expectedRemoved []string
@@ -41,6 +44,7 @@ func TestHandleVersionUpdate(t *testing.T) {
 			name: "simple add crd",
 			startingCRDs: []*apiextensions.CustomResourceDefinition{
 				{
+					ObjectMeta: metav1.ObjectMeta{Name: "v1.group.com", Tenant: testTenant},
 					Spec: apiextensions.CustomResourceDefinitionSpec{
 						Group: "group.com",
 						// Version field is deprecated and crd registration won't rely on it at all.
@@ -55,11 +59,11 @@ func TestHandleVersionUpdate(t *testing.T) {
 					},
 				},
 			},
-			version: schema.GroupVersion{Group: "group.com", Version: "v1"},
+			groupVersionTenant: GroupVersionTenant{gv: schema.GroupVersion{Group: "group.com", Version: "v1"}, tenant: testTenant},
 
 			expectedAdded: []*apiregistration.APIService{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "v1.group.com"},
+					ObjectMeta: metav1.ObjectMeta{Name: "v1.group.com", Tenant: testTenant},
 					Spec: apiregistration.APIServiceSpec{
 						Group:                "group.com",
 						Version:              "v1",
@@ -85,9 +89,9 @@ func TestHandleVersionUpdate(t *testing.T) {
 					},
 				},
 			},
-			version: schema.GroupVersion{Group: "group.com", Version: "v2"},
+			groupVersionTenant: GroupVersionTenant{gv: schema.GroupVersion{Group: "group.com", Version: "v2"}, tenant: testTenant},
 
-			expectedRemoved: []string{"v2.group.com"},
+			expectedRemoved: []string{testTenant + "/" + "v2.group.com"},
 		},
 	}
 
@@ -104,7 +108,7 @@ func TestHandleVersionUpdate(t *testing.T) {
 				crdCache.Add(test.startingCRDs[i])
 			}
 
-			c.handleVersionUpdate(test.version)
+			c.handleVersionUpdate(test.groupVersionTenant)
 
 			if !reflect.DeepEqual(test.expectedAdded, registration.added) {
 				t.Errorf("%s expected %v, got %v", test.name, test.expectedAdded, registration.added)
@@ -124,6 +128,6 @@ type fakeAPIServiceRegistration struct {
 func (a *fakeAPIServiceRegistration) AddAPIServiceToSync(in *apiregistration.APIService) {
 	a.added = append(a.added, in)
 }
-func (a *fakeAPIServiceRegistration) RemoveAPIServiceToSync(name string) {
-	a.removed = append(a.removed, name)
+func (a *fakeAPIServiceRegistration) RemoveAPIServiceToSync(tenantedApiServiceName string) {
+	a.removed = append(a.removed, tenantedApiServiceName)
 }
