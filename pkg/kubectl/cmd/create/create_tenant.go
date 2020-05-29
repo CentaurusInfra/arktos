@@ -89,7 +89,7 @@ func (o *TenantOpts) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 	if o.storageClusterId == "" {
 		o.storageClusterId = defaultStorageClusterId
 		// need to let the user know that we are doing something under the hood
-		cmd.Println("setting storage cluster to %v", defaultStorageClusterId)
+		cmd.Printf("setting storage cluster to %v\n", defaultStorageClusterId)
 	}
 
 	var generator generate.StructuredGenerator
