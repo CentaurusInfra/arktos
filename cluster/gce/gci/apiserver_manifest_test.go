@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -97,7 +98,7 @@ func TestEncryptionProviderFlag(t *testing.T) {
 	// We have verified and use kubeadm to start cluster in aws
 	// This case will failed with multi apiserver config, skip for now to active multi apiserver config.
 	t.Skip()
-	
+
 	var (
 		//	command": [
 		//   "/bin/sh", - Index 0
@@ -158,7 +159,7 @@ func TestEncryptionProviderConfig(t *testing.T) {
 	// We have verified and use kubeadm to start cluster in aws
 	// This case will failed with multi apiserver config, skip for now to active multi apiserver config.
 	t.Skip()
-	
+
 	c := newKubeAPIServerManifestTestCase(t)
 	defer c.tearDown()
 
@@ -191,7 +192,7 @@ func TestKMSIntegration(t *testing.T) {
 	// We have verified and use kubeadm to start cluster in aws
 	// This case will failed with multi apiserver config, skip for now to active multi apiserver config.
 	t.Skip()
-	
+
 	var (
 		socketPath  = "/var/run/kmsplugin"
 		dirOrCreate = v1.HostPathType(v1.HostPathDirectoryOrCreate)
