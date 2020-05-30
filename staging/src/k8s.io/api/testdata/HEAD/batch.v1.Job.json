@@ -862,6 +862,15 @@
               "胵輓Ɔ": "777"
             }
           },
+          "resourcesAllocated": {
+            "ØœȠƬQg鄠[颐o": "230"
+          },
+          "resizePolicy": [
+            {
+              "resourceName": "[+扴ȨŮ+朷Ǝ膯ǉV",
+              "policy": "犵殇ŕ-Ɂ圯W:ĸ輦唊#"
+            }
+          ],
           "volumeMounts": [
             {
               "name": "292",
@@ -948,6 +957,15 @@
                 "议Ƭƶ氩Ȩ\u003c6鄰簳°Ļǟi\u0026": "949"
               }
             },
+            "resourcesAllocated": {
+              "簳°Ļǟi\u0026皥贸": "347"
+            },
+            "resizePolicy": [
+              {
+                "resourceName": "V垾现葢ŵ橨鬶l",
+                "policy": "偯J僳徥淳4"
+              }
+            ],
             "volumeMounts": [
               {
                 "name": "330",
@@ -956,7 +974,8 @@
                 "mountPropagation": "皧V垾现葢ŵ橨鬶l獕;跣Hǝcw",
                 "subPathExpr": "333"
               }
-            ]
+            ],
+            "imagePullPolicy": "V訆Ǝżŧ"
           }
         ],
         "restartPolicy": "瓄\u0026翜舞拉Œɥ颶妧Ö闊 鰔澝",

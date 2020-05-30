@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: StorageCluster
+metadata:
+  annotations:
+    "10": "11"
+  clusterName: "16"
+  creationTimestamp: null
+  deletionGracePeriodSeconds: 6797158496028726353
+  finalizers:
+  - "15"
+  generateName: "3"
+  generation: 5828590068104375683
+  hashKey: 2234230302359329354
+  labels:
+    "8": "9"
+  managedFields:
+  - apiVersion: "18"
+    fields:
+      "19":
+        "20": null
+    manager: "17"
+    operation: 鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]
+  name: "2"
+  namespace: "5"
+  ownerReferences:
+  - apiVersion: "12"
+    blockOwnerDeletion: true
+    controller: false
+    hashKey: -3769286901598778062
+    kind: "13"
+    name: "14"
+    uid: z廔ȇ{sŊƏ
+  resourceVersion: "16964250748386560239"
+  selfLink: "6"
+  tenant: "4"
+  uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
+serviceAddress: "26"
+storageClusterId: "25"

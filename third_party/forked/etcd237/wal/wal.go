@@ -27,9 +27,9 @@ import (
 
 	"k8s.io/kubernetes/third_party/forked/etcd237/pkg/fileutil"
 
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal/walpb"
 	"github.com/coreos/pkg/capnslog"
 )
 

@@ -64,7 +64,7 @@ if [[ -z ${PRESET_INSTANCES_ENABLED:-} ]]; then
 fi
 if [[ $PRESET_INSTANCES_ENABLED == $TRUE ]]; then
   KUBE_MASTER_IP=$PRESET_KUBE_MASTER_IP
-  MASTER_INTERNAL_IP=$PRESET_MASTER_INTERNAL_IP
+  MASTER_INTERNAL_IP=$PRESET_KUBE_MASTER_IP
   KUBE_MINION1_IP=$PRESET_KUBE_MINION1_IP    
   if [[ -n ${PRESET_KUBE_MINION2_IP:-} ]]; then
     KUBE_MINION2_IP=$PRESET_KUBE_MINION2_IP
@@ -797,6 +797,7 @@ function wait-for-instance-state {
   instance_id=$1
   state=$2
 
+  local start_time=$(date +%s)
   while true; do
     instance_state=$($AWS_CMD describe-instances --instance-ids ${instance_id} --query Reservations[].Instances[].State.Name)
     if [[ "$instance_state" == "${state}" ]]; then
@@ -805,6 +806,12 @@ function wait-for-instance-state {
       echo "Waiting for instance ${instance_id} to be ${state} (currently ${instance_state})"
       echo "Sleeping for 3 seconds..."
       sleep 3
+      local elapsed=$(($(date +%s) - ${start_time}))
+      if [[ ${elapsed} -gt 300 ]]; then
+        echo
+        echo "Waiting for instance state failed after 5 minutes elapsed"
+        exit 1
+      fi
     fi
   done
 }
@@ -1469,16 +1476,14 @@ function wait-master() {
   fi
 
   echo "Waiting for cluster initialization."
-  echo
-  echo "  This will continually check to see if the API for kubernetes is reachable."
-  echo "  This might loop forever if there was some uncaught error during start"
-  echo "  up."
+  echo "This will continually check to see if the API for kubernetes is reachable."
   echo
 
   local sshSts=0
   if [[ -f "$HOME/.ssh/known_hosts" ]]; then
     ssh-keygen -f "$HOME/.ssh/known_hosts" -R ${KUBE_MASTER_IP}
   fi
+  local start_time=$(date +%s)
   while : ; do
     set +e
     execute-ssh ${KUBE_MASTER_IP} "ls /home/${SSH_USER}/.kube/config" &> /dev/null
@@ -1498,6 +1503,12 @@ function wait-master() {
     fi
     printf "."
     sleep 5
+    local elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 300 ]]; then
+      echo
+      echo "Waiting for master failed after 5 minutes. There might be some uncaught error during start."
+      exit 1
+    fi    
   done
 
   echo "Kubernetes cluster created."

@@ -2,6 +2,7 @@
 
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,4 +65,12 @@ func milliCPUToQuota(milliCPU int64, period int64) (quota int64) {
 	}
 
 	return
+}
+
+// quotaToMilliCPU converts cpu.cfs_quota_us and cpu.cfs_period_us to milli-CPU value
+func quotaToMilliCPU(quota int64, period int64) int64 {
+	if quota == -1 {
+		return int64(0)
+	}
+	return (quota * milliCPUToCPU) / period
 }

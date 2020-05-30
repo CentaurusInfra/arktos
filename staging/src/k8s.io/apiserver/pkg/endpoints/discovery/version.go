@@ -27,17 +27,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
-	"k8s.io/apiserver/pkg/endpoints/request"
+
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 )
 
 type APIResourceLister interface {
-	ListAPIResources(filter func(metav1.APIResource) bool) []metav1.APIResource
+	ListAPIResources() []metav1.APIResource
 }
 
-type APIResourceListerFunc func(filter func(metav1.APIResource) bool) []metav1.APIResource
+type APIResourceListerFunc func() []metav1.APIResource
 
-func (f APIResourceListerFunc) ListAPIResources(filter func(metav1.APIResource) bool) []metav1.APIResource {
-	return f(filter)
+func (f APIResourceListerFunc) ListAPIResources() []metav1.APIResource {
+	return f()
 }
 
 // APIVersionHandler creates a webservice serving the supported resources for the version
@@ -81,28 +82,24 @@ func (s *APIVersionHandler) handle(req *restful.Request, resp *restful.Response)
 
 func (s *APIVersionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
-	// for regular tenants, we only return the resources that are tenant-scoped
-	filterFunc := func(resource metav1.APIResource) bool {
-		return resource.Tenanted
+	userTenant, err := apifilters.GetTenantFromContext(req)
+	if err != nil {
+		responsewriters.InternalError(w, req, err)
+		return
 	}
 
-	ctx := req.Context()
-	requestor, exists := request.UserFrom(ctx)
-
-	if !exists || requestor.GetTenant() == metav1.TenantNone {
-		filterFunc = nil
-
-		//TODO: raise an error if code goes here
-		//temporarily set the tenant to the omni-potent "system" tenant to make the tests pass
-		// The following should be uncommented after the test changes
-		/* responsewriters.InternalError(w, req, errors.New("The user tenant for the request cannot be identfied."))
-		return */
-	}
-
-	if exists && requestor.GetTenant() == metav1.TenantSystem {
-		filterFunc = nil
+	resources := s.apiResourceLister.ListAPIResources()
+	result := []metav1.APIResource{}
+	for _, resource := range resources {
+		if !resource.Tenanted {
+			if userTenant == metav1.TenantSystem {
+				result = append(result, resource)
+			}
+		} else {
+			result = append(result, resource)
+		}
 	}
 
 	responsewriters.WriteObjectNegotiated(s.serializer, negotiation.DefaultEndpointRestrictions, schema.GroupVersion{}, w, req, http.StatusOK,
-		&metav1.APIResourceList{GroupVersion: s.groupVersion.String(), APIResources: s.apiResourceLister.ListAPIResources(filterFunc)})
+		&metav1.APIResourceList{GroupVersion: s.groupVersion.String(), APIResources: result})
 }

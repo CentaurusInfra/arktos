@@ -843,6 +843,15 @@
             "捏ĨF": "748"
           }
         },
+        "resourcesAllocated": {
+          "拜Ȍzɟ踡肒Ao/樝f": "180"
+        },
+        "resizePolicy": [
+          {
+            "resourceName": "eǇèux榜VƋZ",
+            "policy": "賃ɪ鐊瀑Ź9ǕLLȊ"
+          }
+        ],
         "volumeMounts": [
           {
             "name": "280",
@@ -929,6 +938,15 @@
               "$MVȟ@7飣奺Ȋ礶惇¸t颟.鵫ǚ灄鸫": "130"
             }
           },
+          "resourcesAllocated": {
+            "莭琽§ć\\ ïì«丯Ƙ枛牐ɺ": "660"
+          },
+          "resizePolicy": [
+            {
+              "resourceName": "I\\p[",
+              "policy": "擓ƖHVe熼'FD剂讼ɓȌʟni酛"
+            }
+          ],
           "volumeMounts": [
             {
               "name": "318",
@@ -953,6 +971,7 @@
       "automountServiceAccountToken": false,
       "nodeName": "326",
       "hostNetwork": true,
+      "hostPID": true,
       "hostIPC": true,
       "shareProcessNamespace": false,
       "securityContext": {

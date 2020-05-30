@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,8 @@ import (
 const (
 
 	// CoreDNS is GA in v1.11
-	CoreDNS = "CoreDNS"
+	CoreDNS                   = "CoreDNS"
+	InPlacePodVerticalScaling = "InPlacePodVerticalScaling"
 )
 
 var coreDNSMessage = "featureGates:CoreDNS has been removed in v1.13\n" +
@@ -38,7 +40,8 @@ var coreDNSMessage = "featureGates:CoreDNS has been removed in v1.13\n" +
 
 // InitFeatureGates are the default feature gates for the init command
 var InitFeatureGates = FeatureList{
-	CoreDNS: {FeatureSpec: featuregate.FeatureSpec{Default: true, PreRelease: featuregate.Deprecated}, HiddenInHelpText: true, DeprecationMessage: coreDNSMessage},
+	CoreDNS:                   {FeatureSpec: featuregate.FeatureSpec{Default: true, PreRelease: featuregate.Deprecated}, HiddenInHelpText: true, DeprecationMessage: coreDNSMessage},
+	InPlacePodVerticalScaling: {FeatureSpec: featuregate.FeatureSpec{Default: false}, HiddenInHelpText: true},
 }
 
 // Feature represents a feature being gated

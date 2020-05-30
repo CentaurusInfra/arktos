@@ -3770,15 +3770,6 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(specPath.Child("activeDeadlineSeconds"), newPod.Spec.ActiveDeadlineSeconds, "must not update from a positive integer to nil value"))
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
-		// reject QOS change attempt
-		oldQOS := qos.GetPodQOS(oldPod)
-		newQOS := qos.GetPodQOS(newPod)
-		if newQOS != oldQOS {
-			allErrs = append(allErrs, field.Invalid(fldPath, newQOS, "Pod QOS is immutable"))
-		}
-	}
-
 	// validate updated spec.NICs; portID not allowed to update after assignment
 	// todo: add more stringent validations to disallow updates for other fields of vnic (assignment are fine)
 	for _, patchedNIC := range newPod.Spec.Nics {
@@ -3813,8 +3804,17 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		}
 	}
 
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		// reject attempts to change pod qos
+		oldQoS := qos.GetPodQOS(oldPod)
+		newQoS := qos.GetPodQOS(newPod)
+		if newQoS != oldQoS {
+			allErrs = append(allErrs, field.Invalid(fldPath, newQoS, "Pod QoS is immutable"))
+		}
+	}
+
 	// handle updateable fields by munging those fields prior to deep equal comparison.
-	mungedPod := newPod.DeepCopy() // TODO: Check perf impact of DeepCopy
+	mungedPod := *newPod
 	// munge spec.containers[*].image
 	var newContainers []core.Container
 	for ix, container := range mungedPod.Spec.Containers {
@@ -3823,36 +3823,28 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 			// Resources and ResourcesAllocated fields are mutable (for CPU & memory only)
 			//   - user can modify Resources to express new desired Resources
 			//   - node can modify ResourcesAllocated to update Pod's allocated resources
-			lim := container.Resources.Limits
-			if oldPod.Spec.Containers[ix].Resources.Limits != nil {
-				if lim == nil {
-					lim = make(core.ResourceList)
+			mungeCpuMemResources := func(resourceList, oldResourceList core.ResourceList) core.ResourceList {
+				var mungedResourceList core.ResourceList
+				if oldResourceList != nil {
+					if resourceList != nil {
+						mungedResourceList = resourceList.DeepCopy()
+					} else {
+						mungedResourceList = make(core.ResourceList)
+					}
+					delete(mungedResourceList, core.ResourceCPU)
+					delete(mungedResourceList, core.ResourceMemory)
+					if cpu, found := oldResourceList[core.ResourceCPU]; found {
+						mungedResourceList[core.ResourceCPU] = cpu
+					}
+					if mem, found := oldResourceList[core.ResourceMemory]; found {
+						mungedResourceList[core.ResourceMemory] = mem
+					}
 				}
-				lim[core.ResourceCPU] = oldPod.Spec.Containers[ix].Resources.Limits[core.ResourceCPU]
-				lim[core.ResourceMemory] = oldPod.Spec.Containers[ix].Resources.Limits[core.ResourceMemory]
-			} else {
-				lim = nil
+				return mungedResourceList
 			}
-			req := container.Resources.Requests
-			if oldPod.Spec.Containers[ix].Resources.Requests != nil {
-				if req == nil {
-					req = make(core.ResourceList)
-				}
-				req[core.ResourceCPU] = oldPod.Spec.Containers[ix].Resources.Requests[core.ResourceCPU]
-				req[core.ResourceMemory] = oldPod.Spec.Containers[ix].Resources.Requests[core.ResourceMemory]
-			} else {
-				req = nil
-			}
-			alloc := container.ResourcesAllocated
-			if oldPod.Spec.Containers[ix].ResourcesAllocated != nil {
-				if alloc == nil {
-					alloc = make(core.ResourceList)
-				}
-				alloc[core.ResourceCPU] = oldPod.Spec.Containers[ix].ResourcesAllocated[core.ResourceCPU]
-				alloc[core.ResourceMemory] = oldPod.Spec.Containers[ix].ResourcesAllocated[core.ResourceMemory]
-			} else {
-				alloc = nil
-			}
+			lim := mungeCpuMemResources(container.Resources.Limits, oldPod.Spec.Containers[ix].Resources.Limits)
+			req := mungeCpuMemResources(container.Resources.Requests, oldPod.Spec.Containers[ix].Resources.Requests)
+			alloc := mungeCpuMemResources(container.ResourcesAllocated, oldPod.Spec.Containers[ix].ResourcesAllocated)
 			container.Resources = core.ResourceRequirements{Limits: lim, Requests: req}
 			container.ResourcesAllocated = alloc
 		}
@@ -3887,7 +3879,7 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 		// This diff isn't perfect, but it's a helluva lot better an "I'm not going to tell you what the difference is".
 		//TODO: Pinpoint the specific field that causes the invalid error after we have strategic merge diff
 		specDiff := diff.ObjectDiff(mungedPod.Spec, oldPod.Spec)
-		allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not change fields other than `spec.containers[*].image`, `spec.initContainers[*].image`, `spec.activeDeadlineSeconds`, `spec.nics` or `spec.tolerations` (only additions to existing tolerations) or spec.containers[*].resources or spec.containers[*].resourcesAllocated (for cpu, memory only)\n%v", specDiff)))
+		allErrs = append(allErrs, field.Forbidden(specPath, fmt.Sprintf("pod updates may not change fields other than `spec.containers[*].image`, `spec.initContainers[*].image`, `spec.activeDeadlineSeconds`, `spec.nics` or `spec.tolerations` (only additions to existing tolerations) or `spec.containers[*].resources` or `spec.containers[*].resourcesAllocated` (for cpu, memory only)\n%v", specDiff)))
 	}
 
 	return allErrs
@@ -5337,9 +5329,27 @@ func ValidateResourceQuotaStatusUpdate(newResourceQuota, oldResourceQuota *core.
 	return allErrs
 }
 
+// ValidateStorageCluster tests if required fields are set.
+func ValidateStorageCluster(storage *core.StorageCluster) field.ErrorList {
+	allErrs := ValidateObjectMeta(&storage.ObjectMeta, false, false, ValidateClusterName, field.NewPath("metadata"))
+	allErrs = append(allErrs, validateStorageClusterId(storage.StorageClusterId, field.NewPath("storageClusterId"))...)
+	allErrs = append(allErrs, validateStorageServiceAddress(storage.ServiceAddress, field.NewPath("serviceAddress"))...)
+	return allErrs
+}
+
+// ValidateStorageClusterUpdate tests to make sure a storageCluster update can be applied.
+// newStorage is updated with fields that cannot be changed
+func ValidateStorageClusterUpdate(newStorage, oldStorage *core.StorageCluster) field.ErrorList {
+	allErrs := ValidateObjectMetaUpdate(&newStorage.ObjectMeta, &newStorage.ObjectMeta, field.NewPath("metadata"))
+	newStorage.StorageClusterId = oldStorage.StorageClusterId
+	allErrs = append(allErrs, validateStorageServiceAddress(newStorage.ServiceAddress, field.NewPath("serviceAddress"))...)
+	return allErrs
+}
+
 // ValidateTenant tests if required fields are set.
 func ValidateTenant(tenant *core.Tenant) field.ErrorList {
 	allErrs := ValidateObjectMeta(&tenant.ObjectMeta, false, false, ValidateTenantName, field.NewPath("metadata"))
+	allErrs = append(allErrs, validateStorageClusterId(tenant.Spec.StorageClusterId, field.NewPath("spec", "storageClusterId"))...)
 	for i := range tenant.Spec.Finalizers {
 		allErrs = append(allErrs, validateFinalizerName(string(tenant.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
 	}
@@ -5351,6 +5361,7 @@ func ValidateTenant(tenant *core.Tenant) field.ErrorList {
 func ValidateTenantUpdate(newTenant *core.Tenant, oldTenant *core.Tenant) field.ErrorList {
 	allErrs := ValidateObjectMetaUpdate(&newTenant.ObjectMeta, &oldTenant.ObjectMeta, field.NewPath("metadata"))
 	newTenant.Spec.Finalizers = oldTenant.Spec.Finalizers
+	newTenant.Spec.StorageClusterId = oldTenant.Spec.StorageClusterId
 	newTenant.Status = oldTenant.Status
 	return allErrs
 }
@@ -5392,6 +5403,28 @@ func ValidateNamespace(namespace *core.Namespace) field.ErrorList {
 	for i := range namespace.Spec.Finalizers {
 		allErrs = append(allErrs, validateFinalizerName(string(namespace.Spec.Finalizers[i]), field.NewPath("spec", "finalizers"))...)
 	}
+	return allErrs
+}
+
+// validate storage cluster id
+func validateStorageClusterId(stringValue string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if len(stringValue) > 0 {
+		allErrs = append(allErrs, ValidateDNS1123Label(stringValue, fldPath)...)
+	} else {
+		allErrs = append(allErrs, field.Required(fldPath, "must specify storage cluster id"))
+	}
+
+	return allErrs
+}
+
+// validate storage service address
+func validateStorageServiceAddress(stringValue string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if len(stringValue) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath, "must specify service address"))
+	}
+
 	return allErrs
 }
 

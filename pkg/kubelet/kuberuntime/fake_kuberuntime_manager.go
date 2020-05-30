@@ -106,7 +106,6 @@ func newFakeKubeRuntimeManager(rs internalapi.RuntimeService, is internalapi.Ima
 	runtimeServices[defaultRuntimeServiceName].isDefault = true
 
 	kubeRuntimeManager.podRuntimeServiceMap = make(map[string]internalapi.RuntimeService)
-	kubeRuntimeManager.podImageServiceMap = make(map[string]internalapi.ImageManagerService)
 
 	kubeRuntimeManager.imageServices = imageServices
 	kubeRuntimeManager.runtimeServices = runtimeServices

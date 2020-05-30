@@ -17,6 +17,7 @@ limitations under the License.
 package create
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -32,13 +33,21 @@ var (
 		Create a tenant with the specified name.`))
 
 	tenantExample = templates.Examples(i18n.T(`
-	  # Create a new tenant named my-tenant
-	  kubectl create tenant my-tenant`))
+	  # Create a new tenant named my-tenant, the StorageCluserId will be set to 1 by default
+	  kubectl create tenant my-tenant
+	  
+	  # Create a new tenant named dreamworld with storage cluster set to c1
+	  kubectl create tenant dreamworld --storagecluster=StorageCluserId=c1`))
+
+	//TODO: to refer the default value defined in future storage cluster work, instead of hard-coded
+	//tracking issue: https://github.com/futurewei-cloud/arktos/issues/326
+	defaultStorageClusterId = "system"
 )
 
-// TenantOpts is the options for 'create namespace' sub command
+// TenantOpts is the options for 'create tenant' sub command
 type TenantOpts struct {
 	CreateSubcommandOptions *CreateSubcommandOptions
+	storageClusterId        string
 }
 
 // NewCmdCreateTenant is a macro command to create a new tenant
@@ -48,7 +57,7 @@ func NewCmdCreateTenant(f cmdutil.Factory, ioStreams genericclioptions.IOStreams
 	}
 
 	cmd := &cobra.Command{
-		Use:                   "tenant NAME [--dry-run]",
+		Use:                   "tenant NAME [--storagecluster=StorageCluserId] [--dry-run]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"te"},
 		Short:                 i18n.T("Create a tenant with the specified name"),
@@ -61,6 +70,7 @@ func NewCmdCreateTenant(f cmdutil.Factory, ioStreams genericclioptions.IOStreams
 	}
 
 	options.CreateSubcommandOptions.PrintFlags.AddFlags(cmd)
+	cmd.Flags().StringVar(&options.storageClusterId, "storagecluster", options.storageClusterId, fmt.Sprintf("Storge Cluster Id, by default set to %v", defaultStorageClusterId))
 
 	cmdutil.AddApplyAnnotationFlags(cmd)
 	cmdutil.AddValidateFlags(cmd)
@@ -76,10 +86,16 @@ func (o *TenantOpts) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 		return err
 	}
 
+	if o.storageClusterId == "" {
+		o.storageClusterId = defaultStorageClusterId
+		// need to let the user know that we are doing something under the hood
+		cmd.Printf("setting storage cluster to %v\n", defaultStorageClusterId)
+	}
+
 	var generator generate.StructuredGenerator
 	switch generatorName := cmdutil.GetFlagString(cmd, "generator"); generatorName {
 	case generateversioned.TenantV1GeneratorName:
-		generator = &generateversioned.TenantGeneratorV1{Name: name}
+		generator = &generateversioned.TenantGeneratorV1{Name: name, StorageClusterId: o.storageClusterId}
 	default:
 		return errUnsupportedGenerator(cmd, generatorName)
 	}

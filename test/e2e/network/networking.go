@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,7 +59,7 @@ var _ = SIGDescribe("Networking", func() {
 	})
 
 	// First test because it has no dependencies on variables created later on.
-	ginkgo.It("should provide unchanging, static URL paths for kubernetes api services", func() {
+	ginkgo.It("should provide unchanging, static URL paths for kubernetes api services [Arktos-CI]", func() {
 		tests := []struct {
 			path string
 		}{
@@ -84,7 +85,7 @@ var _ = SIGDescribe("Networking", func() {
 		}
 	})
 
-	ginkgo.It("should check kube-proxy urls", func() {
+	ginkgo.It("should check kube-proxy urls [Arktos-CI]", func() {
 		// TODO: this is overkill we just need the host networking pod
 		// to hit kube-proxy urls.
 		config := framework.NewNetworkingTestConfig(f)

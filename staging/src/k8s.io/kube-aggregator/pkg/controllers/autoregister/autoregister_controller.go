@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@ package autoregister
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,7 +59,7 @@ type AutoAPIServiceRegistration interface {
 	// AddAPIServiceToSync adds an API service to sync continuously.
 	AddAPIServiceToSync(in *apiregistration.APIService)
 	// RemoveAPIServiceToSync removes an API service to auto-register.
-	RemoveAPIServiceToSync(name string)
+	RemoveAPIServiceToSync(tenantedApiServiceName string)
 }
 
 // autoRegisterController is used to keep a particular set of APIServices present in the API.  It is useful
@@ -103,11 +105,11 @@ func NewAutoRegisterController(apiServiceInformer informers.APIServiceInformer, 
 	apiServiceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			cast := obj.(*apiregistration.APIService)
-			c.queue.Add(cast.Name)
+			c.queue.Add(NameWithMultiTenancy(cast))
 		},
 		UpdateFunc: func(_, obj interface{}) {
 			cast := obj.(*apiregistration.APIService)
-			c.queue.Add(cast.Name)
+			c.queue.Add(NameWithMultiTenancy(cast))
 		},
 		DeleteFunc: func(obj interface{}) {
 			cast, ok := obj.(*apiregistration.APIService)
@@ -123,7 +125,7 @@ func NewAutoRegisterController(apiServiceInformer informers.APIServiceInformer, 
 					return
 				}
 			}
-			c.queue.Add(cast.Name)
+			c.queue.Add(NameWithMultiTenancy(cast))
 		},
 	})
 
@@ -211,16 +213,17 @@ func (c *autoRegisterController) processNextWorkItem() bool {
 // 4. current: sync on start, not present at start | -                     | -                         | -
 // 5. current: sync on start, present at start     | delete once           | update once               | update once
 // 6. current: sync always                         | delete                | update once               | update
-func (c *autoRegisterController) checkAPIService(name string) (err error) {
-	desired := c.GetAPIServiceToSync(name)
-	curr, err := c.apiServiceLister.Get(name)
+func (c *autoRegisterController) checkAPIService(tenantedApiServiceName string) (err error) {
+	desired := c.GetAPIServiceToSync(tenantedApiServiceName)
+	tenant, serviceName := ResolveNameWithMultiTenancy(tenantedApiServiceName)
+	curr, err := c.apiServiceLister.APIServicesWithMultiTenancy(tenant).Get(serviceName)
 
 	// if we've never synced this service successfully, record a successful sync.
-	hasSynced := c.hasSyncedSuccessfully(name)
+	hasSynced := c.hasSyncedSuccessfully(tenantedApiServiceName)
 	if !hasSynced {
 		defer func() {
 			if err == nil {
-				c.setSyncedSuccessfully(name)
+				c.setSyncedSuccessfully(tenantedApiServiceName)
 			}
 		}()
 	}
@@ -240,7 +243,7 @@ func (c *autoRegisterController) checkAPIService(name string) (err error) {
 
 	// we don't have an entry and we do want one (2B,2C)
 	case apierrors.IsNotFound(err) && desired != nil:
-		_, err := c.apiServiceClient.APIServices().Create(desired)
+		_, err := c.apiServiceClient.APIServicesWithMultiTenancy(tenant).Create(desired)
 		if apierrors.IsAlreadyExists(err) {
 			// created in the meantime, we'll get called again
 			return nil
@@ -252,7 +255,7 @@ func (c *autoRegisterController) checkAPIService(name string) (err error) {
 		return nil
 
 	// the remote object only wants to sync on start, but was added after we started (4A,4B,4C)
-	case isAutomanagedOnStart(curr) && !c.apiServicesAtStart[name]:
+	case isAutomanagedOnStart(curr) && !c.apiServicesAtStart[tenantedApiServiceName]:
 		return nil
 
 	// the remote object only wants to sync on start and has already synced (5A,5B,5C "once" enforcement)
@@ -262,7 +265,7 @@ func (c *autoRegisterController) checkAPIService(name string) (err error) {
 	// we have a spurious APIService that we're managing, delete it (5A,6A)
 	case desired == nil:
 		opts := &metav1.DeleteOptions{Preconditions: metav1.NewUIDPreconditions(string(curr.UID))}
-		err := c.apiServiceClient.APIServices().Delete(curr.Name, opts)
+		err := c.apiServiceClient.APIServicesWithMultiTenancy(tenant).Delete(curr.Name, opts)
 		if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
 			// deleted or changed in the meantime, we'll get called again
 			return nil
@@ -277,7 +280,7 @@ func (c *autoRegisterController) checkAPIService(name string) (err error) {
 	// we have an entry and we have a desired, now we deconflict.  Only a few fields matter. (5B,5C,6B,6C)
 	apiService := curr.DeepCopy()
 	apiService.Spec = desired.Spec
-	_, err = c.apiServiceClient.APIServices().Update(apiService)
+	_, err = c.apiServiceClient.APIServicesWithMultiTenancy(tenant).Update(apiService)
 	if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
 		// deleted or changed in the meantime, we'll get called again
 		return nil
@@ -286,11 +289,11 @@ func (c *autoRegisterController) checkAPIService(name string) (err error) {
 }
 
 // GetAPIServiceToSync gets a single API service to sync.
-func (c *autoRegisterController) GetAPIServiceToSync(name string) *apiregistration.APIService {
+func (c *autoRegisterController) GetAPIServiceToSync(tenantedApiServiceName string) *apiregistration.APIService {
 	c.apiServicesToSyncLock.RLock()
 	defer c.apiServicesToSyncLock.RUnlock()
 
-	return c.apiServicesToSync[name]
+	return c.apiServicesToSync[tenantedApiServiceName]
 }
 
 // AddAPIServiceToSyncOnStart registers an API service to sync only when the controller starts.
@@ -303,6 +306,23 @@ func (c *autoRegisterController) AddAPIServiceToSync(in *apiregistration.APIServ
 	c.addAPIServiceToSync(in, manageContinuously)
 }
 
+func NameWithMultiTenancy(apiService *apiregistration.APIService) string {
+	return apiService.Tenant + "/" + apiService.Name
+}
+
+func GroupWithMultiTenancy(apiService *apiregistration.APIService) string {
+	return apiService.Tenant + "/" + apiService.Spec.Group
+}
+
+func ResolveNameWithMultiTenancy(tenantedApiServiceName string) (string, string) {
+	i := strings.Index(tenantedApiServiceName, "/")
+	if i < 0 {
+		//temp workaround for backward-compatibility
+		return "", tenantedApiServiceName
+	}
+	return tenantedApiServiceName[:i], tenantedApiServiceName[i+1:]
+}
+
 func (c *autoRegisterController) addAPIServiceToSync(in *apiregistration.APIService, syncType string) {
 	c.apiServicesToSyncLock.Lock()
 	defer c.apiServicesToSyncLock.Unlock()
@@ -313,29 +333,30 @@ func (c *autoRegisterController) addAPIServiceToSync(in *apiregistration.APIServ
 	}
 	apiService.Labels[AutoRegisterManagedLabel] = syncType
 
-	c.apiServicesToSync[apiService.Name] = apiService
-	c.queue.Add(apiService.Name)
+	tenantedApiServiceName := NameWithMultiTenancy(apiService)
+	c.apiServicesToSync[tenantedApiServiceName] = apiService
+	c.queue.Add(tenantedApiServiceName)
 }
 
 // RemoveAPIServiceToSync deletes a registered APIService.
-func (c *autoRegisterController) RemoveAPIServiceToSync(name string) {
+func (c *autoRegisterController) RemoveAPIServiceToSync(tenantedApiServiceName string) {
 	c.apiServicesToSyncLock.Lock()
 	defer c.apiServicesToSyncLock.Unlock()
 
-	delete(c.apiServicesToSync, name)
-	c.queue.Add(name)
+	delete(c.apiServicesToSync, tenantedApiServiceName)
+	c.queue.Add(tenantedApiServiceName)
 }
 
-func (c *autoRegisterController) hasSyncedSuccessfully(name string) bool {
+func (c *autoRegisterController) hasSyncedSuccessfully(tenantedApiServiceName string) bool {
 	c.syncedSuccessfullyLock.RLock()
 	defer c.syncedSuccessfullyLock.RUnlock()
-	return c.syncedSuccessfully[name]
+	return c.syncedSuccessfully[tenantedApiServiceName]
 }
 
-func (c *autoRegisterController) setSyncedSuccessfully(name string) {
+func (c *autoRegisterController) setSyncedSuccessfully(tenantedApiServiceName string) {
 	c.syncedSuccessfullyLock.Lock()
 	defer c.syncedSuccessfullyLock.Unlock()
-	c.syncedSuccessfully[name] = true
+	c.syncedSuccessfully[tenantedApiServiceName] = true
 }
 
 func automanagedType(service *apiregistration.APIService) string {

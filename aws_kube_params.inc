@@ -20,11 +20,10 @@ export NUM_WINDOWS_NODES=0
 export AWS_SSH_KEY=$HOME/.ssh/id_rsa
 
 export PRESET_INSTANCES_ENABLED=false
-export PRESET_KUBE_MASTER_IP=18.220.39.30
-export PRESET_MASTER_INTERNAL_IP=172.31.40.185
-export PRESET_KUBE_MINION1_IP=3.22.197.191
-# Uncomment next line to enable deploy 2-nodes cluster
-# export PRESET_KUBE_MINION2_IP=18.222.230.120
+export PRESET_KUBE_MASTER_IP=172.31.6.63
+export PRESET_KUBE_MINION1_IP=172.31.11.206
+# Uncomment next line and set minion2 ip to enable deploy 2-nodes cluster
+# export PRESET_KUBE_MINION2_IP=172.31.11.XXX
 
 export PRESET_KUBE_SUBNET_CIDR=172.31.0.0/16
 export PRESET_KUBE_VPC_CIDR_BASE=172.31.0.0/

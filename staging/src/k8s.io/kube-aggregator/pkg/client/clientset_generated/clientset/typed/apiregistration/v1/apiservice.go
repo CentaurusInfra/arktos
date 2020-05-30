@@ -37,6 +37,7 @@ import (
 // A group's client should implement this interface.
 type APIServicesGetter interface {
 	APIServices() APIServiceInterface
+	APIServicesWithMultiTenancy(tenant string) APIServiceInterface
 }
 
 // APIServiceInterface has methods to work with APIService resources.
@@ -57,13 +58,19 @@ type APIServiceInterface interface {
 type aPIServices struct {
 	client  rest.Interface
 	clients []rest.Interface
+	te      string
 }
 
 // newAPIServices returns a APIServices
 func newAPIServices(c *ApiregistrationV1Client) *aPIServices {
+	return newAPIServicesWithMultiTenancy(c, "system")
+}
+
+func newAPIServicesWithMultiTenancy(c *ApiregistrationV1Client, tenant string) *aPIServices {
 	return &aPIServices{
 		client:  c.RESTClient(),
 		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -71,6 +78,7 @@ func newAPIServices(c *ApiregistrationV1Client) *aPIServices {
 func (c *aPIServices) Get(name string, options metav1.GetOptions) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("apiservices").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -88,6 +96,7 @@ func (c *aPIServices) List(opts metav1.ListOptions) (result *v1.APIServiceList, 
 	}
 	result = &v1.APIServiceList{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("apiservices").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -108,6 +117,7 @@ func (c *aPIServices) List(opts metav1.ListOptions) (result *v1.APIServiceList, 
 		}
 
 		err = client.Get().
+			Tenant(c.te).
 			Resource("apiservices").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -139,6 +149,7 @@ func (c *aPIServices) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterf
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.clients {
 		watcher, err := client.Get().
+			Tenant(c.te).
 			Resource("apiservices").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -157,7 +168,13 @@ func (c *aPIServices) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterf
 func (c *aPIServices) Create(aPIService *v1.APIService) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
 
+	objectTenant := aPIService.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
+		Tenant(objectTenant).
 		Resource("apiservices").
 		Body(aPIService).
 		Do().
@@ -170,7 +187,13 @@ func (c *aPIServices) Create(aPIService *v1.APIService) (result *v1.APIService, 
 func (c *aPIServices) Update(aPIService *v1.APIService) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
 
+	objectTenant := aPIService.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
+		Tenant(objectTenant).
 		Resource("apiservices").
 		Name(aPIService.Name).
 		Body(aPIService).
@@ -186,7 +209,13 @@ func (c *aPIServices) Update(aPIService *v1.APIService) (result *v1.APIService, 
 func (c *aPIServices) UpdateStatus(aPIService *v1.APIService) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
 
+	objectTenant := aPIService.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
+		Tenant(objectTenant).
 		Resource("apiservices").
 		Name(aPIService.Name).
 		SubResource("status").
@@ -200,6 +229,7 @@ func (c *aPIServices) UpdateStatus(aPIService *v1.APIService) (result *v1.APISer
 // Delete takes name of the aPIService and deletes it. Returns an error if one occurs.
 func (c *aPIServices) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("apiservices").
 		Name(name).
 		Body(options).
@@ -214,6 +244,7 @@ func (c *aPIServices) DeleteCollection(options *metav1.DeleteOptions, listOption
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("apiservices").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -226,6 +257,7 @@ func (c *aPIServices) DeleteCollection(options *metav1.DeleteOptions, listOption
 func (c *aPIServices) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.APIService, err error) {
 	result = &v1.APIService{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("apiservices").
 		SubResource(subresources...).
 		Name(name).

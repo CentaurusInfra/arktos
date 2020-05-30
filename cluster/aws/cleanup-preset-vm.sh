@@ -55,49 +55,14 @@ function remove-packages() {
   apt-get autoremove -y -q kubernetes-cni cri-tools
 }
 
-function remove-files-dirs() {
-  rm -rf /etc/motd
-  rm -rf /etc/systemd/system/multi-user.target.wants/kubelet.service
-  rm -rf /etc/kubernetes
-  rm -rf /etc/srv/kubernetes
-  rm -rf /etc/systemd/system/kubelet.service.d
-  rm -rf $HOME/.kube/
-  rm -rf /lib/systemd/system/kubelet.service
-  rm -rf /mnt/master-pd
-  rm -rf /root/.kube
-  rm -rf /srv/kubernetes
-  rm -rf /tmp/bootstrap-script  
-  rm -rf /tmp/kubernetes-server-linux-amd64.tar.gz
-  rm -rf /tmp/master-user-data  
-  rm -rf /usr/bin/kubeadm
-  rm -rf /usr/bin/kubectl
-  rm -rf /usr/bin/kubelet
-  rm -rf /usr/libexec/kubernetes
-  rm -rf /usr/libexec/kubernetes/kubelet-plugins
-  rm -rf /usr/local/bin/kube-proxy
-  rm -rf /usr/share/sosreport/sos/plugins/__pycache__/kubernetes.cpython-35.pyc
-  rm -rf /usr/share/sosreport/sos/plugins/kubernetes.py  
-  rm -rf /usr/bin/kubelet
-  rm -rf /var/log/containers/* 
-  rm -rf /var/log/workload-controller-manager.log 
-  rm -rf /var/cache/kubernetes-install
-  rm -rf /var/log/pods  
-
-  rm -rf /usr/share/sosreport/sos/plugins/__pycache__/etcd.cpython-35.pyc
-  rm -rf /usr/share/sosreport/sos/plugins/etcd.py
-  rm -rf /var/lib/etcd
-  rm -rf /var/etcd  
-}
-
 ####################################################################################
 
 echo "== cleanup starting =="
 
 set-kube-env
 
-stop-flannel-ds
-stop-containers
+stop-flannel-ds || true
+stop-containers || true
 remove-packages
-remove-files-dirs
 
 echo "== cleanup done =="

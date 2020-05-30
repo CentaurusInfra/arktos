@@ -28,6 +28,8 @@ import (
 const (
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll = ""
+	// Sometimes we need to explicitly indicate the operation targets at all the tenants, not the empty string of the above TenantAll
+	TenantAllExplicit = "all"
 	// TenantNone is the argument for a context when there is no tenant.
 	TenantNone = ""
 	// tenantSystem is the system tenant where we place system components.
@@ -2041,6 +2043,12 @@ type CommonInfo struct {
 	// Compute resource requirements.
 	// +optional
 	Resources ResourceRequirements
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy
 	// +optional
 	VolumeMounts []VolumeMount
 	// Policy for pulling images for this container
@@ -2257,6 +2265,12 @@ type VirtualMachine struct {
 	// Compute resource requirements.
 	// +optional
 	Resources ResourceRequirements
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy
 	// +optional
 	VolumeMounts []VolumeMount
 	// Policy for pulling images for this container
@@ -2447,6 +2461,7 @@ type VirtualMachineStatus struct {
 	PowerState           VmPowerState
 	Ready                bool
 	RestartCount         int32
+	Resources            ResourceRequirements
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -3005,6 +3020,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 			ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
 			ps.WorkloadInfo[0].ImagePullPolicy = ps.VirtualMachine.ImagePullPolicy
 			ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
+			ps.WorkloadInfo[0].ResourcesAllocated = ps.VirtualMachine.ResourcesAllocated
+			ps.WorkloadInfo[0].ResizePolicy = ps.VirtualMachine.ResizePolicy
 			ps.WorkloadInfo[0].VolumeMounts = ps.VirtualMachine.VolumeMounts
 		} else {
 			ps.WorkloadInfo = make([]CommonInfo, len(ps.Containers))
@@ -3013,6 +3030,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 				ps.WorkloadInfo[i].Image = ps.Containers[i].Image
 				ps.WorkloadInfo[i].ImagePullPolicy = ps.Containers[i].ImagePullPolicy
 				ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
+				ps.WorkloadInfo[i].ResourcesAllocated = ps.Containers[i].ResourcesAllocated
+				ps.WorkloadInfo[i].ResizePolicy = ps.Containers[i].ResizePolicy
 				ps.WorkloadInfo[i].VolumeMounts = ps.Containers[i].VolumeMounts
 			}
 		}
@@ -4184,6 +4203,36 @@ type NodeList struct {
 	Items []Node
 }
 
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageCluster describes the attributes on backend storage
+type StorageCluster struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+
+	// A string that specifies the storage object identity
+	StorageClusterId string
+
+	// A string that specifies the backend storage server address
+	ServiceAddress string
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageClusterList is a list of StorageCluster
+type StorageClusterList struct {
+	metav1.TypeMeta
+	// +optional
+	metav1.ListMeta
+
+	// Items is the list of StorageCluster objects in the list.
+	Items []StorageCluster
+}
+
 // NamespaceSpec describes the attributes on a Namespace
 type NamespaceSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage
@@ -4249,6 +4298,9 @@ type NamespaceList struct {
 type TenantSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage
 	Finalizers []FinalizerName
+
+	// StorageClusterId specifies the storage location of objects belong to this tenant
+	StorageClusterId string
 }
 
 // TenantStatus is information about the current status of a Tenant.

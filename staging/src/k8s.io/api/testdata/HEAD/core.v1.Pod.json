@@ -795,6 +795,15 @@
           "@Ȗs«öʮĀ\u003cé瞾": "51"
         }
       },
+      "resourcesAllocated": {
+        "": "614"
+      },
+      "resizePolicy": [
+        {
+          "resourceName": "ɨǙÄr蛏豈ɃH",
+          "policy": "靇C'ɵK.Q貇£ȹ嫰ƹǔw÷nI"
+        }
+      ],
       "volumeMounts": [
         {
           "name": "262",
@@ -881,6 +890,15 @@
             "ʭ嵔棂p儼Ƿ裚瓶釆Ɗ+j忊Ŗ": "976"
           }
         },
+        "resourcesAllocated": {
+          "掏1ſ": "991"
+        },
+        "resizePolicy": [
+          {
+            "resourceName": "w[Řż丩ŽoǠ",
+            "policy": "ƋZ1Ůđ眊ľǎɳ,ǿ飏騀呣ǎ"
+          }
+        ],
         "volumeMounts": [
           {
             "name": "300",

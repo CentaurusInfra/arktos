@@ -626,6 +626,12 @@ func TestZeroRequest(t *testing.T) {
 							strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMilliCPURequest, 10) + "m"),
+					v1.ResourceMemory: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
+				},
 			},
 		},
 	}
@@ -642,6 +648,12 @@ func TestZeroRequest(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse(
 							strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMilliCPURequest*3, 10) + "m"),
+					v1.ResourceMemory: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
 				},
 			},
 		},
@@ -795,6 +807,12 @@ var smallContainers = []v1.Container{
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
 			},
 		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
+		},
 	},
 }
 var mediumContainers = []v1.Container{
@@ -806,6 +824,12 @@ var mediumContainers = []v1.Container{
 				"memory": resource.MustParse(
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest*2, 10)),
 			},
+		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest*2, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest*2, 10)),
 		},
 	},
 }
@@ -819,6 +843,12 @@ var largeContainers = []v1.Container{
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
 			},
 		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest*3, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
+		},
 	},
 }
 var veryLargeContainers = []v1.Container{
@@ -830,6 +860,12 @@ var veryLargeContainers = []v1.Container{
 				"memory": resource.MustParse(
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest*5, 10)),
 			},
+		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest*5, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest*5, 10)),
 		},
 	},
 }

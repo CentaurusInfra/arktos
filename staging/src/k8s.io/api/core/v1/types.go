@@ -27,6 +27,8 @@ import (
 const (
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
 	TenantAll string = ""
+	// Sometimes we need to explicitly indicate the operation targets at all the tenants, not the empty string of the above TenantAll
+	TenantAllExplicit = "all"
 	// TenantSystem is the system tenant where we place system components.
 	TenantSystem string = "system"
 
@@ -2144,6 +2146,12 @@ type CommonInfo struct {
 	// Compute Resources required by this container.
 	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList `json:"resourcesAllocated,omitempty" protobuf:"bytes,6,rep,name=resourcesAllocated,casttype=ResourceList,castkey=ResourceName"`
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy `json:"resizePolicy,omitempty" protobuf:"bytes,7,rep,name=resizePolicy"`
 	// Pod volumes to mount into the workload's filesystem.
 	// +optional
 	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty" protobuf:"bytes,4,opt,name=volumeMounts"`
@@ -2451,6 +2459,12 @@ type VirtualMachine struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,3,opt,name=resources"`
+	// Node compute resources allocated to the container.
+	// +optional
+	ResourcesAllocated ResourceList `json:"resourcesAllocated,omitempty" protobuf:"bytes,15,rep,name=resourcesAllocated,casttype=ResourceList,castkey=ResourceName"`
+	// Resources resize policy for the container.
+	// +optional
+	ResizePolicy []ResizePolicy `json:"resizePolicy,omitempty" protobuf:"bytes,16,rep,name=resizePolicy"`
 	// Pod volumes to mount into the workload's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -2690,6 +2704,9 @@ type VirtualMachineStatus struct {
 	Ready bool `json:"ready,omitempty" protobuf:"varint,8,opt,name=ready"`
 	// +optional
 	RestartCount int32 `json:"restartCount,omitempty" protobuf:"varint,9,opt,name=restartCount"`
+	// Compute resource requests and limits applied to the VM
+	// +optional
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,10,opt,name=resources"`
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -3333,6 +3350,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 			ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
 			ps.WorkloadInfo[0].ImagePullPolicy = ps.VirtualMachine.ImagePullPolicy
 			ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
+			ps.WorkloadInfo[0].ResourcesAllocated = ps.VirtualMachine.ResourcesAllocated
+			ps.WorkloadInfo[0].ResizePolicy = ps.VirtualMachine.ResizePolicy
 			ps.WorkloadInfo[0].VolumeMounts = ps.VirtualMachine.VolumeMounts
 		} else {
 			ps.WorkloadInfo = make([]CommonInfo, len(ps.Containers))
@@ -3341,6 +3360,8 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 				ps.WorkloadInfo[i].Image = ps.Containers[i].Image
 				ps.WorkloadInfo[i].ImagePullPolicy = ps.Containers[i].ImagePullPolicy
 				ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
+				ps.WorkloadInfo[i].ResourcesAllocated = ps.Containers[i].ResourcesAllocated
+				ps.WorkloadInfo[i].ResizePolicy = ps.Containers[i].ResizePolicy
 				ps.WorkloadInfo[i].VolumeMounts = ps.Containers[i].VolumeMounts
 			}
 		}
@@ -4699,12 +4720,47 @@ const (
 	FinalizerKubernetes FinalizerName = "kubernetes"
 )
 
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:nonTenanted
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageCluster describes the attributes on backend storage
+type StorageCluster struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// A string that specifies the storage object identity
+	StorageClusterId string `json:"storageClusterId" protobuf:"bytes,2,opt,name=storageClusterId"`
+
+	// A string that specifies the backend storage server address
+	ServiceAddress string `json:"serviceAddress" protobuf:"bytes,3,opt,name=serviceAddress"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StorageClusterList is a list of StorageCluster
+type StorageClusterList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata.
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Items is the list of StorageCluster objects in the list.
+	Items []StorageCluster `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
 // TenantSpec describes the attributes on a Tenant.
 type TenantSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
 	// More info: https://kubernetes.io/docs/tasks/administer-cluster/tenants/
 	// +optional
 	Finalizers []FinalizerName `json:"finalizers,omitempty" protobuf:"bytes,1,rep,name=finalizers,casttype=FinalizerName"`
+
+	// StorageClusterId specifies the storage location of objects belong to this tenant
+	StorageClusterId string `json:"storageClusterId" protobuf:"bytes,2,name=storageClusterId"`
 }
 
 // TenantStatus is information about the current status of a Tenant.

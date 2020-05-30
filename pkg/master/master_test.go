@@ -41,7 +41,7 @@ import (
 	"k8s.io/apiserver/pkg/server/options"
 	"k8s.io/apiserver/pkg/server/resourceconfig"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
-	etcdtesting "k8s.io/apiserver/pkg/storage/etcd/testing"
+	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -62,11 +62,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
+	"k8s.io/apiserver/pkg/authentication/user"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 )
 
 // setUp is a convience function for setting up for (most) tests.
-func setUp(t *testing.T) (*etcdtesting.EtcdTestServer, Config, *assert.Assertions) {
-	server, storageConfig := etcdtesting.NewUnsecuredEtcd3TestClientServer(t)
+func setUp(t *testing.T) (*etcd3testing.EtcdTestServer, Config, *assert.Assertions) {
+	server, storageConfig := etcd3testing.NewUnsecuredEtcd3TestClientServer(t)
 	apiserverConfig := genericapiserver.NewConfig(legacyscheme.Codecs)
 	apiserverConfig.Authentication = genericapiserver.AuthenticationInfo{Authenticator: fakeuser.FakeRegularUser{}}
 
@@ -144,6 +146,15 @@ func (fakeLocalhost443Listener) Addr() net.Addr {
 	}
 }
 
+func handlerWithUserInfo(handler http.Handler, userInfo *user.DefaultInfo) http.Handler {
+	new_handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req = req.WithContext(genericapirequest.WithUser(req.Context(), userInfo))
+		handler.ServeHTTP(w, req)
+	})
+
+	return new_handler
+}
+
 // TestLegacyRestStorageStrategies ensures that all Storage objects which are using the generic registry Store have
 // their various strategies properly wired up. This surfaced as a bug where strategies defined Export functions, but
 // they were never used outside of unit tests because the export strategies were not assigned inside the Store.
@@ -203,7 +214,7 @@ func TestCertificatesRestStorageStrategies(t *testing.T) {
 	}
 }
 
-func newMaster(t *testing.T) (*Master, *etcdtesting.EtcdTestServer, Config, *assert.Assertions) {
+func newMaster(t *testing.T) (*Master, *etcd3testing.EtcdTestServer, Config, *assert.Assertions) {
 	etcdserver, config, assert := setUp(t)
 
 	master, err := config.Complete().New(genericapiserver.NewEmptyDelegate())
@@ -309,7 +320,7 @@ func TestAPIVersionOfDiscoveryEndpoints(t *testing.T) {
 	master, etcdserver, _, assert := newMaster(t)
 	defer etcdserver.Terminate(t)
 
-	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
+	server := httptest.NewServer(handlerWithUserInfo(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux, fakeuser.FakeSuperUserInfo))
 
 	// /api exists in release-1.1
 	resp, err := http.Get(server.URL + "/api")
@@ -384,7 +395,7 @@ func TestStorageVersionHashes(t *testing.T) {
 	master, etcdserver, _, _ := newMaster(t)
 	defer etcdserver.Terminate(t)
 
-	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
+	server := httptest.NewServer(handlerWithUserInfo(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux, fakeuser.FakeSuperUserInfo))
 
 	kubeConfig := &restclient.KubeConfig{
 		Host:          server.URL,
@@ -428,7 +439,7 @@ func TestStorageVersionHashEqualities(t *testing.T) {
 	master, etcdserver, _, assert := newMaster(t)
 	defer etcdserver.Terminate(t)
 
-	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
+	server := httptest.NewServer(handlerWithUserInfo(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux, fakeuser.FakeSuperUserInfo))
 
 	// Test 1: extensions/v1beta1/replicasets and apps/v1/replicasets have
 	// the same storage version hash.

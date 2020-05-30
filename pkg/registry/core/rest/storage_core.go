@@ -35,7 +35,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
-	etcdutil "k8s.io/apiserver/pkg/storage/etcd/util"
+	"k8s.io/apiserver/pkg/storage/etcd3"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	policyclient "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
 	restclient "k8s.io/client-go/rest"
@@ -68,6 +68,7 @@ import (
 	"k8s.io/kubernetes/pkg/registry/core/service/portallocator"
 	servicestore "k8s.io/kubernetes/pkg/registry/core/service/storage"
 	serviceaccountstore "k8s.io/kubernetes/pkg/registry/core/serviceaccount/storage"
+	storageclusterstore "k8s.io/kubernetes/pkg/registry/core/storagecluster/storage"
 	tenantstore "k8s.io/kubernetes/pkg/registry/core/tenant/storage"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 )
@@ -141,6 +142,7 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 	endpointsStorage := endpointsstore.NewREST(restOptionsGetter)
 
 	dataPartitionStorage := datapartitionstore.NewREST(restOptionsGetter)
+	storageClusterStorage := storageclusterstore.NewREST(restOptionsGetter)
 
 	nodeStorage, err := nodestore.NewStorage(restOptionsGetter, c.KubeletClientConfig, c.ProxyTransport)
 	if err != nil {
@@ -221,6 +223,7 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 
 		"endpoints":            endpointsStorage,
 		"datapartitionconfigs": dataPartitionStorage,
+		"storageclusters":      storageClusterStorage,
 
 		"nodes":        nodeStorage.Node,
 		"nodes/status": nodeStorage.Status,
@@ -307,7 +310,7 @@ func (s componentStatusStorage) serversToValidate() map[string]*componentstatus.
 			TLSConfig:   machine.TLSConfig,
 			Port:        port,
 			Path:        "/health",
-			Validate:    etcdutil.EtcdHealthCheck,
+			Validate:    etcd3.EtcdHealthCheck,
 		}
 	}
 	return serversToValidate

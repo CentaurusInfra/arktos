@@ -70,6 +70,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ResourceQuotaList{},
 		&Tenant{},
 		&TenantList{},
+		&StorageCluster{},
+		&StorageClusterList{},
 		&Namespace{},
 		&NamespaceList{},
 		&ControllerInstance{},

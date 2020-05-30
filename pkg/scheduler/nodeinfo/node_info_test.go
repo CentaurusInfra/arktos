@@ -271,7 +271,8 @@ func makeBasePod(t testingMode, nodeName, objName, cpu, mem, extended string, po
 				Resources: v1.ResourceRequirements{
 					Requests: req,
 				},
-				Ports: ports,
+				ResourcesAllocated: req,
+				Ports:              ports,
 			}},
 			NodeName: nodeName,
 		},
@@ -326,6 +327,10 @@ func TestNewNodeInfo(t *testing.T) {
 									v1.ResourceMemory: resource.MustParse("500"),
 								},
 							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("100m"),
+								v1.ResourceMemory: resource.MustParse("500"),
+							},
 							Ports: []v1.ContainerPort{
 								{
 									HostIP:   "127.0.0.1",
@@ -352,6 +357,10 @@ func TestNewNodeInfo(t *testing.T) {
 									v1.ResourceCPU:    resource.MustParse("200m"),
 									v1.ResourceMemory: resource.MustParse("1Ki"),
 								},
+							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("200m"),
+								v1.ResourceMemory: resource.MustParse("1Ki"),
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -418,6 +427,10 @@ func TestNodeInfoClone(t *testing.T) {
 											v1.ResourceMemory: resource.MustParse("500"),
 										},
 									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("100m"),
+										v1.ResourceMemory: resource.MustParse("500"),
+									},
 									Ports: []v1.ContainerPort{
 										{
 											HostIP:   "127.0.0.1",
@@ -444,6 +457,10 @@ func TestNodeInfoClone(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{
@@ -488,6 +505,10 @@ func TestNodeInfoClone(t *testing.T) {
 											v1.ResourceMemory: resource.MustParse("500"),
 										},
 									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("100m"),
+										v1.ResourceMemory: resource.MustParse("500"),
+									},
 									Ports: []v1.ContainerPort{
 										{
 											HostIP:   "127.0.0.1",
@@ -514,6 +535,10 @@ func TestNodeInfoClone(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{
@@ -561,6 +586,10 @@ func TestNodeInfoAddPod(t *testing.T) {
 								v1.ResourceMemory: resource.MustParse("500"),
 							},
 						},
+						ResourcesAllocated: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("100m"),
+							v1.ResourceMemory: resource.MustParse("500"),
+						},
 						Ports: []v1.ContainerPort{
 							{
 								HostIP:   "127.0.0.1",
@@ -587,6 +616,10 @@ func TestNodeInfoAddPod(t *testing.T) {
 								v1.ResourceCPU:    resource.MustParse("200m"),
 								v1.ResourceMemory: resource.MustParse("1Ki"),
 							},
+						},
+						ResourcesAllocated: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("200m"),
+							v1.ResourceMemory: resource.MustParse("1Ki"),
 						},
 						Ports: []v1.ContainerPort{
 							{
@@ -647,6 +680,10 @@ func TestNodeInfoAddPod(t *testing.T) {
 									v1.ResourceMemory: resource.MustParse("500"),
 								},
 							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("100m"),
+								v1.ResourceMemory: resource.MustParse("500"),
+							},
 							Ports: []v1.ContainerPort{
 								{
 									HostIP:   "127.0.0.1",
@@ -673,6 +710,10 @@ func TestNodeInfoAddPod(t *testing.T) {
 									v1.ResourceCPU:    resource.MustParse("200m"),
 									v1.ResourceMemory: resource.MustParse("1Ki"),
 								},
+							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("200m"),
+								v1.ResourceMemory: resource.MustParse("1Ki"),
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -769,6 +810,10 @@ func TestNodeInfoRemovePod(t *testing.T) {
 											v1.ResourceMemory: resource.MustParse("500"),
 										},
 									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("100m"),
+										v1.ResourceMemory: resource.MustParse("500"),
+									},
 									Ports: []v1.ContainerPort{
 										{
 											HostIP:   "127.0.0.1",
@@ -795,6 +840,10 @@ func TestNodeInfoRemovePod(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{
@@ -826,6 +875,10 @@ func TestNodeInfoRemovePod(t *testing.T) {
 									v1.ResourceCPU:    resource.MustParse("100m"),
 									v1.ResourceMemory: resource.MustParse("500"),
 								},
+							},
+							ResourcesAllocated: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("100m"),
+								v1.ResourceMemory: resource.MustParse("500"),
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -884,6 +937,10 @@ func TestNodeInfoRemovePod(t *testing.T) {
 											v1.ResourceCPU:    resource.MustParse("200m"),
 											v1.ResourceMemory: resource.MustParse("1Ki"),
 										},
+									},
+									ResourcesAllocated: v1.ResourceList{
+										v1.ResourceCPU:    resource.MustParse("200m"),
+										v1.ResourceMemory: resource.MustParse("1Ki"),
 									},
 									Ports: []v1.ContainerPort{
 										{

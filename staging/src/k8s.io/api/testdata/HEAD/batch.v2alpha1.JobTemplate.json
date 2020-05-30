@@ -903,6 +903,15 @@
                 "đ寳议Ƭ": "235"
               }
             },
+            "resourcesAllocated": {
+              "貾坢'跩aŕ翑0": "414"
+            },
+            "resizePolicy": [
+              {
+                "resourceName": "\u0026皥贸碔lNKƙ順\\E¦队偯",
+                "policy": "跣Hǝcw媀瓄\u0026翜舞拉Œɥ颶"
+              }
+            ],
             "volumeMounts": [
               {
                 "name": "308",
@@ -988,6 +997,15 @@
                   "ĩ餠籲磣Óƿ頀\"冓鍓贯澔 ƺ蛜6Ɖ飴": "86"
                 }
               },
+              "resourcesAllocated": {
+                "龏´DÒȗÔÂɘɢ鬍": "101"
+              },
+              "resizePolicy": [
+                {
+                  "resourceName": "ŕ璻Jih亏yƕ丆",
+                  "policy": "H鯂²静ƲǦŐǌ汰8ŕİi騎C\"6"
+                }
+              ],
               "volumeMounts": [
                 {
                   "name": "346",

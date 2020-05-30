@@ -854,6 +854,15 @@
               "遰=E": "115"
             }
           },
+          "resourcesAllocated": {
+            "寳议Ƭƶ氩Ȩ\u003c6鄰簳°Ļǟi\u0026皥贸碔": "76"
+          },
+          "resizePolicy": [
+            {
+              "resourceName": "垾现葢ŵ橨",
+              "policy": "¦队偯J僳徥淳4揻-$ɽ丟×x锏ɟ"
+            }
+          ],
           "volumeMounts": [
             {
               "name": "287",
@@ -940,6 +949,15 @@
                 "ĪĠM蘇KŅ/»頸+": "945"
               }
             },
+            "resourcesAllocated": {
+              "亏yƕ丆録²Ŏ)/灩聋3趐囨鏻": "838"
+            },
+            "resizePolicy": [
+              {
+                "resourceName": "i騎C\"6x$1sȣ±p鋄5弢ȹ均",
+                "policy": "eSvEȤƏ埮pɵ{WOŭW灬p"
+              }
+            ],
             "volumeMounts": [
               {
                 "name": "325",

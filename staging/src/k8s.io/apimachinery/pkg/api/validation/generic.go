@@ -18,10 +18,12 @@ limitations under the License.
 package validation
 
 import (
+	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 const IsNegativeErrorMsg string = `must be greater than or equal to 0`
@@ -58,9 +60,16 @@ func NameIsDNS1035Label(name string, prefix bool) []string {
 }
 
 // ValidateTenantName can be used to check whether the given tenant name is valid.
-// Prefix indicates this name will be used as part of generation, in which case
-// trailing dashes are allowed.
-var ValidateTenantName = NameIsDNSLabel
+func ValidateTenantName(name string, prefix bool) []string {
+	forbiddenTenantNames := []string{api.TenantAllExplicit}
+	for _, forbiddenName := range forbiddenTenantNames {
+		if name == forbiddenName {
+			return []string{fmt.Sprintf("is not an acceptable tenant name")}
+		}
+	}
+
+	return NameIsDNSLabel(name, prefix)
+}
 
 // ValidateControllerTypeName can be used to check whether the given controller type name is valid.
 var ValidateControllerTypeName = NameIsDNSLabel

@@ -37,5 +37,6 @@ metadata:
 spec:
   finalizers:
   - 脽ěĂ凗蓏Ŋ蛊ĉy緅縕
+  storageClusterId: "25"
 status:
   phase: 谐颋ǅSǡƏS$+½H牗洝尿

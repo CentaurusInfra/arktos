@@ -20,12 +20,13 @@ package discovery
 import (
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"net/url"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/golang/protobuf/proto"
 	openapi_v2 "github.com/googleapis/gnostic/OpenAPIv2"
@@ -37,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/version"
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 )
@@ -187,8 +189,15 @@ func (d *DiscoveryClient) ServerGroups() (apiGroupList *metav1.APIGroupList, err
 }
 
 // ServerResourcesForGroupVersion returns the supported resources for a group and version.
-func (d *DiscoveryClient) ServerResourcesForGroupVersion(groupVersion string) (resources *metav1.APIResourceList, err error) {
+func (d *DiscoveryClient) ServerResourcesForGroupVersion(tenantGroupVersion string) (resources *metav1.APIResourceList, err error) {
 	url := url.URL{}
+
+	parts := strings.SplitN(tenantGroupVersion, ":", 2)
+	tenantedFormat := false
+	if len(parts) > 1 && len(parts[0]) > 0 {
+		tenantedFormat = true
+	}
+	groupVersion := parts[len(parts)-1]
 	if len(groupVersion) == 0 {
 		return nil, fmt.Errorf("groupVersion shouldn't be empty")
 	}
@@ -200,7 +209,13 @@ func (d *DiscoveryClient) ServerResourcesForGroupVersion(groupVersion string) (r
 	resources = &metav1.APIResourceList{
 		GroupVersion: groupVersion,
 	}
-	err = d.RESTClient().Get().AbsPath(url.String()).Do().Into(resources)
+
+	if !tenantedFormat {
+		err = d.RESTClient().Get().AbsPath(url.String()).Do().Into(resources)
+	} else {
+		err = d.RESTClient().Get().AbsPath(url.String()).Param(apifilters.TenantParam, parts[0]).Do().Into(resources)
+	}
+
 	if err != nil {
 		// ignore 403 or 404 error to be compatible with an v1.0 server.
 		if groupVersion == "v1" && (errors.IsNotFound(err) || errors.IsForbidden(err)) {
