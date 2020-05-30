@@ -124,18 +124,18 @@ fi
 set +e
 
 
-# # name of the cgroup driver, i.e. cgroupfs or systemd
-# if [[ ${CONTAINER_RUNTIME} == "docker" ]]; then
-#   # default cgroup driver to match what is reported by docker to simplify local development
-#   if [[ -z ${CGROUP_DRIVER} ]]; then
-#     # match driver with docker runtime reported value (they must match)
-#     CGROUP_DRIVER=$(docker info | grep "Cgroup Driver:" |  sed -e 's/^[[:space:]]*//'|cut -f3- -d' ')
-#     echo "Kubelet cgroup driver defaulted to use: ${CGROUP_DRIVER}"
-#   fi
-#   if [[ -f /var/log/docker.log && ! -f "${LOG_DIR}/docker.log" ]]; then
-#     ln -s /var/log/docker.log "${LOG_DIR}/docker.log"
-#   fi
-# fi
+# name of the cgroup driver, i.e. cgroupfs or systemd
+if [[ ${CONTAINER_RUNTIME} == "docker" ]]; then
+  # default cgroup driver to match what is reported by docker to simplify local development
+  if [[ -z ${CGROUP_DRIVER} ]]; then
+    # match driver with docker runtime reported value (they must match)
+    CGROUP_DRIVER=$(docker info | grep "Cgroup Driver:" |  sed -e 's/^[[:space:]]*//'|cut -f3- -d' ')
+    echo "Kubelet cgroup driver defaulted to use: ${CGROUP_DRIVER}"
+  fi
+  if [[ -f /var/log/docker.log && ! -f "${LOG_DIR}/docker.log" ]]; then
+    ln -s /var/log/docker.log "${LOG_DIR}/docker.log"
+  fi
+fi
 
 
 
@@ -268,12 +268,12 @@ cleanup()
   # Delete virtlet metadata and log directory
   if [[ -e "${VIRTLET_METADATA_DIR}" ]]; then
         echo "Cleanup runtime metadata folder"
-        sudo rm -f -r "${VIRTLET_METADATA_DIR}"
+        rm -f -r "${VIRTLET_METADATA_DIR}"
   fi
 
   if [[ -e "${VIRTLET_LOG_DIR}" ]]; then
        echo "Cleanup runtime log folder"
-       sudo rm -f -r "${VIRTLET_LOG_DIR}"
+       rm -f -r "${VIRTLET_LOG_DIR}"
   fi
 
   exit 0
@@ -376,63 +376,63 @@ function start_cloud_controller_manager {
     export CLOUD_CTLRMGR_PID=$!
 }
 
-# function start_kubeproxy {
-#     PROXY_LOG=${LOG_DIR}/kube-proxy.log
+function start_kubeproxy {
+    PROXY_LOG=${LOG_DIR}/kube-proxy.log
 
-#     cat <<EOF > /tmp/kube-proxy.yaml
-# apiVersion: kubeproxy.config.k8s.io/v1alpha1
-# kind: KubeProxyConfiguration
-# clientConnection:
-#   kubeconfig: ${CERT_DIR}/kube-proxy.kubeconfig
-# hostnameOverride: ${HOSTNAME_OVERRIDE}
-# mode: ${KUBE_PROXY_MODE}
-# EOF
-#     if [[ -n ${FEATURE_GATES} ]]; then
-#       echo "featureGates:"
-#       # Convert from foo=true,bar=false to
-#       #   foo: true
-#       #   bar: false
-#       for gate in $(echo "${FEATURE_GATES}" | tr ',' ' '); do
-#         echo "${gate}" | ${SED} -e 's/\(.*\)=\(.*\)/  \1: \2/'
-#       done
-#     fi >>/tmp/kube-proxy.yaml
+    cat <<EOF > /tmp/kube-proxy.yaml
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+clientConnection:
+  kubeconfig: ${CERT_DIR}/kube-proxy.kubeconfig
+hostnameOverride: ${HOSTNAME_OVERRIDE}
+mode: ${KUBE_PROXY_MODE}
+EOF
+    if [[ -n ${FEATURE_GATES} ]]; then
+      echo "featureGates:"
+      # Convert from foo=true,bar=false to
+      #   foo: true
+      #   bar: false
+      for gate in $(echo "${FEATURE_GATES}" | tr ',' ' '); do
+        echo "${gate}" | ${SED} -e 's/\(.*\)=\(.*\)/  \1: \2/'
+      done
+    fi >>/tmp/kube-proxy.yaml
 
-#     if [[ "${REUSE_CERTS}" != true ]]; then
-#         kube::common::generate_kubeproxy_certs
-#     fi
+    if [[ "${REUSE_CERTS}" != true ]]; then
+        kube::common::generate_kubeproxy_certs
+    fi
 
-#     # shellcheck disable=SC2024
-#     sudo "${GO_OUT}/hyperkube" kube-proxy \
-#       --v="${LOG_LEVEL}" \
-#       --config=/tmp/kube-proxy.yaml \
-#       --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
-#     PROXY_PID=$!
-# }
+    # shellcheck disable=SC2024
+    sudo "${GO_OUT}/hyperkube" kube-proxy \
+      --v="${LOG_LEVEL}" \
+      --config=/tmp/kube-proxy.yaml \
+      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
+    PROXY_PID=$!
+}
 
-# function start_kubedns {
-#     if [[ "${ENABLE_CLUSTER_DNS}" = true ]]; then
-#         cp "${KUBE_ROOT}/cluster/addons/dns/kube-dns/kube-dns.yaml.in" kube-dns.yaml
-#         ${SED} -i -e "s/{{ pillar\['dns_domain'\] }}/${DNS_DOMAIN}/g" kube-dns.yaml
-#         ${SED} -i -e "s/{{ pillar\['dns_server'\] }}/${DNS_SERVER_IP}/g" kube-dns.yaml
-#         ${SED} -i -e "s/{{ pillar\['dns_memory_limit'\] }}/${DNS_MEMORY_LIMIT}/g" kube-dns.yaml
-#         # TODO update to dns role once we have one.
-#         # use kubectl to create kubedns addon
-#         ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" --namespace=kube-system create -f kube-dns.yaml
-#         echo "Kube-dns addon successfully deployed."
-#         rm kube-dns.yaml
-#     fi
-# }
+function start_kubedns {
+    if [[ "${ENABLE_CLUSTER_DNS}" = true ]]; then
+        cp "${KUBE_ROOT}/cluster/addons/dns/kube-dns/kube-dns.yaml.in" kube-dns.yaml
+        ${SED} -i -e "s/{{ pillar\['dns_domain'\] }}/${DNS_DOMAIN}/g" kube-dns.yaml
+        ${SED} -i -e "s/{{ pillar\['dns_server'\] }}/${DNS_SERVER_IP}/g" kube-dns.yaml
+        ${SED} -i -e "s/{{ pillar\['dns_memory_limit'\] }}/${DNS_MEMORY_LIMIT}/g" kube-dns.yaml
+        # TODO update to dns role once we have one.
+        # use kubectl to create kubedns addon
+        ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" --namespace=kube-system create -f kube-dns.yaml
+        echo "Kube-dns addon successfully deployed."
+        rm kube-dns.yaml
+    fi
+}
 
-# function start_nodelocaldns {
-#   cp "${KUBE_ROOT}/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml" nodelocaldns.yaml
-#   sed -i -e "s/__PILLAR__DNS__DOMAIN__/${DNS_DOMAIN}/g" nodelocaldns.yaml
-#   sed -i -e "s/__PILLAR__DNS__SERVER__/${DNS_SERVER_IP}/g" nodelocaldns.yaml
-#   sed -i -e "s/__PILLAR__LOCAL__DNS__/${LOCAL_DNS_IP}/g" nodelocaldns.yaml
-#   # use kubectl to create nodelocaldns addon
-#   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" --namespace=kube-system create -f nodelocaldns.yaml
-#   echo "NodeLocalDNS addon successfully deployed."
-#   rm nodelocaldns.yaml
-# }
+function start_nodelocaldns {
+  cp "${KUBE_ROOT}/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml" nodelocaldns.yaml
+  sed -i -e "s/__PILLAR__DNS__DOMAIN__/${DNS_DOMAIN}/g" nodelocaldns.yaml
+  sed -i -e "s/__PILLAR__DNS__SERVER__/${DNS_SERVER_IP}/g" nodelocaldns.yaml
+  sed -i -e "s/__PILLAR__LOCAL__DNS__/${LOCAL_DNS_IP}/g" nodelocaldns.yaml
+  # use kubectl to create nodelocaldns addon
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" --namespace=kube-system create -f nodelocaldns.yaml
+  echo "NodeLocalDNS addon successfully deployed."
+  rm nodelocaldns.yaml
+}
 
 function start_kubedashboard {
     if [[ "${ENABLE_CLUSTER_DASHBOARD}" = true ]]; then
@@ -542,21 +542,21 @@ if ! [[ $(which etcd) ]]; then
 fi
 
 # If we are running in the CI, we need a few more things before we can start
-# if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
-#   echo "Preparing to test ..."
-#   "${KUBE_ROOT}"/hack/install-etcd.sh
-#   export PATH="${KUBE_ROOT}/third_party/etcd:${PATH}"
-#   KUBE_FASTBUILD=true make ginkgo cross
+if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
+  echo "Preparing to test ..."
+  "${KUBE_ROOT}"/hack/install-etcd.sh
+  export PATH="${KUBE_ROOT}/third_party/etcd:${PATH}"
+  KUBE_FASTBUILD=true make ginkgo cross
 
-#   apt-get update && apt-get install -y sudo
-#   apt-get remove -y systemd
+  apt-get update && apt-get install -y sudo
+  apt-get remove -y systemd
 
-#   # configure shared mounts to prevent failure in DIND scenarios
-#   mount --make-rshared /
+  # configure shared mounts to prevent failure in DIND scenarios
+  mount --make-rshared /
 
-#   # kubekins has a special directory for docker root
-#   DOCKER_ROOT="/docker-graph"
-# fi
+  # kubekins has a special directory for docker root
+  DOCKER_ROOT="/docker-graph"
+fi
 
 # validate that etcd is: not running, in path, and has minimum required version.
 if [[ "${START_MODE}" != "kubeletonly" ]]; then
@@ -571,8 +571,8 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   test_apiserver_off
 fi
 
-# kube::util::test_openssl_installed
-# kube::util::ensure-cfssl
+kube::util::test_openssl_installed
+kube::util::ensure-cfssl
 
 ### IF the user didn't supply an output/ for the build... Then we detect.
 if [ "${GO_OUT}" == "" ]; then
@@ -611,10 +611,10 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     start_kubeproxy
   fi
   kube::common::start_kubescheduler
-  # start_kubedns
-  # if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
-  #   start_nodelocaldns
-  # fi
+  start_kubedns
+  if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
+    start_nodelocaldns
+  fi
   start_kubedashboard
 fi
 
@@ -643,27 +643,27 @@ if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
   create_storage_class
 fi
 
-# echo "*******************************************"
-# echo "Setup Arktos components ..."
-# echo ""
+echo "*******************************************"
+echo "Setup Arktos components ..."
+echo ""
 
-# while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
+while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
 
-# cluster/kubectl.sh label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+cluster/kubectl.sh label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-# cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
+cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
-# cluster/kubectl.sh create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+cluster/kubectl.sh create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
-# cluster/kubectl.sh get ds --namespace kube-system
+cluster/kubectl.sh get ds --namespace kube-system
 
-# echo ""
-# echo "Arktos Setup done."
-# echo "*******************************************"
-# echo "Setup Kata Containers components ..."
-# "${KUBE_ROOT}"/hack/install-kata.sh
-# echo "Kata Setup done."
-# echo "*******************************************"
+echo ""
+echo "Arktos Setup done."
+echo "*******************************************"
+echo "Setup Kata Containers components ..."
+"${KUBE_ROOT}"/hack/install-kata.sh
+echo "Kata Setup done."
+echo "*******************************************"
 
 print_success
 
@@ -671,9 +671,9 @@ if [[ "${ENABLE_DAEMON}" = false ]]; then
   while true; do sleep 1; healthcheck; done
 fi
 
-# if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
-#   cluster/kubectl.sh config set-cluster local --server=https://${API_HOST_IP}:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
-#   cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
-#   cluster/kubectl.sh config set-context local --cluster=local --user=myself
-#   cluster/kubectl.sh config use-context local
-# fi
+if [[ "${KUBETEST_IN_DOCKER:-}" == "true" ]]; then
+  cluster/kubectl.sh config set-cluster local --server=https://${API_HOST_IP}:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
+  cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
+  cluster/kubectl.sh config set-context local --cluster=local --user=myself
+  cluster/kubectl.sh config use-context local
+fi
