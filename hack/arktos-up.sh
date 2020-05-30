@@ -660,10 +660,10 @@ cluster/kubectl.sh get ds --namespace kube-system
 echo ""
 echo "Arktos Setup done."
 echo "*******************************************"
-echo "Setup Kata Containers components ..."
-"${KUBE_ROOT}"/hack/install-kata.sh
-echo "Kata Setup done."
-echo "*******************************************"
+# echo "Setup Kata Containers components ..."
+# "${KUBE_ROOT}"/hack/install-kata.sh
+# echo "Kata Setup done."
+# echo "*******************************************"
 
 print_success
 
