@@ -38,7 +38,7 @@ func startDisruptionController(ctx ControllerContext) (http.Handler, bool, error
 
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: group, Version: version, Resource: resource}] {
 		klog.Infof(
-			"Refusing to start disruption because resource %q in group %q is not available.",
+			"Refusing to start disruption because resource %q in  group %q is not available. ",
 			resource, group+"/"+version)
 		return nil, false, nil
 	}
