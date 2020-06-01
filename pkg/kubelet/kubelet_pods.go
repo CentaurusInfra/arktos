@@ -1635,7 +1635,7 @@ func (kl *Kubelet) convertToAPIContainerStatuses(pod *v1.Pod, podStatus *kubecon
 							return
 						}
 						if oldStatusFound {
-							if oldStatus.State.Running == nil {
+							if oldStatus.State.Running == nil || status.ContainerID != oldStatus.ContainerID {
 								if res, exists := containerResources[cName].Limits[rName]; exists {
 									limits[rName] = res.DeepCopy()
 								}

@@ -29,6 +29,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -40,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/apimachinery/pkg/util/diff"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -669,7 +671,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		int(kubeCfg.RegistryBurst),
 		kubeCfg.CPUCFSQuota,
 		kubeCfg.CPUCFSQuotaPeriod,
-		kubeDeps.ContainerManager.InternalContainerLifecycle(),
+		kubeDeps.ContainerManager,
 		legacyLogProvider,
 		klet.runtimeClassManager,
 		runtimeRegistry,
@@ -1687,6 +1689,12 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	// Fetch the pull secrets for the pod
 	pullSecrets := kl.getPullSecretsForPod(pod)
 
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		if pod.DeletionTimestamp == nil {
+			kl.handlePodResourcesResize(pod)
+		}
+	}
+
 	// Call the container runtime's SyncPod callback
 	result := kl.containerRuntime.SyncPod(pod, podStatus, pullSecrets, kl.backOff)
 	kl.reasonCache.Update(pod.UID, result)
@@ -1704,6 +1712,50 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	}
 
 	return nil
+}
+
+func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
+	podResized := false
+	for _, container := range pod.Spec.Containers {
+		if len(diff.ObjectDiff(container.ResourcesAllocated, container.Resources.Requests)) > 0 {
+			podResized = true
+			break
+		}
+	}
+	if !podResized {
+		return
+	}
+
+	var otherActivePods []*v1.Pod
+	activePods := kl.GetActivePods()
+	for _, p := range activePods {
+		if p.UID != pod.UID {
+			otherActivePods = append(otherActivePods, p)
+		}
+	}
+	if ok, failReason, failMessage := kl.canAdmitPod(otherActivePods, pod); !ok {
+		// Log reason and return. Let the next sync iteration retry the resize
+		klog.V(2).Infof("Pod '%s' resize cannot be accommodated. Reason: '%s' Message: '%s'", pod.Name, failReason, failMessage)
+		return
+	}
+
+	var containersPatchData string
+	for _, container := range pod.Spec.Containers {
+		var resourcesPatchData string
+		for rName, rQuantity := range container.Resources.Requests {
+			resourcesPatchData += fmt.Sprintf(`"%s":"%s",`, rName, rQuantity.String())
+		}
+		resourcesPatchData = strings.TrimRight(resourcesPatchData, ",")
+		containersPatchData += fmt.Sprintf(`{"name":"%s","resourcesAllocated":{%s}},`, container.Name, resourcesPatchData)
+	}
+	containersPatchData = strings.TrimRight(containersPatchData, ",")
+	patchData := fmt.Sprintf(`{"spec":{"containers":[%s]}}`, containersPatchData)
+	_, patchError := kl.kubeClient.CoreV1().Pods(pod.Namespace).Patch(pod.Name, types.StrategicMergePatchType, []byte(patchData))
+	if patchError != nil {
+		klog.Errorf("Failed to patch ResourcesAllocated values for pod %s: %+v\n", pod.Name, patchError)
+		return
+	}
+	return
 }
 
 // Get pods which should be resynchronized. Currently, the following pod should be resynchronized:
