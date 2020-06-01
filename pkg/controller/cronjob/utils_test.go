@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,10 +41,11 @@ func TestGetJobFromTemplate(t *testing.T) {
 
 	sj := batchv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    testTenant,
 			Name:      "mycronjob",
 			Namespace: "snazzycats",
 			UID:       types.UID("1a2b3c"),
-			SelfLink:  "/apis/batch/v1/namespaces/snazzycats/jobs/mycronjob",
+			SelfLink:  "/apis/batch/v1/tenants/" + testTenant + "/namespaces/snazzycats/jobs/mycronjob",
 		},
 		Spec: batchv1beta1.CronJobSpec{
 			Schedule:          "* * * * ?",
@@ -94,6 +96,7 @@ func TestGetParentUIDFromJob(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foobar",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 		},
 		Spec: batchv1.JobSpec{
 			Selector: &metav1.LabelSelector{
@@ -172,17 +175,17 @@ func TestGroupJobsByParent(t *testing.T) {
 		Controller: utilpointer.BoolPtr(true),
 	}
 
-	{
-		// Case 1: There are no jobs and scheduledJobs
+	// Case 1: There are no jobs and scheduledJobs
+	t.Run("no jobs and scheduledJobs", func(t *testing.T) {
 		js := []batchv1.Job{}
 		jobsBySj := groupJobsByParent(js)
 		if len(jobsBySj) != 0 {
 			t.Errorf("Wrong number of items in map")
 		}
-	}
+	})
 
-	{
-		// Case 2: there is one controller with one job it created.
+	// Case 2: there is one controller with one job it created.
+	t.Run("one controller with one job it created", func(t *testing.T) {
 		js := []batchv1.Job{
 			{ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "x", OwnerReferences: []metav1.OwnerReference{ownerReference1}}},
 		}
@@ -198,19 +201,19 @@ func TestGroupJobsByParent(t *testing.T) {
 		if len(jobList1) != 1 {
 			t.Errorf("Wrong number of items in map")
 		}
-	}
+	})
 
-	{
-		// Case 3: Two namespaces, one has two jobs from one controller, other has 3 jobs from two controllers.
-		// There are also two jobs with no created-by annotation.
+	// Case 3: Two namespaces, one has two jobs from one controller, other has 3 jobs from two controllers.
+	// There are also two jobs with no created-by annotation.
+	t.Run("Two namespaces, one has two jobs from one controller, other has 3 jobs from two controllers", func(t *testing.T) {
 		js := []batchv1.Job{
-			{ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "x", OwnerReferences: []metav1.OwnerReference{ownerReference1}}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "x", OwnerReferences: []metav1.OwnerReference{ownerReference2}}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "x", OwnerReferences: []metav1.OwnerReference{ownerReference1}}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "x", OwnerReferences: []metav1.OwnerReference{}}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "y", OwnerReferences: []metav1.OwnerReference{ownerReference3}}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "y", OwnerReferences: []metav1.OwnerReference{ownerReference3}}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "y", OwnerReferences: []metav1.OwnerReference{}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "x", Tenant: testTenant, OwnerReferences: []metav1.OwnerReference{ownerReference1}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "x", Tenant: testTenant, OwnerReferences: []metav1.OwnerReference{ownerReference2}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "c", Namespace: "x", Tenant: testTenant, OwnerReferences: []metav1.OwnerReference{ownerReference1}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "x", Tenant: testTenant, OwnerReferences: []metav1.OwnerReference{}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "y", Tenant: testTenant, OwnerReferences: []metav1.OwnerReference{ownerReference3}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "b", Namespace: "y", Tenant: testTenant, OwnerReferences: []metav1.OwnerReference{ownerReference3}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "d", Namespace: "y", Tenant: testTenant, OwnerReferences: []metav1.OwnerReference{}}},
 		}
 
 		jobsBySj := groupJobsByParent(js)
@@ -239,7 +242,7 @@ func TestGroupJobsByParent(t *testing.T) {
 		if len(jobList3) != 2 {
 			t.Errorf("Wrong number of items in map")
 		}
-	}
+	})
 }
 
 func TestGetRecentUnmetScheduleTimes(t *testing.T) {
@@ -260,6 +263,7 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycronjob",
 			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 			UID:       types.UID("1a2b3c"),
 		},
 		Spec: batchv1beta1.CronJobSpec{
@@ -268,7 +272,7 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 			JobTemplate:       batchv1beta1.JobTemplateSpec{},
 		},
 	}
-	{
+	t.Run("no known start times, and none needed yet", func(t *testing.T) {
 		// Case 1: no known start times, and none needed yet.
 		// Creation time is before T1.
 		sj.ObjectMeta.CreationTimestamp = metav1.Time{Time: T1.Add(-10 * time.Minute)}
@@ -281,8 +285,8 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		if len(times) != 0 {
 			t.Errorf("expected no start times, got:  %v", times)
 		}
-	}
-	{
+	})
+	t.Run("no known start times, and one needed", func(t *testing.T) {
 		// Case 2: no known start times, and one needed.
 		// Creation time is before T1.
 		sj.ObjectMeta.CreationTimestamp = metav1.Time{Time: T1.Add(-10 * time.Minute)}
@@ -297,8 +301,8 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		} else if !times[0].Equal(T1) {
 			t.Errorf("expected: %v, got: %v", T1, times[0])
 		}
-	}
-	{
+	})
+	t.Run("known LastScheduleTime, no start needed", func(t *testing.T) {
 		// Case 3: known LastScheduleTime, no start needed.
 		// Creation time is before T1.
 		sj.ObjectMeta.CreationTimestamp = metav1.Time{Time: T1.Add(-10 * time.Minute)}
@@ -313,8 +317,8 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		if len(times) != 0 {
 			t.Errorf("expected 0 start times, got: %v", times)
 		}
-	}
-	{
+	})
+	t.Run("known LastScheduleTime, a start needed", func(t *testing.T) {
 		// Case 4: known LastScheduleTime, a start needed
 		// Creation time is before T1.
 		sj.ObjectMeta.CreationTimestamp = metav1.Time{Time: T1.Add(-10 * time.Minute)}
@@ -331,8 +335,8 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		} else if !times[0].Equal(T2) {
 			t.Errorf("expected: %v, got: %v", T1, times[0])
 		}
-	}
-	{
+	})
+	t.Run("known LastScheduleTime, two starts needed", func(t *testing.T) {
 		// Case 5: known LastScheduleTime, two starts needed
 		sj.ObjectMeta.CreationTimestamp = metav1.Time{Time: T1.Add(-2 * time.Hour)}
 		sj.Status.LastScheduleTime = &metav1.Time{Time: T1.Add(-1 * time.Hour)}
@@ -352,8 +356,8 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 				t.Errorf("expected: %v, got: %v", T2, times[1])
 			}
 		}
-	}
-	{
+	})
+	t.Run("now is way way ahead of last start time, and there is no deadline", func(t *testing.T) {
 		// Case 6: now is way way ahead of last start time, and there is no deadline.
 		sj.ObjectMeta.CreationTimestamp = metav1.Time{Time: T1.Add(-2 * time.Hour)}
 		sj.Status.LastScheduleTime = &metav1.Time{Time: T1.Add(-1 * time.Hour)}
@@ -362,8 +366,8 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		if err == nil {
 			t.Errorf("expected an error")
 		}
-	}
-	{
+	})
+	t.Run("now is way way ahead of last start time, but there is a short deadline", func(t *testing.T) {
 		// Case 7: now is way way ahead of last start time, but there is a short deadline.
 		sj.ObjectMeta.CreationTimestamp = metav1.Time{Time: T1.Add(-2 * time.Hour)}
 		sj.Status.LastScheduleTime = &metav1.Time{Time: T1.Add(-1 * time.Hour)}
@@ -375,7 +379,7 @@ func TestGetRecentUnmetScheduleTimes(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error")
 		}
-	}
+	})
 }
 
 func TestByJobStartTime(t *testing.T) {

@@ -37,6 +37,8 @@ import (
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
+const testTenant = "johndoe"
+
 func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *cronjob.Controller, *job.JobController, informers.SharedInformerFactory, clientset.Interface, restclient.Config) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, server, closeFn := framework.RunAMaster(masterConfig)
@@ -58,7 +60,7 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *cronjob.Contro
 	return server, closeFn, cjc, jc, informerSet, clientSet, *configs
 }
 
-func newCronJob(name, namespace, schedule string) *batchv1beta1.CronJob {
+func newCronJob(tenant, namespace, name, schedule string) *batchv1beta1.CronJob {
 	zero64 := int64(0)
 	zero32 := int32(0)
 	return &batchv1beta1.CronJob{
@@ -69,6 +71,7 @@ func newCronJob(name, namespace, schedule string) *batchv1beta1.CronJob {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
+			Tenant:    tenant,
 		},
 		Spec: batchv1beta1.CronJobSpec{
 			Schedule:                   schedule,
@@ -96,9 +99,9 @@ func cleanupCronJobs(t *testing.T, cjClient clientbatchv1beta1.CronJobInterface,
 	}
 }
 
-func validateJobAndPod(t *testing.T, clientSet clientset.Interface, namespace string) {
+func validateJobAndPod(t *testing.T, clientSet clientset.Interface, namespace string, tenant string) {
 	if err := wait.PollImmediate(1*time.Second, 120*time.Second, func() (bool, error) {
-		jobs, err := clientSet.BatchV1().Jobs(namespace).List(metav1.ListOptions{})
+		jobs, err := clientSet.BatchV1().JobsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{})
 		if err != nil {
 			t.Fatalf("Failed to list jobs: %v", err)
 		}
@@ -119,7 +122,7 @@ func validateJobAndPod(t *testing.T, clientSet clientset.Interface, namespace st
 			}
 		}
 
-		pods, err := clientSet.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+		pods, err := clientSet.CoreV1().PodsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{})
 		if err != nil {
 			t.Fatalf("Failed to list pods: %v", err)
 		}
@@ -152,10 +155,10 @@ func TestCronJobLaunchesPodAndCleansUp(t *testing.T) {
 	cronJobName := "foo"
 	namespaceName := "simple-cronjob-test"
 
-	ns := framework.CreateTestingNamespace(namespaceName, server, t)
+	ns := framework.CreateTestingNamespaceWithMultiTenancy(namespaceName, server, t, testTenant)
 	defer framework.DeleteTestingNamespace(ns, server, t)
 
-	cjClient := clientSet.BatchV1beta1().CronJobs(ns.Name)
+	cjClient := clientSet.BatchV1beta1().CronJobsWithMultiTenancy(ns.Name, testTenant)
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -164,11 +167,11 @@ func TestCronJobLaunchesPodAndCleansUp(t *testing.T) {
 	go cjc.Run(stopCh)
 	go jc.Run(1, stopCh)
 
-	_, err := cjClient.Create(newCronJob(cronJobName, ns.Name, "* * * * ?"))
+	_, err := cjClient.Create(newCronJob(testTenant, ns.Name, cronJobName, "* * * * ?"))
 	if err != nil {
 		t.Fatalf("Failed to create CronJob: %v", err)
 	}
 	defer cleanupCronJobs(t, cjClient, cronJobName)
 
-	validateJobAndPod(t, clientSet, namespaceName)
+	validateJobAndPod(t, clientSet, namespaceName, testTenant)
 }
