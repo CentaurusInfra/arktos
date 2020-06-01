@@ -33,7 +33,7 @@ func addAnnotations(svc *v1.Service) {
 func TestPatch(t *testing.T) {
 	svcOrigin := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:      metav1.TenantSystem,
+			Tenant:      testTenant,
 			Namespace:   "default",
 			Name:        "test-patch",
 			Annotations: map[string]string{},
@@ -47,7 +47,7 @@ func TestPatch(t *testing.T) {
 	// Issue a separate update and verify patch doesn't fail after this.
 	svcToUpdate := svcOrigin.DeepCopy()
 	addAnnotations(svcToUpdate)
-	if _, err := fakeCs.CoreV1().Services(svcOrigin.Namespace).Update(svcToUpdate); err != nil {
+	if _, err := fakeCs.CoreV1().ServicesWithMultiTenancy(svcOrigin.Namespace, svcOrigin.Tenant).Update(svcToUpdate); err != nil {
 		t.Fatalf("Failed to update service: %v", err)
 	}
 
@@ -84,12 +84,14 @@ func TestGetPatchBytes(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       "test-patch-bytes",
 			Finalizers: []string{"foo"},
+			Tenant:     testTenant,
 		},
 	}
 	updated := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       "test-patch-bytes",
 			Finalizers: []string{"foo", "bar"},
+			Tenant:     testTenant,
 		},
 	}
 

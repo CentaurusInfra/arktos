@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -110,7 +111,7 @@ var _ = SIGDescribe("ReplicaSet", func() {
 		Testname: Replica Set, adopt matching pods and release non matching pods
 		Description: A Pod is created, then a Replica Set (RS) whose label selector will match the Pod. The RS MUST either adopt the Pod or delete and replace it with a new Pod. When the labels on one of the Pods owned by the RS change to no longer match the RS's label selector, the RS MUST release the Pod and update the Pod's owner references
 	*/
-	framework.ConformanceIt("should adopt matching pods on creation and release no longer matching pods", func() {
+	framework.ConformanceIt("should adopt matching pods on creation and release no longer matching pods [Arktos-CI]", func() {
 		testRSAdoptMatchingAndReleaseNotMatching(f)
 	})
 })

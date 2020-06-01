@@ -17,7 +17,7 @@ package walpb
 import proto "github.com/gogo/protobuf/proto"
 import math "math"
 
-// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto"
+// discarding unused import gogoproto "go.etcd.io/etcd/Godeps/_workspace/src/gogoproto"
 
 import io "io"
 import fmt "fmt"

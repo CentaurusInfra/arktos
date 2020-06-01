@@ -20,6 +20,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"k8s.io/client-go/tools/cache"
 	"reflect"
 	"strings"
 	"testing"
@@ -44,13 +45,17 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 )
 
-const region = "us-central"
+const (
+	region     = "us-central"
+	testTenant = "johndoe"
+)
 
 func newService(name string, uid types.UID, serviceType v1.ServiceType) *v1.Service {
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: "default",
+			Namespace: metav1.NamespaceDefault,
+			Tenant:    testTenant,
 			UID:       uid,
 			SelfLink:  testapi.Default.SelfLink("services", name),
 		},
@@ -109,7 +114,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "no-external-balancer",
-					Namespace: "default",
+					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 				},
 				Spec: v1.ServiceSpec{
 					Type: v1.ServiceTypeClusterIP,
@@ -123,7 +129,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "no-external-balancer",
-					Namespace: "default",
+					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 				},
 				Spec: v1.ServiceSpec{
 					Type: v1.ServiceTypeClusterIP,
@@ -146,7 +153,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "udp-service",
-					Namespace: "default",
+					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 					SelfLink:  testapi.Default.SelfLink("services", "udp-service"),
 				},
 				Spec: v1.ServiceSpec{
@@ -166,7 +174,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "basic-service1",
-					Namespace: "default",
+					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 					SelfLink:  testapi.Default.SelfLink("services", "basic-service1"),
 				},
 				Spec: v1.ServiceSpec{
@@ -186,7 +195,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sctp-service",
-					Namespace: "default",
+					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 					SelfLink:  testapi.Default.SelfLink("services", "sctp-service"),
 				},
 				Spec: v1.ServiceSpec{
@@ -207,7 +217,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "no-external-balancer",
-					Namespace:  "default",
+					Namespace:  metav1.NamespaceDefault,
+					Tenant:     testTenant,
 					Finalizers: []string{servicehelper.LoadBalancerCleanupFinalizer},
 				},
 				Spec: v1.ServiceSpec{
@@ -232,7 +243,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "basic-service1",
-					Namespace: "default",
+					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 					SelfLink:  testapi.Default.SelfLink("services", "basic-service1"),
 					DeletionTimestamp: &metav1.Time{
 						Time: time.Now(),
@@ -266,7 +278,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "basic-service1",
-					Namespace: "default",
+					Namespace: metav1.NamespaceDefault,
+					Tenant:    testTenant,
 					SelfLink:  testapi.Default.SelfLink("services", "basic-service1"),
 				},
 				Spec: v1.ServiceSpec{
@@ -288,7 +301,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "basic-service1",
-					Namespace:  "default",
+					Namespace:  metav1.NamespaceDefault,
+					Tenant:     testTenant,
 					SelfLink:   testapi.Default.SelfLink("services", "basic-service1"),
 					Finalizers: []string{servicehelper.LoadBalancerCleanupFinalizer},
 				},
@@ -313,8 +327,8 @@ func TestSyncLoadBalancerIfNeeded(t *testing.T) {
 
 			controller, cloud, client := newController()
 			cloud.Exists = tc.lbExists
-			key := fmt.Sprintf("%s/%s", tc.service.Namespace, tc.service.Name)
-			if _, err := client.CoreV1().Services(tc.service.Namespace).Create(tc.service); err != nil {
+			key := fmt.Sprintf("%s/%s/%s", tc.service.Tenant, tc.service.Namespace, tc.service.Name)
+			if _, err := client.CoreV1().ServicesWithMultiTenancy(tc.service.Namespace, tc.service.Tenant).Create(tc.service); err != nil {
 				t.Fatalf("Failed to prepare service %s for testing: %v", key, err)
 			}
 			client.ClearActions()
@@ -559,13 +573,13 @@ func TestProcessServiceCreateOrUpdate(t *testing.T) {
 		},
 		{
 			testName: "If Updating Loadbalancer IP",
-			key:      "default/sync-test-name",
+			key:      testTenant + "/" + metav1.NamespaceDefault + "/sync-test-name",
 			svc:      newService("sync-test-name", types.UID("sync-test-uid"), v1.ServiceTypeLoadBalancer),
 			updateFn: func(svc *v1.Service) *v1.Service {
 
 				svc.Spec.LoadBalancerIP = oldLBIP
 
-				keyExpected := svc.GetObjectMeta().GetNamespace() + "/" + svc.GetObjectMeta().GetName()
+				keyExpected, _ := cache.MetaNamespaceKeyFunc(svc)
 				controller.enqueueService(svc)
 				cachedServiceTest := controller.cache.getOrCreate(keyExpected)
 				cachedServiceTest.state = svc
@@ -591,7 +605,7 @@ func TestProcessServiceCreateOrUpdate(t *testing.T) {
 					return err
 				}
 
-				keyExpected := svc.GetObjectMeta().GetNamespace() + "/" + svc.GetObjectMeta().GetName()
+				keyExpected, _ := cache.MetaNamespaceKeyFunc(svc)
 
 				cachedServiceGot, exist := controller.cache.get(keyExpected)
 				if !exist {
@@ -607,7 +621,7 @@ func TestProcessServiceCreateOrUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		newSvc := tc.updateFn(tc.svc)
-		if _, err := client.CoreV1().Services(tc.svc.Namespace).Create(tc.svc); err != nil {
+		if _, err := client.CoreV1().ServicesWithMultiTenancy(tc.svc.Namespace, tc.svc.Tenant).Create(tc.svc); err != nil {
 			t.Fatalf("Failed to prepare service %s for testing: %v", tc.key, err)
 		}
 		obtErr := controller.processServiceCreateOrUpdate(newSvc, tc.key)
@@ -852,6 +866,7 @@ func TestNeedsCleanup(t *testing.T) {
 					DeletionTimestamp: &metav1.Time{
 						Time: time.Now(),
 					},
+					Tenant: testTenant,
 				},
 			},
 			expectNeedsCleanup: false,
@@ -861,6 +876,7 @@ func TestNeedsCleanup(t *testing.T) {
 			svc: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: []string{servicehelper.LoadBalancerCleanupFinalizer},
+					Tenant:     testTenant,
 				},
 			},
 			expectNeedsCleanup: false,
@@ -873,6 +889,7 @@ func TestNeedsCleanup(t *testing.T) {
 						Time: time.Now(),
 					},
 					Finalizers: []string{servicehelper.LoadBalancerCleanupFinalizer, "unrelated"},
+					Tenant:     testTenant,
 				},
 			},
 			expectNeedsCleanup: true,
@@ -1145,6 +1162,7 @@ func TestAddFinalizer(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "test-patch-finalizer",
 					Finalizers: []string{servicehelper.LoadBalancerCleanupFinalizer},
+					Tenant:     testTenant,
 				},
 			},
 			expectPatch: false,
@@ -1153,7 +1171,8 @@ func TestAddFinalizer(t *testing.T) {
 			desc: "add finalizer",
 			svc: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-patch-finalizer",
+					Name:   "test-patch-finalizer",
+					Tenant: testTenant,
 				},
 			},
 			expectPatch: true,
@@ -1166,7 +1185,7 @@ func TestAddFinalizer(t *testing.T) {
 			s := &ServiceController{
 				kubeClient: c,
 			}
-			if _, err := s.kubeClient.CoreV1().Services(tc.svc.Namespace).Create(tc.svc); err != nil {
+			if _, err := s.kubeClient.CoreV1().ServicesWithMultiTenancy(tc.svc.Namespace, tc.svc.Tenant).Create(tc.svc); err != nil {
 				t.Fatalf("Failed to prepare service for testing: %v", err)
 			}
 			if err := s.addFinalizer(tc.svc); err != nil {
@@ -1197,7 +1216,8 @@ func TestRemoveFinalizer(t *testing.T) {
 			desc: "no-op remove finalizer",
 			svc: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-patch-finalizer",
+					Name:   "test-patch-finalizer",
+					Tenant: testTenant,
 				},
 			},
 			expectPatch: false,
@@ -1208,6 +1228,7 @@ func TestRemoveFinalizer(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "test-patch-finalizer",
 					Finalizers: []string{servicehelper.LoadBalancerCleanupFinalizer},
+					Tenant:     testTenant,
 				},
 			},
 			expectPatch: true,
@@ -1220,7 +1241,7 @@ func TestRemoveFinalizer(t *testing.T) {
 			s := &ServiceController{
 				kubeClient: c,
 			}
-			if _, err := s.kubeClient.CoreV1().Services(tc.svc.Namespace).Create(tc.svc); err != nil {
+			if _, err := s.kubeClient.CoreV1().ServicesWithMultiTenancy(tc.svc.Namespace, tc.svc.Tenant).Create(tc.svc); err != nil {
 				t.Fatalf("Failed to prepare service for testing: %v", err)
 			}
 			if err := s.removeFinalizer(tc.svc); err != nil {
@@ -1252,7 +1273,8 @@ func TestPatchStatus(t *testing.T) {
 			desc: "no-op add status",
 			svc: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-patch-status",
+					Name:   "test-patch-status",
+					Tenant: testTenant,
 				},
 				Status: v1.ServiceStatus{
 					LoadBalancer: v1.LoadBalancerStatus{
@@ -1273,7 +1295,8 @@ func TestPatchStatus(t *testing.T) {
 			desc: "add status",
 			svc: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-patch-status",
+					Name:   "test-patch-status",
+					Tenant: testTenant,
 				},
 				Status: v1.ServiceStatus{},
 			},
@@ -1288,7 +1311,8 @@ func TestPatchStatus(t *testing.T) {
 			desc: "no-op clear status",
 			svc: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-patch-status",
+					Name:   "test-patch-status",
+					Tenant: testTenant,
 				},
 				Status: v1.ServiceStatus{},
 			},
@@ -1299,7 +1323,8 @@ func TestPatchStatus(t *testing.T) {
 			desc: "clear status",
 			svc: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-patch-status",
+					Name:   "test-patch-status",
+					Tenant: testTenant,
 				},
 				Status: v1.ServiceStatus{
 					LoadBalancer: v1.LoadBalancerStatus{
@@ -1320,7 +1345,7 @@ func TestPatchStatus(t *testing.T) {
 			s := &ServiceController{
 				kubeClient: c,
 			}
-			if _, err := s.kubeClient.CoreV1().Services(tc.svc.Namespace).Create(tc.svc); err != nil {
+			if _, err := s.kubeClient.CoreV1().ServicesWithMultiTenancy(tc.svc.Namespace, tc.svc.Tenant).Create(tc.svc); err != nil {
 				t.Fatalf("Failed to prepare service for testing: %v", err)
 			}
 			if err := s.patchStatus(tc.svc, &tc.svc.Status.LoadBalancer, tc.newStatus); err != nil {

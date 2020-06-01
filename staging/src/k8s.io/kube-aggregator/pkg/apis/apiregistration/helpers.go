@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -86,9 +87,16 @@ func (s ByVersionPriority) Less(i, j int) bool {
 
 // APIServiceNameToGroupVersion returns the GroupVersion for a given apiServiceName.  The name
 // must be valid, but any object you get back from an informer will be valid.
-func APIServiceNameToGroupVersion(apiServiceName string) schema.GroupVersion {
+func APIServiceNameToGroupVersionTenant(tenantedApiServiceName string) (string, string, schema.GroupVersion) {
+	tenant := metav1.TenantSystem
+	parts := strings.Split(tenantedApiServiceName, "/")
+	apiServiceName := tenantedApiServiceName
+	if len(parts) > 1 {
+		tenant = parts[0]
+		apiServiceName = tenantedApiServiceName[len(tenant)+1:]
+	}
 	tokens := strings.SplitN(apiServiceName, ".", 2)
-	return schema.GroupVersion{Group: tokens[1], Version: tokens[0]}
+	return tenant, apiServiceName, schema.GroupVersion{Group: tokens[1], Version: tokens[0]}
 }
 
 // NewLocalAvailableAPIServiceCondition returns a condition for an available local APIService.

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,7 +42,7 @@ var _ = SIGDescribe("Events", func() {
 		Testname: Pod events, verify event from Scheduler and Kubelet
 		Description: Create a Pod, make sure that the Pod can be queried. Create a event selector for the kind=Pod and the source is the Scheduler. List of the events MUST be at least one. Create a event selector for kind=Pod and the source is the Kubelet. List of the events MUST be at least one. Both Scheduler and Kubelet MUST send events when scheduling and running a Pod.
 	*/
-	framework.ConformanceIt("should be sent by kubelets and the scheduler about pods scheduling and running ", func() {
+	framework.ConformanceIt("should be sent by kubelets and the scheduler about pods scheduling and running [Arktos-CI]", func() {
 
 		podClient := f.ClientSet.CoreV1().Pods(f.Namespace.Name)
 

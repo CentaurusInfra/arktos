@@ -30,8 +30,11 @@ type FakeApiregistrationV1 struct {
 }
 
 func (c *FakeApiregistrationV1) APIServices() v1.APIServiceInterface {
+	return &FakeAPIServices{c, "system"}
+}
 
-	return &FakeAPIServices{c}
+func (c *FakeApiregistrationV1) APIServicesWithMultiTenancy(tenant string) v1.APIServiceInterface {
+	return &FakeAPIServices{c, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

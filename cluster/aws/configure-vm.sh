@@ -240,17 +240,20 @@ find-master-pd() {
 # formats an unformatted disk, and mkdir -p will leave a directory be if it
 # already exists.
 mount-master-pd() {
-  find-master-pd
-  if [[ -z "${MASTER_PD_DEVICE:-}" ]]; then
-    return
+  if [[ $PRESET_INSTANCES_ENABLED != "true" ]]; then
+    find-master-pd
+    if [[ -z "${MASTER_PD_DEVICE:-}" ]]; then
+      return
+    fi
+
+    # Format and mount the disk, create directories on it for all of the master's
+    # persistent data, and link them to where they're used.
+    echo "Mounting master-pd"
+    mkdir -p /mnt/master-pd
+    /usr/share/google/safe_format_and_mount -m "mkfs.ext4 -F" "${MASTER_PD_DEVICE}" /mnt/master-pd &>/var/log/master-pd-mount.log || \
+      { echo "!!! master-pd mount failed, review /var/log/master-pd-mount.log !!!"; return 1; }
   fi
 
-  # Format and mount the disk, create directories on it for all of the master's
-  # persistent data, and link them to where they're used.
-  echo "Mounting master-pd"
-  mkdir -p /mnt/master-pd
-  /usr/share/google/safe_format_and_mount -m "mkfs.ext4 -F" "${MASTER_PD_DEVICE}" /mnt/master-pd &>/var/log/master-pd-mount.log || \
-    { echo "!!! master-pd mount failed, review /var/log/master-pd-mount.log !!!"; return 1; }
   # Contains all the data stored in etcd
   mkdir -m 700 -p /mnt/master-pd/var/etcd
   # Contains the dynamically generated apiserver auth certs and keys
@@ -293,7 +296,11 @@ function try-download-release() {
   fi
 
   echo "Downloading binary release tar (${server_binary_tar_urls[@]})"
-  download-or-bust "${server_binary_tar_hash}" "${server_binary_tar_urls[@]}"
+  if [[ $PRESET_INSTANCES_ENABLED != "true" ]]; then    
+    download-or-bust "${server_binary_tar_hash}" "${server_binary_tar_urls[@]}"
+  else
+    cp ${SERVER_BINARY_TAR_URL} ./
+  fi
 
   echo "Unpacking and checking integrity of binary release tar"
   rm -rf kubernetes
@@ -771,9 +778,16 @@ function setup-kubernetes-worker() {
   echo "Setting up kubernetes worker: version $KUBE_VER master IP: $KUBE_MASTER_IP."
 
   pushd /etc/kubernetes
+  local start_time=$(date +%s)
   until wget http://$KUBE_MASTER_IP:8085/join_string &>/dev/null; do
     echo "Waiting for kubeadm join command .."
     sleep 5
+    local elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 300 ]]; then
+      echo
+      echo "Waiting for kubeadm join command failed after 5 minutes elapsed"
+      exit 1
+    fi
   done
   local kubeadm_join_cmd=$(cat /etc/kubernetes/join_string)
   popd

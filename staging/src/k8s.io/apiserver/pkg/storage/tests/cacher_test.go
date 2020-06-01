@@ -44,10 +44,8 @@ import (
 	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/storage"
 	cacherstorage "k8s.io/apiserver/pkg/storage/cacher"
-	etcdstorage "k8s.io/apiserver/pkg/storage/etcd"
-	"k8s.io/apiserver/pkg/storage/etcd/etcdtest"
-	etcdtesting "k8s.io/apiserver/pkg/storage/etcd/testing"
 	"k8s.io/apiserver/pkg/storage/etcd3"
+	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
 	"k8s.io/apiserver/pkg/storage/value"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
@@ -95,15 +93,15 @@ func AddObjectMetaFieldsSet(source fields.Set, objectMeta *metav1.ObjectMeta, ha
 	return source
 }
 
-func newEtcdTestStorage(t *testing.T, prefix string) (*etcdtesting.EtcdTestServer, storage.Interface) {
-	server, _ := etcdtesting.NewUnsecuredEtcd3TestClientServer(t)
+func newEtcdTestStorage(t *testing.T, prefix string) (*etcd3testing.EtcdTestServer, storage.Interface) {
+	server, _ := etcd3testing.NewUnsecuredEtcd3TestClientServer(t)
 	storage := etcd3.New(server.V3Client, apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion), prefix, value.IdentityTransformer, true, nil)
 	return server, storage
 }
 
 func newTestCacher(s storage.Interface, cap int) (*cacherstorage.Cacher, storage.Versioner) {
 	prefix := "pods"
-	v := etcdstorage.APIObjectVersioner{}
+	v := etcd3.APIObjectVersioner{}
 	config := cacherstorage.Config{
 		CacheCapacity:  cap,
 		Storage:        s,
@@ -148,7 +146,7 @@ func updatePod(t *testing.T, s storage.Interface, obj, old *example.Pod) *exampl
 }
 
 func TestGet(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, _ := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -179,7 +177,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestGetToList(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, _ := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -235,7 +233,7 @@ func TestGetToList(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, _ := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -316,7 +314,7 @@ func TestList(t *testing.T) {
 }
 
 func TestInfiniteList(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, v := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -370,7 +368,7 @@ func (self *injectListError) List(ctx context.Context, key string, resourceVersi
 }
 
 func TestWatch(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	// Inject one list error to make sure we test the relist case.
 	etcdStorage = &injectListError{errors: 1, Interface: etcdStorage}
 	defer server.Terminate(t)
@@ -447,7 +445,7 @@ func TestWatch(t *testing.T) {
 }
 
 func TestWatcherTimeout(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, _ := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -489,7 +487,7 @@ func TestWatcherTimeout(t *testing.T) {
 }
 
 func TestFiltering(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, _ := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -551,7 +549,7 @@ func TestFiltering(t *testing.T) {
 }
 
 func TestStartingResourceVersion(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, v := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -599,7 +597,7 @@ func TestStartingResourceVersion(t *testing.T) {
 }
 
 func TestEmptyWatchEventCache(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 
 	// add a few objects
@@ -663,7 +661,7 @@ func TestEmptyWatchEventCache(t *testing.T) {
 }
 
 func TestRandomWatchDeliver(t *testing.T) {
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, v := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -789,7 +787,7 @@ func TestCacherListerWatcherPagination(t *testing.T) {
 func TestWatchDispatchBookmarkEvents(t *testing.T) {
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.WatchBookmark, true)()
 
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, v := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()
@@ -851,7 +849,7 @@ func TestWatchDispatchBookmarkEvents(t *testing.T) {
 func TestWatchBookmarksWithCorrectResourceVersion(t *testing.T) {
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.WatchBookmark, true)()
 
-	server, etcdStorage := newEtcdTestStorage(t, etcdtest.PathPrefix())
+	server, etcdStorage := newEtcdTestStorage(t, etcd3testing.PathPrefix())
 	defer server.Terminate(t)
 	cacher, v := newTestCacher(etcdStorage, 10)
 	defer cacher.Stop()

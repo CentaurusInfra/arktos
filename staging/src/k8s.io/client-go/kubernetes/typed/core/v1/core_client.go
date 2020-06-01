@@ -52,6 +52,7 @@ type CoreV1Interface interface {
 	SecretsGetter
 	ServicesGetter
 	ServiceAccountsGetter
+	StorageClustersGetter
 	TenantsGetter
 }
 
@@ -195,6 +196,10 @@ func (c *CoreV1Client) ServiceAccounts(namespace string) ServiceAccountInterface
 
 func (c *CoreV1Client) ServiceAccountsWithMultiTenancy(namespace string, tenant string) ServiceAccountInterface {
 	return newServiceAccountsWithMultiTenancy(c, namespace, tenant)
+}
+
+func (c *CoreV1Client) StorageClusters() StorageClusterInterface {
+	return newStorageClusters(c)
 }
 
 func (c *CoreV1Client) Tenants() TenantInterface {

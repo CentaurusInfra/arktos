@@ -135,6 +135,10 @@ type ServiceAccountListerExpansion interface{}
 // ServiceAccountNamespaceLister.
 type ServiceAccountNamespaceListerExpansion interface{}
 
+// StorageClusterListerExpansion allows custom methods to be added to
+// StorageClusterLister.
+type StorageClusterListerExpansion interface{}
+
 // TenantListerExpansion allows custom methods to be added to
 // TenantLister.
 type TenantListerExpansion interface{}

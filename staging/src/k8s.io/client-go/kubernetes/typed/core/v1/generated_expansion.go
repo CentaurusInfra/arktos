@@ -45,4 +45,6 @@ type ResourceQuotaExpansion interface{}
 
 type SecretExpansion interface{}
 
+type StorageClusterExpansion interface{}
+
 type TenantExpansion interface{}

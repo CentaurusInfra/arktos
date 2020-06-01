@@ -120,20 +120,8 @@ type staticLister struct {
 	list []metav1.APIResource
 }
 
-func (s staticLister) ListAPIResources(filter func(metav1.APIResource) bool) []metav1.APIResource {
-	if filter == nil {
-		return s.list
-	}
-
-	ret := []metav1.APIResource{}
-
-	for _, resource := range s.list {
-		if filter(resource) {
-			ret = append(ret, resource)
-		}
-	}
-
-	return ret
+func (s staticLister) ListAPIResources() []metav1.APIResource {
+	return s.list
 }
 
 var _ discovery.APIResourceLister = &staticLister{}
