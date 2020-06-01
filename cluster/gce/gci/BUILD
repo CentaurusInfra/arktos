@@ -25,9 +25,9 @@ go_test(
 release_filegroup(
     name = "gcs-release-artifacts",
     srcs = [
+        "apiserver.yaml",
         "configure.sh",
         "master.yaml",
-        "apiserver.yaml",
         "node.yaml",
         "shutdown.sh",
     ],
@@ -69,7 +69,7 @@ filegroup(
 filegroup(
     name = "scripts-test-data",
     srcs = [
-        "configure-helper.sh",
         "apiserver-configure-helper.sh",
+        "configure-helper.sh",
     ],
 )
