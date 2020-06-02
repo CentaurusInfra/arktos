@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,6 +40,8 @@ var (
 	onTheHour     = "0 * * * ?"
 	errorSchedule = "obvious error schedule"
 )
+
+const testTenant = "johndoe"
 
 func justBeforeTheHour() time.Time {
 	T1, err := time.Parse(time.RFC3339, "2016-05-19T09:59:00Z")
@@ -102,8 +105,9 @@ func cronJob() batchV1beta1.CronJob {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "mycronjob",
 			Namespace:         "snazzycats",
+			Tenant:            testTenant,
 			UID:               types.UID("1a2b3c"),
-			SelfLink:          "/apis/batch/v1beta1/namespaces/snazzycats/cronjobs/mycronjob",
+			SelfLink:          "/apis/batch/v1beta1/tenants/" + testTenant + "/namespaces/snazzycats/cronjobs/mycronjob",
 			CreationTimestamp: metav1.Time{Time: justBeforeTheHour()},
 		},
 		Spec: batchV1beta1.CronJobSpec{
@@ -146,7 +150,8 @@ func newJob(UID string) batchv1.Job {
 			UID:       types.UID(UID),
 			Name:      "foobar",
 			Namespace: metav1.NamespaceDefault,
-			SelfLink:  "/apis/batch/v1/namespaces/snazzycats/jobs/myjob",
+			Tenant:    testTenant,
+			SelfLink:  "/apis/batch/v1/tenants/" + testTenant + "/namespaces/snazzycats/jobs/myjob",
 		},
 		Spec: jobSpec(),
 	}
@@ -272,6 +277,7 @@ func TestSyncOne_RunOrNot(t *testing.T) {
 			}
 			job.UID = "1234"
 			job.Namespace = ""
+			job.Tenant = ""
 			if tc.stillActive {
 				sj.Status.Active = []v1.ObjectReference{{UID: job.UID}}
 				js = append(js, *job)
@@ -523,6 +529,7 @@ func TestCleanupFinishedJobs_DeleteOrNot(t *testing.T) {
 
 			job.UID = types.UID(strconv.Itoa(i))
 			job.Namespace = ""
+			job.Tenant = ""
 
 			if spec.IsFinished {
 				var conditionType batchv1.JobConditionType
