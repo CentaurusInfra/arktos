@@ -532,7 +532,7 @@ func TestGuaranteedUpdateChecksStoredData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := store.client.Put(ctx, key, "test! "+string(data)+" ")
+	resp, err := store.getClientFromKey(key).Put(ctx, key, "test! "+string(data)+" ")
 	if err != nil {
 		t.Fatal(err)
 	}

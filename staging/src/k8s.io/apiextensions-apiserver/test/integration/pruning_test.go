@@ -332,7 +332,7 @@ func TestPruningFromStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 	etcdConfig := clientv3.Config{
-		Endpoints: restOptions.StorageConfig.Transport.ServerList,
+		Endpoints: restOptions.StorageConfig.Transport.SystemClusterServerList,
 		TLS:       tlsConfig,
 	}
 	etcdclient, err := clientv3.New(etcdConfig)

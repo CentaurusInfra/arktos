@@ -20,6 +20,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/clientv3"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
@@ -240,6 +241,21 @@ type Interface interface {
 
 	// Count returns number of different entries under the key (generally being path prefix).
 	Count(key string) (int64, error)
+}
+
+// StorageClusterInterface allows backend storage connection to be updated
+type StorageClusterInterface interface {
+	// Support original storage interface functions
+	Interface
+
+	// Add a new backend storage client for clusterId
+	AddDataClient(c *clientv3.Client, clusterId string) error
+
+	// Update the new backend storage client for clusterId
+	UpdateDataClient(c *clientv3.Client, clusterId string) error
+
+	// Delete backend client for clusterId
+	DeleteDataClient(clusterId string)
 }
 
 // Interval defines a left closed Begin bound and a right open End bound.
