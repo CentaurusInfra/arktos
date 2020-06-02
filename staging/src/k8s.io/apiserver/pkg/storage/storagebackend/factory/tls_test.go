@@ -69,10 +69,10 @@ func TestTLSConnection(t *testing.T) {
 	cfg := storagebackend.Config{
 		Type: storagebackend.StorageTypeETCD3,
 		Transport: storagebackend.TransportConfig{
-			ServerList:    []string{cluster.Members[0].GRPCAddr()},
-			CertFile:      certFile,
-			KeyFile:       keyFile,
-			TrustedCAFile: caFile,
+			SystemClusterServerList: []string{cluster.Members[0].GRPCAddr()},
+			CertFile:                certFile,
+			KeyFile:                 keyFile,
+			TrustedCAFile:           caFile,
 		},
 		Codec: codec,
 	}

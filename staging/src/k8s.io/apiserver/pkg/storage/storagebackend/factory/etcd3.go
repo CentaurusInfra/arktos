@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"k8s.io/apiserver/pkg/storage/datapartition"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
+	"k8s.io/klog"
 	"path"
 	"strings"
 	"sync"
@@ -50,6 +52,7 @@ const keepaliveTimeout = 10 * time.Second
 // on heavily loaded arm64 CPUs (issue #64649)
 const dialTimeout = 20 * time.Second
 
+// TODO - health check for data clusters
 func newETCD3HealthCheck(c storagebackend.Config) (func() error, error) {
 	// constructing the etcd v3 client blocks and times out if etcd is not available.
 	// retry in a loop in the background until we successfully create the client, storing the client or error encountered
@@ -60,7 +63,7 @@ func newETCD3HealthCheck(c storagebackend.Config) (func() error, error) {
 	clientErrMsg.Store("etcd client connection not yet established")
 
 	go wait.PollUntil(time.Second, func() (bool, error) {
-		client, err := newETCD3Client(c.Transport)
+		client, err := newETCD3Client(c.Transport, c.Transport.SystemClusterServerList)
 		if err != nil {
 			clientErrMsg.Store(err.Error())
 			return false, nil
@@ -86,7 +89,7 @@ func newETCD3HealthCheck(c storagebackend.Config) (func() error, error) {
 	}, nil
 }
 
-func newETCD3Client(c storagebackend.TransportConfig) (*clientv3.Client, error) {
+func newETCD3Client(c storagebackend.TransportConfig, servers []string) (*clientv3.Client, error) {
 	tlsInfo := transport.TLSInfo{
 		CertFile:      c.CertFile,
 		KeyFile:       c.KeyFile,
@@ -109,7 +112,7 @@ func newETCD3Client(c storagebackend.TransportConfig) (*clientv3.Client, error) 
 			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
 			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
 		},
-		Endpoints: c.ServerList,
+		Endpoints: servers,
 		TLS:       tlsConfig,
 	}
 
@@ -131,13 +134,13 @@ var (
 // startCompactorOnce start one compactor per transport. If the interval get smaller on repeated calls, the
 // compactor is replaced. A destroy func is returned. If all destroy funcs with the same transport are called,
 // the compactor is stopped.
-func startCompactorOnce(c storagebackend.TransportConfig, interval time.Duration) (func(), error) {
+func startCompactorOnce(c storagebackend.TransportConfig, servers []string, interval time.Duration) (func(), error) {
 	lock.Lock()
 	defer lock.Unlock()
 
 	key := fmt.Sprintf("%v", c) // gives: {[server1 server2] keyFile certFile caFile}
 	if compactor, foundBefore := compactors[key]; !foundBefore || compactor.interval > interval {
-		compactorClient, err := newETCD3Client(c)
+		compactorClient, err := newETCD3Client(c, servers)
 		if err != nil {
 			return nil, err
 		}
@@ -177,13 +180,14 @@ func startCompactorOnce(c storagebackend.TransportConfig, interval time.Duration
 	}, nil
 }
 
+// TODO - start/stop compactor for data clusters
 func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, error) {
-	stopCompactor, err := startCompactorOnce(c.Transport, c.CompactionInterval)
+	stopCompactor, err := startCompactorOnce(c.Transport, c.Transport.SystemClusterServerList, c.CompactionInterval)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	client, err := newETCD3Client(c.Transport)
+	client, err := newETCD3Client(c.Transport, c.Transport.SystemClusterServerList)
 	if err != nil {
 		stopCompactor()
 		return nil, nil, err
@@ -204,13 +208,53 @@ func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, e
 		transformer = value.IdentityTransformer
 	}
 
+	var store storage.StorageClusterInterface
 	updatePartitionChGrp := datapartition.GetDataPartitionUpdateChGrp()
 	updatePartitionCh := updatePartitionChGrp.Join()
 	if c.PartitionConfigFilepath != "" {
 		configMap, _ := parseConfig(c.PartitionConfigFilepath)
-		return etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap, updatePartitionCh), destroyFunc, nil
+		store = etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap, updatePartitionCh)
+	} else {
+		store = etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging, updatePartitionCh)
 	}
-	return etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging, updatePartitionCh), destroyFunc, nil
+
+	updateStorageClusterCh := storagecluster.GetStorageClusterUpdateCh()
+	go func(s storage.StorageClusterInterface, transport storagebackend.TransportConfig, updateClusterCh chan storagecluster.StorageClusterAction) {
+		for storageClusterAction := range updateStorageClusterCh {
+			switch storageClusterAction.Action {
+			case "ADD":
+				newDataClient, err := newETCD3Client(transport, storageClusterAction.ServerAddresses)
+				if err != nil {
+					// TODO - start compact for new data cluster
+				}
+
+				err = s.AddDataClient(newDataClient, storageClusterAction.StorageClusterId)
+				if err != nil {
+					klog.Fatalf("Unexpected storage cluster add event. Error %v", err)
+				}
+			case "UPDATE":
+				newDataClient, err := newETCD3Client(transport, storageClusterAction.ServerAddresses)
+				if err != nil {
+					// TODO - start compact for new data cluster
+				}
+
+				err = s.UpdateDataClient(newDataClient, storageClusterAction.StorageClusterId)
+				if err != nil {
+					klog.Fatalf("Unexpected storage cluster update event. Error %v", err)
+				}
+				// TODO - stop compact for original cluster
+
+			case "DELETE":
+				s.DeleteDataClient(storageClusterAction.StorageClusterId)
+
+				// TODO - stop compact for original data cluster
+			default:
+				klog.Errorf("Got invalid storage cluster action [%+v]", storageClusterAction)
+			}
+		}
+	}(store, c.Transport, updateStorageClusterCh)
+
+	return store, destroyFunc, nil
 }
 
 // Each line in the config needs to contain three part: keyName, start, end
