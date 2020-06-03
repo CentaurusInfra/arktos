@@ -94,40 +94,41 @@ spec:
     ports:
       - containerPort: 443
 ```
-When a pod is attached to a certain network, it needs to set its "network" field:
+When a pod is attached to a certain network, it needs to set its "network" in annotations:
 
 ```yaml
 apiVersion: v1
 kind: Pod
 metadata:
   name: nginx
+  labels:
+    arktos.futurewei.com/network: vpc-1
 spec:
   containers:
   - name: nginx
     image: nginx
     ports:
       - containerPort: 443
-  network: vpc-1
 ```
 
 
-When a pod is attached to a certain network and it wants to specify subnet or IP, it needs to be specified in pod fields:
+When a pod is attached to a certain network and it wants to specify subnet or IP, it can be expressed in annotations:
 
 ```yaml
 apiVersion: v1
 kind: Pod
 metadata:
   name: nginx
+  labels:
+    arktos.futurewei.com/network: vpc-1
+  annotations:
+    arktos.futurewei.com/nics: [{"subnet": "subnet-1", "ip": "192.168.0.12"}]
 spec:
   containers:
   - name: nginx
     image: nginx
     ports:
       - containerPort: 443
-  network: vpc-1
-  nics:
-    - subnet: subnet-1
-      ip: 192.168.0.12
 ```
 
 If these settings are set on a pod attached to a flat network, the settings will be ignored by the flat network controller and also the corresponding CNI plugins. 
@@ -282,6 +283,7 @@ Arktos workload runtime will put whatever is the pod annotation of "arktos.futur
 
 The network controller of the vpc network type is typically responsible for annotating pods properly with the relevant information.
 
+The alternative is 
 ## Architectural Views
 
 Components not decided yet at current phase are not included in these views.
@@ -307,5 +309,6 @@ Components not decided yet at current phase are not included in these views.
 ![Pod-activity-diag](images/pod-activity-diagram.png)
 
 1. It is strongly recommended to annotate new pods with arktos.futurewei.com/network-readiness as hint for scheduler. It is not mandatory, though - kubelet and cni plugin will have to cope with it and gets it right eventually. This kind of initial pod annotation can be done by a custom admission control.
-2. It is the network controller's responsibility (of the network type) to do whatever network resource preparation for the pod; if no special interests in it, it is fine. The bottom line is the controller needs to clean the annotation arktos.futurewei.com/network-readiness=false if it is there.
-3. It is the network controller's responsibility to annotate pod with proper information that the cni plugin needs in term of CNI-ARGS. Arktos system just picks up the annotation value and pass it on when calling cni plugin.
+2. It is the network controller's responsibility to do whatever network resource preparation for the pod; if no special interests in it, it is fine. The bottom line is the controller needs to clean the annotation arktos.futurewei.com/network-readiness=false if it is there. If pod has hint of arktos.futurewei.com/nics annoation, it should honor that.
+3. It is the network controller's responsibility to clean the annotation arktos.futurewei.com/network-readiness=false if it is there.
+4. It is the network controller's responsibility to annotate pod with proper information that the cni plugin needs in term of CNI-ARGS. Arktos system just picks up the annotation value and pass it on when calling cni plugin.
