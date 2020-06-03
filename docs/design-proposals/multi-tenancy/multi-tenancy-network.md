@@ -94,7 +94,7 @@ spec:
     ports:
       - containerPort: 443
 ```
-When a pod is attached to a certain network, it needs to set its "network" in annotations:
+When a pod is attached to a certain network, it needs to set its "network" in labels:
 
 ```yaml
 apiVersion: v1
