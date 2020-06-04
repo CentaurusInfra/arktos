@@ -241,6 +241,17 @@ Network object specifies service IPAM as *external*:
       service:
         ipam: external
 
+#### User hints
+
+User can provide hints about service IP address.
+
+For Arktos managed pool, it will look at the specific annotation of service object like below
+```arktos.futurewei.com/vip-hint: {"cidr":"10.10.1.0/26"}```
+
+Other keys supported are "ip", "policy" (with "BestEffort" the default, or "Guaranteed").
+
+For network provider managed pool, it is encouraged to stick to the above convention. However, it is totally up to the provider service controller.
+
 #### Semantic support
 
 For flat typed networks, regular kube-proxy may be used to provide pod access to service.
