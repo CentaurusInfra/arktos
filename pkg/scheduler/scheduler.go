@@ -439,6 +439,10 @@ func (sched *Scheduler) bind(assumed *v1.Pod, b *v1.Binding) error {
 	return nil
 }
 
+func (sched *Scheduler) openStackScheduleOne() {
+	
+}
+
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
 func (sched *Scheduler) scheduleOne() {
 	fwk := sched.config.Framework
