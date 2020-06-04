@@ -66,7 +66,7 @@ copyRuntimeDeploymentFile() {
   pathInSrc=$2
   if [[ (${OVERWRITE_DEPLOYMENT_FILES} == "true") || (! -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/${fileName}) ]]; then 
     echo "Getting runtime deployment file " ${fileName}
-    wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/${fileName}  ${VIRTLET_DEPLOYMENT_FILES_SRC}/${pathInSrc}
+    wget --no-check-certificate -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/${fileName}  ${VIRTLET_DEPLOYMENT_FILES_SRC}/${pathInSrc}
   fi
 }
 
