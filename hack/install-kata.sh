@@ -121,7 +121,8 @@ function setup_runtime_class {
 	echo "For kubernetes 1.14: RUN kubectl apply -f https://raw.githubusercontent.com/kata-containers/packaging/master/kata-deploy/k8s-1.14/kata-qemu-runtimeClass.yaml"
 	echo "For kubernetes 1.13: RUN kubectl apply -f https://raw.githubusercontent.com/kata-containers/packaging/master/kata-deploy/k8s-1.13/kata-qemu-runtimeClass.yaml"
 	echo "create 1.14 runtimeClass by default"
-	kubectl apply -f https://raw.githubusercontent.com/kata-containers/packaging/master/kata-deploy/k8s-1.14/kata-qemu-runtimeClass.yaml
+	KUBECTL=${KUBECTL:-"kubectl"}
+	${KUBECTL} apply -f https://raw.githubusercontent.com/kata-containers/packaging/master/kata-deploy/k8s-1.14/kata-qemu-runtimeClass.yaml
 	echo "A Kata example: RUN kubectl apply -f https://raw.githubusercontent.com/kata-containers/packaging/master/kata-deploy/examples/test-deploy-kata-qemu.yaml" 
 }
 
