@@ -104,9 +104,9 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 	if err != nil {
 		t.Errorf("Can't find the plugin by name")
 	}
-	ep := &v1.Endpoints{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Name: "foo"}, Subsets: []v1.EndpointSubset{{
+	ep := &v1.Endpoints{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "foo"}, Subsets: []v1.EndpointSubset{{
 		Addresses: []v1.EndpointAddress{{IP: "127.0.0.1"}}}}}
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, UID: types.UID("poduid")}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, UID: types.UID("poduid")}}
 	mounter, err := plug.(*glusterfsPlugin).newMounterInternal(spec, ep, pod, &mount.FakeMounter{})
 	volumePath := mounter.GetPath()
 	if err != nil {
@@ -157,7 +157,7 @@ func TestPluginVolume(t *testing.T) {
 func TestPluginPersistentVolume(t *testing.T) {
 	vol := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 			Name:   "vol1",
 		},
 		Spec: v1.PersistentVolumeSpec{
@@ -179,7 +179,7 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 			Name:   "pvA",
 		},
 		Spec: v1.PersistentVolumeSpec{
@@ -194,7 +194,7 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 
 	claim := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 			Name:      "claimA",
 			Namespace: "nsA",
 		},
@@ -208,7 +208,7 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 
 	ep := &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 			Namespace: "nsA",
 			Name:      "ep",
 		},
@@ -226,7 +226,7 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 
 	// readOnly bool is supplied by persistent-claim volume source when its mounter creates other volumes
 	spec := volume.NewSpecFromPersistentVolume(pv, true)
-	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "nsA", UID: types.UID("poduid")}}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "nsA", UID: types.UID("poduid")}}
 	mounter, _ := plug.NewMounter(spec, pod, volume.VolumeOptions{})
 
 	if !mounter.GetAttributes().ReadOnly {

@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -230,7 +231,7 @@ func newUnstructured(apiVersion, kind, namespace, name string) *unstructured.Uns
 			"apiVersion": apiVersion,
 			"kind":       kind,
 			"metadata": map[string]interface{}{
-				"tenant":    "default",
+				"tenant":    metav1.TenantSystem,
 				"namespace": namespace,
 				"name":      name,
 			},

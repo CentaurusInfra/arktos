@@ -47,7 +47,7 @@ type AppsV1Client struct {
 }
 
 func (c *AppsV1Client) ControllerRevisions(namespace string) ControllerRevisionInterface {
-	return newControllerRevisionsWithMultiTenancy(c, namespace, "default")
+	return newControllerRevisionsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1Client) ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionInterface {
@@ -55,7 +55,7 @@ func (c *AppsV1Client) ControllerRevisionsWithMultiTenancy(namespace string, ten
 }
 
 func (c *AppsV1Client) DaemonSets(namespace string) DaemonSetInterface {
-	return newDaemonSetsWithMultiTenancy(c, namespace, "default")
+	return newDaemonSetsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1Client) DaemonSetsWithMultiTenancy(namespace string, tenant string) DaemonSetInterface {
@@ -63,7 +63,7 @@ func (c *AppsV1Client) DaemonSetsWithMultiTenancy(namespace string, tenant strin
 }
 
 func (c *AppsV1Client) Deployments(namespace string) DeploymentInterface {
-	return newDeploymentsWithMultiTenancy(c, namespace, "default")
+	return newDeploymentsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1Client) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentInterface {
@@ -71,7 +71,7 @@ func (c *AppsV1Client) DeploymentsWithMultiTenancy(namespace string, tenant stri
 }
 
 func (c *AppsV1Client) ReplicaSets(namespace string) ReplicaSetInterface {
-	return newReplicaSetsWithMultiTenancy(c, namespace, "default")
+	return newReplicaSetsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1Client) ReplicaSetsWithMultiTenancy(namespace string, tenant string) ReplicaSetInterface {
@@ -79,7 +79,7 @@ func (c *AppsV1Client) ReplicaSetsWithMultiTenancy(namespace string, tenant stri
 }
 
 func (c *AppsV1Client) StatefulSets(namespace string) StatefulSetInterface {
-	return newStatefulSetsWithMultiTenancy(c, namespace, "default")
+	return newStatefulSetsWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *AppsV1Client) StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetInterface {

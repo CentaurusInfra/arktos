@@ -30,7 +30,7 @@ type FakeNetworkingV1beta1 struct {
 }
 
 func (c *FakeNetworkingV1beta1) Ingresses(namespace string) v1beta1.IngressInterface {
-	return &FakeIngresses{c, namespace, "default"}
+	return &FakeIngresses{c, namespace, "system"}
 }
 
 func (c *FakeNetworkingV1beta1) IngressesWithMultiTenancy(namespace string, tenant string) v1beta1.IngressInterface {

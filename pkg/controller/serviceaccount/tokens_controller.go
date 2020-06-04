@@ -405,7 +405,7 @@ func (e *TokensController) ensureReferencedToken(serviceAccount *v1.ServiceAccou
 	}
 	secret.Data[v1.ServiceAccountTokenKey] = []byte(token)
 	nsKeyContents := fmt.Sprintf("%s/%s", serviceAccount.Tenant, serviceAccount.Namespace)
-	if serviceAccount.Tenant == metav1.TenantDefault {
+	if serviceAccount.Tenant == metav1.TenantSystem {
 		nsKeyContents = serviceAccount.Namespace
 	}
 	secret.Data[v1.ServiceAccountNamespaceKey] = []byte(nsKeyContents)
@@ -554,7 +554,7 @@ func (e *TokensController) generateTokenIfNeeded(serviceAccount *v1.ServiceAccou
 	// Set the namespace
 	if needsNamespace {
 		nsKeyContents := fmt.Sprintf("%s/%s", liveSecret.Tenant, liveSecret.Namespace)
-		if liveSecret.Tenant == metav1.TenantDefault {
+		if liveSecret.Tenant == metav1.TenantSystem {
 			nsKeyContents = liveSecret.Namespace
 		}
 
@@ -699,7 +699,7 @@ func (e *TokensController) getSecret(tenant, ns string, name string, uid types.U
 // reference the given service account's name and uid
 func (e *TokensController) listTokenSecrets(serviceAccount *v1.ServiceAccount) ([]*v1.Secret, error) {
 	index := fmt.Sprintf("%s/%s", serviceAccount.Tenant, serviceAccount.Namespace)
-	if serviceAccount.Tenant == metav1.TenantDefault {
+	if serviceAccount.Tenant == metav1.TenantSystem {
 		index = serviceAccount.Namespace
 	}
 	namespaceSecrets, err := e.updatedSecrets.ByIndex("namespace", index)
@@ -788,7 +788,7 @@ func parseSecretQueueKey(key interface{}) (secretQueueKey, error) {
 // produce the same key format as cache.MetaNamespaceKeyFunc
 func makeCacheKey(tenant, namespace, name string) string {
 	key := fmt.Sprintf("%s/%s/%s", tenant, namespace, name)
-	if tenant == metav1.TenantDefault {
+	if tenant == metav1.TenantSystem {
 		key = fmt.Sprintf("%s/%s", namespace, name)
 	}
 	return key

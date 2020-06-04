@@ -142,7 +142,7 @@ func podWithPort(id, desiredHost string, port int) *v1.Pod {
 func podWithResources(id, desiredHost string, limits v1.ResourceList, requests v1.ResourceList) *v1.Pod {
 	pod := podWithID(id, desiredHost)
 	pod.Spec.Containers = []v1.Container{
-		{Name: "ctr", Resources: v1.ResourceRequirements{Limits: limits, Requests: requests}},
+		{Name: "ctr", Resources: v1.ResourceRequirements{Limits: limits, Requests: requests}, ResourcesAllocated: requests},
 	}
 	return pod
 }
@@ -758,7 +758,7 @@ func setupTestSchedulerWithVolumeBinding(fakeVolumeBinder *volumebinder.VolumeBi
 	queuedPodStore := clientcache.NewFIFO(clientcache.MetaNamespaceKeyFunc)
 	pod := podWithID("foo", "")
 	pod.Namespace = "foo-ns"
-	pod.Tenant = metav1.TenantDefault
+	pod.Tenant = metav1.TenantSystem
 	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{Name: "testVol",
 		VolumeSource: v1.VolumeSource{PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: "testPVC"}}})
 	queuedPodStore.Add(pod)
@@ -816,7 +816,7 @@ func TestSchedulerWithVolumeBinding(t *testing.T) {
 				FindBoundSatsified:   true,
 			},
 			expectAssumeCalled: true,
-			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: metav1.TenantDefault, Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
+			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: metav1.TenantSystem, Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
 			eventReason:        "Scheduled",
 		},
 		{
@@ -855,7 +855,7 @@ func TestSchedulerWithVolumeBinding(t *testing.T) {
 			},
 			expectAssumeCalled: true,
 			expectBindCalled:   true,
-			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: metav1.TenantDefault, Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
+			expectPodBind:      &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", Tenant: metav1.TenantSystem, Namespace: "foo-ns", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: "machine1"}},
 			eventReason:        "Scheduled",
 		},
 		{

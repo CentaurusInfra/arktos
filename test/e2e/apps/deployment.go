@@ -79,7 +79,7 @@ var _ = SIGDescribe("Deployment", func() {
 	  Testname: Deployment RollingUpdate
 	  Description: A conformant Kubernetes distribution MUST support the Deployment with RollingUpdate strategy.
 	*/
-	framework.ConformanceIt("RollingUpdateDeployment should delete old pods and create new ones", func() {
+	framework.ConformanceIt("RollingUpdateDeployment should delete old pods and create new ones [Arktos-CI]", func() {
 		testRollingUpdateDeployment(f)
 	})
 	/*

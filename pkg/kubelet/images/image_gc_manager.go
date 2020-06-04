@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -220,7 +221,8 @@ func (im *realImageGCManager) detectImages(detectTime time.Time) (sets.String, e
 		return imagesInUse, err
 	}
 
-	// Make a set of images in use by containers.
+	// Make a set of images in use by all workload types: containers and VMs
+	// Note that the im.runtime.GetPods() returns all sandboxes from all registered runtime services
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			klog.V(5).Infof("Pod %s/%s, container %s uses image %s(%s)", pod.Namespace, pod.Name, container.Name, container.Image, container.ImageID)

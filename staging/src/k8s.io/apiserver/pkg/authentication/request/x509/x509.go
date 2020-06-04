@@ -20,6 +20,7 @@ package x509
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -32,6 +33,10 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
 )
+
+const ErrTenantEmptyCN = "CN name cannot be empty"
+const ErrMultipleOrganizationsWithTenant = "more than one organization with tenants specified"
+const ErrMultipleTenants = "more than one tenants specified in an organization "
 
 var clientCertificateExpirationHistogram = prometheus.NewHistogram(
 	prometheus.HistogramOpts{
@@ -185,48 +190,51 @@ func DefaultVerifyOptions() x509.VerifyOptions {
 
 // CommonNameUserConversion builds user info from a certificate chain using the subject's CommonName
 var CommonNameUserConversion = UserConversionFunc(func(chain []*x509.Certificate) (*authenticator.Response, bool, error) {
-	if len(chain[0].Subject.CommonName) == 0 {
-		return nil, false, nil
+	userInfo, succeeded, err := convertToUserInfo(chain[0].Subject)
+	if !succeeded {
+		return nil, false, err
 	}
-
-	isNewformat := false
-	tenant := ""
-	if len(chain[0].Subject.Organization) > 0 {
-		parts := strings.Split(chain[0].Subject.Organization[0], ":")
-		if len(parts) > 0 && parts[0] == "tenant" {
-			isNewformat = true
-			tenant = parts[1]
-		}
-	}
-
-	// backward compatible
-	// old format only uses /O
-	//if len(chain[0].Subject.OrganizationalUnit)==0 {
-	if !isNewformat {
-		parts := strings.Split(chain[0].Subject.CommonName, ":")
-		if len(parts) > 1 {
-			tenant = parts[0]
-		}
-		return &authenticator.Response{
-			User: &user.DefaultInfo{
-				Name:   chain[0].Subject.CommonName,
-				Groups: chain[0].Subject.Organization,
-				Tenant: tenant,
-			},
-		}, true, nil
-	}
-
-	// new format uses both /O and /OU
-	// one and only tenant per user
-	if len(chain[0].Subject.Organization) != 1 {
-		return nil, false, nil
-	}
-
 	return &authenticator.Response{
-		User: &user.DefaultInfo{
-			Name:   chain[0].Subject.CommonName,
-			Groups: chain[0].Subject.OrganizationalUnit,
-			Tenant: tenant,
-		},
-	}, true, nil
+		User: userInfo,
+	}, true, err
 })
+
+func convertToUserInfo(subject pkix.Name) (*user.DefaultInfo, bool, error) {
+	if len(subject.CommonName) == 0 {
+		return nil, false, errors.New(ErrTenantEmptyCN)
+	}
+	tenant := ""
+	if len(subject.Organization) > 0 {
+		parts := strings.Split(subject.Organization[0], ":")
+		if parts[0] == "tenant" {
+			// new format (tenant string from Organization)
+			if len(subject.Organization) > 1 {
+				// with new format, tenant comes from
+				// Organization and only one is allowed
+				return nil, false, errors.New(ErrMultipleOrganizationsWithTenant)
+			}
+			numOfParts := len(parts)
+			if numOfParts == 2 {
+				tenant = parts[1]
+			} else if numOfParts > 2 {
+				return nil, false, errors.New(ErrMultipleTenants)
+			} // when numOfParts==1, tenant is empty
+			return &user.DefaultInfo{
+				Name:   subject.CommonName,
+				Groups: subject.OrganizationalUnit,
+				Tenant: tenant,
+			}, true, nil
+		}
+	}
+
+	// backward compatible, old format (tenant string from CN)
+	parts := strings.Split(subject.CommonName, ":")
+	if len(parts) > 1 {
+		tenant = parts[0]
+	}
+	return &user.DefaultInfo{
+		Name:   subject.CommonName,
+		Groups: subject.Organization,
+		Tenant: tenant,
+	}, true, nil
+}

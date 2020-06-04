@@ -43,7 +43,7 @@ type NetworkingV1Client struct {
 }
 
 func (c *NetworkingV1Client) NetworkPolicies(namespace string) NetworkPolicyInterface {
-	return newNetworkPoliciesWithMultiTenancy(c, namespace, "default")
+	return newNetworkPoliciesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *NetworkingV1Client) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyInterface {

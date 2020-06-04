@@ -63,6 +63,8 @@ type Interface interface {
 	Services() ServiceInformer
 	// ServiceAccounts returns a ServiceAccountInformer.
 	ServiceAccounts() ServiceAccountInformer
+	// StorageClusters returns a StorageClusterInformer.
+	StorageClusters() StorageClusterInformer
 	// Tenants returns a TenantInformer.
 	Tenants() TenantInformer
 }
@@ -76,7 +78,7 @@ type version struct {
 
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
-	return &version{factory: f, tenant: "default", namespace: namespace, tweakListOptions: tweakListOptions}
+	return &version{factory: f, tenant: "system", namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
 func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) Interface {
@@ -177,6 +179,11 @@ func (v *version) Services() ServiceInformer {
 // ServiceAccounts returns a ServiceAccountInformer.
 func (v *version) ServiceAccounts() ServiceAccountInformer {
 	return &serviceAccountInformer{factory: v.factory, namespace: v.namespace, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
+}
+
+// StorageClusters returns a StorageClusterInformer.
+func (v *version) StorageClusters() StorageClusterInformer {
+	return &storageClusterInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Tenants returns a TenantInformer.

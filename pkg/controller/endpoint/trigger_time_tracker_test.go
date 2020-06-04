@@ -40,7 +40,7 @@ var (
 )
 
 func TestNewService_NoPods(t *testing.T) {
-	testNewService_NoPods(t, metav1.TenantDefault)
+	testNewService_NoPods(t, metav1.TenantSystem)
 }
 
 func TestNewService_NoPodsWithMultiTenancy(t *testing.T) {
@@ -55,7 +55,7 @@ func testNewService_NoPods(t *testing.T, tenant string) {
 }
 
 func TestNewService_ExistingPods(t *testing.T) {
-	testNewService_ExistingPods(t, metav1.TenantDefault)
+	testNewService_ExistingPods(t, metav1.TenantSystem)
 }
 
 func TestNewService_ExistingPodsWithMultiTenancy(t *testing.T) {
@@ -75,7 +75,7 @@ func testNewService_ExistingPods(t *testing.T, tenant string) {
 }
 
 func TestPodsAdded(t *testing.T) {
-	testPodsAdded(t, metav1.TenantDefault)
+	testPodsAdded(t, metav1.TenantSystem)
 }
 
 func TestPodsAddedWithMultiTenancy(t *testing.T) {
@@ -94,7 +94,7 @@ func testPodsAdded(t *testing.T, tenant string) {
 }
 
 func TestPodsUpdated(t *testing.T) {
-	testPodsUpdated(t, metav1.TenantDefault)
+	testPodsUpdated(t, metav1.TenantSystem)
 }
 
 func TestPodsUpdatedWithMultiTenancy(t *testing.T) {
@@ -117,7 +117,7 @@ func testPodsUpdated(t *testing.T, tenant string) {
 }
 
 func TestPodsUpdated_NoOp(t *testing.T) {
-	testPodsUpdated_NoOp(t, metav1.TenantDefault)
+	testPodsUpdated_NoOp(t, metav1.TenantSystem)
 }
 
 func TestPodsUpdated_NoOpWithMultiTenancy(t *testing.T) {
@@ -138,7 +138,7 @@ func testPodsUpdated_NoOp(t *testing.T, tenant string) {
 }
 
 func TestPodDeletedThenAdded(t *testing.T) {
-	testPodDeletedThenAdded(t, metav1.TenantDefault)
+	testPodDeletedThenAdded(t, metav1.TenantSystem)
 }
 
 func TestPodDeletedThenAddedWithMultiTenancy(t *testing.T) {
@@ -160,7 +160,7 @@ func testPodDeletedThenAdded(t *testing.T, tenant string) {
 }
 
 func TestServiceDeletedThenAdded(t *testing.T) {
-	testServiceDeletedThenAdded(t, metav1.TenantDefault)
+	testServiceDeletedThenAdded(t, metav1.TenantSystem)
 }
 
 func TestServiceDeletedThenAddedWithMultiTenancy(t *testing.T) {
@@ -182,7 +182,7 @@ func testServiceDeletedThenAdded(t *testing.T, tenant string) {
 }
 
 func TestServiceUpdated_NoPodChange(t *testing.T) {
-	testServiceUpdated_NoPodChange(t, metav1.TenantDefault)
+	testServiceUpdated_NoPodChange(t, metav1.TenantSystem)
 }
 
 func TestServiceUpdated_NoPodChangeWithMultiTenancy(t *testing.T) {

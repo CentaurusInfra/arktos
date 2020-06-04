@@ -58,7 +58,7 @@ func fakeAttachablePodFn(pod *corev1.Pod) polymorphichelpers.AttachablePodForObj
 	}
 }
 func TestPodAndContainerAttach(t *testing.T) {
-	testPodAndContainerAttach(t, metav1.TenantDefault)
+	testPodAndContainerAttach(t, metav1.TenantSystem)
 }
 
 func TestPodAndContainerAttachWithMultiTenancy(t *testing.T) {
@@ -194,7 +194,7 @@ func testPodAndContainerAttach(t *testing.T, tenant string) {
 	}
 }
 func TestAttach(t *testing.T) {
-	testAttach(t, metav1.TenantDefault)
+	testAttach(t, metav1.TenantSystem)
 }
 
 func TestAttachWithMultiTenancy(t *testing.T) {
@@ -325,7 +325,7 @@ func testAttach(t *testing.T, tenant string) {
 }
 
 func TestAttachWarnings(t *testing.T) {
-	testAttachWarnings(t, metav1.TenantDefault)
+	testAttachWarnings(t, metav1.TenantSystem)
 }
 
 func TestAttachWarningsWithMultiTenancy(t *testing.T) {
@@ -449,7 +449,7 @@ func attachPod(tenant string) *corev1.Pod {
 }
 
 func podFetchPath(tenant string) string {
-	if tenant == metav1.TenantDefault {
+	if tenant == metav1.TenantSystem {
 		return "/namespaces/test/pods/foo"
 	} else {
 		return "/tenants/" + tenant + "/namespaces/test/pods/foo"

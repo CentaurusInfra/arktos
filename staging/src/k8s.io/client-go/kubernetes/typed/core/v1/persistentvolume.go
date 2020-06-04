@@ -63,7 +63,7 @@ type persistentVolumes struct {
 
 // newPersistentVolumes returns a PersistentVolumes
 func newPersistentVolumes(c *CoreV1Client) *persistentVolumes {
-	return newPersistentVolumesWithMultiTenancy(c, "default")
+	return newPersistentVolumesWithMultiTenancy(c, "system")
 }
 
 func newPersistentVolumesWithMultiTenancy(c *CoreV1Client, tenant string) *persistentVolumes {

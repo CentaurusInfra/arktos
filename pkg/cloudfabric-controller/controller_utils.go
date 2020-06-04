@@ -529,7 +529,7 @@ func validateControllerRef(controllerRef *metav1.OwnerReference) error {
 }
 
 func (r RealPodControl) CreatePods(namespace string, template *v1.PodTemplateSpec, object runtime.Object) error {
-	return r.createPods("", metav1.TenantDefault, namespace, template, object, nil)
+	return r.createPods("", metav1.TenantSystem, namespace, template, object, nil)
 }
 
 func (r RealPodControl) CreatePodsWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object) error {
@@ -537,7 +537,7 @@ func (r RealPodControl) CreatePodsWithMultiTenancy(tenant, namespace string, tem
 }
 
 func (r RealPodControl) CreatePodsWithControllerRef(namespace string, template *v1.PodTemplateSpec, controllerObject runtime.Object, controllerRef *metav1.OwnerReference) error {
-	return r.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantDefault, namespace, template, controllerObject, controllerRef)
+	return r.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantSystem, namespace, template, controllerObject, controllerRef)
 }
 
 func (r RealPodControl) CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, controllerObject runtime.Object, controllerRef *metav1.OwnerReference) error {
@@ -548,7 +548,7 @@ func (r RealPodControl) CreatePodsWithControllerRefWithMultiTenancy(tenant, name
 }
 
 func (r RealPodControl) CreatePodsOnNode(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
-	return r.CreatePodsOnNodeWithMultiTenancy(nodeName, metav1.TenantDefault, namespace, template, object, controllerRef)
+	return r.CreatePodsOnNodeWithMultiTenancy(nodeName, metav1.TenantSystem, namespace, template, object, controllerRef)
 }
 
 func (r RealPodControl) CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
@@ -621,7 +621,7 @@ func (r RealPodControl) createPods(nodeName, tenant, namespace string, template 
 }
 
 func (r RealPodControl) DeletePod(namespace string, podID string, object runtime.Object) error {
-	return r.DeletePodWithMultiTenancy(metav1.TenantDefault, namespace, podID, object)
+	return r.DeletePodWithMultiTenancy(metav1.TenantSystem, namespace, podID, object)
 }
 
 func (r RealPodControl) DeletePodWithMultiTenancy(tenant, namespace string, podID string, object runtime.Object) error {
@@ -653,7 +653,7 @@ type FakePodControl struct {
 var _ PodControlInterface = &FakePodControl{}
 
 func (f *FakePodControl) PatchPod(namespace, name string, data []byte) error {
-	return f.PatchPodWithMultiTenancy(metav1.TenantDefault, namespace, name, data)
+	return f.PatchPodWithMultiTenancy(metav1.TenantSystem, namespace, name, data)
 }
 
 func (f *FakePodControl) PatchPodWithMultiTenancy(tenant, namespace, name string, data []byte) error {
@@ -667,7 +667,7 @@ func (f *FakePodControl) PatchPodWithMultiTenancy(tenant, namespace, name string
 }
 
 func (f *FakePodControl) CreatePods(namespace string, spec *v1.PodTemplateSpec, object runtime.Object) error {
-	return f.CreatePodsWithMultiTenancy(metav1.TenantDefault, namespace, spec, object)
+	return f.CreatePodsWithMultiTenancy(metav1.TenantSystem, namespace, spec, object)
 }
 
 func (f *FakePodControl) CreatePodsWithMultiTenancy(tenant, namespace string, spec *v1.PodTemplateSpec, object runtime.Object) error {
@@ -685,7 +685,7 @@ func (f *FakePodControl) CreatePodsWithMultiTenancy(tenant, namespace string, sp
 }
 
 func (f *FakePodControl) CreatePodsWithControllerRef(namespace string, spec *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
-	return f.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantDefault, namespace, spec, object, controllerRef)
+	return f.CreatePodsWithControllerRefWithMultiTenancy(metav1.TenantSystem, namespace, spec, object, controllerRef)
 }
 
 func (f *FakePodControl) CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace string, spec *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
@@ -704,7 +704,7 @@ func (f *FakePodControl) CreatePodsWithControllerRefWithMultiTenancy(tenant, nam
 }
 
 func (f *FakePodControl) CreatePodsOnNode(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
-	return f.CreatePodsOnNodeWithMultiTenancy(nodeName, metav1.TenantDefault, namespace, template, object, controllerRef)
+	return f.CreatePodsOnNodeWithMultiTenancy(nodeName, metav1.TenantSystem, namespace, template, object, controllerRef)
 }
 
 func (f *FakePodControl) CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
@@ -723,7 +723,7 @@ func (f *FakePodControl) CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, name
 }
 
 func (f *FakePodControl) DeletePod(namespace string, podID string, object runtime.Object) error {
-	return f.DeletePodWithMultiTenancy(metav1.TenantDefault, namespace, podID, object)
+	return f.DeletePodWithMultiTenancy(metav1.TenantSystem, namespace, podID, object)
 }
 
 func (f *FakePodControl) DeletePodWithMultiTenancy(tenant, namespace string, podID string, object runtime.Object) error {
@@ -1152,7 +1152,7 @@ func AddOrUpdateLabelsOnNode(kubeClient clientset.Interface, nodeName string, la
 }
 
 func getOrCreateServiceAccount(coreClient v1core.CoreV1Interface, namespace, name string) (*v1.ServiceAccount, error) {
-	return getOrCreateServiceAccountWithMultiTenancy(coreClient, metav1.TenantDefault, namespace, name)
+	return getOrCreateServiceAccountWithMultiTenancy(coreClient, metav1.TenantSystem, namespace, name)
 }
 
 func getOrCreateServiceAccountWithMultiTenancy(coreClient v1core.CoreV1Interface, tenant, namespace, name string) (*v1.ServiceAccount, error) {

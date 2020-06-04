@@ -20,6 +20,7 @@ package master
 import (
 	"fmt"
 	"k8s.io/apiserver/pkg/storage/datapartition"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"net"
 	"net/http"
 	"reflect"
@@ -163,6 +164,9 @@ type ExtraConfig struct {
 	ServiceGroupId       string
 	DataPartitionConfig  apiv1.DataPartitionConfig
 	DataPartitionManager *datapartition.DataPartitionConfigManager
+
+	// Get notification of ETCD data storage clusters
+	StorageClusterManager *storagecluster.StorageClusterManager
 
 	// MasterEndpointReconcileTTL sets the time to live in seconds of an
 	// endpoint record recorded by each master. The endpoints are checked at an

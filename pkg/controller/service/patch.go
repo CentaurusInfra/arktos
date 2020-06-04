@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +38,7 @@ func patch(c v1core.CoreV1Interface, oldSvc *v1.Service, newSvc *v1.Service) (*v
 		return nil, err
 	}
 
-	return c.Services(oldSvc.Namespace).Patch(oldSvc.Name, types.StrategicMergePatchType, patchBytes, "status")
+	return c.ServicesWithMultiTenancy(oldSvc.Namespace, oldSvc.Tenant).Patch(oldSvc.Name, types.StrategicMergePatchType, patchBytes, "status")
 }
 
 func getPatchBytes(oldSvc *v1.Service, newSvc *v1.Service) ([]byte, error) {

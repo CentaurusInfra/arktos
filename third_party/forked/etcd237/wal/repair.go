@@ -21,7 +21,7 @@ import (
 
 	"k8s.io/kubernetes/third_party/forked/etcd237/pkg/fileutil"
 
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/wal/walpb"
 )
 
 // Repair tries to repair ErrUnexpectedEOF in the

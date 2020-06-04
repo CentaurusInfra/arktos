@@ -30,7 +30,7 @@ type FakeBatchV1beta1 struct {
 }
 
 func (c *FakeBatchV1beta1) CronJobs(namespace string) v1beta1.CronJobInterface {
-	return &FakeCronJobs{c, namespace, "default"}
+	return &FakeCronJobs{c, namespace, "system"}
 }
 
 func (c *FakeBatchV1beta1) CronJobsWithMultiTenancy(namespace string, tenant string) v1beta1.CronJobInterface {

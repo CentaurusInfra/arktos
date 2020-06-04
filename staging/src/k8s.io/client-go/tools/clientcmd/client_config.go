@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/imdario/mergo"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
 	restclient "k8s.io/client-go/rest"
@@ -317,6 +318,9 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 		// the tenant override instead of having config.ConfirmUsable() return an error. This allows
 		// things like in-cluster clients to execute `kubectl get pods --tenant=foo` and have the
 		// --tenant flag honored instead of being ignored.
+		if config.overrides.Context.Tenant == metav1.TenantAllExplicit {
+			return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
+		}
 		return config.overrides.Context.Tenant, true, nil
 	}
 
@@ -329,8 +333,8 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 		return "", false, err
 	}
 
-	if len(configContext.Tenant) == 0 {
-		return "default", false, nil
+	if configContext.Tenant == metav1.TenantAllExplicit {
+		return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
 	}
 
 	return configContext.Tenant, false, nil
@@ -549,7 +553,7 @@ func (config *inClusterClientConfig) Tenant() (string, bool, error) {
 		}
 	}
 
-	return "default", false, nil
+	return "", false, nil
 }
 
 func (config *inClusterClientConfig) Namespace() (string, bool, error) {

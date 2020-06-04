@@ -39,7 +39,7 @@ type DataPartitionConfigManager struct {
 
 	isDataPartitionInitialized bool
 	DataPartitionConfig        v1.DataPartitionConfig
-	rev                        int
+	rev                        int64
 	ServiceGroupId             string
 	updateChGrp                *bcast.Group
 
@@ -133,7 +133,7 @@ func (m *DataPartitionConfigManager) addDataPartition(obj interface{}) {
 	}
 	klog.V(3).Infof("Received event for NEW data partition %+v.", dp)
 
-	rev, err := strconv.Atoi(dp.ResourceVersion)
+	rev, err := strconv.ParseInt(dp.ResourceVersion, 10, 64)
 	if err != nil {
 		klog.Errorf("Got invalid resource version %s for data partition %v.", dp.ResourceVersion, dp)
 		return
@@ -169,8 +169,8 @@ func (m *DataPartitionConfigManager) updateDataPartition(old, cur interface{}) {
 		return
 	}
 
-	oldRev, _ := strconv.Atoi(oldDp.ResourceVersion)
-	newRev, err := strconv.Atoi(curDp.ResourceVersion)
+	oldRev, _ := strconv.ParseInt(oldDp.ResourceVersion, 10, 64)
+	newRev, err := strconv.ParseInt(curDp.ResourceVersion, 10, 64)
 	if err != nil {
 		klog.Errorf("Got invalid resource version %s for data partition %v.", curDp.ResourceVersion, curDp)
 		return
@@ -209,7 +209,7 @@ func (m *DataPartitionConfigManager) deleteDataPartition(obj interface{}) {
 		}
 		dp, ok = tombstone.Obj.(*v1.DataPartitionConfig)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a pod %#v.", obj))
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a data partition %#v.", obj))
 			return
 		}
 	}

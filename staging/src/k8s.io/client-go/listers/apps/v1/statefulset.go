@@ -56,7 +56,7 @@ func (s *statefulSetLister) List(selector labels.Selector) (ret []*v1.StatefulSe
 
 // StatefulSets returns an object that can list and get StatefulSets.
 func (s *statefulSetLister) StatefulSets(namespace string) StatefulSetNamespaceLister {
-	return statefulSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return statefulSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *statefulSetLister) StatefulSetsWithMultiTenancy(namespace string, tenant string) StatefulSetNamespaceLister {
@@ -91,7 +91,7 @@ func (s statefulSetNamespaceLister) List(selector labels.Selector) (ret []*v1.St
 // Get retrieves the StatefulSet from the indexer for a given namespace and name.
 func (s statefulSetNamespaceLister) Get(name string) (*v1.StatefulSet, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

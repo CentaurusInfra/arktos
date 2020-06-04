@@ -29,7 +29,7 @@ import (
 )
 
 func TestDeploymentController_reconcileNewReplicaSet(t *testing.T) {
-	testDeploymentController_reconcileNewReplicaSet(t, metav1.TenantDefault)
+	testDeploymentController_reconcileNewReplicaSet(t, metav1.TenantSystem)
 }
 
 func TestDeploymentController_reconcileNewReplicaSetWithMultiTenancy(t *testing.T) {
@@ -127,7 +127,7 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 }
 
 func TestDeploymentController_reconcileOldReplicaSets(t *testing.T) {
-	testDeploymentController_reconcileOldReplicaSets(t, metav1.TenantDefault)
+	testDeploymentController_reconcileOldReplicaSets(t, metav1.TenantSystem)
 }
 
 func TestDeploymentController_reconcileOldReplicaSetsWithMultiTenancy(t *testing.T) {
@@ -232,7 +232,7 @@ func testDeploymentController_reconcileOldReplicaSets(t *testing.T, tenant strin
 }
 
 func TestDeploymentController_cleanupUnhealthyReplicas(t *testing.T) {
-	testDeploymentController_cleanupUnhealthyReplicas(t, metav1.TenantDefault)
+	testDeploymentController_cleanupUnhealthyReplicas(t, metav1.TenantSystem)
 }
 
 func TestDeploymentController_cleanupUnhealthyReplicasWithMultiTenancy(t *testing.T) {
@@ -304,7 +304,7 @@ func testDeploymentController_cleanupUnhealthyReplicas(t *testing.T, tenant stri
 }
 
 func TestDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing.T) {
-	testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t, metav1.TenantDefault)
+	testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t, metav1.TenantSystem)
 }
 
 func TestDeploymentController_scaleDownOldReplicaSetsForRollingUpdateWithMultiTenancy(t *testing.T) {

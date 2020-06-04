@@ -17,6 +17,7 @@ limitations under the License.
 package filters
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -88,11 +89,11 @@ func TestTenantInfoRequest(t *testing.T) {
 			ExpectedTenant:   "aaa",
 		},
 		{
-			Name:             "system tenant user does not change empty tenant in request info",
+			Name:             "system tenant change empty tenant in request info",
 			Url:              "/api/v1/namespaces/default/pods",
 			UserInfo:         getTenantedUserInfo(metav1.TenantSystem),
 			ExepctedRespCode: 200,
-			ExpectedTenant:   "",
+			ExpectedTenant:   metav1.TenantSystem,
 		},
 		{
 			Name:             "short path: for regular tenant user, empty tenant in request info is set to the user tenant",
@@ -114,6 +115,20 @@ func TestTenantInfoRequest(t *testing.T) {
 			UserInfo:         getTenantedUserInfo("regular-user"),
 			ExepctedRespCode: 200,
 			ExpectedTenant:   "another-user",
+		},
+		{
+			Name:             "Regular User: metav1.TenantAllExplicit will be transformed to metav1.TenantAll",
+			Url:              fmt.Sprintf("/api/v1/tenants/%s/namespaces", metav1.TenantAllExplicit),
+			UserInfo:         getTenantedUserInfo("regular-user"),
+			ExepctedRespCode: 200,
+			ExpectedTenant:   metav1.TenantAll,
+		},
+		{
+			Name:             "System User: metav1.TenantAllExplicit will be transformed to metav1.TenantAll",
+			Url:              fmt.Sprintf("/api/v1/tenants/%s/namespaces", metav1.TenantAllExplicit),
+			UserInfo:         getTenantedUserInfo(metav1.TenantSystem),
+			ExepctedRespCode: 200,
+			ExpectedTenant:   metav1.TenantAll,
 		},
 	}
 

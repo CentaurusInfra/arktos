@@ -64,7 +64,7 @@ type podDisruptionBudgets struct {
 
 // newPodDisruptionBudgets returns a PodDisruptionBudgets
 func newPodDisruptionBudgets(c *PolicyV1beta1Client, namespace string) *podDisruptionBudgets {
-	return newPodDisruptionBudgetsWithMultiTenancy(c, namespace, "default")
+	return newPodDisruptionBudgetsWithMultiTenancy(c, namespace, "system")
 }
 
 func newPodDisruptionBudgetsWithMultiTenancy(c *PolicyV1beta1Client, namespace string, tenant string) *podDisruptionBudgets {

@@ -128,7 +128,7 @@ status:
   - name: "64"
     portID: "65"
     reason: "66"
-    state: 龷ȪÆl
+    state: Ü郀
   nominatedNodeName: "29"
   phase: ƗǸƢ6/ʕV
   podIP: "31"
@@ -140,6 +140,11 @@ status:
     lastTerminationState: QZ{ʁgɸ=ǤÆ
     name: "60"
     powerState: ?讦ĭÐ
+    resources:
+      limits:
+        龷ȪÆl: "244"
+      requests:
+        鏮嵒ƫS捕ɷD¡轫n: "583"
     restartCount: 1825936739
     state: ɚɎ(dɅ囥糷磩窮秳ķ蟒
     virtualMachineId: "61"

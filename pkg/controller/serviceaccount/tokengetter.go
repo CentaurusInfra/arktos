@@ -42,15 +42,15 @@ func NewGetterFromClient(c clientset.Interface, secretLister v1listers.SecretLis
 }
 
 func (c clientGetter) GetServiceAccount(namespace, name string) (*v1.ServiceAccount, error) {
-	return c.GetServiceAccountWithMultiTenancy(metav1.TenantDefault, namespace, name)
+	return c.GetServiceAccountWithMultiTenancy(metav1.TenantSystem, namespace, name)
 }
 
 func (c clientGetter) GetPod(namespace, name string) (*v1.Pod, error) {
-	return c.GetPodWithMultiTenancy(metav1.TenantDefault, namespace, name)
+	return c.GetPodWithMultiTenancy(metav1.TenantSystem, namespace, name)
 }
 
 func (c clientGetter) GetSecret(namespace, name string) (*v1.Secret, error) {
-	return c.GetSecretWithMultiTenancy(metav1.TenantDefault, namespace, name)
+	return c.GetSecretWithMultiTenancy(metav1.TenantSystem, namespace, name)
 }
 
 func (c clientGetter) GetServiceAccountWithMultiTenancy(tenant, namespace, name string) (*v1.ServiceAccount, error) {

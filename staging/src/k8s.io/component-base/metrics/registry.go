@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,11 +18,35 @@ limitations under the License.
 package metrics
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/blang/semver"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+
 	apimachineryversion "k8s.io/apimachinery/pkg/version"
 )
+
+var (
+	showHiddenOnce sync.Once
+	showHidden     atomic.Value
+)
+
+// SetShowHidden will enable showing hidden metrics. This will no-opt
+// after the initial call
+func SetShowHidden() {
+	showHiddenOnce.Do(func() {
+		showHidden.Store(true)
+	})
+}
+
+// ShouldShowHidden returns whether showing hidden deprecated metrics
+// is enabled. While the primary usecase for this is internal (to determine
+// registration behavior) this can also be used to introspect
+func ShouldShowHidden() bool {
+	return showHidden.Load() != nil && showHidden.Load().(bool)
+}
 
 // Registerable is an interface for a collector metric which we
 // will register with KubeRegistry.
@@ -33,6 +58,10 @@ type Registerable interface {
 // KubeRegistry is an interface which implements a subset of prometheus.Registerer and
 // prometheus.Gatherer interfaces
 type KubeRegistry interface {
+	// Deprecated
+	RawRegister(prometheus.Collector) error
+	// Deprecated
+	RawMustRegister(...prometheus.Collector)
 	Register(Registerable) error
 	MustRegister(...Registerable)
 	Unregister(Registerable) bool
@@ -72,6 +101,24 @@ func (kr *kubeRegistry) MustRegister(cs ...Registerable) {
 	kr.PromRegistry.MustRegister(metrics...)
 }
 
+// RawRegister takes a native prometheus.Collector and registers the collector
+// to the registry. This bypasses metrics safety checks, so should only be used
+// to register custom prometheus collectors.
+//
+// Deprecated
+func (kr *kubeRegistry) RawRegister(c prometheus.Collector) error {
+	return kr.PromRegistry.Register(c)
+}
+
+// RawMustRegister takes a native prometheus.Collector and registers the collector
+// to the registry. This bypasses metrics safety checks, so should only be used
+// to register custom prometheus collectors.
+//
+// Deprecated
+func (kr *kubeRegistry) RawMustRegister(cs ...prometheus.Collector) {
+	kr.PromRegistry.MustRegister(cs...)
+}
+
 // Unregister unregisters the Collector that equals the Collector passed
 // in as an argument.  (Two Collectors are considered equal if their
 // Describe method yields the same set of descriptors.) The function
@@ -100,19 +147,4 @@ func NewKubeRegistry(v apimachineryversion.Info) KubeRegistry {
 		PromRegistry: prometheus.NewRegistry(),
 		version:      parseVersion(v),
 	}
-}
-
-// NewPreloadedKubeRegistry creates a new Registry with preloaded prometheus collectors
-// already registered. This is exposed specifically to maintain backwards
-// compatibility with the global prometheus registry.
-//
-// Deprecated
-func NewPreloadedKubeRegistry(v apimachineryversion.Info, cs ...prometheus.Collector) KubeRegistry {
-	registry := &kubeRegistry{
-		PromRegistry: prometheus.NewRegistry(),
-		version:      parseVersion(v),
-	}
-
-	registry.PromRegistry.MustRegister(cs...)
-	return registry
 }

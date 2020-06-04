@@ -45,7 +45,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage"
 	storeerr "k8s.io/apiserver/pkg/storage/errors"
-	"k8s.io/apiserver/pkg/storage/etcd/metrics"
+	"k8s.io/apiserver/pkg/storage/etcd3/metrics"
 	"k8s.io/apiserver/pkg/util/dryrun"
 
 	"k8s.io/klog"
@@ -219,7 +219,7 @@ func NamespaceKeyRootFunc(ctx context.Context, prefix string) string {
 
 	te, ok := genericapirequest.TenantFrom(ctx)
 	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
-	if ok && len(te) > 0 && te != metav1.TenantDefault {
+	if ok && len(te) > 0 && te != metav1.TenantSystem {
 		key = key + "/" + te
 	}
 
@@ -241,7 +241,7 @@ func TenantKeyRootFunc(ctx context.Context, prefix string) string {
 
 	te, ok := genericapirequest.TenantFrom(ctx)
 	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
-	if ok && len(te) > 0 && te != metav1.TenantDefault {
+	if ok && len(te) > 0 && te != metav1.TenantSystem {
 		key = key + "/" + te
 	}
 

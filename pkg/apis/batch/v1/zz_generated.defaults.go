@@ -179,11 +179,13 @@ func SetObjectDefaults_Job(in *v1.Job) {
 	if in.Spec.Template.Spec.VirtualMachine != nil {
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Limits)
 		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.Resources.Requests)
+		corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.VirtualMachine.ResourcesAllocated)
 	}
 	for i := range in.Spec.Template.Spec.WorkloadInfo {
 		a := &in.Spec.Template.Spec.WorkloadInfo[i]
 		corev1.SetDefaults_ResourceList(&a.Resources.Limits)
 		corev1.SetDefaults_ResourceList(&a.Resources.Requests)
+		corev1.SetDefaults_ResourceList(&a.ResourcesAllocated)
 	}
 }
 

@@ -43,7 +43,7 @@ type CoordinationV1beta1Client struct {
 }
 
 func (c *CoordinationV1beta1Client) Leases(namespace string) LeaseInterface {
-	return newLeasesWithMultiTenancy(c, namespace, "default")
+	return newLeasesWithMultiTenancy(c, namespace, "system")
 }
 
 func (c *CoordinationV1beta1Client) LeasesWithMultiTenancy(namespace string, tenant string) LeaseInterface {

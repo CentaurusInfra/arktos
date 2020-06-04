@@ -396,7 +396,7 @@ func (f *FakeRecorder) makeEvent(ref *v1.ObjectReference, eventtype, reason, mes
 	t := metav1.Time{Time: f.clock.Now()}
 	tenant := ref.Tenant
 	if tenant == "" {
-		tenant = metav1.TenantDefault
+		tenant = metav1.TenantSystem
 	}
 	namespace := ref.Namespace
 	if namespace == "" {
@@ -456,7 +456,7 @@ func NewNode(name string) *v1.Node {
 func NewPod(name, host string) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 			Namespace: "default",
 			Name:      name,
 		},

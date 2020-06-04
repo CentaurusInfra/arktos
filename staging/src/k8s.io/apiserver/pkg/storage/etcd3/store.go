@@ -28,9 +28,10 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3"
 	"k8s.io/klog"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,8 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/storage"
-	"k8s.io/apiserver/pkg/storage/etcd"
-	"k8s.io/apiserver/pkg/storage/etcd/metrics"
+	"k8s.io/apiserver/pkg/storage/etcd3/metrics"
 	"k8s.io/apiserver/pkg/storage/value"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	utiltrace "k8s.io/utils/trace"
@@ -65,16 +65,21 @@ var _ value.Context = authenticatedDataString("")
 
 type store struct {
 	client *clientv3.Client
+	// map from cluster id to etcd client
+	dataClusterClients map[string]*clientv3.Client
 	// getOpts contains additional options that should be passed
 	// to all Get() calls.
-	getOps        []clientv3.OpOption
-	codec         runtime.Codec
-	versioner     storage.Versioner
-	transformer   value.Transformer
-	pathPrefix    string
-	watcher       *watcher
-	pagingEnabled bool
-	leaseManager  *leaseManager
+	getOps              []clientv3.OpOption
+	codec               runtime.Codec
+	versioner           storage.Versioner
+	transformer         value.Transformer
+	pathPrefix          string
+	watcher             *watcher
+	dataClusterWatchers map[string]*watcher
+	pagingEnabled       bool
+	leaseManager        *leaseManager
+
+	mux sync.Mutex
 }
 
 type objState struct {
@@ -86,12 +91,12 @@ type objState struct {
 }
 
 // New returns an etcd3 implementation of storage.Interface.
-func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, updatePartitionCh *bcast.Member) storage.Interface {
+func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, updatePartitionCh *bcast.Member) storage.StorageClusterInterface {
 	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil, updatePartitionCh)
 }
 
 // New returns an etcd3 implementation of storage.Interface with partition config
-func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) storage.Interface {
+func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) storage.StorageClusterInterface {
 	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfigMap, updatePartitionCh)
 }
 
@@ -100,13 +105,14 @@ func newStore(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefi
 }
 
 func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) *store {
-	versioner := etcd.APIObjectVersioner{}
+	versioner := APIObjectVersioner{}
 	result := &store{
-		client:        c,
-		codec:         codec,
-		versioner:     versioner,
-		transformer:   transformer,
-		pagingEnabled: pagingEnabled,
+		client:             c,
+		dataClusterClients: make(map[string]*clientv3.Client),
+		codec:              codec,
+		versioner:          versioner,
+		transformer:        transformer,
+		pagingEnabled:      pagingEnabled,
 		// for compatibility with etcd2 impl.
 		// no-op for default prefix of '/registry'.
 		// keeps compatibility with etcd2 impl for custom prefixes that don't start with '/'
@@ -115,6 +121,50 @@ func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec r
 		leaseManager: newDefaultLeaseManager(c),
 	}
 	return result
+}
+
+func (s *store) AddDataClient(c *clientv3.Client, clusterId string) error {
+	existingClient, isOK := s.dataClusterClients[clusterId]
+	if isOK {
+		err := errors.New(fmt.Sprintf("Trying to add client for existed storage cluster id %s, endpoints [%+v]. Skipping", clusterId, existingClient.Endpoints()))
+		return err
+	}
+
+	s.mux.Lock()
+	s.dataClusterClients[clusterId] = c
+	klog.V(3).Infof("Added new data client with cluster id %s, endpoints [%+v]", clusterId, c.Endpoints())
+	s.mux.Unlock()
+	return nil
+}
+
+func (s *store) UpdateDataClient(c *clientv3.Client, clusterId string) error {
+	existingClient, isOK := s.dataClusterClients[clusterId]
+	if !isOK {
+		klog.Warningf("Expected cluster %s not found in data client map. Adding data client %v", clusterId, c.Endpoints())
+		return s.AddDataClient(c, clusterId)
+	}
+	if reflect.DeepEqual(existingClient.Endpoints(), c.Endpoints()) {
+		klog.Infof("Cluster %s does not have endpoints update. Skip updating. Endpoint %v", clusterId, c.Endpoints())
+		return nil
+	}
+
+	s.mux.Lock()
+	s.dataClusterClients[clusterId] = c
+	klog.V(3).Infof("Updated data client for cluster id %s, endpoints [%+v]", clusterId, c.Endpoints())
+	s.mux.Unlock()
+	return nil
+}
+
+func (s *store) DeleteDataClient(clusterId string) {
+	s.mux.Lock()
+	client, isOK := s.dataClusterClients[clusterId]
+	if isOK {
+		delete(s.dataClusterClients, clusterId)
+		klog.V(3).Infof("Deleted data client for cluster id %s, endpoints [%+v]", clusterId, client.Endpoints())
+	} else {
+		klog.V(3).Infof("Cluster id %s does not have data client. Skip deleting.", clusterId)
+	}
+	s.mux.Unlock()
 }
 
 // Versioner implements storage.Interface.Versioner.
@@ -126,7 +176,7 @@ func (s *store) Versioner() storage.Versioner {
 func (s *store) Get(ctx context.Context, key string, resourceVersion string, out runtime.Object, ignoreNotFound bool) error {
 	key = path.Join(s.pathPrefix, key)
 	startTime := time.Now()
-	getResp, err := s.client.KV.Get(ctx, key, s.getOps...)
+	getResp, err := s.getClientFromKey(key).KV.Get(ctx, key, s.getOps...)
 	metrics.RecordEtcdRequestLatency("get", getTypeName(out), startTime)
 	if err != nil {
 		return err
@@ -173,7 +223,7 @@ func (s *store) Create(ctx context.Context, key string, obj, out runtime.Object,
 	}
 
 	startTime := time.Now()
-	txnResp, err := s.client.KV.Txn(ctx).If(
+	txnResp, err := s.getClientFromKey(key).KV.Txn(ctx).If(
 		notFound(key),
 	).Then(
 		clientv3.OpPut(key, string(newData), opts...),
@@ -205,7 +255,7 @@ func (s *store) Delete(ctx context.Context, key string, out runtime.Object, prec
 
 func (s *store) conditionalDelete(ctx context.Context, key string, out runtime.Object, v reflect.Value, preconditions *storage.Preconditions, validateDeletion storage.ValidateObjectFunc) error {
 	startTime := time.Now()
-	getResp, err := s.client.KV.Get(ctx, key)
+	getResp, err := s.getClientFromKey(key).KV.Get(ctx, key)
 	metrics.RecordEtcdRequestLatency("get", getTypeName(out), startTime)
 	if err != nil {
 		return err
@@ -224,7 +274,7 @@ func (s *store) conditionalDelete(ctx context.Context, key string, out runtime.O
 			return err
 		}
 		startTime := time.Now()
-		txnResp, err := s.client.KV.Txn(ctx).If(
+		txnResp, err := s.getClientFromKey(key).KV.Txn(ctx).If(
 			clientv3.Compare(clientv3.ModRevision(key), "=", origState.rev),
 		).Then(
 			clientv3.OpDelete(key),
@@ -259,7 +309,7 @@ func (s *store) GuaranteedUpdate(
 
 	getCurrentState := func() (*objState, error) {
 		startTime := time.Now()
-		getResp, err := s.client.KV.Get(ctx, key, s.getOps...)
+		getResp, err := s.getClientFromKey(key).KV.Get(ctx, key, s.getOps...)
 		metrics.RecordEtcdRequestLatency("get", getTypeName(out), startTime)
 		if err != nil {
 			return nil, err
@@ -353,7 +403,7 @@ func (s *store) GuaranteedUpdate(
 		trace.Step("Transaction prepared")
 
 		startTime := time.Now()
-		txnResp, err := s.client.KV.Txn(ctx).If(
+		txnResp, err := s.getClientFromKey(key).KV.Txn(ctx).If(
 			clientv3.Compare(clientv3.ModRevision(key), "=", origState.rev),
 		).Then(
 			clientv3.OpPut(key, string(newData), opts...),
@@ -397,7 +447,7 @@ func (s *store) GetToList(ctx context.Context, key string, resourceVersion strin
 
 	key = path.Join(s.pathPrefix, key)
 	startTime := time.Now()
-	getResp, err := s.client.KV.Get(ctx, key, s.getOps...)
+	getResp, err := s.getClientFromKey(key).KV.Get(ctx, key, s.getOps...)
 	metrics.RecordEtcdRequestLatency("get", getTypeName(listPtr), startTime)
 	if err != nil {
 		return err
@@ -419,7 +469,7 @@ func (s *store) GetToList(ctx context.Context, key string, resourceVersion strin
 func (s *store) Count(key string) (int64, error) {
 	key = path.Join(s.pathPrefix, key)
 	startTime := time.Now()
-	getResp, err := s.client.KV.Get(context.Background(), key, clientv3.WithRange(clientv3.GetPrefixRangeEnd(key)), clientv3.WithCountOnly())
+	getResp, err := s.getClientFromKey(key).KV.Get(context.Background(), key, clientv3.WithRange(clientv3.GetPrefixRangeEnd(key)), clientv3.WithCountOnly())
 	metrics.RecordEtcdRequestLatency("listWithCount", key, startTime)
 	if err != nil {
 		return 0, err
@@ -579,7 +629,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 	var getResp *clientv3.GetResponse
 	for {
 		startTime := time.Now()
-		getResp, err = s.client.KV.Get(ctx, key, options...)
+		getResp, err = s.getClientFromKey(key).KV.Get(ctx, key, options...)
 		metrics.RecordEtcdRequestLatency("list", getTypeName(listPtr), startTime)
 		if err != nil {
 			return interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix)
@@ -801,6 +851,17 @@ func (s *store) ttlOpts(ctx context.Context, ttl int64) ([]clientv3.OpOption, er
 		return nil, err
 	}
 	return []clientv3.OpOption{clientv3.WithLease(id)}, nil
+}
+
+// Based on the key tree structure, figure out which client it needs to go to
+// If there is no data cluster, all goes to system cluster
+func (s *store) getClientFromKey(key string) *clientv3.Client {
+	if len(s.dataClusterClients) == 0 {
+		return s.client
+	}
+
+	// TODO - wait for Chenqian's system tenant path update
+	return s.client
 }
 
 // decode decodes value of bytes into object. It will also set the object resource version to rev.

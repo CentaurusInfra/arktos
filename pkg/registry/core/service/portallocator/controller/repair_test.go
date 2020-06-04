@@ -90,7 +90,7 @@ func TestRepairLeak(t *testing.T) {
 	fakeClient := fake.NewSimpleClientset()
 	registry := &mockRangeRegistry{
 		item: &api.RangeAllocation{
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault,
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem,
 				ResourceVersion: "1",
 			},
 			Range: dst.Range,
@@ -137,37 +137,37 @@ func TestRepairWithExisting(t *testing.T) {
 
 	fakeClient := fake.NewSimpleClientset(
 		&corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "one", Name: "one"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "one", Name: "one"},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{{NodePort: 111}},
 			},
 		},
 		&corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "two", Name: "two"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "two", Name: "two"},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{{NodePort: 122}, {NodePort: 133}},
 			},
 		},
 		&corev1.Service{ // outside range, will be dropped
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "three", Name: "three"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "three", Name: "three"},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{{NodePort: 201}},
 			},
 		},
 		&corev1.Service{ // empty, ignored
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "four", Name: "four"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "four", Name: "four"},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{{}},
 			},
 		},
 		&corev1.Service{ // duplicate, dropped
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "five", Name: "five"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "five", Name: "five"},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{{NodePort: 111}},
 			},
 		},
 		&corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantDefault, Namespace: "six", Name: "six"},
+			ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "six", Name: "six"},
 			Spec: corev1.ServiceSpec{
 				HealthCheckNodePort: 144,
 			},

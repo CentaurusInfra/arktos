@@ -63,7 +63,7 @@ type actions struct {
 
 // newActions returns a Actions
 func newActions(c *CoreV1Client, namespace string) *actions {
-	return newActionsWithMultiTenancy(c, namespace, "default")
+	return newActionsWithMultiTenancy(c, namespace, "system")
 }
 
 func newActionsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *actions {

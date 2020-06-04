@@ -63,7 +63,7 @@ const (
 )
 
 func TestServiceAccountAutoCreate(t *testing.T) {
-	testServiceAccountAutoCreate(t, metav1.TenantDefault)
+	testServiceAccountAutoCreate(t, metav1.TenantSystem)
 }
 
 func TestServiceAccountAutoCreateWithMultiTenancy(t *testing.T) {
@@ -108,7 +108,7 @@ func testServiceAccountAutoCreate(t *testing.T, tenant string) {
 }
 
 func TestServiceAccountTokenAutoCreate(t *testing.T) {
-	testServiceAccountTokenAutoCreate(t, metav1.TenantDefault)
+	testServiceAccountTokenAutoCreate(t, metav1.TenantSystem)
 }
 
 func TestServiceAccountTokenAutoCreateWithMultiTenancy(t *testing.T) {
@@ -214,7 +214,7 @@ func testServiceAccountTokenAutoCreate(t *testing.T, tenant string) {
 }
 
 func TestServiceAccountTokenAutoMount(t *testing.T) {
-	testServiceAccountTokenAutoMount(t, metav1.TenantDefault)
+	testServiceAccountTokenAutoMount(t, metav1.TenantSystem)
 }
 
 func TestServiceAccountTokenAutoMountWithMultiTenancy(t *testing.T) {
@@ -304,7 +304,7 @@ func testServiceAccountTokenAutoMount(t *testing.T, tenant string) {
 }
 
 func TestServiceAccountTokenAuthentication(t *testing.T) {
-	testServiceAccountTokenAuthentication(t, metav1.TenantDefault)
+	testServiceAccountTokenAuthentication(t, metav1.TenantSystem)
 }
 
 // Enable the following test after the multi-tenancy authentication is done
@@ -421,7 +421,7 @@ func startServiceAccountTestServer(t *testing.T, tenant string) (*clientset.Clie
 	// 2. A ServiceAccountToken authenticator that validates ServiceAccount tokens
 	rootTokenAuth := authenticator.TokenFunc(func(ctx context.Context, token string) (*authenticator.Response, bool, error) {
 		userTenant := tenant
-		if tenant == metav1.TenantDefault {
+		if tenant == metav1.TenantSystem {
 			userTenant = metav1.TenantSystem
 		}
 		if token == rootToken {

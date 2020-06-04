@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -145,10 +146,10 @@ func TestAddFlags(t *testing.T) {
 			StorageConfig: storagebackend.Config{
 				Type: "etcd3",
 				Transport: storagebackend.TransportConfig{
-					ServerList: nil,
-					KeyFile:    "/var/run/kubernetes/etcd.key",
-					CAFile:     "/var/run/kubernetes/etcdca.crt",
-					CertFile:   "/var/run/kubernetes/etcdce.crt",
+					SystemClusterServerList: nil,
+					KeyFile:                 "/var/run/kubernetes/etcd.key",
+					TrustedCAFile:           "/var/run/kubernetes/etcdca.crt",
+					CertFile:                "/var/run/kubernetes/etcdce.crt",
 				},
 				Paging:                true,
 				Prefix:                "/registry",

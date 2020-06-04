@@ -36,7 +36,7 @@ const (
 
 // CreateTestingNamespace creates a namespace for testing.
 func CreateTestingNamespace(baseName string, apiserver *httptest.Server, t *testing.T) *v1.Namespace {
-	return CreateTestingNamespaceWithMultiTenancy(baseName, apiserver, t, metav1.TenantDefault)
+	return CreateTestingNamespaceWithMultiTenancy(baseName, apiserver, t, metav1.TenantSystem)
 }
 
 // DeleteTestingNamespace is currently a no-op function.

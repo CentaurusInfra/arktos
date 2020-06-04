@@ -22,6 +22,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 func TestTenantGenerate(t *testing.T) {
@@ -34,11 +35,15 @@ func TestTenantGenerate(t *testing.T) {
 		{
 			name: "test1",
 			params: map[string]interface{}{
-				"name": "foo",
+				"name":           "foo",
+				"storagecluster": "1",
 			},
 			expected: &v1.Tenant{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
+				},
+				Spec: v1.TenantSpec{
+					StorageClusterId: "1",
 				},
 			},
 			expectErr: false,
@@ -51,21 +56,24 @@ func TestTenantGenerate(t *testing.T) {
 		{
 			name: "test3",
 			params: map[string]interface{}{
-				"name": 1,
+				"name":           1,
+				"storagecluster": "1",
 			},
 			expectErr: true,
 		},
 		{
 			name: "test4",
 			params: map[string]interface{}{
-				"name": "",
+				"name":           "",
+				"storagecluster": "1",
 			},
 			expectErr: true,
 		},
 		{
 			name: "test5",
 			params: map[string]interface{}{
-				"name": nil,
+				"name":           nil,
+				"storagecluster": "1",
 			},
 			expectErr: true,
 		},
@@ -73,13 +81,46 @@ func TestTenantGenerate(t *testing.T) {
 			name: "test6",
 			params: map[string]interface{}{
 				"name_wrong_key": "some_value",
+				"storagecluster": "1",
 			},
 			expectErr: true,
 		},
 		{
 			name: "test7",
 			params: map[string]interface{}{
-				"NAME": "some_value",
+				"NAME":           "some_value",
+				"storagecluster": "1",
+			},
+			expectErr: true,
+		},
+		{
+			name: "test8",
+			params: map[string]interface{}{
+				"name": "foo",
+			},
+			expectErr: true,
+		},
+		{
+			name: "test9",
+			params: map[string]interface{}{
+				"name":           "foo",
+				"storagecluster": "",
+			},
+			expectErr: true,
+		},
+		{
+			name: "test10",
+			params: map[string]interface{}{
+				"name":           "foo",
+				"storagecluster": "     ",
+			},
+			expectErr: true,
+		},
+		{
+			name: "test10",
+			params: map[string]interface{}{
+				"name":           "foo",
+				"storagecluster": nil,
 			},
 			expectErr: true,
 		},

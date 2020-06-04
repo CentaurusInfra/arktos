@@ -55,14 +55,28 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
+# local function to download runtime deployment file
+copyRuntimeDeploymentFile() {
+  if [[ $# != 2 ]]; then
+    echo "Invalid args in copyRuntimeDeploymentFile"
+    exit 1
+  fi
+
+  fileName=$1
+  pathInSrc=$2
+  if [[ (${OVERWRITE_DEPLOYMENT_FILES} == "true") || (! -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/${fileName}) ]]; then 
+    echo "Getting runtime deployment file " ${fileName}
+    wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/${fileName}  ${VIRTLET_DEPLOYMENT_FILES_SRC}/${pathInSrc}
+  fi
+}
+
 # Get runtime deployment files
-echo "Getting runtime deployment files"
-wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/libvirt-qemu  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/libvirt-qemu
-wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/libvirtd  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/libvirtd
-wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/virtlet  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/virtlet
-wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/vms  ${VIRTLET_DEPLOYMENT_FILES_SRC}/apparmor/vms
-wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml  ${VIRTLET_DEPLOYMENT_FILES_SRC}/data/virtlet-ds.yaml
-wget -O ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml  ${VIRTLET_DEPLOYMENT_FILES_SRC}/images.yaml
+copyRuntimeDeploymentFile "libvirt-qemu" "apparmor/libvirt-qemu"
+copyRuntimeDeploymentFile "libvirtd" "apparmor/libvirtd"
+copyRuntimeDeploymentFile "virtlet" "apparmor/virtlet"
+copyRuntimeDeploymentFile "vms" "apparmor/vms"
+copyRuntimeDeploymentFile "vmruntime.yaml" "data/virtlet-ds.yaml"
+copyRuntimeDeploymentFile "images.yaml" "images.yaml"
 
 if [ "${APPARMOR_ENABLED}" == "true" ]; then
   echo "Config test env under apparmor enabled host"

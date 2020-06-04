@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/storage/etcd"
+	"k8s.io/apiserver/pkg/storage/etcd3"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	storageinformers "k8s.io/client-go/informers/storage/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -361,7 +361,7 @@ func getPodName(pod *v1.Pod) string {
 
 func getPVNameFromPVC(pvc *v1.PersistentVolumeClaim) string {
 	var key string
-	if pvc.Tenant == v1.TenantDefault {
+	if pvc.Tenant == v1.TenantSystem {
 		key = pvc.Spec.VolumeName
 	} else {
 		key = fmt.Sprintf("%s/%s", pvc.Tenant, pvc.Spec.VolumeName)
@@ -447,7 +447,7 @@ func (b *volumeBinder) bindAPIUpdate(podName string, bindings []*bindingInfo, cl
 }
 
 var (
-	versioner = etcd.APIObjectVersioner{}
+	versioner = etcd3.APIObjectVersioner{}
 )
 
 // checkBindings runs through all the PVCs in the Pod and checks:

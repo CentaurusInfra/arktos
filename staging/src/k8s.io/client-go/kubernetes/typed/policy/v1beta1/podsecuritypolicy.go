@@ -62,7 +62,7 @@ type podSecurityPolicies struct {
 
 // newPodSecurityPolicies returns a PodSecurityPolicies
 func newPodSecurityPolicies(c *PolicyV1beta1Client) *podSecurityPolicies {
-	return newPodSecurityPoliciesWithMultiTenancy(c, "default")
+	return newPodSecurityPoliciesWithMultiTenancy(c, "system")
 }
 
 func newPodSecurityPoliciesWithMultiTenancy(c *PolicyV1beta1Client, tenant string) *podSecurityPolicies {

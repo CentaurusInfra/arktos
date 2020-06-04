@@ -49,7 +49,7 @@ func (f fakeNamespaceLister) Get(name string) (*corev1.Namespace, error) {
 }
 
 func (f fakeNamespaceLister) Namespaces() listerv1.NamespaceTenantLister {
-	return fakeNamespaceTenantLister{tenant: "default"}
+	return fakeNamespaceTenantLister{tenant: metav1.TenantSystem}
 }
 
 func (f fakeNamespaceLister) NamespacesWithMultiTenancy(tenant string) listerv1.NamespaceTenantLister {
@@ -76,7 +76,7 @@ func TestGetNamespaceLabels(t *testing.T) {
 	}
 	namespace1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 			Name:   "1",
 			Labels: namespace1Labels,
 		},
@@ -86,7 +86,7 @@ func TestGetNamespaceLabels(t *testing.T) {
 	}
 	namespace2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant: metav1.TenantDefault,
+			Tenant: metav1.TenantSystem,
 			Name:   "2",
 			Labels: namespace2Labels,
 		},
@@ -104,27 +104,27 @@ func TestGetNamespaceLabels(t *testing.T) {
 	}{
 		{
 			name:           "request is for creating namespace, the labels should be from the object itself",
-			attr:           admission.NewAttributesRecord(&namespace2, nil, schema.GroupVersionKind{}, "", metav1.TenantDefault, namespace2.Name, schema.GroupVersionResource{Resource: "namespaces"}, "", admission.Create, &metav1.CreateOptions{}, false, nil),
+			attr:           admission.NewAttributesRecord(&namespace2, nil, schema.GroupVersionKind{}, "", metav1.TenantSystem, namespace2.Name, schema.GroupVersionResource{Resource: "namespaces"}, "", admission.Create, &metav1.CreateOptions{}, false, nil),
 			expectedLabels: namespace2Labels,
 		},
 		{
 			name:           "request is for updating namespace, the labels should be from the new object",
-			attr:           admission.NewAttributesRecord(&namespace2, nil, schema.GroupVersionKind{}, metav1.TenantDefault, namespace2.Name, namespace2.Name, schema.GroupVersionResource{Resource: "namespaces"}, "", admission.Update, &metav1.UpdateOptions{}, false, nil),
+			attr:           admission.NewAttributesRecord(&namespace2, nil, schema.GroupVersionKind{}, metav1.TenantSystem, namespace2.Name, namespace2.Name, schema.GroupVersionResource{Resource: "namespaces"}, "", admission.Update, &metav1.UpdateOptions{}, false, nil),
 			expectedLabels: namespace2Labels,
 		},
 		{
 			name:           "request is for deleting namespace, the labels should be from the cache",
-			attr:           admission.NewAttributesRecord(&namespace2, nil, schema.GroupVersionKind{}, metav1.TenantDefault, namespace1.Name, namespace1.Name, schema.GroupVersionResource{Resource: "namespaces"}, "", admission.Delete, &metav1.DeleteOptions{}, false, nil),
+			attr:           admission.NewAttributesRecord(&namespace2, nil, schema.GroupVersionKind{}, metav1.TenantSystem, namespace1.Name, namespace1.Name, schema.GroupVersionResource{Resource: "namespaces"}, "", admission.Delete, &metav1.DeleteOptions{}, false, nil),
 			expectedLabels: namespace1Labels,
 		},
 		{
 			name:           "request is for namespace/finalizer",
-			attr:           admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{}, metav1.TenantDefault, namespace1.Name, "mock-name", schema.GroupVersionResource{Resource: "namespaces"}, "finalizers", admission.Create, &metav1.CreateOptions{}, false, nil),
+			attr:           admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{}, metav1.TenantSystem, namespace1.Name, "mock-name", schema.GroupVersionResource{Resource: "namespaces"}, "finalizers", admission.Create, &metav1.CreateOptions{}, false, nil),
 			expectedLabels: namespace1Labels,
 		},
 		{
 			name:           "request is for pod",
-			attr:           admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{}, metav1.TenantDefault, namespace1.Name, "mock-name", schema.GroupVersionResource{Resource: "pods"}, "", admission.Create, &metav1.CreateOptions{}, false, nil),
+			attr:           admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{}, metav1.TenantSystem, namespace1.Name, "mock-name", schema.GroupVersionResource{Resource: "pods"}, "", admission.Create, &metav1.CreateOptions{}, false, nil),
 			expectedLabels: namespace1Labels,
 		},
 	}
@@ -146,7 +146,7 @@ func TestNotExemptClusterScopedResource(t *testing.T) {
 	hook := &registrationv1beta1.ValidatingWebhook{
 		NamespaceSelector: &metav1.LabelSelector{},
 	}
-	attr := admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{}, metav1.TenantDefault, "", "mock-name", schema.GroupVersionResource{Version: "v1", Resource: "nodes"}, "", admission.Create, &metav1.CreateOptions{}, false, nil)
+	attr := admission.NewAttributesRecord(nil, nil, schema.GroupVersionKind{}, metav1.TenantSystem, "", "mock-name", schema.GroupVersionResource{Version: "v1", Resource: "nodes"}, "", admission.Create, &metav1.CreateOptions{}, false, nil)
 	matcher := Matcher{}
 	matches, err := matcher.MatchNamespaceSelector(webhook.NewValidatingWebhookAccessor("mock-hook", hook), attr)
 	if err != nil {

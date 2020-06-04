@@ -57,7 +57,7 @@ type podMetricses struct {
 
 // newPodMetricses returns a PodMetricses
 func newPodMetricses(c *MetricsV1alpha1Client, namespace string) *podMetricses {
-	return newPodMetricsesWithMultiTenancy(c, namespace, "default")
+	return newPodMetricsesWithMultiTenancy(c, namespace, "system")
 }
 
 func newPodMetricsesWithMultiTenancy(c *MetricsV1alpha1Client, namespace string, tenant string) *podMetricses {

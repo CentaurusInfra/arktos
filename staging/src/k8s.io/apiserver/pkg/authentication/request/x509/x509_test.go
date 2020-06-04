@@ -20,6 +20,7 @@ package x509
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
@@ -846,6 +847,264 @@ func TestX509Verifier(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestConvertToUserInfo(t *testing.T) {
+	testCases := map[string]struct {
+		input          pkix.Name
+		expectUserInfo *user.DefaultInfo
+		shouldSucceed  bool
+		err            error
+	}{
+		"empty CN": {
+			input: pkix.Name{
+				CommonName: "",
+				Organization: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: nil,
+			shouldSucceed:  false,
+			err:            errors.New(ErrTenantEmptyCN),
+		},
+		"old format, has tenant in CN": {
+			input: pkix.Name{
+				CommonName: "abc:def",
+				Organization: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc:def",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "abc",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"old format, no tenant but has colon in CN": {
+			input: pkix.Name{
+				CommonName: "abc:",
+				Organization: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc:",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "abc",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"old format, no tenant and no colon in CN": {
+			input: pkix.Name{
+				CommonName: "abc",
+				Organization: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"old format, multiple colons in CN": {
+			input: pkix.Name{
+				CommonName: "abc:def:ghi",
+				Organization: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc:def:ghi",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "abc",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"old format, nothing but a colon in CN": {
+			input: pkix.Name{
+				CommonName: ":",
+				Organization: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: ":",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"new format, invalid tenant, old format actually": {
+			input: pkix.Name{
+				CommonName: "abc:def",
+				Organization: []string{
+					"123:ghi",
+					"tenant:ghi",
+				},
+				OrganizationalUnit: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc:def",
+				Groups: []string{
+					"123:ghi",
+					"tenant:ghi",
+				},
+				Tenant: "abc",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"new format, has tenant in organization": {
+			input: pkix.Name{
+				CommonName: "abc",
+				Organization: []string{
+					"tenant:def",
+				},
+				OrganizationalUnit: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "def",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"new format, empty tenant in organization": {
+			input: pkix.Name{
+				CommonName: "abc",
+				Organization: []string{
+					"tenant:",
+				},
+				OrganizationalUnit: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"new format, no colon tenant in organization": {
+			input: pkix.Name{
+				CommonName: "abc",
+				Organization: []string{
+					"tenant",
+				},
+				OrganizationalUnit: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"new format with old format, pick new format": {
+			input: pkix.Name{
+				CommonName: "abc:def",
+				Organization: []string{
+					"tenant:ghi",
+				},
+				OrganizationalUnit: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: &user.DefaultInfo{
+				Name: "abc:def",
+				Groups: []string{
+					"xyz",
+				},
+				Tenant: "ghi",
+			},
+			shouldSucceed: true,
+			err:           nil,
+		},
+		"new format, multiple tenants in multiple organizations": {
+			input: pkix.Name{
+				CommonName: "abc:def",
+				Organization: []string{
+					"tenant:ghi",
+					"tenant:jkl",
+				},
+				OrganizationalUnit: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: nil,
+			shouldSucceed:  false,
+			err:            errors.New(ErrMultipleOrganizationsWithTenant),
+		},
+		"new format, more than one colons": {
+			input: pkix.Name{
+				CommonName: "abc",
+				Organization: []string{
+					"tenant:def:ghi",
+				},
+				OrganizationalUnit: []string{
+					"xyz",
+				},
+			},
+			expectUserInfo: nil,
+			shouldSucceed:  false,
+			err:            errors.New(ErrMultipleTenants),
+		},
+	}
+	for k, testCase := range testCases {
+		actualUserInfo, actualSucceeded, actualErr := convertToUserInfo(testCase.input)
+		if reflect.DeepEqual(testCase.expectUserInfo, actualUserInfo) &&
+			testCase.shouldSucceed == actualSucceeded &&
+			errorsMatch(testCase.err, actualErr) {
+			return
+		}
+		t.Errorf("%s: expect: (%v, %v), actual (%v, %v)",
+			k, testCase.expectUserInfo, testCase.shouldSucceed,
+			actualUserInfo, actualSucceeded)
+	}
+}
+
+func errorsMatch(err1 error, err2 error) bool {
+	if err1 == nil && err2 == nil {
+		return true
+	}
+	if err1 != nil && err2 != nil {
+		return err1.Error() == err2.Error()
+	}
+	return false
 }
 
 func getDefaultVerifyOptions(t *testing.T) x509.VerifyOptions {

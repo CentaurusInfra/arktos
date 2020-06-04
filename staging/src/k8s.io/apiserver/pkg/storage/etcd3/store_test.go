@@ -30,9 +30,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/integration"
 	"github.com/coreos/pkg/capnslog"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/integration"
 	apitesting "k8s.io/apimachinery/pkg/api/apitesting"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +47,6 @@ import (
 	examplev1 "k8s.io/apiserver/pkg/apis/example/v1"
 	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/storage"
-	"k8s.io/apiserver/pkg/storage/etcd"
 	storagetests "k8s.io/apiserver/pkg/storage/tests"
 	"k8s.io/apiserver/pkg/storage/value"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -533,7 +532,7 @@ func TestGuaranteedUpdateChecksStoredData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := store.client.Put(ctx, key, "test! "+string(data)+" ")
+	resp, err := store.getClientFromKey(key).Put(ctx, key, "test! "+string(data)+" ")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1283,7 +1282,7 @@ func TestListInconsistentContinuation(t *testing.T) {
 	}
 
 	// compact to latest revision.
-	versioner := etcd.APIObjectVersioner{}
+	versioner := APIObjectVersioner{}
 	lastRVString := preset[2].storedObj.ResourceVersion
 	lastRV, err := versioner.ParseResourceVersion(lastRVString)
 	if err != nil {

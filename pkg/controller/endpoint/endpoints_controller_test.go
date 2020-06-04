@@ -117,7 +117,7 @@ func addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(store cache.Store, tenant
 }
 
 func makeEndpointsResourcePath(tenant, namespace, name string) string {
-	if tenant == "" || tenant == metav1.TenantDefault {
+	if tenant == "" || tenant == metav1.TenantSystem {
 		return testapi.Default.ResourcePath("endpoints", namespace, name)
 	}
 
@@ -130,7 +130,7 @@ func makeTestServer(t *testing.T, tenant, namespace string) (*httptest.Server, *
 		ResponseBody: runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{}),
 	}
 	mux := http.NewServeMux()
-	if tenant == "" || tenant == metav1.TenantDefault {
+	if tenant == "" || tenant == metav1.TenantSystem {
 		mux.Handle(testapi.Default.ResourcePath("endpoints", namespace, ""), &fakeEndpointsHandler)
 		mux.Handle(testapi.Default.ResourcePath("endpoints/", namespace, ""), &fakeEndpointsHandler)
 	} else {
@@ -146,7 +146,7 @@ func makeTestServer(t *testing.T, tenant, namespace string) (*httptest.Server, *
 }
 
 func makeTenantNamespaceKey(tenant, namespace, name string) string {
-	if tenant == "" || tenant == metav1.TenantDefault {
+	if tenant == "" || tenant == metav1.TenantSystem {
 		return fmt.Sprintf("%s/%s", namespace, name)
 	}
 
@@ -179,7 +179,7 @@ func newController(url string) *endpointController {
 }
 
 func TestSyncEndpointsItemsPreserveNoSelector(t *testing.T) {
-	testSyncEndpointsItemsPreserveNoSelector(t, metav1.TenantDefault)
+	testSyncEndpointsItemsPreserveNoSelector(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsPreserveNoSelectorWithMultiTenancy(t *testing.T) {
@@ -212,7 +212,7 @@ func testSyncEndpointsItemsPreserveNoSelector(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsExistingNilSubsets(t *testing.T) {
-	testSyncEndpointsExistingNilSubsets(t, metav1.TenantDefault)
+	testSyncEndpointsExistingNilSubsets(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsExistingNilSubsetsWithMultiTenancy(t *testing.T) {
@@ -245,7 +245,7 @@ func testSyncEndpointsExistingNilSubsets(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsExistingEmptySubsets(t *testing.T) {
-	testSyncEndpointsExistingEmptySubsets(t, metav1.TenantDefault)
+	testSyncEndpointsExistingEmptySubsets(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsExistingEmptySubsetsWithMultiTenancy(t *testing.T) {
@@ -278,7 +278,7 @@ func testSyncEndpointsExistingEmptySubsets(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsNewNoSubsets(t *testing.T) {
-	testSyncEndpointsNewNoSubsets(t, metav1.TenantDefault)
+	testSyncEndpointsNewNoSubsets(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsNewNoSubsetsWithMultiTenancy(t *testing.T) {
@@ -302,7 +302,7 @@ func testSyncEndpointsNewNoSubsets(t *testing.T, tenant string) {
 }
 
 func TestCheckLeftoverEndpoints(t *testing.T) {
-	testCheckLeftoverEndpoints(t, metav1.TenantDefault)
+	testCheckLeftoverEndpoints(t, metav1.TenantSystem)
 }
 
 func TestCheckLeftoverEndpointsWithMultiTenancy(t *testing.T) {
@@ -338,7 +338,7 @@ func testCheckLeftoverEndpoints(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsProtocolTCP(t *testing.T) {
-	testSyncEndpointsProtocolTCP(t, metav1.TenantDefault)
+	testSyncEndpointsProtocolTCP(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsProtocolTCPWithMultiTenancy(t *testing.T) {
@@ -389,7 +389,7 @@ func testSyncEndpointsProtocolTCP(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsProtocolUDP(t *testing.T) {
-	testSyncEndpointsProtocolUDP(t, metav1.TenantDefault)
+	testSyncEndpointsProtocolUDP(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsProtocolUDPWithMultiTenancy(t *testing.T) {
@@ -440,7 +440,7 @@ func testSyncEndpointsProtocolUDP(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsProtocolSCTP(t *testing.T) {
-	testSyncEndpointsProtocolSCTP(t, metav1.TenantDefault)
+	testSyncEndpointsProtocolSCTP(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsProtocolSCTPWithMultiTenancy(t *testing.T) {
@@ -491,7 +491,7 @@ func testSyncEndpointsProtocolSCTP(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T) {
-	testSyncEndpointsItemsEmptySelectorSelectsAll(t, metav1.TenantDefault)
+	testSyncEndpointsItemsEmptySelectorSelectsAll(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAllWithMultiTenancy(t *testing.T) {
@@ -538,7 +538,7 @@ func testSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T, tenant string) 
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T) {
-	testSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t, metav1.TenantDefault)
+	testSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReadyWithMultiTenancy(t *testing.T) {
@@ -585,7 +585,7 @@ func testSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T, tenant 
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T) {
-	testSyncEndpointsItemsEmptySelectorSelectsAllMixed(t, metav1.TenantDefault)
+	testSyncEndpointsItemsEmptySelectorSelectsAllMixed(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsEmptySelectorSelectsAllMixedWithMultiTenancy(t *testing.T) {
@@ -633,7 +633,7 @@ func testSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T, tenant str
 }
 
 func TestSyncEndpointsItemsPreexisting(t *testing.T) {
-	testSyncEndpointsItemsPreexisting(t, metav1.TenantDefault)
+	testSyncEndpointsItemsPreexisting(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsPreexistingWithMultiTenancy(t *testing.T) {
@@ -683,7 +683,7 @@ func testSyncEndpointsItemsPreexisting(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsItemsPreexistingIdentical(t *testing.T) {
-	testSyncEndpointsItemsPreexistingIdentical(t, metav1.TenantDefault)
+	testSyncEndpointsItemsPreexistingIdentical(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsPreexistingIdenticalWithMultiTenancy(t *testing.T) {
@@ -720,7 +720,7 @@ func testSyncEndpointsItemsPreexistingIdentical(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsItems(t *testing.T) {
-	testSyncEndpointsItems(t, metav1.TenantDefault)
+	testSyncEndpointsItems(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsWithMultiTenancy(t *testing.T) {
@@ -769,7 +769,7 @@ func testSyncEndpointsItems(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsItemsWithLabels(t *testing.T) {
-	testSyncEndpointsItemsWithLabels(t, metav1.TenantDefault)
+	testSyncEndpointsItemsWithLabels(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsWithLabelsWithMultiTenancy(t *testing.T) {
@@ -824,7 +824,7 @@ func testSyncEndpointsItemsWithLabels(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
-	testSyncEndpointsItemsPreexistingLabelsChange(t, metav1.TenantDefault)
+	testSyncEndpointsItemsPreexistingLabelsChange(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsPreexistingLabelsChangeWithMultiTenancy(t *testing.T) {
@@ -884,7 +884,7 @@ func testSyncEndpointsItemsPreexistingLabelsChange(t *testing.T, tenant string) 
 }
 
 func TestWaitsForAllInformersToBeSynced2(t *testing.T) {
-	testWaitsForAllInformersToBeSynced2(t, metav1.TenantDefault)
+	testWaitsForAllInformersToBeSynced2(t, metav1.TenantSystem)
 }
 
 func TestWaitsForAllInformersToBeSynced2WithMultiTenancy(t *testing.T) {
@@ -946,7 +946,7 @@ func testWaitsForAllInformersToBeSynced2(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsHeadlessService(t *testing.T) {
-	testSyncEndpointsHeadlessService(t, metav1.TenantDefault)
+	testSyncEndpointsHeadlessService(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsHeadlessServiceWithMultiTenancy(t *testing.T) {
@@ -997,7 +997,7 @@ func testSyncEndpointsHeadlessService(t *testing.T, tenant string) {
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t *testing.T) {
-	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t, metav1.TenantDefault)
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailedWithMultiTenancy(t *testing.T) {
@@ -1043,7 +1043,7 @@ func testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFail
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t *testing.T) {
-	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t, metav1.TenantDefault)
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceededWithMultiTenancy(t *testing.T) {
@@ -1089,7 +1089,7 @@ func testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucc
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t *testing.T) {
-	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t, metav1.TenantDefault)
+	testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceededWithMultiTenancy(t *testing.T) {
@@ -1135,7 +1135,7 @@ func testSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhase
 }
 
 func TestSyncEndpointsHeadlessWithoutPort(t *testing.T) {
-	testSyncEndpointsHeadlessWithoutPort(t, metav1.TenantDefault)
+	testSyncEndpointsHeadlessWithoutPort(t, metav1.TenantSystem)
 }
 
 func TestSyncEndpointsHeadlessWithoutPortWithMultiTenancy(t *testing.T) {
@@ -1173,7 +1173,7 @@ func testSyncEndpointsHeadlessWithoutPort(t *testing.T, tenant string) {
 // There are 3*5 possibilities(3 types of RestartPolicy by 5 types of PodPhase). Not list them all here.
 // Just list all of the 3 false cases and 3 of the 12 true cases.
 func TestShouldPodBeInEndpoints(t *testing.T) {
-	testShouldPodBeInEndpoints(t, metav1.TenantDefault)
+	testShouldPodBeInEndpoints(t, metav1.TenantSystem)
 }
 
 func TestShouldPodBeInEndpointsWithMultiTenancy(t *testing.T) {
@@ -1270,7 +1270,7 @@ func testShouldPodBeInEndpoints(t *testing.T, tenant string) {
 }
 
 func TestPodToEndpointAddress(t *testing.T) {
-	testPodToEndpointAddress(t, metav1.TenantDefault)
+	testPodToEndpointAddress(t, metav1.TenantSystem)
 }
 
 func TestPodToEndpointAddressWithMultiTenancy(t *testing.T) {
@@ -1312,7 +1312,7 @@ func testPodToEndpointAddress(t *testing.T, tenant string) {
 }
 
 func TestPodChanged(t *testing.T) {
-	testPodChanged(t, metav1.TenantDefault)
+	testPodChanged(t, metav1.TenantSystem)
 }
 
 func TestPodChangedWithMultiTenancy(t *testing.T) {
@@ -1439,7 +1439,7 @@ func TestDetermineNeededServiceUpdates(t *testing.T) {
 }
 
 func TestLastTriggerChangeTimeAnnotation(t *testing.T) {
-	testLastTriggerChangeTimeAnnotation(t, metav1.TenantDefault)
+	testLastTriggerChangeTimeAnnotation(t, metav1.TenantSystem)
 }
 
 func TestLastTriggerChangeTimeAnnotationWithMultiTenancy(t *testing.T) {
@@ -1493,7 +1493,7 @@ func testLastTriggerChangeTimeAnnotation(t *testing.T, tenant string) {
 }
 
 func TestLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T) {
-	testLastTriggerChangeTimeAnnotation_AnnotationOverridden(t, metav1.TenantDefault)
+	testLastTriggerChangeTimeAnnotation_AnnotationOverridden(t, metav1.TenantSystem)
 }
 
 func TestLastTriggerChangeTimeAnnotation_AnnotationOverriddenWithMultiTenancy(t *testing.T) {
@@ -1550,7 +1550,7 @@ func testLastTriggerChangeTimeAnnotation_AnnotationOverridden(t *testing.T, tena
 }
 
 func TestLastTriggerChangeTimeAnnotation_AnnotationCleared(t *testing.T) {
-	testLastTriggerChangeTimeAnnotation_AnnotationCleared(t, metav1.TenantDefault)
+	testLastTriggerChangeTimeAnnotation_AnnotationCleared(t, metav1.TenantSystem)
 }
 
 func TestLastTriggerChangeTimeAnnotation_AnnotationClearedWithMultiTenancy(t *testing.T) {

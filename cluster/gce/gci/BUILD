@@ -25,6 +25,7 @@ go_test(
 release_filegroup(
     name = "gcs-release-artifacts",
     srcs = [
+        "apiserver.yaml",
         "configure.sh",
         "master.yaml",
         "node.yaml",
@@ -39,7 +40,9 @@ pkg_tar(
     files = {
         "//cluster/gce/gci/mounter": "gci-mounter",
         "configure-helper.sh": "gci-configure-helper.sh",
+        "apiserver-configure-helper.sh": "apiserver-configure-helper.sh",
         "health-monitor.sh": "health-monitor.sh",
+        "configure-helper-common.sh": "configure-helper-common.sh",
     },
     mode = "0755",
     strip_prefix = ".",
@@ -66,6 +69,7 @@ filegroup(
 filegroup(
     name = "scripts-test-data",
     srcs = [
+        "apiserver-configure-helper.sh",
         "configure-helper.sh",
     ],
 )

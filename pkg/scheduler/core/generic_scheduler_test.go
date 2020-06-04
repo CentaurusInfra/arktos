@@ -346,9 +346,9 @@ func TestGenericScheduler(t *testing.T) {
 			predicates:   map[string]algorithmpredicates.FitPredicate{"true": truePredicate},
 			prioritizers: []priorities.PriorityConfig{{Map: EqualPriorityMap, Weight: 1}},
 			nodes:        []string{"machine1", "machine2"},
-			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "existingPVC"}}},
+			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "existingPVC"}}},
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "ignore", UID: types.UID("ignore")},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "ignore", UID: types.UID("ignore")},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
 						{
@@ -393,9 +393,9 @@ func TestGenericScheduler(t *testing.T) {
 			predicates:   map[string]algorithmpredicates.FitPredicate{"true": truePredicate},
 			prioritizers: []priorities.PriorityConfig{{Map: EqualPriorityMap, Weight: 1}},
 			nodes:        []string{"machine1", "machine2"},
-			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "existingPVC", DeletionTimestamp: &metav1.Time{}}}},
+			pvcs:         []*v1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "existingPVC", DeletionTimestamp: &metav1.Time{}}}},
 			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "default", Name: "ignore", UID: types.UID("ignore")},
+				ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Name: "ignore", UID: types.UID("ignore")},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
 						{
@@ -626,6 +626,12 @@ func TestZeroRequest(t *testing.T) {
 							strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMilliCPURequest, 10) + "m"),
+					v1.ResourceMemory: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
+				},
 			},
 		},
 	}
@@ -642,6 +648,12 @@ func TestZeroRequest(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse(
 							strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMilliCPURequest*3, 10) + "m"),
+					v1.ResourceMemory: resource.MustParse(
+						strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
 				},
 			},
 		},
@@ -795,6 +807,12 @@ var smallContainers = []v1.Container{
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
 			},
 		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest, 10)),
+		},
 	},
 }
 var mediumContainers = []v1.Container{
@@ -806,6 +824,12 @@ var mediumContainers = []v1.Container{
 				"memory": resource.MustParse(
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest*2, 10)),
 			},
+		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest*2, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest*2, 10)),
 		},
 	},
 }
@@ -819,6 +843,12 @@ var largeContainers = []v1.Container{
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
 			},
 		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest*3, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest*3, 10)),
+		},
 	},
 }
 var veryLargeContainers = []v1.Container{
@@ -830,6 +860,12 @@ var veryLargeContainers = []v1.Container{
 				"memory": resource.MustParse(
 					strconv.FormatInt(priorityutil.DefaultMemoryRequest*5, 10)),
 			},
+		},
+		ResourcesAllocated: v1.ResourceList{
+			"cpu": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMilliCPURequest*5, 10) + "m"),
+			"memory": resource.MustParse(
+				strconv.FormatInt(priorityutil.DefaultMemoryRequest*5, 10)),
 		},
 	},
 }

@@ -58,7 +58,7 @@ func (c *StorageV1beta1Client) StorageClasses() StorageClassInterface {
 }
 
 func (c *StorageV1beta1Client) VolumeAttachments() VolumeAttachmentInterface {
-	return newVolumeAttachmentsWithMultiTenancy(c, "default")
+	return newVolumeAttachmentsWithMultiTenancy(c, "system")
 }
 
 func (c *StorageV1beta1Client) VolumeAttachmentsWithMultiTenancy(tenant string) VolumeAttachmentInterface {

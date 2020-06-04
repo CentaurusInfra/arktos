@@ -108,7 +108,7 @@ func (jm *Controller) syncAll() {
 	// we must also see that the parent CronJob has non-nil DeletionTimestamp (see #42639).
 	// Note that this only works because we are NOT using any caches here.
 	jobListFunc := func(opts metav1.ListOptions) (runtime.Object, error) {
-		return jm.kubeClient.BatchV1().Jobs(metav1.NamespaceAll).List(opts)
+		return jm.kubeClient.BatchV1().JobsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(opts)
 	}
 
 	js := make([]batchv1.Job, 0)
@@ -128,7 +128,7 @@ func (jm *Controller) syncAll() {
 
 	klog.V(4).Infof("Found %d jobs", len(js))
 	cronJobListFunc := func(opts metav1.ListOptions) (runtime.Object, error) {
-		return jm.kubeClient.BatchV1beta1().CronJobs(metav1.NamespaceAll).List(opts)
+		return jm.kubeClient.BatchV1beta1().CronJobsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(opts)
 	}
 
 	jobsBySj := groupJobsByParent(js)
@@ -187,8 +187,7 @@ func cleanupFinishedJobs(sj *batchv1beta1.CronJob, js []batchv1.Job, jc jobContr
 
 	// Update the CronJob, in case jobs were removed from the list.
 	if _, err := sjc.UpdateStatus(sj); err != nil {
-		nameForLog := fmt.Sprintf("%s/%s", sj.Namespace, sj.Name)
-		klog.Infof("Unable to update status for %s (rv = %s): %v", nameForLog, sj.ResourceVersion, err)
+		klog.Infof("Unable to update status for %s (rv = %s): %v", nameForLog(sj), sj.ResourceVersion, err)
 	}
 }
 
@@ -199,7 +198,7 @@ func removeOldestJobs(sj *batchv1beta1.CronJob, js []batchv1.Job, jc jobControlI
 		return
 	}
 
-	nameForLog := fmt.Sprintf("%s/%s", sj.Namespace, sj.Name)
+	nameForLog := nameForLog(sj)
 	klog.V(4).Infof("Cleaning up %d/%d jobs from %s", numToDelete, len(js), nameForLog)
 
 	sort.Sort(byJobStartTime(js))
@@ -209,12 +208,16 @@ func removeOldestJobs(sj *batchv1beta1.CronJob, js []batchv1.Job, jc jobControlI
 	}
 }
 
+func nameForLog(sj *batchv1beta1.CronJob) string {
+	return fmt.Sprintf("%s/%s/%s", sj.Tenant, sj.Namespace, sj.Name)
+}
+
 // syncOne reconciles a CronJob with a list of any Jobs that it created.
 // All known jobs created by "sj" should be included in "js".
 // The current time is passed in to facilitate testing.
 // It has no receiver, to facilitate testing.
 func syncOne(sj *batchv1beta1.CronJob, js []batchv1.Job, now time.Time, jc jobControlInterface, sjc sjControlInterface, recorder record.EventRecorder) {
-	nameForLog := fmt.Sprintf("%s/%s", sj.Namespace, sj.Name)
+	nameForLog := nameForLog(sj)
 
 	childrenJobs := make(map[types.UID]bool)
 	for _, j := range js {
@@ -316,7 +319,7 @@ func syncOne(sj *batchv1beta1.CronJob, js []batchv1.Job, now time.Time, jc jobCo
 		for _, j := range sj.Status.Active {
 			klog.V(4).Infof("Deleting job %s of %s that was still running at next scheduled start time", j.Name, nameForLog)
 
-			job, err := jc.GetJob(j.Namespace, j.Name)
+			job, err := jc.GetJob(j.Tenant, j.Namespace, j.Name)
 			if err != nil {
 				recorder.Eventf(sj, v1.EventTypeWarning, "FailedGet", "Get job: %v", err)
 				return
@@ -332,7 +335,7 @@ func syncOne(sj *batchv1beta1.CronJob, js []batchv1.Job, now time.Time, jc jobCo
 		klog.Errorf("Unable to make Job from template in %s: %v", nameForLog, err)
 		return
 	}
-	jobResp, err := jc.CreateJob(sj.Namespace, jobReq)
+	jobResp, err := jc.CreateJob(sj.Tenant, sj.Namespace, jobReq)
 	if err != nil {
 		recorder.Eventf(sj, v1.EventTypeWarning, "FailedCreate", "Error creating job: %v", err)
 		return
@@ -367,12 +370,11 @@ func syncOne(sj *batchv1beta1.CronJob, js []batchv1.Job, now time.Time, jc jobCo
 
 // deleteJob reaps a job, deleting the job, the pods and the reference in the active list
 func deleteJob(sj *batchv1beta1.CronJob, job *batchv1.Job, jc jobControlInterface, recorder record.EventRecorder) bool {
-	nameForLog := fmt.Sprintf("%s/%s", sj.Namespace, sj.Name)
 
 	// delete the job itself...
-	if err := jc.DeleteJob(job.Namespace, job.Name); err != nil {
+	if err := jc.DeleteJob(job.Tenant, job.Namespace, job.Name); err != nil {
 		recorder.Eventf(sj, v1.EventTypeWarning, "FailedDelete", "Deleted job: %v", err)
-		klog.Errorf("Error deleting job %s from %s: %v", job.Name, nameForLog, err)
+		klog.Errorf("Error deleting job %s from %s: %v", job.Name, nameForLog(sj), err)
 		return false
 	}
 	// ... and its reference from active list

@@ -59,7 +59,7 @@ func makeHandler(name string, accept bool, ops ...Operation) *FakeHandler {
 }
 
 func TestAdmitAndValidate(t *testing.T) {
-	tenant := metav1.TenantDefault
+	tenant := metav1.TenantSystem
 	sysns := metav1.NamespaceSystem
 	otherns := "default"
 	tests := []struct {

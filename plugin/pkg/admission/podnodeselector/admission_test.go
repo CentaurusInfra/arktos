@@ -38,7 +38,7 @@ func TestPodAdmission(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testNamespace",
 			Namespace: "",
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 		},
 	}
 
@@ -52,7 +52,7 @@ func TestPodAdmission(t *testing.T) {
 	informerFactory.Start(stopCh)
 
 	pod := &api.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantDefault},
+		ObjectMeta: metav1.ObjectMeta{Name: "testPod", Namespace: "testNamespace", Tenant: metav1.TenantSystem},
 	}
 
 	tests := []struct {
@@ -163,7 +163,7 @@ func TestPodAdmission(t *testing.T) {
 		handler.clusterNodeSelectors[namespace.Name] = test.whitelist
 		pod.Spec = api.PodSpec{NodeSelector: test.podNodeSelector}
 
-		err := handler.Admit(admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "testNamespace", namespace.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+		err := handler.Admit(admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "testNamespace", namespace.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 		if test.admit && err != nil {
 			t.Errorf("Test: %s, expected no error but got: %s", test.testName, err)
 		} else if !test.admit && err == nil {
@@ -172,7 +172,7 @@ func TestPodAdmission(t *testing.T) {
 		if test.admit && !labels.Equals(test.mergedNodeSelector, labels.Set(pod.Spec.NodeSelector)) {
 			t.Errorf("Test: %s, expected: %s but got: %s", test.testName, test.mergedNodeSelector, pod.Spec.NodeSelector)
 		}
-		err = handler.Validate(admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantDefault, "testNamespace", namespace.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
+		err = handler.Validate(admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), metav1.TenantSystem, "testNamespace", namespace.ObjectMeta.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil), nil)
 		if test.admit && err != nil {
 			t.Errorf("Test: %s, expected no error but got: %s", test.testName, err)
 		} else if !test.admit && err == nil {

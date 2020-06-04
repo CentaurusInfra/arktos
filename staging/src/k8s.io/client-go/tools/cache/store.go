@@ -88,7 +88,7 @@ func MetaNamespaceKeyFunc(obj interface{}) (string, error) {
 	if len(meta.GetNamespace()) > 0 {
 		metaKey = meta.GetNamespace() + "/" + metaKey
 	}
-	if len(meta.GetTenant()) > 0 && meta.GetTenant() != v1.TenantDefault {
+	if len(meta.GetTenant()) > 0 && meta.GetTenant() != v1.TenantSystem {
 		metaKey = meta.GetTenant() + "/" + metaKey
 	}
 
@@ -119,8 +119,8 @@ func SplitMetaTenantNamespaceKey(key string) (tenant, namespace, name string, er
 		// name only, no namespace
 		return "", "", parts[0], nil
 	case 2:
-		// tenant == "default", namespace and name
-		return v1.TenantDefault, parts[0], parts[1], nil
+		// tenant == "system", namespace and name
+		return v1.TenantSystem, parts[0], parts[1], nil
 	case 3:
 		// tenant, namespace and name
 		return parts[0], parts[1], parts[2], nil
@@ -139,8 +139,8 @@ func SplitMetaTenantKey(key string) (tenant, name string, err error) {
 	parts := strings.Split(key, "/")
 	switch len(parts) {
 	case 1:
-		// tenant == "default" and name
-		return v1.TenantDefault, parts[0], nil
+		// tenant == "system" and name
+		return v1.TenantSystem, parts[0], nil
 	case 2:
 		// tenant and name
 		return parts[0], parts[1], nil

@@ -30,7 +30,7 @@ type FakeApiextensions struct {
 }
 
 func (c *FakeApiextensions) CustomResourceDefinitions() internalversion.CustomResourceDefinitionInterface {
-	return &FakeCustomResourceDefinitions{c, "default"}
+	return &FakeCustomResourceDefinitions{c, "system"}
 }
 
 func (c *FakeApiextensions) CustomResourceDefinitionsWithMultiTenancy(tenant string) internalversion.CustomResourceDefinitionInterface {

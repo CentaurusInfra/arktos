@@ -58,6 +58,8 @@ import (
 
 var zero = int64(0)
 
+const testTenant = "johndoe"
+
 func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *daemon.DaemonSetsController, informers.SharedInformerFactory, clientset.Interface) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	_, server, closeFn := framework.RunAMaster(masterConfig)
@@ -141,7 +143,7 @@ func setupScheduler(
 		v1.EventSource{Component: v1.DefaultSchedulerName},
 	)
 	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{
-		Interface: cs.CoreV1().Events(""),
+		Interface: cs.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll),
 	})
 
 	algorithmprovider.ApplyFeatureGates()
@@ -153,7 +155,7 @@ func testLabels() map[string]string {
 	return map[string]string{"name": "test"}
 }
 
-func newDaemonSet(name, namespace string) *apps.DaemonSet {
+func newDaemonSet(tenant, namespace, name string) *apps.DaemonSet {
 	two := int32(2)
 	return &apps.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
@@ -163,6 +165,7 @@ func newDaemonSet(name, namespace string) *apps.DaemonSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
+			Tenant:    tenant,
 		},
 		Spec: apps.DaemonSetSpec{
 			RevisionHistoryLimit: &two,
@@ -184,7 +187,7 @@ func newDaemonSet(name, namespace string) *apps.DaemonSet {
 }
 
 func cleanupDaemonSets(t *testing.T, cs clientset.Interface, ds *apps.DaemonSet) {
-	ds, err := cs.AppsV1().DaemonSets(ds.Namespace).Get(ds.Name, metav1.GetOptions{})
+	ds, err := cs.AppsV1().DaemonSetsWithMultiTenancy(ds.Namespace, ds.Tenant).Get(ds.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Failed to get DaemonSet %s/%s: %v", ds.Namespace, ds.Name, err)
 		return
@@ -200,14 +203,14 @@ func cleanupDaemonSets(t *testing.T, cs clientset.Interface, ds *apps.DaemonSet)
 	// force update to avoid version conflict
 	ds.ResourceVersion = ""
 
-	if ds, err = cs.AppsV1().DaemonSets(ds.Namespace).Update(ds); err != nil {
+	if ds, err = cs.AppsV1().DaemonSetsWithMultiTenancy(ds.Namespace, ds.Tenant).Update(ds); err != nil {
 		t.Errorf("Failed to update DaemonSet %s/%s: %v", ds.Namespace, ds.Name, err)
 		return
 	}
 
 	// Wait for the daemon set controller to kill all the daemon pods.
 	if err := wait.Poll(100*time.Millisecond, 30*time.Second, func() (bool, error) {
-		updatedDS, err := cs.AppsV1().DaemonSets(ds.Namespace).Get(ds.Name, metav1.GetOptions{})
+		updatedDS, err := cs.AppsV1().DaemonSetsWithMultiTenancy(ds.Namespace, ds.Tenant).Get(ds.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -219,7 +222,7 @@ func cleanupDaemonSets(t *testing.T, cs clientset.Interface, ds *apps.DaemonSet)
 
 	falseVar := false
 	deleteOptions := &metav1.DeleteOptions{OrphanDependents: &falseVar}
-	if err := cs.AppsV1().DaemonSets(ds.Namespace).Delete(ds.Name, deleteOptions); err != nil {
+	if err := cs.AppsV1().DaemonSetsWithMultiTenancy(ds.Namespace, ds.Tenant).Delete(ds.Name, deleteOptions); err != nil {
 		t.Errorf("Failed to delete DaemonSet %s/%s: %v", ds.Namespace, ds.Name, err)
 	}
 }
@@ -354,9 +357,9 @@ func validateDaemonSetPodsAndMarkReady(
 
 // podUnschedulable returns a condition function that returns true if the given pod
 // gets unschedulable status.
-func podUnschedulable(c clientset.Interface, podNamespace, podName string) wait.ConditionFunc {
+func podUnschedulable(c clientset.Interface, podTenant, podNamespace, podName string) wait.ConditionFunc {
 	return func() (bool, error) {
-		pod, err := c.CoreV1().Pods(podNamespace).Get(podName, metav1.GetOptions{})
+		pod, err := c.CoreV1().PodsWithMultiTenancy(podNamespace, podTenant).Get(podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -373,7 +376,7 @@ func podUnschedulable(c clientset.Interface, podNamespace, podName string) wait.
 // waitForPodUnscheduleWithTimeout waits for a pod to fail scheduling and returns
 // an error if it does not become unschedulable within the given timeout.
 func waitForPodUnschedulableWithTimeout(cs clientset.Interface, pod *v1.Pod, timeout time.Duration) error {
-	return wait.Poll(100*time.Millisecond, timeout, podUnschedulable(cs, pod.Namespace, pod.Name))
+	return wait.Poll(100*time.Millisecond, timeout, podUnschedulable(cs, pod.Tenant, pod.Namespace, pod.Name))
 }
 
 // waitForPodUnschedule waits for a pod to fail scheduling and returns
@@ -390,9 +393,9 @@ func waitForPodsCreated(podInformer cache.SharedIndexInformer, num int) error {
 	})
 }
 
-func waitForDaemonSetAndControllerRevisionCreated(c clientset.Interface, name string, namespace string) error {
+func waitForDaemonSetAndControllerRevisionCreated(c clientset.Interface, name string, namespace string, tenant string) error {
 	return wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (bool, error) {
-		ds, err := c.AppsV1().DaemonSets(namespace).Get(name, metav1.GetOptions{})
+		ds, err := c.AppsV1().DaemonSetsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -400,7 +403,7 @@ func waitForDaemonSetAndControllerRevisionCreated(c clientset.Interface, name st
 			return false, nil
 		}
 
-		revs, err := c.AppsV1().ControllerRevisions(namespace).List(metav1.ListOptions{})
+		revs, err := c.AppsV1().ControllerRevisionsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -516,11 +519,11 @@ func TestOneNodeDaemonLaunchesPod(t *testing.T) {
 		forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 			server, closeFn, dc, informers, clientset := setup(t)
 			defer closeFn()
-			ns := framework.CreateTestingNamespace("one-node-daemonset-test", server, t)
+			ns := framework.CreateTestingNamespaceWithMultiTenancy("one-node-daemonset-test", server, t, testTenant)
 			defer framework.DeleteTestingNamespace(ns, server, t)
 
-			dsClient := clientset.AppsV1().DaemonSets(ns.Name)
-			podClient := clientset.CoreV1().Pods(ns.Name)
+			dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
+			podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
@@ -533,7 +536,7 @@ func TestOneNodeDaemonLaunchesPod(t *testing.T) {
 			informers.Start(stopCh)
 			go dc.Run(5, stopCh)
 
-			ds := newDaemonSet("foo", ns.Name)
+			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
 			_, err := dsClient.Create(ds)
 			if err != nil {
@@ -557,11 +560,11 @@ func TestSimpleDaemonSetLaunchesPods(t *testing.T) {
 		forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 			server, closeFn, dc, informers, clientset := setup(t)
 			defer closeFn()
-			ns := framework.CreateTestingNamespace("simple-daemonset-test", server, t)
+			ns := framework.CreateTestingNamespaceWithMultiTenancy("simple-daemonset-test", server, t, testTenant)
 			defer framework.DeleteTestingNamespace(ns, server, t)
 
-			dsClient := clientset.AppsV1().DaemonSets(ns.Name)
-			podClient := clientset.CoreV1().Pods(ns.Name)
+			dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
+			podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
@@ -574,7 +577,7 @@ func TestSimpleDaemonSetLaunchesPods(t *testing.T) {
 			// Start Scheduler
 			setupScheduler(t, clientset, informers, stopCh)
 
-			ds := newDaemonSet("foo", ns.Name)
+			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
 			_, err := dsClient.Create(ds)
 			if err != nil {
@@ -595,11 +598,11 @@ func TestDaemonSetWithNodeSelectorLaunchesPods(t *testing.T) {
 		forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 			server, closeFn, dc, informers, clientset := setup(t)
 			defer closeFn()
-			ns := framework.CreateTestingNamespace("simple-daemonset-test", server, t)
+			ns := framework.CreateTestingNamespaceWithMultiTenancy("simple-daemonset-test", server, t, testTenant)
 			defer framework.DeleteTestingNamespace(ns, server, t)
 
-			dsClient := clientset.AppsV1().DaemonSets(ns.Name)
-			podClient := clientset.CoreV1().Pods(ns.Name)
+			dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
+			podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
@@ -612,7 +615,7 @@ func TestDaemonSetWithNodeSelectorLaunchesPods(t *testing.T) {
 			// Start Scheduler
 			setupScheduler(t, clientset, informers, stopCh)
 
-			ds := newDaemonSet("foo", ns.Name)
+			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
 
 			ds.Spec.Template.Spec.Affinity = &v1.Affinity{
@@ -665,11 +668,11 @@ func TestNotReadyNodeDaemonDoesLaunchPod(t *testing.T) {
 	forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 		server, closeFn, dc, informers, clientset := setup(t)
 		defer closeFn()
-		ns := framework.CreateTestingNamespace("simple-daemonset-test", server, t)
+		ns := framework.CreateTestingNamespaceWithMultiTenancy("simple-daemonset-test", server, t, testTenant)
 		defer framework.DeleteTestingNamespace(ns, server, t)
 
-		dsClient := clientset.AppsV1().DaemonSets(ns.Name)
-		podClient := clientset.CoreV1().Pods(ns.Name)
+		dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
+		podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 		nodeClient := clientset.CoreV1().Nodes()
 		podInformer := informers.Core().V1().Pods().Informer()
 
@@ -682,7 +685,7 @@ func TestNotReadyNodeDaemonDoesLaunchPod(t *testing.T) {
 		// Start Scheduler
 		setupScheduler(t, clientset, informers, stopCh)
 
-		ds := newDaemonSet("foo", ns.Name)
+		ds := newDaemonSet(testTenant, ns.Name, "foo")
 		ds.Spec.UpdateStrategy = *strategy
 		_, err := dsClient.Create(ds)
 		if err != nil {
@@ -714,12 +717,12 @@ func TestInsufficientCapacityNodeDaemonDoesNotLaunchPod(t *testing.T) {
 	forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 		server, closeFn, dc, informers, clientset := setup(t)
 		defer closeFn()
-		ns := framework.CreateTestingNamespace("insufficient-capacity", server, t)
+		ns := framework.CreateTestingNamespaceWithMultiTenancy("insufficient-capacity", server, t, testTenant)
 		defer framework.DeleteTestingNamespace(ns, server, t)
 
-		dsClient := clientset.AppsV1().DaemonSets(ns.Name)
+		dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
 		nodeClient := clientset.CoreV1().Nodes()
-		eventClient := clientset.CoreV1().Events(ns.Namespace)
+		eventClient := clientset.CoreV1().EventsWithMultiTenancy(ns.Namespace, ns.Tenant)
 
 		stopCh := make(chan struct{})
 		defer close(stopCh)
@@ -727,7 +730,7 @@ func TestInsufficientCapacityNodeDaemonDoesNotLaunchPod(t *testing.T) {
 		informers.Start(stopCh)
 		go dc.Run(5, stopCh)
 
-		ds := newDaemonSet("foo", ns.Name)
+		ds := newDaemonSet(testTenant, ns.Name, "foo")
 		ds.Spec.Template.Spec = resourcePodSpec("node-with-limited-memory", "120M", "75m")
 		ds.Spec.UpdateStrategy = *strategy
 		_, err := dsClient.Create(ds)
@@ -756,11 +759,11 @@ func TestInsufficientCapacityNodeWhenScheduleDaemonSetPodsEnabled(t *testing.T) 
 	forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 		server, closeFn, dc, informers, clientset := setup(t)
 		defer closeFn()
-		ns := framework.CreateTestingNamespace("insufficient-capacity", server, t)
+		ns := framework.CreateTestingNamespaceWithMultiTenancy("insufficient-capacity", server, t, testTenant)
 		defer framework.DeleteTestingNamespace(ns, server, t)
 
-		dsClient := clientset.AppsV1().DaemonSets(ns.Name)
-		podClient := clientset.CoreV1().Pods(ns.Name)
+		dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
+		podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 		podInformer := informers.Core().V1().Pods().Informer()
 		nodeClient := clientset.CoreV1().Nodes()
 		stopCh := make(chan struct{})
@@ -772,7 +775,7 @@ func TestInsufficientCapacityNodeWhenScheduleDaemonSetPodsEnabled(t *testing.T) 
 		// Start Scheduler
 		setupScheduler(t, clientset, informers, stopCh)
 
-		ds := newDaemonSet("foo", ns.Name)
+		ds := newDaemonSet(testTenant, ns.Name, "foo")
 		ds.Spec.Template.Spec = resourcePodSpec("", "120M", "75m")
 		ds.Spec.UpdateStrategy = *strategy
 		ds, err := dsClient.Create(ds)
@@ -820,10 +823,10 @@ func TestInsufficientCapacityNodeWhenScheduleDaemonSetPodsEnabled(t *testing.T) 
 func TestLaunchWithHashCollision(t *testing.T) {
 	server, closeFn, dc, informers, clientset := setup(t)
 	defer closeFn()
-	ns := framework.CreateTestingNamespace("one-node-daemonset-test", server, t)
+	ns := framework.CreateTestingNamespaceWithMultiTenancy("one-node-daemonset-test", server, t, testTenant)
 	defer framework.DeleteTestingNamespace(ns, server, t)
 
-	dsClient := clientset.AppsV1().DaemonSets(ns.Name)
+	dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
 	podInformer := informers.Core().V1().Pods().Informer()
 	nodeClient := clientset.CoreV1().Nodes()
 
@@ -842,7 +845,7 @@ func TestLaunchWithHashCollision(t *testing.T) {
 	}
 
 	// Create new DaemonSet with RollingUpdate strategy
-	orgDs := newDaemonSet("foo", ns.Name)
+	orgDs := newDaemonSet(testTenant, ns.Name, "foo")
 	oneIntString := intstr.FromInt(1)
 	orgDs.Spec.UpdateStrategy = apps.DaemonSetUpdateStrategy{
 		Type: apps.RollingUpdateDaemonSetStrategyType,
@@ -856,7 +859,7 @@ func TestLaunchWithHashCollision(t *testing.T) {
 	}
 
 	// Wait for the DaemonSet to be created before proceeding
-	err = waitForDaemonSetAndControllerRevisionCreated(clientset, ds.Name, ds.Namespace)
+	err = waitForDaemonSetAndControllerRevisionCreated(clientset, ds.Name, ds.Namespace, ds.Tenant)
 	if err != nil {
 		t.Fatalf("Failed to create DaemonSet: %v", err)
 	}
@@ -872,7 +875,7 @@ func TestLaunchWithHashCollision(t *testing.T) {
 
 	// Look up the ControllerRevision for the DaemonSet
 	_, name := hashAndNameForDaemonSet(ds)
-	revision, err := clientset.AppsV1().ControllerRevisions(ds.Namespace).Get(name, metav1.GetOptions{})
+	revision, err := clientset.AppsV1().ControllerRevisionsWithMultiTenancy(ds.Namespace, ds.Tenant).Get(name, metav1.GetOptions{})
 	if err != nil || revision == nil {
 		t.Fatalf("Failed to look up ControllerRevision: %v", err)
 	}
@@ -887,6 +890,7 @@ func TestLaunchWithHashCollision(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            newName,
 			Namespace:       ds.Namespace,
+			Tenant:          ds.Tenant,
 			Labels:          labelsutil.CloneAndAddLabel(ds.Spec.Template.Labels, apps.DefaultDaemonSetUniqueLabelKey, newHash),
 			Annotations:     ds.Annotations,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ds, apps.SchemeGroupVersion.WithKind("DaemonSet"))},
@@ -894,7 +898,7 @@ func TestLaunchWithHashCollision(t *testing.T) {
 		Data:     revision.Data,
 		Revision: revision.Revision + 1,
 	}
-	_, err = clientset.AppsV1().ControllerRevisions(ds.Namespace).Create(newRevision)
+	_, err = clientset.AppsV1().ControllerRevisionsWithMultiTenancy(ds.Namespace, ds.Tenant).Create(newRevision)
 	if err != nil {
 		t.Fatalf("Failed to create ControllerRevision: %v", err)
 	}
@@ -930,11 +934,11 @@ func TestTaintedNode(t *testing.T) {
 		forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 			server, closeFn, dc, informers, clientset := setup(t)
 			defer closeFn()
-			ns := framework.CreateTestingNamespace("tainted-node", server, t)
+			ns := framework.CreateTestingNamespaceWithMultiTenancy("tainted-node", server, t, testTenant)
 			defer framework.DeleteTestingNamespace(ns, server, t)
 
-			dsClient := clientset.AppsV1().DaemonSets(ns.Name)
-			podClient := clientset.CoreV1().Pods(ns.Name)
+			dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
+			podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 			podInformer := informers.Core().V1().Pods().Informer()
 			nodeClient := clientset.CoreV1().Nodes()
 			stopCh := make(chan struct{})
@@ -946,7 +950,7 @@ func TestTaintedNode(t *testing.T) {
 
 			go dc.Run(5, stopCh)
 
-			ds := newDaemonSet("foo", ns.Name)
+			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
 			ds, err := dsClient.Create(ds)
 			if err != nil {
@@ -998,11 +1002,11 @@ func TestUnschedulableNodeDaemonDoesLaunchPod(t *testing.T) {
 		forEachStrategy(t, func(t *testing.T, strategy *apps.DaemonSetUpdateStrategy) {
 			server, closeFn, dc, informers, clientset := setup(t)
 			defer closeFn()
-			ns := framework.CreateTestingNamespace("daemonset-unschedulable-test", server, t)
+			ns := framework.CreateTestingNamespaceWithMultiTenancy("daemonset-unschedulable-test", server, t, testTenant)
 			defer framework.DeleteTestingNamespace(ns, server, t)
 
-			dsClient := clientset.AppsV1().DaemonSets(ns.Name)
-			podClient := clientset.CoreV1().Pods(ns.Name)
+			dsClient := clientset.AppsV1().DaemonSetsWithMultiTenancy(ns.Name, ns.Tenant)
+			podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
@@ -1015,7 +1019,7 @@ func TestUnschedulableNodeDaemonDoesLaunchPod(t *testing.T) {
 			// Start Scheduler
 			setupScheduler(t, clientset, informers, stopCh)
 
-			ds := newDaemonSet("foo", ns.Name)
+			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
 			ds.Spec.Template.Spec.HostNetwork = true
 			_, err := dsClient.Create(ds)

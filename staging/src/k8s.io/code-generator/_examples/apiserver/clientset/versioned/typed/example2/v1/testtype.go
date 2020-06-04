@@ -64,7 +64,7 @@ type testTypes struct {
 
 // newTestTypes returns a TestTypes
 func newTestTypes(c *SecondExampleV1Client, namespace string) *testTypes {
-	return newTestTypesWithMultiTenancy(c, namespace, "default")
+	return newTestTypesWithMultiTenancy(c, namespace, "system")
 }
 
 func newTestTypesWithMultiTenancy(c *SecondExampleV1Client, namespace string, tenant string) *testTypes {

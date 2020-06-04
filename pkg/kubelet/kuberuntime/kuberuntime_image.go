@@ -28,7 +28,6 @@ import (
 	credentialprovidersecrets "k8s.io/kubernetes/pkg/credentialprovider/secrets"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/util/parsers"
-	"strings"
 )
 
 // PullImage pulls an image from the network to local storage using the supplied
@@ -36,6 +35,11 @@ import (
 // TODO: interface to check if image exists on a service
 //       maybe more straitforward way to iterate on each image services
 func (m *kubeGenericRuntimeManager) PullImage(image kubecontainer.ImageSpec, pullSecrets []v1.Secret, podSandboxConfig *runtimeapi.PodSandboxConfig) (string, error) {
+	if image.Pod == nil {
+		klog.Errorf("Pod is not set in imageSpec: %v", image)
+		return "", fmt.Errorf("POD is not set in imageSpec")
+	}
+
 	img := image.Image
 	repoToPull, _, _, err := parsers.ParseImageName(img)
 	if err != nil {
@@ -47,36 +51,25 @@ func (m *kubeGenericRuntimeManager) PullImage(image kubecontainer.ImageSpec, pul
 		return "", err
 	}
 
-	var imageServices []internalapi.ImageManagerService
+	var imageService internalapi.ImageManagerService
 
-	// Get the image service from the map cache for this image
-	imageWithoutTag := strings.Split(image.Image, ":")[0]
-	if is := m.getPodImageService(imageWithoutTag); is != nil {
-		klog.Infof("Got desired image service for image %v, %v", image, is)
-		imageServices = []internalapi.ImageManagerService{is}
+	if is, err := m.GetImageServiceByPod(image.Pod); err != nil {
+		klog.Errorf("GetAllImageServices Failed: %v", err)
 	} else {
-		klog.Infof("Cannot find desired image service for image %s, loop through all image services to pull", image.Image)
-		imageServices, err = m.GetAllImageServices()
-		if err != nil {
-			klog.Errorf("GetAllImageServices Failed: %v", err)
-			return "", err
-		}
+		klog.V(5).Infof("Got desired image service for image %v, %v", image, is)
+		imageService = is
 	}
 
 	imgSpec := &runtimeapi.ImageSpec{Image: img}
 	creds, withCredentials := keyring.Lookup(repoToPull)
 	if !withCredentials {
-		klog.V(3).Infof("Pulling image %q without credentials", img)
-
-		for idx, imageService := range imageServices {
-			klog.Infof("Pulling image with image service %d:%v", idx, imageService)
-			imageRef, err := imageService.PullImage(imgSpec, nil, podSandboxConfig)
-			if err != nil {
-				klog.Errorf("Pull image %q failed: %v", img, err)
-			} else {
-				klog.Infof("Got image ref for image %q: %v", image, imageRef)
-				return imageRef, nil
-			}
+		klog.V(4).Infof("Pulling image with image service %v", imageService)
+		imageRef, err := imageService.PullImage(imgSpec, nil, podSandboxConfig)
+		if err != nil {
+			klog.Errorf("Pull image %q failed: %v", img, err)
+		} else {
+			klog.V(5).Infof("Pull image ref for image %q: %v", image, imageRef)
+			return imageRef, nil
 		}
 	}
 
@@ -92,17 +85,15 @@ func (m *kubeGenericRuntimeManager) PullImage(image kubecontainer.ImageSpec, pul
 			RegistryToken: authConfig.RegistryToken,
 		}
 
-		for idx, imageService := range imageServices {
-			klog.Infof("Pulling image with image service %d:%v", idx, imageService)
-			imageRef, err := imageService.PullImage(imgSpec, auth, podSandboxConfig)
-			// If there was no error, return success
-			if err == nil {
-				klog.Infof("Got image ref for image %q: %v", image, imageRef)
-				return imageRef, nil
-			}
+		klog.V(4).Infof("Pulling image with image service %v", imageService)
+		imageRef, err := imageService.PullImage(imgSpec, auth, podSandboxConfig)
+		if err != nil {
 			klog.Errorf("Pull image %q failed: %v", img, err)
-			pullErrs = append(pullErrs, err)
+		} else {
+			klog.V(5).Infof("Pull image ref for image %q: %v", image, imageRef)
+			return imageRef, nil
 		}
+		pullErrs = append(pullErrs, err)
 	}
 
 	return "", utilerrors.NewAggregate(pullErrs)
@@ -111,33 +102,28 @@ func (m *kubeGenericRuntimeManager) PullImage(image kubecontainer.ImageSpec, pul
 // GetImageRef gets the ID of the image which has already been in
 // the local storage. It returns ("", nil) if the image isn't in the local storage.
 func (m *kubeGenericRuntimeManager) GetImageRef(image kubecontainer.ImageSpec) (string, error) {
-
-	// Get the image service from the map cache for this image
-	var imageServices []internalapi.ImageManagerService
-	var err error
-	// Get the image service from the map cache for this image
-	imageWithoutTag := strings.Split(image.Image, ":")[0]
-	if is := m.getPodImageService(imageWithoutTag); is != nil {
-		klog.Infof("Got desired image service for image %v, %v", image, is)
-		imageServices = []internalapi.ImageManagerService{is}
-	} else {
-		klog.Infof("Cannot find desired image service for image %s, loop through all image services to pull", image.Image)
-		imageServices, err = m.GetAllImageServices()
-		if err != nil {
-			klog.Errorf("GetAllImageServices Failed: %v", err)
-			return "", err
-		}
+	if image.Pod == nil {
+		klog.Errorf("Pod is not set in imageSpec: %v", image)
+		return "", fmt.Errorf("POD is not set in imageSpec")
 	}
 
-	for _, imageService := range imageServices {
-		status, err := imageService.ImageStatus(&runtimeapi.ImageSpec{Image: image.Image})
-		if err != nil || status == nil {
-			klog.Infof("ImageStatus for image %q failed: %v", image, err)
-		} else {
-			klog.Errorf("Got ImageStatus for image %q: %v", image, status)
-			return status.Id, nil
-		}
+	var imageService internalapi.ImageManagerService
+	var err error
 
+	if is, err := m.GetImageServiceByPod(image.Pod); err == nil {
+		klog.V(5).Infof("Got desired image service for image %v, %v", image, is)
+		imageService = is
+	} else {
+		klog.Errorf("Cannot find desired image service for imageSpec: %v, Error: %v", image, err)
+		return "", err
+	}
+
+	status, err := imageService.ImageStatus(&runtimeapi.ImageSpec{Image: image.Image})
+	if err != nil || status == nil {
+		klog.Errorf("ImageStatus for image %q failed: %v", image, err)
+	} else {
+		klog.V(5).Infof("Got ImageStatus for image %q: %v", image, status)
+		return status.Id, nil
 	}
 
 	// if not found, return "", nil
@@ -145,8 +131,6 @@ func (m *kubeGenericRuntimeManager) GetImageRef(image kubecontainer.ImageSpec) (
 }
 
 // ListImages gets all images currently on the machine.
-// TODO: what if the dup image from different imageService ?
-//
 func (m *kubeGenericRuntimeManager) ListImages() ([]kubecontainer.Image, error) {
 	var images []kubecontainer.Image
 
@@ -177,28 +161,25 @@ func (m *kubeGenericRuntimeManager) ListImages() ([]kubecontainer.Image, error) 
 }
 
 // RemoveImage removes the specified image.
-// TODO: implement a imageExists interface method here
+// Note that the image_gc_manager uses ImageID in the imageSpec to call the RemoveImages API
 //
 func (m *kubeGenericRuntimeManager) RemoveImage(image kubecontainer.ImageSpec) error {
-
 	imageServices, err := m.GetAllImageServices()
 	if err != nil {
-		klog.Errorf("GetAllImageServices Failed: %v", err)
+		klog.Errorf("GetAllImageServices  Failed: %v", err)
 		return err
 	}
 
 	for _, imageService := range imageServices {
 		err := imageService.RemoveImage(&runtimeapi.ImageSpec{Image: image.Image})
-		// ignore the error and continue to next imageServices
+		// log the error and continue to next imageServices
 		//
 		if err != nil {
-			klog.Errorf("Remove image %q failed: %v", image.Image, err)
-
-		} else {
-			// delete entry from the cache
-			m.removePodImageService(image.Image)
-			return nil
+			klog.Warningf("Remove image %q failed: %v", image.Image, err)
+			continue
 		}
+
+		return nil
 	}
 
 	// return error if reaching here
@@ -208,8 +189,8 @@ func (m *kubeGenericRuntimeManager) RemoveImage(image kubecontainer.ImageSpec) e
 // ImageStats returns the statistics of the image.
 // Notice that current logic doesn't really work for images which share layers (e.g. docker image),
 // this is a known issue, and we'll address this by getting imagefs stats directly from CRI.
-// TODO: Get imagefs stats directly from CRI.
-// TODO: the ImageStates should be per imageService
+// Since the ImageStats is used by Cadvisor and imageGC for disk cleanup, return total size for
+// all image services registered at the node.
 //
 func (m *kubeGenericRuntimeManager) ImageStats() (*kubecontainer.ImageStats, error) {
 	imageServices, err := m.GetAllImageServices()

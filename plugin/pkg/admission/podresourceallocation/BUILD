@@ -12,6 +12,7 @@ go_library(
     importpath = "k8s.io/kubernetes/plugin/pkg/admission/podresourceallocation",
     deps = [
         "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/helper/qos:go_default_library",
         "//pkg/auth/nodeidentifier:go_default_library",
         "//pkg/features:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",

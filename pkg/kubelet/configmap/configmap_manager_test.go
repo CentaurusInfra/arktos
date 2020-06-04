@@ -35,11 +35,11 @@ import (
 )
 
 func checkObject(t *testing.T, store manager.Store, ns, name string, shouldExist bool) {
-	_, err := store.Get(metav1.TenantDefault, ns, name)
+	_, err := store.Get(metav1.TenantSystem, ns, name)
 	if shouldExist && err != nil {
 		t.Errorf("unexpected actions: %#v", err)
 	}
-	if !shouldExist && (err == nil || !strings.Contains(err.Error(), fmt.Sprintf("object %q/%q/%q not registered", metav1.TenantDefault, ns, name))) {
+	if !shouldExist && (err == nil || !strings.Contains(err.Error(), fmt.Sprintf("object %q/%q/%q not registered", metav1.TenantSystem, ns, name))) {
 		t.Errorf("unexpected actions: %#v", err)
 	}
 }
@@ -67,7 +67,7 @@ type configMapsToAttach struct {
 func podWithConfigMaps(ns, podName string, toAttach configMapsToAttach) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:    metav1.TenantDefault,
+			Tenant:    metav1.TenantSystem,
 			Namespace: ns,
 			Name:      podName,
 		},

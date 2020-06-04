@@ -40,11 +40,11 @@ var (
 )
 
 func TestLogsForObject(t *testing.T) {
-	testLogsForObject(t, metav1.TenantDefault)
+	testLogsForObject(t, metav1.TenantSystem)
 }
 
 func TestLogsForObjectWithMultiTenancy(t *testing.T) {
-	testLogsForObject(t, metav1.TenantDefault)
+	testLogsForObject(t, metav1.TenantSystem)
 }
 
 func testLogsForObject(t *testing.T, tenant string) {

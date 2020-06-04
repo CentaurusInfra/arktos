@@ -56,7 +56,7 @@ func (s *deploymentLister) List(selector labels.Selector) (ret []*v1beta1.Deploy
 
 // Deployments returns an object that can list and get Deployments.
 func (s *deploymentLister) Deployments(namespace string) DeploymentNamespaceLister {
-	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "default"}
+	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
 }
 
 func (s *deploymentLister) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentNamespaceLister {
@@ -91,7 +91,7 @@ func (s deploymentNamespaceLister) List(selector labels.Selector) (ret []*v1beta
 // Get retrieves the Deployment from the indexer for a given namespace and name.
 func (s deploymentNamespaceLister) Get(name string) (*v1beta1.Deployment, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

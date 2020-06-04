@@ -127,7 +127,7 @@ func TestExtractInvalidPods(t *testing.T) {
 }
 
 func TestExtractPodsFromHTTP(t *testing.T) {
-	testExtractPodsFromHTTP(t, metav1.TenantDefault)
+	testExtractPodsFromHTTP(t, metav1.TenantSystem)
 }
 
 func TestExtractPodsFromHTTPWithMultiTenancy(t *testing.T) {
@@ -348,7 +348,7 @@ func testExtractPodsFromHTTP(t *testing.T, tenant string) {
 }
 
 func TestURLWithHeader(t *testing.T) {
-	testURLWithHeader(t, metav1.TenantDefault)
+	testURLWithHeader(t, metav1.TenantSystem)
 }
 
 func TestURLWithHeaderWithMultiTenancy(t *testing.T) {

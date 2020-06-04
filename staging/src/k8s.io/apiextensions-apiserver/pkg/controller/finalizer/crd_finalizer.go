@@ -186,6 +186,7 @@ func (c *CRDFinalizer) deleteInstances(crd *apiextensions.CustomResourceDefiniti
 	}
 
 	ctx := genericapirequest.NewContext()
+	ctx = genericapirequest.WithTenant(ctx, crd.Tenant)
 	allResources, err := crClient.List(ctx, nil)
 	if err != nil {
 		return apiextensions.CustomResourceDefinitionCondition{

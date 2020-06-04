@@ -165,7 +165,7 @@ func newReplicaSet(name string, replicas int, tenant string) *apps.ReplicaSet {
 }
 
 func TestControllerExpectations(t *testing.T) {
-	testControllerExpectations(t, metav1.TenantDefault)
+	testControllerExpectations(t, metav1.TenantSystem)
 }
 
 func TestControllerExpectationsWithMultiTenancy(t *testing.T) {
@@ -237,7 +237,7 @@ func testControllerExpectations(t *testing.T, tenant string) {
 }
 
 func TestUIDExpectations(t *testing.T) {
-	testUIDExpectations(t, metav1.TenantDefault)
+	testUIDExpectations(t, metav1.TenantSystem)
 }
 
 func TestUIDExpectationsWithMultiTenancy(t *testing.T) {
@@ -314,7 +314,7 @@ func TestCreatePods(t *testing.T) {
 		Recorder:   &record.FakeRecorder{},
 	}
 
-	controllerSpec := newReplicationController(1, metav1.TenantDefault)
+	controllerSpec := newReplicationController(1, metav1.TenantSystem)
 
 	// Make sure createReplica sends a POST to the apiserver with a pod from the controllers pod template
 	err := podControl.CreatePods(ns, controllerSpec.Spec.Template, controllerSpec)
@@ -382,7 +382,7 @@ func TestDeletePodsAllowsMissing(t *testing.T) {
 		Recorder:   &record.FakeRecorder{},
 	}
 
-	controllerSpec := newReplicationController(1, metav1.TenantDefault)
+	controllerSpec := newReplicationController(1, metav1.TenantSystem)
 
 	err := podControl.DeletePod("namespace-name", "podName", controllerSpec)
 	assert.NoError(t, err, "unexpected error: %v", err)
@@ -402,7 +402,7 @@ func TestDeletePodsAllowsMissingWithMultiTenancy(t *testing.T) {
 }
 
 func TestActivePodFiltering(t *testing.T) {
-	testActivePodFiltering(t, metav1.TenantDefault)
+	testActivePodFiltering(t, metav1.TenantSystem)
 }
 
 func TestActivePodFilteringWithMultiTenancy(t *testing.T) {
@@ -437,7 +437,7 @@ func testActivePodFiltering(t *testing.T, tenant string) {
 }
 
 func TestSortingActivePods(t *testing.T) {
-	testActivePodFiltering(t, metav1.TenantDefault)
+	testActivePodFiltering(t, metav1.TenantSystem)
 }
 
 func TestSortingActivePodsWithMultiTenancy(t *testing.T) {
@@ -520,7 +520,7 @@ func testSortingActivePods(t *testing.T, tenant string) {
 }
 
 func TestActiveReplicaSetsFiltering(t *testing.T) {
-	testActiveReplicaSetsFiltering(t, metav1.TenantDefault)
+	testActiveReplicaSetsFiltering(t, metav1.TenantSystem)
 }
 
 func TestActiveReplicaSetsFilteringWithMultiTenancy(t *testing.T) {

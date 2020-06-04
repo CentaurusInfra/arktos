@@ -108,7 +108,7 @@ func podWithSecrets(tenant, ns, podName string, toAttach secretsToAttach) *v1.Po
 }
 
 func TestCacheBasedSecretManager(t *testing.T) {
-	testCacheBasedSecretManager(t, metav1.TenantDefault)
+	testCacheBasedSecretManager(t, metav1.TenantSystem)
 }
 
 func TestCacheBasedSecretManagerWithMultiTenancy(t *testing.T) {

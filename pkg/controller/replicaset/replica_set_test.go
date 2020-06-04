@@ -200,7 +200,7 @@ func validateSyncReplicaSet(t *testing.T, fakePodControl *controller.FakePodCont
 	}
 }
 func TestSyncReplicaSetDoesNothing(t *testing.T) {
-	testSyncReplicaSetDoesNothing(t, metav1.TenantDefault)
+	testSyncReplicaSetDoesNothing(t, metav1.TenantSystem)
 }
 
 func TestSyncReplicaSetDoesNothingWithMultiTenancy(t *testing.T) {
@@ -226,7 +226,7 @@ func testSyncReplicaSetDoesNothing(t *testing.T, tenant string) {
 }
 
 func TestDeleteFinalStateUnknown(t *testing.T) {
-	testDeleteFinalStateUnknown(t, metav1.TenantDefault)
+	testDeleteFinalStateUnknown(t, metav1.TenantSystem)
 }
 
 func TestDeleteFinalStateUnknownWithMultiTenancy(t *testing.T) {
@@ -269,7 +269,7 @@ func testDeleteFinalStateUnknown(t *testing.T, tenant string) {
 }
 
 func TestSyncReplicaSetCreateFailures(t *testing.T) {
-	testSyncReplicaSetCreateFailures(t, metav1.TenantDefault)
+	testSyncReplicaSetCreateFailures(t, metav1.TenantSystem)
 }
 
 func TestSyncReplicaSetCreateFailuresWithMultiTenancy(t *testing.T) {
@@ -304,7 +304,7 @@ func testSyncReplicaSetCreateFailures(t *testing.T, tenant string) {
 }
 
 func TestSyncReplicaSetDormancy(t *testing.T) {
-	testSyncReplicaSetDormancy(t, metav1.TenantDefault)
+	testSyncReplicaSetDormancy(t, metav1.TenantSystem)
 }
 
 func TestSyncReplicaSetDormancyWithMultiTenancy(t *testing.T) {
@@ -495,7 +495,7 @@ func TestWatchControllers(t *testing.T) {
 }
 
 func TestWatchPods(t *testing.T) {
-	testWatchPods(t, metav1.TenantDefault)
+	testWatchPods(t, metav1.TenantSystem)
 }
 
 func TestWatchPodsWithMultiTenancy(t *testing.T) {
@@ -555,7 +555,7 @@ func testWatchPods(t *testing.T, tenant string) {
 }
 
 func TestUpdatePods(t *testing.T) {
-	testUpdatePods(t, metav1.TenantDefault)
+	testUpdatePods(t, metav1.TenantSystem)
 }
 
 func TestUpdatePodsWithMultiTenancy(t *testing.T) {
@@ -688,7 +688,7 @@ func testUpdatePods(t *testing.T, tenant string) {
 }
 
 func TestControllerUpdateRequeue(t *testing.T) {
-	testControllerUpdateRequeue(t, metav1.TenantDefault)
+	testControllerUpdateRequeue(t, metav1.TenantSystem)
 }
 
 func TestControllerUpdateRequeueWithMultiTenancy(t *testing.T) {
@@ -729,7 +729,7 @@ func testControllerUpdateRequeue(t *testing.T, tenant string) {
 }
 
 func TestControllerUpdateStatusWithFailure(t *testing.T) {
-	testControllerUpdateStatusWithFailure(t, metav1.TenantDefault)
+	testControllerUpdateStatusWithFailure(t, metav1.TenantSystem)
 }
 
 func TestControllerUpdateStatusWithFailureWithMultiTenancy(t *testing.T) {
@@ -926,7 +926,7 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int,
 	}
 }
 func TestControllerBurstReplicas(t *testing.T) {
-	testControllerBurstReplicas(t, metav1.TenantDefault)
+	testControllerBurstReplicas(t, metav1.TenantSystem)
 }
 
 func TestControllerBurstReplicasWithMultiTenancy(t *testing.T) {
@@ -953,7 +953,7 @@ func (fe FakeRSExpectations) SatisfiedExpectations(controllerKey string) bool {
 // TestRSSyncExpectations tests that a pod cannot sneak in between counting active pods
 // and checking expectations.
 func TestRSSyncExpectations(t *testing.T) {
-	testRSSyncExpectations(t, metav1.TenantDefault)
+	testRSSyncExpectations(t, metav1.TenantSystem)
 }
 
 func TestRSSyncExpectationsWithMultiTenancy(t *testing.T) {
@@ -988,7 +988,7 @@ func testRSSyncExpectations(t *testing.T, tenant string) {
 }
 
 func TestDeleteControllerAndExpectations(t *testing.T) {
-	testDeleteControllerAndExpectations(t, metav1.TenantDefault)
+	testDeleteControllerAndExpectations(t, metav1.TenantSystem)
 }
 
 func TestDeleteControllerAndExpectationsWithMultiTenancy(t *testing.T) {
@@ -1050,7 +1050,7 @@ func shuffle(controllers []*apps.ReplicaSet) []*apps.ReplicaSet {
 }
 
 func TestOverlappingRSs(t *testing.T) {
-	testOverlappingRSs(t, metav1.TenantDefault)
+	testOverlappingRSs(t, metav1.TenantSystem)
 }
 
 func TestOverlappingRSsWithMultiTenancy(t *testing.T) {
@@ -1101,7 +1101,7 @@ func testOverlappingRSs(t *testing.T, tenant string) {
 }
 
 func TestDeletionTimestamp(t *testing.T) {
-	testDeletionTimestamp(t, metav1.TenantDefault)
+	testDeletionTimestamp(t, metav1.TenantSystem)
 }
 
 func TestDeletionTimestampWithMultiTenancy(t *testing.T) {
@@ -1216,7 +1216,7 @@ func setupManagerWithGCEnabled(stopCh chan struct{}, objs ...runtime.Object) (ma
 }
 
 func TestDoNotPatchPodWithOtherControlRef(t *testing.T) {
-	testDoNotPatchPodWithOtherControlRef(t, metav1.TenantDefault)
+	testDoNotPatchPodWithOtherControlRef(t, metav1.TenantSystem)
 }
 
 func TestDoNotPatchPodWithOtherControlRefWithMultiTenancy(t *testing.T) {
@@ -1245,7 +1245,7 @@ func testDoNotPatchPodWithOtherControlRef(t *testing.T, tenant string) {
 }
 
 func TestPatchPodFails(t *testing.T) {
-	testPatchPodFails(t, metav1.TenantDefault)
+	testPatchPodFails(t, metav1.TenantSystem)
 }
 
 func TestPatchPodFailsWithMultiTenancy(t *testing.T) {
@@ -1281,7 +1281,7 @@ func testPatchPodFails(t *testing.T, tenant string) {
 }
 
 func TestDoNotAdoptOrCreateIfBeingDeleted(t *testing.T) {
-	testDoNotAdoptOrCreateIfBeingDeleted(t, metav1.TenantDefault)
+	testDoNotAdoptOrCreateIfBeingDeleted(t, metav1.TenantSystem)
 }
 
 func TestDoNotAdoptOrCreateIfBeingDeletedWithMultiTenancy(t *testing.T) {
@@ -1311,7 +1311,7 @@ func testDoNotAdoptOrCreateIfBeingDeleted(t *testing.T, tenant string) {
 }
 
 func TestDoNotAdoptOrCreateIfBeingDeletedRace(t *testing.T) {
-	testDoNotAdoptOrCreateIfBeingDeletedRace(t, metav1.TenantDefault)
+	testDoNotAdoptOrCreateIfBeingDeletedRace(t, metav1.TenantSystem)
 }
 
 func TestDoNotAdoptOrCreateIfBeingDeletedRaceWithMultiTenancy(t *testing.T) {
@@ -1574,7 +1574,7 @@ func TestSlowStartBatch(t *testing.T) {
 }
 
 func TestGetPodsToDelete(t *testing.T) {
-	testGetPodsToDelete(t, metav1.TenantDefault)
+	testGetPodsToDelete(t, metav1.TenantSystem)
 }
 
 func TestGetPodsToDeleteWithMultiTenancy(t *testing.T) {
@@ -1724,7 +1724,7 @@ func testGetPodsToDelete(t *testing.T, tenant string) {
 }
 
 func TestGetPodKeys(t *testing.T) {
-	testGetPodKeys(t, metav1.TenantDefault)
+	testGetPodKeys(t, metav1.TenantSystem)
 }
 
 func TestGetPodKeysWithMultiTenancy(t *testing.T) {

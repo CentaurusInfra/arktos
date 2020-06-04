@@ -499,7 +499,7 @@ func (b *Builder) DefaultTenant() *Builder {
 // across all of the tenant. This overrides the tenant set by TenantParam().
 func (b *Builder) AllTenants(allTenant bool) *Builder {
 	if allTenant {
-		b.tenant = metav1.TenantAll
+		b.tenant = metav1.TenantAllExplicit
 	}
 	b.allTenant = allTenant
 	return b
@@ -992,8 +992,8 @@ func (b *Builder) checkResourceTenantNamespace(mappingScope meta.RESTScopeName) 
 	case meta.RESTScopeNameTenant:
 		selectorNamespace = ""
 		if len(b.tenant) == 0 {
-			b.tenant = metav1.TenantDefault
-			selectorTenant = metav1.TenantDefault
+			b.tenant = metav1.TenantSystem
+			selectorTenant = metav1.TenantSystem
 		}
 		if b.allTenant {
 			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")
@@ -1001,8 +1001,8 @@ func (b *Builder) checkResourceTenantNamespace(mappingScope meta.RESTScopeName) 
 
 	case meta.RESTScopeNameNamespace:
 		if len(b.tenant) == 0 {
-			b.tenant = metav1.TenantDefault
-			selectorTenant = metav1.TenantDefault
+			b.tenant = metav1.TenantSystem
+			selectorTenant = metav1.TenantSystem
 		}
 		if b.allTenant {
 			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")

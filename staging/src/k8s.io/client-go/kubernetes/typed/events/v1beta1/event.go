@@ -63,7 +63,7 @@ type events struct {
 
 // newEvents returns a Events
 func newEvents(c *EventsV1beta1Client, namespace string) *events {
-	return newEventsWithMultiTenancy(c, namespace, "default")
+	return newEventsWithMultiTenancy(c, namespace, "system")
 }
 
 func newEventsWithMultiTenancy(c *EventsV1beta1Client, namespace string, tenant string) *events {

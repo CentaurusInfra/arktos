@@ -19,6 +19,7 @@ package daemon
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"reflect"
 	"sort"
 	"strconv"
@@ -44,7 +45,6 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/client-go/util/workqueue"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
@@ -73,6 +73,8 @@ var (
 	noExecuteTaints       = []v1.Taint{{Key: "dedicated", Value: "user1", Effect: "NoExecute"}}
 )
 
+const testTenant = "johndoe"
+
 func nowPointer() *metav1.Time {
 	now := metav1.Now()
 	return &now
@@ -99,7 +101,7 @@ func newDaemonSet(name string) *apps.DaemonSet {
 			UID:       uuid.NewUUID(),
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    testTenant,
 		},
 		Spec: apps.DaemonSetSpec{
 			RevisionHistoryLimit: &two,
@@ -109,7 +111,8 @@ func newDaemonSet(name string) *apps.DaemonSet {
 			Selector: &metav1.LabelSelector{MatchLabels: simpleDaemonSetLabel},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: simpleDaemonSetLabel,
+					Labels:    simpleDaemonSetLabel,
+					Namespace: metav1.NamespaceDefault,
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -152,6 +155,7 @@ func newNode(name string, label map[string]string) *v1.Node {
 			Name:      name,
 			Labels:    label,
 			Namespace: metav1.NamespaceNone,
+			Tenant:    metav1.NamespaceNone,
 		},
 		Status: v1.NodeStatus{
 			Conditions: []v1.NodeCondition{
@@ -170,7 +174,7 @@ func addNodes(nodeStore cache.Store, startIndex, numNodes int, label map[string]
 	}
 }
 
-func newPod(podName string, nodeName string, label map[string]string, ds *apps.DaemonSet) *v1.Pod {
+func newPod(podName string, tenant string, namespace string, nodeName string, label map[string]string, ds *apps.DaemonSet) *v1.Pod {
 	// Add hash unique label to the pod
 	newLabels := label
 	var podSpec v1.PodSpec
@@ -201,8 +205,8 @@ func newPod(podName string, nodeName string, label map[string]string, ds *apps.D
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: podName,
 			Labels:       newLabels,
-			Namespace:    metav1.NamespaceDefault,
-			Tenant:       metav1.TenantDefault,
+			Namespace:    namespace,
+			Tenant:       tenant,
 		},
 		Spec: podSpec,
 	}
@@ -215,14 +219,14 @@ func newPod(podName string, nodeName string, label map[string]string, ds *apps.D
 
 func addPods(podStore cache.Store, nodeName string, label map[string]string, ds *apps.DaemonSet, number int) {
 	for i := 0; i < number; i++ {
-		pod := newPod(fmt.Sprintf("%s-", nodeName), nodeName, label, ds)
+		pod := newPod(fmt.Sprintf("%s-", nodeName), testTenant, metav1.NamespaceDefault, nodeName, label, ds)
 		podStore.Add(pod)
 	}
 }
 
 func addFailedPods(podStore cache.Store, nodeName string, label map[string]string, ds *apps.DaemonSet, number int) {
 	for i := 0; i < number; i++ {
-		pod := newPod(fmt.Sprintf("%s-", nodeName), nodeName, label, ds)
+		pod := newPod(fmt.Sprintf("%s-", nodeName), testTenant, metav1.NamespaceDefault, nodeName, label, ds)
 		pod.Status = v1.PodStatus{Phase: v1.PodFailed}
 		podStore.Add(pod)
 	}
@@ -245,10 +249,10 @@ func newFakePodControl() *fakePodControl {
 	}
 }
 
-func (f *fakePodControl) CreatePodsOnNode(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
+func (f *fakePodControl) CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
 	f.Lock()
 	defer f.Unlock()
-	if err := f.FakePodControl.CreatePodsOnNode(nodeName, namespace, template, object, controllerRef); err != nil {
+	if err := f.FakePodControl.CreatePodsOnNodeWithMultiTenancy(nodeName, tenant, namespace, template, object, controllerRef); err != nil {
 		return fmt.Errorf("failed to create pod on node %q", nodeName)
 	}
 
@@ -256,7 +260,7 @@ func (f *fakePodControl) CreatePodsOnNode(nodeName, namespace string, template *
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:       template.Labels,
 			Namespace:    namespace,
-			Tenant:       metav1.TenantDefault,
+			Tenant:       tenant,
 			GenerateName: fmt.Sprintf("%s-", nodeName),
 		},
 	}
@@ -279,10 +283,10 @@ func (f *fakePodControl) CreatePodsOnNode(nodeName, namespace string, template *
 	return nil
 }
 
-func (f *fakePodControl) CreatePodsWithControllerRef(namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
+func (f *fakePodControl) CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
 	f.Lock()
 	defer f.Unlock()
-	if err := f.FakePodControl.CreatePodsWithControllerRef(namespace, template, object, controllerRef); err != nil {
+	if err := f.FakePodControl.CreatePodsWithControllerRefWithMultiTenancy(tenant, namespace, template, object, controllerRef); err != nil {
 		return fmt.Errorf("failed to create pod for DaemonSet")
 	}
 
@@ -290,7 +294,7 @@ func (f *fakePodControl) CreatePodsWithControllerRef(namespace string, template 
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    template.Labels,
 			Namespace: namespace,
-			Tenant:    metav1.TenantDefault,
+			Tenant:    tenant,
 		},
 	}
 
@@ -310,10 +314,10 @@ func (f *fakePodControl) CreatePodsWithControllerRef(namespace string, template 
 	return nil
 }
 
-func (f *fakePodControl) DeletePod(namespace string, podID string, object runtime.Object) error {
+func (f *fakePodControl) DeletePodWithMultiTenancy(tenant, namespace string, podID string, object runtime.Object) error {
 	f.Lock()
 	defer f.Unlock()
-	if err := f.FakePodControl.DeletePod(namespace, podID, object); err != nil {
+	if err := f.FakePodControl.DeletePodWithMultiTenancy(tenant, namespace, podID, object); err != nil {
 		return fmt.Errorf("failed to delete pod %q", podID)
 	}
 	pod, ok := f.podIDMap[podID]
@@ -451,7 +455,8 @@ func TestDeleteFinalStateUnknown(t *testing.T) {
 			// DeletedFinalStateUnknown should queue the embedded DS if found.
 			manager.deleteDaemonset(cache.DeletedFinalStateUnknown{Key: "foo", Obj: ds})
 			enqueuedKey, _ := manager.queue.Get()
-			if enqueuedKey.(string) != "default/foo" {
+			expectedKey, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(ds)
+			if enqueuedKey.(string) != expectedKey {
 				t.Errorf("expected delete of DeletedFinalStateUnknown to enqueue the daemonset but found: %#v", enqueuedKey)
 			}
 		}
@@ -507,7 +512,8 @@ func TestSimpleDaemonSetScheduleDaemonSetPodsLaunchesPods(t *testing.T) {
 		syncAndValidateDaemonSets(t, manager, ds, podControl, nodeNum, 0, 0)
 		// Check for ScheduleDaemonSetPods feature
 		if len(podControl.podIDMap) != nodeNum {
-			t.Fatalf("failed to create pods for DaemonSet when enabled ScheduleDaemonSetPods.")
+			t.Fatalf("failed to create pods for DaemonSet when enabled ScheduleDaemonSetPods. expect %d, got %d",
+				nodeNum, len(podControl.podIDMap))
 		}
 
 		nodeMap := make(map[string]*v1.Node)
@@ -721,6 +727,7 @@ func resourcePodSpec(nodeName, memory, cpu string) v1.PodSpec {
 			Resources: v1.ResourceRequirements{
 				Requests: allocatableResources(memory, cpu),
 			},
+			ResourcesAllocated: allocatableResources(memory, cpu),
 		}},
 	}
 }
@@ -737,6 +744,7 @@ func resourcePodSpecWithoutNodeName(memory, cpu string) v1.PodSpec {
 			Resources: v1.ResourceRequirements{
 				Requests: allocatableResources(memory, cpu),
 			},
+			ResourcesAllocated: allocatableResources(memory, cpu),
 		}},
 	}
 }
@@ -1005,7 +1013,7 @@ func TestDontDoAnythingIfBeingDeletedRace(t *testing.T) {
 			manager.dsStore.Add(&ds2)
 
 			// The existence of a matching orphan should block all actions in this state.
-			pod := newPod("pod1-", "node-0", simpleDaemonSetLabel, nil)
+			pod := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
 			manager.podStore.Add(pod)
 
 			syncAndValidateDaemonSets(t, manager, ds, podControl, 0, 0, 0)
@@ -1069,7 +1077,7 @@ func TestPortConflictWithSameDaemonPodDoesNotDeletePod(t *testing.T) {
 			ds.Spec.UpdateStrategy = *strategy
 			ds.Spec.Template.Spec = podSpec
 			manager.dsStore.Add(ds)
-			pod := newPod(ds.Name+"-", node.Name, simpleDaemonSetLabel, ds)
+			pod := newPod(ds.Name+"-", testTenant, metav1.NamespaceDefault, node.Name, simpleDaemonSetLabel, ds)
 			manager.podStore.Add(pod)
 			syncAndValidateDaemonSets(t, manager, ds, podControl, 0, 0, 0)
 		}
@@ -1147,7 +1155,7 @@ func TestPodIsNotDeletedByDaemonsetWithEmptyLabelSelector(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:    map[string]string{"bang": "boom"},
 					Namespace: metav1.NamespaceDefault,
-					Tenant:    metav1.TenantDefault,
+					Tenant:    testTenant,
 				},
 				Spec: v1.PodSpec{
 					NodeName: "node1",
@@ -1439,7 +1447,7 @@ func TestNumberReadyStatus(t *testing.T) {
 			}
 
 			selector, _ := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
-			daemonPods, _ := manager.podLister.Pods(ds.Namespace).List(selector)
+			daemonPods, _ := manager.podLister.PodsWithMultiTenancy(ds.Namespace, ds.Tenant).List(selector)
 			for _, pod := range daemonPods {
 				condition := v1.PodCondition{Type: v1.PodReady, Status: v1.ConditionTrue}
 				pod.Status.Conditions = append(pod.Status.Conditions, condition)
@@ -1539,7 +1547,7 @@ func TestDaemonKillFailedPodsBackoff(t *testing.T) {
 				addNodes(manager.nodeStore, 0, 1, nil)
 
 				nodeName := "node-0"
-				pod := newPod(fmt.Sprintf("%s-", nodeName), nodeName, simpleDaemonSetLabel, ds)
+				pod := newPod(fmt.Sprintf("%s-", nodeName), testTenant, metav1.NamespaceDefault, nodeName, simpleDaemonSetLabel, ds)
 
 				// Add a failed Pod
 				pod.Status.Phase = v1.PodFailed
@@ -1606,7 +1614,7 @@ func TestNoScheduleTaintedDoesntEvicitRunningIntolerantPod(t *testing.T) {
 			node := newNode("tainted", nil)
 			manager.nodeStore.Add(node)
 			setNodeTaint(node, noScheduleTaints)
-			manager.podStore.Add(newPod("keep-running-me", "tainted", simpleDaemonSetLabel, ds))
+			manager.podStore.Add(newPod("keep-running-me", testTenant, metav1.NamespaceDefault, "tainted", simpleDaemonSetLabel, ds))
 			manager.dsStore.Add(ds)
 
 			syncAndValidateDaemonSets(t, manager, ds, podControl, 0, 0, 0)
@@ -1630,7 +1638,7 @@ func TestNoExecuteTaintedDoesEvicitRunningIntolerantPod(t *testing.T) {
 			node := newNode("tainted", nil)
 			manager.nodeStore.Add(node)
 			setNodeTaint(node, noExecuteTaints)
-			manager.podStore.Add(newPod("stop-running-me", "tainted", simpleDaemonSetLabel, ds))
+			manager.podStore.Add(newPod("stop-running-me", testTenant, metav1.NamespaceDefault, "tainted", simpleDaemonSetLabel, ds))
 			manager.dsStore.Add(ds)
 
 			syncAndValidateDaemonSets(t, manager, ds, podControl, 0, 1, 0)
@@ -1766,7 +1774,7 @@ func TestDaemonSetRespectsTermination(t *testing.T) {
 			}
 
 			addNodes(manager.nodeStore, 0, 1, simpleNodeLabel)
-			pod := newPod(fmt.Sprintf("%s-", "node-0"), "node-0", simpleDaemonSetLabel, ds)
+			pod := newPod(fmt.Sprintf("%s-", "node-0"), testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds)
 			dt := metav1.Now()
 			pod.DeletionTimestamp = &dt
 			manager.podStore.Add(pod)
@@ -2016,7 +2024,8 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 								Ports: []v1.ContainerPort{{
 									HostPort: 666,
 								}},
-								Resources: resourceContainerSpec("50M", "0.5"),
+								Resources:          resourceContainerSpec("50M", "0.5"),
+								ResourcesAllocated: allocatableResources("50M", "0.5"),
 							}},
 						},
 					},
@@ -2045,7 +2054,8 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 								Ports: []v1.ContainerPort{{
 									HostPort: 666,
 								}},
-								Resources: resourceContainerSpec("50M", "0.5"),
+								Resources:          resourceContainerSpec("50M", "0.5"),
+								ResourcesAllocated: allocatableResources("50M", "0.5"),
 							}},
 						},
 					},
@@ -2555,7 +2565,7 @@ func TestDeleteUnscheduledPodForNotExistingNode(t *testing.T) {
 			addPods(manager.podStore, "node-0", simpleDaemonSetLabel, ds, 1)
 			addPods(manager.podStore, "node-1", simpleDaemonSetLabel, ds, 1)
 
-			podScheduledUsingAffinity := newPod("pod1-node-3", "", simpleDaemonSetLabel, ds)
+			podScheduledUsingAffinity := newPod("pod1-node-3", testTenant, metav1.NamespaceDefault, "", simpleDaemonSetLabel, ds)
 			podScheduledUsingAffinity.Spec.Affinity = &v1.Affinity{
 				NodeAffinity: &v1.NodeAffinity{
 					RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
@@ -2601,12 +2611,12 @@ func TestGetNodesToDaemonPods(t *testing.T) {
 
 			// These pods should be returned.
 			wantedPods := []*v1.Pod{
-				newPod("matching-owned-0-", "node-0", simpleDaemonSetLabel, ds),
-				newPod("matching-orphan-0-", "node-0", simpleDaemonSetLabel, nil),
-				newPod("matching-owned-1-", "node-1", simpleDaemonSetLabel, ds),
-				newPod("matching-orphan-1-", "node-1", simpleDaemonSetLabel, nil),
+				newPod("matching-owned-0-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds),
+				newPod("matching-orphan-0-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil),
+				newPod("matching-owned-1-", testTenant, metav1.NamespaceDefault, "node-1", simpleDaemonSetLabel, ds),
+				newPod("matching-orphan-1-", testTenant, metav1.NamespaceDefault, "node-1", simpleDaemonSetLabel, nil),
 			}
-			failedPod := newPod("matching-owned-failed-pod-1-", "node-1", simpleDaemonSetLabel, ds)
+			failedPod := newPod("matching-owned-failed-pod-1-", testTenant, metav1.NamespaceDefault, "node-1", simpleDaemonSetLabel, ds)
 			failedPod.Status = v1.PodStatus{Phase: v1.PodFailed}
 			wantedPods = append(wantedPods, failedPod)
 			for _, pod := range wantedPods {
@@ -2615,9 +2625,9 @@ func TestGetNodesToDaemonPods(t *testing.T) {
 
 			// These pods should be ignored.
 			ignoredPods := []*v1.Pod{
-				newPod("non-matching-owned-0-", "node-0", simpleDaemonSetLabel2, ds),
-				newPod("non-matching-orphan-1-", "node-1", simpleDaemonSetLabel2, nil),
-				newPod("matching-owned-by-other-0-", "node-0", simpleDaemonSetLabel, ds2),
+				newPod("non-matching-owned-0-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel2, ds),
+				newPod("non-matching-orphan-1-", testTenant, metav1.NamespaceDefault, "node-1", simpleDaemonSetLabel2, nil),
+				newPod("matching-owned-by-other-0-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds2),
 			}
 			for _, pod := range ignoredPods {
 				manager.podStore.Add(pod)
@@ -2693,7 +2703,7 @@ func TestAddPod(t *testing.T) {
 			manager.dsStore.Add(ds1)
 			manager.dsStore.Add(ds2)
 
-			pod1 := newPod("pod1-", "node-0", simpleDaemonSetLabel, ds1)
+			pod1 := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds1)
 			manager.addPod(pod1)
 			if got, want := manager.queue.Len(), 1; got != want {
 				t.Fatalf("queue.Len() = %v, want %v", got, want)
@@ -2707,7 +2717,7 @@ func TestAddPod(t *testing.T) {
 				t.Errorf("queue.Get() = %v, want %v", got, want)
 			}
 
-			pod2 := newPod("pod2-", "node-0", simpleDaemonSetLabel, ds2)
+			pod2 := newPod("pod2-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds2)
 			manager.addPod(pod2)
 			if got, want := manager.queue.Len(), 1; got != want {
 				t.Fatalf("queue.Len() = %v, want %v", got, want)
@@ -2744,12 +2754,14 @@ func TestAddPodOrphan(t *testing.T) {
 			manager.dsStore.Add(ds3)
 
 			// Make pod an orphan. Expect matching sets to be queued.
-			pod := newPod("pod1-", "node-0", simpleDaemonSetLabel, nil)
+			pod := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
 			manager.addPod(pod)
 			if got, want := manager.queue.Len(), 2; got != want {
 				t.Fatalf("queue.Len() = %v, want %v", got, want)
 			}
-			if got, want := getQueuedKeys(manager.queue), []string{"default/foo1", "default/foo2"}; !reflect.DeepEqual(got, want) {
+			expectedKey1, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(ds1)
+			expectedKey2, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(ds2)
+			if got, want := getQueuedKeys(manager.queue), []string{expectedKey1, expectedKey2}; !reflect.DeepEqual(got, want) {
 				t.Errorf("getQueuedKeys() = %v, want %v", got, want)
 			}
 		}
@@ -2771,7 +2783,7 @@ func TestUpdatePod(t *testing.T) {
 			manager.dsStore.Add(ds1)
 			manager.dsStore.Add(ds2)
 
-			pod1 := newPod("pod1-", "node-0", simpleDaemonSetLabel, ds1)
+			pod1 := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds1)
 			prev := *pod1
 			bumpResourceVersion(pod1)
 			manager.updatePod(&prev, pod1)
@@ -2787,7 +2799,7 @@ func TestUpdatePod(t *testing.T) {
 				t.Errorf("queue.Get() = %v, want %v", got, want)
 			}
 
-			pod2 := newPod("pod2-", "node-0", simpleDaemonSetLabel, ds2)
+			pod2 := newPod("pod2-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds2)
 			prev = *pod2
 			bumpResourceVersion(pod2)
 			manager.updatePod(&prev, pod2)
@@ -2822,7 +2834,7 @@ func TestUpdatePodOrphanSameLabels(t *testing.T) {
 			manager.dsStore.Add(ds1)
 			manager.dsStore.Add(ds2)
 
-			pod := newPod("pod1-", "node-0", simpleDaemonSetLabel, nil)
+			pod := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
 			prev := *pod
 			bumpResourceVersion(pod)
 			manager.updatePod(&prev, pod)
@@ -2849,7 +2861,7 @@ func TestUpdatePodOrphanWithNewLabels(t *testing.T) {
 			manager.dsStore.Add(ds1)
 			manager.dsStore.Add(ds2)
 
-			pod := newPod("pod1-", "node-0", simpleDaemonSetLabel, nil)
+			pod := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
 			prev := *pod
 			prev.Labels = map[string]string{"foo2": "bar2"}
 			bumpResourceVersion(pod)
@@ -2857,7 +2869,9 @@ func TestUpdatePodOrphanWithNewLabels(t *testing.T) {
 			if got, want := manager.queue.Len(), 2; got != want {
 				t.Fatalf("queue.Len() = %v, want %v", got, want)
 			}
-			if got, want := getQueuedKeys(manager.queue), []string{"default/foo1", "default/foo2"}; !reflect.DeepEqual(got, want) {
+			expectedKey1, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(ds1)
+			expectedKey2, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(ds2)
+			if got, want := getQueuedKeys(manager.queue), []string{expectedKey1, expectedKey2}; !reflect.DeepEqual(got, want) {
 				t.Errorf("getQueuedKeys() = %v, want %v", got, want)
 			}
 		}
@@ -2880,7 +2894,7 @@ func TestUpdatePodChangeControllerRef(t *testing.T) {
 			manager.dsStore.Add(ds1)
 			manager.dsStore.Add(ds2)
 
-			pod := newPod("pod1-", "node-0", simpleDaemonSetLabel, ds1)
+			pod := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds1)
 			prev := *pod
 			prev.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(ds2, controllerKind)}
 			bumpResourceVersion(pod)
@@ -2908,7 +2922,7 @@ func TestUpdatePodControllerRefRemoved(t *testing.T) {
 			manager.dsStore.Add(ds1)
 			manager.dsStore.Add(ds2)
 
-			pod := newPod("pod1-", "node-0", simpleDaemonSetLabel, ds1)
+			pod := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds1)
 			prev := *pod
 			pod.OwnerReferences = nil
 			bumpResourceVersion(pod)
@@ -2936,7 +2950,7 @@ func TestDeletePod(t *testing.T) {
 			manager.dsStore.Add(ds1)
 			manager.dsStore.Add(ds2)
 
-			pod1 := newPod("pod1-", "node-0", simpleDaemonSetLabel, ds1)
+			pod1 := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds1)
 			manager.deletePod(pod1)
 			if got, want := manager.queue.Len(), 1; got != want {
 				t.Fatalf("queue.Len() = %v, want %v", got, want)
@@ -2950,7 +2964,7 @@ func TestDeletePod(t *testing.T) {
 				t.Errorf("queue.Get() = %v, want %v", got, want)
 			}
 
-			pod2 := newPod("pod2-", "node-0", simpleDaemonSetLabel, ds2)
+			pod2 := newPod("pod2-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, ds2)
 			manager.deletePod(pod2)
 			if got, want := manager.queue.Len(), 1; got != want {
 				t.Fatalf("queue.Len() = %v, want %v", got, want)
@@ -2987,7 +3001,7 @@ func TestDeletePodOrphan(t *testing.T) {
 			manager.dsStore.Add(ds2)
 			manager.dsStore.Add(ds3)
 
-			pod := newPod("pod1-", "node-0", simpleDaemonSetLabel, nil)
+			pod := newPod("pod1-", testTenant, metav1.NamespaceDefault, "node-0", simpleDaemonSetLabel, nil)
 			manager.deletePod(pod)
 			if got, want := manager.queue.Len(), 0; got != want {
 				t.Fatalf("queue.Len() = %v, want %v", got, want)

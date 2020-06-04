@@ -63,7 +63,7 @@ type configMaps struct {
 
 // newConfigMaps returns a ConfigMaps
 func newConfigMaps(c *CoreV1Client, namespace string) *configMaps {
-	return newConfigMapsWithMultiTenancy(c, namespace, "default")
+	return newConfigMapsWithMultiTenancy(c, namespace, "system")
 }
 
 func newConfigMapsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *configMaps {

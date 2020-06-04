@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/features"
-	"k8s.io/utils/pointer"
 )
 
 // tenant, namespace used for all tests, do not change this
@@ -44,8 +43,12 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 	etcdStorageData := map[schema.GroupVersionResource]StorageData{
 		// k8s.io/kubernetes/pkg/api/v1
 		gvr("", "v1", "tenants"): {
-			Stub:             `{"metadata": {"name": "tenant1"}, "spec": {"finalizers": ["kubernetes"]}}`,
+			Stub:             `{"metadata": {"name": "tenant1"}, "spec": {"storageClusterId": "cluster1", "finalizers": ["kubernetes"]}}`,
 			ExpectedEtcdPath: "/registry/tenants/tenant1",
+		},
+		gvr("", "v1", "storageclusters"): {
+			Stub:             `{"metadata": {"name": "storagecluster1"}, "storageClusterId": "cluster1", "serviceAddress": "cluster1.arktos.futurewei.com:2379"}`,
+			ExpectedEtcdPath: "/registry/storageclusters/storagecluster1",
 		},
 		gvr("", "v1", "controllerinstances"): {
 			Stub:             `{"metadata": {"name": "instance1"}, "controllerType": "rs", "uid": "instance1", "hashKey": 1234, "workloadNum": 100, "isLocked": false}`,
@@ -471,7 +474,7 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 		// depends on aggregator using the same ungrouped RESTOptionsGetter as the kube apiserver, not SimpleRestOptionsFactory in aggregator.go
 		gvr("apiregistration.k8s.io", "v1beta1", "apiservices"): {
 			Stub:             `{"metadata": {"name": "as1.foo.com"}, "spec": {"group": "foo.com", "version": "as1", "groupPriorityMinimum":100, "versionPriority":10}}`,
-			ExpectedEtcdPath: "/registry/apiregistration.k8s.io/apiservices/as1.foo.com",
+			ExpectedEtcdPath: "/registry/apiregistration.k8s.io/apiservices/" + tenant + "/as1.foo.com",
 		},
 		// --
 
@@ -479,7 +482,7 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 		// depends on aggregator using the same ungrouped RESTOptionsGetter as the kube apiserver, not SimpleRestOptionsFactory in aggregator.go
 		gvr("apiregistration.k8s.io", "v1", "apiservices"): {
 			Stub:             `{"metadata": {"name": "as2.foo.com"}, "spec": {"group": "foo.com", "version": "as2", "groupPriorityMinimum":100, "versionPriority":10}}`,
-			ExpectedEtcdPath: "/registry/apiregistration.k8s.io/apiservices/as2.foo.com",
+			ExpectedEtcdPath: "/registry/apiregistration.k8s.io/apiservices/" + tenant + "/as2.foo.com",
 			ExpectedGVK:      gvkP("apiregistration.k8s.io", "v1beta1", "APIService"),
 		},
 		// --
@@ -597,89 +600,6 @@ func GetCustomResourceDefinitionDataWithMultiTenancy() []*apiextensionsv1beta1.C
 				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
 					Plural: "moons",
 					Kind:   "moon",
-				},
-			},
-		},
-		// cluster scoped with legacy version field
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   "pants.custom.fancy.com",
-				Tenant: testTenant,
-			},
-			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-				Group:   "custom.fancy.com",
-				Version: "v2",
-				Scope:   apiextensionsv1beta1.ClusterScoped,
-				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-					Plural: "pants",
-					Kind:   "Pant",
-				},
-			},
-		},
-		// cluster scoped with legacy version field and pruning.
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   "integers.random.numbers.com",
-				Tenant: testTenant,
-			},
-			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-				Group:   "random.numbers.com",
-				Version: "v1",
-				Scope:   apiextensionsv1beta1.ClusterScoped,
-				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-					Plural: "integers",
-					Kind:   "Integer",
-				},
-				Validation: &apiextensionsv1beta1.CustomResourceValidation{
-					OpenAPIV3Schema: &apiextensionsv1beta1.JSONSchemaProps{
-						Type: "object",
-						Properties: map[string]apiextensionsv1beta1.JSONSchemaProps{
-							"value": {
-								Type: "number",
-							},
-						},
-					},
-				},
-				PreserveUnknownFields: pointer.BoolPtr(false),
-			},
-		},
-		// cluster scoped with versions field
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   "pandas.awesome.bears.com",
-				Tenant: testTenant,
-			},
-			Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-				Group: "awesome.bears.com",
-				Versions: []apiextensionsv1beta1.CustomResourceDefinitionVersion{
-					{
-						Name:    "v1",
-						Served:  true,
-						Storage: true,
-					},
-					{
-						Name:    "v2",
-						Served:  false,
-						Storage: false,
-					},
-					{
-						Name:    "v3",
-						Served:  true,
-						Storage: false,
-					},
-				},
-				Scope: apiextensionsv1beta1.ClusterScoped,
-				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-					Plural: "pandas",
-					Kind:   "Panda",
-				},
-				Subresources: &apiextensionsv1beta1.CustomResourceSubresources{
-					Status: &apiextensionsv1beta1.CustomResourceSubresourceStatus{},
-					Scale: &apiextensionsv1beta1.CustomResourceSubresourceScale{
-						SpecReplicasPath:   ".spec.replicas",
-						StatusReplicasPath: ".status.replicas",
-						LabelSelectorPath:  func() *string { path := ".status.selector"; return &path }(),
-					},
 				},
 			},
 		},
