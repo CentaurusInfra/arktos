@@ -122,7 +122,7 @@ metadata:
   labels:
     arktos.futurewei.com/network: vpc-1
   annotations:
-    arktos.futurewei.com/nics: [{"subnet": "subnet-1", "ip": "192.168.0.12"}]
+    arktos.futurewei.com/nics: [{"name": "eth0", "ip": "192.168.0.12"}]
 spec:
   containers:
   - name: nginx
@@ -283,7 +283,6 @@ Arktos workload runtime will put whatever is the pod annotation of "arktos.futur
 
 The network controller of the vpc network type is typically responsible for annotating pods properly with the relevant information.
 
-The alternative is 
 ## Architectural Views
 
 Components not decided yet at current phase are not included in these views.
