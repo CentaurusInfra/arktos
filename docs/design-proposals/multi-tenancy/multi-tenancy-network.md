@@ -122,7 +122,7 @@ metadata:
   labels:
     arktos.futurewei.com/network: vpc-1
   annotations:
-    arktos.futurewei.com/nics: [{"name": "eth0", "ip": "192.168.0.12"}]
+    arktos.futurewei.com/nic: {"name": "eth0", "ip": "192.168.0.12"}
 spec:
   containers:
   - name: nginx
@@ -130,6 +130,15 @@ spec:
     ports:
       - containerPort: 443
 ```
+
+Annotation arktos.futurewei.com/nic is for user to provide optional information about pod nic. The recognized keys of element include:
+
+|key|exemplary value|
+|---:|---:|
+|name|eth0|
+|subnet|subnet-1, or 192.168.100.0/26|
+|ip|192.168.100.5|
+
 
 If these settings are set on a pod attached to a flat network, the settings will be ignored by the flat network controller and also the corresponding CNI plugins. 
 
@@ -319,6 +328,6 @@ Components not decided yet at current phase are not included in these views.
 ![Pod-activity-diag](images/pod-activity-diagram.png)
 
 1. It is strongly recommended to annotate new pods with arktos.futurewei.com/network-readiness as hint for scheduler. It is not mandatory, though - kubelet and cni plugin will have to cope with it and gets it right eventually. This kind of initial pod annotation can be done by a custom admission control.
-2. It is the network controller's responsibility to do whatever network resource preparation for the pod. If pod has hint of arktos.futurewei.com/nics annoation, it should honor that.
+2. It is the network controller's responsibility to do whatever network resource preparation for the pod. If pod has hint of arktos.futurewei.com/nic annoation, it should honor that.
 3. It is the network controller's responsibility to clean the annotation arktos.futurewei.com/network-readiness=false if it is there, if applicable network resource preparation is finished.
 4. It is the network controller's responsibility to annotate pod with proper information that the cni plugin needs in term of CNI-ARGS. Arktos system just picks up the annotation value and pass it on when calling cni plugin.
