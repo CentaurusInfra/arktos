@@ -35,7 +35,7 @@ type CustomResourceDefinitionTenantListerExpansion interface {
 	GetAccessibleCrd(name string) (*apiextensions.CustomResourceDefinition, error)
 }
 
-// GetAccessibleCrd tries to retrieve the forced version of CRD under the system teant first.
+// GetAccessibleCrd tries to retrieve the forced version of CRD under the system tenant first.
 // If not found, try the search under the tenant.
 func (s customResourceDefinitionTenantLister) GetAccessibleCrd(name string) (*apiextensions.CustomResourceDefinition, error) {
 	if s.tenant == metav1.TenantSystem {

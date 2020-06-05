@@ -35,6 +35,7 @@ import (
 	"k8s.io/apiserver/pkg/util/dryrun"
 
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // rest implements a RESTStorage for API services against etcd
@@ -43,7 +44,7 @@ type REST struct {
 }
 
 const (
-	crdSharingPolicyAnnotation = "futurewei.k8s.io/crd-sharing-policy"
+	crdSharingPolicyAnnotation = "arktos.futurewei.com/crd-sharing-policy"
 	forcedSharing              = "forced"
 )
 
@@ -76,7 +77,7 @@ func (r *REST) ShortNames() []string {
 	return []string{"crd", "crds"}
 }
 
-// try to retrieve the forced version of CRD under the system teant first.
+// try to retrieve the forced version of CRD under the system tenant first.
 // If not found, try the search under the tenant.
 func (r *REST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
 	tenant, ok := genericapirequest.TenantFrom(ctx)
@@ -97,25 +98,50 @@ func (r *REST) Get(ctx context.Context, name string, options *metav1.GetOptions)
 	return r.Store.Get(ctx, name, options)
 }
 
-// Return the forced CRD under the system teant and the CRDs under the tenant.
+func (r *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+	if !ok {
+		return nil, false, fmt.Errorf("cannot decide the tenant")
+	}
+
+	if tenant == metav1.TenantSystem {
+		return r.Store.Update(ctx, name, objInfo, createValidation, updateValidation, forceAllowCreate, options)
+	}
+
+	systemContext := genericapirequest.WithTenant(ctx, metav1.TenantSystem)
+	sysObj, err := r.Store.Get(systemContext, name, &metav1.GetOptions{})
+	if err == nil && IsCrdSystemForced(sysObj.(*apiextensions.CustomResourceDefinition)) {
+		return nil, false, fmt.Errorf("%v is a system CRD, you cannot overwrite it.", name)
+	}
+
+	return r.Store.Update(ctx, name, objInfo, createValidation, updateValidation, forceAllowCreate, options)
+}
+
+// Return the forced CRD under the system tenant and the CRDs under the tenant.
 func (r *REST) List(ctx context.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
 	tenant, ok := genericapirequest.TenantFrom(ctx)
 	if !ok {
 		return nil, fmt.Errorf("cannot decide the tenant")
 	}
 
-	systemCrds := []apiextensions.CustomResourceDefinition{}
-	systemContext := genericapirequest.WithTenant(ctx, metav1.TenantSystem)
-	sysList, err := r.Store.List(systemContext, options)
 	if tenant == metav1.TenantSystem {
-		return sysList, err
+		return r.Store.List(ctx, options)
 	}
 
-	sysCrdList, ok := sysList.(*apiextensions.CustomResourceDefinitionList)
-	if err == nil && ok {
-		for _, crd := range sysCrdList.Items {
-			if IsCrdSystemForced(&crd) {
-				systemCrds = append(systemCrds, crd)
+	resultItems := []apiextensions.CustomResourceDefinition{}
+	systemCrdMap := map[string]bool{}
+
+	systemContext := genericapirequest.WithTenant(ctx, metav1.TenantSystem)
+	sysSharingOptions := &metainternalversion.ListOptions{LabelSelector: labels.Set{crdSharingPolicyAnnotation: forcedSharing}.AsSelector()}
+	sysList, err := r.Store.List(systemContext, sysSharingOptions)
+	if err == nil {
+		sysCrdList, ok := sysList.(*apiextensions.CustomResourceDefinitionList)
+		if ok {
+			for _, crd := range sysCrdList.Items {
+				if IsCrdSystemForced(&crd) {
+					systemCrdMap[crd.Name] = true
+					resultItems = append(resultItems, crd)
+				}
 			}
 		}
 	}
@@ -130,24 +156,18 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 		return nil, fmt.Errorf("Failed to convert the object to CRD list")
 	}
 
-	tenantCrds := []apiextensions.CustomResourceDefinition{}
 	for _, crd := range tenantCrdList.Items {
-		collision := false
-		for _, systemCrd := range systemCrds {
-			if crd.Name == systemCrd.Name {
-				collision = true
-				break
-			}
-		}
-		if !collision {
-			tenantCrds = append(tenantCrds, crd)
+		if _, collsion := systemCrdMap[crd.Name]; !collsion {
+			resultItems = append(resultItems, crd)
 		}
 	}
 
 	resultList := &apiextensions.CustomResourceDefinitionList{
 		TypeMeta: tenantCrdList.TypeMeta,
 		ListMeta: tenantCrdList.ListMeta,
-		Items:    append(systemCrds, tenantCrds...)}
+		Items:    resultItems,
+	}
+
 	return resultList, nil
 }
 
@@ -298,7 +318,7 @@ func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.Updat
 }
 
 func IsCrdSystemForced(crd *apiextensions.CustomResourceDefinition) bool {
-	sharingPolicy, _ := crd.GetAnnotations()[crdSharingPolicyAnnotation]
+	sharingPolicy, _ := crd.GetLabels()[crdSharingPolicyAnnotation]
 	result := strings.ToLower(sharingPolicy) == forcedSharing && crd.GetTenant() == metav1.TenantSystem
 	return result
 }

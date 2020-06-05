@@ -1,4 +1,4 @@
-apiVersion: futurewei.k8s.io/v1alpha1
+apiVersion: arktos.futurewei.com/v1alpha1
 kind: Burger
 metadata:
   name: beef-burger
