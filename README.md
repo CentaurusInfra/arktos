@@ -10,6 +10,7 @@
 
 Arktos is an open source cluster management system designed for large scale clouds. It is evolved from the open source [Kubernetes](https://github.com/kubernetes/kubernetesh) v1.15 codebase with some fundamental improvements. 
 
+
 Arktos aims to be an open source solution to address key challenges of large scale clouds, including system scalability, resource efficiency, multitenancy, cross-AZ resiliency, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
 
 ----
