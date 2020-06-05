@@ -2826,6 +2826,7 @@ function start-cluster-networking {
 function start-flannel-ds {
   if [[ -f "${KUBE_HOME}/flannel/kube-flannel.yml" ]]; then
     echo "installing flannel ds"
+    sleep 5
     kubectl apply -f "${KUBE_HOME}/flannel/kube-flannel.yml"
   else 
     echo "failed to install flannel ds, cannot find required yaml file"
