@@ -21,19 +21,17 @@ package app
 
 import (
 	"fmt"
+	"testing"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/kubernetes/fake"
 	coremock "k8s.io/client-go/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
-
-	//"k8s.io/client-go/kubernetes/fake"
-	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
-
-	"testing"
 )
 
 func TestManageFlatNetwork(t *testing.T) {

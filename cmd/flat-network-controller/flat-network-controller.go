@@ -21,6 +21,8 @@ package main
 
 import (
 	"flag"
+	"time"
+
 	arktosext "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
 	"k8s.io/client-go/kubernetes"
@@ -28,10 +30,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/cmd/flat-network-controller/app"
-	"time"
 )
 
-const defaultWorks = 4
+const defaultWorkers = 4
 
 var (
 	masterURL  string
@@ -43,7 +44,7 @@ func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
 	if workers <= 0 {
-		workers = defaultWorks
+		workers = defaultWorkers
 	}
 
 	defer klog.Flush()
@@ -84,5 +85,5 @@ func main() {
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.IntVar(&workers, "concurrent-workers", defaultWorks, "The number of workers that are allowed to process concurrently.")
+	flag.IntVar(&workers, "concurrent-workers", defaultWorkers, "The number of workers that are allowed to process concurrently.")
 }

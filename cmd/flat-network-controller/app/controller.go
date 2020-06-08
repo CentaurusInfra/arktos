@@ -21,6 +21,9 @@ package app
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,9 +42,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"strings"
-	"time"
 )
+
+const flatNetworkType = "flat"
 
 // Controller represents the flat network controller
 type Controller struct {
@@ -94,8 +97,8 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 func (c *Controller) runWorker() {
 	for {
-		item, shutdown := c.queue.Get()
-		if shutdown {
+		item, queueIsEmpty := c.queue.Get()
+		if queueIsEmpty {
 			break
 		}
 
@@ -103,7 +106,7 @@ func (c *Controller) runWorker() {
 	}
 }
 
-// processItem will read a single work item off the work queue and attempt to process it
+// process will read a single work item off the work queue and attempt to process it
 func (c *Controller) process(item interface{}) {
 	defer c.queue.Done(item)
 
@@ -128,7 +131,7 @@ func (c *Controller) process(item interface{}) {
 		return
 	}
 
-	if net.Spec.Type != "flat" {
+	if net.Spec.Type != flatNetworkType {
 		klog.V(5).Infof("network %s/%s is of type %q; ignored", net.Tenant, net.Name, net.Spec.Type)
 		c.queue.Forget(item)
 		return
@@ -138,11 +141,11 @@ func (c *Controller) process(item interface{}) {
 
 	if err := manageFlatNetwork(net, c.netClientset, c.svcClientset); err != nil {
 		c.queue.AddRateLimited(key)
-		c.recorder.Eventf(net, corev1.EventTypeWarning, "FailedProvision", "failed to provision network %s/%s/%s: %v", net.Tenant, net.Tenant, net.Name, err)
+		c.recorder.Eventf(net, corev1.EventTypeWarning, "FailedProvision", "failed to provision network %s/%s: %v", net.Tenant, net.Name, err)
 		return
 	}
 
-	c.recorder.Eventf(net, corev1.EventTypeNormal, "SuccessfulProvision", "successfully provision network %s/%s/%s", net.Tenant, net.Tenant, net.Name)
+	c.recorder.Eventf(net, corev1.EventTypeNormal, "SuccessfulProvision", "successfully provision network %s/%s", net.Tenant, net.Name)
 	c.queue.Forget(item)
 }
 
@@ -168,8 +171,9 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 }
 
 func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*corev1.Service, error) {
-	const nsDNS = "kube-system"
-	nameDNS := "kube-dns-" + net.Name
+	nsDNS := metav1.NamespaceSystem
+	const dnsServiceDefaultName = "kube-dns"
+	nameDNS := dnsServiceDefaultName + "-" + net.Name
 	dns := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nameDNS,
@@ -198,9 +202,9 @@ func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*co
 				},
 			},
 			Selector: map[string]string{
-				"k8s-app": "kube-dns",
+				"k8s-app": dnsServiceDefaultName,
 			},
-			Type: "ClusterIP",
+			Type: corev1.ServiceTypeClusterIP,
 		},
 	}
 	svc, err := svcClient.CoreV1().ServicesWithMultiTenancy(nsDNS, net.Tenant).Create(&dns)
