@@ -38,7 +38,7 @@ A network object contains its type, and type-specific configurations. It's a not
 
 It is defined as CRD by [crd-network.yaml](../../../pkg/controller/artifacts/crd-network.yaml)
 
-The "type" field is the only mandatory field in a network object. For now there are two types defined: flat and vpc.
+The "type" field is the only mandatory field in a network object. It indicates network provider that allocates & manages the network resources. In particular, _flat_ type is reserved for canonical k8s flat networking model where various community cni plugins can be used as the underlying network provider.
 
 A command-line parameter named "default-network-template-path" of tenant controller will decide which default network will be created for a new space.
 
@@ -139,8 +139,7 @@ Annotation arktos.futurewei.com/nic is for user to provide optional information 
 |subnet|subnet-1, or 192.168.100.0/26|
 |ip|192.168.100.5|
 
-
-If these settings are set on a pod attached to a flat network, the settings will be ignored by the flat network controller and also the corresponding CNI plugins. 
+If these settings are set on a pod attached to a flat network, the settings will be ignored by the flat network controller and also the corresponding CNI plugins, as the existing cni plugins used in flat network have no support for such extension yet.
 
 (**TBD: for a flat network, can we automatically limit its communication scope to that network?**)
 
@@ -169,15 +168,16 @@ The reasons that DNS service is per-network instead of per-space are:
 
 #### Type definition
 
-Addition of service spec is spec.network field. By default, it is the default network of the tenant. 
+Service objects associate to network via label arktos.futurewei.com/network. By default, network is the default network of the tenant.
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: my-service
+  labels:
+    arktos.futurewei.com/network: my-network
 spec:
-  network: my-network
   selector:
     app: MyApp
   ports:
