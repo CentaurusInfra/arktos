@@ -220,9 +220,11 @@ func TestToKubeContainerStatus(t *testing.T) {
 				State:     kubecontainer.ContainerStateRunning,
 				CreatedAt: time.Unix(0, createdAt),
 				StartedAt: time.Unix(0, startedAt),
-				ResourceLimits: v1.ResourceList{
-					v1.ResourceCPU:    *resource.NewMilliQuantity(250, resource.DecimalSI),
-					v1.ResourceMemory: *resource.NewQuantity(524288000, resource.BinarySI),
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						v1.ResourceCPU:    *resource.NewMilliQuantity(250, resource.DecimalSI),
+						v1.ResourceMemory: *resource.NewQuantity(524288000, resource.BinarySI),
+					},
 				},
 			},
 		},
@@ -234,15 +236,18 @@ func TestToKubeContainerStatus(t *testing.T) {
 				State:     runtimeapi.ContainerState_CONTAINER_RUNNING,
 				CreatedAt: createdAt,
 				StartedAt: startedAt,
-				Resources: &runtimeapi.LinuxContainerResources{CpuQuota: 50000, CpuPeriod: 100000},
+				Resources: &runtimeapi.LinuxContainerResources{CpuQuota: 80000, CpuPeriod: 100000, CpuShares: 768},
 			},
 			expected: &kubecontainer.ContainerStatus{
-				ID:             *cid,
-				Image:          imageSpec.Image,
-				State:          kubecontainer.ContainerStateRunning,
-				CreatedAt:      time.Unix(0, createdAt),
-				StartedAt:      time.Unix(0, startedAt),
-				ResourceLimits: v1.ResourceList{v1.ResourceCPU: *resource.NewMilliQuantity(500, resource.DecimalSI)},
+				ID:        *cid,
+				Image:     imageSpec.Image,
+				State:     kubecontainer.ContainerStateRunning,
+				CreatedAt: time.Unix(0, createdAt),
+				StartedAt: time.Unix(0, startedAt),
+				Resources: v1.ResourceRequirements{
+					Limits:   v1.ResourceList{v1.ResourceCPU: *resource.NewMilliQuantity(800, resource.DecimalSI)},
+					Requests: v1.ResourceList{v1.ResourceCPU: *resource.NewMilliQuantity(750, resource.DecimalSI)},
+				},
 			},
 		},
 		"container reporting memory only": {
@@ -256,12 +261,14 @@ func TestToKubeContainerStatus(t *testing.T) {
 				Resources: &runtimeapi.LinuxContainerResources{MemoryLimitInBytes: 524288000, OomScoreAdj: -998},
 			},
 			expected: &kubecontainer.ContainerStatus{
-				ID:             *cid,
-				Image:          imageSpec.Image,
-				State:          kubecontainer.ContainerStateRunning,
-				CreatedAt:      time.Unix(0, createdAt),
-				StartedAt:      time.Unix(0, startedAt),
-				ResourceLimits: v1.ResourceList{v1.ResourceMemory: *resource.NewQuantity(524288000, resource.BinarySI)},
+				ID:        *cid,
+				Image:     imageSpec.Image,
+				State:     kubecontainer.ContainerStateRunning,
+				CreatedAt: time.Unix(0, createdAt),
+				StartedAt: time.Unix(0, startedAt),
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{v1.ResourceMemory: *resource.NewQuantity(524288000, resource.BinarySI)},
+				},
 			},
 		},
 	} {

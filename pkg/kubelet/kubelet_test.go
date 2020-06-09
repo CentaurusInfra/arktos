@@ -1980,7 +1980,7 @@ func TestHandlePodResourcesResize(t *testing.T) {
 			if pa.GetName() != tt.pod.Name {
 				t.Fatalf("[test %d]: unexpected action, got: pod %s, patch '%s', expecting pod %s.", i, pa.GetName(), string(pa.GetPatch()), tt.pod.Name)
 			}
-			//TODO: Verify patch against expected allocations
+			assert.Equal(t, tt.expectedAllocations, tt.pod.Spec.Containers[0].ResourcesAllocated, "test %d", i)
 		} else {
 			if len(actions) > 0 {
 				t.Fatalf("[test %d]: unexpected action count %d, expected 0", i, len(actions))

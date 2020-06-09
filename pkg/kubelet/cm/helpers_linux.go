@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,6 +110,9 @@ func HugePageLimits(resourceList v1.ResourceList) map[int64]int64 {
 func ResourceConfigForPod(pod *v1.Pod, enforceCPULimits bool, cpuPeriod uint64) *ResourceConfig {
 	// sum requests and limits.
 	reqs, limits := resource.PodRequestsAndLimits(pod)
+	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.InPlacePodVerticalScaling) {
+		reqs = resource.PodResourceAllocations(pod)
+	}
 
 	cpuRequests := int64(0)
 	cpuLimits := int64(0)
@@ -140,6 +144,9 @@ func ResourceConfigForPod(pod *v1.Pod, enforceCPULimits bool, cpuPeriod uint64) 
 			memoryLimitsDeclared = false
 		}
 		containerHugePageLimits := HugePageLimits(container.Resources.Requests)
+		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.InPlacePodVerticalScaling) {
+			containerHugePageLimits = HugePageLimits(container.ResourcesAllocated)
+		}
 		for k, v := range containerHugePageLimits {
 			if value, exists := hugePageLimits[k]; exists {
 				hugePageLimits[k] = value + v
