@@ -24,9 +24,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grafov/bcast"
+	"k8s.io/apiserver/pkg/storage/datapartition"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"path"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -66,7 +68,10 @@ var _ value.Context = authenticatedDataString("")
 type store struct {
 	client *clientv3.Client
 	// map from cluster id to etcd client
-	dataClusterClients map[string]*clientv3.Client
+	dataClusterClients     map[string]*clientv3.Client
+	dataClusterDestroyFunc map[string]func()
+	dataClientAddCh        chan string
+
 	// getOpts contains additional options that should be passed
 	// to all Get() calls.
 	getOps              []clientv3.OpOption
@@ -76,8 +81,11 @@ type store struct {
 	pathPrefix          string
 	watcher             *watcher
 	dataClusterWatchers map[string]*watcher
-	pagingEnabled       bool
-	leaseManager        *leaseManager
+
+	pagingEnabled bool
+	leaseManager  *leaseManager
+
+	partitionConfigMap map[string]storage.Interval
 
 	mux sync.Mutex
 }
@@ -91,39 +99,46 @@ type objState struct {
 }
 
 // New returns an etcd3 implementation of storage.Interface.
-func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, updatePartitionCh *bcast.Member) storage.StorageClusterInterface {
-	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil, updatePartitionCh)
+func New(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool) storage.StorageClusterInterface {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil)
 }
 
 // New returns an etcd3 implementation of storage.Interface with partition config
-func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) storage.StorageClusterInterface {
-	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfigMap, updatePartitionCh)
+func NewWithPartitionConfig(c *clientv3.Client, codec runtime.Codec, prefix string, transformer value.Transformer, pagingEnabled bool, partitionConfigMap map[string]storage.Interval) storage.StorageClusterInterface {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, partitionConfigMap)
 }
 
-func newStore(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, updatePartitionCh *bcast.Member) *store {
-	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil, updatePartitionCh)
+func newStore(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer) *store {
+	return newStoreWithPartitionConfig(c, pagingEnabled, codec, prefix, transformer, nil)
 }
 
-func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfigMap map[string]storage.Interval, updatePartitionCh *bcast.Member) *store {
+func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec runtime.Codec, prefix string, transformer value.Transformer, partitionConfigMap map[string]storage.Interval) *store {
 	versioner := APIObjectVersioner{}
+	updatePartitionChGrp := datapartition.GetDataPartitionUpdateChGrp()
+	updatePartitionCh := updatePartitionChGrp.Join()
+
 	result := &store{
-		client:             c,
-		dataClusterClients: make(map[string]*clientv3.Client),
-		codec:              codec,
-		versioner:          versioner,
-		transformer:        transformer,
-		pagingEnabled:      pagingEnabled,
+		client:                 c,
+		dataClusterClients:     make(map[string]*clientv3.Client),
+		dataClusterDestroyFunc: make(map[string]func()),
+		dataClientAddCh:        make(chan string),
+		codec:                  codec,
+		versioner:              versioner,
+		transformer:            transformer,
+		pagingEnabled:          pagingEnabled,
+		partitionConfigMap:     partitionConfigMap,
 		// for compatibility with etcd2 impl.
 		// no-op for default prefix of '/registry'.
 		// keeps compatibility with etcd2 impl for custom prefixes that don't start with '/'
-		pathPrefix:   path.Join("/", prefix),
-		watcher:      newWatcherWithPartitionConfig(c, codec, versioner, transformer, partitionConfigMap, updatePartitionCh),
-		leaseManager: newDefaultLeaseManager(c),
+		pathPrefix:          path.Join("/", prefix),
+		watcher:             newWatcherWithPartitionConfig(c, codec, versioner, transformer, partitionConfigMap, updatePartitionCh),
+		dataClusterWatchers: make(map[string]*watcher),
+		leaseManager:        newDefaultLeaseManager(c),
 	}
 	return result
 }
 
-func (s *store) AddDataClient(c *clientv3.Client, clusterId string) error {
+func (s *store) AddDataClient(c *clientv3.Client, clusterId string, destroyFunc func()) error {
 	existingClient, isOK := s.dataClusterClients[clusterId]
 	if isOK {
 		err := errors.New(fmt.Sprintf("Trying to add client for existed storage cluster id %s, endpoints [%+v]. Skipping", clusterId, existingClient.Endpoints()))
@@ -132,16 +147,26 @@ func (s *store) AddDataClient(c *clientv3.Client, clusterId string) error {
 
 	s.mux.Lock()
 	s.dataClusterClients[clusterId] = c
+	s.dataClusterDestroyFunc[clusterId] = destroyFunc
+
+	updatePartitionChGrp := datapartition.GetDataPartitionUpdateChGrp()
+	updatePartitionCh := updatePartitionChGrp.Join()
+
+	newWatcher := newWatcherWithPartitionConfig(c, s.codec, s.versioner, s.transformer, s.partitionConfigMap, updatePartitionCh)
+	s.dataClusterWatchers[clusterId] = newWatcher
+
+	s.dataClientAddCh <- clusterId
+
 	klog.V(3).Infof("Added new data client with cluster id %s, endpoints [%+v]", clusterId, c.Endpoints())
 	s.mux.Unlock()
 	return nil
 }
 
-func (s *store) UpdateDataClient(c *clientv3.Client, clusterId string) error {
+func (s *store) UpdateDataClient(c *clientv3.Client, clusterId string, destroyFunc func()) error {
 	existingClient, isOK := s.dataClusterClients[clusterId]
 	if !isOK {
 		klog.Warningf("Expected cluster %s not found in data client map. Adding data client %v", clusterId, c.Endpoints())
-		return s.AddDataClient(c, clusterId)
+		return s.AddDataClient(c, clusterId, destroyFunc)
 	}
 	if reflect.DeepEqual(existingClient.Endpoints(), c.Endpoints()) {
 		klog.Infof("Cluster %s does not have endpoints update. Skip updating. Endpoint %v", clusterId, c.Endpoints())
@@ -149,7 +174,16 @@ func (s *store) UpdateDataClient(c *clientv3.Client, clusterId string) error {
 	}
 
 	s.mux.Lock()
+	// stop old client
+	existingDestroyFunc, isOK := s.dataClusterDestroyFunc[clusterId]
+	if isOK {
+		existingDestroyFunc()
+	} else {
+		klog.Warningf("Previous cluster %s did not have destroy func. Skip destroying. Endpoints %v", clusterId, existingClient.Endpoints())
+	}
+
 	s.dataClusterClients[clusterId] = c
+	s.dataClusterDestroyFunc[clusterId] = destroyFunc
 	klog.V(3).Infof("Updated data client for cluster id %s, endpoints [%+v]", clusterId, c.Endpoints())
 	s.mux.Unlock()
 	return nil
@@ -159,6 +193,13 @@ func (s *store) DeleteDataClient(clusterId string) {
 	s.mux.Lock()
 	client, isOK := s.dataClusterClients[clusterId]
 	if isOK {
+		existingDestroyFunc, isOK := s.dataClusterDestroyFunc[clusterId]
+		if isOK {
+			existingDestroyFunc()
+		} else {
+			klog.Warningf("Previous cluster %s did not have destroy func. Skip destroying. Endpoints %v", clusterId, client.Endpoints())
+		}
+
 		delete(s.dataClusterClients, clusterId)
 		klog.V(3).Infof("Deleted data client for cluster id %s, endpoints [%+v]", clusterId, client.Endpoints())
 	} else {
@@ -538,6 +579,7 @@ func encodeContinue(key, keyPrefix string, resourceVersion int64) (string, error
 }
 
 // List implements storage.Interface.List.
+// Currently does not support continue for multiple storage cluster list - TODO
 func (s *store) List(ctx context.Context, key, resourceVersion string, pred storage.SelectionPredicate, listObj runtime.Object) error {
 	trace := utiltrace.New(fmt.Sprintf("List etcd3: key=%v, resourceVersion=%s, limit: %d, continue: %s", key, resourceVersion, pred.Limit, pred.Continue))
 	defer trace.LogIfLong(500 * time.Millisecond)
@@ -569,6 +611,8 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 		options = append(options, clientv3.WithLimit(pred.Limit))
 	}
 
+	clients := s.getClientsFromKey(key)
+
 	var returnedRV, continueRV int64
 	var continueKey string
 	switch {
@@ -594,6 +638,10 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 			returnedRV = continueRV
 		}
 	case s.pagingEnabled && pred.Limit > 0:
+		if len(clients) > 1 && len(resourceVersion) > 0 {
+			return apierrors.NewBadRequest(fmt.Sprintf("Currently does not support list continue when key located in multiple partitions. rv=%s", resourceVersion))
+		}
+
 		if len(resourceVersion) > 0 {
 			fromRV, err := s.versioner.ParseResourceVersion(resourceVersion)
 			if err != nil {
@@ -623,13 +671,34 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 		options = append(options, clientv3.WithPrefix())
 	}
 
+	// TODO - multiple list run in parrallel - also need to consider locking in s.versioner.UpdateList
+	for _, c := range clients {
+		klog.V(3).Infof("List key %s from multi partitions. paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v]",
+			key, paging, returnedRV, continueKey, keyPrefix)
+		err := s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key string, pred storage.SelectionPredicate, listObj runtime.Object,
+	options []clientv3.OpOption, paging bool, returnedRV int64, continueKey string, keyPrefix string) error {
+
+	// error checked in List()
+	listPtr, _ := meta.GetItemsPtr(listObj)
+	v, _ := conversion.EnforcePtr(listPtr)
+
 	// loop until we have filled the requested limit from etcd or there are no more results
 	var lastKey []byte
 	var hasMore bool
 	var getResp *clientv3.GetResponse
+	var err error
 	for {
 		startTime := time.Now()
-		getResp, err = s.getClientFromKey(key).KV.Get(ctx, key, options...)
+		getResp, err = client.KV.Get(ctx, key, options...)
 		metrics.RecordEtcdRequestLatency("list", getTypeName(listPtr), startTime)
 		if err != nil {
 			return interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix)
@@ -756,7 +825,21 @@ func (s *store) watch(ctx context.Context, key string, rv string, pred storage.S
 		return watch.NewAggregatedWatcherWithOneWatch(nil, err)
 	}
 	key = path.Join(s.pathPrefix, key)
-	return s.watcher.Watch(ctx, key, int64(rev), recursive, pred)
+	aw := s.watcher.Watch(ctx, key, int64(rev), recursive, pred)
+
+	// TODO - update revision at new watch start
+	go func(s *store, ctx context.Context, key string, rv string, pred storage.SelectionPredicate, recursive bool, aw watch.AggregatedWatchInterface) {
+		// Waiting for storage cluster updates
+		for newClusterId := range s.dataClientAddCh {
+			s.mux.Lock()
+			newWatcher := s.dataClusterWatchers[newClusterId]
+			nw := newWatcher.Watch(ctx, key, int64(rev), recursive, pred)
+			aw.AddWatchInterface(nw, nw.GetErrors())
+			s.mux.Unlock()
+		}
+	}(s, ctx, key, rv, pred, recursive, aw)
+
+	return aw
 }
 
 func (s *store) getState(getResp *clientv3.GetResponse, key string, v reflect.Value, ignoreNotFound bool) (*objState, error) {
@@ -853,15 +936,103 @@ func (s *store) ttlOpts(ctx context.Context, ttl int64) ([]clientv3.OpOption, er
 	return []clientv3.OpOption{clientv3.WithLease(id)}, nil
 }
 
+// If key prefix matches the following, the 4th segment will be tenant
+var regexPrefixToCheck = []string{
+	"services/specs/",
+	"services/endpoints/",
+	"apiregistration.k8s.io/apiservices/",
+	"apiextensions.k8s.io/customresourcedefinitions/",
+}
+
 // Based on the key tree structure, figure out which client it needs to go to
 // If there is no data cluster, all goes to system cluster
+// Aside from pathPrefix,
+//
+// 1. If the key has <= 2 segments (split by "/", the first segment is ""), it goes to system cluster
+// 2. If the key following prefix, the 3th segment will be reported as tenant
+//		"services/specs/"
+//		"services/endpoints/"
+//		"apiregistration.k8s.io/apiservices/"
+//		"apiextensions.k8s.io/customresourcedefinitions/"
+// 3. For the rest, the 2th segment will be reported as tenant
+// 4. If tenant name is not found from tenant map, goes to system cluster
 func (s *store) getClientFromKey(key string) *clientv3.Client {
-	if len(s.dataClusterClients) == 0 {
+	// remove prefix
+	lenPrefix := len(s.pathPrefix)
+	if lenPrefix > 0 && s.pathPrefix[lenPrefix-1:lenPrefix] != "/" {
+		lenPrefix++
+	}
+
+	concisedKey := key[lenPrefix:]
+
+	segs := strings.Split(concisedKey, "/")
+	message := fmt.Sprintf("key [%s] segments %v len %d", key, segs, len(segs))
+
+	if len(segs) <= 2 {
+		klog.V(3).Infof("system client: key segments len <= 2. %s ", message)
 		return s.client
 	}
 
-	// TODO - wait for Chenqian's system tenant path update
-	return s.client
+	tenant := ""
+	hasPrefix := false
+	for _, prefix := range regexPrefixToCheck {
+		isMatched, err := regexp.MatchString(prefix, key)
+		if err == nil && isMatched {
+			hasPrefix = true
+			tenant = getTenantForKey(segs, 2)
+		}
+		if err != nil {
+			klog.Errorf("Regex match error %v. key %s", err, key)
+		}
+	}
+	if !hasPrefix {
+		tenant = getTenantForKey(segs, 1)
+	}
+	if tenant == "" {
+		return s.client
+	}
+
+	return s.getClientForTenant(tenant)
+}
+
+// Based on different data segment, map to differnet data clients
+func (s *store) getClientForTenant(tenant string) *clientv3.Client {
+	clusterId := storagecluster.GetClusterIdFromTenantHandler(tenant)
+	if clusterId == "" {
+		return s.client
+	}
+	dataclient, isOK := s.dataClusterClients[clusterId]
+	if !isOK {
+		klog.Warningf("Cluster %s assigned to tenant %s does not exist. Using system cluster instead", clusterId, tenant)
+		return s.client
+	}
+	return dataclient
+}
+
+func getTenantForKey(segs []string, posToGet int) string {
+	if len(segs) < posToGet+1 {
+		return ""
+	}
+	return segs[posToGet]
+}
+
+// getClientsFromKey is used by list to get all related storage clusters
+// For example: get pods from all tenants
+func (s *store) getClientsFromKey(key string) []*clientv3.Client {
+	client := s.getClientFromKey(key)
+	if client != s.client {
+		// This key belongs to a data cluster, no need to check other clusters
+		return []*clientv3.Client{client}
+	}
+
+	// TODO - check whether key can only be in system cluster
+	clients := []*clientv3.Client{s.client}
+	if len(s.dataClusterClients) > 0 {
+		for _, client := range s.dataClusterClients {
+			clients = append(clients, client)
+		}
+	}
+	return clients
 }
 
 // decode decodes value of bytes into object. It will also set the object resource version to rev.
