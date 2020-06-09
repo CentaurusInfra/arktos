@@ -34,7 +34,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/imagepolicy"
 	"k8s.io/kubernetes/plugin/pkg/admission/limitranger"
 	"k8s.io/kubernetes/plugin/pkg/admission/namespace/autoprovision"
-	"k8s.io/kubernetes/plugin/pkg/admission/namespace/exists"
+	nsexists "k8s.io/kubernetes/plugin/pkg/admission/namespace/exists"
 	"k8s.io/kubernetes/plugin/pkg/admission/noderestriction"
 	"k8s.io/kubernetes/plugin/pkg/admission/nodetaint"
 	"k8s.io/kubernetes/plugin/pkg/admission/podnodeselector"
@@ -50,6 +50,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/persistentvolume/resize"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageclass/setdefault"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageobjectinuseprotection"
+	tenantexists "k8s.io/kubernetes/plugin/pkg/admission/tenant/exists"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/admission"
@@ -65,7 +66,8 @@ var AllOrderedPlugins = []string{
 	admit.PluginName,                        // AlwaysAdmit
 	autoprovision.PluginName,                // NamespaceAutoProvision
 	lifecycle.PluginName,                    // NamespaceLifecycle
-	exists.PluginName,                       // NamespaceExists
+	nsexists.PluginName,                     // NamespaceExists
+	tenantexists.PluginName,                 // TenantExists
 	scdeny.PluginName,                       // SecurityContextDeny
 	antiaffinity.PluginName,                 // LimitPodHardAntiAffinityTopology
 	podpreset.PluginName,                    // PodPreset
@@ -111,7 +113,8 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	imagepolicy.Register(plugins)
 	limitranger.Register(plugins)
 	autoprovision.Register(plugins)
-	exists.Register(plugins)
+	nsexists.Register(plugins)
+	tenantexists.Register(plugins)
 	noderestriction.Register(plugins)
 	nodetaint.Register(plugins)
 	label.Register(plugins) // DEPRECATED, future PVs should not rely on labels for zone topology
