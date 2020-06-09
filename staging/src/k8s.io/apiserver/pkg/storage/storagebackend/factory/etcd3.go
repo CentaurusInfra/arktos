@@ -20,8 +20,8 @@ package factory
 import (
 	"context"
 	"fmt"
+	"github.com/grafov/bcast"
 	"io/ioutil"
-	"k8s.io/apiserver/pkg/storage/datapartition"
 	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"k8s.io/klog"
 	"path"
@@ -180,14 +180,69 @@ func startCompactorOnce(c storagebackend.TransportConfig, servers []string, inte
 	}, nil
 }
 
-// TODO - start/stop compactor for data clusters
 func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, error) {
-	stopCompactor, err := startCompactorOnce(c.Transport, c.Transport.SystemClusterServerList, c.CompactionInterval)
+	client, destroyFunc, err := newETCD3StorageHelper(c.Transport, c.Transport.SystemClusterServerList, c.CompactionInterval)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	client, err := newETCD3Client(c.Transport, c.Transport.SystemClusterServerList)
+	transformer := c.Transformer
+	if transformer == nil {
+		transformer = value.IdentityTransformer
+	}
+
+	var store storage.StorageClusterInterface
+	if c.PartitionConfigFilepath != "" {
+		configMap, _ := parseConfig(c.PartitionConfigFilepath)
+		store = etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap)
+	} else {
+		store = etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging)
+	}
+
+	updateStorageClusterCh := storagecluster.WatchStorageClusterUpdate()
+	go func(s storage.StorageClusterInterface, transport storagebackend.TransportConfig, compactionInterval time.Duration, updateClusterCh *bcast.Member) {
+		for action := range updateStorageClusterCh.Read {
+			storageClusterAction, _ := action.(storagecluster.StorageClusterAction)
+			klog.V(3).Infof("Got storage cluster action [%+v]", storageClusterAction)
+			switch storageClusterAction.Action {
+			case "ADD":
+				newClient, newDestroyFunc, err := newETCD3StorageHelper(transport, storageClusterAction.ServerAddresses, compactionInterval)
+				if err != nil {
+					klog.Fatalf("Cannot create ETCD client for new storage cluster [%v]. Error %v", err, storageClusterAction)
+				}
+
+				err = s.AddDataClient(newClient, storageClusterAction.StorageClusterId, newDestroyFunc)
+				if err != nil {
+					klog.Fatalf("Unexpected storage cluster add event. Error %v", err)
+				}
+			case "UPDATE":
+				newClient, newDestroyFunc, err := newETCD3StorageHelper(transport, storageClusterAction.ServerAddresses, compactionInterval)
+				if err != nil {
+					klog.Fatalf("Cannot create ETCD client for storage cluster updates [%v]. Error %v", err, storageClusterAction)
+				}
+
+				err = s.UpdateDataClient(newClient, storageClusterAction.StorageClusterId, newDestroyFunc)
+				if err != nil {
+					klog.Fatalf("Unexpected storage cluster update event. Error %v", err)
+				}
+			case "DELETE":
+				s.DeleteDataClient(storageClusterAction.StorageClusterId)
+			default:
+				klog.Errorf("Got invalid storage cluster action [%+v]", storageClusterAction)
+			}
+		}
+	}(store, c.Transport, c.CompactionInterval, updateStorageClusterCh)
+
+	return store, destroyFunc, nil
+}
+
+func newETCD3StorageHelper(c storagebackend.TransportConfig, servers []string, interval time.Duration) (*clientv3.Client, DestroyFunc, error) {
+	stopCompactor, err := startCompactorOnce(c, servers, interval)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	client, err := newETCD3Client(c, servers)
 	if err != nil {
 		stopCompactor()
 		return nil, nil, err
@@ -203,58 +258,8 @@ func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, e
 			client.Close()
 		})
 	}
-	transformer := c.Transformer
-	if transformer == nil {
-		transformer = value.IdentityTransformer
-	}
 
-	var store storage.StorageClusterInterface
-	updatePartitionChGrp := datapartition.GetDataPartitionUpdateChGrp()
-	updatePartitionCh := updatePartitionChGrp.Join()
-	if c.PartitionConfigFilepath != "" {
-		configMap, _ := parseConfig(c.PartitionConfigFilepath)
-		store = etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap, updatePartitionCh)
-	} else {
-		store = etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging, updatePartitionCh)
-	}
-
-	updateStorageClusterCh := storagecluster.GetStorageClusterUpdateCh()
-	go func(s storage.StorageClusterInterface, transport storagebackend.TransportConfig, updateClusterCh chan storagecluster.StorageClusterAction) {
-		for storageClusterAction := range updateStorageClusterCh {
-			switch storageClusterAction.Action {
-			case "ADD":
-				newDataClient, err := newETCD3Client(transport, storageClusterAction.ServerAddresses)
-				if err != nil {
-					// TODO - start compact for new data cluster
-				}
-
-				err = s.AddDataClient(newDataClient, storageClusterAction.StorageClusterId)
-				if err != nil {
-					klog.Fatalf("Unexpected storage cluster add event. Error %v", err)
-				}
-			case "UPDATE":
-				newDataClient, err := newETCD3Client(transport, storageClusterAction.ServerAddresses)
-				if err != nil {
-					// TODO - start compact for new data cluster
-				}
-
-				err = s.UpdateDataClient(newDataClient, storageClusterAction.StorageClusterId)
-				if err != nil {
-					klog.Fatalf("Unexpected storage cluster update event. Error %v", err)
-				}
-				// TODO - stop compact for original cluster
-
-			case "DELETE":
-				s.DeleteDataClient(storageClusterAction.StorageClusterId)
-
-				// TODO - stop compact for original data cluster
-			default:
-				klog.Errorf("Got invalid storage cluster action [%+v]", storageClusterAction)
-			}
-		}
-	}(store, c.Transport, updateStorageClusterCh)
-
-	return store, destroyFunc, nil
+	return client, destroyFunc, nil
 }
 
 // Each line in the config needs to contain three part: keyName, start, end

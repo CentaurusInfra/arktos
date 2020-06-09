@@ -17,6 +17,7 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/testingcert:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/storage/storagebackend:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/storage/storagecluster:go_default_library",
         "//vendor/go.etcd.io/etcd/client:go_default_library",
         "//vendor/go.etcd.io/etcd/clientv3:go_default_library",
         "//vendor/go.etcd.io/etcd/etcdserver:go_default_library",

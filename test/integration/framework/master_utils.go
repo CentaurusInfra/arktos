@@ -20,6 +20,7 @@ package framework
 import (
 	"flag"
 	"k8s.io/apiserver/pkg/storage/datapartition"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	apiPartition "k8s.io/client-go/datapartition"
 	"net"
 	"net/http"
@@ -213,6 +214,11 @@ func startMasterOrDie(masterConfig *master.Config, incomingServer *httptest.Serv
 	if withDataPartition {
 		masterConfig.ExtraConfig.DataPartitionManager = datapartition.NewDataPartitionConfigManager(
 			masterConfig.ExtraConfig.ServiceGroupId, masterConfig.ExtraConfig.VersionedInformers.Core().V1().DataPartitionConfigs())
+	}
+	masterConfig.ExtraConfig.TenantStorageManager = storagecluster.GetTenantStorageManager()
+	if masterConfig.ExtraConfig.TenantStorageManager == nil {
+		masterConfig.ExtraConfig.TenantStorageManager = storagecluster.NewTenantStorageMapManager(
+			masterConfig.ExtraConfig.VersionedInformers.Core().V1().Tenants())
 	}
 
 	m, err = masterConfig.Complete().New(genericapiserver.NewEmptyDelegate())
