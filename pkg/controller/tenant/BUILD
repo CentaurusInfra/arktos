@@ -12,6 +12,7 @@ go_library(
     deps = [
         "//pkg/apis/core:go_default_library",
         "//pkg/controller:go_default_library",
+        "//pkg/controller/tenant/deletion:go_default_library",
         "//pkg/util/metrics:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/api/rbac/v1:go_default_library",
@@ -23,6 +24,7 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/apis/arktosextensions/v1:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/generated/clientset/versioned:go_default_library",
+        "//staging/src/k8s.io/client-go/dynamic:go_default_library",
         "//staging/src/k8s.io/client-go/informers/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/listers/core/v1:go_default_library",
@@ -44,6 +46,7 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//pkg/controller/tenant/config:all-srcs",
+        "//pkg/controller/tenant/deletion:all-srcs",
     ],
     tags = ["automanaged"],
 )
