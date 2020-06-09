@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -271,6 +272,7 @@ func IsServiceIPSet(service *core.Service) bool {
 }
 
 var standardFinalizers = sets.NewString(
+	string(core.FinalizerArktos),
 	string(core.FinalizerKubernetes),
 	metav1.FinalizerOrphanDependents,
 	metav1.FinalizerDeleteDependents,

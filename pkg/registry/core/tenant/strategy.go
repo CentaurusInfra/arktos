@@ -63,16 +63,16 @@ func (tenantStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) 
 	// we cannot use this in defaults conversion because we let it get removed over life of object
 	hasKubeFinalizer := false
 	for i := range tenant.Spec.Finalizers {
-		if tenant.Spec.Finalizers[i] == api.FinalizerKubernetes {
+		if tenant.Spec.Finalizers[i] == api.FinalizerArktos {
 			hasKubeFinalizer = true
 			break
 		}
 	}
 	if !hasKubeFinalizer {
 		if len(tenant.Spec.Finalizers) == 0 {
-			tenant.Spec.Finalizers = []api.FinalizerName{api.FinalizerKubernetes}
+			tenant.Spec.Finalizers = []api.FinalizerName{api.FinalizerArktos}
 		} else {
-			tenant.Spec.Finalizers = append(tenant.Spec.Finalizers, api.FinalizerKubernetes)
+			tenant.Spec.Finalizers = append(tenant.Spec.Finalizers, api.FinalizerArktos)
 		}
 	}
 }
