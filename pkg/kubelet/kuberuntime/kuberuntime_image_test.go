@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +35,9 @@ func TestPullImage(t *testing.T) {
 	_, _, fakeManager, err := createTestRuntimeManager()
 	assert.NoError(t, err)
 
-	imageRef, err := fakeManager.PullImage(kubecontainer.ImageSpec{Image: "busybox"}, nil, nil)
+	pod := newTestPod()
+
+	imageRef, err := fakeManager.PullImage(kubecontainer.ImageSpec{Image: "busybox", Pod: pod}, nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "busybox", imageRef)
 
@@ -66,9 +69,11 @@ func TestGetImageRef(t *testing.T) {
 	_, fakeImageService, fakeManager, err := createTestRuntimeManager()
 	assert.NoError(t, err)
 
+	pod := newTestPod()
+
 	image := "busybox"
 	fakeImageService.SetFakeImages([]string{image})
-	imageRef, err := fakeManager.GetImageRef(kubecontainer.ImageSpec{Image: image})
+	imageRef, err := fakeManager.GetImageRef(kubecontainer.ImageSpec{Image: image, Pod: pod})
 	assert.NoError(t, err)
 	assert.Equal(t, image, imageRef)
 }
@@ -77,7 +82,9 @@ func TestRemoveImage(t *testing.T) {
 	_, fakeImageService, fakeManager, err := createTestRuntimeManager()
 	assert.NoError(t, err)
 
-	_, err = fakeManager.PullImage(kubecontainer.ImageSpec{Image: "busybox"}, nil, nil)
+	pod := newTestPod()
+
+	_, err = fakeManager.PullImage(kubecontainer.ImageSpec{Image: "busybox", Pod: pod}, nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(fakeImageService.Images))
 
@@ -166,7 +173,9 @@ func TestPullWithSecrets(t *testing.T) {
 		_, fakeImageService, fakeManager, err := customTestRuntimeManager(builtInKeyRing)
 		require.NoError(t, err)
 
-		_, err = fakeManager.PullImage(kubecontainer.ImageSpec{Image: test.imageName}, test.passedSecrets, nil)
+		pod := newTestPod()
+
+		_, err = fakeManager.PullImage(kubecontainer.ImageSpec{Image: test.imageName, Pod: pod}, test.passedSecrets, nil)
 		require.NoError(t, err)
 		fakeImageService.AssertImagePulledWithAuth(t, &runtimeapi.ImageSpec{Image: test.imageName}, test.expectedAuth, description)
 	}

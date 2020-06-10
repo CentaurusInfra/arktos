@@ -171,7 +171,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		Testname: Pods, assigned hostip
 		Description: Create a Pod. Pod status MUST return successfully and contains a valid IP address.
 	*/
-	framework.ConformanceIt("should get a host IP [NodeConformance]", func() {
+	framework.ConformanceIt("should get a host IP [NodeConformance] [Arktos-CI]", func() {
 		name := "pod-hostip-" + string(uuid.NewUUID())
 		testHostIP(podClient, &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{

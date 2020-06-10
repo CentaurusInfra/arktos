@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -85,7 +86,7 @@ var _ = ginkgo.Describe("[sig-api-machinery] Secrets", func() {
 		Testname: Secrets, pod environment from source
 		Description: Create a secret. Create a Pod with Container that declares a environment variable using ‘EnvFrom’ which references the secret created to extract a key value from the secret. Pod MUST have the environment variable that contains proper value for the key to the secret.
 	*/
-	framework.ConformanceIt("should be consumable via the environment [NodeConformance]", func() {
+	framework.ConformanceIt("should be consumable via the environment [NodeConformance] [Arktos-CI]", func() {
 		name := "secret-test-" + string(uuid.NewUUID())
 		secret := newEnvFromSecret(f.Namespace.Name, name)
 		ginkgo.By(fmt.Sprintf("creating secret %v/%v", f.Namespace.Name, secret.Name))

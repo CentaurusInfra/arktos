@@ -150,9 +150,7 @@ type kubeGenericRuntimeManager struct {
 	// key: podUid string
 	// value: runtime service API
 	podRuntimeServiceMap   map[string]internalapi.RuntimeService
-	podImageServiceMap     map[string]internalapi.ImageManagerService
 	podRuntimeServiceMapOp sync.Mutex
-	podImageServiceMapOp   sync.Mutex
 
 	// The directory path for seccomp profiles.
 	seccompProfileRoot string
@@ -250,7 +248,6 @@ func NewKubeGenericRuntimeManager(
 
 	kubeRuntimeManager.podStateProvider = _podStateProvider
 	kubeRuntimeManager.podRuntimeServiceMap = make(map[string]internalapi.RuntimeService)
-	kubeRuntimeManager.podImageServiceMap = make(map[string]internalapi.ImageManagerService)
 
 	return kubeRuntimeManager, nil
 }
@@ -455,22 +452,6 @@ func (m *kubeGenericRuntimeManager) GetDesiredImagePuller(pod *v1.Pod) (images.I
 
 	imageBackOff := flowcontrol.NewBackOff(10*time.Second, 300*time.Second)
 
-	imageService, err := m.GetImageServiceByPod(pod)
-	if err != nil {
-		klog.Errorf("failed to get image service for pod %s. error: %v", pod.Name, err)
-		return nil, err
-	}
-
-	klog.V(4).Infof("Set desired image service for POD %s", pod.Name)
-	for _, winfo := range pod.Spec.Workloads() {
-		if m.getPodImageService(winfo.Image) != nil {
-			klog.V(4).Infof("Skip setting desired image service for image %s. service: %v", winfo.Image, imageService)
-		} else {
-			klog.V(4).Infof("Set desired image service for image %s. service: %v", winfo.Image, imageService)
-			m.addPodImageService(winfo.Image, imageService)
-		}
-	}
-
 	// TODO: get the hardcoded parameters to the ImageManager constructor from config
 	return images.NewImageManager(
 		kubecontainer.FilterEventRecorder(m.recorder),
@@ -629,32 +610,6 @@ func (m *kubeGenericRuntimeManager) removePodRuntimeService(podId string) error 
 func (m *kubeGenericRuntimeManager) getPodRuntimeService(podId string) internalapi.RuntimeService {
 	if runtimeService, found := m.podRuntimeServiceMap[podId]; found {
 		return runtimeService
-	}
-	return nil
-}
-
-// operations on the pod-imageService map
-// TODO: revisit to add new filed in ImageSpec for the imageService
-func (m *kubeGenericRuntimeManager) addPodImageService(image string, imageService internalapi.ImageManagerService) error {
-	m.podImageServiceMapOp.Lock()
-	defer m.podImageServiceMapOp.Unlock()
-	//just overwrite if entry exists
-	m.podImageServiceMap[image] = imageService
-
-	return nil
-}
-func (m *kubeGenericRuntimeManager) removePodImageService(image string) error {
-	m.podImageServiceMapOp.Lock()
-	defer m.podImageServiceMapOp.Unlock()
-	if _, found := m.podImageServiceMap[image]; found {
-		delete(m.podImageServiceMap, image)
-	}
-
-	return nil
-}
-func (m *kubeGenericRuntimeManager) getPodImageService(image string) internalapi.ImageManagerService {
-	if is, found := m.podImageServiceMap[image]; found {
-		return is
 	}
 	return nil
 }

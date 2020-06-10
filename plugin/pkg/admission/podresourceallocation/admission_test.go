@@ -17,7 +17,6 @@ limitations under the License.
 package podresourceallocation
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -85,7 +84,7 @@ func TestAdmitCreate(t *testing.T) {
 			resourcesAllocated:         nil,
 			expectedResourcesAllocated: nil,
 			resizePolicy:               []api.ResizePolicy{cpuPolicyRestart},
-			expectedResizePolicy:       []api.ResizePolicy{cpuPolicyRestart, memPolicyNoRestart},
+			expectedResizePolicy:       []api.ResizePolicy{},
 		},
 		{
 			name:                       "create new pod - resource allocation equals requests, mem restart resize policy set",
@@ -110,7 +109,7 @@ func TestAdmitCreate(t *testing.T) {
 		pod.Spec.Containers[0].Resources = tc.resources
 		pod.Spec.Containers[0].ResourcesAllocated = tc.resourcesAllocated
 		pod.Spec.Containers[0].ResizePolicy = tc.resizePolicy
-		err := handler.Admit(context.TODO(), admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"),
+		err := handler.Admit(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"),
 			pod.Tenant, pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "",
 			admission.Create, nil, false, nil), nil)
 		if !apiequality.Semantic.DeepEqual(pod.Spec.Containers[0].ResourcesAllocated, tc.expectedResourcesAllocated) {
@@ -206,7 +205,7 @@ func TestAdmitUpdate(t *testing.T) {
 		oldPod.Spec.Containers[0].ResizePolicy = tc.oldResizePolicy
 		newPod.Spec.Containers[0].ResourcesAllocated = tc.newResourcesAllocated
 		newPod.Spec.Containers[0].ResizePolicy = tc.newResizePolicy
-		err := handler.Admit(context.TODO(), admission.NewAttributesRecord(newPod, oldPod, api.Kind("Pod").WithVersion("version"),
+		err := handler.Admit(admission.NewAttributesRecord(newPod, oldPod, api.Kind("Pod").WithVersion("version"),
 			newPod.Tenant, newPod.Namespace, newPod.Name, api.Resource("pods").WithVersion("version"), "",
 			admission.Update, nil, false, nil), nil)
 		if !apiequality.Semantic.DeepEqual(newPod.Spec.Containers[0].ResourcesAllocated, tc.expectedResourcesAllocated) {
@@ -329,6 +328,7 @@ func TestValidateUpdate(t *testing.T) {
 			expectError: true,
 		},
 		//TODO: more unit tests and negative tests
+		//TODO: add QoS immutable tests
 	}
 
 	for _, tc := range tests {

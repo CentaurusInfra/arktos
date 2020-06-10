@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +36,7 @@ verify-prereqs
 echo "... calling verify-kube-binaries" >&2
 verify-kube-binaries
 echo "... calling kube-down" >&2
-if [[ $PRESET_INSTANCES_ENABLED == $TRUE ]]; then
+if [[ ${PRESET_INSTANCES_ENABLED:-false} == $TRUE ]]; then
     kube-down-for-preset-machines
 else
     kube-down

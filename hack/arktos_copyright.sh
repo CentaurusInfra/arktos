@@ -128,6 +128,9 @@ get_added_files_list() {
     git diff --name-only --diff-filter=A $DAY0_COMMIT $HEAD_COMMIT | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
         egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS|arktos_copyright" > $LOGDIR/added_files_git
+    git diff --cached --name-only --diff-filter=A | \
+        egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
+        egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS|arktos_copyright" >> $LOGDIR/added_files_git || true
     grep -F -x -v -f $REPODIRNAME/hack/arktos_copyright_copied_k8s_files $LOGDIR/added_files_git > $LOGDIR/added_files_less_copied
     grep -F -x -v -f $REPODIRNAME/hack/arktos_copyright_copied_modified_k8s_files $LOGDIR/added_files_less_copied > $LOGDIR/added_files
     popd
@@ -140,6 +143,9 @@ get_modified_files_list() {
     git diff --name-only --diff-filter=M $DAY0_COMMIT $HEAD_COMMIT | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
         egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS" > $LOGDIR/changed_files
+    git diff --cached --name-only --diff-filter=M | \
+        egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
+        egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS|arktos_copyright" >> $LOGDIR/changed_files || true
     cat $REPODIRNAME/hack/arktos_copyright_copied_modified_k8s_files >> $LOGDIR/changed_files
     popd
 }

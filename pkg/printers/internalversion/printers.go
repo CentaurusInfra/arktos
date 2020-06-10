@@ -295,8 +295,18 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(controllerInstanceColumnDefinitions, printControllerInstance)
 	h.TableHandler(controllerInstanceColumnDefinitions, printControllerInstanceList)
 
+	storageClusterColumnDefinitions := []metav1beta1.TableColumnDefinition{
+		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "StorageClusterId", Type: "string", Description: apiv1.StorageCluster{}.SwaggerDoc()["storageClusterId"]},
+		{Name: "ServiceAddress", Type: "string", Description: apiv1.StorageCluster{}.SwaggerDoc()["serviceAddress"]},
+		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
+	}
+	h.TableHandler(storageClusterColumnDefinitions, printStorageCluster)
+	h.TableHandler(storageClusterColumnDefinitions, printStorageClusterList)
+
 	tenantColumnDefinitions := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "StorageId", Type: "string", Description: "The cluster id of the tenant storage"},
 		{Name: "Status", Type: "string", Description: "The status of the tenant"},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
 	}
@@ -1275,11 +1285,31 @@ func printControllerInstanceList(list *api.ControllerInstanceList, options print
 	return rows, nil
 }
 
+func printStorageCluster(obj *api.StorageCluster, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	row := metav1beta1.TableRow{
+		Object: runtime.RawExtension{Object: obj},
+	}
+	row.Cells = append(row.Cells, obj.Name, obj.StorageClusterId, obj.ServiceAddress, translateTimestampSince(obj.CreationTimestamp))
+	return []metav1beta1.TableRow{row}, nil
+}
+
+func printStorageClusterList(list *api.StorageClusterList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	rows := make([]metav1beta1.TableRow, 0, len(list.Items))
+	for i := range list.Items {
+		r, err := printStorageCluster(&list.Items[i], options)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, r...)
+	}
+	return rows, nil
+}
+
 func printTenant(obj *api.Tenant, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
-	row.Cells = append(row.Cells, obj.Name, string(obj.Status.Phase), translateTimestampSince(obj.CreationTimestamp))
+	row.Cells = append(row.Cells, obj.Name, obj.Spec.StorageClusterId, string(obj.Status.Phase), translateTimestampSince(obj.CreationTimestamp))
 	return []metav1beta1.TableRow{row}, nil
 }
 

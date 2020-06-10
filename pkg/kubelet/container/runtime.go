@@ -52,6 +52,7 @@ type Version interface {
 // information about the different image types.
 type ImageSpec struct {
 	Image string
+	Pod   *v1.Pod
 }
 
 // ImageStats contains statistics about all the images currently available.
@@ -380,6 +381,8 @@ type ContainerStatus struct {
 	// Message written by the container before exiting (stored in
 	// TerminationMessagePath).
 	Message string
+	// CPU and memory limits for this container
+	ResourceLimits v1.ResourceList
 }
 
 // FindContainerStatusByName returns container status in the pod status with the given name.

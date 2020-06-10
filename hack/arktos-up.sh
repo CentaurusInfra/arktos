@@ -75,17 +75,6 @@ function usage {
             echo "Example 3: hack/local-up-cluster.sh (build a local copy of the source)"
 }
 
-# This function guesses where the existing cached binary build is for the `-O`
-# flag
-function guess_built_binary_path {
-  local hyperkube_path
-  hyperkube_path=$(kube::util::find-binary "hyperkube")
-  if [[ -z "${hyperkube_path}" ]]; then
-    return
-  fi
-  echo -n "$(dirname "${hyperkube_path}")"
-}
-
 ### Allow user to supply the source directory.
 GO_OUT=${GO_OUT:-}
 while getopts "ho:O" OPTION
@@ -97,7 +86,7 @@ do
             echo "using source ${GO_OUT}"
             ;;
         O)
-            GO_OUT=$(guess_built_binary_path)
+            GO_OUT=$(kube::common::guess_built_binary_path)
             if [ "${GO_OUT}" == "" ]; then
                 echo "Could not guess the correct output directory to use."
                 exit 1
@@ -142,78 +131,6 @@ fi
 # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
 mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
 CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-
-function test_apiserver_off {
-    # For the common local scenario, fail fast if server is already running.
-    # this can happen if you run local-up-cluster.sh twice and kill etcd in between.
-    if [[ "${API_PORT}" -gt "0" ]]; then
-        if ! curl --silent -g "${API_HOST}:${API_PORT}" ; then
-            echo "API SERVER insecure port is free, proceeding..."
-        else
-            echo "ERROR starting API SERVER, exiting. Some process on ${API_HOST} is serving already on ${API_PORT}"
-            exit 1
-        fi
-    fi
-
-    if ! curl --silent -k -g "${API_HOST}:${API_SECURE_PORT}" ; then
-        echo "API SERVER secure port is free, proceeding..."
-    else
-        echo "ERROR starting API SERVER, exiting. Some process on ${API_HOST} is serving already on ${API_SECURE_PORT}"
-        exit 1
-    fi
-}
-
-function detect_binary {
-    # Detect the OS name/arch so that we can find our binary
-    case "$(uname -s)" in
-      Darwin)
-        host_os=darwin
-        ;;
-      Linux)
-        host_os=linux
-        ;;
-      *)
-        echo "Unsupported host OS.  Must be Linux or Mac OS X." >&2
-        exit 1
-        ;;
-    esac
-
-    case "$(uname -m)" in
-      x86_64*)
-        host_arch=amd64
-        ;;
-      i?86_64*)
-        host_arch=amd64
-        ;;
-      amd64*)
-        host_arch=amd64
-        ;;
-      aarch64*)
-        host_arch=arm64
-        ;;
-      arm64*)
-        host_arch=arm64
-        ;;
-      arm*)
-        host_arch=arm
-        ;;
-      i?86*)
-        host_arch=x86
-        ;;
-      s390x*)
-        host_arch=s390x
-        ;;
-      ppc64le*)
-        host_arch=ppc64le
-        ;;
-      *)
-        echo "Unsupported host arch. Must be x86_64, 386, arm, arm64, s390x or ppc64le." >&2
-        exit 1
-        ;;
-    esac
-
-   GO_OUT="${KUBE_ROOT}/_output/local/bin/${host_os}/${host_arch}"
-}
 
 cleanup()
 {
@@ -336,16 +253,6 @@ function start_etcd {
     kube::etcd::start
 }
 
-function set_service_accounts {
-    SERVICE_ACCOUNT_LOOKUP=${SERVICE_ACCOUNT_LOOKUP:-true}
-    SERVICE_ACCOUNT_KEY=${SERVICE_ACCOUNT_KEY:-/tmp/kube-serviceaccount.key}
-    # Generate ServiceAccount key if needed
-    if [[ ! -f "${SERVICE_ACCOUNT_KEY}" ]]; then
-      mkdir -p "$(dirname "${SERVICE_ACCOUNT_KEY}")"
-      openssl genrsa -out "${SERVICE_ACCOUNT_KEY}" 2048 2>/dev/null
-    fi
-}
-
 function start_cloud_controller_manager {
     if [ -z "${CLOUD_CONFIG}" ]; then
       echo "CLOUD_CONFIG cannot be empty!"
@@ -374,39 +281,6 @@ function start_cloud_controller_manager {
       --leader-elect=false \
       --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CLOUD_CTLRMGR_LOG}" 2>&1 &
     export CLOUD_CTLRMGR_PID=$!
-}
-
-function start_kubeproxy {
-    PROXY_LOG=${LOG_DIR}/kube-proxy.log
-
-    cat <<EOF > /tmp/kube-proxy.yaml
-apiVersion: kubeproxy.config.k8s.io/v1alpha1
-kind: KubeProxyConfiguration
-clientConnection:
-  kubeconfig: ${CERT_DIR}/kube-proxy.kubeconfig
-hostnameOverride: ${HOSTNAME_OVERRIDE}
-mode: ${KUBE_PROXY_MODE}
-EOF
-    if [[ -n ${FEATURE_GATES} ]]; then
-      echo "featureGates:"
-      # Convert from foo=true,bar=false to
-      #   foo: true
-      #   bar: false
-      for gate in $(echo "${FEATURE_GATES}" | tr ',' ' '); do
-        echo "${gate}" | ${SED} -e 's/\(.*\)=\(.*\)/  \1: \2/'
-      done
-    fi >>/tmp/kube-proxy.yaml
-
-    if [[ "${REUSE_CERTS}" != true ]]; then
-        kube::common::generate_kubeproxy_certs
-    fi
-
-    # shellcheck disable=SC2024
-    sudo "${GO_OUT}/hyperkube" kube-proxy \
-      --v="${LOG_LEVEL}" \
-      --config=/tmp/kube-proxy.yaml \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
-    PROXY_PID=$!
 }
 
 function start_kubedns {
@@ -568,7 +442,7 @@ if [ "${CONTAINER_RUNTIME}" == "docker" ] && ! kube::util::ensure_docker_daemon_
 fi
 
 if [[ "${START_MODE}" != "kubeletonly" ]]; then
-  test_apiserver_off
+  kube::common::test_apiserver_off
 fi
 
 kube::util::test_openssl_installed
@@ -576,7 +450,7 @@ kube::util::ensure-cfssl
 
 ### IF the user didn't supply an output/ for the build... Then we detect.
 if [ "${GO_OUT}" == "" ]; then
-  detect_binary
+  kube::common::detect_binary
 fi
 echo "Detected host and ready to start services.  Doing some housekeeping first..."
 echo "Using GO_OUT ${GO_OUT}"
@@ -588,7 +462,7 @@ fi
 echo "Starting services now!"
 if [[ "${START_MODE}" != "kubeletonly" ]]; then
   start_etcd
-  set_service_accounts
+  kube::common::set_service_accounts
   echo "Starting ${APISERVER_NUMBER} kube-apiserver instances. If you want to make changes to the kube-apiserver nubmer, please run export APISERVER_SERVER=n(n=1,2,...). "
   APISERVER_PID_ARRAY=()
   previous=
@@ -608,7 +482,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     start_cloud_controller_manager
   fi
   if [[ "${START_MODE}" != "nokubeproxy" ]]; then
-    start_kubeproxy
+    kube::common::start_kubeproxy
   fi
   kube::common::start_kubescheduler
   start_kubedns
@@ -661,7 +535,7 @@ echo ""
 echo "Arktos Setup done."
 echo "*******************************************"
 echo "Setup Kata Containers components ..."
-"${KUBE_ROOT}"/hack/install-kata.sh
+KUBECTL=${KUBECTL} "${KUBE_ROOT}"/hack/install-kata.sh
 echo "Kata Setup done."
 echo "*******************************************"
 

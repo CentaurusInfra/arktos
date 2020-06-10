@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -208,14 +209,14 @@ func GetTargetNodeName(pod *v1.Pod) (string, error) {
 	if pod.Spec.Affinity == nil ||
 		pod.Spec.Affinity.NodeAffinity == nil ||
 		pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-		return "", fmt.Errorf("no spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution for pod %s/%s",
-			pod.Namespace, pod.Name)
+		return "", fmt.Errorf("no spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution for pod %s/%s/%s",
+			pod.Tenant, pod.Namespace, pod.Name)
 	}
 
 	terms := pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
 	if len(terms) < 1 {
-		return "", fmt.Errorf("no nodeSelectorTerms in requiredDuringSchedulingIgnoredDuringExecution of pod %s/%s",
-			pod.Namespace, pod.Name)
+		return "", fmt.Errorf("no nodeSelectorTerms in requiredDuringSchedulingIgnoredDuringExecution of pod %s,%s/%s",
+			pod.Tenant, pod.Namespace, pod.Name)
 	}
 
 	for _, term := range terms {

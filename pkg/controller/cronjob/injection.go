@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +45,7 @@ type realSJControl struct {
 var _ sjControlInterface = &realSJControl{}
 
 func (c *realSJControl) UpdateStatus(sj *batchv1beta1.CronJob) (*batchv1beta1.CronJob, error) {
-	return c.KubeClient.BatchV1beta1().CronJobs(sj.Namespace).UpdateStatus(sj)
+	return c.KubeClient.BatchV1beta1().CronJobsWithMultiTenancy(sj.Namespace, sj.Tenant).UpdateStatus(sj)
 }
 
 // fakeSJControl is the default implementation of sjControlInterface.
@@ -65,16 +66,16 @@ func (c *fakeSJControl) UpdateStatus(sj *batchv1beta1.CronJob) (*batchv1beta1.Cr
 // created as an interface to allow testing.
 type jobControlInterface interface {
 	// GetJob retrieves a Job.
-	GetJob(namespace, name string) (*batchv1.Job, error)
+	GetJob(tenant string, namespace string, name string) (*batchv1.Job, error)
 	// CreateJob creates new Jobs according to the spec.
-	CreateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error)
+	CreateJob(tenant string, namespace string, job *batchv1.Job) (*batchv1.Job, error)
 	// UpdateJob updates a Job.
-	UpdateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error)
+	UpdateJob(tenant string, namespace string, job *batchv1.Job) (*batchv1.Job, error)
 	// PatchJob patches a Job.
-	PatchJob(namespace string, name string, pt types.PatchType, data []byte, subresources ...string) (*batchv1.Job, error)
+	PatchJob(tenant string, namespace string, name string, pt types.PatchType, data []byte, subresources ...string) (*batchv1.Job, error)
 	// DeleteJob deletes the Job identified by name.
 	// TODO: delete by UID?
-	DeleteJob(namespace string, name string) error
+	DeleteJob(tenant string, namespace string, name string) error
 }
 
 // realJobControl is the default implementation of jobControlInterface.
@@ -101,25 +102,25 @@ func copyAnnotations(template *batchv1beta1.JobTemplateSpec) labels.Set {
 	return a
 }
 
-func (r realJobControl) GetJob(namespace, name string) (*batchv1.Job, error) {
-	return r.KubeClient.BatchV1().Jobs(namespace).Get(name, metav1.GetOptions{})
+func (r realJobControl) GetJob(tenant string, namespace string, name string) (*batchv1.Job, error) {
+	return r.KubeClient.BatchV1().JobsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 
-func (r realJobControl) UpdateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error) {
-	return r.KubeClient.BatchV1().Jobs(namespace).Update(job)
+func (r realJobControl) UpdateJob(tenant string, namespace string, job *batchv1.Job) (*batchv1.Job, error) {
+	return r.KubeClient.BatchV1().JobsWithMultiTenancy(namespace, tenant).Update(job)
 }
 
-func (r realJobControl) PatchJob(namespace string, name string, pt types.PatchType, data []byte, subresources ...string) (*batchv1.Job, error) {
-	return r.KubeClient.BatchV1().Jobs(namespace).Patch(name, pt, data, subresources...)
+func (r realJobControl) PatchJob(tenant string, namespace string, name string, pt types.PatchType, data []byte, subresources ...string) (*batchv1.Job, error) {
+	return r.KubeClient.BatchV1().JobsWithMultiTenancy(namespace, tenant).Patch(name, pt, data, subresources...)
 }
 
-func (r realJobControl) CreateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error) {
-	return r.KubeClient.BatchV1().Jobs(namespace).Create(job)
+func (r realJobControl) CreateJob(tenant string, namespace string, job *batchv1.Job) (*batchv1.Job, error) {
+	return r.KubeClient.BatchV1().JobsWithMultiTenancy(namespace, tenant).Create(job)
 }
 
-func (r realJobControl) DeleteJob(namespace string, name string) error {
+func (r realJobControl) DeleteJob(tenant string, namespace string, name string) error {
 	background := metav1.DeletePropagationBackground
-	return r.KubeClient.BatchV1().Jobs(namespace).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &background})
+	return r.KubeClient.BatchV1().JobsWithMultiTenancy(namespace, tenant).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &background})
 }
 
 type fakeJobControl struct {
@@ -135,7 +136,7 @@ type fakeJobControl struct {
 
 var _ jobControlInterface = &fakeJobControl{}
 
-func (f *fakeJobControl) CreateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error) {
+func (f *fakeJobControl) CreateJob(tenant string, namespace string, job *batchv1.Job) (*batchv1.Job, error) {
 	f.Lock()
 	defer f.Unlock()
 	if f.Err != nil {
@@ -147,7 +148,7 @@ func (f *fakeJobControl) CreateJob(namespace string, job *batchv1.Job) (*batchv1
 	return job, nil
 }
 
-func (f *fakeJobControl) GetJob(namespace, name string) (*batchv1.Job, error) {
+func (f *fakeJobControl) GetJob(tenant, namespace, name string) (*batchv1.Job, error) {
 	f.Lock()
 	defer f.Unlock()
 	if f.Err != nil {
@@ -156,7 +157,7 @@ func (f *fakeJobControl) GetJob(namespace, name string) (*batchv1.Job, error) {
 	return f.Job, nil
 }
 
-func (f *fakeJobControl) UpdateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error) {
+func (f *fakeJobControl) UpdateJob(tenant string, namespace string, job *batchv1.Job) (*batchv1.Job, error) {
 	f.Lock()
 	defer f.Unlock()
 	if f.Err != nil {
@@ -166,7 +167,7 @@ func (f *fakeJobControl) UpdateJob(namespace string, job *batchv1.Job) (*batchv1
 	return job, nil
 }
 
-func (f *fakeJobControl) PatchJob(namespace string, name string, pt types.PatchType, data []byte, subresources ...string) (*batchv1.Job, error) {
+func (f *fakeJobControl) PatchJob(tenant string, namespace string, name string, pt types.PatchType, data []byte, subresources ...string) (*batchv1.Job, error) {
 	f.Lock()
 	defer f.Unlock()
 	if f.Err != nil {
@@ -178,7 +179,7 @@ func (f *fakeJobControl) PatchJob(namespace string, name string, pt types.PatchT
 	return &batchv1.Job{}, nil
 }
 
-func (f *fakeJobControl) DeleteJob(namespace string, name string) error {
+func (f *fakeJobControl) DeleteJob(tenant string, namespace string, name string) error {
 	f.Lock()
 	defer f.Unlock()
 	if f.Err != nil {
@@ -202,10 +203,10 @@ func (f *fakeJobControl) Clear() {
 // created as an interface to allow testing.
 type podControlInterface interface {
 	// ListPods list pods
-	ListPods(namespace string, opts metav1.ListOptions) (*v1.PodList, error)
+	ListPods(tenant, namespace string, opts metav1.ListOptions) (*v1.PodList, error)
 	// DeleteJob deletes the pod identified by name.
 	// TODO: delete by UID?
-	DeletePod(namespace string, name string) error
+	DeletePod(tenant, namespace string, name string) error
 }
 
 // realPodControl is the default implementation of podControlInterface.
@@ -216,12 +217,12 @@ type realPodControl struct {
 
 var _ podControlInterface = &realPodControl{}
 
-func (r realPodControl) ListPods(namespace string, opts metav1.ListOptions) (*v1.PodList, error) {
-	return r.KubeClient.CoreV1().Pods(namespace).List(opts)
+func (r realPodControl) ListPods(tenant, namespace string, opts metav1.ListOptions) (*v1.PodList, error) {
+	return r.KubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).List(opts)
 }
 
-func (r realPodControl) DeletePod(namespace string, name string) error {
-	return r.KubeClient.CoreV1().Pods(namespace).Delete(name, nil)
+func (r realPodControl) DeletePod(tenant, namespace string, name string) error {
+	return r.KubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Delete(name, nil)
 }
 
 type fakePodControl struct {
@@ -233,7 +234,7 @@ type fakePodControl struct {
 
 var _ podControlInterface = &fakePodControl{}
 
-func (f *fakePodControl) ListPods(namespace string, opts metav1.ListOptions) (*v1.PodList, error) {
+func (f *fakePodControl) ListPods(tenant, namespace string, opts metav1.ListOptions) (*v1.PodList, error) {
 	f.Lock()
 	defer f.Unlock()
 	if f.Err != nil {
@@ -242,7 +243,7 @@ func (f *fakePodControl) ListPods(namespace string, opts metav1.ListOptions) (*v
 	return &v1.PodList{Items: f.Pods}, nil
 }
 
-func (f *fakePodControl) DeletePod(namespace string, name string) error {
+func (f *fakePodControl) DeletePod(tenant, namespace string, name string) error {
 	f.Lock()
 	defer f.Unlock()
 	if f.Err != nil {

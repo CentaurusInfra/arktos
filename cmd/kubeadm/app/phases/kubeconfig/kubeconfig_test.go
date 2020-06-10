@@ -117,7 +117,7 @@ func TestGetKubeConfigSpecs(t *testing.T) {
 		}{
 			{
 				kubeConfigFile: kubeadmconstants.AdminKubeConfigFileName,
-				clientName:     "kubernetes-admin",
+				clientName:     "system:kubernetes-admin",
 				organizations:  []string{kubeadmconstants.SystemPrivilegedGroup},
 			},
 			{

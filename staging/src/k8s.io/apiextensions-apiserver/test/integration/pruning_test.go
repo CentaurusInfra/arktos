@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/transport"
 
 	"sigs.k8s.io/yaml"
 
@@ -322,16 +323,16 @@ func TestPruningFromStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 	tlsInfo := transport.TLSInfo{
-		CertFile: restOptions.StorageConfig.Transport.CertFile,
-		KeyFile:  restOptions.StorageConfig.Transport.KeyFile,
-		CAFile:   restOptions.StorageConfig.Transport.CAFile,
+		CertFile:      restOptions.StorageConfig.Transport.CertFile,
+		KeyFile:       restOptions.StorageConfig.Transport.KeyFile,
+		TrustedCAFile: restOptions.StorageConfig.Transport.TrustedCAFile,
 	}
 	tlsConfig, err := tlsInfo.ClientConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 	etcdConfig := clientv3.Config{
-		Endpoints: restOptions.StorageConfig.Transport.ServerList,
+		Endpoints: restOptions.StorageConfig.Transport.SystemClusterServerList,
 		TLS:       tlsConfig,
 	}
 	etcdclient, err := clientv3.New(etcdConfig)

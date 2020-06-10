@@ -120,6 +120,10 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 	if cpod.Spec.Containers == nil {
 		cpod.Spec.Containers = []v1.Container{}
 	}
+
+	// Info under the pod.Spec.VirtualMachine shall be fully converted to Container spec.
+	// Pending future podConverter design evaluation (Arktos VM spec to Libvirt domain xml).
+	// for now, just ensure resources were converted along with other essentials
 	cpod.Spec.Containers = []v1.Container{
 		{
 			Name:            pod.Spec.VirtualMachine.Name,
@@ -129,6 +133,7 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 			VolumeDevices:   pod.Spec.VirtualMachine.VolumeDevices,
 			TTY:             true,
 			Stdin:           true,
+			Resources:       pod.Spec.VirtualMachine.Resources,
 		},
 	}
 

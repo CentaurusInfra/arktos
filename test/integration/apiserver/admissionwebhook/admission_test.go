@@ -58,7 +58,7 @@ import (
 
 const (
 	testNamespace      = "webhook-integration"
-	testClientUsername = "webhook-integration-client"
+	testClientUsername = "system:webhook-integration-client"
 
 	mutation   = "mutation"
 	validation = "validation"

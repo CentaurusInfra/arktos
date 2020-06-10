@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -123,7 +124,7 @@ func TestConfigurableStorageFactory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if config.Prefix != "/prefix_for_test" || !reflect.DeepEqual(config.Transport.ServerList, []string{"/server2"}) {
+	if config.Prefix != "/prefix_for_test" || !reflect.DeepEqual(config.Transport.SystemClusterServerList, []string{"/server2"}) {
 		t.Errorf("unexpected config %#v", config)
 	}
 	if !called {
@@ -157,7 +158,7 @@ func TestUpdateEtcdOverrides(t *testing.T) {
 		defaultConfig := storagebackend.Config{
 			Prefix: "/registry",
 			Transport: storagebackend.TransportConfig{
-				ServerList: defaultEtcdLocation,
+				SystemClusterServerList: defaultEtcdLocation,
 			},
 		}
 		storageFactory := NewDefaultStorageFactory(defaultConfig, "", codecs, NewDefaultResourceEncodingConfig(scheme), NewResourceConfig(), nil)
@@ -169,8 +170,8 @@ func TestUpdateEtcdOverrides(t *testing.T) {
 			t.Errorf("%d: unexpected error %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(config.Transport.ServerList, test.servers) {
-			t.Errorf("%d: expected %v, got %v", i, test.servers, config.Transport.ServerList)
+		if !reflect.DeepEqual(config.Transport.SystemClusterServerList, test.servers) {
+			t.Errorf("%d: expected %v, got %v", i, test.servers, config.Transport.SystemClusterServerList)
 			continue
 		}
 
@@ -179,8 +180,8 @@ func TestUpdateEtcdOverrides(t *testing.T) {
 			t.Errorf("%d: unexpected error %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(config.Transport.ServerList, defaultEtcdLocation) {
-			t.Errorf("%d: expected %v, got %v", i, defaultEtcdLocation, config.Transport.ServerList)
+		if !reflect.DeepEqual(config.Transport.SystemClusterServerList, defaultEtcdLocation) {
+			t.Errorf("%d: expected %v, got %v", i, defaultEtcdLocation, config.Transport.SystemClusterServerList)
 			continue
 		}
 

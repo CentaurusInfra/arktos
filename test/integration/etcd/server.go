@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -76,7 +76,7 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 	kubeAPIServerOptions.InsecureServing.BindPort = 0
 	kubeAPIServerOptions.SecureServing.Listener = listener
 	kubeAPIServerOptions.SecureServing.ServerCert.CertDirectory = certDir
-	kubeAPIServerOptions.Etcd.StorageConfig.Transport.ServerList = []string{framework.GetEtcdURL()}
+	kubeAPIServerOptions.Etcd.StorageConfig.Transport.SystemClusterServerList = []string{framework.GetEtcdURL()}
 	kubeAPIServerOptions.Etcd.DefaultStorageMediaType = runtime.ContentTypeJSON // force json we can easily interpret the result in etcd
 	kubeAPIServerOptions.ServiceClusterIPRange = *defaultServiceClusterIPRange
 	kubeAPIServerOptions.Authorization.Modes = []string{"RBAC"}
@@ -168,7 +168,7 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 	}
 
 	// create CRDs so we can make sure that custom resources do not get lost
-	kubeClient.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}})
+	kubeClient.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}, Spec: v1.TenantSpec{StorageClusterId: "cluster1"}})
 	crdData := GetCustomResourceDefinitionData()
 	crdData = append(crdData, GetCustomResourceDefinitionDataWithMultiTenancy()...)
 	CreateTestCRDs(t, apiextensionsclientset.NewForConfigOrDie(kubeClientConfigs), false, crdData...)
@@ -405,7 +405,7 @@ func CrdExistsInDiscovery(client apiextensionsclientset.Interface, crd *apiexten
 }
 
 func crdVersionExistsInDiscovery(client apiextensionsclientset.Interface, crd *apiextensionsv1beta1.CustomResourceDefinition, version string) bool {
-	resourceList, err := client.Discovery().ServerResourcesForGroupVersion(crd.Spec.Group + "/" + version)
+	resourceList, err := client.Discovery().ServerResourcesForGroupVersion(crd.Tenant + ":" + crd.Spec.Group + "/" + version)
 	if err != nil {
 		return false
 	}

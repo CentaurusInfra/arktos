@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 
+	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apiregistrationapi "k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	apiregistrationv1api "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	apiregistrationv1beta1api "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
@@ -58,6 +60,37 @@ var discoveryGroup = metav1.APIGroup{
 	},
 }
 
+// getApiServices return the list of APIService for the tenant in the request,
+// including the native APIServices, which is under the system tenant
+// and the APIServices corresponding to the CRDs created by the tenant in the request
+func getApiServices(lister listers.APIServiceLister, req *http.Request) ([]*apiregistrationapi.APIService, error) {
+	// Note: there is an issue here, the CRD created by the system tenant will be visible to all the tenants.
+	// TODO: this issue will be addressed in the following work of CRD sharing
+	// tracking issue: https://github.com/futurewei-cloud/arktos/issues/292
+	systemApiServices, err := lister.APIServicesWithMultiTenancy(metav1.TenantSystem).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	apisTenant, err := apifilters.GetTenantFromQueryThenContext(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if apisTenant == metav1.TenantSystem {
+		return systemApiServices, nil
+	}
+
+	tenantApiServices, err := lister.APIServicesWithMultiTenancy(apisTenant).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	apiServices := append(systemApiServices, tenantApiServices...)
+
+	return apiServices, nil
+}
+
 func (r *apisHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	discoveryGroupList := &metav1.APIGroupList{
 		// always add OUR api group to the list first.  Since we'll never have a registered APIService for it
@@ -65,11 +98,12 @@ func (r *apisHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Groups: []metav1.APIGroup{discoveryGroup},
 	}
 
-	apiServices, err := r.lister.List(labels.Everything())
+	apiServices, err := getApiServices(r.lister, req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	apiServicesByGroup := apiregistrationapi.SortedByGroupAndVersion(apiServices)
 	for _, apiGroupServers := range apiServicesByGroup {
 		// skip the legacy group
@@ -126,7 +160,7 @@ type apiGroupHandler struct {
 }
 
 func (r *apiGroupHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	apiServices, err := r.lister.List(labels.Everything())
+	apiServices, err := getApiServices(r.lister, req)
 	if statusErr, ok := err.(*apierrors.StatusError); ok && err != nil {
 		responsewriters.WriteRawJSON(int(statusErr.Status().Code), statusErr.Status(), w)
 		return

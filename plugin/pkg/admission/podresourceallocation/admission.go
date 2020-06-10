@@ -17,7 +17,6 @@ limitations under the License.
 package podresourceallocation
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -26,6 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/apis/core/helper/qos"
 	"k8s.io/kubernetes/pkg/auth/nodeidentifier"
 	"k8s.io/kubernetes/pkg/features"
 )
@@ -57,7 +57,7 @@ func NewPodResourceAllocation() *Plugin {
 }
 
 // Admit may mutate the pod's ResourcesAllocated or ResizePolicy fields for compatibility with older client versions
-func (p *Plugin) Admit(ctx context.Context, attributes admission.Attributes, o admission.ObjectInterfaces) (err error) {
+func (p *Plugin) Admit(attributes admission.Attributes, o admission.ObjectInterfaces) (err error) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
 		return nil
 	}
@@ -76,7 +76,13 @@ func (p *Plugin) Admit(ctx context.Context, attributes admission.Attributes, o a
 	// because doing it here allows us to support create/update from older client versions
 	switch op {
 	case admission.Create:
+		podQoS := qos.GetPodQOS(pod)
 		for i := range pod.Spec.Containers {
+			// set container resize policy to nil for best-effort class
+			if podQoS == api.PodQOSBestEffort {
+				pod.Spec.Containers[i].ResizePolicy = nil
+				continue
+			}
 			// set resources allocated equal to requests, if not specified
 			if pod.Spec.Containers[i].Resources.Requests != nil {
 				if pod.Spec.Containers[i].ResourcesAllocated == nil {
@@ -149,7 +155,10 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 	case admission.Create:
 		// newly created pods must have ResourcesAllocated field either empty or equal to Requests
 		for _, c := range pod.Spec.Containers {
-			if c.ResourcesAllocated == nil ||
+			if c.Resources.Requests == nil {
+				continue
+			}
+			if c.ResourcesAllocated == nil || len(c.ResourcesAllocated) != len(c.Resources.Requests) ||
 				!reflect.DeepEqual(c.ResourcesAllocated, c.Resources.Requests) {
 				return apierrors.NewBadRequest("Resource allocation must equal desired resources for new pod")
 			}
@@ -166,6 +175,9 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 		userInfo := attributes.GetUserInfo()
 		nodeName, isNode := p.nodeidentifier.NodeIdentity(userInfo)
 		for i, c := range pod.Spec.Containers {
+			if c.Resources.Requests == nil || len(c.Resources.Requests) == 0 {
+				continue
+			}
 			if c.ResourcesAllocated != nil &&
 				!reflect.DeepEqual(c.ResourcesAllocated, oldPod.Spec.Containers[i].ResourcesAllocated) {
 				if !isNode {

@@ -28,13 +28,13 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistrytest "k8s.io/apiserver/pkg/registry/generic/testing"
 	"k8s.io/apiserver/pkg/registry/rest"
-	etcdtesting "k8s.io/apiserver/pkg/storage/etcd/testing"
+	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
 
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
-func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
+func newStorage(t *testing.T) (*REST, *etcd3testing.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
 	restOptions := generic.RESTOptions{StorageConfig: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1, ResourcePrefix: "tenants"}
 	tenantStorage, _, _ := NewREST(restOptions)
@@ -45,6 +45,9 @@ func validNewTenant() *api.Tenant {
 	return &api.Tenant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
+		},
+		Spec: api.TenantSpec{
+			StorageClusterId: "1",
 		},
 	}
 }
@@ -62,6 +65,9 @@ func TestCreate(t *testing.T) {
 		// invalid
 		&api.Tenant{
 			ObjectMeta: metav1.ObjectMeta{Name: "bad value"},
+			Spec: api.TenantSpec{
+				StorageClusterId: "1",
+			},
 		},
 	)
 }
@@ -155,7 +161,8 @@ func TestDeleteTenantWithIncompleteFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -186,7 +193,8 @@ func TestUpdateDeletingTenantWithIncompleteMetadataFinalizers(t *testing.T) {
 			Finalizers:        []string{"example.com/foo"},
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -220,7 +228,8 @@ func TestUpdateDeletingTenantWithIncompleteSpecFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -253,6 +262,9 @@ func TestUpdateDeletingTenantWithCompleteFinalizers(t *testing.T) {
 			Name:              "foo",
 			DeletionTimestamp: &now,
 			Finalizers:        []string{"example.com/foo"},
+		},
+		Spec: api.TenantSpec{
+			StorageClusterId: "1",
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -292,7 +304,8 @@ func TestFinalizeDeletingTenantWithCompleteFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -333,7 +346,8 @@ func TestFinalizeDeletingTenantWithIncompleteMetadataFinalizers(t *testing.T) {
 			Finalizers:        []string{"example.com/foo"},
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{api.FinalizerKubernetes},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{api.FinalizerKubernetes},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -368,7 +382,8 @@ func TestDeleteTenantWithCompleteFinalizers(t *testing.T) {
 			DeletionTimestamp: &now,
 		},
 		Spec: api.TenantSpec{
-			Finalizers: []api.FinalizerName{},
+			StorageClusterId: "1",
+			Finalizers:       []api.FinalizerName{},
 		},
 		Status: api.TenantStatus{Phase: api.TenantActive},
 	}
@@ -569,7 +584,8 @@ func TestDeleteWithGCFinalizers(t *testing.T) {
 				Finalizers: test.existingFinalizers,
 			},
 			Spec: api.TenantSpec{
-				Finalizers: []api.FinalizerName{},
+				StorageClusterId: "1",
+				Finalizers:       []api.FinalizerName{},
 			},
 			Status: api.TenantStatus{Phase: api.TenantActive},
 		}

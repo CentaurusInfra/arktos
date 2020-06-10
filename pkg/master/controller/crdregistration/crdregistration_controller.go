@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +35,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	"k8s.io/kubernetes/pkg/controller"
+
+	apiserviceregister "k8s.io/kube-aggregator/pkg/controllers/autoregister"
 )
 
 // AutoAPIServiceRegistration is an interface which callers can re-declare locally and properly cast to for
@@ -42,7 +45,7 @@ type AutoAPIServiceRegistration interface {
 	// AddAPIServiceToSync adds an API service to auto-register.
 	AddAPIServiceToSync(in *apiregistration.APIService)
 	// RemoveAPIServiceToSync removes an API service to auto-register.
-	RemoveAPIServiceToSync(name string)
+	RemoveAPIServiceToSync(tenantedApiServiceName string)
 }
 
 type crdRegistrationController struct {
@@ -51,13 +54,18 @@ type crdRegistrationController struct {
 
 	apiServiceRegistration AutoAPIServiceRegistration
 
-	syncHandler func(groupVersion schema.GroupVersion) error
+	syncHandler func(gvt GroupVersionTenant) error
 
 	syncedInitialSet chan struct{}
 
 	// queue is where incoming work is placed to de-dup and to allow "easy" rate limited requeues on errors
 	// this is actually keyed by a groupVersion
 	queue workqueue.RateLimitingInterface
+}
+
+type GroupVersionTenant struct {
+	gv     schema.GroupVersion
+	tenant string
 }
 
 // NewCRDRegistrationController returns a controller which will register CRD GroupVersions with the auto APIService registration
@@ -123,7 +131,7 @@ func (c *crdRegistrationController) Run(threadiness int, stopCh <-chan struct{})
 	} else {
 		for _, crd := range crds {
 			for _, version := range crd.Spec.Versions {
-				if err := c.syncHandler(schema.GroupVersion{Group: crd.Spec.Group, Version: version.Name}); err != nil {
+				if err := c.syncHandler(GroupVersionTenant{schema.GroupVersion{Group: crd.Spec.Group, Version: version.Name}, crd.Tenant}); err != nil {
 					utilruntime.HandleError(err)
 				}
 			}
@@ -165,7 +173,7 @@ func (c *crdRegistrationController) processNextWorkItem() bool {
 	defer c.queue.Done(key)
 
 	// do your work on the key.  This method will contains your "do stuff" logic
-	err := c.syncHandler(key.(schema.GroupVersion))
+	err := c.syncHandler(key.(GroupVersionTenant))
 	if err == nil {
 		// if you had no error, tell the queue to stop tracking history for your key.  This will
 		// reset things like failure counts for per-item rate limiting
@@ -187,15 +195,17 @@ func (c *crdRegistrationController) processNextWorkItem() bool {
 
 func (c *crdRegistrationController) enqueueCRD(crd *apiextensions.CustomResourceDefinition) {
 	for _, version := range crd.Spec.Versions {
-		c.queue.Add(schema.GroupVersion{Group: crd.Spec.Group, Version: version.Name})
+		c.queue.Add(GroupVersionTenant{schema.GroupVersion{Group: crd.Spec.Group, Version: version.Name}, crd.Tenant})
 	}
 }
 
-func (c *crdRegistrationController) handleVersionUpdate(groupVersion schema.GroupVersion) error {
+func (c *crdRegistrationController) handleVersionUpdate(gvt GroupVersionTenant) error {
+	tenant := gvt.tenant
+	groupVersion := gvt.gv
 	apiServiceName := groupVersion.Version + "." + groupVersion.Group
 
 	// check all CRDs.  There shouldn't that many, but if we have problems later we can index them
-	crds, err := c.crdLister.List(labels.Everything())
+	crds, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).List(labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -209,7 +219,7 @@ func (c *crdRegistrationController) handleVersionUpdate(groupVersion schema.Grou
 			}
 
 			c.apiServiceRegistration.AddAPIServiceToSync(&apiregistration.APIService{
-				ObjectMeta: metav1.ObjectMeta{Name: apiServiceName},
+				ObjectMeta: metav1.ObjectMeta{Name: apiServiceName, Tenant: crd.Tenant},
 				Spec: apiregistration.APIServiceSpec{
 					Group:                groupVersion.Group,
 					Version:              groupVersion.Version,
@@ -221,6 +231,8 @@ func (c *crdRegistrationController) handleVersionUpdate(groupVersion schema.Grou
 		}
 	}
 
-	c.apiServiceRegistration.RemoveAPIServiceToSync(apiServiceName)
+	// if the CRD is not found in backend, it is q request to delete the APIService
+	apiServiceToRemove := &apiregistration.APIService{ObjectMeta: metav1.ObjectMeta{Name: apiServiceName, Tenant: tenant}}
+	c.apiServiceRegistration.RemoveAPIServiceToSync(apiserviceregister.NameWithMultiTenancy(apiServiceToRemove))
 	return nil
 }

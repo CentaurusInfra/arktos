@@ -142,7 +142,7 @@ func podWithPort(id, desiredHost string, port int) *v1.Pod {
 func podWithResources(id, desiredHost string, limits v1.ResourceList, requests v1.ResourceList) *v1.Pod {
 	pod := podWithID(id, desiredHost)
 	pod.Spec.Containers = []v1.Container{
-		{Name: "ctr", Resources: v1.ResourceRequirements{Limits: limits, Requests: requests}},
+		{Name: "ctr", Resources: v1.ResourceRequirements{Limits: limits, Requests: requests}, ResourcesAllocated: requests},
 	}
 	return pod
 }

@@ -161,10 +161,7 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 		}
 	}
 
-	//Temporarily turn this check off as we now allow CRDs of the same G/V/K under different tenants.
-	// TODO: rewrite the following check after the following issue is closed:
-	// https://github.com/futurewei-cloud/arktos/issues/227
-	/*for path, gvrs := range pathSeen {
+	for path, gvrs := range pathSeen {
 		if len(gvrs) != 1 {
 			gvrStrings := []string{}
 			for _, key := range gvrs {
@@ -172,7 +169,7 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 			}
 			t.Errorf("invalid test data, please ensure all expectedEtcdPath are unique, path %s has duplicate GVRs:\n%s", path, gvrStrings)
 		}
-	}*/
+	}
 }
 
 func (c *allClient) createWithMultiTenancy(stub, te string, ns string, mapping *meta.RESTMapping, all *[]cleanupData) error {

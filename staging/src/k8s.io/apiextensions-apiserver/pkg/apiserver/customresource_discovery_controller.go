@@ -48,9 +48,15 @@ type DiscoveryController struct {
 	crdsSynced cache.InformerSynced
 
 	// To allow injection for testing.
-	syncFn func(version schema.GroupVersion) error
+	syncFn func(gvt GroupVersionTenant) error
 
 	queue workqueue.RateLimitingInterface
+}
+
+type GroupVersionTenant struct {
+	group   string
+	version string
+	tenant  string
 }
 
 func NewDiscoveryController(crdInformer informers.CustomResourceDefinitionInformer, versionHandler *versionDiscoveryHandler, groupHandler *groupDiscoveryHandler) *DiscoveryController {
@@ -74,24 +80,27 @@ func NewDiscoveryController(crdInformer informers.CustomResourceDefinitionInform
 	return c
 }
 
-func (c *DiscoveryController) sync(version schema.GroupVersion) error {
+func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 
 	apiVersionsForDiscovery := []metav1.GroupVersionForDiscovery{}
 	apiResourcesForDiscovery := []metav1.APIResource{}
 	versionsForDiscoveryMap := map[metav1.GroupVersion]bool{}
 
-	crds, err := c.crdLister.List(labels.Everything())
+	groupVersion := schema.GroupVersion{Group: gvt.group, Version: gvt.version}
+
+	crds, err := c.crdLister.CustomResourceDefinitionsWithMultiTenancy(gvt.tenant).List(labels.Everything())
 	if err != nil {
 		return err
 	}
 	foundVersion := false
 	foundGroup := false
+
 	for _, crd := range crds {
 		if !apiextensions.IsCRDConditionTrue(crd, apiextensions.Established) {
 			continue
 		}
 
-		if crd.Spec.Group != version.Group {
+		if crd.Spec.Group != gvt.group {
 			continue
 		}
 
@@ -101,6 +110,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			if !v.Served {
 				continue
 			}
+
 			// If there is any Served version, that means the group should show up in discovery
 			foundGroup = true
 
@@ -112,7 +122,8 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 					Version:      v.Name,
 				})
 			}
-			if v.Name == version.Version {
+
+			if v.Name == gvt.version {
 				foundThisVersion = true
 			}
 			if v.Storage {
@@ -143,7 +154,7 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 			StorageVersionHash: storageVersionHash,
 		})
 
-		subresources, err := apiextensions.GetSubresourcesForVersion(crd, version.Version)
+		subresources, err := apiextensions.GetSubresourcesForVersion(crd, gvt.version)
 		if err != nil {
 			return err
 		}
@@ -171,27 +182,28 @@ func (c *DiscoveryController) sync(version schema.GroupVersion) error {
 	}
 
 	if !foundGroup {
-		c.groupHandler.unsetDiscovery(version.Group)
-		c.versionHandler.unsetDiscovery(version)
+		c.groupHandler.unsetDiscovery(gvt.tenant, gvt.group)
+		c.versionHandler.unsetDiscovery(gvt.tenant, groupVersion)
 		return nil
 	}
 
 	sortGroupDiscoveryByKubeAwareVersion(apiVersionsForDiscovery)
 
 	apiGroup := metav1.APIGroup{
-		Name:     version.Group,
+		Name:     gvt.group,
 		Versions: apiVersionsForDiscovery,
 		// the preferred versions for a group is the first item in
 		// apiVersionsForDiscovery after it put in the right ordered
 		PreferredVersion: apiVersionsForDiscovery[0],
 	}
-	c.groupHandler.setDiscovery(version.Group, discovery.NewAPIGroupHandler(Codecs, apiGroup))
+	c.groupHandler.setDiscovery(gvt.tenant, gvt.group, discovery.NewAPIGroupHandler(Codecs, apiGroup))
 
 	if !foundVersion {
-		c.versionHandler.unsetDiscovery(version)
+		c.versionHandler.unsetDiscovery(gvt.tenant, groupVersion)
 		return nil
 	}
-	c.versionHandler.setDiscovery(version, discovery.NewAPIVersionHandler(Codecs, version, discovery.APIResourceListerFunc(func(filter func(metav1.APIResource) bool) []metav1.APIResource {
+
+	c.versionHandler.setDiscovery(gvt.tenant, groupVersion, discovery.NewAPIVersionHandler(Codecs, groupVersion, discovery.APIResourceListerFunc(func() []metav1.APIResource {
 		return apiResourcesForDiscovery
 	})))
 
@@ -235,7 +247,7 @@ func (c *DiscoveryController) processNextWorkItem() bool {
 	}
 	defer c.queue.Done(key)
 
-	err := c.syncFn(key.(schema.GroupVersion))
+	err := c.syncFn(key.(GroupVersionTenant))
 	if err == nil {
 		c.queue.Forget(key)
 		return true
@@ -249,7 +261,7 @@ func (c *DiscoveryController) processNextWorkItem() bool {
 
 func (c *DiscoveryController) enqueue(obj *apiextensions.CustomResourceDefinition) {
 	for _, v := range obj.Spec.Versions {
-		c.queue.Add(schema.GroupVersion{Group: obj.Spec.Group, Version: v.Name})
+		c.queue.Add(GroupVersionTenant{obj.Spec.Group, v.Name, obj.Tenant})
 	}
 }
 

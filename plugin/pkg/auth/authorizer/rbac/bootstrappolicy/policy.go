@@ -188,7 +188,7 @@ func NodeRules() []rbacv1.PolicyRule {
 
 	// InPlacePodVerticalScaling
 	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
-		nodePolicyRules = append(nodePolicyRules, rbacv1helpers.NewRule("update").Groups(legacyGroup).Resources("pods").RuleOrDie())
+		nodePolicyRules = append(nodePolicyRules, rbacv1helpers.NewRule("patch").Groups(legacyGroup).Resources("pods").RuleOrDie())
 	}
 	return nodePolicyRules
 }

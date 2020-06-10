@@ -2,6 +2,7 @@
 
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,12 +35,8 @@ func (m *kubeGenericRuntimeManager) applyPlatformSpecificContainerConfig(config 
 	return nil
 }
 
-// generateLinuxContainerConfig generates linux container config for kubelet runtime v1.
-func (m *kubeGenericRuntimeManager) generateLinuxContainerConfig(container *v1.Container, pod *v1.Pod, uid *int64, username string) *runtimeapi.LinuxContainerConfig {
-	lc := &runtimeapi.LinuxContainerConfig{
-		Resources:       &runtimeapi.LinuxContainerResources{},
-		SecurityContext: m.determineEffectiveSecurityContext(pod, container, uid, username),
-	}
+func (m *kubeGenericRuntimeManager) generateLinuxContainerResources(pod *v1.Pod, container *v1.Container) *runtimeapi.LinuxContainerResources {
+	linuxContainerResources := &runtimeapi.LinuxContainerResources{}
 
 	// set linux container resources
 	var cpuShares int64
@@ -58,13 +55,13 @@ func (m *kubeGenericRuntimeManager) generateLinuxContainerConfig(container *v1.C
 		// of CPU shares.
 		cpuShares = milliCPUToShares(cpuRequest.MilliValue())
 	}
-	lc.Resources.CpuShares = cpuShares
+	linuxContainerResources.CpuShares = cpuShares
 	if memoryLimit != 0 {
-		lc.Resources.MemoryLimitInBytes = memoryLimit
+		linuxContainerResources.MemoryLimitInBytes = memoryLimit
 	}
 	// Set OOM score of the container based on qos policy. Processes in lower-priority pods should
 	// be killed first if the system runs out of memory.
-	lc.Resources.OomScoreAdj = oomScoreAdj
+	linuxContainerResources.OomScoreAdj = oomScoreAdj
 
 	if m.cpuCFSQuota {
 		// if cpuLimit.Amount is nil, then the appropriate default value is returned
@@ -74,9 +71,17 @@ func (m *kubeGenericRuntimeManager) generateLinuxContainerConfig(container *v1.C
 			cpuPeriod = int64(m.cpuCFSQuotaPeriod.Duration / time.Microsecond)
 		}
 		cpuQuota := milliCPUToQuota(cpuLimit.MilliValue(), cpuPeriod)
-		lc.Resources.CpuQuota = cpuQuota
-		lc.Resources.CpuPeriod = cpuPeriod
+		linuxContainerResources.CpuQuota = cpuQuota
+		linuxContainerResources.CpuPeriod = cpuPeriod
 	}
+	return linuxContainerResources
+}
 
+// generateLinuxContainerConfig generates linux container config for kubelet runtime v1.
+func (m *kubeGenericRuntimeManager) generateLinuxContainerConfig(container *v1.Container, pod *v1.Pod, uid *int64, username string) *runtimeapi.LinuxContainerConfig {
+	lc := &runtimeapi.LinuxContainerConfig{
+		Resources:       m.generateLinuxContainerResources(pod, container),
+		SecurityContext: m.determineEffectiveSecurityContext(pod, container, uid, username),
+	}
 	return lc
 }
