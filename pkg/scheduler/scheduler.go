@@ -25,7 +25,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog"
 	"strings"
-	"bytes"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -496,6 +495,7 @@ func (sched *Scheduler) globalScheduleOne() {
 	// suggestedHost := "ec2-54-148-84-253.us-west-2.compute.amazonaws.com:22"
 	channel := make (chan string)
 	finished := make (chan int)
+	// manifest := &(pod.Spec)
 
 	// Create a single command that is semicolon seperated
 	commands := []string{
@@ -503,7 +503,7 @@ func (sched *Scheduler) globalScheduleOne() {
 		". admin-openrc",
 		"openstack service list",
 	}
-	command := strings.Join(commands, "; ")
+	combinedCommand := strings.Join(commands, " && ")
 
 	go func() {
 		channel <- "ec2-54-148-84-253.us-west-2.compute.amazonaws.com:22"
@@ -517,15 +517,19 @@ func (sched *Scheduler) globalScheduleOne() {
 			return
 		}
 
-		var output bytes.Buffer
-		session.Stdout = &output
-
 		klog.V(3).Infof("Successfully connect to remote openstack cluster")
 
-		if err := session.Run(command); err != nil {
+		out, err := session.CombinedOutput(combinedCommand)
+		if err != nil {
 			klog.V(3).Infof("Failed to run commands")
+			return
 		}
-		fmt.Println(output.String())
+		fmt.Println(string(out))
+		// if err := session.Run(command); err != nil {
+		// 	klog.V(3).Infof("Failed to run commands")
+		// 	return
+		// }
+		// fmt.Println(output.String())
 		client.Close()
 		finished <- 1
 	}()
