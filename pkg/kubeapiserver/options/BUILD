@@ -26,6 +26,7 @@ go_library(
         "//plugin/pkg/admission/admit:go_default_library",
         "//plugin/pkg/admission/alwayspullimages:go_default_library",
         "//plugin/pkg/admission/antiaffinity:go_default_library",
+        "//plugin/pkg/admission/defaultpodnetworknotready:go_default_library",
         "//plugin/pkg/admission/defaulttolerationseconds:go_default_library",
         "//plugin/pkg/admission/deny:go_default_library",
         "//plugin/pkg/admission/eventratelimit:go_default_library",
