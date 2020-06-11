@@ -111,12 +111,19 @@ func TestTenantCreation(t *testing.T) {
 		informers := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), controller.NoResyncPeriodFunc())
 		tnInformer := informers.Core().V1().Tenants()
 		networkClient := fakearktosv1.NewSimpleClientset(&arktosv1.Network{})
+		fakeDiscoverFn := func() ([]*metav1.APIResourceList, error) {
+			return []*metav1.APIResourceList{}, nil
+		}
+
 		controller := NewTenantController(
 			client,
 			tnInformer,
 			10*time.Minute,
 			networkClient,
 			tc.NetworkTemplatePath,
+			nil,
+			fakeDiscoverFn,
+			v1.FinalizerArktos,
 		)
 		controller.listerSynced = alwaysReady
 
