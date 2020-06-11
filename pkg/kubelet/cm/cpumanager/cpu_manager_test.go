@@ -19,6 +19,7 @@ package cpumanager
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"reflect"
 	"strings"
 	"testing"
@@ -36,7 +37,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/state"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
-	kubeContainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
 
 type mockState struct {
@@ -197,7 +197,7 @@ func TestCPUManagerAdd(t *testing.T) {
 			testRuntimeService: mockRuntimeService{
 				err: testCase.updateErr,
 			},
-			runtimeManager:    kubeContainer.NewFakeRuntimeManager(nil, nil),
+			runtimeManager:    runtimeregistry.NewFakeRuntimeManager(nil, nil),
 			activePods:        func() []*v1.Pod { return nil },
 			podStatusProvider: mockPodStatusProvider{},
 		}
@@ -328,7 +328,7 @@ func TestCPUManagerRemove(t *testing.T) {
 			defaultCPUSet: cpuset.NewCPUSet(),
 		},
 		testRuntimeService: mockRuntimeService{},
-		runtimeManager:     kubeContainer.NewFakeRuntimeManager(nil, nil),
+		runtimeManager:     runtimeregistry.NewFakeRuntimeManager(nil, nil),
 		activePods:         func() []*v1.Pod { return nil },
 		podStatusProvider:  mockPodStatusProvider{},
 	}
@@ -344,7 +344,7 @@ func TestCPUManagerRemove(t *testing.T) {
 		},
 		state:              state.NewMemoryState(),
 		testRuntimeService: mockRuntimeService{},
-		runtimeManager:     kubeContainer.NewFakeRuntimeManager(nil, nil),
+		runtimeManager:     runtimeregistry.NewFakeRuntimeManager(nil, nil),
 		activePods:         func() []*v1.Pod { return nil },
 		podStatusProvider:  mockPodStatusProvider{},
 	}
@@ -574,7 +574,7 @@ func TestReconcileState(t *testing.T) {
 			testRuntimeService: mockRuntimeService{
 				err: testCase.updateErr,
 			},
-			runtimeManager: kubeContainer.NewFakeRuntimeManager(nil, nil),
+			runtimeManager: runtimeregistry.NewFakeRuntimeManager(nil, nil),
 			activePods: func() []*v1.Pod {
 				return testCase.activePods
 			},

@@ -6,7 +6,6 @@ go_library(
         "cache.go",
         "container_gc.go",
         "container_reference_manager.go",
-        "fake_runtime_manager.go",
         "helpers.go",
         "os.go",
         "ref.go",
@@ -21,6 +20,7 @@ go_library(
     deps = [
         "//pkg/api/legacyscheme:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",
+        "//pkg/kubelet/runtimeregistry:go_default_library",
         "//pkg/util/hash:go_default_library",
         "//pkg/volume:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",

@@ -230,7 +230,7 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	crdName := requestInfo.Resource + "." + requestInfo.APIGroup
-	crd, err := r.crdLister.CustomResourceDefinitionsWithMultiTenancy(crdTenant).Get(crdName)
+	crd, err := r.crdLister.CustomResourceDefinitionsWithMultiTenancy(crdTenant).GetAccessibleCrd(crdName)
 	if apierrors.IsNotFound(err) {
 		r.delegate.ServeHTTP(w, req)
 		return

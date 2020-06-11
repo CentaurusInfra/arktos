@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	critest "k8s.io/cri-api/pkg/apis/testing"
-	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
 
 func TestGetAllLogs(t *testing.T) {
@@ -87,7 +87,7 @@ func TestRotateLogs(t *testing.T) {
 	now := time.Now()
 	f := critest.NewFakeRuntimeService()
 	c := &containerLogManager{
-		runtimeManager: kubecontainer.NewFakeRuntimeManager(f, nil),
+		runtimeManager: runtimeregistry.NewFakeRuntimeManager(f, nil),
 		policy: LogRotatePolicy{
 			MaxSize:  testMaxSize,
 			MaxFiles: testMaxFiles,
@@ -303,7 +303,7 @@ func TestRotateLatestLog(t *testing.T) {
 		now := time.Now()
 		f := critest.NewFakeRuntimeService()
 		c := &containerLogManager{
-			runtimeManager: kubecontainer.NewFakeRuntimeManager(f, nil),
+			runtimeManager: runtimeregistry.NewFakeRuntimeManager(f, nil),
 			policy:         LogRotatePolicy{MaxFiles: test.maxFiles},
 			clock:          clock.NewFakeClock(now),
 		}

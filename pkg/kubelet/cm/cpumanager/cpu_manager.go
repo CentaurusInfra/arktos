@@ -19,6 +19,7 @@ package cpumanager
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"math"
 	"sync"
 	"time"
@@ -51,7 +52,7 @@ const cpuManagerStateFileName = "cpu_manager_state"
 // Manager interface provides methods for Kubelet to manage pod cpus.
 type Manager interface {
 	// Start is called during Kubelet initialization.
-	Start(activePods ActivePodsFunc, podStatusProvider status.PodStatusProvider, runtimeManager kubecontainer.RuntimeManager)
+	Start(activePods ActivePodsFunc, podStatusProvider status.PodStatusProvider, runtimeManager runtimeregistry.Interface)
 
 	// AddContainer is called between container create and container start
 	// so that initial CPU affinity settings can be written through to the
@@ -84,7 +85,7 @@ type manager struct {
 
 	// RuntimeManager is the runtime manager where we can get runtime services
 	// for different pods.
-	runtimeManager kubecontainer.RuntimeManager
+	runtimeManager runtimeregistry.Interface
 
 	// activePods is a method for listing active pods on the node
 	// so all the containers can be updated in the reconciliation loop.
@@ -156,7 +157,7 @@ func NewManager(cpuPolicyName string, reconcilePeriod time.Duration, machineInfo
 	return manager, nil
 }
 
-func (m *manager) Start(activePods ActivePodsFunc, podStatusProvider status.PodStatusProvider, runtimeManager kubecontainer.RuntimeManager) {
+func (m *manager) Start(activePods ActivePodsFunc, podStatusProvider status.PodStatusProvider, runtimeManager runtimeregistry.Interface) {
 	klog.Infof("[cpumanager] starting with %s policy", m.policy.Name())
 	klog.Infof("[cpumanager] reconciling every %v", m.reconcilePeriod)
 
@@ -328,13 +329,17 @@ func (m *manager) updateContainerCPUSet(p *v1.Pod, containerID string, cpus cpus
 			})
 	}
 
-	runtimeService, err := m.runtimeManager.GetRuntimeServiceByPod(p)
+	podWorkloadType := runtimeregistry.ContainerWorkloadType
+	if p.Spec.VirtualMachine != nil {
+		podWorkloadType = runtimeregistry.VmworkloadType
+	}
+	runtimeService, err := m.runtimeManager.GetRuntimeServiceByWorkloadType(podWorkloadType)
 	if err != nil {
 		klog.Errorf("[cpumanager] updateContainerCPUSet: failed to get the runtime service (pod: %s, container id: %s, error: %v)", p.Name, containerID, err)
 		return err
 	}
 
-	return runtimeService.UpdateContainerResources(
+	return runtimeService.ServiceApi.UpdateContainerResources(
 		containerID,
 		&runtimeapi.LinuxContainerResources{
 			CpusetCpus: cpus.String(),

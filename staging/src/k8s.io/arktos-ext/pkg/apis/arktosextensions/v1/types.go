@@ -60,8 +60,8 @@ const (
 	// NetworkFailed means for some reason the network is in error state
 	// and cannot be used properly any more.
 	NetworkFailed NetworkPhase = "Failed"
-	// NetworkOK means the network is in good shape.
-	NetworkOK NetworkPhase = "Okay"
+	// NetworkReady means the network is in good shape, ready to manage networks.
+	NetworkReady NetworkPhase = "Ready"
 	// NetworkTerminating means the network is in the middle of termination.
 	NetworkTerminating NetworkPhase = "Terminating"
 	// NetworkUnknown means the state of network cannot be decided due to
@@ -77,6 +77,9 @@ type NetworkStatus struct {
 	// Message is the human readable information of the current phase.
 	// +optional
 	Message string `json:"message,omitempty"`
+	// DNSServiceIP is IP address of the DNS service of the network
+	// +optional
+	DNSServiceIP string `json:"dnsServiceIP,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

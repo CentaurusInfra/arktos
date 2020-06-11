@@ -42,7 +42,7 @@ type ArktosV1Client struct {
 }
 
 func (c *ArktosV1Client) Networks() NetworkInterface {
-	return newNetworksWithMultiTenancy(c, "default")
+	return newNetworksWithMultiTenancy(c, "system")
 }
 
 func (c *ArktosV1Client) NetworksWithMultiTenancy(tenant string) NetworkInterface {
