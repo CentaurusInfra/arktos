@@ -34,9 +34,10 @@ Pods in a network __should__ be able to access API server nodes by their IP addr
 (**TBD: is it possible to leverage the fact that pods are running on hosts which are already on the node network(e.g. pod being dual-homed with one nic dedicated for node network access)?**)
 
 ### Network Object
-A network object contains its type, and type-specific configurations. It's a not namespace-scoped object, so that one network object can be shared by applications in multiple namespaces in a same space.
 
-It is defined as CRD by [crd-network.yaml](../../../pkg/controller/artifacts/crd-network.yaml)
+A network object contains its type and type-specific configurations. It is not a namespace-scoped object, one network object can be shared by applications spanning multiple namespaces within a space.
+
+It is defined using CRD by [crd-network.yaml](../../../pkg/controller/artifacts/crd-network.yaml)
 
 The "type" field is the only mandatory field in a network object. It indicates network provider that allocates & manages the network resources. In particular, _flat_ type is reserved for canonical k8s flat networking model where various community cni plugins can be used as the underlying network provider.
 
@@ -94,7 +95,7 @@ spec:
     ports:
       - containerPort: 443
 ```
-When a pod is attached to a certain network, it needs to set its "network" in labels:
+When a pod is attached to a certain network, it needs to set its "network" using labels:
 
 ```yaml
 apiVersion: v1
@@ -112,7 +113,7 @@ spec:
 ```
 
 
-When a pod is attached to a certain network and it wants to specify subnet or IP, it can be expressed in annotations:
+When a pod is attached to a certain network and it wants to specify subnet or IP, it can be expressed using annotations:
 
 ```yaml
 apiVersion: v1
@@ -131,7 +132,7 @@ spec:
       - containerPort: 443
 ```
 
-Annotation arktos.futurewei.com/nic is for user to provide optional information about pod nic. The recognized keys of element include:
+Here annotation arktos.futurewei.com/nic is for user to provide optional information about pod nic. The recognized keys of element include:
 
 |key|exemplary value|
 |---:|---:|
@@ -168,7 +169,7 @@ The reasons that DNS service is per-network instead of per-space are:
 
 #### Type definition
 
-Service objects associate to network via label arktos.futurewei.com/network. By default, network is the default network of the tenant.
+Service objects associate to network via label arktos.futurewei.com/network. By default, "network" is the default network of the tenant.
 
 ```yaml
 apiVersion: v1
@@ -188,7 +189,7 @@ spec:
 
 #### Naming Problem & Solution
 
-Services, as one of the critical network related resource types, are withing the network boundary. There is no such *shared* services of tenant or whole cluster, as both the critical virtual IP address and the associated endpoints (typically leading to pods) are all of same network.
+Services, as one of the critical network related resource types, are within the network boundary. There is no cluster wide shared services for a tenant, as both the virtual IP address and the associated endpoints are all scoped within a single network.
 
 Putting service type in tenant level is out of primacy as it has following flaws:
 1. service IP address has to be the same across all networks, which implies some range of service IP needs to be predefined as shared across networks of a tenant (tenant manageability burden);  
@@ -288,7 +289,7 @@ __EndpointSlices__, the new type introduced in k8s v1.17, is out of current scop
 ## CNI spec
 CNI_ARGS is leveraged for Arktos workload runtime to pass information on to the cni plugin of the network type.
 
-By spec the value of CNI_ARGS env var is alphanumeric key-value pairs separated by semicolons, e.g. "IPV4=12.34.56.78;VPCID=mizar-12345".
+According to the spec, the value of CNI_ARGS env var is alphanumeric key-value pairs separated by semicolons, e.g. "IPV4=12.34.56.78;VPCID=mizar-12345".
 
 Arktos workload runtime will put whatever is the pod annotation of "arktos.futurewei.com/cni-args" to CNI_ARGS as defined in cni spec.
 
@@ -296,7 +297,7 @@ The network controller of the vpc network type is typically responsible for anno
 
 ## Architectural Views
 
-Components not decided yet at current phase are not included in these views.
+Components not decided yet in the current phase are not included as part of the overall architecture views.
 
 ### Data model
 
@@ -310,16 +311,15 @@ Components not decided yet at current phase are not included in these views.
 
 ![C&C view](images/network-c-and-c.png)
 
-### Key Scenario: tenant & DNS provisioning
+### Key Scenario: Tenant & DNS provisioning
 
 ![tenant & DNS provision](images/network-scenario-tenant-init.png)
 
-### Activity Flow: Pod - from creation to running
+### Activity Flow: Pod Creation to Running status
 
 ![Pod-activity-diag](images/pod-activity-diagram.png)
 
-1. On creation to annotate new pods with arktos.futurewei.com/network-readiness=false as hint for scheduler, by a custom admission control.
-   For flat network type, such annotation is not required as its operator typically has no network preparation work to do.
+1. On pod creation, using a custom admission control, annotate new pod with arktos.futurewei.com/network-readiness=false as hint for the scheduler. For flat network type, such annotation is not required as its operator typically has no network preparation work to do.
 2. It is the network controller's responsibility to do whatever network resource preparation for the pod. If pod has hint of arktos.futurewei.com/nic annoation, it should honor that.
-3. It is the network controller's responsibility to clean the annotation arktos.futurewei.com/network-readiness=false if it is there, if applicable network resource preparation is finished.
-4. It is the network controller's responsibility to annotate pod with proper information that the cni plugin needs in term of CNI-ARGS. Arktos system just picks up the annotation value and pass it on when calling cni plugin.
+3. If applicable network resource preparation completes successfully, it is the network controller's responsibility to clean up the annotation arktos.futurewei.com/network-readiness=false afterwards in case it is present.
+4. It is the network controller's responsibility to annotate pod with proper information that the cni plugin needs in term of CNI-ARGS. Arktos system just picks up the annotation value and passes it on when calling cni plugin.
