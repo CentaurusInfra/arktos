@@ -69,7 +69,7 @@ func (s *networkLister) Get(name string) (*v1.Network, error) {
 
 // Networks returns an object that can list and get Networks.
 func (s *networkLister) Networks() NetworkTenantLister {
-	return networkTenantLister{indexer: s.indexer, tenant: "default"}
+	return networkTenantLister{indexer: s.indexer, tenant: "system"}
 }
 
 func (s *networkLister) NetworksWithMultiTenancy(tenant string) NetworkTenantLister {
@@ -103,7 +103,7 @@ func (s networkTenantLister) List(selector labels.Selector) (ret []*v1.Network, 
 // Get retrieves the Network from the indexer for a given tenant and name.
 func (s networkTenantLister) Get(name string) (*v1.Network, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "default" {
+	if s.tenant == "system" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)
