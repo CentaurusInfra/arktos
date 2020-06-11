@@ -21,15 +21,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
+	queue "github.com/golang-collections/go-datastructures/queue"
+
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"golang.org/x/crypto/ssh"
 	"k8s.io/klog"
-	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	policyinformers "k8s.io/client-go/informers/policy/v1beta1"
@@ -258,8 +261,8 @@ func (sched *Scheduler) Run() {
 		return
 	}
 
-	// go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
-	go wait.Until(sched.globalScheduleOne, 0, sched.config.StopEverything)
+	go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
+	//go wait.Until(sched.globalScheduleOne, 0, sched.config.StopEverything)
 }
 
 // Config returns scheduler's config pointer. It is exposed for testing purposes.
@@ -464,6 +467,7 @@ func connectToHost(user string, host string) (*ssh.Client, *ssh.Session, error) 
 	return client, session, nil
 }
 
+// PublicKeyFile Generate Public Key
 func PublicKeyFile(file string) ssh.AuthMethod {
 	buffer, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -493,24 +497,17 @@ func (sched *Scheduler) globalScheduleOne() {
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 
 	// suggestedHost := "ec2-54-148-84-253.us-west-2.compute.amazonaws.com:22"
-	channel := make (chan string)
-	finished := make (chan int)
+	// channel := make(chan string)
+	finished := make(chan string)
 	// manifest := &(pod.Spec)
-
-	// Create a single command that is semicolon seperated
-	commands := []string{
-		"cd /home/ubuntu/devstack",
-		". admin-openrc",
-		"openstack service list",
-	}
-	combinedCommand := strings.Join(commands, " && ")
+	scheduleResultQueue := queue.New(1)
 
 	go func() {
-		channel <- "ec2-54-148-84-253.us-west-2.compute.amazonaws.com:22"
+		scheduleResultQueue.Put("ec2-54-148-84-253.us-west-2.compute.amazonaws.com:22")
 	}()
 
 	go func() {
-		host := <-channel
+		host := scheduleResultQueue.Get(1)
 		client, session, err := connectToHost("ubuntu", host)
 		if err != nil {
 			klog.V(3).Infof("Remote ssh connection fail")
@@ -519,21 +516,22 @@ func (sched *Scheduler) globalScheduleOne() {
 
 		klog.V(3).Infof("Successfully connect to remote openstack cluster")
 
-		out, err := session.CombinedOutput(combinedCommand)
+		provideAdmin := []string{
+			"cd /home/ubuntu/devstack",
+			". admin-openrc",
+		}
+		provideAdminCombined := strings.Join(commands, " && ")
+
+		out, err := session.CombinedOutput(provideAdminCombined)
 		if err != nil {
-			klog.V(3).Infof("Failed to run commands")
+			klog.V(3).Infof("Failed to run commands: %v", err)
 			return
 		}
-		fmt.Println(string(out))
-		// if err := session.Run(command); err != nil {
-		// 	klog.V(3).Infof("Failed to run commands")
-		// 	return
-		// }
-		// fmt.Println(output.String())
+
 		client.Close()
-		finished <- 1
+		finished <- "done"
 	}()
-	
+
 	<-finished
 }
 
