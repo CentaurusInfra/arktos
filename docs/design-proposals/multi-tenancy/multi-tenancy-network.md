@@ -270,16 +270,25 @@ __EndpointSlices__, the new type introduced in k8s v1.17, is out of current scop
 
 ### Network Policy
 
-If network security is desired, network policy can be used to express the intents.
+Network policies, expressed as intents, are used to enforce desired network security within Arktos. Without any network policy in place, Arktos allows any pod to access other pods, across all tenants and namespaces for a flat typed network environment. VPC typed network environment, on the other hand, does provide strong tenant level network security even in the absence of any network policy in place.
 
-With none network policy is in place, Arktos allows any pods to access others given the networks don't block the connections (e.g. on flat typed network), across all tenants and namespaces.  In a production environment Arktos should work with a VPC network and it provides strong isolation, even without network policy.
-
-For now, allowing access across tenant boundary is not supported; the existing k8s network policy suffices to provide tenant scoped network security.
-
-Tenant-isolation mode can be expressed by default-deny-all + allow-all-across-namespaces, which implicitly is inferred to tenant of current network policy object.
+Existing k8s network policy specifications provide support for enforcing tenant scoped network security. Allowing access across tenant boundary is currently not supported within Arktos.
 
 Network-isolation mode makes more sense in most cases. Below is an example for specific network, my-network, in one namespace. Similar network policies need to apply to other namespaces, too.
 ```yaml
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  tenant: foo
+  namesapce: bar
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -309,6 +318,19 @@ spec:
 
 For the default network, isolation can be achieved by:
 ```yaml
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  tenant: foo
+  namesapce: bar
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -387,14 +409,15 @@ spec:
         operator: DoesNotExist
 ```
 
-Of course, network policies can be crafted for finer-grained network security inside network scope.
+Of course, network policies can be specified for finer-grained network security inside network scope.
 
 (**TBD: consider automatic creation of network policies to ease management**)
 
 (**TBD: consider support of across-tenant network connectivity**)
 
-#### K8S network policy enforcers
-K8S community has quite some plugins that enforce the network policies, like Calico, Cilium, kube-router, etc. Not all would work with multitenant Arktos out of box; one of them is Calico, as it might wrongly get entries from backend storage based on namespace + pod + interface name. Some is possible to work if the controller is deployed in form of daemonset in every and each tenant. Kube-router is the one very promising; we will see how it goes when Arktos has fully functional multi-tenant support in place.
+#### K8S network policy enforcement
+
+K8S community provides support for various plugins which enforce the network policies (such as Calico, Cilium, kube-router, etc.). Out of the box, these would not work within multi-tenant Arktos environment. For example, Calico may wrongly get entries from backend storage based on namespace + pod + interface name. Some of them may work within multi-tenant Arkstos environment if the controller deployed is in the form of a daemonset for each tenant. Kube-router seems very promising, we will evaluate Kube-router once Arktos fully functional multi-tenant environment is in place.
 
 ### Ingress/egress
 (**TBD: more details required**)
