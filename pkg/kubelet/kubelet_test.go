@@ -20,6 +20,7 @@ package kubelet
 import (
 	"fmt"
 	"io/ioutil"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"os"
 	"sort"
 	"testing"
@@ -109,7 +110,7 @@ func (f *fakeImageGCManager) GetImageList() ([]kubecontainer.Image, error) {
 
 type TestKubelet struct {
 	kubelet            *Kubelet
-	fakeRuntimeManager *kubecontainer.FakeRuntimeManager
+	fakeRuntimeManager *runtimeregistry.FakeRuntimeManager
 	fakeRuntime        *containertest.FakeRuntime
 	fakeKubeClient     *fake.Clientset
 	fakeMirrorClient   *podtest.FakeMirrorClient
@@ -169,9 +170,7 @@ func newTestKubeletWithImageList(
 		},
 	}
 	fakeImageService := critest.NewFakeImageService()
-	fakeRuntimeManager := &kubecontainer.FakeRuntimeManager{}
-	fakeRuntimeManager.RuntimeService = f
-	fakeRuntimeManager.ImageService = fakeImageService
+	fakeRuntimeManager := runtimeregistry.NewFakeRuntimeManager(f, fakeImageService)
 
 	kubelet := &Kubelet{}
 	kubelet.runtimeManager = fakeRuntimeManager

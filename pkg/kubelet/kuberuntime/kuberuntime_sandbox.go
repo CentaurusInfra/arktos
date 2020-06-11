@@ -236,7 +236,7 @@ func (m *kubeGenericRuntimeManager) generatePodSandboxLinuxConfig(pod *v1.Pod) (
 
 // getKubeletSandboxes lists all (or just the running) sandboxes managed by kubelet.
 func (m *kubeGenericRuntimeManager) getKubeletSandboxes(all bool) ([]*runtimeapi.PodSandbox, error) {
-	runtimeServices, err := m.GetAllRuntimeServices()
+	runtimeServices, err := m.runtimeRegistry.GetAllRuntimeServices()
 	if err != nil {
 		klog.Errorf("GetAllRuntimeServices failed: %v", err)
 		return nil, err
@@ -245,7 +245,7 @@ func (m *kubeGenericRuntimeManager) getKubeletSandboxes(all bool) ([]*runtimeapi
 	var resps []*runtimeapi.PodSandbox
 
 	for _, runtimeService := range runtimeServices {
-		resp, err := m.getKubeletSandboxesByRuntime(runtimeService, all)
+		resp, err := m.getKubeletSandboxesByRuntime(runtimeService.ServiceApi, all)
 		if err != nil {
 			klog.Errorf("getKubeletSandboxesByRuntime failed: %v", err)
 			continue

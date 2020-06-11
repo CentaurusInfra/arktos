@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	internalapi "k8s.io/cri-api/pkg/apis"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 )
 
 const (
@@ -143,13 +143,13 @@ func parseMaxSize(size string) (int64, error) {
 }
 
 type containerLogManager struct {
-	runtimeManager kubecontainer.RuntimeManager
+	runtimeManager runtimeregistry.Interface
 	policy         LogRotatePolicy
 	clock          clock.Clock
 }
 
 // NewContainerLogManager creates a new container log manager.
-func NewContainerLogManager(runtimeManager kubecontainer.RuntimeManager, maxSize string, maxFiles int) (ContainerLogManager, error) {
+func NewContainerLogManager(runtimeManager runtimeregistry.Interface, maxSize string, maxFiles int) (ContainerLogManager, error) {
 	if maxFiles <= 1 {
 		return nil, fmt.Errorf("invalid MaxFiles %d, must be > 1", maxFiles)
 	}
@@ -178,6 +178,8 @@ func (c *containerLogManager) Start() {
 	}, logMonitorPeriod)
 }
 
+// refator: use the runtime registry object and interface to get all runtime services
+//
 func (c *containerLogManager) rotateLogs() error {
 
 	runtimeServices, err := c.runtimeManager.GetAllRuntimeServices()
@@ -188,7 +190,7 @@ func (c *containerLogManager) rotateLogs() error {
 	for _, runtimeService := range runtimeServices {
 
 		// TODO(#59998): Use kubelet pod cache.
-		containers, err := runtimeService.ListContainers(&runtimeapi.ContainerFilter{})
+		containers, err := runtimeService.ServiceApi.ListContainers(&runtimeapi.ContainerFilter{})
 		if err != nil {
 			return fmt.Errorf("failed to list containers: %v", err)
 		}
@@ -201,7 +203,7 @@ func (c *containerLogManager) rotateLogs() error {
 			}
 			id := container.GetId()
 			// Note that we should not block log rotate for an error of a single container.
-			status, err := runtimeService.ContainerStatus(id)
+			status, err := runtimeService.ServiceApi.ContainerStatus(id)
 			if err != nil {
 				klog.Errorf("Failed to get container status for %q: %v", id, err)
 				continue
@@ -216,7 +218,7 @@ func (c *containerLogManager) rotateLogs() error {
 				// In rotateLatestLog, there are several cases that we may
 				// lose original container log after ReopenContainerLog fails.
 				// We try to recover it by reopening container log.
-				if err := runtimeService.ReopenContainerLog(id); err != nil {
+				if err := runtimeService.ServiceApi.ReopenContainerLog(id); err != nil {
 					klog.Errorf("Container %q log %q doesn't exist, reopen container log failed: %v", id, path, err)
 					continue
 				}
@@ -231,7 +233,7 @@ func (c *containerLogManager) rotateLogs() error {
 				continue
 			}
 			// Perform log rotation.
-			if err := c.rotateLog(runtimeService, id, path); err != nil {
+			if err := c.rotateLog(runtimeService.ServiceApi, id, path); err != nil {
 				klog.Errorf("Failed to rotate log %q for container %q: %v", path, id, err)
 				continue
 			}

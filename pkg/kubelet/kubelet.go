@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"math"
 	"net"
 	"net/http"
@@ -647,6 +648,11 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient)
 	}
 
+	runtimeRegistry, err := runtimeregistry.NewKubeRuntimeRegistry(remoteRuntimeEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed construct runtime registry object %v", err)
+	}
+
 	runtimeManager, err := kuberuntime.NewKubeGenericRuntimeManager(
 		kubecontainer.FilterEventRecorder(kubeDeps.Recorder),
 		klet.livenessManager,
@@ -666,7 +672,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		kubeDeps.ContainerManager.InternalContainerLifecycle(),
 		legacyLogProvider,
 		klet.runtimeClassManager,
-		remoteRuntimeEndpoint,
+		runtimeRegistry,
 	)
 	if err != nil {
 		return nil, err
@@ -675,7 +681,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	klet.containerRuntime = runtimeManager
 	klet.streamingRuntime = runtimeManager
 	klet.runner = runtimeManager
-	klet.runtimeManager = runtimeManager
+	klet.runtimeManager = runtimeRegistry
 
 	runtimeCache, err := kubecontainer.NewRuntimeCache(klet.containerRuntime)
 	if err != nil {
@@ -973,8 +979,7 @@ type Kubelet struct {
 	// Manager for image garbage collection.
 	imageManager images.ImageGCManager
 
-	// Manager for all runtimes.
-	runtimeManager kubecontainer.RuntimeManager
+	runtimeManager runtimeregistry.Interface
 
 	// Manager for container logs.
 	containerLogManager logs.ContainerLogManager
@@ -2182,13 +2187,6 @@ func (kl *Kubelet) HandlePodReconcile(pods []*v1.Pod) {
 		// After an evicted pod is synced, all dead containers in the pod can be removed.
 		if eviction.PodIsEvicted(pod.Status) {
 			if podStatus, err := kl.podCache.Get(pod.UID); err == nil {
-				runtimeService, err := kl.runtimeManager.GetRuntimeServiceByPod(pod)
-				if err != nil {
-					klog.V(2).Infof("GetRuntimeServiceByPodID Failed: %v", err)
-					return
-				}
-
-				kl.containerDeletor.runtime = runtimeService
 				kl.containerDeletor.deleteContainersInPod("", podStatus, true)
 			}
 		}
@@ -2226,7 +2224,7 @@ func (kl *Kubelet) updateRuntimeUp() {
 		klog.Errorf("GetPrimaryRuntimeService Failed: %v", err)
 		return
 	}
-	s1, err := runtime.Status()
+	s1, err := runtime.ServiceApi.Status()
 	if err != nil {
 		klog.Errorf("Container runtime sanity check failed: %v", err)
 		return
@@ -2339,13 +2337,7 @@ func (kl *Kubelet) cleanUpContainersInPod(podID types.UID, exitedContainerID str
 			// When an evicted or deleted pod has already synced, all containers can be removed.
 			removeAll = eviction.PodIsEvicted(syncedPod.Status) || (syncedPod.DeletionTimestamp != nil && notRunning(apiPodStatus.ContainerStatuses))
 		}
-		runtimeService, err := kl.runtimeManager.GetRuntimeServiceByPodID(podID)
-		if err != nil {
-			klog.V(2).Infof("GetRuntimeServiceByPodID Failed: %v", err)
-			return
-		}
 
-		kl.containerDeletor.runtime = runtimeService
 		kl.containerDeletor.deleteContainersInPod(exitedContainerID, podStatus, removeAll)
 	}
 }
