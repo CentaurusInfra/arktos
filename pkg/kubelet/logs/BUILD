@@ -9,7 +9,6 @@ go_library(
     importpath = "k8s.io/kubernetes/pkg/kubelet/logs",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/kubelet/container:go_default_library",
         "//pkg/kubelet/runtimeregistry:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/clock:go_default_library",
@@ -25,7 +24,7 @@ go_test(
     srcs = ["container_log_manager_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/kubelet/container:go_default_library",
+        "//pkg/kubelet/runtimeregistry:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/clock:go_default_library",
         "//staging/src/k8s.io/cri-api/pkg/apis/runtime/v1alpha2:go_default_library",
         "//staging/src/k8s.io/cri-api/pkg/apis/testing:go_default_library",

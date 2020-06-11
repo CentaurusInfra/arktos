@@ -28,9 +28,9 @@ import (
 )
 
 const (
-    RuntimeRequestTimeout = 15 * time.Second
-    ContainerWorkloadType = "container"
-    VmworkloadType        = "vm"
+	RuntimeRequestTimeout = 15 * time.Second
+	ContainerWorkloadType = "container"
+	VmworkloadType        = "vm"
 	UnknownType           = "TypeUnknown"
 )
 
@@ -64,7 +64,7 @@ type Interface interface {
 	// Get all runtime services supported on the node
 	GetAllRuntimeServices() (map[string]*RuntimeService, error)
 	// Get all image services supported on the node
-	GetAllImageServices() ( map[string]*ImageService, error)
+	GetAllImageServices() (map[string]*ImageService, error)
 	// Get the primary runtime service for the Arktos cluster
 	GetPrimaryRuntimeService() (*RuntimeService, error)
 	// Get the runtime service for particular workload type(VM or container)
@@ -75,7 +75,7 @@ type Interface interface {
 	GetAllRuntimeStatus() (map[string]map[string]bool, error)
 }
 
-func NewKubeRuntimeRegistry (remoteRuntimeEndpoints string) (*KubeRuntimeRegistry, error) {
+func NewKubeRuntimeRegistry(remoteRuntimeEndpoints string) (*KubeRuntimeRegistry, error) {
 
 	rs, is, err := buildRuntimeServicesMapFromAgentCommandArgs(remoteRuntimeEndpoints)
 
@@ -87,11 +87,11 @@ func NewKubeRuntimeRegistry (remoteRuntimeEndpoints string) (*KubeRuntimeRegistr
 	return &KubeRuntimeRegistry{RuntimeServices: rs, ImageServices: is}, nil
 }
 
-func (r * KubeRuntimeRegistry) GetAllRuntimeServices() (map[string]*RuntimeService, error) {
+func (r *KubeRuntimeRegistry) GetAllRuntimeServices() (map[string]*RuntimeService, error) {
 	return r.RuntimeServices, nil
 }
 
-func (r *KubeRuntimeRegistry) GetAllImageServices() ( map[string]*ImageService, error) {
+func (r *KubeRuntimeRegistry) GetAllImageServices() (map[string]*ImageService, error) {
 	return r.ImageServices, nil
 }
 

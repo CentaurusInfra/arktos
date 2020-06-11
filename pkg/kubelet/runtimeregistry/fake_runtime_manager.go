@@ -28,21 +28,20 @@ type FakeRuntimeManager struct {
 }
 
 func NewFakeRuntimeManager(runtimeService internalapi.RuntimeService, imageService internalapi.ImageManagerService) *FakeRuntimeManager {
-    rs := RuntimeService{Name: "test", WorkloadType: "container", ServiceApi: runtimeService, IsPrimary: true, IsDefault: true, EndpointUrl: ""}
-	is := ImageService{Name:"test", WorkloadType: "container", ServiceApi: imageService, IsDefault: true, EndpointUrl: ""}
+	rs := RuntimeService{Name: "test", WorkloadType: "container", ServiceApi: runtimeService, IsPrimary: true, IsDefault: true, EndpointUrl: ""}
+	is := ImageService{Name: "test", WorkloadType: "container", ServiceApi: imageService, IsDefault: true, EndpointUrl: ""}
 
 	return &FakeRuntimeManager{
 		runtimeServices: map[string]*RuntimeService{rs.Name: &rs},
-		imageServices: map[string]*ImageService{is.Name: &is},
+		imageServices:   map[string]*ImageService{is.Name: &is},
 	}
 }
 
-
-func (r * FakeRuntimeManager) GetAllRuntimeServices() (map[string]*RuntimeService, error) {
+func (r *FakeRuntimeManager) GetAllRuntimeServices() (map[string]*RuntimeService, error) {
 	return r.runtimeServices, nil
 }
 
-func (r *FakeRuntimeManager) GetAllImageServices() ( map[string]*ImageService, error) {
+func (r *FakeRuntimeManager) GetAllImageServices() (map[string]*ImageService, error) {
 	return r.imageServices, nil
 }
 
