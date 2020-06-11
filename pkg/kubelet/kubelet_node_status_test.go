@@ -20,6 +20,7 @@ package kubelet
 import (
 	"encoding/json"
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"net"
 	goruntime "runtime"
 	"sort"
@@ -779,7 +780,7 @@ func TestUpdateNodeStatusWithRuntimeStateError(t *testing.T) {
 			{Type: "NetworkReady", Status: true},
 		},
 	}
-	kubelet.runtimeManager = kubecontainer.NewFakeRuntimeManager(f, nil)
+	kubelet.runtimeManager = runtimeregistry.NewFakeRuntimeManager(f, nil)
 
 	// TODO(random-liu): Refactor the unit test to be table driven test.
 	// Should report kubelet not ready if the runtime check is out of date

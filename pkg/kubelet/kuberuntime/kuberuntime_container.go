@@ -360,14 +360,14 @@ func (m *kubeGenericRuntimeManager) getKubeletContainers(allContainers bool) ([]
 
 	var all []*runtimeapi.Container
 
-	runtimeSerivices, err := m.GetAllRuntimeServices()
+	runtimeSerivices, err := m.runtimeRegistry.GetAllRuntimeServices()
 	if err != nil {
 		klog.Errorf("GetAllRuntimeServices failed: %v", err)
 		return nil, err
 	}
 
 	for _, runtimeService := range runtimeSerivices {
-		containers, err := runtimeService.ListContainers(filter)
+		containers, err := runtimeService.ServiceApi.ListContainers(filter)
 		if err != nil {
 			klog.Errorf("getKubeletContainers failed: %v", err)
 			continue
