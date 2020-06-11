@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	"k8s.io/client-go/dynamic"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -40,6 +41,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/kubernetes/pkg/controller/tenant/deletion"
 	"k8s.io/kubernetes/pkg/util/metrics"
 
 	"k8s.io/klog"
@@ -72,6 +74,8 @@ type tenantController struct {
 	defaultNetworkTemplatePath string
 	// templateGetter for injection
 	templateGetter func(path string) (string, error)
+
+	tenantedResourcesDeleter deletion.TenantedResourcesDeleterInterface
 }
 
 // NewTenantController creates a new iinstance of tenantcontroller
@@ -80,7 +84,10 @@ func NewTenantController(
 	tenantInformer coreinformers.TenantInformer,
 	resyncPeriod time.Duration,
 	networkClient arktos.Interface,
-	defaultNetworkTemplatePath string) *tenantController {
+	defaultNetworkTemplatePath string,
+	dynamicClient dynamic.Interface,
+	discoverResourcesFn func() ([]*metav1.APIResourceList, error),
+	finalizerToken v1.FinalizerName) *tenantController {
 
 	// create the controller so we can inject the enqueue function
 	tenantController := &tenantController{
@@ -88,6 +95,7 @@ func NewTenantController(
 		networkClient:              networkClient,
 		queue:                      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tenant"),
 		defaultNetworkTemplatePath: defaultNetworkTemplatePath,
+		tenantedResourcesDeleter:   deletion.NewTenantedResourcesDeleter(kubeClient, dynamicClient, discoverResourcesFn, finalizerToken),
 	}
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
@@ -99,6 +107,9 @@ func NewTenantController(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				tenantController.enqueue(obj)
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				tenantController.enqueue(newObj)
 			},
 		},
 		resyncPeriod,
@@ -195,15 +206,24 @@ func (tc *tenantController) processQueue(tenantName string) (err error) {
 	return tc.syncHandler(tenantName)
 }
 
-// syncTenant creates the default resources for a new tenant
+// syncTenant creates the default resources for a new tenant,
+// and deletes the resources under the tenant and the tenant itself if the deletion timestamp is set
 func (tc *tenantController) syncTenant(tenantName string) (err error) {
-	klog.Infof("Starting tenant initialization: %v", tenantName)
+	klog.Infof("Starting syncing tenant: %v", tenantName)
 
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished initializing tenant %q (%v)", tenantName, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing tenant %q (%v)", tenantName, time.Since(startTime))
 	}()
 
+	// no error as its caller, processQueue, has checked.
+	tenant, _ := tc.lister.Get(tenantName)
+	if tenant.DeletionTimestamp != nil && !tenant.DeletionTimestamp.IsZero() {
+		//handling the deletion of a tenant
+		return tc.tenantedResourcesDeleter.Delete(tenantName)
+	}
+
+	// handling the addition of a tenant
 	if err, done := tc.createNamespaces(tenantName); !done {
 		return err
 	}
@@ -215,6 +235,7 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 	if err, done := tc.createDefaultNetworkObject(tenantName); !done {
 		return err
 	}
+
 	return nil
 }
 

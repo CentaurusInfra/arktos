@@ -119,6 +119,9 @@ func (p *Plugin) Admit(attributes admission.Attributes, o admission.ObjectInterf
 			return apierrors.NewBadRequest("Resource was marked with kind Pod but was unable to be converted")
 		}
 
+		if len(pod.Spec.Containers) != len(oldPod.Spec.Containers) {
+			return admission.NewForbidden(attributes, fmt.Errorf("Pod updates may not add or remove containers"))
+		}
 		// if ResourcesAllocated or ResizePolicy fields are being dropped due to older client versions
 		// because they do not know about these new fields, then just copy the fields over
 		for i, c := range pod.Spec.Containers {
@@ -168,6 +171,10 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 		oldPod, ok := attributes.GetOldObject().(*api.Pod)
 		if !ok {
 			return apierrors.NewBadRequest("Resource was marked with kind Pod but was unable to be converted")
+		}
+
+		if len(pod.Spec.Containers) != len(oldPod.Spec.Containers) {
+			return admission.NewForbidden(attributes, fmt.Errorf("Pod updates may not add or remove containers"))
 		}
 		// only node can update ResourcesAllocated field (for CPU and memory fields only - checked during validation)
 		// also verify that node is updating ResourcesAllocated only for pods that are bound to it

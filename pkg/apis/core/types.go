@@ -4160,6 +4160,7 @@ type FinalizerName string
 // in metav1.
 const (
 	FinalizerKubernetes FinalizerName = "kubernetes"
+	FinalizerArktos     FinalizerName = "arktos"
 )
 
 // NamespaceStatus is information about the current status of a Namespace.

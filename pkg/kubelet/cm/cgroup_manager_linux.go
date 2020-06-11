@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,9 +19,11 @@ package cm
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -590,4 +593,103 @@ func (m *cgroupManagerImpl) GetResourceStats(name CgroupName) (*ResourceStats, e
 		return nil, fmt.Errorf("failed to get stats supported cgroup subsystems for cgroup %v: %v", name, err)
 	}
 	return toResourceStats(stats), nil
+}
+
+func readCgroupFile(dir, file string) (string, error) {
+	data, errRead := ioutil.ReadFile(filepath.Join(dir, file))
+	if errRead != nil {
+		return "", fmt.Errorf("failed to read cgroup file %s in path %s: %v", file, dir, errRead)
+	}
+	return string(data), nil
+}
+
+func readInt64CgroupFile(dir, file string) (int64, error) {
+	data, err := readCgroupFile(dir, file)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseInt(strings.TrimSpace(data), 10, 64)
+}
+
+func readUint64CgroupFile(dir, file string) (uint64, error) {
+	data, err := readCgroupFile(dir, file)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseUint(strings.TrimSpace(data), 10, 64)
+}
+
+// Get the memory limit in bytes applied to the cgroup
+func (m *cgroupManagerImpl) GetCgroupMemoryConfig(name CgroupName) (uint64, error) {
+	cgroupPaths := m.buildCgroupPaths(name)
+	stats, err := getStatsSupportedSubsystems(cgroupPaths)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get stats supported cgroup subsystems for cgroup %v: %v", name, err)
+	}
+	return stats.MemoryStats.Usage.Limit, nil
+}
+
+// Get the cpu quota, cpu period, and cpu shares applied to the cgroup
+func (m *cgroupManagerImpl) GetCgroupCpuConfig(name CgroupName) (int64, uint64, uint64, error) {
+	cgroupPaths := m.buildCgroupPaths(name)
+	cgroupCpuPath, found := cgroupPaths["cpu"]
+	if !found {
+		return 0, 0, 0, fmt.Errorf("failed to build CPU cgroup fs path for cgroup %v", name)
+	}
+	cpuQuota, errQ := readInt64CgroupFile(cgroupCpuPath, "cpu.cfs_quota_us")
+	if errQ != nil {
+		return 0, 0, 0, fmt.Errorf("failed to read CPU quota for cgroup %v: %v", name, errQ)
+	}
+	cpuPeriod, errP := readUint64CgroupFile(cgroupCpuPath, "cpu.cfs_period_us")
+	if errP != nil {
+		return 0, 0, 0, fmt.Errorf("failed to read CPU period for cgroup %v: %v", name, errP)
+	}
+	cpuShares, errS := readUint64CgroupFile(cgroupCpuPath, "cpu.shares")
+	if errP != nil {
+		return 0, 0, 0, fmt.Errorf("failed to read CPU shares for cgroup %v: %v", name, errS)
+	}
+	return cpuQuota, cpuPeriod, cpuShares, nil
+}
+
+// Set the memory limit in bytes applied to the cgroup
+func (m *cgroupManagerImpl) SetCgroupMemoryConfig(name CgroupName, memoryLimit int64) error {
+	cgroupPaths := m.buildCgroupPaths(name)
+	cgroupMemoryPath, found := cgroupPaths["memory"]
+	if !found {
+		return fmt.Errorf("failed to build memory cgroup fs path for cgroup %v", name)
+	}
+	memLimit := strconv.FormatInt(memoryLimit, 10)
+	if err := ioutil.WriteFile(filepath.Join(cgroupMemoryPath, "memory.limit_in_bytes"), []byte(memLimit), 0700); err != nil {
+		return fmt.Errorf("failed to write %v to %v: %v", memLimit, cgroupMemoryPath, err)
+	}
+	return nil
+}
+
+// Set the cpu quota, cpu period, and cpu shares applied to the cgroup
+func (m *cgroupManagerImpl) SetCgroupCpuConfig(name CgroupName, cpuQuota *int64, cpuPeriod, cpuShares *uint64) error {
+	var cpuQuotaStr, cpuPeriodStr, cpuSharesStr string
+	cgroupPaths := m.buildCgroupPaths(name)
+	cgroupCpuPath, found := cgroupPaths["cpu"]
+	if !found {
+		return fmt.Errorf("failed to build cpu cgroup fs path for cgroup %v", name)
+	}
+	if cpuQuota != nil {
+		cpuQuotaStr = strconv.FormatInt(*cpuQuota, 10)
+		if err := ioutil.WriteFile(filepath.Join(cgroupCpuPath, "cpu.cfs_quota_us"), []byte(cpuQuotaStr), 0700); err != nil {
+			return fmt.Errorf("failed to write %v to %v: %v", cpuQuotaStr, cgroupCpuPath, err)
+		}
+	}
+	if cpuPeriod != nil {
+		cpuPeriodStr = strconv.FormatUint(*cpuPeriod, 10)
+		if err := ioutil.WriteFile(filepath.Join(cgroupCpuPath, "cpu.cfs_period_us"), []byte(cpuPeriodStr), 0700); err != nil {
+			return fmt.Errorf("failed to write %v to %v: %v", cpuPeriodStr, cgroupCpuPath, err)
+		}
+	}
+	if cpuShares != nil {
+		cpuSharesStr = strconv.FormatUint(*cpuShares, 10)
+		if err := ioutil.WriteFile(filepath.Join(cgroupCpuPath, "cpu.shares"), []byte(cpuSharesStr), 0700); err != nil {
+			return fmt.Errorf("failed to write %v to %v: %v", cpuSharesStr, cgroupCpuPath, err)
+		}
+	}
+	return nil
 }
