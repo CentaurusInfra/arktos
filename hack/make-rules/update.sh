@@ -79,14 +79,12 @@ ${KUBE_ROOT}/hack/arktos_copyright.sh ${KUBE_ROOT} ${KUBE_ROOT}/_output
 
 echo -e "${color_green:?}Update scripts completed successfully${color_norm}"
 
-if [ "${JENKINS_HOME:-}" != "" ]; then
-	echo "Under Jenkins CI environment, check whether there is file updated."
-	echo "We define return value as 0 if there is no file updated, and 1 if there is file updated."
-	MODIFIED_FILES=$(git status | grep modified:) || true
-	if [[ "${MODIFIED_FILES:-}" != "" && "${MODIFIED_FILES:-}" != "	modified:   api/openapi-spec/swagger.json" ]]; then
-		echo "Following files are updated:"
-		echo $MODIFIED_FILES
-		exit 1
-	fi
-	echo "Check completed."
+echo "Now, let's check whether there is file updated."
+echo "We define return value as 0 if there is no file updated, and 1 if there is file updated."
+MODIFIED_FILES=$(git status | grep modified:) || true
+if [[ "${MODIFIED_FILES:-}" != "" && "${MODIFIED_FILES:-}" != "	modified:   api/openapi-spec/swagger.json" ]]; then
+	echo "Following files are updated:"
+	echo $MODIFIED_FILES
+	exit 1
 fi
+echo "Check completed."
