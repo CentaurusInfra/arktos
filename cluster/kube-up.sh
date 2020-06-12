@@ -49,6 +49,11 @@ verify-release-tars
 echo "... calling kube-up" >&2
 kube-up
 
+if [[ "${IS_DRY_RUN:-}" == $TRUE ]]; then
+  echo "Dry run of kube-up completed"
+  exit 0
+fi
+
 echo "... calling validate-cluster" >&2
 # Override errexit
 (validate-cluster) && validate_result="$?" || validate_result="$?"
