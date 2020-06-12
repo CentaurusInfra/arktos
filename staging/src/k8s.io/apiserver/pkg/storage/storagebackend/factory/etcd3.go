@@ -206,6 +206,10 @@ func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, e
 			klog.V(3).Infof("Got storage cluster action [%+v]", storageClusterAction)
 			switch storageClusterAction.Action {
 			case "ADD":
+				if storageClusterAction.ServerAddresses[0] == transport.SystemClusterServerList[0] {
+					klog.Infof("Data client is the same as system client. Skip Adding data client")
+					break
+				}
 				newClient, newDestroyFunc, err := newETCD3StorageHelper(transport, storageClusterAction.ServerAddresses, compactionInterval)
 				if err != nil {
 					klog.Fatalf("Cannot create ETCD client for new storage cluster [%v]. Error %v", err, storageClusterAction)

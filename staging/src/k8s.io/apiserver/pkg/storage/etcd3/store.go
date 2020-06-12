@@ -672,9 +672,9 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 	}
 
 	// TODO - multiple list run in parrallel - also need to consider locking in s.versioner.UpdateList
-	for _, c := range clients {
-		klog.V(3).Infof("List key %s from multi partitions. paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v]",
-			key, paging, returnedRV, continueKey, keyPrefix)
+	for i, c := range clients {
+		klog.V(6).Infof("List key %s from multi partitions. client %d, endpoint %v, paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v], resourceVersion [%v]",
+			key, i, c.Endpoints(), paging, returnedRV, continueKey, keyPrefix, resourceVersion)
 		err := s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix)
 		if err != nil {
 			return err
@@ -969,7 +969,7 @@ func (s *store) getClientFromKey(key string) *clientv3.Client {
 	message := fmt.Sprintf("key [%s] segments %v len %d", key, segs, len(segs))
 
 	if len(segs) <= 2 {
-		klog.V(3).Infof("system client: key segments len <= 2. %s ", message)
+		klog.V(6).Infof("system client: key segments len <= 2. %s ", message)
 		return s.client
 	}
 
