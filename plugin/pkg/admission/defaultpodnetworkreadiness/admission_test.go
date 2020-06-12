@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package defaultpodnetworknotready
+package defaultpodnetworkreadiness
 
 import (
 	"testing"
@@ -81,7 +81,7 @@ func TestAdmit(t *testing.T) {
 			attributes := admission.NewAttributesRecord(pod, nil, api.Kind("Pod").WithVersion("version"), pod.Tenant, pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "", admission.Create, &metav1.CreateOptions{}, false, nil)
 			err := handler.Admit(attributes, nil)
 			if err != nil {
-				t.Fatalf("Unexpected error returned from admission handler")
+				t.Fatalf("Unexpected error returned from admission handler: %v", err)
 			}
 
 			v, ok := pod.Annotations[networkReadiness]

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package defaultpodnetworknotready
+package defaultpodnetworkreadiness
 
 import (
 	"io"
@@ -25,7 +25,7 @@ import (
 
 const (
 	// PluginName indicates name of admission plugin.
-	PluginName = "DefaultPodNetworkNotReady"
+	PluginName = "DefaultPodNetworkReadiness"
 
 	networkReadiness = "arktos.futurewei.com/network-readiness"
 )
@@ -62,6 +62,7 @@ func (p plugin) Admit(attributes admission.Attributes, o admission.ObjectInterfa
 		return nil
 	}
 
+	// no network-readiness yet; ensure annotation network-readiness=false is set by default
 	if pod.ObjectMeta.Annotations == nil {
 		pod.ObjectMeta.Annotations = map[string]string{}
 	}
