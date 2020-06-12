@@ -94,10 +94,42 @@ specify a desired action on Pod object. This is the recommended way for user
 have the infrastructure create Action object for a specific action for a (VM)
 Pod.
 
+Having pods/action subresource allows user/ECS to easily create actions on a
+specific Pod as illustrated in the below reboot example:
+```
+root@fw0000358:~/ActAlk# cat ../YML/reboot.json
+{
+  "apiVersion": "v1",
+  "kind": "CustomAction",
+  "actionName": "Reboot",
+  "rebootParams": {
+    "delayInSeconds": 10
+  }
+}
+
+root@fw0000358:~/ActAlk# curl -X POST http://127.0.0.1:8001/api/v1/namespaces/default/pods/1pod/action -H "Content-Type: application/json" -d @../YML/reboot.json
+```
+
+Similarly, user/ECS can request snapshot of (VM) Pod as follows:
+```
+root@fw0000358:~/ActAlk# cat ../YML/snapshot.json
+{
+  "apiVersion": "v1",
+  "kind": "CustomAction",
+  "actionName": "Snapshot",
+  "snapshotParams": {
+    "snapshotLocation": "/var/tmp/"
+  }
+}
+
+root@fw0000358:~/ActAlk# curl -X POST http://127.0.0.1:8001/api/v1/namespaces/default/pods/1pod/action -H "Content-Type: application/json" -d @../YML/snapshot.json
+```
+
 Having top level actions resource allows user/ECS to directly create and list
 actions as illustrated below:
+NOTE: This is not supported, it is here as historical reference.
 ```
-root@fw0000358:~/ActAlk# cat ~/YML/action_reboot.json 
+root@fw0000358:~/ActAlk# cat ~/YML/action_reboot.json
 {
   "apiVersion": "v1",
   "kind": "Action",
@@ -114,7 +146,7 @@ root@fw0000358:~/ActAlk# cat ~/YML/action_reboot.json
   }
 }
 
-root@fw0000358:~/ActAlk# curl -X POST http://127.0.0.1:8001/api/v1/actions -H "Content-Type: application/json" -d @../YML/action_reboot.json 
+root@fw0000358:~/ActAlk# curl -X POST http://127.0.0.1:8001/api/v1/actions -H "Content-Type: application/json" -d @../YML/action_reboot.json
 {
   "kind": "Action",
   "apiVersion": "v1",
@@ -134,7 +166,7 @@ root@fw0000358:~/ActAlk# curl -X POST http://127.0.0.1:8001/api/v1/actions -H "C
     }
   },
   "status": {
-    
+
   }
 }
 
@@ -164,42 +196,11 @@ root@fw0000358:~/ActAlk# curl http://127.0.0.1:8001/api/v1/actions
         }
       },
       "status": {
-        
+
       }
     }
   ]
 }
-```
-
-Having pods/action subresource allows user/ECS to easily create actions on a
-specific Pod as illustrated in the below reboot example:
-```
-root@fw0000358:~/ActAlk# cat ../YML/reboot.json 
-{
-  "apiVersion": "v1",
-  "kind": "CustomAction",
-  "actionName": "Reboot",
-  "rebootParams": {
-    "delayInSeconds": 10
-  }
-}
-
-root@fw0000358:~/ActAlk# curl -X POST http://127.0.0.1:8001/api/v1/namespaces/default/pods/1pod/action -H "Content-Type: application/json" -d @../YML/reboot.json
-```
-
-Similarly, user/ECS can request snapshot of (VM) Pod as follows:
-```
-root@fw0000358:~/ActAlk# cat ../YML/snapshot.json 
-{
-  "apiVersion": "v1",
-  "kind": "CustomAction",
-  "actionName": "Snapshot",
-  "snapshotParams": {
-    "snapshotLocation": "/var/tmp/"
-  }
-}
-
-root@fw0000358:~/ActAlk# curl -X POST http://127.0.0.1:8001/api/v1/namespaces/default/pods/1pod/action -H "Content-Type: application/json" -d @../YML/snapshot.json
 ```
 
 ### API Structs
@@ -356,7 +357,7 @@ func newSourceApiserverFromLWActions(lw cache.ListerWatcher, updates chan<- inte
 Below diagram illustrates how user/ECS invokes action for a Pod, and how
 APIServer and Node agent (kubelet) work to see the action. Once node agent
 completes executing the action, it writes the status of the action back to
-etcd via APIServer 
+etcd via APIServer
 
 ```text
                                  +---------+
