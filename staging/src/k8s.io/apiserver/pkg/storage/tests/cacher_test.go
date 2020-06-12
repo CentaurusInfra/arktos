@@ -95,7 +95,7 @@ func AddObjectMetaFieldsSet(source fields.Set, objectMeta *metav1.ObjectMeta, ha
 
 func newEtcdTestStorage(t *testing.T, prefix string) (*etcd3testing.EtcdTestServer, storage.Interface) {
 	server, _ := etcd3testing.NewUnsecuredEtcd3TestClientServer(t)
-	storage := etcd3.New(server.V3Client, apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion), prefix, value.IdentityTransformer, true, nil)
+	storage := etcd3.New(server.V3Client, apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion), prefix, value.IdentityTransformer, true)
 	return server, storage
 }
 
@@ -375,6 +375,11 @@ func TestWatch(t *testing.T) {
 	cacher, _ := newTestCacher(etcdStorage, 3) // small capacity to trigger "too old version" error
 	defer cacher.Stop()
 
+	// Create in another namespace first to make sure events from other namespaces don't get delivered
+	podFooNS2 := makeTestPod("foo")
+	podFooNS2.Namespace += "2"
+	updatePod(t, etcdStorage, podFooNS2, nil)
+
 	podFoo := makeTestPod("foo")
 	podBar := makeTestPod("bar")
 
@@ -383,9 +388,6 @@ func TestWatch(t *testing.T) {
 
 	podFooBis := makeTestPod("foo")
 	podFooBis.Spec.NodeName = "anotherFakeNode"
-
-	podFooNS2 := makeTestPod("foo")
-	podFooNS2.Namespace += "2"
 
 	// initialVersion is used to initate the watcher at the beginning of the world,
 	// which is not defined precisely in etcd.
@@ -401,9 +403,6 @@ func TestWatch(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", aw.GetErrors())
 	}
 	defer aw.Stop()
-
-	// Create in another namespace first to make sure events from other namespaces don't get delivered
-	updatePod(t, etcdStorage, podFooNS2, nil)
 
 	fooCreated := updatePod(t, etcdStorage, podFoo, nil)
 	_ = updatePod(t, etcdStorage, podBar, nil)
