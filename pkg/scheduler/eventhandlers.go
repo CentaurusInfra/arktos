@@ -22,10 +22,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"reflect"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	storageinformers "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/tools/cache"
@@ -292,6 +294,20 @@ func vmPodShouldSleep(pod *v1.Pod) bool {
 	return pod.Status.Phase == v1.PodNoSchedule
 }
 
+func podIsNetworkReady(pod *v1.Pod) bool {
+	if v, ok := pod.Annotations[arktosv1.NetworkReadiness]; ok {
+		v = strings.TrimSpace(v)
+		if len(v) == 0 {
+			return true
+		}
+
+		v = strings.ToLower(v)
+		return v == "true"
+	}
+
+	return true
+}
+
 // responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.
 func responsibleForPod(pod *v1.Pod, schedulerName string) bool {
 	return schedulerName == pod.Spec.SchedulerName
@@ -387,7 +403,7 @@ func AddAllEventHandlers(
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
 				case *v1.Pod:
-					return !assignedPod(t) && responsibleForPod(t, schedulerName) && !vmPodShouldSleep(t)
+					return !assignedPod(t) && responsibleForPod(t, schedulerName) && !vmPodShouldSleep(t) && podIsNetworkReady(t)
 				case cache.DeletedFinalStateUnknown:
 					if pod, ok := t.Obj.(*v1.Pod); ok {
 						return !assignedPod(pod) && responsibleForPod(pod, schedulerName)

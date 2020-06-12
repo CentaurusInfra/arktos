@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -261,5 +262,56 @@ func TestNodeConditionsChanged(t *testing.T) {
 		if changed != c.Changed {
 			t.Errorf("Test case %q failed: should be %t, got %t", c.Name, c.Changed, changed)
 		}
+	}
+}
+
+func TestPodIsNetworkReady(t *testing.T) {
+	tcs := []struct {
+		desc           string
+		pod            *v1.Pod
+		expectedResult bool
+	}{
+		{
+			desc: "pod without annotation is considered as network ready",
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod-0",
+				},
+			},
+			expectedResult: true,
+		},
+		{
+			desc: "pod with network-readiness annotation other than true is not network ready",
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod-1",
+					Annotations: map[string]string{
+						"arktos.futurewei.com/network-readiness": "false",
+					},
+				},
+			},
+			expectedResult: false,
+		},
+		{
+			desc: "pod with network-readiness annotation true is network ready",
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod-2",
+					Annotations: map[string]string{
+						"arktos.futurewei.com/network-readiness": "true",
+					},
+				},
+			},
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			result := podIsNetworkReady(tc.pod)
+			if tc.expectedResult != result {
+				t.Fatalf("expected %t, got %t", tc.expectedResult, result)
+			}
+		})
 	}
 }

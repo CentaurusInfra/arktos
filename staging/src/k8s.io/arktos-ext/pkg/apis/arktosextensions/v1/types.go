@@ -20,6 +20,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// NetworkReadiness is the key of annotation network-readiness
+const NetworkReadiness = "arktos.futurewei.com/network-readiness"
+
 // +genclient
 // +genclient:nonNamespaced
 // +genclient:onlyVerbs=create,get,list,watch,updateStatus
