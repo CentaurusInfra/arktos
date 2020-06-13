@@ -62,7 +62,7 @@ func TestAdmit(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "readyPod", Namespace: "test-ne", Tenant: "test-te"},
 				Spec: api.PodSpec{
 					SecurityContext: &api.PodSecurityContext{
-						HostNetwork:           true,
+						HostNetwork: true,
 					},
 					Containers: []api.Container{
 						{Name: "ctr1", Image: "image"},
