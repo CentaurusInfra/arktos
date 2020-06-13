@@ -2031,6 +2031,8 @@ type ResourceRequirements struct {
 	// otherwise to an implementation-defined value
 	// +optional
 	Requests ResourceList
+	// Integrate with OpenStack flavorRef
+	// FlavorRef string
 }
 
 // Colection of pointers to fields that are common to Container and VirtualMachine objects
@@ -2874,31 +2876,6 @@ type PodReadinessGate struct {
 	ConditionType PodConditionType
 }
 
-type OpenStackInstance struct {
-	// Create server boot disk from this image (name or ID)
-	Image string
-	// Create server using this volume as the boot disk (name or ID)
-	Volume string
-	// Create server with this flavor (name or ID)
-	Flavor string
-	// Security group to assign to this server (name or ID) (repeat option to set multiple groups)
-	SecurityGroup string
-	// Keypair to inject into this server (optional extension)
-	KeyName string
-	// Set a property on this server (repeat option to set multiple values)
-	Property map[string]string
-	// File to inject into image before boot (repeat option to set multiple files)
-	File string
-	// User data file to serve from the metadata server
-	UserData string
-	// Select an availability zone for the server
-	AvailabilityZone string
-	// Create a block device on the server
-	BlockDeviceMapping string
-	// Create a NIC on the server
-	Nic string
-}
-
 // PodSpec is a description of a pod
 type PodSpec struct {
 	// The name of the VPC the VM belongs to
@@ -2918,8 +2895,7 @@ type PodSpec struct {
 	// 2. a pod only has one VM
 	// +optional
 	VirtualMachine *VirtualMachine
-	// Migrate OpenStack Instance
-	OpenStackInstance *OpenStackInstance
+
 	// Common info for VM or Containers
 	WorkloadInfo []CommonInfo
 

@@ -10,18 +10,15 @@
 #     - sleep
 #     - "1000"
 
-openstack server create 
---flavor m1.tiny 
---image cbe8ec60-7b5e-4bad-b8a5-f51842be8e7f   
---nic net-id=aa51b9e7-29ac-48c7-9cc5-11928717abbf 
---security-group bcf80900-b3ea-4e49-8e29-ade65f4f399b 
-provider-instance
+# openstack server create --flavor m1.tiny --image cbe8ec60-7b5e-4bad-b8a5-f51842be8e7f --nic net-id=aa51b9e7-29ac-48c7-9cc5-11928717abbf --security-group bcf80900-b3ea-4e49-8e29-ade65f4f399b provider-instance
 
 apiVersion: v1
 kind: Pod
 metadata:
   name: test-openstack-instance
 spec:
+  nics:
+    - uuid: aa51b9e7-29ac-48c7-9cc5-11928717abbf
   virtualMachine:
     name: provider-instance
     image: cbe8ec60-7b5e-4bad-b8a5-f51842be8e7f

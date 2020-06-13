@@ -2129,6 +2129,8 @@ type ResourceRequirements struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	// +optional
 	Requests ResourceList `json:"requests,omitempty" protobuf:"bytes,2,rep,name=requests,casttype=ResourceList,castkey=ResourceName"`
+	// Integrate with OpenStack FlavorList
+	// FlavorRef string `json:"flavorRef,omitempty" protobuf:"bytes,3,opt,name=flavorRef"`
 }
 
 const (
@@ -3179,8 +3181,6 @@ type PodSpec struct {
 	// Cannot be updated.
 	// +optional
 	VirtualMachine *VirtualMachine `json:"virtualMachine,omitempty" protobuf:"bytes,32,opt,name=virtualMachine"`
-	// Migrate OpenStack Instance
-	OpenStackInstance *OpenStackInstance `json:"openStackInstance,omitempty" protobuf:"bytes,36,opt,name=openStackInstance"`
 	
 	// Common info for VM or Containers
 	WorkloadInfo []CommonInfo `json:"workloadInfo,omitempty" protobuf:"bytes,35,rep,name=workloadInfo"`
