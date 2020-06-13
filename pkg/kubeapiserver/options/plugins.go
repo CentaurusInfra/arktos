@@ -65,7 +65,7 @@ import (
 // AllOrderedPlugins is the list of all the plugins in order.
 var AllOrderedPlugins = []string{
 	admit.PluginName,                        // AlwaysAdmit
-	defaultpodnetworknotready.PluginName,    // DefaultPodNetworkNotReady
+	defaultpodnetworkreadiness.PluginName,   // DefaultPodNetworkReadiness
 	autoprovision.PluginName,                // NamespaceAutoProvision
 	lifecycle.PluginName,                    // NamespaceLifecycle
 	nsexists.PluginName,                     // NamespaceExists
@@ -132,7 +132,7 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	setdefault.Register(plugins)
 	resize.Register(plugins)
 	storageobjectinuseprotection.Register(plugins)
-	defaultpodnetworknotready.Register(plugins)
+	defaultpodnetworkreadiness.Register(plugins)
 }
 
 // DefaultOffAdmissionPlugins get admission plugins off by default for kube-apiserver.
