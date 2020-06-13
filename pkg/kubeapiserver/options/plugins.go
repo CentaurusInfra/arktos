@@ -25,7 +25,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/admit"
 	"k8s.io/kubernetes/plugin/pkg/admission/alwayspullimages"
 	"k8s.io/kubernetes/plugin/pkg/admission/antiaffinity"
-	"k8s.io/kubernetes/plugin/pkg/admission/defaultpodnetworknotready"
+	"k8s.io/kubernetes/plugin/pkg/admission/defaultpodnetworkreadiness"
 	"k8s.io/kubernetes/plugin/pkg/admission/defaulttolerationseconds"
 	"k8s.io/kubernetes/plugin/pkg/admission/deny"
 	"k8s.io/kubernetes/plugin/pkg/admission/eventratelimit"
