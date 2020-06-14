@@ -43,26 +43,27 @@ status:
     status: -Ǐ忄*齧獚敆Ȏțê
     type: (ĿȊ甞谐颋ǅSǡƏS
   containerStatuses:
-  - containerID: "59"
-    image: "57"
-    imageID: "58"
+  - containerID: "60"
+    image: "58"
+    imageID: "59"
     lastState:
       running:
         startedAt: "2574-11-21T16:30:36Z"
       terminated:
-        containerID: "56"
+        containerID: "57"
         exitCode: -1829416233
         finishedAt: "2552-08-29T13:02:38Z"
-        message: "55"
-        reason: "54"
+        message: "56"
+        reason: "55"
         signal: -1634648034
         startedAt: "2776-10-09T17:33:23Z"
       waiting:
-        message: "53"
-        reason: "52"
-    name: "46"
+        message: "54"
+        reason: "53"
+    name: "47"
     ready: true
     resources:
+      flavorRef: "61"
       limits:
         '%ƎÜ掸8½£.vǴʌ鴜Ł%ŨȈ>Ņ': "747"
       requests:
@@ -72,16 +73,16 @@ status:
       running:
         startedAt: "2404-01-10T11:35:42Z"
       terminated:
-        containerID: "51"
+        containerID: "52"
         exitCode: 672648281
         finishedAt: "2153-05-01T22:00:29Z"
-        message: "50"
-        reason: "49"
+        message: "51"
+        reason: "50"
         signal: 829996972
         startedAt: "2561-02-20T13:40:00Z"
       waiting:
-        message: "48"
-        reason: "47"
+        message: "49"
+        reason: "48"
   hostIP: "30"
   initContainerStatuses:
   - containerID: "45"
@@ -104,6 +105,7 @@ status:
     name: "32"
     ready: true
     resources:
+      flavorRef: "46"
       limits:
         cP$Iņɖ橙9: "481"
       requests:
@@ -125,9 +127,9 @@ status:
         reason: "33"
   message: "27"
   nicStatuses:
-  - name: "64"
-    portID: "65"
-    reason: "66"
+  - name: "67"
+    portID: "68"
+    reason: "69"
     state: Ü郀
   nominatedNodeName: "29"
   phase: ƗǸƢ6/ʕV
@@ -135,16 +137,17 @@ status:
   qosClass: 昃2Ō¾\ĒP鄸靇杧ž譋娲瘹ɭ
   reason: "28"
   virtualMachineStatus:
-    image: "63"
-    imageId: "62"
+    image: "65"
+    imageId: "64"
     lastTerminationState: QZ{ʁgɸ=ǤÆ
-    name: "60"
+    name: "62"
     powerState: ?讦ĭÐ
     resources:
+      flavorRef: "66"
       limits:
         龷ȪÆl: "244"
       requests:
         鏮嵒ƫS捕ɷD¡轫n: "583"
     restartCount: 1825936739
     state: ɚɎ(dɅ囥糷磩窮秳ķ蟒
-    virtualMachineId: "61"
+    virtualMachineId: "63"

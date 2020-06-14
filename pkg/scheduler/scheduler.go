@@ -21,14 +21,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	// "strings"
 	"time"
 
+	// queue "github.com/golang-collections/go-datastructures/queue"
+
+	"k8s.io/apimachinery/pkg/util/wait"
+
+	"golang.org/x/crypto/ssh"
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	policyinformers "k8s.io/client-go/informers/policy/v1beta1"
@@ -258,6 +263,7 @@ func (sched *Scheduler) Run() {
 	}
 
 	go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
+	//go wait.Until(sched.globalScheduleOne, 0, sched.config.StopEverything)
 }
 
 // Config returns scheduler's config pointer. It is exposed for testing purposes.
@@ -439,6 +445,101 @@ func (sched *Scheduler) bind(assumed *v1.Pod, b *v1.Binding) error {
 	return nil
 }
 
+func connectToHost(user string, host string) (*ssh.Client, *ssh.Session, error) {
+	sshConfig := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			PublicKeyFile("/home/ubuntu/go/src/kzhang2key.pem"),
+		},
+	}
+	sshConfig.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+
+	client, err := ssh.Dial("tcp", host, sshConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		client.Close()
+		return nil, nil, err
+	}
+
+	return client, session, nil
+}
+
+// PublicKeyFile Generate Public Key
+func PublicKeyFile(file string) ssh.AuthMethod {
+	buffer, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil
+	}
+
+	key, err := ssh.ParsePrivateKey(buffer)
+	if err != nil {
+		return nil
+	}
+	return ssh.PublicKeys(key)
+}
+
+// func (sched *Scheduler) globalScheduleOne() {
+// 	// 1. Get the Pod to be scheduled from the queue
+// 	pod := sched.config.NextPod()
+// 	// pod could be nil when schedulerQueue is closed
+// 	if pod == nil {
+// 		return
+// 	}
+// 	if pod.DeletionTimestamp != nil {
+// 		sched.config.Recorder.Eventf(pod, v1.EventTypeWarning, "FailedScheduling", "skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+// 		klog.V(3).Infof("Skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+// 		return
+// 	}
+
+// 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+
+// 	// suggestedHost := "ec2-54-148-84-253.us-west-2.compute.amazonaws.com:22"
+// 	// channel := make(chan string)
+// 	finishedWrite := make(chan string)
+// 	finishedRead := make(chan string)
+// 	// manifest := &(pod.Spec)
+// 	scheduleResultQueue := queue.New(1)
+
+// 	go func() {
+// 		scheduleResultQueue.Put("172.31.15.216")
+// 		finishedWrite <- "done"
+// 	}()
+
+// 	go func() {
+// 		<- finishedWrite
+// 		host := scheduleResultQueue.Get(1)
+// 		var jsonStr = []byte(jsonData)
+// 		client, session, err := connectToHost("ubuntu", host)
+// 		if err != nil {
+// 			klog.V(3).Infof("Remote ssh connection fail")
+// 			return
+// 		}
+
+// 		klog.V(3).Infof("Successfully connect to remote openstack cluster")
+
+// 		provideAdmin := []string{
+// 			"cd /home/ubuntu/devstack",
+// 			". admin-openrc",
+// 		}
+// 		provideAdminCombined := strings.Join(commands, " && ")
+
+// 		out, err := session.CombinedOutput(provideAdminCombined)
+// 		if err != nil {
+// 			klog.V(3).Infof("Failed to run commands: %v", err)
+// 			return
+// 		}
+
+// 		client.Close()
+// 		finishedRead <- "done"
+// 	}()
+
+// 	<-finishedRead
+// }
+
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
 func (sched *Scheduler) scheduleOne() {
 	fwk := sched.config.Framework
@@ -456,6 +557,12 @@ func (sched *Scheduler) scheduleOne() {
 	}
 
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+
+	manifest := &(pod.Spec)
+	if manifest.VirtualMachine != nil {
+		rf := manifest.VirtualMachine.Resources.FlavorRef
+		klog.V(3).Infof("--------------------- FlavorRef is %v", rf)
+	}
 
 	// Synchronously attempt to find a fit for the pod.
 	start := time.Now()

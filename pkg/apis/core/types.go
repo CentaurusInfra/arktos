@@ -2031,6 +2031,8 @@ type ResourceRequirements struct {
 	// otherwise to an implementation-defined value
 	// +optional
 	Requests ResourceList
+	// Integrate with OpenStack flavorRef
+	FlavorRef string
 }
 
 // Colection of pointers to fields that are common to Container and VirtualMachine objects
@@ -2893,6 +2895,7 @@ type PodSpec struct {
 	// 2. a pod only has one VM
 	// +optional
 	VirtualMachine *VirtualMachine
+
 	// Common info for VM or Containers
 	WorkloadInfo []CommonInfo
 

@@ -67,15 +67,16 @@
       },
       "requests": {
         "骀Šĸ": "986"
-      }
+      },
+      "flavorRef": "31"
     },
-    "volumeName": "31",
-    "storageClassName": "32",
+    "volumeName": "32",
+    "storageClassName": "33",
     "volumeMode": "e0ɔȖ脵鴈Ōƾ焁yǠ/淹\\韲翁\u0026",
     "dataSource": {
-      "apiGroup": "33",
-      "kind": "34",
-      "name": "35"
+      "apiGroup": "34",
+      "kind": "35",
+      "name": "36"
     }
   },
   "status": {
@@ -92,8 +93,8 @@
         "status": "ĪȸŹăȲĻ¤Ħʅ芝",
         "lastProbeTime": "2197-07-19T07:02:22Z",
         "lastTransitionTime": "2641-12-26T14:46:27Z",
-        "reason": "36",
-        "message": "37"
+        "reason": "37",
+        "message": "38"
       }
     ]
   }
