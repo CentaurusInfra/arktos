@@ -92,7 +92,7 @@ take steps to implement that action, and post the status back to API Server.
 * We introduce a pods subresource named '**pods/action**' that allows user to
 specify a desired action on Pod object. This is the recommended way for user
 have the infrastructure create Action object for a specific action for a (VM)
-Pod.
+Pod. Programmatically, this is done by invoking Action() subresource on Pod.
 
 Having pods/action subresource allows user/ECS to easily create actions on a
 specific Pod as illustrated in the below reboot example:
