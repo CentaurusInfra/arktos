@@ -2130,7 +2130,8 @@ type ResourceRequirements struct {
 	// +optional
 	Requests ResourceList `json:"requests,omitempty" protobuf:"bytes,2,rep,name=requests,casttype=ResourceList,castkey=ResourceName"`
 	// Integrate with OpenStack FlavorList
-	// FlavorRef string `json:"flavorRef,omitempty" protobuf:"bytes,3,opt,name=flavorRef"`
+	// +optional
+	FlavorRef string `json:"flavorRef,omitempty" protobuf:"bytes,3,opt,name=flavorRef"`
 }
 
 const (
@@ -2511,7 +2512,7 @@ type VirtualMachine struct {
 	CloudInitUserDataScript string `json:"cloudInitUserDataScript,omitempty" protobuf:"bytes,14,opt,name=cloudInitUserDataScript"`
 	// Global Scheduling
 	// +optioanl
-	Scheduling GlobalScheduling `json:"scheduling,omitempty" protobuf:"bytes,15,opt,name=scheduling"`
+	Scheduling GlobalScheduling `json:"scheduling,omitempty" protobuf:"bytes,17,opt,name=scheduling"`
 }
 
 // Handler defines a specific action that should be taken
@@ -3181,7 +3182,7 @@ type PodSpec struct {
 	// Cannot be updated.
 	// +optional
 	VirtualMachine *VirtualMachine `json:"virtualMachine,omitempty" protobuf:"bytes,32,opt,name=virtualMachine"`
-	
+
 	// Common info for VM or Containers
 	WorkloadInfo []CommonInfo `json:"workloadInfo,omitempty" protobuf:"bytes,35,rep,name=workloadInfo"`
 

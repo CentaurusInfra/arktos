@@ -2032,7 +2032,7 @@ type ResourceRequirements struct {
 	// +optional
 	Requests ResourceList
 	// Integrate with OpenStack flavorRef
-	// FlavorRef string
+	FlavorRef string
 }
 
 // Colection of pointers to fields that are common to Container and VirtualMachine objects

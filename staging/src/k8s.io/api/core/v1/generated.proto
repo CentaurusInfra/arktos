@@ -4190,6 +4190,10 @@ message ResourceRequirements {
   // More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
   // +optional
   map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> requests = 2;
+
+  // Integrate with OpenStack FlavorList
+  // +optional
+  optional string flavorRef = 3;
 }
 
 message RestoreAction {
@@ -5186,7 +5190,7 @@ message VirtualMachine {
 
   // Global Scheduling
   // +optioanl
-  optional GlobalScheduling scheduling = 15;
+  optional GlobalScheduling scheduling = 17;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance

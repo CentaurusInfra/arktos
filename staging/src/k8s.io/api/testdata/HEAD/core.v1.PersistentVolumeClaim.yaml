@@ -38,10 +38,11 @@ spec:
   accessModes:
   - 脽ěĂ凗蓏Ŋ蛊ĉy緅縕
   dataSource:
-    apiGroup: "33"
-    kind: "34"
-    name: "35"
+    apiGroup: "34"
+    kind: "35"
+    name: "36"
   resources:
+    flavorRef: "31"
     limits:
       p:籀帊: "219"
     requests:
@@ -54,9 +55,9 @@ spec:
       - t_k-_v.6
     matchLabels:
       p-g8c2-k-912e5-c-e63-n-3n.c83-b-w7ld-6cs06xj-x5yv0wm-k1-87-3s-g3/9_-.-W._AAn---v_-5-_8LXP-o-9..1m: JTrcd-2.-__E_Sv__26KX_R_.-N
-  storageClassName: "32"
+  storageClassName: "33"
   volumeMode: e0ɔȖ脵鴈Ōƾ焁yǠ/淹\韲翁&
-  volumeName: "31"
+  volumeName: "32"
 status:
   accessModes:
   - '曢\%枅:'
@@ -65,8 +66,8 @@ status:
   conditions:
   - lastProbeTime: "2197-07-19T07:02:22Z"
     lastTransitionTime: "2641-12-26T14:46:27Z"
-    message: "37"
-    reason: "36"
+    message: "38"
+    reason: "37"
     status: ĪȸŹăȲĻ¤Ħʅ芝
     type: 3fƻfʣ繡楙¯ĦE
   phase: s

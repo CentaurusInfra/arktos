@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
+	// "strings"
 	"time"
 
-	queue "github.com/golang-collections/go-datastructures/queue"
+	// queue "github.com/golang-collections/go-datastructures/queue"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -557,6 +557,12 @@ func (sched *Scheduler) scheduleOne() {
 	}
 
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+
+	manifest := &(pod.Spec)
+	if manifest.VirtualMachine != nil {
+		rf := manifest.VirtualMachine.Resources.FlavorRef
+		klog.V(3).Infof("--------------------- FlavorRef is %v", rf)
+	}
 
 	// Synchronously attempt to find a fit for the pod.
 	start := time.Now()

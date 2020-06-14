@@ -7328,6 +7328,7 @@ func Convert_core_ResourceQuotaStatus_To_v1_ResourceQuotaStatus(in *core.Resourc
 func autoConvert_v1_ResourceRequirements_To_core_ResourceRequirements(in *v1.ResourceRequirements, out *core.ResourceRequirements, s conversion.Scope) error {
 	out.Limits = *(*core.ResourceList)(unsafe.Pointer(&in.Limits))
 	out.Requests = *(*core.ResourceList)(unsafe.Pointer(&in.Requests))
+	out.FlavorRef = in.FlavorRef
 	return nil
 }
 
@@ -7339,6 +7340,7 @@ func Convert_v1_ResourceRequirements_To_core_ResourceRequirements(in *v1.Resourc
 func autoConvert_core_ResourceRequirements_To_v1_ResourceRequirements(in *core.ResourceRequirements, out *v1.ResourceRequirements, s conversion.Scope) error {
 	out.Limits = *(*v1.ResourceList)(unsafe.Pointer(&in.Limits))
 	out.Requests = *(*v1.ResourceList)(unsafe.Pointer(&in.Requests))
+	out.FlavorRef = in.FlavorRef
 	return nil
 }
 
