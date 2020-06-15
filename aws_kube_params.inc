@@ -20,7 +20,7 @@ export NUM_WINDOWS_NODES=0
 export AWS_SSH_KEY=$HOME/.ssh/id_rsa
 
 export PRESET_INSTANCES_ENABLED=false
-export IS_DRY_RUN=false
+export IS_PRESET_INSTANCES_DRY_RUN=false  # In Preset instance, if it's dry run, then it only generate script but not deploying. It has no impact to preset instances.
 export PRESET_KUBE_MASTER_IP=172.31.6.63
 export PRESET_KUBE_MINION1_IP=172.31.11.206
 # Uncomment next line and set minion2 ip to enable deploy 2-nodes cluster

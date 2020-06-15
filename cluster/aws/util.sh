@@ -62,8 +62,8 @@ fi
 if [[ -z ${PRESET_INSTANCES_ENABLED:-} ]]; then
   PRESET_INSTANCES_ENABLED=$FALSE
 fi
-if [[ -z ${IS_DRY_RUN:-} ]]; then
-  IS_DRY_RUN=$FALSE
+if [[ -z ${IS_PRESET_INSTANCES_DRY_RUN:-} ]]; then
+  IS_PRESET_INSTANCES_DRY_RUN=$FALSE
 fi
 if [[ $PRESET_INSTANCES_ENABLED == $TRUE ]]; then
   KUBE_MASTER_IP=$PRESET_KUBE_MASTER_IP
@@ -736,7 +736,7 @@ function upload-server-tars() {
     SERVER_BINARY_TAR_URL=$PRESET_SERVER_BINARY_TAR_URL
     BOOTSTRAP_SCRIPT_URL=$PRESET_BOOTSTRAP_SCRIPT_URL
 
-    if [[ $IS_DRY_RUN == $FALSE ]]; then
+    if [[ $IS_PRESET_INSTANCES_DRY_RUN == $FALSE ]]; then
       scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
       scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
       if [[ -n ${KUBE_MINION2_IP:-} ]]; then
@@ -1140,7 +1140,7 @@ function kube-up {
       # Start minions. The kube bootstrap script will be executed during minions starting.
       start-minions
 
-      if [[ $IS_DRY_RUN == $TRUE ]]; then
+      if [[ $PRESET_INSTANCES_ENABLED == $TRUE && $IS_PRESET_INSTANCES_DRY_RUN == $TRUE ]]; then
         return
       fi
       if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
@@ -1345,7 +1345,7 @@ function start-master() {
       echo "Started master: public_ip= $ip"
     done
   else
-    if [[ $IS_DRY_RUN == $FALSE ]]; then
+    if [[ $IS_PRESET_INSTANCES_DRY_RUN == $FALSE ]]; then
       scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/master-user-data ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
       execute-ssh ${KUBE_MASTER_IP} "sudo mkdir -p /mnt/master-pd && chmod 755 /tmp/master-user-data && sudo /tmp/master-user-data"
       execute-ssh ${KUBE_MASTER_IP} "sudo /etc/kubernetes/bootstrap &>/tmp/bootstrap.log & disown"
@@ -1438,7 +1438,7 @@ function start-minions() {
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=Role,Value=${NODE_TAG} \
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=KubernetesCluster,Value=${CLUSTER_ID}
   else
-    if [[ $IS_DRY_RUN == $FALSE ]]; then
+    if [[ $IS_PRESET_INSTANCES_DRY_RUN == $FALSE ]]; then
       scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
       execute-ssh ${KUBE_MINION1_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
       execute-ssh ${KUBE_MINION1_IP} "sudo /etc/kubernetes/bootstrap"
