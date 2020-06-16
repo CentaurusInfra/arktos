@@ -241,7 +241,7 @@ func TestTenantCreation(t *testing.T) {
 func initialClusterRoleBinding(tenant string) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   initialClusterRoleBindingName,
+			Name:   InitialClusterRoleBindingName,
 			Tenant: tenant,
 		},
 		Subjects: []rbacv1.Subject{
@@ -250,7 +250,7 @@ func initialClusterRoleBinding(tenant string) *rbacv1.ClusterRoleBinding {
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "ClusterRole",
-			Name:     initialClusterRoleName,
+			Name:     InitialClusterRoleName,
 		},
 	}
 }
@@ -258,7 +258,7 @@ func initialClusterRoleBinding(tenant string) *rbacv1.ClusterRoleBinding {
 func initialClusterRole(tenant string) *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   initialClusterRoleName,
+			Name:   InitialClusterRoleName,
 			Tenant: tenant,
 		},
 		Rules: []rbacv1.PolicyRule{initialClusterRoleRules()},
