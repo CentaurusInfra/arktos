@@ -24,6 +24,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -680,10 +683,16 @@ func TestGuaranteedUpdateWithSuggestionAndConflict(t *testing.T) {
 }
 
 func TestTransformationFailure(t *testing.T) {
+	originHandler := storagecluster.GetClusterIdFromTenantHandler
+	storagecluster.GetClusterIdFromTenantHandler = mockGetClusterIdFromTenant
+	defer func() {
+		storagecluster.GetClusterIdFromTenantHandler = originHandler
+	}()
+
 	codec := apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion)
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
-	store := newStore(cluster.RandClient(), false, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)}, nil)
+	store := newStore(cluster.RandClient(), false, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)})
 	ctx := context.Background()
 
 	preset := []struct {
@@ -756,12 +765,18 @@ func TestTransformationFailure(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	originHandler := storagecluster.GetClusterIdFromTenantHandler
+	storagecluster.GetClusterIdFromTenantHandler = mockGetClusterIdFromTenant
+	defer func() {
+		storagecluster.GetClusterIdFromTenantHandler = originHandler
+	}()
+
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.RemainingItemCount, true)()
 	codec := apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion)
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
-	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)}, nil)
-	disablePagingStore := newStore(cluster.RandClient(), false, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)}, nil)
+	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)})
+	disablePagingStore := newStore(cluster.RandClient(), false, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)})
 	ctx := context.Background()
 
 	// Setup storage with the following structure:
@@ -1082,10 +1097,16 @@ func TestList(t *testing.T) {
 }
 
 func TestListContinuation(t *testing.T) {
+	originHandler := storagecluster.GetClusterIdFromTenantHandler
+	storagecluster.GetClusterIdFromTenantHandler = mockGetClusterIdFromTenant
+	defer func() {
+		storagecluster.GetClusterIdFromTenantHandler = originHandler
+	}()
+
 	codec := apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion)
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
-	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)}, nil)
+	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)})
 	ctx := context.Background()
 
 	// Setup storage with the following structure:
@@ -1189,14 +1210,19 @@ func TestListContinuation(t *testing.T) {
 	if len(out.Items) != 1 || !reflect.DeepEqual(&out.Items[0], preset[2].storedObj) {
 		t.Fatalf("Unexpected third page: %#v", out.Items)
 	}
-
 }
 
 func TestListInconsistentContinuation(t *testing.T) {
+	originHandler := storagecluster.GetClusterIdFromTenantHandler
+	storagecluster.GetClusterIdFromTenantHandler = mockGetClusterIdFromTenant
+	defer func() {
+		storagecluster.GetClusterIdFromTenantHandler = originHandler
+	}()
+
 	codec := apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion)
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
-	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)}, nil)
+	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)})
 	ctx := context.Background()
 
 	// Setup storage with the following structure:
@@ -1341,7 +1367,7 @@ func TestListInconsistentContinuation(t *testing.T) {
 func testSetup(t *testing.T) (context.Context, *store, *integration.ClusterV3) {
 	codec := apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion)
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
-	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)}, nil)
+	store := newStore(cluster.RandClient(), true, codec, "", prefixTransformer{prefix: []byte(defaultTestPrefix)})
 	ctx := context.Background()
 	// As 30s is the default timeout for testing in glboal configuration,
 	// we cannot wait longer than that in a single time: change it to 10
@@ -1381,7 +1407,7 @@ func TestPrefix(t *testing.T) {
 		"/registry":         "/registry",
 	}
 	for configuredPrefix, effectivePrefix := range testcases {
-		store := newStore(cluster.RandClient(), true, codec, configuredPrefix, transformer, nil)
+		store := newStore(cluster.RandClient(), true, codec, configuredPrefix, transformer)
 		if store.pathPrefix != effectivePrefix {
 			t.Errorf("configured prefix of %s, expected effective prefix of %s, got %s", configuredPrefix, effectivePrefix, store.pathPrefix)
 		}
@@ -1498,5 +1524,80 @@ func Test_growSlice(t *testing.T) {
 				t.Errorf("Unexpected capacity: got=%d want=%d", tt.args.v.Cap(), tt.cap)
 			}
 		})
+	}
+}
+
+func mockGetClusterIdFromTenant(tenant string) string {
+	if tenant == "t1" {
+		return "c1"
+	}
+	return ""
+}
+
+func TestGetClientFromKey(t *testing.T) {
+	originHandler := storagecluster.GetClusterIdFromTenantHandler
+	storagecluster.GetClusterIdFromTenantHandler = mockGetClusterIdFromTenant
+	defer func() {
+		storagecluster.GetClusterIdFromTenantHandler = originHandler
+	}()
+
+	systemClient := &clientv3.Client{Username: "system"}
+	dataClientV3 := &clientv3.Client{Username: "data"}
+	storeT := &store{
+		client:             systemClient,
+		dataClusterClients: make(map[string]*clientv3.Client),
+	}
+	storeT.dataClusterClients["c1"] = dataClientV3
+
+	tenant := "t1"
+	namespace := "ns"
+
+	systemKeys := []string{
+		"minions/",
+		"clusterroles/edit",
+		"controllerinstances/ci-cb68db0a-67fe-4e7a-a667-bc1e8b5c571e",
+		"leases/kube-node-lease/ip-172-30-0-148",
+		"clusterrolebindings/system:controller:certificate-controller",
+		"events/default/ip-172-30-0-73.160ce25dac4754fa",
+		"apiregistration.k8s.io/apiservices/v1.",
+		"serviceaccounts/default/default",
+		"serviceaccounts/kube-node-lease/default",
+		"serviceaccounts/kube-public/default",
+		"pods/default/application1",
+		"services/endpoints/default/kubernetes",
+		"services/specs/default/kubernetes",
+		"services/endpoints/kube-system/kube-dns",
+		"namespaces/",
+		"apiextensions.k8s.io/customresourcedefinitions",
+	}
+
+	dataKeys := []string{
+		"volumeattachments/" + tenant + "/va1",
+		"networkpolicies/" + tenant + "/" + namespace + "/np2",
+	}
+
+	// Various integration test prefix
+	pathPrefixes := []string{
+		"/registry",
+		"/registry/",
+		"/9be9cd9e-4d25-4415-b34d-66de47b7c83f",
+		"/9be9cd9e-4d25-4415-b34d-66de47b7c83f/",
+		"/9be9cd9e-4d25-4415-b34d-66de47b7c83f/registry",
+		"/9be9cd9e-4d25-4415-b34d-66de47b7c83f/registry/",
+	}
+
+	for _, prefix := range pathPrefixes {
+		storeT.pathPrefix = prefix
+		for _, systemKey := range systemKeys {
+			systemKeyWithPrefix := path.Join(storeT.pathPrefix, systemKey)
+			c := storeT.getClientFromKey(systemKeyWithPrefix)
+			assert.Equal(t, systemClient, c, fmt.Sprintf("Expected system key %s but not", systemKey))
+		}
+
+		for _, dataKey := range dataKeys {
+			dataKeyWithPrefix := path.Join(storeT.pathPrefix, dataKey)
+			c := storeT.getClientFromKey(dataKeyWithPrefix)
+			assert.Equal(t, dataClientV3, c, fmt.Sprintf("Expected tenant key %s but not", dataKey))
+		}
 	}
 }

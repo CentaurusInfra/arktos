@@ -395,7 +395,7 @@ func (p *criStatsProvider) ImageFsDevice() (string, error) {
 		}
 	}
 
-	if len(fsDevices) ==0 {
+	if len(fsDevices) == 0 {
 		return "", errors.New("imagefs device is not found")
 	}
 

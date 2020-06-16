@@ -2503,7 +2503,7 @@ func TestConvertToAPIContainerStatuses(t *testing.T) {
 			tc.Pod.Spec.Containers[i].Resources = tc.Resources[i]
 			tc.Pod.Spec.Containers[i].ResourcesAllocated = tc.Resources[i].Requests
 			if tc.ResourceLimits != nil {
-				tc.PodStatus.ContainerStatuses[i].ResourceLimits = tc.ResourceLimits[i]
+				tc.PodStatus.ContainerStatuses[i].Resources.Limits = tc.ResourceLimits[i]
 			}
 		}
 

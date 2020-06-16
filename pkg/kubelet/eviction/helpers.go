@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -582,7 +583,11 @@ func podRequest(pod *v1.Pod, resourceName v1.ResourceName) resource.Quantity {
 	for i := range pod.Spec.Containers {
 		switch resourceName {
 		case v1.ResourceMemory:
-			containerValue.Add(*pod.Spec.Containers[i].Resources.Requests.Memory())
+			if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+				containerValue.Add(*pod.Spec.Containers[i].ResourcesAllocated.Memory())
+			} else {
+				containerValue.Add(*pod.Spec.Containers[i].Resources.Requests.Memory())
+			}
 		case v1.ResourceEphemeralStorage:
 			containerValue.Add(*pod.Spec.Containers[i].Resources.Requests.StorageEphemeral())
 		}

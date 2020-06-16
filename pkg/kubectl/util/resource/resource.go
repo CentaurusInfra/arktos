@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,6 +40,19 @@ func PodRequestsAndLimits(pod *corev1.Pod) (reqs, limits corev1.ResourceList) {
 	for _, container := range pod.Spec.InitContainers {
 		maxResourceList(reqs, container.Resources.Requests)
 		maxResourceList(limits, container.Resources.Limits)
+	}
+	return
+}
+
+// PodResourceAllocations returns a dictionary of resources allocated to the containers of pod.
+func PodResourceAllocations(pod *corev1.Pod) (allocations corev1.ResourceList) {
+	allocations = corev1.ResourceList{}
+	for _, container := range pod.Spec.Containers {
+		addResourceList(allocations, container.ResourcesAllocated)
+	}
+	// init containers define the minimum of any resource
+	for _, container := range pod.Spec.InitContainers {
+		maxResourceList(allocations, container.Resources.Requests)
 	}
 	return
 }
@@ -93,6 +107,12 @@ func ExtractContainerResourceValue(fs *corev1.ResourceFieldSelector, container *
 		return convertResourceMemoryToString(container.Resources.Requests.Memory(), divisor)
 	case "requests.ephemeral-storage":
 		return convertResourceEphemeralStorageToString(container.Resources.Requests.StorageEphemeral(), divisor)
+	case "resourcesAllocated.cpu":
+		return convertResourceCPUToString(container.ResourcesAllocated.Cpu(), divisor)
+	case "resourcesAllocated.memory":
+		return convertResourceMemoryToString(container.ResourcesAllocated.Memory(), divisor)
+	case "resourcesAllocated.ephemeral-storage":
+		return convertResourceEphemeralStorageToString(container.ResourcesAllocated.StorageEphemeral(), divisor)
 	}
 
 	return "", fmt.Errorf("Unsupported container resource : %v", fs.Resource)

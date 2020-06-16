@@ -476,15 +476,21 @@ func (m *kubeGenericRuntimeManager) getPodContainerStatuses(uid kubetypes.UID, n
 func toKubeContainerStatus(status *runtimeapi.ContainerStatus, runtimeName string) *kubecontainer.ContainerStatus {
 	annotatedInfo := getContainerInfoFromAnnotations(status.Annotations)
 	labeledInfo := getContainerInfoFromLabels(status.Labels)
-	var resourceLimits v1.ResourceList
+	var resourceLimits, resourceRequests v1.ResourceList
 	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
 		// If runtime reports cpu & memory limit info, add it to container status
 		if status.Resources != nil {
-			var cpuLimit, memLimit *resource.Quantity
+			var cpuLimit, memLimit, cpuRequest *resource.Quantity
 			if status.Resources.CpuPeriod > 0 {
 				milliCpu := quotaToMilliCPU(status.Resources.CpuQuota, status.Resources.CpuPeriod)
 				if milliCpu > 0 {
 					cpuLimit = resource.NewMilliQuantity(milliCpu, resource.DecimalSI)
+				}
+			}
+			if status.Resources.CpuShares > 0 {
+				milliCpu := sharesToMilliCPU(status.Resources.CpuShares)
+				if milliCpu > 0 {
+					cpuRequest = resource.NewMilliQuantity(milliCpu, resource.DecimalSI)
 				}
 			}
 			if status.Resources.MemoryLimitInBytes > 0 {
@@ -492,12 +498,15 @@ func toKubeContainerStatus(status *runtimeapi.ContainerStatus, runtimeName strin
 			}
 			if cpuLimit != nil || memLimit != nil {
 				resourceLimits = make(v1.ResourceList)
+				if cpuLimit != nil {
+					resourceLimits[v1.ResourceCPU] = *cpuLimit
+				}
+				if memLimit != nil {
+					resourceLimits[v1.ResourceMemory] = *memLimit
+				}
 			}
-			if cpuLimit != nil {
-				resourceLimits[v1.ResourceCPU] = *cpuLimit
-			}
-			if memLimit != nil {
-				resourceLimits[v1.ResourceMemory] = *memLimit
+			if cpuRequest != nil {
+				resourceRequests = v1.ResourceList{v1.ResourceCPU: *cpuRequest}
 			}
 		}
 	}
@@ -506,14 +515,14 @@ func toKubeContainerStatus(status *runtimeapi.ContainerStatus, runtimeName strin
 			Type: runtimeName,
 			ID:   status.Id,
 		},
-		Name:           labeledInfo.ContainerName,
-		Image:          status.Image.Image,
-		ImageID:        status.ImageRef,
-		Hash:           annotatedInfo.Hash,
-		RestartCount:   annotatedInfo.RestartCount,
-		State:          toKubeContainerState(status.State),
-		CreatedAt:      time.Unix(0, status.CreatedAt),
-		ResourceLimits: resourceLimits,
+		Name:         labeledInfo.ContainerName,
+		Image:        status.Image.Image,
+		ImageID:      status.ImageRef,
+		Hash:         annotatedInfo.Hash,
+		RestartCount: annotatedInfo.RestartCount,
+		State:        toKubeContainerState(status.State),
+		CreatedAt:    time.Unix(0, status.CreatedAt),
+		Resources:    v1.ResourceRequirements{Limits: resourceLimits, Requests: resourceRequests},
 	}
 
 	if status.State != runtimeapi.ContainerState_CONTAINER_CREATED {

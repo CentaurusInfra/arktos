@@ -894,7 +894,7 @@ func TestGetPodsTotalRequestsWithMultiTenancy(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			reqs, _ := getPodsTotalRequestsAndLimits(testCase.pods)
+			reqs, _, _ := getPodsTotalRequestsAllocsAndLimits(testCase.pods)
 			if !apiequality.Semantic.DeepEqual(reqs, testCase.expectedReqs) {
 				t.Errorf("Expected %v, got %v", testCase.expectedReqs, reqs)
 			}

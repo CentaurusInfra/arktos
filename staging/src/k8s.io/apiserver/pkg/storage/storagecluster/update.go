@@ -16,10 +16,13 @@ limitations under the License.
 
 package storagecluster
 
-import "sync"
+import (
+	"github.com/grafov/bcast"
+	"sync"
+)
 
-var storageClusterUpdateCh chan StorageClusterAction
-var mux sync.Mutex
+var storageClusterUpdateChgrp *bcast.Group
+var muxCreateStorageUpdateCh sync.Mutex
 
 type StorageClusterAction struct {
 	StorageClusterId string
@@ -31,17 +34,26 @@ type StorageClusterAction struct {
 	Action string
 }
 
-func GetStorageClusterUpdateCh() chan StorageClusterAction {
-	if storageClusterUpdateCh != nil {
-		return storageClusterUpdateCh
+func getStorageClusterUpdateChgrp() *bcast.Group {
+	if storageClusterUpdateChgrp != nil {
+		return storageClusterUpdateChgrp
 	}
 
-	mux.Lock()
-	defer mux.Unlock()
-	if storageClusterUpdateCh != nil {
-		return storageClusterUpdateCh
+	muxCreateStorageUpdateCh.Lock()
+	defer muxCreateStorageUpdateCh.Unlock()
+	if storageClusterUpdateChgrp != nil {
+		return storageClusterUpdateChgrp
 	}
 
-	storageClusterUpdateCh = make(chan StorageClusterAction)
-	return storageClusterUpdateCh
+	storageClusterUpdateChgrp = bcast.NewGroup()
+	go storageClusterUpdateChgrp.Broadcast(0)
+	return storageClusterUpdateChgrp
+}
+
+func WatchStorageClusterUpdate() *bcast.Member {
+	return getStorageClusterUpdateChgrp().Join()
+}
+
+func SendStorageClusterUpdate(action StorageClusterAction) {
+	getStorageClusterUpdateChgrp().Send(action)
 }

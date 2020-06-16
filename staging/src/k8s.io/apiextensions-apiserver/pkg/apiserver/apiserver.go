@@ -19,6 +19,7 @@ package apiserver
 
 import (
 	"fmt"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"net/http"
 	"time"
 
@@ -87,6 +88,9 @@ type ExtraConfig struct {
 	ServiceResolver webhook.ServiceResolver
 	// AuthResolverWrapper is used in CR webhook converters
 	AuthResolverWrapper webhook.AuthenticationInfoResolverWrapper
+
+	// Get notification of Tenant storage cluster assignment
+	TenantStorageManager *storagecluster.TenantStorageMapManager
 }
 
 type Config struct {

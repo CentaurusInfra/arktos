@@ -31,9 +31,11 @@ import (
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	"k8s.io/client-go/discovery"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
@@ -367,12 +369,27 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 
+	dynamicClient, err := dynamic.NewForConfig(tnKubeConfigs)
+	if err != nil {
+		return nil, true, err
+	}
+
+	discoverTenantedResourcesFn := func() ([]*metav1.APIResourceList, error) {
+		all, err := tenantKubeClient.Discovery().ServerPreferredResources()
+		return discovery.FilteredBy(discovery.ResourcePredicateFunc(func(groupVersion string, r *metav1.APIResource) bool {
+			return !r.Namespaced && r.Tenanted
+		}), all), err
+	}
+
 	tenantController := tenantcontroller.NewTenantController(
 		tenantKubeClient,
 		ctx.InformerFactory.Core().V1().Tenants(),
 		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
 		networkClient,
 		ctx.ComponentConfig.TenantController.DefaultNetworkTemplatePath,
+		dynamicClient,
+		discoverTenantedResourcesFn,
+		v1.FinalizerArktos,
 	)
 	go tenantController.Run(int(ctx.ComponentConfig.TenantController.ConcurrentTenantSyncs), ctx.Stop)
 

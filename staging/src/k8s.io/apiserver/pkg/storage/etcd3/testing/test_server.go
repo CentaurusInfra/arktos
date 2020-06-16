@@ -19,6 +19,7 @@ package testing
 import (
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -289,6 +290,7 @@ func NewEtcdTestClientServer(t *testing.T) *EtcdTestServer {
 
 // NewUnsecuredEtcd3TestClientServer creates a new client and server for testing
 func NewUnsecuredEtcd3TestClientServer(t *testing.T) (*EtcdTestServer, *storagebackend.Config) {
+	storagecluster.GetClusterIdFromTenantHandler = mockGetClusterIdFromTenant
 	server := &EtcdTestServer{
 		v3Cluster: integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1}),
 	}
@@ -302,4 +304,11 @@ func NewUnsecuredEtcd3TestClientServer(t *testing.T) (*EtcdTestServer, *storageb
 		Paging: true,
 	}
 	return server, config
+}
+
+func mockGetClusterIdFromTenant(tenant string) string {
+	if tenant == "t1" {
+		return "c1"
+	}
+	return ""
 }

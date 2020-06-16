@@ -34,7 +34,7 @@ type containerStatusbyCreatedList []*kubecontainer.ContainerStatus
 
 type podContainerDeletor struct {
 	containersToKeep int
-	runtime kubecontainer.Runtime
+	runtime          kubecontainer.Runtime
 }
 
 func (a containerStatusbyCreatedList) Len() int           { return len(a) }
@@ -44,7 +44,7 @@ func (a containerStatusbyCreatedList) Less(i, j int) bool { return a[i].CreatedA
 func newPodContainerDeletor(kubeRuntime kubecontainer.Runtime, containersToKeep int) *podContainerDeletor {
 	return &podContainerDeletor{
 		containersToKeep: containersToKeep,
-		runtime: kubeRuntime,
+		runtime:          kubeRuntime,
 	}
 }
 

@@ -3,8 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-         "kuberuntime_registry.go",
-         "fake_runtime_manager.go"
+        "fake_runtime_manager.go",
+        "kuberuntime_registry.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/kubelet/runtimeregistry",
     visibility = ["//visibility:public"],
@@ -12,7 +12,6 @@ go_library(
         "//pkg/kubelet/remote:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/cri-api/pkg/apis:go_default_library",
-        "//staging/src/k8s.io/cri-api/pkg/apis/runtime/v1alpha2:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
     ],
 )
@@ -26,10 +25,7 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [
-        ":package-srcs",
-        "//pkg/kubelet/runtimeregistry:all-srcs",
-    ],
+    srcs = [":package-srcs"],
     tags = ["automanaged"],
     visibility = ["//visibility:public"],
 )
