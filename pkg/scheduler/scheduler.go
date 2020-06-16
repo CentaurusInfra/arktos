@@ -464,18 +464,19 @@ func requestToken(host string) string {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		klog.V(3).Infof("HTTP Post Request Failed: %v", err)
+		klog.V(3).Infof("HTTP Post Token Request Failed: %v", err)
 	}
 	klog.V(3).Infof("HTTP Post Request Succeeded")
 	defer resp.Body.Close()
 
 	respHeader := resp.Header
+	klog.V(3).Infof("HTTP Post Token: %v", respHeader["X-Subject-Token"][0])
 
 	return respHeader["X-Subject-Token"][0]
 }
 
-func serverCreate(host string, authToken string, manifest *v1.PodSpec) {
-	// serverCreateRequestURL := "http://" + host + "/compute/v2.1/servers"
+func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
+	serverCreateRequestURL := "http://" + host + "/compute/v2.1/servers"
 	serverStruct := server{
 		Name: manifest.VirtualMachine.Name,
 		ImageRef: manifest.VirtualMachine.Image,
@@ -489,9 +490,23 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) {
 	}
 	serverJson := map[string]server{}
 	serverJson["server"] = serverStruct
-
 	finalData, _ := json.Marshal(serverJson)
-	fmt.Println(bytes.NewBuffer(finalData))
+	req, err := http.NewRequest("POST", serverCreateRequestURL, bytes.NewBuffer(finalData))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Auth-Token", authToken)
+	client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        klog.V(3).Infof("HTTP Post Instance Request Failed: %v", err)
+    }
+    defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	var instanceResponse map[string]interface{}
+	if err := json.Unmarshal(body, &instanceResponse); err != nil {
+		klog.V(3).Infof("Unmarshal Failed")
+	}
+	return instanceResponse["id"].(string)
 }
 
 func (sched *Scheduler) globalScheduleOne() {
@@ -530,8 +545,9 @@ func (sched *Scheduler) globalScheduleOne() {
 
 		// Post Request For Token
 		// authToken := requestToken(host)
-		authToken := "gAAAAABe5taKRvITfc8G5pG1sEdmSEaj8lqKisovUDFhoJDMvpESiyPg_jV-zc8TTB5rLWUJxAdIt1hhoCHg6onITEXnfaStLY2YiMBqAgLLTJgfyALWy9n_abMXqkMNNk41juR6i-9IhyvvFbtPX3RmklxVyO90BCWwKEmb7ou17AXdA45I2Ro"
-		serverCreate(host, authToken, manifest)
+		authToken := "gAAAAABe6SXodlSt3JjMnS6nW0mdZJJorUGKAsmr9QSha-tIDL1-B1mZNjHQdiWJK33cLQTKWvbP8kaBrLMTgChKCSko7isn85DIQw2DkxK924bNvy4tf77PJk3NolaAD473gWoF2kta-80QprYkJIv8jVEgF7Lfr_dTleLem-xbL_T4Gcq87QA"
+		instanceID := serverCreate(host, authToken, manifest)
+		
 
 		finishedRead <- "done"
 	}()
