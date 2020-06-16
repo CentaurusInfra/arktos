@@ -77,6 +77,7 @@ type watcher struct {
 	transformer       value.Transformer
 	partitionConfig   map[string]storage.Interval
 	updatePartitionCh *bcast.Member
+	updateMux         sync.Mutex
 }
 
 // watchChan implements watch.Interface.
@@ -159,6 +160,9 @@ func (w *watcher) run(ctx context.Context, key string, rev int64, recursive bool
 }
 
 func (w *watcher) updatePartitionConfig(dp corev1.DataPartitionConfig) {
+	// try to avoid concurrent map writes error
+	w.updateMux.Lock()
+
 	rangeStartValue := ""
 	if dp.IsRangeStartValid {
 		rangeStartValue = dp.RangeStart
@@ -174,8 +178,11 @@ func (w *watcher) updatePartitionConfig(dp corev1.DataPartitionConfig) {
 	}
 
 	for k := range w.partitionConfig {
+		klog.V(3).Infof("updatePartitionConfig interval key %s, interval [%+v]", k, interval)
 		w.partitionConfig[k] = interval
 	}
+
+	w.updateMux.Unlock()
 }
 
 func (w *watcher) createWatchChan(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate, kr keyRange) *watchChan {

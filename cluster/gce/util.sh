@@ -1732,15 +1732,15 @@ function generate-certs {
     # make the config for the signer
     echo '{"signing":{"default":{"expiry":"43800h","usages":["signing","key encipherment","client auth"]}}}' > "ca-config.json"
     # create the kubelet client cert with the correct groups
-    echo '{"CN":"kubelet","names":[{"O":"system:nodes"}],"hosts":[""],"key":{"algo":"rsa","size":2048}}' | "${CFSSL_BIN}" gencert -ca=pki/ca.crt -ca-key=pki/private/ca.key -config=ca-config.json - | "${CFSSLJSON_BIN}" -bare kubelet
+    echo '{"CN":"kubelet","names":[{"OU":"system:nodes"},{"O":"tenant:system"}],"hosts":[""],"key":{"algo":"rsa","size":2048}}' | "${CFSSL_BIN}" gencert -ca=pki/ca.crt -ca-key=pki/private/ca.key -config=ca-config.json - | "${CFSSLJSON_BIN}" -bare kubelet
     mv "kubelet-key.pem" "pki/private/kubelet.key"
     mv "kubelet.pem" "pki/issued/kubelet.crt"
     rm -f "kubelet.csr"
 
-    # Make a superuser client cert with subject "O=system:masters, CN=kubecfg"
+    # Make a superuser client cert with subject "O=tenant:system, OU=system:masters, CN=kubecfg"
     ./easyrsa --dn-mode=org \
-      --req-cn=kubecfg --req-org=system:masters \
-      --req-c= --req-st= --req-city= --req-email= --req-ou= \
+      --req-cn=kubecfg --req-org=tenant:system \
+      --req-c= --req-st= --req-city= --req-email= --req-ou=system:masters \
       build-client-full kubecfg nopass) &>${cert_create_debug_output} || true
   local output_file_missing=0
   local output_file
@@ -1802,10 +1802,10 @@ function generate-aggregator-certs {
     mv "proxy-client.pem" "pki/issued/proxy-client.crt"
     rm -f "proxy-client.csr"
 
-    # Make a superuser client cert with subject "O=system:masters, CN=kubecfg"
+    # Make a superuser client cert with subject "O=tenant:system, OU=system:masters, CN=kubecfg"
     ./easyrsa --dn-mode=org \
-      --req-cn=proxy-clientcfg --req-org=system:aggregator \
-      --req-c= --req-st= --req-city= --req-email= --req-ou= \
+      --req-cn=proxy-clientcfg --req-org=tenant:system \
+      --req-c= --req-st= --req-city= --req-email= --req-ou=system:aggregator \
       build-client-full proxy-clientcfg nopass) &>${cert_create_debug_output} || true
   local output_file_missing=0
   local output_file

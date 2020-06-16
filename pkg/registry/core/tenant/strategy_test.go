@@ -50,7 +50,7 @@ func TestTenantStrategy(t *testing.T) {
 	if tenant.Status.Phase != api.TenantActive {
 		t.Errorf("Tenants do not allow setting phase on create")
 	}
-	if len(tenant.Spec.Finalizers) != 1 || tenant.Spec.Finalizers[0] != api.FinalizerKubernetes {
+	if len(tenant.Spec.Finalizers) != 1 || tenant.Spec.Finalizers[0] != api.FinalizerArktos {
 		t.Errorf("Prepare For Create should have added kubernetes finalizer")
 	}
 	errs := Strategy.Validate(ctx, tenant)
@@ -62,7 +62,7 @@ func TestTenantStrategy(t *testing.T) {
 	}
 	// ensure we copy spec.finalizers from old to new
 	Strategy.PrepareForUpdate(ctx, invalidTenant, tenant)
-	if len(invalidTenant.Spec.Finalizers) != 1 || invalidTenant.Spec.Finalizers[0] != api.FinalizerKubernetes {
+	if len(invalidTenant.Spec.Finalizers) != 1 || invalidTenant.Spec.Finalizers[0] != api.FinalizerArktos {
 		t.Errorf("PrepareForUpdate should have preserved old.spec.finalizers")
 	}
 	errs = Strategy.ValidateUpdate(ctx, invalidTenant, tenant)
@@ -88,7 +88,7 @@ func TestTenantStatusStrategy(t *testing.T) {
 	now := metav1.Now()
 	oldTenant := &api.Tenant{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10", DeletionTimestamp: &now},
-		Spec:       api.TenantSpec{Finalizers: []api.FinalizerName{"kubernetes"}},
+		Spec:       api.TenantSpec{Finalizers: []api.FinalizerName{"arktos"}},
 		Status:     api.TenantStatus{Phase: api.TenantActive},
 	}
 	tenant := &api.Tenant{
@@ -99,7 +99,7 @@ func TestTenantStatusStrategy(t *testing.T) {
 	if tenant.Status.Phase != api.TenantTerminating {
 		t.Errorf("Tenant status updates should allow change of phase: %v", tenant.Status.Phase)
 	}
-	if len(tenant.Spec.Finalizers) != 1 || tenant.Spec.Finalizers[0] != api.FinalizerKubernetes {
+	if len(tenant.Spec.Finalizers) != 1 || tenant.Spec.Finalizers[0] != api.FinalizerArktos {
 		t.Errorf("PrepareForUpdate should have preserved old finalizers")
 	}
 	errs := StatusStrategy.ValidateUpdate(ctx, tenant, oldTenant)
@@ -124,7 +124,7 @@ func TestTenantFinalizeStrategy(t *testing.T) {
 	}
 	oldTenant := &api.Tenant{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", ResourceVersion: "10"},
-		Spec:       api.TenantSpec{Finalizers: []api.FinalizerName{"kubernetes", "example.com/org"}},
+		Spec:       api.TenantSpec{Finalizers: []api.FinalizerName{"arktos", "example.com/org"}},
 		Status:     api.TenantStatus{Phase: api.TenantActive},
 	}
 	tenant := &api.Tenant{

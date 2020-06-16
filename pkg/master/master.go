@@ -168,6 +168,9 @@ type ExtraConfig struct {
 	// Get notification of ETCD data storage clusters
 	StorageClusterManager *storagecluster.StorageClusterManager
 
+	// Get notification of Tenant storage cluster assignment
+	TenantStorageManager *storagecluster.TenantStorageMapManager
+
 	// MasterEndpointReconcileTTL sets the time to live in seconds of an
 	// endpoint record recorded by each master. The endpoints are checked at an
 	// interval that is 2/3 of this value and this value defaults to 15s if

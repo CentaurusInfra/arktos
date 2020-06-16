@@ -40,6 +40,8 @@ import (
 	client "k8s.io/apiextensions-apiserver/pkg/client/clientset/internalclientset/typed/apiextensions/internalversion"
 	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
 	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
+	crdregistry "k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CRDFinalizer is a controller that finalizes the CRD by deleting all the CRs associated with it.
@@ -186,7 +188,12 @@ func (c *CRDFinalizer) deleteInstances(crd *apiextensions.CustomResourceDefiniti
 	}
 
 	ctx := genericapirequest.NewContext()
-	ctx = genericapirequest.WithTenant(ctx, crd.Tenant)
+	if crdregistry.IsCrdSystemForced(crd) {
+		ctx = genericapirequest.WithTenant(ctx, metav1.TenantAll)
+		ctx = genericapirequest.WithNamespace(ctx, metav1.NamespaceAll)
+	} else {
+		ctx = genericapirequest.WithTenant(ctx, crd.Tenant)
+	}
 	allResources, err := crClient.List(ctx, nil)
 	if err != nil {
 		return apiextensions.CustomResourceDefinitionCondition{
@@ -205,12 +212,14 @@ func (c *CRDFinalizer) deleteInstances(crd *apiextensions.CustomResourceDefiniti
 			utilruntime.HandleError(err)
 			continue
 		}
-		if deletedNamespaces.Has(metadata.GetNamespace()) {
+		if deletedNamespaces.Has(metadata.GetTenant() + "/" + metadata.GetNamespace()) {
 			continue
 		}
 		// don't retry deleting the same namespace
-		deletedNamespaces.Insert(metadata.GetNamespace())
-		nsCtx := genericapirequest.WithNamespace(ctx, metadata.GetNamespace())
+		deletedNamespaces.Insert(metadata.GetTenant() + "/" + metadata.GetNamespace())
+		nsCtx := genericapirequest.NewContext()
+		nsCtx = genericapirequest.WithTenant(nsCtx, metadata.GetTenant())
+		nsCtx = genericapirequest.WithNamespace(nsCtx, metadata.GetNamespace())
 		if _, err := crClient.DeleteCollection(nsCtx, rest.ValidateAllObjectFunc, nil, nil); err != nil {
 			deleteErrors = append(deleteErrors, err)
 			continue

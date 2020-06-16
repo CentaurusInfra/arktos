@@ -1,0 +1,4 @@
+apiVersion: arktos.futurewei.com/v1alpha1
+kind: Burger
+metadata:
+  name: turkey-burger

@@ -4628,6 +4628,7 @@ type FinalizerName string
 // in metav1.
 const (
 	FinalizerKubernetes FinalizerName = "kubernetes"
+	FinalizerArktos     FinalizerName = "arktos"
 )
 
 // +genclient

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -96,6 +97,47 @@ func GetResourceRequest(pod *v1.Pod, resource v1.ResourceName) int64 {
 	return totalResources
 }
 
+// PodResourceAllocations returns a dictionary of resources allocated to the containers of pod.
+func PodResourceAllocations(pod *v1.Pod) (allocations v1.ResourceList) {
+	allocations = v1.ResourceList{}
+	for _, container := range pod.Spec.Containers {
+		addResourceList(allocations, container.ResourcesAllocated)
+	}
+	// init containers define the minimum of any resource
+	for _, container := range pod.Spec.InitContainers {
+		maxResourceList(allocations, container.Resources.Requests)
+	}
+	return
+}
+
+// GetResourceAllocation finds and returns resource allocation for a specific resource.
+func GetResourceAllocation(pod *v1.Pod, resource v1.ResourceName) int64 {
+	if resource == v1.ResourcePods {
+		return 1
+	}
+	totalResources := int64(0)
+	for _, container := range pod.Spec.Containers {
+		if rQuantity, ok := container.ResourcesAllocated[resource]; ok {
+			if resource == v1.ResourceCPU {
+				totalResources += rQuantity.MilliValue()
+			} else {
+				totalResources += rQuantity.Value()
+			}
+		}
+	}
+	// take max_resource(sum_pod, any_init_container)
+	for _, container := range pod.Spec.InitContainers {
+		if rQuantity, ok := container.Resources.Requests[resource]; ok {
+			if resource == v1.ResourceCPU && rQuantity.MilliValue() > totalResources {
+				totalResources = rQuantity.MilliValue()
+			} else if rQuantity.Value() > totalResources {
+				totalResources = rQuantity.Value()
+			}
+		}
+	}
+	return totalResources
+}
+
 // ExtractResourceValueByContainerName extracts the value of a resource
 // by providing container name
 func ExtractResourceValueByContainerName(fs *v1.ResourceFieldSelector, pod *v1.Pod, containerName string) (string, error) {
@@ -144,6 +186,12 @@ func ExtractContainerResourceValue(fs *v1.ResourceFieldSelector, container *v1.C
 		return convertResourceMemoryToString(container.Resources.Requests.Memory(), divisor)
 	case "requests.ephemeral-storage":
 		return convertResourceEphemeralStorageToString(container.Resources.Requests.StorageEphemeral(), divisor)
+	case "resourcesAllocated.cpu":
+		return convertResourceCPUToString(container.ResourcesAllocated.Cpu(), divisor)
+	case "resourcesAllocated.memory":
+		return convertResourceMemoryToString(container.ResourcesAllocated.Memory(), divisor)
+	case "resourcesAllocated.ephemeral-storage":
+		return convertResourceEphemeralStorageToString(container.ResourcesAllocated.StorageEphemeral(), divisor)
 	}
 
 	return "", fmt.Errorf("Unsupported container resource : %v", fs.Resource)

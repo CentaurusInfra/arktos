@@ -20,6 +20,7 @@ package kuberuntime
 import (
 	"errors"
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"os"
 	"strings"
 	"sync"
@@ -31,8 +32,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/diff"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/record"
 	ref "k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/flowcontrol"
@@ -40,7 +43,9 @@ import (
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/credentialprovider"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/events"
@@ -66,13 +71,6 @@ const (
 	versionCacheTTL = 60 * time.Second
 	// How frequently to report identical errors
 	identicalErrorDelay = 1 * time.Minute
-
-	runtimeMethodNotImplemented = "not implemented. please use the function with runtimeService as parameter"
-
-	runtimeRequestTimeout = 15 * time.Second
-	containerWorkloadType = "container"
-	vmworkloadType        = "vm"
-	unknownType           = "TypeUnknown"
 )
 
 var (
@@ -81,26 +79,6 @@ var (
 	defaultRuntimeServiceName         string
 	reservedDefaultRuntimeServiceName = "default"
 )
-
-type runtimeService struct {
-	name         string
-	workloadType string
-	endpointUrl  string
-	serviceApi   internalapi.RuntimeService
-	isDefault    bool
-	// primary runtime service the runtime service for cluster daemonset workload types
-	// default to container runtime service
-	// from runtime's perspective, nodeReady when the primary runtime service ready on the node
-	isPrimary bool
-}
-
-type imageService struct {
-	name         string
-	workloadType string
-	endpointUrl  string
-	serviceApi   internalapi.ImageManagerService
-	isDefault    bool
-}
 
 // podStateProvider can determine if a pod is deleted ir terminated
 type podStateProvider interface {
@@ -141,10 +119,6 @@ type kubeGenericRuntimeManager struct {
 	// CPUCFSQuotaPeriod sets the CPU CFS quota period value, cpu.cfs_period_us, defaults to 100ms
 	cpuCFSQuotaPeriod metav1.Duration
 
-	// gRPC service clients
-	runtimeServices map[string]*runtimeService
-	imageServices   map[string]*imageService
-
 	// Pod-runtimeService maps
 	// Runtime manager maintains the pod-runtime map to optimize the performance in Getters
 	// key: podUid string
@@ -154,6 +128,9 @@ type kubeGenericRuntimeManager struct {
 
 	// The directory path for seccomp profiles.
 	seccompProfileRoot string
+
+	// Container management interface for pod container.
+	containerManager cm.ContainerManager
 
 	// Internal lifecycle event handlers for container resource management.
 	internalLifecycle cm.InternalContainerLifecycle
@@ -170,6 +147,9 @@ type kubeGenericRuntimeManager struct {
 	// testing usage only for now. it can be used as an indicator of any runtime status errors detected by the runtime manager
 	//
 	runtimeStatusErr error
+
+	// runtime registry
+	runtimeRegistry runtimeregistry.Interface
 }
 
 // KubeGenericRuntime is a interface contains interfaces for container runtime and command.
@@ -177,7 +157,6 @@ type KubeGenericRuntime interface {
 	kubecontainer.Runtime
 	kubecontainer.StreamingRuntime
 	kubecontainer.ContainerCommandRunner
-	kubecontainer.RuntimeManager
 }
 
 // LegacyLogProvider gives the ability to use unsupported docker log drivers (e.g. journald)
@@ -203,10 +182,10 @@ func NewKubeGenericRuntimeManager(
 	imagePullBurst int,
 	cpuCFSQuota bool,
 	cpuCFSQuotaPeriod metav1.Duration,
-	internalLifecycle cm.InternalContainerLifecycle,
+	containerManager cm.ContainerManager,
 	legacyLogProvider LegacyLogProvider,
 	runtimeClassManager *runtimeclass.Manager,
-	remoteRuntimeEndpoints string,
+	runtimeRegistry runtimeregistry.Interface,
 ) (KubeGenericRuntime, error) {
 	kubeRuntimeManager := &kubeGenericRuntimeManager{
 		recorder:            recorder,
@@ -219,7 +198,8 @@ func NewKubeGenericRuntimeManager(
 		osInterface:         osInterface,
 		runtimeHelper:       runtimeHelper,
 		keyring:             credentialprovider.NewDockerKeyring(),
-		internalLifecycle:   internalLifecycle,
+		containerManager:    containerManager,
+		internalLifecycle:   containerManager.InternalContainerLifecycle(),
 		legacyLogProvider:   legacyLogProvider,
 		runtimeClassManager: runtimeClassManager,
 		logReduction:        logreduction.NewLogReduction(identicalErrorDelay),
@@ -227,12 +207,7 @@ func NewKubeGenericRuntimeManager(
 
 	// TODO: retrieve runtimeName dynamically per the runtime being used for a POD
 	kubeRuntimeManager.runtimeName = "unknown"
-
-	var err error
-	kubeRuntimeManager.runtimeServices, kubeRuntimeManager.imageServices, err = buildRuntimeServicesMapFromAgentCommandArgs(remoteRuntimeEndpoints)
-	if err != nil {
-		return nil, err
-	}
+	kubeRuntimeManager.runtimeRegistry = runtimeRegistry
 
 	// If the container logs directory does not exist, create it.
 	// TODO: create podLogsRootDirectory at kubelet.go when kubelet is refactored to new runtime interface
@@ -250,201 +225,6 @@ func NewKubeGenericRuntimeManager(
 	kubeRuntimeManager.podRuntimeServiceMap = make(map[string]internalapi.RuntimeService)
 
 	return kubeRuntimeManager, nil
-}
-
-//------------------------ rutimeManager interface implementation -----------------------------//
-
-// Retrieve the runtime service with PODID
-func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPodID(podId kubetypes.UID) (internalapi.RuntimeService, error) {
-	klog.V(4).Infof("Retrieve runtime service for podID %v", podId)
-	// firstly check the pod-runtimeService cache
-	if runtimeService, found := m.podRuntimeServiceMap[string(podId)]; found {
-		klog.V(4).Infof("Got runtime service [%v] for podID %v", runtimeService, podId)
-		return runtimeService, nil
-	}
-
-	// if not found in the cache, then query the runtime services
-	runtimeServices, err := m.GetAllRuntimeServices()
-	if err != nil {
-		klog.Errorf("GetAllRuntimeServices failed: %v", err)
-		return nil, err
-	}
-
-	var filter *runtimeapi.PodSandboxFilter
-
-	for _, runtimeService := range runtimeServices {
-		resp, err := runtimeService.ListPodSandbox(filter)
-		if err != nil {
-			klog.Errorf("ListPodSandbox failed: %v", err)
-			return nil, err
-		}
-
-		for _, item := range resp {
-			if item.Metadata.Uid == string(podId) {
-				klog.V(4).Infof("Got runtime service [%v] for podID %v", runtimeService, podId)
-				m.addPodRuntimeService(string(podId), runtimeService)
-				return runtimeService, nil
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("failed find runtimeService with podId %v", podId)
-}
-
-// GetRuntimeServiceByPod returns the runtime service for a given pod from its SPEC
-// the GetRuntimeServiceByPod is called when POD is being created, i.e. the pod-runtime map and runtime service
-// will not have it
-func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPod(pod *v1.Pod) (internalapi.RuntimeService, error) {
-	klog.V(4).Infof("Retrieve runtime service for POD %s", pod.Name)
-	runtimeName := getRuntimeServiceNameFromPodSpec(pod)
-
-	if runtimeName == nil || *runtimeName == "" {
-		klog.V(4).Infof("Get default runtime service for POD %s", pod.Name)
-		if pod.Spec.VirtualMachine != nil {
-			return m.GetDefaultRuntimeServiceForWorkload(vmworkloadType)
-		} else {
-			return m.GetDefaultRuntimeServiceForWorkload(containerWorkloadType)
-		}
-	}
-
-	if runtimeService, found := m.runtimeServices[*runtimeName]; found {
-		klog.V(4).Infof("Got runtime service [%v] for POD %s", runtimeService, pod.Name)
-		return runtimeService.serviceApi, nil
-	}
-
-	// this should not be reached
-	return nil, fmt.Errorf("cannot find specified runtime service: %s", *runtimeName)
-}
-
-// Retrieve the runtime service for a container with containerID
-func (m *kubeGenericRuntimeManager) GetRuntimeServiceByContainerID(id kubecontainer.ContainerID) (internalapi.RuntimeService, error) {
-
-	return m.GetRuntimeServiceByContainerIDString(id.ID)
-}
-
-// TODO: build pod-container relationship map and get the runtime service from the pod-runtimeService map first
-func (m *kubeGenericRuntimeManager) GetRuntimeServiceByContainerIDString(id string) (internalapi.RuntimeService, error) {
-	klog.V(4).Infof("Retrieve runtime service for containerID %s", id)
-	runtimeServices, err := m.GetAllRuntimeServices()
-	if err != nil {
-		klog.Errorf("GetAllRuntimeServices failed: %v", err)
-		return nil, err
-	}
-
-	var filter *runtimeapi.ContainerFilter
-
-	for _, runtimeService := range runtimeServices {
-		resp, err := runtimeService.ListContainers(filter)
-		if err != nil {
-			klog.Errorf("ListPodSandbox failed: %v", err)
-			return nil, err
-		}
-
-		for _, item := range resp {
-			if item.Id == id {
-				klog.V(4).Infof("Got runtime service [%v] for containerID %s", runtimeService, id)
-				return runtimeService, nil
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("cannot find specified runtime for ContainerID: %v", id)
-}
-
-// GetAllRuntimeServices returns all the runtime services.
-// TODO: dedup the slice elements OR ensure the buildRuntimeService method does the dedup logic
-//       cases as: runtimeName1:EndpointUrl1;runtimeName2:EndpointUrl2;runtimeName3:EndpointUrl2
-//                 GetAllRuntimeServices should return array of EndpointUrl1 and EndpointUrl2
-func (m *kubeGenericRuntimeManager) GetAllRuntimeServices() ([]internalapi.RuntimeService, error) {
-	runtimes := make([]internalapi.RuntimeService, 0)
-
-	for _, service := range m.runtimeServices {
-		runtimes = append(runtimes, service.serviceApi)
-	}
-
-	klog.V(4).Infof("GetAllRuntimeServices returns : %v", runtimes)
-	return runtimes, nil
-}
-
-func (m *kubeGenericRuntimeManager) GetAllRuntimeServicesForWorkload(workloadType string) ([]internalapi.RuntimeService, error) {
-	runtimes := make([]internalapi.RuntimeService, 0)
-
-	for _, service := range m.runtimeServices {
-		if service.workloadType == workloadType {
-			runtimes = append(runtimes, service.serviceApi)
-		}
-	}
-
-	klog.V(4).Infof("GetAllRuntimeServicesForWorkload returns : %v", runtimes)
-	return runtimes, nil
-}
-
-func (m *kubeGenericRuntimeManager) GetDefaultRuntimeServiceForWorkload(workloadType string) (internalapi.RuntimeService, error) {
-	for _, service := range m.runtimeServices {
-		if service.workloadType == workloadType && service.isDefault {
-			klog.V(4).Infof("Got default runtime service [%v] for workload type %s", service.serviceApi, workloadType)
-			return service.serviceApi, nil
-		}
-	}
-
-	return nil, fmt.Errorf("cannot find default runtime service for worload type: %s", workloadType)
-}
-
-func (m *kubeGenericRuntimeManager) GetPrimaryRuntimeService() (internalapi.RuntimeService, error) {
-	for _, service := range m.runtimeServices {
-		if service.isPrimary {
-			klog.V(4).Infof("Got primary runtime service [%v]", service.serviceApi)
-			return service.serviceApi, nil
-		}
-	}
-
-	return nil, fmt.Errorf("cannot find primary runtime service")
-}
-
-// Retrieve the image service for a POD with the POD SPEC
-func (m *kubeGenericRuntimeManager) GetImageServiceByPod(pod *v1.Pod) (internalapi.ImageManagerService, error) {
-	klog.V(4).Infof("Retrieve image service for POD %s", pod.Name)
-	runtimeName := getImageServiceNameFromPodSpec(pod)
-
-	if runtimeName == nil || *runtimeName == "" {
-		klog.V(4).Infof("Get default image service for POD %s", pod.Name)
-		if pod.Spec.VirtualMachine != nil {
-			return m.GetDefaultImageServiceForWorkload(vmworkloadType)
-		} else {
-			return m.GetDefaultImageServiceForWorkload(containerWorkloadType)
-		}
-	}
-
-	if imageService, found := m.imageServices[*runtimeName]; found {
-		klog.V(4).Infof("Got image service [%v] for POD %s", imageService, pod.Name)
-		return imageService.serviceApi, nil
-	}
-
-	// this should not be reached
-	return nil, fmt.Errorf("cannot find specified image service: %s", *runtimeName)
-}
-
-// GetAllImageServices returns all the image services
-func (m *kubeGenericRuntimeManager) GetAllImageServices() ([]internalapi.ImageManagerService, error) {
-	imageServices := make([]internalapi.ImageManagerService, 0)
-
-	for _, service := range m.imageServices {
-		imageServices = append(imageServices, service.serviceApi)
-	}
-
-	klog.V(4).Infof("GetAllImageServices returns : %v", imageServices)
-	return imageServices, nil
-}
-
-func (m *kubeGenericRuntimeManager) GetDefaultImageServiceForWorkload(workloadType string) (internalapi.ImageManagerService, error) {
-	for _, service := range m.imageServices {
-		if service.workloadType == workloadType && service.isDefault {
-			klog.V(4).Infof("Got default image service [%v] for workload type %s", service.serviceApi, workloadType)
-			return service.serviceApi, nil
-		}
-	}
-
-	return nil, fmt.Errorf("cannot find default image service for worload type: %s", workloadType)
 }
 
 // Construct a imageManager instance for the kubeRuntimeManager
@@ -467,7 +247,7 @@ func (m *kubeGenericRuntimeManager) GetDesiredImagePuller(pod *v1.Pod) (images.I
 func (m *kubeGenericRuntimeManager) RuntimeType(service internalapi.RuntimeService) string {
 	typedVersion, err := m.GetTypedVersion(service)
 	if err != nil {
-		return unknownType
+		return runtimeregistry.UnknownType
 	}
 
 	return typedVersion.RuntimeName
@@ -520,44 +300,6 @@ func (m *kubeGenericRuntimeManager) RuntimeAPIVersion(service internalapi.Runtim
 	return newRuntimeVersion(typedVersion.RuntimeApiVersion)
 }
 
-// AllRuntimeStatus is a helper function that returns all runtime status as a map for each workload types
-// map[runtimeName]bool
-// it is used in kubelet to determine runtime readiness, both networking and compute of the runtime service
-func (m *kubeGenericRuntimeManager) GetAllRuntimeStatus() (map[string]map[string]bool, error) {
-
-	statuses := make(map[string]map[string]bool)
-	vmServices := make(map[string]bool)
-	containerServices := make(map[string]bool)
-
-	for runtimeName, runtimeService := range m.runtimeServices {
-		workloadType := runtimeService.workloadType
-		runtimeReady := true
-
-		status, err := runtimeService.serviceApi.Status()
-		if err != nil || status == nil {
-			runtimeReady = false
-		}
-
-		for _, c := range status.GetConditions() {
-			if c.Status != true {
-				runtimeReady = false
-				break
-			}
-		}
-
-		if workloadType == "vm" {
-			vmServices[runtimeName] = runtimeReady
-		} else {
-			containerServices[runtimeName] = runtimeReady
-		}
-	}
-
-	statuses["vm"] = vmServices
-	statuses["container"] = containerServices
-
-	return statuses, nil
-}
-
 func (m *kubeGenericRuntimeManager) RuntimeStatus(runtimeService internalapi.RuntimeService) (*kubecontainer.RuntimeStatus, error) {
 	status, err := runtimeService.Status()
 	if err != nil {
@@ -569,25 +311,45 @@ func (m *kubeGenericRuntimeManager) RuntimeStatus(runtimeService internalapi.Run
 
 // Existing Container runtime interface, returns the type of the default runtime
 func (m *kubeGenericRuntimeManager) Type() string {
-	return m.RuntimeType(m.runtimeServices[defaultRuntimeServiceName].serviceApi)
+	if runtime, err := m.runtimeRegistry.GetPrimaryRuntimeService(); err == nil {
+		return m.RuntimeType(runtime.ServiceApi)
+	}
+	return "unknownType"
 }
 
 // Existing container runtime interface method, return the Version of the default runtime service
 func (m *kubeGenericRuntimeManager) Version() (kubecontainer.Version, error) {
-	return m.RuntimeVersion(m.runtimeServices[defaultRuntimeServiceName].serviceApi)
+	runtime, err := m.runtimeRegistry.GetPrimaryRuntimeService()
+
+	if err == nil {
+		return m.RuntimeVersion(runtime.ServiceApi)
+	}
+
+	return nil, err
 }
 
 // Existing container runtime interface method, return the ApiVersion of the default runtime service
 func (m *kubeGenericRuntimeManager) APIVersion() (kubecontainer.Version, error) {
-	return m.RuntimeAPIVersion(m.runtimeServices[defaultRuntimeServiceName].serviceApi)
+	runtime, err := m.runtimeRegistry.GetPrimaryRuntimeService()
+
+	if err == nil {
+		return m.RuntimeAPIVersion(runtime.ServiceApi)
+	}
+
+	return nil, err
 }
 
 // Existing container runtime interface method, return the status of the default runtime service
 func (m *kubeGenericRuntimeManager) Status() (*kubecontainer.RuntimeStatus, error) {
-	return m.RuntimeStatus(m.runtimeServices[defaultRuntimeServiceName].serviceApi)
-}
+	runtime, err := m.runtimeRegistry.GetPrimaryRuntimeService()
 
-//---------------- End of runtime manager interface implementation --------------------//
+	if err == nil {
+		return m.RuntimeStatus(runtime.ServiceApi)
+	}
+
+	return nil, err
+
+}
 
 // operations on the pod-runtimeServiceName map
 func (m *kubeGenericRuntimeManager) addPodRuntimeService(podId string, runtimeService internalapi.RuntimeService) error {
@@ -688,6 +450,18 @@ func (m *kubeGenericRuntimeManager) GetPods(all bool) ([]*kubecontainer.Pod, err
 	return result, nil
 }
 
+// containerToUpdateInfo contains necessary information to update a container's resources.
+type containerToUpdateInfo struct {
+	// Value of the index of the specific container in pod.Spec.Containers.
+	specIndex int
+	// Status of the container in pod.Spec.ContainerStatuses.
+	apiContainerStatus *v1.ContainerStatus
+	// Status of the runtime container
+	kubeContainerStatus *kubecontainer.ContainerStatus
+	// Resize requires restart
+	restart *bool
+}
+
 // containerToKillInfo contains necessary information to kill a container.
 type containerToKillInfo struct {
 	// The spec of the container.
@@ -724,15 +498,18 @@ type podActions struct {
 	// pod.Spec.Containers.
 	ContainersToStart []int
 
-	// ContainersToUpdate keeps a list of indexes for the containers to change,
-	// where the index is the index of the specific container in the pod spec (
-	// pod.Spec.Containers.
-	ContainersToUpdate []int
-
 	// ContainersToKill keeps a map of containers that need to be killed, note that
 	// the key is the container ID of the container, while
 	// the value contains necessary information to kill a container.
 	ContainersToKill map[kubecontainer.ContainerID]containerToKillInfo
+
+	// ContainersToUpdate keeps a list of containers needing resource limit update.
+	// Container resource limit update is applicable only for CPU and memory.
+	ContainersToUpdate map[v1.ResourceName][]containerToUpdateInfo
+
+	// ContainersToRestart is a list of containers needing resource limit update via restart.
+	// Container resource limit update is applicable only for CPU and memory.
+	ContainersToRestart []int
 
 	// Hotplugs keeps various device hotplug data
 	Hotplugs ConfigChanges
@@ -809,13 +586,14 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 
 	createPodSandbox, attempt, sandboxID := m.podSandboxChanged(pod, podStatus)
 	changes := podActions{
-		KillPod:            createPodSandbox,
-		CreateSandbox:      createPodSandbox,
-		SandboxID:          sandboxID,
-		Attempt:            attempt,
-		ContainersToStart:  []int{},
-		ContainersToUpdate: []int{},
-		ContainersToKill:   make(map[kubecontainer.ContainerID]containerToKillInfo),
+		KillPod:             createPodSandbox,
+		CreateSandbox:       createPodSandbox,
+		SandboxID:           sandboxID,
+		Attempt:             attempt,
+		ContainersToStart:   []int{},
+		ContainersToKill:    make(map[kubecontainer.ContainerID]containerToKillInfo),
+		ContainersToUpdate:  make(map[v1.ResourceName][]containerToUpdateInfo),
+		ContainersToRestart: []int{},
 	}
 
 	// If we need to (re-)create the pod sandbox, everything will need to be
@@ -920,6 +698,64 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 				// If the container failed the liveness probe, we should kill it.
 				message = fmt.Sprintf("Container %s failed liveness probe", container.Name)
 			} else {
+				if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+					keepCount++
+					if container.Resources.Limits == nil || len(pod.Status.ContainerStatuses) == 0 {
+						continue
+					}
+					apiContainerStatus, exists := podutil.GetContainerStatus(pod.Status.ContainerStatuses, container.Name)
+					if !exists || apiContainerStatus.State.Running == nil ||
+						containerStatus.State != kubecontainer.ContainerStateRunning ||
+						containerStatus.ID.String() != apiContainerStatus.ContainerID ||
+						len(diff.ObjectDiff(container.Resources.Requests, container.ResourcesAllocated)) != 0 ||
+						len(diff.ObjectDiff(apiContainerStatus.Resources.Limits, container.Resources.Limits)) == 0 {
+						continue
+					}
+					resizePolicy := make(map[v1.ResourceName]v1.ContainerResizePolicy)
+					for _, pol := range container.ResizePolicy {
+						resizePolicy[pol.ResourceName] = pol.Policy
+					}
+					restartContainer := false
+					determineContainerResize := func(rName v1.ResourceName, specValue, statusValue int64) bool {
+						if specValue == statusValue {
+							return false
+						}
+						if resizePolicy[rName] == v1.RestartContainer {
+							restartContainer = true
+							return true
+						}
+						cUpdateInfo := containerToUpdateInfo{
+							specIndex:           idx,
+							apiContainerStatus:  &apiContainerStatus,
+							kubeContainerStatus: containerStatus,
+							restart:             &restartContainer,
+						}
+						switch {
+						case specValue > statusValue: // append
+							changes.ContainersToUpdate[rName] = append(changes.ContainersToUpdate[rName], cUpdateInfo)
+						case specValue < statusValue: // prepend
+							changes.ContainersToUpdate[rName] = append(changes.ContainersToUpdate[rName], containerToUpdateInfo{})
+							copy(changes.ContainersToUpdate[rName][1:], changes.ContainersToUpdate[rName])
+							changes.ContainersToUpdate[rName][0] = cUpdateInfo
+						}
+						return false
+					}
+					specLim := container.Resources.Limits
+					statusLim := apiContainerStatus.Resources.Limits
+					restartMem := determineContainerResize(v1.ResourceMemory, specLim.Memory().Value(), statusLim.Memory().Value())
+					restartCpu := determineContainerResize(v1.ResourceCPU, specLim.Cpu().MilliValue(), statusLim.Cpu().MilliValue())
+					if restartMem || restartCpu {
+						// resize policy requires this container to restart
+						changes.ContainersToKill[containerStatus.ID] = containerToKillInfo{
+							name:      containerStatus.Name,
+							container: &pod.Spec.Containers[idx],
+							message:   fmt.Sprintf("Container %s resize requires restart", container.Name),
+						}
+						changes.ContainersToRestart = append(changes.ContainersToRestart, idx)
+						keepCount--
+					}
+					continue
+				}
 				// Keep the container.
 				keepCount++
 				continue
@@ -946,6 +782,11 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 
 	if keepCount == 0 && len(changes.ContainersToStart) == 0 {
 		changes.KillPod = true
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			if len(changes.ContainersToRestart) != 0 {
+				changes.KillPod = false
+			}
+		}
 	}
 
 	// always attempts to identify hotplug nic based on pod spec & pod status (got from runtime)
@@ -1201,8 +1042,7 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 		klog.V(4).Infof("Completed init container %q for pod %q", container.Name, format.Pod(pod))
 	}
 
-	// Step 6: start containers in podContainerChanges.ContainersToStart.
-	for _, idx := range podContainerChanges.ContainersToStart {
+	startNewContainer := func(idx int) {
 		container := &pod.Spec.Containers[idx]
 		startContainerResult := kubecontainer.NewSyncResult(kubecontainer.StartContainer, container.Name)
 		result.AddSyncResult(startContainerResult)
@@ -1211,7 +1051,7 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 		if isInBackOff {
 			startContainerResult.Fail(err, msg)
 			klog.V(4).Infof("Backing Off restarting container %+v in pod %v", container, format.Pod(pod))
-			continue
+			return
 		}
 
 		klog.V(4).Infof("Creating container %+v in pod %v", container, format.Pod(pod))
@@ -1225,7 +1065,78 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 			default:
 				utilruntime.HandleError(fmt.Errorf("container start failed: %v: %s", err, msg))
 			}
-			continue
+		}
+	}
+	// Step 6: start containers in podContainerChanges.ContainersToStart.
+	for _, idx := range podContainerChanges.ContainersToStart {
+		startNewContainer(idx)
+	}
+
+	// Step 7: For containers in podContainerChanges.ContainersToUpdate[Cpu,Memory] list, invoke UpdateContainerResources
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) &&
+		(len(podContainerChanges.ContainersToUpdate) > 0 || len(podContainerChanges.ContainersToRestart) > 0) {
+		pcm := m.containerManager.NewPodContainerManager()
+		podResources := cm.ResourceConfigForPod(pod, m.cpuCFSQuota, uint64((m.cpuCFSQuotaPeriod.Duration)/time.Microsecond))
+		if podResources == nil {
+			klog.Errorf("Unable to get resource configuration for pod %s", pod.Name)
+			return
+		}
+		setPodCgroupConfig := func(rName v1.ResourceName) error {
+			var err error
+			switch rName {
+			case v1.ResourceCPU:
+				err = pcm.SetPodCgroupCpuConfig(pod, podResources.CpuQuota, podResources.CpuPeriod, podResources.CpuShares)
+			case v1.ResourceMemory:
+				err = pcm.SetPodCgroupMemoryConfig(pod, *podResources.Memory)
+			}
+			if err != nil {
+				klog.Errorf("Failed to set %s cgroup config for pod %s failed: %v", rName, pod.Name, err)
+			}
+			return err
+		}
+		// If resize results in net pod resource increase, set pod cgroup config before resizing containers.
+		// If resize results in net pod resource decrease, set pod cgroup config after resizing containers.
+		// If an error occurs at any point, abort. Let future syncpod iterations retry the unfinished stuff.
+		resizeContainers := func(rName v1.ResourceName, currPodCgLimit, newPodCgLimit int64) error {
+			var err error
+			if newPodCgLimit > currPodCgLimit {
+				if err = setPodCgroupConfig(rName); err != nil {
+					return err
+				}
+			}
+			if len(podContainerChanges.ContainersToUpdate[rName]) > 0 {
+				if err = m.updatePodContainerResources(pod, podStatus, rName, podContainerChanges.ContainersToUpdate[rName]); err != nil {
+					klog.Errorf("updatePodContainerResources for pod %q resource %s failed: %v", format.Pod(pod), rName, err)
+					return err
+				}
+			}
+			if newPodCgLimit < currPodCgLimit {
+				err = setPodCgroupConfig(rName)
+			}
+			return err
+		}
+		if len(podContainerChanges.ContainersToUpdate[v1.ResourceMemory]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
+			currentPodMemoryLimit, err := pcm.GetPodCgroupMemoryConfig(pod)
+			if err != nil {
+				klog.Errorf("GetPodCgroupMemoryConfig for pod %s failed: %v", pod.Name, err)
+				return
+			}
+			if errUpdate := resizeContainers(v1.ResourceMemory, int64(currentPodMemoryLimit), *podResources.Memory); errUpdate != nil {
+				return
+			}
+		}
+		if len(podContainerChanges.ContainersToUpdate[v1.ResourceCPU]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
+			currentPodCpuQuota, _, _, err := pcm.GetPodCgroupCpuConfig(pod)
+			if err != nil {
+				klog.Errorf("GetPodCgroupCpuConfig for pod %s failed: %v", pod.Name, err)
+				return
+			}
+			if errUpdate := resizeContainers(v1.ResourceCPU, currentPodCpuQuota, *podResources.CpuQuota); errUpdate != nil {
+				return
+			}
+		}
+		for _, idx := range podContainerChanges.ContainersToRestart {
+			startNewContainer(idx)
 		}
 	}
 
@@ -1239,6 +1150,87 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 	}
 
 	return
+}
+
+func (m *kubeGenericRuntimeManager) updatePodContainerResources(pod *v1.Pod, podStatus *kubecontainer.PodStatus, resourceName v1.ResourceName, containersToUpdate []containerToUpdateInfo) error {
+	type updatedResourcesInfo struct {
+		cStatus *kubecontainer.ContainerStatus
+		rLimits v1.ResourceList
+		rAllocs v1.ResourceList
+	}
+	updatedResourcesMap := make(map[kubecontainer.ContainerID]updatedResourcesInfo)
+
+	for _, cInfo := range containersToUpdate {
+		if *cInfo.restart == true {
+			continue
+		}
+		container := &pod.Spec.Containers[cInfo.specIndex]
+		specLimits := container.Resources.Limits
+		specAllocs := container.ResourcesAllocated
+		defer func() {
+			container.Resources.Limits = specLimits
+			container.ResourcesAllocated = specAllocs
+		}()
+		switch resourceName {
+		case v1.ResourceCPU:
+			container.Resources.Limits = v1.ResourceList{
+				v1.ResourceCPU:    *specLimits.Cpu(),
+				v1.ResourceMemory: *cInfo.apiContainerStatus.Resources.Limits.Memory(),
+			}
+			container.ResourcesAllocated = v1.ResourceList{
+				v1.ResourceCPU:    *specAllocs.Cpu(),
+				v1.ResourceMemory: *cInfo.apiContainerStatus.Resources.Requests.Memory(),
+			}
+		case v1.ResourceMemory:
+			container.Resources.Limits = v1.ResourceList{
+				v1.ResourceCPU:    *cInfo.apiContainerStatus.Resources.Limits.Cpu(),
+				v1.ResourceMemory: *specLimits.Memory(),
+			}
+			container.ResourcesAllocated = v1.ResourceList{
+				v1.ResourceCPU:    *cInfo.apiContainerStatus.Resources.Requests.Cpu(),
+				v1.ResourceMemory: *specAllocs.Memory(),
+			}
+		}
+		if err := m.updateContainerResources(pod, container, cInfo.kubeContainerStatus.ID); err != nil {
+			klog.Errorf("updateContainerResources %q(id=%q) for pod %q failed: %v", container.Name, cInfo.kubeContainerStatus.ID, format.Pod(pod), err)
+			return err
+		}
+		cInfo.apiContainerStatus.Resources.Limits = container.Resources.Limits
+		// NOTE: Ideally, cpu and memory resources information come from ContainerStatus CRI API query.
+		//       However, the runtime may not have implemented query support for currently configured resources.
+		//	 If this info isn't available via CRI, update pod cache status on successful updateContainerResources.
+		if container.Resources.Limits != nil {
+			updatedResourcesMap[cInfo.kubeContainerStatus.ID] = updatedResourcesInfo{
+				cStatus: cInfo.kubeContainerStatus,
+				rLimits: container.Resources.Limits,
+				rAllocs: container.ResourcesAllocated,
+			}
+		}
+	}
+
+	if len(updatedResourcesMap) > 0 {
+		// Update pod cache runtime container status (cInfo.kubeContainerStatus) with resource from ContainerStatus CRI API
+		newPodStatus, err := m.GetPodStatus(podStatus.ID, pod.Name, pod.Namespace, pod.Tenant)
+		if err != nil {
+			klog.Errorf("GetPodStatus failed for pod %q failed: %v", format.Pod(pod), err)
+			return err
+		}
+		for _, kubeContainerStatus := range newPodStatus.ContainerStatuses {
+			if updatedInfo, updated := updatedResourcesMap[kubeContainerStatus.ID]; updated {
+				if kubeContainerStatus.Resources.Limits != nil {
+					updatedInfo.cStatus.Resources.Limits = kubeContainerStatus.Resources.Limits
+				} else {
+					updatedInfo.cStatus.Resources.Limits = updatedInfo.rLimits.DeepCopy()
+				}
+				if kubeContainerStatus.Resources.Requests != nil {
+					updatedInfo.cStatus.Resources.Requests = kubeContainerStatus.Resources.Requests
+				} else {
+					updatedInfo.cStatus.Resources.Requests = updatedInfo.rAllocs.DeepCopy()
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (m *kubeGenericRuntimeManager) attachNICs(pod *v1.Pod, podSandboxID string, nics []string) *kubecontainer.SyncResult {
@@ -1558,14 +1550,14 @@ func (m *kubeGenericRuntimeManager) UpdatePodCIDR(podCIDR string) error {
 
 	// update each runtimeService with the CIDRfor pod
 	// TODO: with multiple runtimes on the node, how to ensure the IPs will not conflict
-	runtimeServices, err := m.GetAllRuntimeServices()
+	runtimeServices, err := m.runtimeRegistry.GetAllRuntimeServices()
 	if err != nil {
 		return err
 	}
 
 	for _, runtimeService := range runtimeServices {
 
-		err := runtimeService.UpdateRuntimeConfig(
+		err := runtimeService.ServiceApi.UpdateRuntimeConfig(
 			&runtimeapi.RuntimeConfig{
 				NetworkConfig: &runtimeapi.NetworkConfig{
 					PodCidr: podCIDR,

@@ -17,7 +17,7 @@ limitations under the License.
 package filters
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -47,17 +47,12 @@ func GetTenantFromContext(req *http.Request) (string, error) {
 	ctx := req.Context()
 	requestor, exists := request.UserFrom(ctx)
 	if !exists {
-		return "", errors.New("The user info is missing.")
+		return "", fmt.Errorf("The user info is missing.")
 	}
 
 	userTenant := requestor.GetTenant()
 	if userTenant == metav1.TenantNone {
-		// temporary workaround
-		// tracking issue: https://github.com/futurewei-cloud/arktos/issues/102
-		userTenant = metav1.TenantSystem
-		//When https://github.com/futurewei-cloud/arktos/issues/102 is done, remove the above line
-		// and enable the following line.
-		//return "", errors.New(fmt.Sprintf("The tenant in the user info of %s is empty. ", requestor.GetName())
+		return "", fmt.Errorf("The tenant in the user info of %s is empty. ", requestor.GetName())
 	}
 
 	return userTenant, nil
@@ -113,7 +108,7 @@ func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
 	ctx := req.Context()
 	requestInfo, exists := request.RequestInfoFrom(ctx)
 	if !exists {
-		return nil, errors.New("The request info is missing.")
+		return nil, fmt.Errorf("The request info is missing.")
 	}
 
 	// for a reqeust from a regular user, if the tenant in the object is empty, use the tenant from user info

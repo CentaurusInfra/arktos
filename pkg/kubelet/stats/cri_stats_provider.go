@@ -20,6 +20,7 @@ package stats
 import (
 	"errors"
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"path"
 	"path/filepath"
 	"sort"
@@ -63,7 +64,7 @@ type criStatsProvider struct {
 	resourceAnalyzer stats.ResourceAnalyzer
 
 	// runtimeManager is used to get the status and stats of the pods and images
-	runtimeManager kubecontainer.RuntimeManager
+	runtimeManager runtimeregistry.Interface
 
 	// logMetrics provides the metrics for container logs
 	logMetricsService LogMetricsService
@@ -80,7 +81,7 @@ type criStatsProvider struct {
 func newCRIStatsProvider(
 	cadvisor cadvisor.Interface,
 	resourceAnalyzer stats.ResourceAnalyzer,
-	runtimeManager kubecontainer.RuntimeManager,
+	runtimeManager runtimeregistry.Interface,
 	logMetricsService LogMetricsService,
 	osInterface kubecontainer.OSInterface,
 ) containerStatsProvider {
@@ -130,14 +131,14 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 
 	var result []statsapi.PodStats
 	for _, runtimeService := range runtimeServices {
-		containers, err := runtimeService.ListContainers(&runtimeapi.ContainerFilter{})
+		containers, err := runtimeService.ServiceApi.ListContainers(&runtimeapi.ContainerFilter{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list all containers: %v", err)
 		}
 
 		// Creates pod sandbox map.
 		podSandboxMap := make(map[string]*runtimeapi.PodSandbox)
-		podSandboxes, err := runtimeService.ListPodSandbox(&runtimeapi.PodSandboxFilter{})
+		podSandboxes, err := runtimeService.ServiceApi.ListPodSandbox(&runtimeapi.PodSandboxFilter{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list all pod sandboxes: %v", err)
 		}
@@ -153,7 +154,7 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 		// sandboxIDToPodStats is a temporary map from sandbox ID to its pod stats.
 		sandboxIDToPodStats := make(map[string]*statsapi.PodStats)
 
-		resp, err := runtimeService.ListContainerStats(&runtimeapi.ContainerStatsFilter{})
+		resp, err := runtimeService.ServiceApi.ListContainerStats(&runtimeapi.ContainerStatsFilter{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list all container stats: %v", err)
 		}
@@ -236,14 +237,14 @@ func (p *criStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats, erro
 	var result []statsapi.PodStats
 	for _, runtimeService := range runtimeServices {
 
-		containers, err := runtimeService.ListContainers(&runtimeapi.ContainerFilter{})
+		containers, err := runtimeService.ServiceApi.ListContainers(&runtimeapi.ContainerFilter{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list all containers: %v", err)
 		}
 
 		// Creates pod sandbox map.
 		podSandboxMap := make(map[string]*runtimeapi.PodSandbox)
-		podSandboxes, err := runtimeService.ListPodSandbox(&runtimeapi.PodSandboxFilter{})
+		podSandboxes, err := runtimeService.ServiceApi.ListPodSandbox(&runtimeapi.PodSandboxFilter{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list all pod sandboxes: %v", err)
 		}
@@ -255,7 +256,7 @@ func (p *criStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats, erro
 		// sandboxIDToPodStats is a temporary map from sandbox ID to its pod stats.
 		sandboxIDToPodStats := make(map[string]*statsapi.PodStats)
 
-		resp, err := runtimeService.ListContainerStats(&runtimeapi.ContainerStatsFilter{})
+		resp, err := runtimeService.ServiceApi.ListContainerStats(&runtimeapi.ContainerStatsFilter{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list all container stats: %v", err)
 		}
@@ -318,7 +319,7 @@ func (p *criStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats, erro
 	return result, nil
 }
 
-// TODO: support multiple image services.
+// TODO: support multiple image services, it requires stat_provider interface changes
 // ImageFsStats returns the stats of the image filesystem.
 func (p *criStatsProvider) ImageFsStats() (*statsapi.FsStats, error) {
 
@@ -330,41 +331,44 @@ func (p *criStatsProvider) ImageFsStats() (*statsapi.FsStats, error) {
 		return nil, fmt.Errorf("No image service returned from the generic runtime manager.")
 	}
 
-	resp, err := imageServices[0].ImageFsInfo()
-	if err != nil {
-		return nil, err
+	var stats []*statsapi.FsStats
+	for _, imageService := range imageServices {
+		resp, err := imageService.ServiceApi.ImageFsInfo()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, fs := range resp {
+			s := &statsapi.FsStats{
+				Time:      metav1.NewTime(time.Unix(0, fs.Timestamp)),
+				UsedBytes: &fs.UsedBytes.Value,
+			}
+			if fs.InodesUsed != nil {
+				s.InodesUsed = &fs.InodesUsed.Value
+			}
+			imageFsInfo := p.getFsInfo(fs.GetFsId())
+			if imageFsInfo != nil {
+				// The image filesystem id is unknown to the local node or there's
+				// an error on retrieving the stats. In these cases, we omit those
+				// stats and return the best-effort partial result. See
+				// https://github.com/kubernetes/heapster/issues/1793.
+				s.AvailableBytes = &imageFsInfo.Available
+				s.CapacityBytes = &imageFsInfo.Capacity
+				s.InodesFree = imageFsInfo.InodesFree
+				s.Inodes = imageFsInfo.Inodes
+			}
+			stats = append(stats, s)
+		}
 	}
 
-	// CRI may return the stats of multiple image filesystems but we only
-	// return the first one.
-	//
-	// TODO(yguo0905): Support returning stats of multiple image filesystems.
-	for _, fs := range resp {
-		s := &statsapi.FsStats{
-			Time:      metav1.NewTime(time.Unix(0, fs.Timestamp)),
-			UsedBytes: &fs.UsedBytes.Value,
-		}
-		if fs.InodesUsed != nil {
-			s.InodesUsed = &fs.InodesUsed.Value
-		}
-		imageFsInfo := p.getFsInfo(fs.GetFsId())
-		if imageFsInfo != nil {
-			// The image filesystem id is unknown to the local node or there's
-			// an error on retrieving the stats. In these cases, we omit those
-			// stats and return the best-effort partial result. See
-			// https://github.com/kubernetes/heapster/issues/1793.
-			s.AvailableBytes = &imageFsInfo.Available
-			s.CapacityBytes = &imageFsInfo.Capacity
-			s.InodesFree = imageFsInfo.InodesFree
-			s.Inodes = imageFsInfo.Inodes
-		}
-		return s, nil
+	if len(stats) != 0 {
+		return stats[0], nil
 	}
-
 	return nil, fmt.Errorf("imageFs information is unavailable")
 }
 
-// TODO: support multiple image services.
+// TODO: support multiple image services, it requires stat_provider interface changes
+// Arktos issue 350
 // ImageFsDevice returns name of the device where the image filesystem locates,
 // e.g. /dev/sda1.
 func (p *criStatsProvider) ImageFsDevice() (string, error) {
@@ -373,20 +377,29 @@ func (p *criStatsProvider) ImageFsDevice() (string, error) {
 		return "", fmt.Errorf("failed to get all images services : %v", err)
 	}
 	if len(imageServices) == 0 {
-		return "", fmt.Errorf("No image service returned from the generic runtime manager.")
+		return "", fmt.Errorf("no image service returned from the generic runtime manager.")
 	}
 
-	resp, err := imageServices[0].ImageFsInfo()
-	if err != nil {
-		return "", err
-	}
-	for _, fs := range resp {
-		fsInfo := p.getFsInfo(fs.GetFsId())
-		if fsInfo != nil {
-			return fsInfo.Device, nil
+	var fsDevices []string
+
+	for _, imageService := range imageServices {
+		resp, err := imageService.ServiceApi.ImageFsInfo()
+		if err != nil {
+			return "", err
+		}
+		for _, fs := range resp {
+			fsInfo := p.getFsInfo(fs.GetFsId())
+			if fsInfo != nil {
+				fsDevices = append(fsDevices, fsInfo.Device)
+			}
 		}
 	}
-	return "", errors.New("imagefs device is not found")
+
+	if len(fsDevices) == 0 {
+		return "", errors.New("imagefs device is not found")
+	}
+
+	return fsDevices[0], nil
 }
 
 // getFsInfo returns the information of the filesystem with the specified

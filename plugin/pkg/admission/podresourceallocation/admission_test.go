@@ -197,6 +197,7 @@ func TestAdmitUpdate(t *testing.T) {
 			expectedResizePolicy:       []api.ResizePolicy{cpuPolicyRestart, memPolicyNoRestart},
 		},
 		//TODO: look into if more unit tests can be added
+		//TODO: Add multi-container tests. Add tests for adding new container via patch
 	}
 
 	for _, tc := range tests {
@@ -267,6 +268,7 @@ func TestValidateCreate(t *testing.T) {
 			expectError:        true,
 		},
 		//TODO: more unit tests and negative tests
+		//TODO: Add multi-container tests. Add tests for adding new container via patch
 	}
 
 	for _, tc := range tests {
