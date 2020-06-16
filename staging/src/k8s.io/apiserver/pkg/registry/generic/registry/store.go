@@ -217,10 +217,9 @@ const (
 func NamespaceKeyRootFunc(ctx context.Context, prefix string) string {
 	key := prefix
 
-	te, ok := genericapirequest.TenantFrom(ctx)
-	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
-	if ok && len(te) > 0 && te != metav1.TenantSystem {
-		key = key + "/" + te
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+	if ok && len(tenant) > 0 && tenant != metav1.TenantAll {
+		key = key + "/" + tenant
 	}
 
 	ns, ok := genericapirequest.NamespaceFrom(ctx)
@@ -239,10 +238,9 @@ func NamespaceKeyRootFunc(ctx context.Context, prefix string) string {
 func TenantKeyRootFunc(ctx context.Context, prefix string) string {
 	key := prefix
 
-	te, ok := genericapirequest.TenantFrom(ctx)
-	// for backward compatibility, skip the tenant in the path if it is not set or it is default.
-	if ok && len(te) > 0 && te != metav1.TenantSystem {
-		key = key + "/" + te
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+	if ok && len(tenant) > 0 && tenant != metav1.TenantAll {
+		key = key + "/" + tenant
 	}
 
 	return key
@@ -252,15 +250,12 @@ func TenantKeyRootFunc(ctx context.Context, prefix string) string {
 // namespace-scope resource relative to the given prefix enforcing tenant/namespace rules. If the
 // context does not contain a tenant/namespace, it errors.
 func NamespaceKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
-	var te, ns string
+	var tenant, ns string
 	var ok bool
 
-	te, ok = genericapirequest.TenantFrom(ctx)
-	if !ok || len(te) == 0 {
-		// not doing anything for now
-		// When the multi-tenancy change for client-go is done, uncomment the following line
-		// to make empty tenant an error.
-		// return "", kubeerr.NewBadRequest("Tenant parameter required.")
+	tenant, ok = genericapirequest.TenantFrom(ctx)
+	if !ok || len(tenant) == 0 {
+		return "", kubeerr.NewBadRequest("Tenant parameter required.")
 	}
 
 	ns, ok = genericapirequest.NamespaceFrom(ctx)
@@ -283,12 +278,9 @@ func NamespaceKeyFunc(ctx context.Context, prefix string, name string) (string, 
 // a tenant-scope resource relative to the given prefix enforcing tenant rules. If the
 // context does not contain a tenant, it errors.
 func TenantKeyFunc(ctx context.Context, prefix string, name string) (string, error) {
-	te, ok := genericapirequest.TenantFrom(ctx)
-	if !ok || len(te) == 0 {
-		// not doing anything for now
-		// When the multi-tenancy change for client-go is done, uncomment the following line
-		// to make empty tenant an error.
-		// return "", kubeerr.NewBadRequest("Tenant parameter required.")
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+	if !ok || len(tenant) == 0 {
+		return "", kubeerr.NewBadRequest("Tenant parameter required.")
 	}
 
 	if len(name) == 0 {
@@ -1212,6 +1204,7 @@ func (e *Store) WatchPredicate(ctx context.Context, p storage.SelectionPredicate
 	}
 
 	aw := e.Storage.WatchList(ctx, e.KeyRootFunc(ctx), resourceVersion, p)
+
 	return e.convertToDecoratedWatcher(aw)
 }
 
