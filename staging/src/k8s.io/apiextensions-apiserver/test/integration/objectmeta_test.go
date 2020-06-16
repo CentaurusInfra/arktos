@@ -159,7 +159,7 @@ func TestInvalidObjectMetaInStorage(t *testing.T) {
 	unstructured.SetNestedField(original.UnstructuredContent(), "foo/v1", "embedded", "apiVersion")
 
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	key := path.Join("/", restOptions.StorageConfig.Prefix, noxuDefinition.Spec.Group, "noxus/default/foo")
+	key := path.Join("/", restOptions.StorageConfig.Prefix, noxuDefinition.Spec.Group, "noxus/"+metav1.TenantSystem+"/default/foo")
 	val, _ := json.Marshal(original.UnstructuredContent())
 	if _, err := etcdclient.Put(ctx, key, string(val)); err != nil {
 		t.Fatalf("unexpected error: %v", err)

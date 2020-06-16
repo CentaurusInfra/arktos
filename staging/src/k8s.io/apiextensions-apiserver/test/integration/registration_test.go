@@ -355,7 +355,7 @@ func TestEtcdStorage(t *testing.T) {
 		expectedObject *metaObject
 	}{
 		"namespacedNoxuDefinition": {
-			etcdPath: "apiextensions.k8s.io/customresourcedefinitions/noxus.mygroup.example.com",
+			etcdPath: "apiextensions.k8s.io/customresourcedefinitions/" + metav1.TenantSystem + "/noxus.mygroup.example.com",
 			expectedObject: &metaObject{
 				Kind:       "CustomResourceDefinition",
 				APIVersion: "apiextensions.k8s.io/v1beta1",
@@ -367,7 +367,7 @@ func TestEtcdStorage(t *testing.T) {
 			},
 		},
 		"namespacedNoxuInstance": {
-			etcdPath: "mygroup.example.com/noxus/the-cruel-default/foo",
+			etcdPath: "mygroup.example.com/noxus/" + metav1.TenantSystem + "/the-cruel-default/foo",
 			expectedObject: &metaObject{
 				Kind:       "WishIHadChosenNoxu",
 				APIVersion: "mygroup.example.com/v1beta1",
@@ -380,7 +380,7 @@ func TestEtcdStorage(t *testing.T) {
 		},
 
 		"clusteredCurletDefinition": {
-			etcdPath: "apiextensions.k8s.io/customresourcedefinitions/curlets.mygroup.example.com",
+			etcdPath: "apiextensions.k8s.io/customresourcedefinitions/" + metav1.TenantSystem + "/curlets.mygroup.example.com",
 			expectedObject: &metaObject{
 				Kind:       "CustomResourceDefinition",
 				APIVersion: "apiextensions.k8s.io/v1beta1",

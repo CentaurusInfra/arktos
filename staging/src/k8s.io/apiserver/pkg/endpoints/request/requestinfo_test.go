@@ -157,7 +157,7 @@ func TestGetAPIRequestInfo(t *testing.T) {
 // Here we test the multi-tenancy aware api urls.
 func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 	namespaceAll := metav1.NamespaceAll
-	tenantAll := metav1.TenantAll
+	tenantNone := metav1.TenantNone
 	successCases := []struct {
 		method              string
 		url                 string
@@ -184,11 +184,11 @@ func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 		{"HEAD", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
 		{"GET", "/api/v1/tenants/fake_te/pods", "list", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
 		{"HEAD", "/api/v1/tenants/fake_te/pods", "list", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
-		{"GET", "/api/v1/pods", "list", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
-		{"HEAD", "/api/v1/pods", "list", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/pods", "list", "api", "", "v1", tenantNone, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"HEAD", "/api/v1/pods", "list", "api", "", "v1", tenantNone, namespaceAll, "pods", "", "", []string{"pods"}},
 		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "get", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
 		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods", "list", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
-		{"GET", "/api/v1/namespaces", "list", "api", "", "v1", tenantAll, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
+		{"GET", "/api/v1/namespaces", "list", "api", "", "v1", tenantNone, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
 
 		// special verbs
 		{"GET", "/api/v1/proxy/tenants/fake_te/namespaces/fake_ns/pods/foo", "proxy", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
@@ -196,10 +196,10 @@ func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 		{"GET", "/api/v1/watch/tenants/fake_te/pods", "watch", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
 		{"GET", "/api/v1/tenants/fake_te/pods?watch=true", "watch", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
 		{"GET", "/api/v1/tenants/fake_te/pods?watch=false", "list", "api", "", "v1", "fake_te", namespaceAll, "pods", "", "", []string{"pods"}},
-		{"GET", "/api/v1/watch/pods", "watch", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
-		{"GET", "/api/v1/watch/namespaces", "watch", "api", "", "v1", tenantAll, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
-		{"GET", "/api/v1/pods?watch=true", "watch", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
-		{"GET", "/api/v1/pods?watch=false", "list", "api", "", "v1", tenantAll, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/watch/pods", "watch", "api", "", "v1", tenantNone, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/watch/namespaces", "watch", "api", "", "v1", tenantNone, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
+		{"GET", "/api/v1/pods?watch=true", "watch", "api", "", "v1", tenantNone, namespaceAll, "pods", "", "", []string{"pods"}},
+		{"GET", "/api/v1/pods?watch=false", "list", "api", "", "v1", tenantNone, namespaceAll, "pods", "", "", []string{"pods"}},
 		{"GET", "/api/v1/watch/tenants/fake_te/namespaces/fake_ns/pods", "watch", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
 		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods?watch=1", "watch", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
 		{"GET", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods?watch=0", "list", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
@@ -211,14 +211,14 @@ func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 		{"PUT", "/api/v1/tenants/fake_te/namespaces/fake_ns/status", "update", "api", "", "v1", "fake_te", "fake_ns", "namespaces", "status", "fake_ns", []string{"namespaces", "fake_ns", "status"}},
 		{"PUT", "/api/v1/tenants/fake_te/finalize", "update", "api", "", "v1", "", "", "tenants", "finalize", "fake_te", []string{"tenants", "fake_te", "finalize"}},
 		{"PUT", "/api/v1/tenants/fake_te/status", "update", "api", "", "v1", "", "", "tenants", "status", "fake_te", []string{"tenants", "fake_te", "status"}},
-		{"PUT", "/api/v1/namespaces", "update", "api", "", "v1", tenantAll, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
+		{"PUT", "/api/v1/namespaces", "update", "api", "", "v1", tenantNone, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
 
 		// verb identification
 		{"PATCH", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "patch", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
 		{"DELETE", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods/foo", "delete", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "foo", []string{"pods", "foo"}},
 		{"POST", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods", "create", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
-		{"PATCH", "/api/v1/namespaces", "patch", "api", "", "v1", tenantAll, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
-		{"POST", "/api/v1/namespaces", "create", "api", "", "v1", tenantAll, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
+		{"PATCH", "/api/v1/namespaces", "patch", "api", "", "v1", tenantNone, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
+		{"POST", "/api/v1/namespaces", "create", "api", "", "v1", tenantNone, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
 
 		// deletecollection verb identification
 		{"DELETE", "/api/v1/nodes", "deletecollection", "api", "", "v1", "", "", "nodes", "", "", []string{"nodes"}},
@@ -226,7 +226,7 @@ func TestGetMultiTenancyAPIRequestInfo(t *testing.T) {
 		{"DELETE", "/api/v1/tenants/fake_te/namespaces", "deletecollection", "api", "", "v1", "fake_te", "", "namespaces", "", "", []string{"namespaces"}},
 		{"DELETE", "/api/v1/tenants/fake_te/namespaces/fake_ns/pods", "deletecollection", "api", "", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
 		{"DELETE", "/apis/extensions/v1/tenants/fake_te/namespaces/fake_ns/pods", "deletecollection", "api", "extensions", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},
-		{"DELETE", "/api/v1/namespaces", "deletecollection", "api", "", "v1", tenantAll, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
+		{"DELETE", "/api/v1/namespaces", "deletecollection", "api", "", "v1", tenantNone, namespaceAll, "namespaces", "", "", []string{"namespaces"}},
 
 		// api group identification
 		{"POST", "/apis/extensions/v1/tenants/fake_te/namespaces/fake_ns/pods", "create", "api", "extensions", "v1", "fake_te", "fake_ns", "pods", "", "", []string{"pods"}},

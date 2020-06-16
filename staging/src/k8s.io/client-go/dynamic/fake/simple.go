@@ -80,11 +80,15 @@ type dynamicResourceClient struct {
 var _ dynamic.Interface = &FakeDynamicClient{}
 
 func (c *FakeDynamicClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
-	return &dynamicResourceClient{client: c, resource: resource}
+	return &dynamicResourceClient{client: c, resource: resource, namespace: metav1.NamespaceAll, tenant: metav1.TenantAll}
 }
 
 func (c *dynamicResourceClient) Namespace(ns string) dynamic.ResourceInterface {
-	return c.NamespaceWithMultiTenancy(ns, metav1.TenantSystem)
+	if ns != metav1.NamespaceAll {
+		return c.NamespaceWithMultiTenancy(ns, metav1.TenantSystem)
+	} else {
+		return c.NamespaceWithMultiTenancy(ns, metav1.TenantAll)
+	}
 }
 
 func (c *dynamicResourceClient) NamespaceWithMultiTenancy(ns string, tenant string) dynamic.ResourceInterface {

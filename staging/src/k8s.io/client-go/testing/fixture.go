@@ -92,15 +92,24 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 		// updates and creates end up matching the same case branch.
 		switch action := action.(type) {
 
+		// For actions targeted at a specific resource (all the actions below except list),
+		// if the tenant is "all", we know it should be "system"
+
 		case ListActionImpl:
 			obj, err := tracker.ListWithMultiTenancy(gvr, action.GetKind(), ns, te)
 			return true, obj, err
 
 		case GetActionImpl:
+			if te == metav1.TenantAll {
+				te = metav1.TenantSystem
+			}
 			obj, err := tracker.GetWithMultiTenancy(gvr, ns, action.GetName(), te)
 			return true, obj, err
 
 		case CreateActionImpl:
+			if te == metav1.TenantAll {
+				te = metav1.TenantSystem
+			}
 			objMeta, err := meta.Accessor(action.GetObject())
 			if err != nil {
 				return true, nil, err
@@ -120,6 +129,9 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 			return true, obj, err
 
 		case UpdateActionImpl:
+			if te == metav1.TenantAll {
+				te = metav1.TenantSystem
+			}
 			objMeta, err := meta.Accessor(action.GetObject())
 			if err != nil {
 				return true, nil, err
@@ -133,6 +145,9 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 			return true, obj, err
 
 		case DeleteActionImpl:
+			if te == metav1.TenantAll {
+				te = metav1.TenantSystem
+			}
 			err := tracker.DeleteWithMultiTenancy(gvr, ns, action.GetName(), te)
 			if err != nil {
 				return true, nil, err
@@ -140,6 +155,9 @@ func ObjectReaction(tracker ObjectTracker) ReactionFunc {
 			return true, nil, nil
 
 		case PatchActionImpl:
+			if te == metav1.TenantAll {
+				te = metav1.TenantSystem
+			}
 			obj, err := tracker.GetWithMultiTenancy(gvr, ns, action.GetName(), te)
 			if err != nil {
 				return true, nil, err
@@ -533,10 +551,10 @@ func filterByNamespaceAndName(objs []runtime.Object, ns, name string, tenant str
 		if err != nil {
 			return nil, err
 		}
-		if tenant != "" && acc.GetTenant() != tenant {
+		if tenant != metav1.TenantAll && acc.GetTenant() != tenant && tenant != metav1.TenantNone {
 			continue
 		}
-		if ns != "" && acc.GetNamespace() != ns {
+		if ns != metav1.NamespaceAll && acc.GetNamespace() != ns {
 			continue
 		}
 		if name != "" && acc.GetName() != name {

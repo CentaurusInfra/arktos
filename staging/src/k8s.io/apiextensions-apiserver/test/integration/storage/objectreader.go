@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/pkg/transport"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
@@ -69,7 +70,7 @@ func (s *EtcdObjectReader) WaitForStorageVersion(version string, ns, name string
 
 // GetStoredCustomResource gets the storage representation of a custom resource from etcd.
 func (s *EtcdObjectReader) GetStoredCustomResource(ns, name string) (*unstructured.Unstructured, error) {
-	key := path.Join("/", s.storagePrefix, s.crd.Spec.Group, s.crd.Spec.Names.Plural, ns, name)
+	key := path.Join("/", s.storagePrefix, s.crd.Spec.Group, s.crd.Spec.Names.Plural, metav1.TenantSystem, ns, name)
 	resp, err := s.etcdClient.KV.Get(context.Background(), key)
 	if err != nil {
 		return nil, fmt.Errorf("error getting storage object %s, %s from etcd at key %s: %v", ns, name, key, err)
@@ -92,7 +93,7 @@ func (s *EtcdObjectReader) SetStoredCustomResource(ns, name string, obj *unstruc
 		return err
 	}
 
-	key := path.Join("/", s.storagePrefix, s.crd.Spec.Group, s.crd.Spec.Names.Plural, ns, name)
+	key := path.Join("/", s.storagePrefix, s.crd.Spec.Group, s.crd.Spec.Names.Plural, metav1.TenantSystem, ns, name)
 	if _, err := s.etcdClient.KV.Put(context.Background(), key, string(bs)); err != nil {
 		return fmt.Errorf("error setting storage object %s, %s from etcd at key %s: %v", ns, name, key, err)
 	}

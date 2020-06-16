@@ -254,7 +254,7 @@ func (f *fixture) run_(deploymentName string, startInformers bool, expectError b
 func filterInformerActions(actions []core.Action) []core.Action {
 	ret := []core.Action{}
 	for _, action := range actions {
-		if len(action.GetNamespace()) == 0 && len(action.GetTenant()) == 0 &&
+		if action.GetNamespace() == metav1.NamespaceAll && action.GetTenant() == metav1.TenantAll &&
 			(action.Matches("list", "pods") ||
 				action.Matches("list", "deployments") ||
 				action.Matches("list", "replicasets") ||
