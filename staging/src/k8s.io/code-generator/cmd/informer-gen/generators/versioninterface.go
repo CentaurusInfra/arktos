@@ -68,6 +68,8 @@ func (g *versionInterfaceGenerator) GenerateType(c *generator.Context, t *types.
 		"interfacesSharedInformerFactory": c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "SharedInformerFactory"}),
 		"types":                           g.types,
 		"DefaultTenant":                   metav1.TenantSystem,
+		"AllTenants":                      metav1.TenantAll,
+		"AllNamespaces":                   metav1.NamespaceAll,
 	}
 
 	sw.Do(versionTemplate, m)
@@ -116,7 +118,13 @@ type version struct {
 
 // New returns a new Interface.
 func New(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$) Interface {
-	return &version{factory: f, tenant: "$.DefaultTenant$", namespace: namespace, tweakListOptions: tweakListOptions}
+	// If the operation is across all namespaces, we extend it to all tenants.
+	// If the operation targets a given namespace, it is for the system tenant.
+	tenant := "$.DefaultTenant$" 
+	if namespace == "$.AllNamespaces$"{
+		tenant = "$.AllTenants$"
+	}
+	return &version{factory: f, tenant: tenant, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
 func NewWithMultiTenancy(f $.interfacesSharedInformerFactory|raw$, namespace string, tweakListOptions $.interfacesTweakListOptionsFunc|raw$, tenant string) Interface {

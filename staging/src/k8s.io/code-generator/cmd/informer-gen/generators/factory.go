@@ -21,6 +21,7 @@ import (
 	"io"
 	"path"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientgentypes "k8s.io/code-generator/cmd/client-gen/types"
 	"k8s.io/gengo/generator"
 	"k8s.io/gengo/namer"
@@ -89,9 +90,11 @@ func (g *factoryGenerator) GenerateType(c *generator.Context, t *types.Type, w i
 		"schemaGroupVersionResource":     c.Universe.Type(schemaGroupVersionResource),
 		"syncMutex":                      c.Universe.Type(syncMutex),
 		"timeDuration":                   c.Universe.Type(timeDuration),
-		"tenantAll":                      c.Universe.Type(metav1TenantAll),
 		"namespaceAll":                   c.Universe.Type(metav1NamespaceAll),
 		"object":                         c.Universe.Type(metav1Object),
+		"DefaultTenant":                  metav1.TenantSystem,
+		"AllTenants":                     metav1.TenantAll,
+		"AllNamespaces":                  metav1.NamespaceAll,
 	}
 
 	sw.Do(sharedInformerFactoryStruct, m)
@@ -139,7 +142,13 @@ func WithTweakListOptions(tweakListOptions internalinterfaces.TweakListOptionsFu
 
 // WithNamespace limits the SharedInformerFactory to the specified namespace.
 func WithNamespace(namespace string) SharedInformerOption {
-	return WithNamespaceWithMultiTenancy(namespace, "$.DefaultTenant$")
+	// If the operation is across all namespaces, we extend it to all tenants.
+	// If the operation targets a given namespace, it is for the system tenant.	
+	tenant := "{{.DefaultTenant}}" 
+	if namespace == "{{.AllNamespaces}}"{
+		tenant = "{{.AllTenants}}"
+	}
+	return WithNamespaceWithMultiTenancy(namespace, tenant)
 }
 
 func WithNamespaceWithMultiTenancy(namespace string, tenant string) SharedInformerOption {
@@ -160,7 +169,13 @@ func NewSharedInformerFactory(client {{.clientSetInterface|raw}}, defaultResync 
 // as specified here.
 // Deprecated: Please use NewSharedInformerFactoryWithOptions instead
 func NewFilteredSharedInformerFactory(client {{.clientSetInterface|raw}}, defaultResync {{.timeDuration|raw}}, namespace string, tweakListOptions {{.interfacesTweakListOptionsFunc|raw}}) SharedInformerFactory {
-	return NewFilteredSharedInformerFactoryWithMultiTenancy(client, defaultResync, namespace, tweakListOptions, "$.DefaultTenant$")
+	// If the operation is across all namespaces, we extend it to all tenants.
+	// If the operation targets a given namespace, it is for the system tenant.
+	tenant := "{{.DefaultTenant}}" 
+	if namespace == "{{.AllNamespaces}}"{
+		tenant = "{{.AllTenants}}"
+	}
+	return NewFilteredSharedInformerFactoryWithMultiTenancy(client, defaultResync, namespace, tweakListOptions, tenant)
 }
 
 func NewFilteredSharedInformerFactoryWithMultiTenancy(client {{.clientSetInterface|raw}}, defaultResync {{.timeDuration|raw}}, namespace string, tweakListOptions {{.interfacesTweakListOptionsFunc|raw}}, tenant string) SharedInformerFactory {

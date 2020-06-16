@@ -385,9 +385,17 @@ func (c *Fake$.type|publicPlural$) List(opts $.ListOptions|raw$) (result *$.type
 var getTemplate = `
 // Get takes name of the $.type|private$, and returns the corresponding $.resultType|private$ object, and an error if there is any.
 func (c *Fake$.type|publicPlural$) Get(name string, options $.GetOptions|raw$) (result *$.resultType|raw$, err error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewGetAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.ns, name, c.te), &$.resultType|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantGetAction|raw$($.type|allLowercasePlural$Resource, name, c.te), &$.resultType|raw${})$end$
+		$if .namespaced$Invokes($.NewGetAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.ns, name, tenant), &$.resultType|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantGetAction|raw$($.type|allLowercasePlural$Resource, name, tenant), &$.resultType|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootGetAction|raw$($.type|allLowercasePlural$Resource, name), &$.resultType|raw${})$end$
 	if obj == nil {
 		return nil, err
@@ -400,9 +408,17 @@ func (c *Fake$.type|publicPlural$) Get(name string, options $.GetOptions|raw$) (
 var getSubresourceTemplate = `
 // Get takes name of the $.type|private$, and returns the corresponding $.resultType|private$ object, and an error if there is any.
 func (c *Fake$.type|publicPlural$) Get($.type|private$Name string, options $.GetOptions|raw$) (result *$.resultType|raw$, err error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewGetSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.ns, "$.subresourcePath$", $.type|private$Name, c.te), &$.resultType|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantGetSubresourceAction|raw$($.type|allLowercasePlural$Resource, "$.subresourcePath$", $.type|private$Name, c.te), &$.resultType|raw${})$end$
+		$if .namespaced$Invokes($.NewGetSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.ns, "$.subresourcePath$", $.type|private$Name, tenant), &$.resultType|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantGetSubresourceAction|raw$($.type|allLowercasePlural$Resource, "$.subresourcePath$", $.type|private$Name, tenant), &$.resultType|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootGetSubresourceAction|raw$($.type|allLowercasePlural$Resource, "$.subresourcePath$", $.type|private$Name), &$.resultType|raw${})$end$
 	if obj == nil {
 		return nil, err
@@ -415,9 +431,17 @@ func (c *Fake$.type|publicPlural$) Get($.type|private$Name string, options $.Get
 var deleteTemplate = `
 // Delete takes name of the $.type|private$ and deletes it. Returns an error if one occurs.
 func (c *Fake$.type|publicPlural$) Delete(name string, options *$.DeleteOptions|raw$) error {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	_, err := c.Fake.
-		$if .namespaced$Invokes($.NewDeleteAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.ns, name, c.te), &$.type|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantDeleteAction|raw$($.type|allLowercasePlural$Resource, name, c.te), &$.type|raw${})$end$
+		$if .namespaced$Invokes($.NewDeleteAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.ns, name, tenant), &$.type|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantDeleteAction|raw$($.type|allLowercasePlural$Resource, name, tenant), &$.type|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootDeleteAction|raw$($.type|allLowercasePlural$Resource, name), &$.type|raw${})$end$
 	return err
 }
@@ -436,9 +460,17 @@ func (c *Fake$.type|publicPlural$) DeleteCollection(options *$.DeleteOptions|raw
 var createTemplate = `
 // Create takes the representation of a $.inputType|private$ and creates it.  Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *Fake$.type|publicPlural$) Create($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewCreateAction|raw$WithMultiTenancy($.inputType|allLowercasePlural$Resource, c.ns, $.inputType|private$, c.te), &$.resultType|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantCreateAction|raw$($.inputType|allLowercasePlural$Resource, $.inputType|private$, c.te), &$.resultType|raw${})$end$
+		$if .namespaced$Invokes($.NewCreateAction|raw$WithMultiTenancy($.inputType|allLowercasePlural$Resource, c.ns, $.inputType|private$, tenant), &$.resultType|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantCreateAction|raw$($.inputType|allLowercasePlural$Resource, $.inputType|private$, tenant), &$.resultType|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootCreateAction|raw$($.inputType|allLowercasePlural$Resource, $.inputType|private$), &$.resultType|raw${})$end$
 	if obj == nil {
 		return nil, err
@@ -451,9 +483,17 @@ func (c *Fake$.type|publicPlural$) Create($.inputType|private$ *$.inputType|raw$
 var createSubresourceTemplate = `
 // Create takes the representation of a $.inputType|private$ and creates it.  Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *Fake$.type|publicPlural$) Create($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewCreateSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, $.type|private$Name, "$.subresourcePath$", c.ns, $.inputType|private$, c.te), &$.resultType|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantCreateSubresourceAction|raw$($.type|allLowercasePlural$Resource, $.type|private$Name, "$.subresourcePath$", $.inputType|private$, c.te), &$.resultType|raw${})$end$
+		$if .namespaced$Invokes($.NewCreateSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, $.type|private$Name, "$.subresourcePath$", c.ns, $.inputType|private$, tenant), &$.resultType|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantCreateSubresourceAction|raw$($.type|allLowercasePlural$Resource, $.type|private$Name, "$.subresourcePath$", $.inputType|private$, tenant), &$.resultType|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootCreateSubresourceAction|raw$($.type|allLowercasePlural$Resource, "$.subresourcePath$", $.inputType|private$), &$.resultType|raw${})$end$
 	if obj == nil {
 		return nil, err
@@ -466,9 +506,17 @@ func (c *Fake$.type|publicPlural$) Create($.type|private$Name string, $.inputTyp
 var updateTemplate = `
 // Update takes the representation of a $.inputType|private$ and updates it. Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *Fake$.type|publicPlural$) Update($.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewUpdateAction|raw$WithMultiTenancy($.inputType|allLowercasePlural$Resource, c.ns, $.inputType|private$, c.te), &$.resultType|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantUpdateAction|raw$($.inputType|allLowercasePlural$Resource, $.inputType|private$, c.te), &$.resultType|raw${})$end$
+		$if .namespaced$Invokes($.NewUpdateAction|raw$WithMultiTenancy($.inputType|allLowercasePlural$Resource, c.ns, $.inputType|private$, tenant), &$.resultType|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantUpdateAction|raw$($.inputType|allLowercasePlural$Resource, $.inputType|private$, tenant), &$.resultType|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootUpdateAction|raw$($.inputType|allLowercasePlural$Resource, $.inputType|private$), &$.resultType|raw${})$end$
 	if obj == nil {
 		return nil, err
@@ -481,9 +529,17 @@ func (c *Fake$.type|publicPlural$) Update($.inputType|private$ *$.inputType|raw$
 var updateSubresourceTemplate = `
 // Update takes the representation of a $.inputType|private$ and updates it. Returns the server's representation of the $.resultType|private$, and an error, if there is any.
 func (c *Fake$.type|publicPlural$) Update($.type|private$Name string, $.inputType|private$ *$.inputType|raw$) (result *$.resultType|raw$, err error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewUpdateSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, "$.subresourcePath$", c.ns, $.inputType|private$, c.te), &$.inputType|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantUpdateSubresourceAction|raw$($.type|allLowercasePlural$Resource, "$.subresourcePath$", $.inputType|private$, c.te), &$.inputType|raw${})$end$
+		$if .namespaced$Invokes($.NewUpdateSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, "$.subresourcePath$", c.ns, $.inputType|private$, tenant), &$.inputType|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantUpdateSubresourceAction|raw$($.type|allLowercasePlural$Resource, "$.subresourcePath$", $.inputType|private$, tenant), &$.inputType|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootUpdateSubresourceAction|raw$($.type|allLowercasePlural$Resource, "$.subresourcePath$", $.inputType|private$), &$.resultType|raw${})$end$
 	if obj == nil {
 		return nil, err
@@ -497,9 +553,17 @@ var updateStatusTemplate = `
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *Fake$.type|publicPlural$) UpdateStatus($.type|private$ *$.type|raw$) (*$.type|raw$, error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewUpdateSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, "status", c.ns, $.type|private$, c.te), &$.type|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantUpdateSubresourceAction|raw$($.type|allLowercasePlural$Resource, "status", $.type|private$, c.te), &$.type|raw${})$end$
+		$if .namespaced$Invokes($.NewUpdateSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, "status", c.ns, $.type|private$, tenant), &$.type|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantUpdateSubresourceAction|raw$($.type|allLowercasePlural$Resource, "status", $.type|private$, tenant), &$.type|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootUpdateSubresourceAction|raw$($.type|allLowercasePlural$Resource, "status", $.type|private$), &$.type|raw${})$end$
 	if obj == nil {
 		return nil, err
@@ -524,9 +588,17 @@ func (c *Fake$.type|publicPlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWa
 var patchTemplate = `
 // Patch applies the patch and returns the patched $.resultType|private$.
 func (c *Fake$.type|publicPlural$) Patch(name string, pt $.PatchType|raw$, data []byte, subresources ...string) (result *$.resultType|raw$, err error) {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	obj, err := c.Fake.
-		$if .namespaced$Invokes($.NewPatchSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.te, c.ns, name, pt, data, subresources... ), &$.resultType|raw${})$end$
-		$if .tenanted$Invokes($.NewTenantPatchSubresourceAction|raw$($.type|allLowercasePlural$Resource, c.te, name, pt, data, subresources... ), &$.resultType|raw${})$end$
+		$if .namespaced$Invokes($.NewPatchSubresourceAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, tenant, c.ns, name, pt, data, subresources... ), &$.resultType|raw${})$end$
+		$if .tenanted$Invokes($.NewTenantPatchSubresourceAction|raw$($.type|allLowercasePlural$Resource, tenant, name, pt, data, subresources... ), &$.resultType|raw${})$end$
 		$if .clusterScoped$Invokes($.NewRootPatchSubresourceAction|raw$($.type|allLowercasePlural$Resource, name, pt, data, subresources...), &$.resultType|raw${})$end$
 	if obj == nil {
 		return nil, err

@@ -531,10 +531,18 @@ var getTemplate = `
 // Get takes name of the $.type|private$, and returns the corresponding $.resultType|private$ object, and an error if there is any.
 func (c *$.type|privatePlural$) Get(name string, options $.GetOptions|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	err = c.client.Get().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(tenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(tenant).$end$
 		Resource("$.type|resource$").
 		Name(name).
 		VersionedParams(&options, $.schemeParameterCodec|raw$).
@@ -549,10 +557,18 @@ var getSubresourceTemplate = `
 // Get takes name of the $.type|private$, and returns the corresponding $.resultType|raw$ object, and an error if there is any.
 func (c *$.type|privatePlural$) Get($.type|private$Name string, options $.GetOptions|raw$) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	err = c.client.Get().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(tenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(tenant).$end$
 		Resource("$.type|resource$").
 		Name($.type|private$Name).
 		SubResource("$.subresourcePath$").
@@ -567,10 +583,18 @@ func (c *$.type|privatePlural$) Get($.type|private$Name string, options $.GetOpt
 var deleteTemplate = `
 // Delete takes name of the $.type|private$ and deletes it. Returns an error if one occurs.
 func (c *$.type|privatePlural$) Delete(name string, options *$.DeleteOptions|raw$) error {
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	return c.client.Delete().
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(tenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(tenant).$end$
 		Resource("$.type|resource$").
 		Name(name).
 		Body(options).
@@ -607,12 +631,18 @@ func (c *$.type|privatePlural$) Create($.type|private$Name string, $.inputType|p
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	$if .namespaced$
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	err = c.client.Post().
@@ -638,12 +668,18 @@ func (c *$.type|privatePlural$) Create($.inputType|private$ *$.inputType|raw$) (
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	$if .namespaced$
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	err = c.client.Post().
@@ -667,12 +703,18 @@ func (c *$.type|privatePlural$) Update($.type|private$Name string, $.inputType|p
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$
 	$if .namespaced$
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$		
 	err = c.client.Put().
@@ -698,12 +740,18 @@ func (c *$.type|privatePlural$) Update($.inputType|private$ *$.inputType|raw$) (
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	$if .namespaced$
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	err = c.client.Put().
@@ -730,12 +778,18 @@ func (c *$.type|privatePlural$) UpdateStatus($.type|private$ *$.type|raw$) (resu
 	objectTenant := $.type|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	$if .namespaced$
 	objectTenant := $.inputType|private$.ObjectMeta.Tenant 
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 	$end$	
 	err = c.client.Put().
@@ -787,10 +841,18 @@ var patchTemplate = `
 // Patch applies the patch and returns the patched $.resultType|private$.
 func (c *$.type|privatePlural$) Patch(name string, pt $.PatchType|raw$, data []byte, subresources ...string) (result *$.resultType|raw$, err error) {
 	result = &$.resultType|raw${}
+	$if .tenanted$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
+	$if .namespaced$tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}$end$
 	err = c.client.Patch(pt).
-		$if .namespaced$Tenant(c.te).
+		$if .namespaced$Tenant(tenant).
 		Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
+		$if .tenanted$Tenant(tenant).$end$
 		Resource("$.type|resource$").
 		SubResource(subresources...).
 		Name(name).
