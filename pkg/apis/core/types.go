@@ -27,9 +27,7 @@ import (
 
 const (
 	// TenantAll is the default argument to specify on a context when you want to list or filter resources across all tenants
-	TenantAll = ""
-	// Sometimes we need to explicitly indicate the operation targets at all the tenants, not the empty string of the above TenantAll
-	TenantAllExplicit = "all"
+	TenantAll = "all"
 	// TenantNone is the argument for a context when there is no tenant.
 	TenantNone = ""
 	// tenantSystem is the system tenant where we place system components.
