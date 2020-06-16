@@ -78,11 +78,11 @@ type schedulerOptions struct {
 }
 
 type server struct {
-	name string
-	imageRef string
-	flavorRef string
-	networks []map[string]string
-	security_groups []map[string]string
+	Name string `json:"name"`
+	ImageRef string `json:"imageRef"`
+	FlavorRef string `json:"flavorRef"`
+	Networks []map[string]string `json:"networks"`
+	SecurityGroups []map[string]string `json:"security_groups"`
 }
 
 // Option configures a Scheduler
@@ -477,24 +477,18 @@ func requestToken(host string) string {
 func serverCreate(host string, authToken string, manifest *v1.PodSpec) {
 	// serverCreateRequestURL := "http://" + host + "/compute/v2.1/servers"
 	serverStruct := server{
-		name: manifest.VirtualMachine.Name,
-		imageRef: manifest.VirtualMachine.Image,
-		flavorRef: manifest.VirtualMachine.Resources.FlavorRef,
-		networks: []map[string]string{
+		Name: manifest.VirtualMachine.Name,
+		ImageRef: manifest.VirtualMachine.Image,
+		FlavorRef: manifest.VirtualMachine.Resources.FlavorRef,
+		Networks: []map[string]string{
 			{"uuid": manifest.Nics[0].Uuid},
 		},
-		security_groups: []map[string]string{
+		SecurityGroups: []map[string]string{
 			{"name": manifest.VirtualMachine.Scheduling.SecurityGroup[0].Name},
 		},
 	}
 
-	// jsonData := map[string]server{
-	// 	"server": serverStruct,
-	// }
-
 	finalData, _ := json.Marshal(serverStruct)
-
-
 	fmt.Println(bytes.NewBuffer(finalData))
 }
 
