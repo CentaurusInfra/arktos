@@ -40,6 +40,7 @@ var componentstatusesKind = schema.GroupVersionKind{Group: "", Version: "v1", Ki
 
 // Get takes name of the componentStatus, and returns the corresponding componentStatus object, and an error if there is any.
 func (c *FakeComponentStatuses) Get(name string, options v1.GetOptions) (result *corev1.ComponentStatus, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(componentstatusesResource, name), &corev1.ComponentStatus{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeComponentStatuses) Watch(opts v1.ListOptions) watch.AggregatedWatch
 
 // Create takes the representation of a componentStatus and creates it.  Returns the server's representation of the componentStatus, and an error, if there is any.
 func (c *FakeComponentStatuses) Create(componentStatus *corev1.ComponentStatus) (result *corev1.ComponentStatus, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(componentstatusesResource, componentStatus), &corev1.ComponentStatus{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeComponentStatuses) Create(componentStatus *corev1.ComponentStatus) 
 
 // Update takes the representation of a componentStatus and updates it. Returns the server's representation of the componentStatus, and an error, if there is any.
 func (c *FakeComponentStatuses) Update(componentStatus *corev1.ComponentStatus) (result *corev1.ComponentStatus, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(componentstatusesResource, componentStatus), &corev1.ComponentStatus{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeComponentStatuses) Update(componentStatus *corev1.ComponentStatus) 
 
 // Delete takes name of the componentStatus and deletes it. Returns an error if one occurs.
 func (c *FakeComponentStatuses) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(componentstatusesResource, name), &corev1.ComponentStatus{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeComponentStatuses) DeleteCollection(options *v1.DeleteOptions, list
 
 // Patch applies the patch and returns the patched componentStatus.
 func (c *FakeComponentStatuses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.ComponentStatus, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(componentstatusesResource, name, pt, data, subresources...), &corev1.ComponentStatus{})
 	if obj == nil {

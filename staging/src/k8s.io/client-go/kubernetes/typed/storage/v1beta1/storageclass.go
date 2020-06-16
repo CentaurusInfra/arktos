@@ -69,6 +69,7 @@ func newStorageClasses(c *StorageV1beta1Client) *storageClasses {
 // Get takes name of the storageClass, and returns the corresponding storageClass object, and an error if there is any.
 func (c *storageClasses) Get(name string, options v1.GetOptions) (result *v1beta1.StorageClass, err error) {
 	result = &v1beta1.StorageClass{}
+
 	err = c.client.Get().
 		Resource("storageclasses").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *storageClasses) Update(storageClass *v1beta1.StorageClass) (result *v1b
 
 // Delete takes name of the storageClass and deletes it. Returns an error if one occurs.
 func (c *storageClasses) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("storageclasses").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *storageClasses) DeleteCollection(options *v1.DeleteOptions, listOptions
 // Patch applies the patch and returns the patched storageClass.
 func (c *storageClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.StorageClass, err error) {
 	result = &v1beta1.StorageClass{}
+
 	err = c.client.Patch(pt).
 		Resource("storageclasses").
 		SubResource(subresources...).

@@ -41,8 +41,13 @@ var auditsinksKind = schema.GroupVersionKind{Group: "auditregistration.k8s.io", 
 
 // Get takes name of the auditSink, and returns the corresponding auditSink object, and an error if there is any.
 func (c *FakeAuditSinks) Get(name string, options v1.GetOptions) (result *v1alpha1.AuditSink, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantGetAction(auditsinksResource, name, c.te), &v1alpha1.AuditSink{})
+		Invokes(testing.NewTenantGetAction(auditsinksResource, name, tenant), &v1alpha1.AuditSink{})
 
 	if obj == nil {
 		return nil, err
@@ -85,8 +90,13 @@ func (c *FakeAuditSinks) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 
 // Create takes the representation of a auditSink and creates it.  Returns the server's representation of the auditSink, and an error, if there is any.
 func (c *FakeAuditSinks) Create(auditSink *v1alpha1.AuditSink) (result *v1alpha1.AuditSink, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantCreateAction(auditsinksResource, auditSink, c.te), &v1alpha1.AuditSink{})
+		Invokes(testing.NewTenantCreateAction(auditsinksResource, auditSink, tenant), &v1alpha1.AuditSink{})
 
 	if obj == nil {
 		return nil, err
@@ -97,8 +107,13 @@ func (c *FakeAuditSinks) Create(auditSink *v1alpha1.AuditSink) (result *v1alpha1
 
 // Update takes the representation of a auditSink and updates it. Returns the server's representation of the auditSink, and an error, if there is any.
 func (c *FakeAuditSinks) Update(auditSink *v1alpha1.AuditSink) (result *v1alpha1.AuditSink, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateAction(auditsinksResource, auditSink, c.te), &v1alpha1.AuditSink{})
+		Invokes(testing.NewTenantUpdateAction(auditsinksResource, auditSink, tenant), &v1alpha1.AuditSink{})
 
 	if obj == nil {
 		return nil, err
@@ -109,8 +124,13 @@ func (c *FakeAuditSinks) Update(auditSink *v1alpha1.AuditSink) (result *v1alpha1
 
 // Delete takes name of the auditSink and deletes it. Returns an error if one occurs.
 func (c *FakeAuditSinks) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	_, err := c.Fake.
-		Invokes(testing.NewTenantDeleteAction(auditsinksResource, name, c.te), &v1alpha1.AuditSink{})
+		Invokes(testing.NewTenantDeleteAction(auditsinksResource, name, tenant), &v1alpha1.AuditSink{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeAuditSinks) DeleteCollection(options *v1.DeleteOptions, listOptions
 
 // Patch applies the patch and returns the patched auditSink.
 func (c *FakeAuditSinks) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.AuditSink, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantPatchSubresourceAction(auditsinksResource, c.te, name, pt, data, subresources...), &v1alpha1.AuditSink{})
+		Invokes(testing.NewTenantPatchSubresourceAction(auditsinksResource, tenant, name, pt, data, subresources...), &v1alpha1.AuditSink{})
 
 	if obj == nil {
 		return nil, err

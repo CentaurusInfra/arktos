@@ -42,8 +42,13 @@ var rolesKind = schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Vers
 
 // Get takes name of the role, and returns the corresponding role object, and an error if there is any.
 func (c *FakeRoles) Get(name string, options v1.GetOptions) (result *v1alpha1.Role, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(rolesResource, c.ns, name, c.te), &v1alpha1.Role{})
+		Invokes(testing.NewGetActionWithMultiTenancy(rolesResource, c.ns, name, tenant), &v1alpha1.Role{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeRoles) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 
 // Create takes the representation of a role and creates it.  Returns the server's representation of the role, and an error, if there is any.
 func (c *FakeRoles) Create(role *v1alpha1.Role) (result *v1alpha1.Role, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(rolesResource, c.ns, role, c.te), &v1alpha1.Role{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(rolesResource, c.ns, role, tenant), &v1alpha1.Role{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeRoles) Create(role *v1alpha1.Role) (result *v1alpha1.Role, err erro
 
 // Update takes the representation of a role and updates it. Returns the server's representation of the role, and an error, if there is any.
 func (c *FakeRoles) Update(role *v1alpha1.Role) (result *v1alpha1.Role, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(rolesResource, c.ns, role, c.te), &v1alpha1.Role{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(rolesResource, c.ns, role, tenant), &v1alpha1.Role{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeRoles) Update(role *v1alpha1.Role) (result *v1alpha1.Role, err erro
 
 // Delete takes name of the role and deletes it. Returns an error if one occurs.
 func (c *FakeRoles) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(rolesResource, c.ns, name, c.te), &v1alpha1.Role{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(rolesResource, c.ns, name, tenant), &v1alpha1.Role{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeRoles) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 
 // Patch applies the patch and returns the patched role.
 func (c *FakeRoles) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Role, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(rolesResource, c.te, c.ns, name, pt, data, subresources...), &v1alpha1.Role{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(rolesResource, tenant, c.ns, name, pt, data, subresources...), &v1alpha1.Role{})
 
 	if obj == nil {
 		return nil, err

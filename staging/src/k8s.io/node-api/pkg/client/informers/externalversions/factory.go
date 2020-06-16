@@ -71,7 +71,13 @@ func WithTweakListOptions(tweakListOptions internalinterfaces.TweakListOptionsFu
 
 // WithNamespace limits the SharedInformerFactory to the specified namespace.
 func WithNamespace(namespace string) SharedInformerOption {
-	return WithNamespaceWithMultiTenancy(namespace, "$.DefaultTenant$")
+	// If the operation is across all namespaces, we extend it to all tenants.
+	// If the operation targets a given namespace, it is for the system tenant.
+	tenant := "system"
+	if namespace == "" {
+		tenant = "all"
+	}
+	return WithNamespaceWithMultiTenancy(namespace, tenant)
 }
 
 func WithNamespaceWithMultiTenancy(namespace string, tenant string) SharedInformerOption {
@@ -92,7 +98,13 @@ func NewSharedInformerFactory(client versioned.Interface, defaultResync time.Dur
 // as specified here.
 // Deprecated: Please use NewSharedInformerFactoryWithOptions instead
 func NewFilteredSharedInformerFactory(client versioned.Interface, defaultResync time.Duration, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) SharedInformerFactory {
-	return NewFilteredSharedInformerFactoryWithMultiTenancy(client, defaultResync, namespace, tweakListOptions, "$.DefaultTenant$")
+	// If the operation is across all namespaces, we extend it to all tenants.
+	// If the operation targets a given namespace, it is for the system tenant.
+	tenant := "system"
+	if namespace == "" {
+		tenant = "all"
+	}
+	return NewFilteredSharedInformerFactoryWithMultiTenancy(client, defaultResync, namespace, tweakListOptions, tenant)
 }
 
 func NewFilteredSharedInformerFactoryWithMultiTenancy(client versioned.Interface, defaultResync time.Duration, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) SharedInformerFactory {

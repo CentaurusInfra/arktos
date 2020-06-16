@@ -91,7 +91,9 @@ func (s roleBindingNamespaceLister) List(selector labels.Selector) (ret []*v1bet
 // Get retrieves the RoleBinding from the indexer for a given namespace and name.
 func (s roleBindingNamespaceLister) Get(name string) (*v1beta1.RoleBinding, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
+	// The backward-compatible informer may have the tenant set as "system" or "all",
+	// Yet when it comes to get an object, the tenant can only be "system", where the key is the {namespace}/{name}
+	if s.tenant == "system" || s.tenant == "all" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

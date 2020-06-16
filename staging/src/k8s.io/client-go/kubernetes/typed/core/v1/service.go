@@ -78,8 +78,13 @@ func newServicesWithMultiTenancy(c *CoreV1Client, namespace string, tenant strin
 // Get takes name of the service, and returns the corresponding service object, and an error if there is any.
 func (c *services) Get(name string, options metav1.GetOptions) (result *v1.Service, err error) {
 	result = &v1.Service{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("services").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *services) Create(service *v1.Service) (result *v1.Service, err error) {
 	objectTenant := service.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *services) Update(service *v1.Service) (result *v1.Service, err error) {
 	objectTenant := service.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -217,6 +228,9 @@ func (c *services) UpdateStatus(service *v1.Service) (result *v1.Service, err er
 	objectTenant := service.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -234,8 +248,13 @@ func (c *services) UpdateStatus(service *v1.Service) (result *v1.Service, err er
 
 // Delete takes name of the service and deletes it. Returns an error if one occurs.
 func (c *services) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("services").
 		Name(name).
@@ -247,8 +266,13 @@ func (c *services) Delete(name string, options *metav1.DeleteOptions) error {
 // Patch applies the patch and returns the patched service.
 func (c *services) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Service, err error) {
 	result = &v1.Service{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("services").
 		SubResource(subresources...).

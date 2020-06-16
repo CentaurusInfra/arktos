@@ -61,7 +61,13 @@ func NewPodTemplateInformerWithMultiTenancy(client kubernetes.Interface, namespa
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredPodTemplateInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewFilteredPodTemplateInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, tweakListOptions, "system")
+	// If the operation is across all namespaces, we extend it to all tenants.
+	// If the operation targets a given namespace, it is for the system tenant.
+	tenant := "system"
+	if namespace == "" {
+		tenant = "all"
+	}
+	return NewFilteredPodTemplateInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, tweakListOptions, tenant)
 }
 
 func NewFilteredPodTemplateInformerWithMultiTenancy(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {

@@ -42,8 +42,13 @@ var podpresetsKind = schema.GroupVersionKind{Group: "settings.k8s.io", Version: 
 
 // Get takes name of the podPreset, and returns the corresponding podPreset object, and an error if there is any.
 func (c *FakePodPresets) Get(name string, options v1.GetOptions) (result *v1alpha1.PodPreset, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(podpresetsResource, c.ns, name, c.te), &v1alpha1.PodPreset{})
+		Invokes(testing.NewGetActionWithMultiTenancy(podpresetsResource, c.ns, name, tenant), &v1alpha1.PodPreset{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakePodPresets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 
 // Create takes the representation of a podPreset and creates it.  Returns the server's representation of the podPreset, and an error, if there is any.
 func (c *FakePodPresets) Create(podPreset *v1alpha1.PodPreset) (result *v1alpha1.PodPreset, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(podpresetsResource, c.ns, podPreset, c.te), &v1alpha1.PodPreset{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(podpresetsResource, c.ns, podPreset, tenant), &v1alpha1.PodPreset{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakePodPresets) Create(podPreset *v1alpha1.PodPreset) (result *v1alpha1
 
 // Update takes the representation of a podPreset and updates it. Returns the server's representation of the podPreset, and an error, if there is any.
 func (c *FakePodPresets) Update(podPreset *v1alpha1.PodPreset) (result *v1alpha1.PodPreset, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(podpresetsResource, c.ns, podPreset, c.te), &v1alpha1.PodPreset{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(podpresetsResource, c.ns, podPreset, tenant), &v1alpha1.PodPreset{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakePodPresets) Update(podPreset *v1alpha1.PodPreset) (result *v1alpha1
 
 // Delete takes name of the podPreset and deletes it. Returns an error if one occurs.
 func (c *FakePodPresets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(podpresetsResource, c.ns, name, c.te), &v1alpha1.PodPreset{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(podpresetsResource, c.ns, name, tenant), &v1alpha1.PodPreset{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakePodPresets) DeleteCollection(options *v1.DeleteOptions, listOptions
 
 // Patch applies the patch and returns the patched podPreset.
 func (c *FakePodPresets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PodPreset, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(podpresetsResource, c.te, c.ns, name, pt, data, subresources...), &v1alpha1.PodPreset{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(podpresetsResource, tenant, c.ns, name, pt, data, subresources...), &v1alpha1.PodPreset{})
 
 	if obj == nil {
 		return nil, err

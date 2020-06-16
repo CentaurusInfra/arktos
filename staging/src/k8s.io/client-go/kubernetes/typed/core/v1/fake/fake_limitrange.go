@@ -42,8 +42,13 @@ var limitrangesKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "L
 
 // Get takes name of the limitRange, and returns the corresponding limitRange object, and an error if there is any.
 func (c *FakeLimitRanges) Get(name string, options v1.GetOptions) (result *corev1.LimitRange, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(limitrangesResource, c.ns, name, c.te), &corev1.LimitRange{})
+		Invokes(testing.NewGetActionWithMultiTenancy(limitrangesResource, c.ns, name, tenant), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeLimitRanges) Watch(opts v1.ListOptions) watch.AggregatedWatchInterf
 
 // Create takes the representation of a limitRange and creates it.  Returns the server's representation of the limitRange, and an error, if there is any.
 func (c *FakeLimitRanges) Create(limitRange *corev1.LimitRange) (result *corev1.LimitRange, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(limitrangesResource, c.ns, limitRange, c.te), &corev1.LimitRange{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(limitrangesResource, c.ns, limitRange, tenant), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeLimitRanges) Create(limitRange *corev1.LimitRange) (result *corev1.
 
 // Update takes the representation of a limitRange and updates it. Returns the server's representation of the limitRange, and an error, if there is any.
 func (c *FakeLimitRanges) Update(limitRange *corev1.LimitRange) (result *corev1.LimitRange, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(limitrangesResource, c.ns, limitRange, c.te), &corev1.LimitRange{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(limitrangesResource, c.ns, limitRange, tenant), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeLimitRanges) Update(limitRange *corev1.LimitRange) (result *corev1.
 
 // Delete takes name of the limitRange and deletes it. Returns an error if one occurs.
 func (c *FakeLimitRanges) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(limitrangesResource, c.ns, name, c.te), &corev1.LimitRange{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(limitrangesResource, c.ns, name, tenant), &corev1.LimitRange{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeLimitRanges) DeleteCollection(options *v1.DeleteOptions, listOption
 
 // Patch applies the patch and returns the patched limitRange.
 func (c *FakeLimitRanges) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.LimitRange, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(limitrangesResource, c.te, c.ns, name, pt, data, subresources...), &corev1.LimitRange{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(limitrangesResource, tenant, c.ns, name, pt, data, subresources...), &corev1.LimitRange{})
 
 	if obj == nil {
 		return nil, err

@@ -41,8 +41,13 @@ var apiservicesKind = schema.GroupVersionKind{Group: "apiregistration.k8s.io", V
 
 // Get takes name of the aPIService, and returns the corresponding aPIService object, and an error if there is any.
 func (c *FakeAPIServices) Get(name string, options v1.GetOptions) (result *apiregistration.APIService, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantGetAction(apiservicesResource, name, c.te), &apiregistration.APIService{})
+		Invokes(testing.NewTenantGetAction(apiservicesResource, name, tenant), &apiregistration.APIService{})
 
 	if obj == nil {
 		return nil, err
@@ -85,8 +90,13 @@ func (c *FakeAPIServices) Watch(opts v1.ListOptions) watch.AggregatedWatchInterf
 
 // Create takes the representation of a aPIService and creates it.  Returns the server's representation of the aPIService, and an error, if there is any.
 func (c *FakeAPIServices) Create(aPIService *apiregistration.APIService) (result *apiregistration.APIService, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantCreateAction(apiservicesResource, aPIService, c.te), &apiregistration.APIService{})
+		Invokes(testing.NewTenantCreateAction(apiservicesResource, aPIService, tenant), &apiregistration.APIService{})
 
 	if obj == nil {
 		return nil, err
@@ -97,8 +107,13 @@ func (c *FakeAPIServices) Create(aPIService *apiregistration.APIService) (result
 
 // Update takes the representation of a aPIService and updates it. Returns the server's representation of the aPIService, and an error, if there is any.
 func (c *FakeAPIServices) Update(aPIService *apiregistration.APIService) (result *apiregistration.APIService, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateAction(apiservicesResource, aPIService, c.te), &apiregistration.APIService{})
+		Invokes(testing.NewTenantUpdateAction(apiservicesResource, aPIService, tenant), &apiregistration.APIService{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeAPIServices) Update(aPIService *apiregistration.APIService) (result
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeAPIServices) UpdateStatus(aPIService *apiregistration.APIService) (*apiregistration.APIService, error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateSubresourceAction(apiservicesResource, "status", aPIService, c.te), &apiregistration.APIService{})
+		Invokes(testing.NewTenantUpdateSubresourceAction(apiservicesResource, "status", aPIService, tenant), &apiregistration.APIService{})
 
 	if obj == nil {
 		return nil, err
@@ -121,8 +141,13 @@ func (c *FakeAPIServices) UpdateStatus(aPIService *apiregistration.APIService) (
 
 // Delete takes name of the aPIService and deletes it. Returns an error if one occurs.
 func (c *FakeAPIServices) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	_, err := c.Fake.
-		Invokes(testing.NewTenantDeleteAction(apiservicesResource, name, c.te), &apiregistration.APIService{})
+		Invokes(testing.NewTenantDeleteAction(apiservicesResource, name, tenant), &apiregistration.APIService{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeAPIServices) DeleteCollection(options *v1.DeleteOptions, listOption
 
 // Patch applies the patch and returns the patched aPIService.
 func (c *FakeAPIServices) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *apiregistration.APIService, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantPatchSubresourceAction(apiservicesResource, c.te, name, pt, data, subresources...), &apiregistration.APIService{})
+		Invokes(testing.NewTenantPatchSubresourceAction(apiservicesResource, tenant, name, pt, data, subresources...), &apiregistration.APIService{})
 
 	if obj == nil {
 		return nil, err

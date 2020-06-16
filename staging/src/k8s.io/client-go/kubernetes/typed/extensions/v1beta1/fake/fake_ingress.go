@@ -42,8 +42,13 @@ var ingressesKind = schema.GroupVersionKind{Group: "extensions", Version: "v1bet
 
 // Get takes name of the ingress, and returns the corresponding ingress object, and an error if there is any.
 func (c *FakeIngresses) Get(name string, options v1.GetOptions) (result *v1beta1.Ingress, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(ingressesResource, c.ns, name, c.te), &v1beta1.Ingress{})
+		Invokes(testing.NewGetActionWithMultiTenancy(ingressesResource, c.ns, name, tenant), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeIngresses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfac
 
 // Create takes the representation of a ingress and creates it.  Returns the server's representation of the ingress, and an error, if there is any.
 func (c *FakeIngresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(ingressesResource, c.ns, ingress, c.te), &v1beta1.Ingress{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(ingressesResource, c.ns, ingress, tenant), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeIngresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingres
 
 // Update takes the representation of a ingress and updates it. Returns the server's representation of the ingress, and an error, if there is any.
 func (c *FakeIngresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(ingressesResource, c.ns, ingress, c.te), &v1beta1.Ingress{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(ingressesResource, c.ns, ingress, tenant), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeIngresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingres
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeIngresses) UpdateStatus(ingress *v1beta1.Ingress) (*v1beta1.Ingress, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(ingressesResource, "status", c.ns, ingress, c.te), &v1beta1.Ingress{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(ingressesResource, "status", c.ns, ingress, tenant), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeIngresses) UpdateStatus(ingress *v1beta1.Ingress) (*v1beta1.Ingress
 
 // Delete takes name of the ingress and deletes it. Returns an error if one occurs.
 func (c *FakeIngresses) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(ingressesResource, c.ns, name, c.te), &v1beta1.Ingress{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(ingressesResource, c.ns, name, tenant), &v1beta1.Ingress{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeIngresses) DeleteCollection(options *v1.DeleteOptions, listOptions 
 
 // Patch applies the patch and returns the patched ingress.
 func (c *FakeIngresses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Ingress, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(ingressesResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.Ingress{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(ingressesResource, tenant, c.ns, name, pt, data, subresources...), &v1beta1.Ingress{})
 
 	if obj == nil {
 		return nil, err

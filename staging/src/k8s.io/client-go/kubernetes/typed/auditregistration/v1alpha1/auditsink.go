@@ -76,8 +76,13 @@ func newAuditSinksWithMultiTenancy(c *AuditregistrationV1alpha1Client, tenant st
 // Get takes name of the auditSink, and returns the corresponding auditSink object, and an error if there is any.
 func (c *auditSinks) Get(name string, options v1.GetOptions) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("auditsinks").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -170,6 +175,9 @@ func (c *auditSinks) Create(auditSink *v1alpha1.AuditSink) (result *v1alpha1.Aud
 	objectTenant := auditSink.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -189,6 +197,9 @@ func (c *auditSinks) Update(auditSink *v1alpha1.AuditSink) (result *v1alpha1.Aud
 	objectTenant := auditSink.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -204,8 +215,13 @@ func (c *auditSinks) Update(auditSink *v1alpha1.AuditSink) (result *v1alpha1.Aud
 
 // Delete takes name of the auditSink and deletes it. Returns an error if one occurs.
 func (c *auditSinks) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("auditsinks").
 		Name(name).
 		Body(options).
@@ -232,8 +248,13 @@ func (c *auditSinks) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 // Patch applies the patch and returns the patched auditSink.
 func (c *auditSinks) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.AuditSink, err error) {
 	result = &v1alpha1.AuditSink{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("auditsinks").
 		SubResource(subresources...).
 		Name(name).

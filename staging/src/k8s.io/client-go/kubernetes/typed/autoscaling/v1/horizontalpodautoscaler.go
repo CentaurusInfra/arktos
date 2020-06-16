@@ -79,8 +79,13 @@ func newHorizontalPodAutoscalersWithMultiTenancy(c *AutoscalingV1Client, namespa
 // Get takes name of the horizontalPodAutoscaler, and returns the corresponding horizontalPodAutoscaler object, and an error if there is any.
 func (c *horizontalPodAutoscalers) Get(name string, options metav1.GetOptions) (result *v1.HorizontalPodAutoscaler, err error) {
 	result = &v1.HorizontalPodAutoscaler{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *horizontalPodAutoscalers) Create(horizontalPodAutoscaler *v1.Horizontal
 	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *horizontalPodAutoscalers) Update(horizontalPodAutoscaler *v1.Horizontal
 	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *horizontalPodAutoscalers) UpdateStatus(horizontalPodAutoscaler *v1.Hori
 	objectTenant := horizontalPodAutoscaler.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *horizontalPodAutoscalers) UpdateStatus(horizontalPodAutoscaler *v1.Hori
 
 // Delete takes name of the horizontalPodAutoscaler and deletes it. Returns an error if one occurs.
 func (c *horizontalPodAutoscalers) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *horizontalPodAutoscalers) DeleteCollection(options *metav1.DeleteOption
 // Patch applies the patch and returns the patched horizontalPodAutoscaler.
 func (c *horizontalPodAutoscalers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.HorizontalPodAutoscaler, err error) {
 	result = &v1.HorizontalPodAutoscaler{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("horizontalpodautoscalers").
 		SubResource(subresources...).

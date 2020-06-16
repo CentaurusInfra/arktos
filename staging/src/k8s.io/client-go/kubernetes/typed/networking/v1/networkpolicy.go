@@ -78,8 +78,13 @@ func newNetworkPoliciesWithMultiTenancy(c *NetworkingV1Client, namespace string,
 // Get takes name of the networkPolicy, and returns the corresponding networkPolicy object, and an error if there is any.
 func (c *networkPolicies) Get(name string, options metav1.GetOptions) (result *v1.NetworkPolicy, err error) {
 	result = &v1.NetworkPolicy{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("networkpolicies").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *networkPolicies) Create(networkPolicy *v1.NetworkPolicy) (result *v1.Ne
 	objectTenant := networkPolicy.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *networkPolicies) Update(networkPolicy *v1.NetworkPolicy) (result *v1.Ne
 	objectTenant := networkPolicy.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *networkPolicies) Update(networkPolicy *v1.NetworkPolicy) (result *v1.Ne
 
 // Delete takes name of the networkPolicy and deletes it. Returns an error if one occurs.
 func (c *networkPolicies) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("networkpolicies").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *networkPolicies) DeleteCollection(options *metav1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched networkPolicy.
 func (c *networkPolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.NetworkPolicy, err error) {
 	result = &v1.NetworkPolicy{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("networkpolicies").
 		SubResource(subresources...).

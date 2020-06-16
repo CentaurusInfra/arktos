@@ -78,8 +78,13 @@ func newPodPresetsWithMultiTenancy(c *SettingsV1alpha1Client, namespace string, 
 // Get takes name of the podPreset, and returns the corresponding podPreset object, and an error if there is any.
 func (c *podPresets) Get(name string, options v1.GetOptions) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *podPresets) Create(podPreset *v1alpha1.PodPreset) (result *v1alpha1.Pod
 	objectTenant := podPreset.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *podPresets) Update(podPreset *v1alpha1.PodPreset) (result *v1alpha1.Pod
 	objectTenant := podPreset.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *podPresets) Update(podPreset *v1alpha1.PodPreset) (result *v1alpha1.Pod
 
 // Delete takes name of the podPreset and deletes it. Returns an error if one occurs.
 func (c *podPresets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("podpresets").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *podPresets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 // Patch applies the patch and returns the patched podPreset.
 func (c *podPresets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PodPreset, err error) {
 	result = &v1alpha1.PodPreset{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("podpresets").
 		SubResource(subresources...).

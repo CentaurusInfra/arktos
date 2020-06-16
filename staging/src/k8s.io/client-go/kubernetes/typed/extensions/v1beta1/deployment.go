@@ -82,8 +82,13 @@ func newDeploymentsWithMultiTenancy(c *ExtensionsV1beta1Client, namespace string
 // Get takes name of the deployment, and returns the corresponding deployment object, and an error if there is any.
 func (c *deployments) Get(name string, options v1.GetOptions) (result *v1beta1.Deployment, err error) {
 	result = &v1beta1.Deployment{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(name).
@@ -178,6 +183,9 @@ func (c *deployments) Create(deployment *v1beta1.Deployment) (result *v1beta1.De
 	objectTenant := deployment.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -198,6 +206,9 @@ func (c *deployments) Update(deployment *v1beta1.Deployment) (result *v1beta1.De
 	objectTenant := deployment.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -221,6 +232,9 @@ func (c *deployments) UpdateStatus(deployment *v1beta1.Deployment) (result *v1be
 	objectTenant := deployment.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -238,8 +252,13 @@ func (c *deployments) UpdateStatus(deployment *v1beta1.Deployment) (result *v1be
 
 // Delete takes name of the deployment and deletes it. Returns an error if one occurs.
 func (c *deployments) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(name).
@@ -268,8 +287,13 @@ func (c *deployments) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 // Patch applies the patch and returns the patched deployment.
 func (c *deployments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Deployment, err error) {
 	result = &v1beta1.Deployment{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("deployments").
 		SubResource(subresources...).
@@ -284,8 +308,13 @@ func (c *deployments) Patch(name string, pt types.PatchType, data []byte, subres
 // GetScale takes name of the deployment, and returns the corresponding v1beta1.Scale object, and an error if there is any.
 func (c *deployments) GetScale(deploymentName string, options v1.GetOptions) (result *v1beta1.Scale, err error) {
 	result = &v1beta1.Scale{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("deployments").
 		Name(deploymentName).
@@ -304,6 +333,9 @@ func (c *deployments) UpdateScale(deploymentName string, scale *v1beta1.Scale) (
 	objectTenant := scale.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().

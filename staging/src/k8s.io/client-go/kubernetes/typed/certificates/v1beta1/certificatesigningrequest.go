@@ -77,8 +77,13 @@ func newCertificateSigningRequestsWithMultiTenancy(c *CertificatesV1beta1Client,
 // Get takes name of the certificateSigningRequest, and returns the corresponding certificateSigningRequest object, and an error if there is any.
 func (c *certificateSigningRequests) Get(name string, options v1.GetOptions) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("certificatesigningrequests").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -171,6 +176,9 @@ func (c *certificateSigningRequests) Create(certificateSigningRequest *v1beta1.C
 	objectTenant := certificateSigningRequest.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -190,6 +198,9 @@ func (c *certificateSigningRequests) Update(certificateSigningRequest *v1beta1.C
 	objectTenant := certificateSigningRequest.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -212,6 +223,9 @@ func (c *certificateSigningRequests) UpdateStatus(certificateSigningRequest *v1b
 	objectTenant := certificateSigningRequest.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -228,8 +242,13 @@ func (c *certificateSigningRequests) UpdateStatus(certificateSigningRequest *v1b
 
 // Delete takes name of the certificateSigningRequest and deletes it. Returns an error if one occurs.
 func (c *certificateSigningRequests) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("certificatesigningrequests").
 		Name(name).
 		Body(options).
@@ -256,8 +275,13 @@ func (c *certificateSigningRequests) DeleteCollection(options *v1.DeleteOptions,
 // Patch applies the patch and returns the patched certificateSigningRequest.
 func (c *certificateSigningRequests) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CertificateSigningRequest, err error) {
 	result = &v1beta1.CertificateSigningRequest{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("certificatesigningrequests").
 		SubResource(subresources...).
 		Name(name).

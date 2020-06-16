@@ -39,6 +39,7 @@ var storageclustersKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind
 
 // Get takes name of the storageCluster, and returns the corresponding storageCluster object, and an error if there is any.
 func (c *FakeStorageClusters) Get(name string, options v1.GetOptions) (result *corev1.StorageCluster, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(storageclustersResource, name), &corev1.StorageCluster{})
 	if obj == nil {
@@ -80,6 +81,7 @@ func (c *FakeStorageClusters) Watch(opts v1.ListOptions) watch.AggregatedWatchIn
 
 // Create takes the representation of a storageCluster and creates it.  Returns the server's representation of the storageCluster, and an error, if there is any.
 func (c *FakeStorageClusters) Create(storageCluster *corev1.StorageCluster) (result *corev1.StorageCluster, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(storageclustersResource, storageCluster), &corev1.StorageCluster{})
 	if obj == nil {
@@ -91,6 +93,7 @@ func (c *FakeStorageClusters) Create(storageCluster *corev1.StorageCluster) (res
 
 // Update takes the representation of a storageCluster and updates it. Returns the server's representation of the storageCluster, and an error, if there is any.
 func (c *FakeStorageClusters) Update(storageCluster *corev1.StorageCluster) (result *corev1.StorageCluster, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(storageclustersResource, storageCluster), &corev1.StorageCluster{})
 	if obj == nil {
@@ -102,6 +105,7 @@ func (c *FakeStorageClusters) Update(storageCluster *corev1.StorageCluster) (res
 
 // Delete takes name of the storageCluster and deletes it. Returns an error if one occurs.
 func (c *FakeStorageClusters) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(storageclustersResource, name), &corev1.StorageCluster{})
 	return err
@@ -117,6 +121,7 @@ func (c *FakeStorageClusters) DeleteCollection(options *v1.DeleteOptions, listOp
 
 // Patch applies the patch and returns the patched storageCluster.
 func (c *FakeStorageClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.StorageCluster, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(storageclustersResource, name, pt, data, subresources...), &corev1.StorageCluster{})
 	if obj == nil {

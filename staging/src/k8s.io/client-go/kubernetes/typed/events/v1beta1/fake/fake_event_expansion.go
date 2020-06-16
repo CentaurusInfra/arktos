@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	v1beta1 "k8s.io/api/events/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	core "k8s.io/client-go/testing"
 )
@@ -29,11 +30,11 @@ import (
 func (c *FakeEvents) CreateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Event, error) {
 	action := core.CreateActionImpl{}
 	switch {
-	case c.te == "" && c.ns == "":
+	case c.te == metav1.TenantAll && c.ns == "":
 		action = core.NewRootCreateAction(eventsResource, event)
-	case c.te != "" && c.ns == "":
+	case c.te != metav1.TenantAll && c.ns == "":
 		action = core.NewTenantCreateAction(eventsResource, event, c.te)
-	case c.te != "" && c.ns != "":
+	case c.te != metav1.TenantAll && c.ns != "":
 		action = core.NewCreateActionWithMultiTenancy(eventsResource, c.ns, event, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
@@ -51,11 +52,11 @@ func (c *FakeEvents) CreateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Ev
 func (c *FakeEvents) UpdateWithEventNamespace(event *v1beta1.Event) (*v1beta1.Event, error) {
 	action := core.UpdateActionImpl{}
 	switch {
-	case c.te == "" && c.ns == "":
+	case c.te == metav1.TenantAll && c.ns == "":
 		action = core.NewRootUpdateAction(eventsResource, event)
-	case c.te != "" && c.ns == "":
+	case c.te != metav1.TenantAll && c.ns == "":
 		action = core.NewTenantUpdateAction(eventsResource, event, c.te)
-	case c.te != "" && c.ns != "":
+	case c.te != metav1.TenantAll && c.ns != "":
 		action = core.NewUpdateActionWithMultiTenancy(eventsResource, c.ns, event, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
@@ -73,11 +74,11 @@ func (c *FakeEvents) PatchWithEventNamespace(event *v1beta1.Event, data []byte) 
 	action := core.PatchActionImpl{}
 	pt := types.StrategicMergePatchType
 	switch {
-	case c.te == "" && c.ns == "":
+	case c.te == metav1.TenantAll && c.ns == "":
 		action = core.NewRootPatchAction(eventsResource, event.Name, pt, data)
-	case c.te != "" && c.ns == "":
+	case c.te != metav1.TenantAll && c.ns == "":
 		action = core.NewTenantPatchAction(eventsResource, event.Name, pt, data, c.te)
-	case c.te != "" && c.ns != "":
+	case c.te != metav1.TenantAll && c.ns != "":
 		action = core.NewPatchActionWithMultiTenancy(eventsResource, c.ns, event.Name, pt, data, c.te)
 	default:
 		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")

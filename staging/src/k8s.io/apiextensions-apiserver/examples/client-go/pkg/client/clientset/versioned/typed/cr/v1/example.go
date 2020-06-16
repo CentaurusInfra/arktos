@@ -78,8 +78,13 @@ func newExamplesWithMultiTenancy(c *CrV1Client, namespace string, tenant string)
 // Get takes name of the example, and returns the corresponding example object, and an error if there is any.
 func (c *examples) Get(name string, options metav1.GetOptions) (result *v1.Example, err error) {
 	result = &v1.Example{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("examples").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *examples) Create(example *v1.Example) (result *v1.Example, err error) {
 	objectTenant := example.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *examples) Update(example *v1.Example) (result *v1.Example, err error) {
 	objectTenant := example.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *examples) Update(example *v1.Example) (result *v1.Example, err error) {
 
 // Delete takes name of the example and deletes it. Returns an error if one occurs.
 func (c *examples) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("examples").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *examples) DeleteCollection(options *metav1.DeleteOptions, listOptions m
 // Patch applies the patch and returns the patched example.
 func (c *examples) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Example, err error) {
 	result = &v1.Example{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("examples").
 		SubResource(subresources...).

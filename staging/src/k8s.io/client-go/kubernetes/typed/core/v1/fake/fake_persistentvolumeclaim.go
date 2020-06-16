@@ -42,8 +42,13 @@ var persistentvolumeclaimsKind = schema.GroupVersionKind{Group: "", Version: "v1
 
 // Get takes name of the persistentVolumeClaim, and returns the corresponding persistentVolumeClaim object, and an error if there is any.
 func (c *FakePersistentVolumeClaims) Get(name string, options v1.GetOptions) (result *corev1.PersistentVolumeClaim, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, name, c.te), &corev1.PersistentVolumeClaim{})
+		Invokes(testing.NewGetActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, name, tenant), &corev1.PersistentVolumeClaim{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakePersistentVolumeClaims) Watch(opts v1.ListOptions) watch.Aggregated
 
 // Create takes the representation of a persistentVolumeClaim and creates it.  Returns the server's representation of the persistentVolumeClaim, and an error, if there is any.
 func (c *FakePersistentVolumeClaims) Create(persistentVolumeClaim *corev1.PersistentVolumeClaim) (result *corev1.PersistentVolumeClaim, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, persistentVolumeClaim, c.te), &corev1.PersistentVolumeClaim{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, persistentVolumeClaim, tenant), &corev1.PersistentVolumeClaim{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakePersistentVolumeClaims) Create(persistentVolumeClaim *corev1.Persis
 
 // Update takes the representation of a persistentVolumeClaim and updates it. Returns the server's representation of the persistentVolumeClaim, and an error, if there is any.
 func (c *FakePersistentVolumeClaims) Update(persistentVolumeClaim *corev1.PersistentVolumeClaim) (result *corev1.PersistentVolumeClaim, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, persistentVolumeClaim, c.te), &corev1.PersistentVolumeClaim{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, persistentVolumeClaim, tenant), &corev1.PersistentVolumeClaim{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakePersistentVolumeClaims) Update(persistentVolumeClaim *corev1.Persis
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakePersistentVolumeClaims) UpdateStatus(persistentVolumeClaim *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(persistentvolumeclaimsResource, "status", c.ns, persistentVolumeClaim, c.te), &corev1.PersistentVolumeClaim{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(persistentvolumeclaimsResource, "status", c.ns, persistentVolumeClaim, tenant), &corev1.PersistentVolumeClaim{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakePersistentVolumeClaims) UpdateStatus(persistentVolumeClaim *corev1.
 
 // Delete takes name of the persistentVolumeClaim and deletes it. Returns an error if one occurs.
 func (c *FakePersistentVolumeClaims) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, name, c.te), &corev1.PersistentVolumeClaim{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, name, tenant), &corev1.PersistentVolumeClaim{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakePersistentVolumeClaims) DeleteCollection(options *v1.DeleteOptions,
 
 // Patch applies the patch and returns the patched persistentVolumeClaim.
 func (c *FakePersistentVolumeClaims) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.PersistentVolumeClaim, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(persistentvolumeclaimsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.PersistentVolumeClaim{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(persistentvolumeclaimsResource, tenant, c.ns, name, pt, data, subresources...), &corev1.PersistentVolumeClaim{})
 
 	if obj == nil {
 		return nil, err

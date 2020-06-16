@@ -70,6 +70,7 @@ func newNodes(c *CoreV1Client) *nodes {
 // Get takes name of the node, and returns the corresponding node object, and an error if there is any.
 func (c *nodes) Get(name string, options metav1.GetOptions) (result *v1.Node, err error) {
 	result = &v1.Node{}
+
 	err = c.client.Get().
 		Resource("nodes").
 		Name(name).
@@ -199,6 +200,7 @@ func (c *nodes) UpdateStatus(node *v1.Node) (result *v1.Node, err error) {
 
 // Delete takes name of the node and deletes it. Returns an error if one occurs.
 func (c *nodes) Delete(name string, options *metav1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("nodes").
 		Name(name).
@@ -225,6 +227,7 @@ func (c *nodes) DeleteCollection(options *metav1.DeleteOptions, listOptions meta
 // Patch applies the patch and returns the patched node.
 func (c *nodes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Node, err error) {
 	result = &v1.Node{}
+
 	err = c.client.Patch(pt).
 		Resource("nodes").
 		SubResource(subresources...).

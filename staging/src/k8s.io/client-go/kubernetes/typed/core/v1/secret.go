@@ -78,8 +78,13 @@ func newSecretsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string
 // Get takes name of the secret, and returns the corresponding secret object, and an error if there is any.
 func (c *secrets) Get(name string, options metav1.GetOptions) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("secrets").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *secrets) Create(secret *v1.Secret) (result *v1.Secret, err error) {
 	objectTenant := secret.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *secrets) Update(secret *v1.Secret) (result *v1.Secret, err error) {
 	objectTenant := secret.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *secrets) Update(secret *v1.Secret) (result *v1.Secret, err error) {
 
 // Delete takes name of the secret and deletes it. Returns an error if one occurs.
 func (c *secrets) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("secrets").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *secrets) DeleteCollection(options *metav1.DeleteOptions, listOptions me
 // Patch applies the patch and returns the patched secret.
 func (c *secrets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Secret, err error) {
 	result = &v1.Secret{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("secrets").
 		SubResource(subresources...).

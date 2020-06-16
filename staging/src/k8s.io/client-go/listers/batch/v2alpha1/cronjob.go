@@ -91,7 +91,9 @@ func (s cronJobNamespaceLister) List(selector labels.Selector) (ret []*v2alpha1.
 // Get retrieves the CronJob from the indexer for a given namespace and name.
 func (s cronJobNamespaceLister) Get(name string) (*v2alpha1.CronJob, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
+	// The backward-compatible informer may have the tenant set as "system" or "all",
+	// Yet when it comes to get an object, the tenant can only be "system", where the key is the {namespace}/{name}
+	if s.tenant == "system" || s.tenant == "all" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

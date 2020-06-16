@@ -78,8 +78,13 @@ func newServiceAccountsWithMultiTenancy(c *CoreV1Client, namespace string, tenan
 // Get takes name of the serviceAccount, and returns the corresponding serviceAccount object, and an error if there is any.
 func (c *serviceAccounts) Get(name string, options metav1.GetOptions) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *serviceAccounts) Create(serviceAccount *v1.ServiceAccount) (result *v1.
 	objectTenant := serviceAccount.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *serviceAccounts) Update(serviceAccount *v1.ServiceAccount) (result *v1.
 	objectTenant := serviceAccount.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *serviceAccounts) Update(serviceAccount *v1.ServiceAccount) (result *v1.
 
 // Delete takes name of the serviceAccount and deletes it. Returns an error if one occurs.
 func (c *serviceAccounts) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *serviceAccounts) DeleteCollection(options *metav1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched serviceAccount.
 func (c *serviceAccounts) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ServiceAccount, err error) {
 	result = &v1.ServiceAccount{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("serviceaccounts").
 		SubResource(subresources...).

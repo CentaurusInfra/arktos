@@ -77,8 +77,13 @@ func newVolumeAttachmentsWithMultiTenancy(c *StorageV1alpha1Client, tenant strin
 // Get takes name of the volumeAttachment, and returns the corresponding volumeAttachment object, and an error if there is any.
 func (c *volumeAttachments) Get(name string, options v1.GetOptions) (result *v1alpha1.VolumeAttachment, err error) {
 	result = &v1alpha1.VolumeAttachment{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("volumeattachments").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -171,6 +176,9 @@ func (c *volumeAttachments) Create(volumeAttachment *v1alpha1.VolumeAttachment) 
 	objectTenant := volumeAttachment.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -190,6 +198,9 @@ func (c *volumeAttachments) Update(volumeAttachment *v1alpha1.VolumeAttachment) 
 	objectTenant := volumeAttachment.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -212,6 +223,9 @@ func (c *volumeAttachments) UpdateStatus(volumeAttachment *v1alpha1.VolumeAttach
 	objectTenant := volumeAttachment.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -228,8 +242,13 @@ func (c *volumeAttachments) UpdateStatus(volumeAttachment *v1alpha1.VolumeAttach
 
 // Delete takes name of the volumeAttachment and deletes it. Returns an error if one occurs.
 func (c *volumeAttachments) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("volumeattachments").
 		Name(name).
 		Body(options).
@@ -256,8 +275,13 @@ func (c *volumeAttachments) DeleteCollection(options *v1.DeleteOptions, listOpti
 // Patch applies the patch and returns the patched volumeAttachment.
 func (c *volumeAttachments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.VolumeAttachment, err error) {
 	result = &v1alpha1.VolumeAttachment{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("volumeattachments").
 		SubResource(subresources...).
 		Name(name).

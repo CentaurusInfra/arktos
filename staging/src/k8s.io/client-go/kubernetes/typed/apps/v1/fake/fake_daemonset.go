@@ -42,8 +42,13 @@ var daemonsetsKind = schema.GroupVersionKind{Group: "apps", Version: "v1", Kind:
 
 // Get takes name of the daemonSet, and returns the corresponding daemonSet object, and an error if there is any.
 func (c *FakeDaemonSets) Get(name string, options v1.GetOptions) (result *appsv1.DaemonSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(daemonsetsResource, c.ns, name, c.te), &appsv1.DaemonSet{})
+		Invokes(testing.NewGetActionWithMultiTenancy(daemonsetsResource, c.ns, name, tenant), &appsv1.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeDaemonSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 
 // Create takes the representation of a daemonSet and creates it.  Returns the server's representation of the daemonSet, and an error, if there is any.
 func (c *FakeDaemonSets) Create(daemonSet *appsv1.DaemonSet) (result *appsv1.DaemonSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(daemonsetsResource, c.ns, daemonSet, c.te), &appsv1.DaemonSet{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(daemonsetsResource, c.ns, daemonSet, tenant), &appsv1.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeDaemonSets) Create(daemonSet *appsv1.DaemonSet) (result *appsv1.Dae
 
 // Update takes the representation of a daemonSet and updates it. Returns the server's representation of the daemonSet, and an error, if there is any.
 func (c *FakeDaemonSets) Update(daemonSet *appsv1.DaemonSet) (result *appsv1.DaemonSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(daemonsetsResource, c.ns, daemonSet, c.te), &appsv1.DaemonSet{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(daemonsetsResource, c.ns, daemonSet, tenant), &appsv1.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeDaemonSets) Update(daemonSet *appsv1.DaemonSet) (result *appsv1.Dae
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeDaemonSets) UpdateStatus(daemonSet *appsv1.DaemonSet) (*appsv1.DaemonSet, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(daemonsetsResource, "status", c.ns, daemonSet, c.te), &appsv1.DaemonSet{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(daemonsetsResource, "status", c.ns, daemonSet, tenant), &appsv1.DaemonSet{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeDaemonSets) UpdateStatus(daemonSet *appsv1.DaemonSet) (*appsv1.Daem
 
 // Delete takes name of the daemonSet and deletes it. Returns an error if one occurs.
 func (c *FakeDaemonSets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(daemonsetsResource, c.ns, name, c.te), &appsv1.DaemonSet{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(daemonsetsResource, c.ns, name, tenant), &appsv1.DaemonSet{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeDaemonSets) DeleteCollection(options *v1.DeleteOptions, listOptions
 
 // Patch applies the patch and returns the patched daemonSet.
 func (c *FakeDaemonSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *appsv1.DaemonSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(daemonsetsResource, c.te, c.ns, name, pt, data, subresources...), &appsv1.DaemonSet{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(daemonsetsResource, tenant, c.ns, name, pt, data, subresources...), &appsv1.DaemonSet{})
 
 	if obj == nil {
 		return nil, err

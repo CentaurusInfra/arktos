@@ -76,8 +76,13 @@ func newClusterRoleBindingsWithMultiTenancy(c *RbacV1alpha1Client, tenant string
 // Get takes name of the clusterRoleBinding, and returns the corresponding clusterRoleBinding object, and an error if there is any.
 func (c *clusterRoleBindings) Get(name string, options v1.GetOptions) (result *v1alpha1.ClusterRoleBinding, err error) {
 	result = &v1alpha1.ClusterRoleBinding{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("clusterrolebindings").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -170,6 +175,9 @@ func (c *clusterRoleBindings) Create(clusterRoleBinding *v1alpha1.ClusterRoleBin
 	objectTenant := clusterRoleBinding.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -189,6 +197,9 @@ func (c *clusterRoleBindings) Update(clusterRoleBinding *v1alpha1.ClusterRoleBin
 	objectTenant := clusterRoleBinding.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -204,8 +215,13 @@ func (c *clusterRoleBindings) Update(clusterRoleBinding *v1alpha1.ClusterRoleBin
 
 // Delete takes name of the clusterRoleBinding and deletes it. Returns an error if one occurs.
 func (c *clusterRoleBindings) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("clusterrolebindings").
 		Name(name).
 		Body(options).
@@ -232,8 +248,13 @@ func (c *clusterRoleBindings) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched clusterRoleBinding.
 func (c *clusterRoleBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ClusterRoleBinding, err error) {
 	result = &v1alpha1.ClusterRoleBinding{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("clusterrolebindings").
 		SubResource(subresources...).
 		Name(name).

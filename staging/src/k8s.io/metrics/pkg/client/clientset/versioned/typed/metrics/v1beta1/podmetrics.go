@@ -72,8 +72,13 @@ func newPodMetricsesWithMultiTenancy(c *MetricsV1beta1Client, namespace string, 
 // Get takes name of the podMetrics, and returns the corresponding podMetrics object, and an error if there is any.
 func (c *podMetricses) Get(name string, options v1.GetOptions) (result *v1beta1.PodMetrics, err error) {
 	result = &v1beta1.PodMetrics{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(name).

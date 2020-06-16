@@ -42,8 +42,13 @@ var endpointsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "End
 
 // Get takes name of the endpoints, and returns the corresponding endpoints object, and an error if there is any.
 func (c *FakeEndpoints) Get(name string, options v1.GetOptions) (result *corev1.Endpoints, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(endpointsResource, c.ns, name, c.te), &corev1.Endpoints{})
+		Invokes(testing.NewGetActionWithMultiTenancy(endpointsResource, c.ns, name, tenant), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeEndpoints) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfac
 
 // Create takes the representation of a endpoints and creates it.  Returns the server's representation of the endpoints, and an error, if there is any.
 func (c *FakeEndpoints) Create(endpoints *corev1.Endpoints) (result *corev1.Endpoints, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(endpointsResource, c.ns, endpoints, c.te), &corev1.Endpoints{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(endpointsResource, c.ns, endpoints, tenant), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeEndpoints) Create(endpoints *corev1.Endpoints) (result *corev1.Endp
 
 // Update takes the representation of a endpoints and updates it. Returns the server's representation of the endpoints, and an error, if there is any.
 func (c *FakeEndpoints) Update(endpoints *corev1.Endpoints) (result *corev1.Endpoints, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(endpointsResource, c.ns, endpoints, c.te), &corev1.Endpoints{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(endpointsResource, c.ns, endpoints, tenant), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeEndpoints) Update(endpoints *corev1.Endpoints) (result *corev1.Endp
 
 // Delete takes name of the endpoints and deletes it. Returns an error if one occurs.
 func (c *FakeEndpoints) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(endpointsResource, c.ns, name, c.te), &corev1.Endpoints{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(endpointsResource, c.ns, name, tenant), &corev1.Endpoints{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeEndpoints) DeleteCollection(options *v1.DeleteOptions, listOptions 
 
 // Patch applies the patch and returns the patched endpoints.
 func (c *FakeEndpoints) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Endpoints, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(endpointsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Endpoints{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(endpointsResource, tenant, c.ns, name, pt, data, subresources...), &corev1.Endpoints{})
 
 	if obj == nil {
 		return nil, err

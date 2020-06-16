@@ -69,6 +69,7 @@ func newCSIDrivers(c *StorageV1beta1Client) *cSIDrivers {
 // Get takes name of the cSIDriver, and returns the corresponding cSIDriver object, and an error if there is any.
 func (c *cSIDrivers) Get(name string, options v1.GetOptions) (result *v1beta1.CSIDriver, err error) {
 	result = &v1beta1.CSIDriver{}
+
 	err = c.client.Get().
 		Resource("csidrivers").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *cSIDrivers) Update(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDr
 
 // Delete takes name of the cSIDriver and deletes it. Returns an error if one occurs.
 func (c *cSIDrivers) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("csidrivers").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *cSIDrivers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 // Patch applies the patch and returns the patched cSIDriver.
 func (c *cSIDrivers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CSIDriver, err error) {
 	result = &v1beta1.CSIDriver{}
+
 	err = c.client.Patch(pt).
 		Resource("csidrivers").
 		SubResource(subresources...).

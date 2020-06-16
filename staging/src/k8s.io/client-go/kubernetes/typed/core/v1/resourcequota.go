@@ -79,8 +79,13 @@ func newResourceQuotasWithMultiTenancy(c *CoreV1Client, namespace string, tenant
 // Get takes name of the resourceQuota, and returns the corresponding resourceQuota object, and an error if there is any.
 func (c *resourceQuotas) Get(name string, options metav1.GetOptions) (result *v1.ResourceQuota, err error) {
 	result = &v1.ResourceQuota{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *resourceQuotas) Create(resourceQuota *v1.ResourceQuota) (result *v1.Res
 	objectTenant := resourceQuota.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *resourceQuotas) Update(resourceQuota *v1.ResourceQuota) (result *v1.Res
 	objectTenant := resourceQuota.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *resourceQuotas) UpdateStatus(resourceQuota *v1.ResourceQuota) (result *
 	objectTenant := resourceQuota.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *resourceQuotas) UpdateStatus(resourceQuota *v1.ResourceQuota) (result *
 
 // Delete takes name of the resourceQuota and deletes it. Returns an error if one occurs.
 func (c *resourceQuotas) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *resourceQuotas) DeleteCollection(options *metav1.DeleteOptions, listOpt
 // Patch applies the patch and returns the patched resourceQuota.
 func (c *resourceQuotas) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ResourceQuota, err error) {
 	result = &v1.ResourceQuota{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("resourcequotas").
 		SubResource(subresources...).

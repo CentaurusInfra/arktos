@@ -42,8 +42,13 @@ var testtypesKind = schema.GroupVersionKind{Group: "example.crd.code-generator.k
 
 // Get takes name of the testType, and returns the corresponding testType object, and an error if there is any.
 func (c *FakeTestTypes) Get(name string, options v1.GetOptions) (result *examplev1.TestType, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(testtypesResource, c.ns, name, c.te), &examplev1.TestType{})
+		Invokes(testing.NewGetActionWithMultiTenancy(testtypesResource, c.ns, name, tenant), &examplev1.TestType{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeTestTypes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfac
 
 // Create takes the representation of a testType and creates it.  Returns the server's representation of the testType, and an error, if there is any.
 func (c *FakeTestTypes) Create(testType *examplev1.TestType) (result *examplev1.TestType, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(testtypesResource, c.ns, testType, c.te), &examplev1.TestType{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(testtypesResource, c.ns, testType, tenant), &examplev1.TestType{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeTestTypes) Create(testType *examplev1.TestType) (result *examplev1.
 
 // Update takes the representation of a testType and updates it. Returns the server's representation of the testType, and an error, if there is any.
 func (c *FakeTestTypes) Update(testType *examplev1.TestType) (result *examplev1.TestType, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(testtypesResource, c.ns, testType, c.te), &examplev1.TestType{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(testtypesResource, c.ns, testType, tenant), &examplev1.TestType{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeTestTypes) Update(testType *examplev1.TestType) (result *examplev1.
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeTestTypes) UpdateStatus(testType *examplev1.TestType) (*examplev1.TestType, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(testtypesResource, "status", c.ns, testType, c.te), &examplev1.TestType{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(testtypesResource, "status", c.ns, testType, tenant), &examplev1.TestType{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeTestTypes) UpdateStatus(testType *examplev1.TestType) (*examplev1.T
 
 // Delete takes name of the testType and deletes it. Returns an error if one occurs.
 func (c *FakeTestTypes) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(testtypesResource, c.ns, name, c.te), &examplev1.TestType{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(testtypesResource, c.ns, name, tenant), &examplev1.TestType{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeTestTypes) DeleteCollection(options *v1.DeleteOptions, listOptions 
 
 // Patch applies the patch and returns the patched testType.
 func (c *FakeTestTypes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *examplev1.TestType, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(testtypesResource, c.te, c.ns, name, pt, data, subresources...), &examplev1.TestType{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(testtypesResource, tenant, c.ns, name, pt, data, subresources...), &examplev1.TestType{})
 
 	if obj == nil {
 		return nil, err

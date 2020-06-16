@@ -76,8 +76,13 @@ func newClusterRolesWithMultiTenancy(c *RbacV1Client, tenant string) *clusterRol
 // Get takes name of the clusterRole, and returns the corresponding clusterRole object, and an error if there is any.
 func (c *clusterRoles) Get(name string, options metav1.GetOptions) (result *v1.ClusterRole, err error) {
 	result = &v1.ClusterRole{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("clusterroles").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -170,6 +175,9 @@ func (c *clusterRoles) Create(clusterRole *v1.ClusterRole) (result *v1.ClusterRo
 	objectTenant := clusterRole.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -189,6 +197,9 @@ func (c *clusterRoles) Update(clusterRole *v1.ClusterRole) (result *v1.ClusterRo
 	objectTenant := clusterRole.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -204,8 +215,13 @@ func (c *clusterRoles) Update(clusterRole *v1.ClusterRole) (result *v1.ClusterRo
 
 // Delete takes name of the clusterRole and deletes it. Returns an error if one occurs.
 func (c *clusterRoles) Delete(name string, options *metav1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("clusterroles").
 		Name(name).
 		Body(options).
@@ -232,8 +248,13 @@ func (c *clusterRoles) DeleteCollection(options *metav1.DeleteOptions, listOptio
 // Patch applies the patch and returns the patched clusterRole.
 func (c *clusterRoles) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterRole, err error) {
 	result = &v1.ClusterRole{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("clusterroles").
 		SubResource(subresources...).
 		Name(name).

@@ -43,8 +43,13 @@ var replicationcontrollersKind = schema.GroupVersionKind{Group: "", Version: "v1
 
 // Get takes name of the replicationController, and returns the corresponding replicationController object, and an error if there is any.
 func (c *FakeReplicationControllers) Get(name string, options v1.GetOptions) (result *corev1.ReplicationController, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(replicationcontrollersResource, c.ns, name, c.te), &corev1.ReplicationController{})
+		Invokes(testing.NewGetActionWithMultiTenancy(replicationcontrollersResource, c.ns, name, tenant), &corev1.ReplicationController{})
 
 	if obj == nil {
 		return nil, err
@@ -87,8 +92,13 @@ func (c *FakeReplicationControllers) Watch(opts v1.ListOptions) watch.Aggregated
 
 // Create takes the representation of a replicationController and creates it.  Returns the server's representation of the replicationController, and an error, if there is any.
 func (c *FakeReplicationControllers) Create(replicationController *corev1.ReplicationController) (result *corev1.ReplicationController, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(replicationcontrollersResource, c.ns, replicationController, c.te), &corev1.ReplicationController{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(replicationcontrollersResource, c.ns, replicationController, tenant), &corev1.ReplicationController{})
 
 	if obj == nil {
 		return nil, err
@@ -99,8 +109,13 @@ func (c *FakeReplicationControllers) Create(replicationController *corev1.Replic
 
 // Update takes the representation of a replicationController and updates it. Returns the server's representation of the replicationController, and an error, if there is any.
 func (c *FakeReplicationControllers) Update(replicationController *corev1.ReplicationController) (result *corev1.ReplicationController, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(replicationcontrollersResource, c.ns, replicationController, c.te), &corev1.ReplicationController{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(replicationcontrollersResource, c.ns, replicationController, tenant), &corev1.ReplicationController{})
 
 	if obj == nil {
 		return nil, err
@@ -112,8 +127,13 @@ func (c *FakeReplicationControllers) Update(replicationController *corev1.Replic
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeReplicationControllers) UpdateStatus(replicationController *corev1.ReplicationController) (*corev1.ReplicationController, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(replicationcontrollersResource, "status", c.ns, replicationController, c.te), &corev1.ReplicationController{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(replicationcontrollersResource, "status", c.ns, replicationController, tenant), &corev1.ReplicationController{})
 
 	if obj == nil {
 		return nil, err
@@ -123,8 +143,13 @@ func (c *FakeReplicationControllers) UpdateStatus(replicationController *corev1.
 
 // Delete takes name of the replicationController and deletes it. Returns an error if one occurs.
 func (c *FakeReplicationControllers) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(replicationcontrollersResource, c.ns, name, c.te), &corev1.ReplicationController{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(replicationcontrollersResource, c.ns, name, tenant), &corev1.ReplicationController{})
 
 	return err
 }
@@ -139,8 +164,13 @@ func (c *FakeReplicationControllers) DeleteCollection(options *v1.DeleteOptions,
 
 // Patch applies the patch and returns the patched replicationController.
 func (c *FakeReplicationControllers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.ReplicationController, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(replicationcontrollersResource, c.te, c.ns, name, pt, data, subresources...), &corev1.ReplicationController{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(replicationcontrollersResource, tenant, c.ns, name, pt, data, subresources...), &corev1.ReplicationController{})
 
 	if obj == nil {
 		return nil, err
@@ -151,8 +181,13 @@ func (c *FakeReplicationControllers) Patch(name string, pt types.PatchType, data
 
 // GetScale takes name of the replicationController, and returns the corresponding scale object, and an error if there is any.
 func (c *FakeReplicationControllers) GetScale(replicationControllerName string, options v1.GetOptions) (result *autoscalingv1.Scale, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetSubresourceActionWithMultiTenancy(replicationcontrollersResource, c.ns, "scale", replicationControllerName, c.te), &autoscalingv1.Scale{})
+		Invokes(testing.NewGetSubresourceActionWithMultiTenancy(replicationcontrollersResource, c.ns, "scale", replicationControllerName, tenant), &autoscalingv1.Scale{})
 
 	if obj == nil {
 		return nil, err
@@ -163,8 +198,13 @@ func (c *FakeReplicationControllers) GetScale(replicationControllerName string, 
 
 // UpdateScale takes the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *FakeReplicationControllers) UpdateScale(replicationControllerName string, scale *autoscalingv1.Scale) (result *autoscalingv1.Scale, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(replicationcontrollersResource, "scale", c.ns, scale, c.te), &autoscalingv1.Scale{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(replicationcontrollersResource, "scale", c.ns, scale, tenant), &autoscalingv1.Scale{})
 
 	if obj == nil {
 		return nil, err

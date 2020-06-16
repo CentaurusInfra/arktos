@@ -41,6 +41,7 @@ var clustertesttypesKind = schema.GroupVersionKind{Group: "example.crd.code-gene
 
 // Get takes name of the clusterTestType, and returns the corresponding clusterTestType object, and an error if there is any.
 func (c *FakeClusterTestTypes) Get(name string, options v1.GetOptions) (result *examplev1.ClusterTestType, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(clustertesttypesResource, name), &examplev1.ClusterTestType{})
 	if obj == nil {
@@ -82,6 +83,7 @@ func (c *FakeClusterTestTypes) Watch(opts v1.ListOptions) watch.AggregatedWatchI
 
 // Create takes the representation of a clusterTestType and creates it.  Returns the server's representation of the clusterTestType, and an error, if there is any.
 func (c *FakeClusterTestTypes) Create(clusterTestType *examplev1.ClusterTestType) (result *examplev1.ClusterTestType, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(clustertesttypesResource, clusterTestType), &examplev1.ClusterTestType{})
 	if obj == nil {
@@ -93,6 +95,7 @@ func (c *FakeClusterTestTypes) Create(clusterTestType *examplev1.ClusterTestType
 
 // Update takes the representation of a clusterTestType and updates it. Returns the server's representation of the clusterTestType, and an error, if there is any.
 func (c *FakeClusterTestTypes) Update(clusterTestType *examplev1.ClusterTestType) (result *examplev1.ClusterTestType, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(clustertesttypesResource, clusterTestType), &examplev1.ClusterTestType{})
 	if obj == nil {
@@ -105,6 +108,7 @@ func (c *FakeClusterTestTypes) Update(clusterTestType *examplev1.ClusterTestType
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeClusterTestTypes) UpdateStatus(clusterTestType *examplev1.ClusterTestType) (*examplev1.ClusterTestType, error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(clustertesttypesResource, "status", clusterTestType), &examplev1.ClusterTestType{})
 	if obj == nil {
@@ -115,6 +119,7 @@ func (c *FakeClusterTestTypes) UpdateStatus(clusterTestType *examplev1.ClusterTe
 
 // Delete takes name of the clusterTestType and deletes it. Returns an error if one occurs.
 func (c *FakeClusterTestTypes) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(clustertesttypesResource, name), &examplev1.ClusterTestType{})
 	return err
@@ -130,6 +135,7 @@ func (c *FakeClusterTestTypes) DeleteCollection(options *v1.DeleteOptions, listO
 
 // Patch applies the patch and returns the patched clusterTestType.
 func (c *FakeClusterTestTypes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *examplev1.ClusterTestType, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(clustertesttypesResource, name, pt, data, subresources...), &examplev1.ClusterTestType{})
 	if obj == nil {
@@ -141,6 +147,7 @@ func (c *FakeClusterTestTypes) Patch(name string, pt types.PatchType, data []byt
 
 // GetScale takes name of the clusterTestType, and returns the corresponding scale object, and an error if there is any.
 func (c *FakeClusterTestTypes) GetScale(clusterTestTypeName string, options v1.GetOptions) (result *autoscaling.Scale, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetSubresourceAction(clustertesttypesResource, "scale", clusterTestTypeName), &autoscaling.Scale{})
 	if obj == nil {
@@ -152,6 +159,7 @@ func (c *FakeClusterTestTypes) GetScale(clusterTestTypeName string, options v1.G
 
 // UpdateScale takes the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *FakeClusterTestTypes) UpdateScale(clusterTestTypeName string, scale *autoscaling.Scale) (result *autoscaling.Scale, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(clustertesttypesResource, "scale", scale), &autoscaling.Scale{})
 	if obj == nil {

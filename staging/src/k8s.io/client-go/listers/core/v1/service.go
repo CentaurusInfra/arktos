@@ -91,7 +91,9 @@ func (s serviceNamespaceLister) List(selector labels.Selector) (ret []*v1.Servic
 // Get retrieves the Service from the indexer for a given namespace and name.
 func (s serviceNamespaceLister) Get(name string) (*v1.Service, error) {
 	key := s.tenant + "/" + s.namespace + "/" + name
-	if s.tenant == "system" {
+	// The backward-compatible informer may have the tenant set as "system" or "all",
+	// Yet when it comes to get an object, the tenant can only be "system", where the key is the {namespace}/{name}
+	if s.tenant == "system" || s.tenant == "all" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

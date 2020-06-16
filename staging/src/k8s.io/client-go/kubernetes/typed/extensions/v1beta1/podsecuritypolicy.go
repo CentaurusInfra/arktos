@@ -76,8 +76,13 @@ func newPodSecurityPoliciesWithMultiTenancy(c *ExtensionsV1beta1Client, tenant s
 // Get takes name of the podSecurityPolicy, and returns the corresponding podSecurityPolicy object, and an error if there is any.
 func (c *podSecurityPolicies) Get(name string, options v1.GetOptions) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("podsecuritypolicies").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -170,6 +175,9 @@ func (c *podSecurityPolicies) Create(podSecurityPolicy *v1beta1.PodSecurityPolic
 	objectTenant := podSecurityPolicy.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -189,6 +197,9 @@ func (c *podSecurityPolicies) Update(podSecurityPolicy *v1beta1.PodSecurityPolic
 	objectTenant := podSecurityPolicy.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -204,8 +215,13 @@ func (c *podSecurityPolicies) Update(podSecurityPolicy *v1beta1.PodSecurityPolic
 
 // Delete takes name of the podSecurityPolicy and deletes it. Returns an error if one occurs.
 func (c *podSecurityPolicies) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("podsecuritypolicies").
 		Name(name).
 		Body(options).
@@ -232,8 +248,13 @@ func (c *podSecurityPolicies) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched podSecurityPolicy.
 func (c *podSecurityPolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodSecurityPolicy, err error) {
 	result = &v1beta1.PodSecurityPolicy{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("podsecuritypolicies").
 		SubResource(subresources...).
 		Name(name).

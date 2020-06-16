@@ -69,6 +69,7 @@ func newComponentStatuses(c *CoreV1Client) *componentStatuses {
 // Get takes name of the componentStatus, and returns the corresponding componentStatus object, and an error if there is any.
 func (c *componentStatuses) Get(name string, options metav1.GetOptions) (result *v1.ComponentStatus, err error) {
 	result = &v1.ComponentStatus{}
+
 	err = c.client.Get().
 		Resource("componentstatuses").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *componentStatuses) Update(componentStatus *v1.ComponentStatus) (result 
 
 // Delete takes name of the componentStatus and deletes it. Returns an error if one occurs.
 func (c *componentStatuses) Delete(name string, options *metav1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("componentstatuses").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *componentStatuses) DeleteCollection(options *metav1.DeleteOptions, list
 // Patch applies the patch and returns the patched componentStatus.
 func (c *componentStatuses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ComponentStatus, err error) {
 	result = &v1.ComponentStatus{}
+
 	err = c.client.Patch(pt).
 		Resource("componentstatuses").
 		SubResource(subresources...).

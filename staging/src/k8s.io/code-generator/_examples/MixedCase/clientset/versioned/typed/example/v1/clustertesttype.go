@@ -74,6 +74,7 @@ func newClusterTestTypes(c *ExampleV1Client) *clusterTestTypes {
 // Get takes name of the clusterTestType, and returns the corresponding clusterTestType object, and an error if there is any.
 func (c *clusterTestTypes) Get(name string, options metav1.GetOptions) (result *v1.ClusterTestType, err error) {
 	result = &v1.ClusterTestType{}
+
 	err = c.client.Get().
 		Resource("clustertesttypes").
 		Name(name).
@@ -203,6 +204,7 @@ func (c *clusterTestTypes) UpdateStatus(clusterTestType *v1.ClusterTestType) (re
 
 // Delete takes name of the clusterTestType and deletes it. Returns an error if one occurs.
 func (c *clusterTestTypes) Delete(name string, options *metav1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("clustertesttypes").
 		Name(name).
@@ -229,6 +231,7 @@ func (c *clusterTestTypes) DeleteCollection(options *metav1.DeleteOptions, listO
 // Patch applies the patch and returns the patched clusterTestType.
 func (c *clusterTestTypes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterTestType, err error) {
 	result = &v1.ClusterTestType{}
+
 	err = c.client.Patch(pt).
 		Resource("clustertesttypes").
 		SubResource(subresources...).
@@ -243,6 +246,7 @@ func (c *clusterTestTypes) Patch(name string, pt types.PatchType, data []byte, s
 // GetScale takes name of the clusterTestType, and returns the corresponding autoscaling.Scale object, and an error if there is any.
 func (c *clusterTestTypes) GetScale(clusterTestTypeName string, options metav1.GetOptions) (result *autoscaling.Scale, err error) {
 	result = &autoscaling.Scale{}
+
 	err = c.client.Get().
 		Resource("clustertesttypes").
 		Name(clusterTestTypeName).

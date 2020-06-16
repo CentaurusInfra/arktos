@@ -83,8 +83,13 @@ func newStatefulSetsWithMultiTenancy(c *AppsV1Client, namespace string, tenant s
 // Get takes name of the statefulSet, and returns the corresponding statefulSet object, and an error if there is any.
 func (c *statefulSets) Get(name string, options metav1.GetOptions) (result *v1.StatefulSet, err error) {
 	result = &v1.StatefulSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(name).
@@ -179,6 +184,9 @@ func (c *statefulSets) Create(statefulSet *v1.StatefulSet) (result *v1.StatefulS
 	objectTenant := statefulSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -199,6 +207,9 @@ func (c *statefulSets) Update(statefulSet *v1.StatefulSet) (result *v1.StatefulS
 	objectTenant := statefulSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -222,6 +233,9 @@ func (c *statefulSets) UpdateStatus(statefulSet *v1.StatefulSet) (result *v1.Sta
 	objectTenant := statefulSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -239,8 +253,13 @@ func (c *statefulSets) UpdateStatus(statefulSet *v1.StatefulSet) (result *v1.Sta
 
 // Delete takes name of the statefulSet and deletes it. Returns an error if one occurs.
 func (c *statefulSets) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(name).
@@ -269,8 +288,13 @@ func (c *statefulSets) DeleteCollection(options *metav1.DeleteOptions, listOptio
 // Patch applies the patch and returns the patched statefulSet.
 func (c *statefulSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StatefulSet, err error) {
 	result = &v1.StatefulSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		SubResource(subresources...).
@@ -285,8 +309,13 @@ func (c *statefulSets) Patch(name string, pt types.PatchType, data []byte, subre
 // GetScale takes name of the statefulSet, and returns the corresponding autoscalingv1.Scale object, and an error if there is any.
 func (c *statefulSets) GetScale(statefulSetName string, options metav1.GetOptions) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("statefulsets").
 		Name(statefulSetName).
@@ -305,6 +334,9 @@ func (c *statefulSets) UpdateScale(statefulSetName string, scale *autoscalingv1.
 	objectTenant := scale.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().

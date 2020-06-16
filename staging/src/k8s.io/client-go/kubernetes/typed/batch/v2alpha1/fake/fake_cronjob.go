@@ -42,8 +42,13 @@ var cronjobsKind = schema.GroupVersionKind{Group: "batch", Version: "v2alpha1", 
 
 // Get takes name of the cronJob, and returns the corresponding cronJob object, and an error if there is any.
 func (c *FakeCronJobs) Get(name string, options v1.GetOptions) (result *v2alpha1.CronJob, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(cronjobsResource, c.ns, name, c.te), &v2alpha1.CronJob{})
+		Invokes(testing.NewGetActionWithMultiTenancy(cronjobsResource, c.ns, name, tenant), &v2alpha1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeCronJobs) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 
 // Create takes the representation of a cronJob and creates it.  Returns the server's representation of the cronJob, and an error, if there is any.
 func (c *FakeCronJobs) Create(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJob, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(cronjobsResource, c.ns, cronJob, c.te), &v2alpha1.CronJob{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(cronjobsResource, c.ns, cronJob, tenant), &v2alpha1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeCronJobs) Create(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJ
 
 // Update takes the representation of a cronJob and updates it. Returns the server's representation of the cronJob, and an error, if there is any.
 func (c *FakeCronJobs) Update(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJob, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(cronjobsResource, c.ns, cronJob, c.te), &v2alpha1.CronJob{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(cronjobsResource, c.ns, cronJob, tenant), &v2alpha1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeCronJobs) Update(cronJob *v2alpha1.CronJob) (result *v2alpha1.CronJ
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeCronJobs) UpdateStatus(cronJob *v2alpha1.CronJob) (*v2alpha1.CronJob, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(cronjobsResource, "status", c.ns, cronJob, c.te), &v2alpha1.CronJob{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(cronjobsResource, "status", c.ns, cronJob, tenant), &v2alpha1.CronJob{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeCronJobs) UpdateStatus(cronJob *v2alpha1.CronJob) (*v2alpha1.CronJo
 
 // Delete takes name of the cronJob and deletes it. Returns an error if one occurs.
 func (c *FakeCronJobs) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(cronjobsResource, c.ns, name, c.te), &v2alpha1.CronJob{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(cronjobsResource, c.ns, name, tenant), &v2alpha1.CronJob{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeCronJobs) DeleteCollection(options *v1.DeleteOptions, listOptions v
 
 // Patch applies the patch and returns the patched cronJob.
 func (c *FakeCronJobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v2alpha1.CronJob, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(cronjobsResource, c.te, c.ns, name, pt, data, subresources...), &v2alpha1.CronJob{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(cronjobsResource, tenant, c.ns, name, pt, data, subresources...), &v2alpha1.CronJob{})
 
 	if obj == nil {
 		return nil, err

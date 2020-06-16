@@ -40,6 +40,7 @@ var runtimeclassesKind = schema.GroupVersionKind{Group: "node.k8s.io", Version: 
 
 // Get takes name of the runtimeClass, and returns the corresponding runtimeClass object, and an error if there is any.
 func (c *FakeRuntimeClasses) Get(name string, options v1.GetOptions) (result *v1beta1.RuntimeClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(runtimeclassesResource, name), &v1beta1.RuntimeClass{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeRuntimeClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInt
 
 // Create takes the representation of a runtimeClass and creates it.  Returns the server's representation of the runtimeClass, and an error, if there is any.
 func (c *FakeRuntimeClasses) Create(runtimeClass *v1beta1.RuntimeClass) (result *v1beta1.RuntimeClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(runtimeclassesResource, runtimeClass), &v1beta1.RuntimeClass{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeRuntimeClasses) Create(runtimeClass *v1beta1.RuntimeClass) (result 
 
 // Update takes the representation of a runtimeClass and updates it. Returns the server's representation of the runtimeClass, and an error, if there is any.
 func (c *FakeRuntimeClasses) Update(runtimeClass *v1beta1.RuntimeClass) (result *v1beta1.RuntimeClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(runtimeclassesResource, runtimeClass), &v1beta1.RuntimeClass{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeRuntimeClasses) Update(runtimeClass *v1beta1.RuntimeClass) (result 
 
 // Delete takes name of the runtimeClass and deletes it. Returns an error if one occurs.
 func (c *FakeRuntimeClasses) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(runtimeclassesResource, name), &v1beta1.RuntimeClass{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeRuntimeClasses) DeleteCollection(options *v1.DeleteOptions, listOpt
 
 // Patch applies the patch and returns the patched runtimeClass.
 func (c *FakeRuntimeClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.RuntimeClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(runtimeclassesResource, name, pt, data, subresources...), &v1beta1.RuntimeClass{})
 	if obj == nil {

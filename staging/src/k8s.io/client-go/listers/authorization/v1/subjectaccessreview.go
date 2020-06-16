@@ -104,7 +104,9 @@ func (s subjectAccessReviewTenantLister) List(selector labels.Selector) (ret []*
 // Get retrieves the SubjectAccessReview from the indexer for a given tenant and name.
 func (s subjectAccessReviewTenantLister) Get(name string) (*v1.SubjectAccessReview, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
+	// The backward-compatible informer may have the tenant set as "system" or "all",
+	// Yet when it comes to get an object, the tenant can only be "system", where the key is {name}
+	if s.tenant == "system" || s.tenant == "all" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

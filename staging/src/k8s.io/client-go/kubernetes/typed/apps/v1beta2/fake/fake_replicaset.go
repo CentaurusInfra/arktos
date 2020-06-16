@@ -42,8 +42,13 @@ var replicasetsKind = schema.GroupVersionKind{Group: "apps", Version: "v1beta2",
 
 // Get takes name of the replicaSet, and returns the corresponding replicaSet object, and an error if there is any.
 func (c *FakeReplicaSets) Get(name string, options v1.GetOptions) (result *v1beta2.ReplicaSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(replicasetsResource, c.ns, name, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewGetActionWithMultiTenancy(replicasetsResource, c.ns, name, tenant), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeReplicaSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterf
 
 // Create takes the representation of a replicaSet and creates it.  Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *FakeReplicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(replicasetsResource, c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(replicasetsResource, c.ns, replicaSet, tenant), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeReplicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta
 
 // Update takes the representation of a replicaSet and updates it. Returns the server's representation of the replicaSet, and an error, if there is any.
 func (c *FakeReplicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.ReplicaSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(replicasetsResource, c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(replicasetsResource, c.ns, replicaSet, tenant), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeReplicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeReplicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (*v1beta2.ReplicaSet, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(replicasetsResource, "status", c.ns, replicaSet, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(replicasetsResource, "status", c.ns, replicaSet, tenant), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeReplicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (*v1beta2
 
 // Delete takes name of the replicaSet and deletes it. Returns an error if one occurs.
 func (c *FakeReplicaSets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(replicasetsResource, c.ns, name, c.te), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(replicasetsResource, c.ns, name, tenant), &v1beta2.ReplicaSet{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeReplicaSets) DeleteCollection(options *v1.DeleteOptions, listOption
 
 // Patch applies the patch and returns the patched replicaSet.
 func (c *FakeReplicaSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.ReplicaSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(replicasetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta2.ReplicaSet{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(replicasetsResource, tenant, c.ns, name, pt, data, subresources...), &v1beta2.ReplicaSet{})
 
 	if obj == nil {
 		return nil, err

@@ -40,6 +40,7 @@ var validatingwebhookconfigurationsKind = schema.GroupVersionKind{Group: "admiss
 
 // Get takes name of the validatingWebhookConfiguration, and returns the corresponding validatingWebhookConfiguration object, and an error if there is any.
 func (c *FakeValidatingWebhookConfigurations) Get(name string, options v1.GetOptions) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(validatingwebhookconfigurationsResource, name), &v1beta1.ValidatingWebhookConfiguration{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeValidatingWebhookConfigurations) Watch(opts v1.ListOptions) watch.A
 
 // Create takes the representation of a validatingWebhookConfiguration and creates it.  Returns the server's representation of the validatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeValidatingWebhookConfigurations) Create(validatingWebhookConfiguration *v1beta1.ValidatingWebhookConfiguration) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(validatingwebhookconfigurationsResource, validatingWebhookConfiguration), &v1beta1.ValidatingWebhookConfiguration{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeValidatingWebhookConfigurations) Create(validatingWebhookConfigurat
 
 // Update takes the representation of a validatingWebhookConfiguration and updates it. Returns the server's representation of the validatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeValidatingWebhookConfigurations) Update(validatingWebhookConfiguration *v1beta1.ValidatingWebhookConfiguration) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(validatingwebhookconfigurationsResource, validatingWebhookConfiguration), &v1beta1.ValidatingWebhookConfiguration{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeValidatingWebhookConfigurations) Update(validatingWebhookConfigurat
 
 // Delete takes name of the validatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *FakeValidatingWebhookConfigurations) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(validatingwebhookconfigurationsResource, name), &v1beta1.ValidatingWebhookConfiguration{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeValidatingWebhookConfigurations) DeleteCollection(options *v1.Delet
 
 // Patch applies the patch and returns the patched validatingWebhookConfiguration.
 func (c *FakeValidatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(validatingwebhookconfigurationsResource, name, pt, data, subresources...), &v1beta1.ValidatingWebhookConfiguration{})
 	if obj == nil {

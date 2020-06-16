@@ -79,8 +79,13 @@ func newTestTypesWithMultiTenancy(c *ExampleV1Client, namespace string, tenant s
 // Get takes name of the testType, and returns the corresponding testType object, and an error if there is any.
 func (c *testTypes) Get(name string, options metav1.GetOptions) (result *v1.TestType, err error) {
 	result = &v1.TestType{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *testTypes) Create(testType *v1.TestType) (result *v1.TestType, err erro
 	objectTenant := testType.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *testTypes) Update(testType *v1.TestType) (result *v1.TestType, err erro
 	objectTenant := testType.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *testTypes) UpdateStatus(testType *v1.TestType) (result *v1.TestType, er
 	objectTenant := testType.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *testTypes) UpdateStatus(testType *v1.TestType) (result *v1.TestType, er
 
 // Delete takes name of the testType and deletes it. Returns an error if one occurs.
 func (c *testTypes) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("testtypes").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *testTypes) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 // Patch applies the patch and returns the patched testType.
 func (c *testTypes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.TestType, err error) {
 	result = &v1.TestType{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("testtypes").
 		SubResource(subresources...).

@@ -42,8 +42,13 @@ var podsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"}
 
 // Get takes name of the pod, and returns the corresponding pod object, and an error if there is any.
 func (c *FakePods) Get(name string, options v1.GetOptions) (result *corev1.Pod, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(podsResource, c.ns, name, c.te), &corev1.Pod{})
+		Invokes(testing.NewGetActionWithMultiTenancy(podsResource, c.ns, name, tenant), &corev1.Pod{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakePods) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 
 // Create takes the representation of a pod and creates it.  Returns the server's representation of the pod, and an error, if there is any.
 func (c *FakePods) Create(pod *corev1.Pod) (result *corev1.Pod, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(podsResource, c.ns, pod, c.te), &corev1.Pod{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(podsResource, c.ns, pod, tenant), &corev1.Pod{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakePods) Create(pod *corev1.Pod) (result *corev1.Pod, err error) {
 
 // Update takes the representation of a pod and updates it. Returns the server's representation of the pod, and an error, if there is any.
 func (c *FakePods) Update(pod *corev1.Pod) (result *corev1.Pod, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(podsResource, c.ns, pod, c.te), &corev1.Pod{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(podsResource, c.ns, pod, tenant), &corev1.Pod{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakePods) Update(pod *corev1.Pod) (result *corev1.Pod, err error) {
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakePods) UpdateStatus(pod *corev1.Pod) (*corev1.Pod, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(podsResource, "status", c.ns, pod, c.te), &corev1.Pod{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(podsResource, "status", c.ns, pod, tenant), &corev1.Pod{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakePods) UpdateStatus(pod *corev1.Pod) (*corev1.Pod, error) {
 
 // Delete takes name of the pod and deletes it. Returns an error if one occurs.
 func (c *FakePods) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(podsResource, c.ns, name, c.te), &corev1.Pod{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(podsResource, c.ns, name, tenant), &corev1.Pod{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakePods) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 
 // Patch applies the patch and returns the patched pod.
 func (c *FakePods) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Pod, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(podsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Pod{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(podsResource, tenant, c.ns, name, pt, data, subresources...), &corev1.Pod{})
 
 	if obj == nil {
 		return nil, err

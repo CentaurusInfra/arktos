@@ -68,6 +68,7 @@ func newTenants(c *CoreV1Client) *tenants {
 // Get takes name of the tenant, and returns the corresponding tenant object, and an error if there is any.
 func (c *tenants) Get(name string, options metav1.GetOptions) (result *v1.Tenant, err error) {
 	result = &v1.Tenant{}
+
 	err = c.client.Get().
 		Resource("tenants").
 		Name(name).
@@ -197,6 +198,7 @@ func (c *tenants) UpdateStatus(tenant *v1.Tenant) (result *v1.Tenant, err error)
 
 // Delete takes name of the tenant and deletes it. Returns an error if one occurs.
 func (c *tenants) Delete(name string, options *metav1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("tenants").
 		Name(name).
@@ -208,6 +210,7 @@ func (c *tenants) Delete(name string, options *metav1.DeleteOptions) error {
 // Patch applies the patch and returns the patched tenant.
 func (c *tenants) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Tenant, err error) {
 	result = &v1.Tenant{}
+
 	err = c.client.Patch(pt).
 		Resource("tenants").
 		SubResource(subresources...).

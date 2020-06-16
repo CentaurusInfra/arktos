@@ -78,8 +78,13 @@ func newRolesWithMultiTenancy(c *RbacV1beta1Client, namespace string, tenant str
 // Get takes name of the role, and returns the corresponding role object, and an error if there is any.
 func (c *roles) Get(name string, options v1.GetOptions) (result *v1beta1.Role, err error) {
 	result = &v1beta1.Role{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("roles").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *roles) Create(role *v1beta1.Role) (result *v1beta1.Role, err error) {
 	objectTenant := role.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *roles) Update(role *v1beta1.Role) (result *v1beta1.Role, err error) {
 	objectTenant := role.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *roles) Update(role *v1beta1.Role) (result *v1beta1.Role, err error) {
 
 // Delete takes name of the role and deletes it. Returns an error if one occurs.
 func (c *roles) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("roles").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *roles) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListO
 // Patch applies the patch and returns the patched role.
 func (c *roles) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Role, err error) {
 	result = &v1beta1.Role{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("roles").
 		SubResource(subresources...).

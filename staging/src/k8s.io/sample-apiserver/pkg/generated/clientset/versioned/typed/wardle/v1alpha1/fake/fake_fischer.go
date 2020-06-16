@@ -40,6 +40,7 @@ var fischersKind = schema.GroupVersionKind{Group: "wardle.k8s.io", Version: "v1a
 
 // Get takes name of the fischer, and returns the corresponding fischer object, and an error if there is any.
 func (c *FakeFischers) Get(name string, options v1.GetOptions) (result *v1alpha1.Fischer, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(fischersResource, name), &v1alpha1.Fischer{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeFischers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 
 // Create takes the representation of a fischer and creates it.  Returns the server's representation of the fischer, and an error, if there is any.
 func (c *FakeFischers) Create(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(fischersResource, fischer), &v1alpha1.Fischer{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeFischers) Create(fischer *v1alpha1.Fischer) (result *v1alpha1.Fisch
 
 // Update takes the representation of a fischer and updates it. Returns the server's representation of the fischer, and an error, if there is any.
 func (c *FakeFischers) Update(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(fischersResource, fischer), &v1alpha1.Fischer{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeFischers) Update(fischer *v1alpha1.Fischer) (result *v1alpha1.Fisch
 
 // Delete takes name of the fischer and deletes it. Returns an error if one occurs.
 func (c *FakeFischers) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(fischersResource, name), &v1alpha1.Fischer{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeFischers) DeleteCollection(options *v1.DeleteOptions, listOptions v
 
 // Patch applies the patch and returns the patched fischer.
 func (c *FakeFischers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Fischer, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(fischersResource, name, pt, data, subresources...), &v1alpha1.Fischer{})
 	if obj == nil {

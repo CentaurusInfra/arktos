@@ -79,8 +79,13 @@ func newFlundersWithMultiTenancy(c *WardleV1beta1Client, namespace string, tenan
 // Get takes name of the flunder, and returns the corresponding flunder object, and an error if there is any.
 func (c *flunders) Get(name string, options v1.GetOptions) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *flunders) Create(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, er
 	objectTenant := flunder.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *flunders) Update(flunder *v1beta1.Flunder) (result *v1beta1.Flunder, er
 	objectTenant := flunder.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *flunders) UpdateStatus(flunder *v1beta1.Flunder) (result *v1beta1.Flund
 	objectTenant := flunder.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *flunders) UpdateStatus(flunder *v1beta1.Flunder) (result *v1beta1.Flund
 
 // Delete takes name of the flunder and deletes it. Returns an error if one occurs.
 func (c *flunders) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("flunders").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *flunders) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 // Patch applies the patch and returns the patched flunder.
 func (c *flunders) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Flunder, err error) {
 	result = &v1beta1.Flunder{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("flunders").
 		SubResource(subresources...).

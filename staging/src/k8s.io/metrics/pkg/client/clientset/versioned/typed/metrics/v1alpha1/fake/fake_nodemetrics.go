@@ -39,6 +39,7 @@ var nodemetricsesKind = schema.GroupVersionKind{Group: "metrics.k8s.io", Version
 
 // Get takes name of the nodeMetrics, and returns the corresponding nodeMetrics object, and an error if there is any.
 func (c *FakeNodeMetricses) Get(name string, options v1.GetOptions) (result *v1alpha1.NodeMetrics, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(nodemetricsesResource, name), &v1alpha1.NodeMetrics{})
 	if obj == nil {

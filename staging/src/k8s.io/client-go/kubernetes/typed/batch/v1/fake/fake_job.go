@@ -42,8 +42,13 @@ var jobsKind = schema.GroupVersionKind{Group: "batch", Version: "v1", Kind: "Job
 
 // Get takes name of the job, and returns the corresponding job object, and an error if there is any.
 func (c *FakeJobs) Get(name string, options v1.GetOptions) (result *batchv1.Job, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(jobsResource, c.ns, name, c.te), &batchv1.Job{})
+		Invokes(testing.NewGetActionWithMultiTenancy(jobsResource, c.ns, name, tenant), &batchv1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeJobs) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 
 // Create takes the representation of a job and creates it.  Returns the server's representation of the job, and an error, if there is any.
 func (c *FakeJobs) Create(job *batchv1.Job) (result *batchv1.Job, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(jobsResource, c.ns, job, c.te), &batchv1.Job{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(jobsResource, c.ns, job, tenant), &batchv1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeJobs) Create(job *batchv1.Job) (result *batchv1.Job, err error) {
 
 // Update takes the representation of a job and updates it. Returns the server's representation of the job, and an error, if there is any.
 func (c *FakeJobs) Update(job *batchv1.Job) (result *batchv1.Job, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(jobsResource, c.ns, job, c.te), &batchv1.Job{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(jobsResource, c.ns, job, tenant), &batchv1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeJobs) Update(job *batchv1.Job) (result *batchv1.Job, err error) {
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeJobs) UpdateStatus(job *batchv1.Job) (*batchv1.Job, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(jobsResource, "status", c.ns, job, c.te), &batchv1.Job{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(jobsResource, "status", c.ns, job, tenant), &batchv1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeJobs) UpdateStatus(job *batchv1.Job) (*batchv1.Job, error) {
 
 // Delete takes name of the job and deletes it. Returns an error if one occurs.
 func (c *FakeJobs) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(jobsResource, c.ns, name, c.te), &batchv1.Job{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(jobsResource, c.ns, name, tenant), &batchv1.Job{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeJobs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 
 // Patch applies the patch and returns the patched job.
 func (c *FakeJobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *batchv1.Job, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(jobsResource, c.te, c.ns, name, pt, data, subresources...), &batchv1.Job{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(jobsResource, tenant, c.ns, name, pt, data, subresources...), &batchv1.Job{})
 
 	if obj == nil {
 		return nil, err

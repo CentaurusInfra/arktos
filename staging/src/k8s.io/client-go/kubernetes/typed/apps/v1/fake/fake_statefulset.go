@@ -43,8 +43,13 @@ var statefulsetsKind = schema.GroupVersionKind{Group: "apps", Version: "v1", Kin
 
 // Get takes name of the statefulSet, and returns the corresponding statefulSet object, and an error if there is any.
 func (c *FakeStatefulSets) Get(name string, options v1.GetOptions) (result *appsv1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(statefulsetsResource, c.ns, name, c.te), &appsv1.StatefulSet{})
+		Invokes(testing.NewGetActionWithMultiTenancy(statefulsetsResource, c.ns, name, tenant), &appsv1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -87,8 +92,13 @@ func (c *FakeStatefulSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInter
 
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *FakeStatefulSets) Create(statefulSet *appsv1.StatefulSet) (result *appsv1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, c.te), &appsv1.StatefulSet{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, tenant), &appsv1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -99,8 +109,13 @@ func (c *FakeStatefulSets) Create(statefulSet *appsv1.StatefulSet) (result *apps
 
 // Update takes the representation of a statefulSet and updates it. Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *FakeStatefulSets) Update(statefulSet *appsv1.StatefulSet) (result *appsv1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, c.te), &appsv1.StatefulSet{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, tenant), &appsv1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -112,8 +127,13 @@ func (c *FakeStatefulSets) Update(statefulSet *appsv1.StatefulSet) (result *apps
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeStatefulSets) UpdateStatus(statefulSet *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(statefulsetsResource, "status", c.ns, statefulSet, c.te), &appsv1.StatefulSet{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(statefulsetsResource, "status", c.ns, statefulSet, tenant), &appsv1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -123,8 +143,13 @@ func (c *FakeStatefulSets) UpdateStatus(statefulSet *appsv1.StatefulSet) (*appsv
 
 // Delete takes name of the statefulSet and deletes it. Returns an error if one occurs.
 func (c *FakeStatefulSets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(statefulsetsResource, c.ns, name, c.te), &appsv1.StatefulSet{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(statefulsetsResource, c.ns, name, tenant), &appsv1.StatefulSet{})
 
 	return err
 }
@@ -139,8 +164,13 @@ func (c *FakeStatefulSets) DeleteCollection(options *v1.DeleteOptions, listOptio
 
 // Patch applies the patch and returns the patched statefulSet.
 func (c *FakeStatefulSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *appsv1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(statefulsetsResource, c.te, c.ns, name, pt, data, subresources...), &appsv1.StatefulSet{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(statefulsetsResource, tenant, c.ns, name, pt, data, subresources...), &appsv1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -151,8 +181,13 @@ func (c *FakeStatefulSets) Patch(name string, pt types.PatchType, data []byte, s
 
 // GetScale takes name of the statefulSet, and returns the corresponding scale object, and an error if there is any.
 func (c *FakeStatefulSets) GetScale(statefulSetName string, options v1.GetOptions) (result *autoscalingv1.Scale, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetSubresourceActionWithMultiTenancy(statefulsetsResource, c.ns, "scale", statefulSetName, c.te), &autoscalingv1.Scale{})
+		Invokes(testing.NewGetSubresourceActionWithMultiTenancy(statefulsetsResource, c.ns, "scale", statefulSetName, tenant), &autoscalingv1.Scale{})
 
 	if obj == nil {
 		return nil, err
@@ -163,8 +198,13 @@ func (c *FakeStatefulSets) GetScale(statefulSetName string, options v1.GetOption
 
 // UpdateScale takes the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *FakeStatefulSets) UpdateScale(statefulSetName string, scale *autoscalingv1.Scale) (result *autoscalingv1.Scale, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(statefulsetsResource, "scale", c.ns, scale, c.te), &autoscalingv1.Scale{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(statefulsetsResource, "scale", c.ns, scale, tenant), &autoscalingv1.Scale{})
 
 	if obj == nil {
 		return nil, err

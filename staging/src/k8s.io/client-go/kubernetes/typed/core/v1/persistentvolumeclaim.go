@@ -79,8 +79,13 @@ func newPersistentVolumeClaimsWithMultiTenancy(c *CoreV1Client, namespace string
 // Get takes name of the persistentVolumeClaim, and returns the corresponding persistentVolumeClaim object, and an error if there is any.
 func (c *persistentVolumeClaims) Get(name string, options metav1.GetOptions) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *persistentVolumeClaims) Create(persistentVolumeClaim *v1.PersistentVolu
 	objectTenant := persistentVolumeClaim.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *persistentVolumeClaims) Update(persistentVolumeClaim *v1.PersistentVolu
 	objectTenant := persistentVolumeClaim.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *persistentVolumeClaims) UpdateStatus(persistentVolumeClaim *v1.Persiste
 	objectTenant := persistentVolumeClaim.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *persistentVolumeClaims) UpdateStatus(persistentVolumeClaim *v1.Persiste
 
 // Delete takes name of the persistentVolumeClaim and deletes it. Returns an error if one occurs.
 func (c *persistentVolumeClaims) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *persistentVolumeClaims) DeleteCollection(options *metav1.DeleteOptions,
 // Patch applies the patch and returns the patched persistentVolumeClaim.
 func (c *persistentVolumeClaims) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PersistentVolumeClaim, err error) {
 	result = &v1.PersistentVolumeClaim{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("persistentvolumeclaims").
 		SubResource(subresources...).

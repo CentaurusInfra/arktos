@@ -42,8 +42,13 @@ var poddisruptionbudgetsKind = schema.GroupVersionKind{Group: "policy", Version:
 
 // Get takes name of the podDisruptionBudget, and returns the corresponding podDisruptionBudget object, and an error if there is any.
 func (c *FakePodDisruptionBudgets) Get(name string, options v1.GetOptions) (result *v1beta1.PodDisruptionBudget, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, name, c.te), &v1beta1.PodDisruptionBudget{})
+		Invokes(testing.NewGetActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, name, tenant), &v1beta1.PodDisruptionBudget{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakePodDisruptionBudgets) Watch(opts v1.ListOptions) watch.AggregatedWa
 
 // Create takes the representation of a podDisruptionBudget and creates it.  Returns the server's representation of the podDisruptionBudget, and an error, if there is any.
 func (c *FakePodDisruptionBudgets) Create(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, podDisruptionBudget, c.te), &v1beta1.PodDisruptionBudget{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, podDisruptionBudget, tenant), &v1beta1.PodDisruptionBudget{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakePodDisruptionBudgets) Create(podDisruptionBudget *v1beta1.PodDisrup
 
 // Update takes the representation of a podDisruptionBudget and updates it. Returns the server's representation of the podDisruptionBudget, and an error, if there is any.
 func (c *FakePodDisruptionBudgets) Update(podDisruptionBudget *v1beta1.PodDisruptionBudget) (result *v1beta1.PodDisruptionBudget, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, podDisruptionBudget, c.te), &v1beta1.PodDisruptionBudget{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, podDisruptionBudget, tenant), &v1beta1.PodDisruptionBudget{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakePodDisruptionBudgets) Update(podDisruptionBudget *v1beta1.PodDisrup
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakePodDisruptionBudgets) UpdateStatus(podDisruptionBudget *v1beta1.PodDisruptionBudget) (*v1beta1.PodDisruptionBudget, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(poddisruptionbudgetsResource, "status", c.ns, podDisruptionBudget, c.te), &v1beta1.PodDisruptionBudget{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(poddisruptionbudgetsResource, "status", c.ns, podDisruptionBudget, tenant), &v1beta1.PodDisruptionBudget{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakePodDisruptionBudgets) UpdateStatus(podDisruptionBudget *v1beta1.Pod
 
 // Delete takes name of the podDisruptionBudget and deletes it. Returns an error if one occurs.
 func (c *FakePodDisruptionBudgets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, name, c.te), &v1beta1.PodDisruptionBudget{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(poddisruptionbudgetsResource, c.ns, name, tenant), &v1beta1.PodDisruptionBudget{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakePodDisruptionBudgets) DeleteCollection(options *v1.DeleteOptions, l
 
 // Patch applies the patch and returns the patched podDisruptionBudget.
 func (c *FakePodDisruptionBudgets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodDisruptionBudget, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(poddisruptionbudgetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.PodDisruptionBudget{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(poddisruptionbudgetsResource, tenant, c.ns, name, pt, data, subresources...), &v1beta1.PodDisruptionBudget{})
 
 	if obj == nil {
 		return nil, err

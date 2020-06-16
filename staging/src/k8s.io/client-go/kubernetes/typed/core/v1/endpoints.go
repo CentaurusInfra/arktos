@@ -78,8 +78,13 @@ func newEndpointsWithMultiTenancy(c *CoreV1Client, namespace string, tenant stri
 // Get takes name of the endpoints, and returns the corresponding endpoints object, and an error if there is any.
 func (c *endpoints) Get(name string, options metav1.GetOptions) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *endpoints) Create(endpoints *v1.Endpoints) (result *v1.Endpoints, err e
 	objectTenant := endpoints.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *endpoints) Update(endpoints *v1.Endpoints) (result *v1.Endpoints, err e
 	objectTenant := endpoints.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *endpoints) Update(endpoints *v1.Endpoints) (result *v1.Endpoints, err e
 
 // Delete takes name of the endpoints and deletes it. Returns an error if one occurs.
 func (c *endpoints) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("endpoints").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *endpoints) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 // Patch applies the patch and returns the patched endpoints.
 func (c *endpoints) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Endpoints, err error) {
 	result = &v1.Endpoints{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("endpoints").
 		SubResource(subresources...).

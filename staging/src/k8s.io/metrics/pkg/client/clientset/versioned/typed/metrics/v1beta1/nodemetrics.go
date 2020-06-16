@@ -63,6 +63,7 @@ func newNodeMetricses(c *MetricsV1beta1Client) *nodeMetricses {
 // Get takes name of the nodeMetrics, and returns the corresponding nodeMetrics object, and an error if there is any.
 func (c *nodeMetricses) Get(name string, options v1.GetOptions) (result *v1beta1.NodeMetrics, err error) {
 	result = &v1beta1.NodeMetrics{}
+
 	err = c.client.Get().
 		Resource("nodes").
 		Name(name).

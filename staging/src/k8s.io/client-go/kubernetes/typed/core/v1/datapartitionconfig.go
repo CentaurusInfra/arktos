@@ -68,6 +68,7 @@ func newDataPartitionConfigs(c *CoreV1Client) *dataPartitionConfigs {
 // Get takes name of the dataPartitionConfig, and returns the corresponding dataPartitionConfig object, and an error if there is any.
 func (c *dataPartitionConfigs) Get(name string, options metav1.GetOptions) (result *v1.DataPartitionConfig, err error) {
 	result = &v1.DataPartitionConfig{}
+
 	err = c.client.Get().
 		Resource("datapartitionconfigs").
 		Name(name).
@@ -180,6 +181,7 @@ func (c *dataPartitionConfigs) Update(dataPartitionConfig *v1.DataPartitionConfi
 
 // Delete takes name of the dataPartitionConfig and deletes it. Returns an error if one occurs.
 func (c *dataPartitionConfigs) Delete(name string, options *metav1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("datapartitionconfigs").
 		Name(name).
@@ -206,6 +208,7 @@ func (c *dataPartitionConfigs) DeleteCollection(options *metav1.DeleteOptions, l
 // Patch applies the patch and returns the patched dataPartitionConfig.
 func (c *dataPartitionConfigs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.DataPartitionConfig, err error) {
 	result = &v1.DataPartitionConfig{}
+
 	err = c.client.Patch(pt).
 		Resource("datapartitionconfigs").
 		SubResource(subresources...).

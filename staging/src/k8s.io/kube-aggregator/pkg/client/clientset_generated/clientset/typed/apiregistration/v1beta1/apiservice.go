@@ -77,8 +77,13 @@ func newAPIServicesWithMultiTenancy(c *ApiregistrationV1beta1Client, tenant stri
 // Get takes name of the aPIService, and returns the corresponding aPIService object, and an error if there is any.
 func (c *aPIServices) Get(name string, options v1.GetOptions) (result *v1beta1.APIService, err error) {
 	result = &v1beta1.APIService{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("apiservices").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -171,6 +176,9 @@ func (c *aPIServices) Create(aPIService *v1beta1.APIService) (result *v1beta1.AP
 	objectTenant := aPIService.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -190,6 +198,9 @@ func (c *aPIServices) Update(aPIService *v1beta1.APIService) (result *v1beta1.AP
 	objectTenant := aPIService.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -212,6 +223,9 @@ func (c *aPIServices) UpdateStatus(aPIService *v1beta1.APIService) (result *v1be
 	objectTenant := aPIService.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -228,8 +242,13 @@ func (c *aPIServices) UpdateStatus(aPIService *v1beta1.APIService) (result *v1be
 
 // Delete takes name of the aPIService and deletes it. Returns an error if one occurs.
 func (c *aPIServices) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("apiservices").
 		Name(name).
 		Body(options).
@@ -256,8 +275,13 @@ func (c *aPIServices) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 // Patch applies the patch and returns the patched aPIService.
 func (c *aPIServices) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.APIService, err error) {
 	result = &v1beta1.APIService{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("apiservices").
 		SubResource(subresources...).
 		Name(name).

@@ -42,8 +42,13 @@ var leasesKind = schema.GroupVersionKind{Group: "coordination.k8s.io", Version: 
 
 // Get takes name of the lease, and returns the corresponding lease object, and an error if there is any.
 func (c *FakeLeases) Get(name string, options v1.GetOptions) (result *v1beta1.Lease, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(leasesResource, c.ns, name, c.te), &v1beta1.Lease{})
+		Invokes(testing.NewGetActionWithMultiTenancy(leasesResource, c.ns, name, tenant), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeLeases) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 
 // Create takes the representation of a lease and creates it.  Returns the server's representation of the lease, and an error, if there is any.
 func (c *FakeLeases) Create(lease *v1beta1.Lease) (result *v1beta1.Lease, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(leasesResource, c.ns, lease, c.te), &v1beta1.Lease{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(leasesResource, c.ns, lease, tenant), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeLeases) Create(lease *v1beta1.Lease) (result *v1beta1.Lease, err er
 
 // Update takes the representation of a lease and updates it. Returns the server's representation of the lease, and an error, if there is any.
 func (c *FakeLeases) Update(lease *v1beta1.Lease) (result *v1beta1.Lease, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(leasesResource, c.ns, lease, c.te), &v1beta1.Lease{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(leasesResource, c.ns, lease, tenant), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeLeases) Update(lease *v1beta1.Lease) (result *v1beta1.Lease, err er
 
 // Delete takes name of the lease and deletes it. Returns an error if one occurs.
 func (c *FakeLeases) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(leasesResource, c.ns, name, c.te), &v1beta1.Lease{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(leasesResource, c.ns, name, tenant), &v1beta1.Lease{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeLeases) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 
 // Patch applies the patch and returns the patched lease.
 func (c *FakeLeases) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Lease, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(leasesResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.Lease{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(leasesResource, tenant, c.ns, name, pt, data, subresources...), &v1beta1.Lease{})
 
 	if obj == nil {
 		return nil, err

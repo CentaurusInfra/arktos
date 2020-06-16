@@ -42,8 +42,13 @@ var examplesKind = schema.GroupVersionKind{Group: "cr.example.apiextensions.k8s.
 
 // Get takes name of the example, and returns the corresponding example object, and an error if there is any.
 func (c *FakeExamples) Get(name string, options v1.GetOptions) (result *crv1.Example, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(examplesResource, c.ns, name, c.te), &crv1.Example{})
+		Invokes(testing.NewGetActionWithMultiTenancy(examplesResource, c.ns, name, tenant), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeExamples) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 
 // Create takes the representation of a example and creates it.  Returns the server's representation of the example, and an error, if there is any.
 func (c *FakeExamples) Create(example *crv1.Example) (result *crv1.Example, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(examplesResource, c.ns, example, c.te), &crv1.Example{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(examplesResource, c.ns, example, tenant), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeExamples) Create(example *crv1.Example) (result *crv1.Example, err 
 
 // Update takes the representation of a example and updates it. Returns the server's representation of the example, and an error, if there is any.
 func (c *FakeExamples) Update(example *crv1.Example) (result *crv1.Example, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(examplesResource, c.ns, example, c.te), &crv1.Example{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(examplesResource, c.ns, example, tenant), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeExamples) Update(example *crv1.Example) (result *crv1.Example, err 
 
 // Delete takes name of the example and deletes it. Returns an error if one occurs.
 func (c *FakeExamples) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(examplesResource, c.ns, name, c.te), &crv1.Example{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(examplesResource, c.ns, name, tenant), &crv1.Example{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeExamples) DeleteCollection(options *v1.DeleteOptions, listOptions v
 
 // Patch applies the patch and returns the patched example.
 func (c *FakeExamples) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *crv1.Example, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(examplesResource, c.te, c.ns, name, pt, data, subresources...), &crv1.Example{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(examplesResource, tenant, c.ns, name, pt, data, subresources...), &crv1.Example{})
 
 	if obj == nil {
 		return nil, err

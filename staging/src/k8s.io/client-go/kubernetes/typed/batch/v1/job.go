@@ -79,8 +79,13 @@ func newJobsWithMultiTenancy(c *BatchV1Client, namespace string, tenant string) 
 // Get takes name of the job, and returns the corresponding job object, and an error if there is any.
 func (c *jobs) Get(name string, options metav1.GetOptions) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *jobs) Create(job *v1.Job) (result *v1.Job, err error) {
 	objectTenant := job.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *jobs) Update(job *v1.Job) (result *v1.Job, err error) {
 	objectTenant := job.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *jobs) UpdateStatus(job *v1.Job) (result *v1.Job, err error) {
 	objectTenant := job.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *jobs) UpdateStatus(job *v1.Job) (result *v1.Job, err error) {
 
 // Delete takes name of the job and deletes it. Returns an error if one occurs.
 func (c *jobs) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *jobs) DeleteCollection(options *metav1.DeleteOptions, listOptions metav
 // Patch applies the patch and returns the patched job.
 func (c *jobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Job, err error) {
 	result = &v1.Job{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("jobs").
 		SubResource(subresources...).

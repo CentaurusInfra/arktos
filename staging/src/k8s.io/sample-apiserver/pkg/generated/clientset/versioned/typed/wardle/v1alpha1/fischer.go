@@ -69,6 +69,7 @@ func newFischers(c *WardleV1alpha1Client) *fischers {
 // Get takes name of the fischer, and returns the corresponding fischer object, and an error if there is any.
 func (c *fischers) Get(name string, options v1.GetOptions) (result *v1alpha1.Fischer, err error) {
 	result = &v1alpha1.Fischer{}
+
 	err = c.client.Get().
 		Resource("fischers").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *fischers) Update(fischer *v1alpha1.Fischer) (result *v1alpha1.Fischer, 
 
 // Delete takes name of the fischer and deletes it. Returns an error if one occurs.
 func (c *fischers) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("fischers").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *fischers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 // Patch applies the patch and returns the patched fischer.
 func (c *fischers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Fischer, err error) {
 	result = &v1alpha1.Fischer{}
+
 	err = c.client.Patch(pt).
 		Resource("fischers").
 		SubResource(subresources...).

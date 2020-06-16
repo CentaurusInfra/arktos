@@ -40,6 +40,7 @@ var storageclassesKind = schema.GroupVersionKind{Group: "storage.k8s.io", Versio
 
 // Get takes name of the storageClass, and returns the corresponding storageClass object, and an error if there is any.
 func (c *FakeStorageClasses) Get(name string, options v1.GetOptions) (result *storagev1.StorageClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(storageclassesResource, name), &storagev1.StorageClass{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeStorageClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInt
 
 // Create takes the representation of a storageClass and creates it.  Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *FakeStorageClasses) Create(storageClass *storagev1.StorageClass) (result *storagev1.StorageClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(storageclassesResource, storageClass), &storagev1.StorageClass{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeStorageClasses) Create(storageClass *storagev1.StorageClass) (resul
 
 // Update takes the representation of a storageClass and updates it. Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *FakeStorageClasses) Update(storageClass *storagev1.StorageClass) (result *storagev1.StorageClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(storageclassesResource, storageClass), &storagev1.StorageClass{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeStorageClasses) Update(storageClass *storagev1.StorageClass) (resul
 
 // Delete takes name of the storageClass and deletes it. Returns an error if one occurs.
 func (c *FakeStorageClasses) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(storageclassesResource, name), &storagev1.StorageClass{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeStorageClasses) DeleteCollection(options *v1.DeleteOptions, listOpt
 
 // Patch applies the patch and returns the patched storageClass.
 func (c *FakeStorageClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *storagev1.StorageClass, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(storageclassesResource, name, pt, data, subresources...), &storagev1.StorageClass{})
 	if obj == nil {

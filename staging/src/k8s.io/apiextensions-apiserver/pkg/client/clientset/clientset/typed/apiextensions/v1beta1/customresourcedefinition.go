@@ -76,8 +76,13 @@ func newCustomResourceDefinitionsWithMultiTenancy(c *ApiextensionsV1beta1Client,
 // Get takes name of the customResourceDefinition, and returns the corresponding customResourceDefinition object, and an error if there is any.
 func (c *customResourceDefinitions) Get(name string, options v1.GetOptions) (result *v1beta1.CustomResourceDefinition, err error) {
 	result = &v1beta1.CustomResourceDefinition{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("customresourcedefinitions").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -170,6 +175,9 @@ func (c *customResourceDefinitions) Create(customResourceDefinition *v1beta1.Cus
 	objectTenant := customResourceDefinition.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -189,6 +197,9 @@ func (c *customResourceDefinitions) Update(customResourceDefinition *v1beta1.Cus
 	objectTenant := customResourceDefinition.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -211,6 +222,9 @@ func (c *customResourceDefinitions) UpdateStatus(customResourceDefinition *v1bet
 	objectTenant := customResourceDefinition.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -227,8 +241,13 @@ func (c *customResourceDefinitions) UpdateStatus(customResourceDefinition *v1bet
 
 // Delete takes name of the customResourceDefinition and deletes it. Returns an error if one occurs.
 func (c *customResourceDefinitions) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("customresourcedefinitions").
 		Name(name).
 		Body(options).
@@ -239,8 +258,13 @@ func (c *customResourceDefinitions) Delete(name string, options *v1.DeleteOption
 // Patch applies the patch and returns the patched customResourceDefinition.
 func (c *customResourceDefinitions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CustomResourceDefinition, err error) {
 	result = &v1beta1.CustomResourceDefinition{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("customresourcedefinitions").
 		SubResource(subresources...).
 		Name(name).

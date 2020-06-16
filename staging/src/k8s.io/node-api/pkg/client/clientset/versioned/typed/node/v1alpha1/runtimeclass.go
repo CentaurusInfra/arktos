@@ -69,6 +69,7 @@ func newRuntimeClasses(c *NodeV1alpha1Client) *runtimeClasses {
 // Get takes name of the runtimeClass, and returns the corresponding runtimeClass object, and an error if there is any.
 func (c *runtimeClasses) Get(name string, options v1.GetOptions) (result *v1alpha1.RuntimeClass, err error) {
 	result = &v1alpha1.RuntimeClass{}
+
 	err = c.client.Get().
 		Resource("runtimeclasses").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *runtimeClasses) Update(runtimeClass *v1alpha1.RuntimeClass) (result *v1
 
 // Delete takes name of the runtimeClass and deletes it. Returns an error if one occurs.
 func (c *runtimeClasses) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("runtimeclasses").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *runtimeClasses) DeleteCollection(options *v1.DeleteOptions, listOptions
 // Patch applies the patch and returns the patched runtimeClass.
 func (c *runtimeClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.RuntimeClass, err error) {
 	result = &v1alpha1.RuntimeClass{}
+
 	err = c.client.Patch(pt).
 		Resource("runtimeclasses").
 		SubResource(subresources...).

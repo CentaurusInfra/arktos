@@ -78,8 +78,13 @@ func newControllerRevisionsWithMultiTenancy(c *AppsV1beta2Client, namespace stri
 // Get takes name of the controllerRevision, and returns the corresponding controllerRevision object, and an error if there is any.
 func (c *controllerRevisions) Get(name string, options v1.GetOptions) (result *v1beta2.ControllerRevision, err error) {
 	result = &v1beta2.ControllerRevision{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *controllerRevisions) Create(controllerRevision *v1beta2.ControllerRevis
 	objectTenant := controllerRevision.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *controllerRevisions) Update(controllerRevision *v1beta2.ControllerRevis
 	objectTenant := controllerRevision.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *controllerRevisions) Update(controllerRevision *v1beta2.ControllerRevis
 
 // Delete takes name of the controllerRevision and deletes it. Returns an error if one occurs.
 func (c *controllerRevisions) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *controllerRevisions) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched controllerRevision.
 func (c *controllerRevisions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.ControllerRevision, err error) {
 	result = &v1beta2.ControllerRevision{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("controllerrevisions").
 		SubResource(subresources...).

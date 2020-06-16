@@ -42,8 +42,13 @@ var controllerrevisionsKind = schema.GroupVersionKind{Group: "apps", Version: "v
 
 // Get takes name of the controllerRevision, and returns the corresponding controllerRevision object, and an error if there is any.
 func (c *FakeControllerRevisions) Get(name string, options v1.GetOptions) (result *v1beta2.ControllerRevision, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(controllerrevisionsResource, c.ns, name, c.te), &v1beta2.ControllerRevision{})
+		Invokes(testing.NewGetActionWithMultiTenancy(controllerrevisionsResource, c.ns, name, tenant), &v1beta2.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeControllerRevisions) Watch(opts v1.ListOptions) watch.AggregatedWat
 
 // Create takes the representation of a controllerRevision and creates it.  Returns the server's representation of the controllerRevision, and an error, if there is any.
 func (c *FakeControllerRevisions) Create(controllerRevision *v1beta2.ControllerRevision) (result *v1beta2.ControllerRevision, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(controllerrevisionsResource, c.ns, controllerRevision, c.te), &v1beta2.ControllerRevision{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(controllerrevisionsResource, c.ns, controllerRevision, tenant), &v1beta2.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeControllerRevisions) Create(controllerRevision *v1beta2.ControllerR
 
 // Update takes the representation of a controllerRevision and updates it. Returns the server's representation of the controllerRevision, and an error, if there is any.
 func (c *FakeControllerRevisions) Update(controllerRevision *v1beta2.ControllerRevision) (result *v1beta2.ControllerRevision, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(controllerrevisionsResource, c.ns, controllerRevision, c.te), &v1beta2.ControllerRevision{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(controllerrevisionsResource, c.ns, controllerRevision, tenant), &v1beta2.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeControllerRevisions) Update(controllerRevision *v1beta2.ControllerR
 
 // Delete takes name of the controllerRevision and deletes it. Returns an error if one occurs.
 func (c *FakeControllerRevisions) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(controllerrevisionsResource, c.ns, name, c.te), &v1beta2.ControllerRevision{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(controllerrevisionsResource, c.ns, name, tenant), &v1beta2.ControllerRevision{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeControllerRevisions) DeleteCollection(options *v1.DeleteOptions, li
 
 // Patch applies the patch and returns the patched controllerRevision.
 func (c *FakeControllerRevisions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.ControllerRevision, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(controllerrevisionsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta2.ControllerRevision{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(controllerrevisionsResource, tenant, c.ns, name, pt, data, subresources...), &v1beta2.ControllerRevision{})
 
 	if obj == nil {
 		return nil, err

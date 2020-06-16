@@ -68,6 +68,7 @@ func newControllerInstances(c *CoreV1Client) *controllerInstances {
 // Get takes name of the controllerInstance, and returns the corresponding controllerInstance object, and an error if there is any.
 func (c *controllerInstances) Get(name string, options metav1.GetOptions) (result *v1.ControllerInstance, err error) {
 	result = &v1.ControllerInstance{}
+
 	err = c.client.Get().
 		Resource("controllerinstances").
 		Name(name).
@@ -180,6 +181,7 @@ func (c *controllerInstances) Update(controllerInstance *v1.ControllerInstance) 
 
 // Delete takes name of the controllerInstance and deletes it. Returns an error if one occurs.
 func (c *controllerInstances) Delete(name string, options *metav1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("controllerinstances").
 		Name(name).
@@ -206,6 +208,7 @@ func (c *controllerInstances) DeleteCollection(options *metav1.DeleteOptions, li
 // Patch applies the patch and returns the patched controllerInstance.
 func (c *controllerInstances) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ControllerInstance, err error) {
 	result = &v1.ControllerInstance{}
+
 	err = c.client.Patch(pt).
 		Resource("controllerinstances").
 		SubResource(subresources...).

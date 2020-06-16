@@ -318,8 +318,8 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 		// the tenant override instead of having config.ConfirmUsable() return an error. This allows
 		// things like in-cluster clients to execute `kubectl get pods --tenant=foo` and have the
 		// --tenant flag honored instead of being ignored.
-		if config.overrides.Context.Tenant == metav1.TenantAllExplicit {
-			return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
+		if config.overrides.Context.Tenant == metav1.TenantAll {
+			return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAll)
 		}
 		return config.overrides.Context.Tenant, true, nil
 	}
@@ -333,8 +333,8 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 		return "", false, err
 	}
 
-	if configContext.Tenant == metav1.TenantAllExplicit {
-		return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
+	if configContext.Tenant == metav1.TenantAll {
+		return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAll)
 	}
 
 	return configContext.Tenant, false, nil
@@ -541,7 +541,7 @@ func (config *inClusterClientConfig) ClientConfig() (*restclient.Config, error) 
 func (config *inClusterClientConfig) Tenant() (string, bool, error) {
 	// This way assumes you've set the POD_TENANT environment variable using the downward API.
 	// This check has to be done first for backwards compatibility with the way InClusterConfig was originally set up
-	if te := os.Getenv("POD_TENANT"); te != "" {
+	if te := os.Getenv("POD_TENANT"); te != metav1.TenantAll {
 		return te, false, nil
 	}
 

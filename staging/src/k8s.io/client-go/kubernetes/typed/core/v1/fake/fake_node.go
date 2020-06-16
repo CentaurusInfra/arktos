@@ -40,6 +40,7 @@ var nodesKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Node"}
 
 // Get takes name of the node, and returns the corresponding node object, and an error if there is any.
 func (c *FakeNodes) Get(name string, options v1.GetOptions) (result *corev1.Node, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(nodesResource, name), &corev1.Node{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeNodes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 
 // Create takes the representation of a node and creates it.  Returns the server's representation of the node, and an error, if there is any.
 func (c *FakeNodes) Create(node *corev1.Node) (result *corev1.Node, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(nodesResource, node), &corev1.Node{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeNodes) Create(node *corev1.Node) (result *corev1.Node, err error) {
 
 // Update takes the representation of a node and updates it. Returns the server's representation of the node, and an error, if there is any.
 func (c *FakeNodes) Update(node *corev1.Node) (result *corev1.Node, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(nodesResource, node), &corev1.Node{})
 	if obj == nil {
@@ -104,6 +107,7 @@ func (c *FakeNodes) Update(node *corev1.Node) (result *corev1.Node, err error) {
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeNodes) UpdateStatus(node *corev1.Node) (*corev1.Node, error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(nodesResource, "status", node), &corev1.Node{})
 	if obj == nil {
@@ -114,6 +118,7 @@ func (c *FakeNodes) UpdateStatus(node *corev1.Node) (*corev1.Node, error) {
 
 // Delete takes name of the node and deletes it. Returns an error if one occurs.
 func (c *FakeNodes) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(nodesResource, name), &corev1.Node{})
 	return err
@@ -129,6 +134,7 @@ func (c *FakeNodes) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 
 // Patch applies the patch and returns the patched node.
 func (c *FakeNodes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Node, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(nodesResource, name, pt, data, subresources...), &corev1.Node{})
 	if obj == nil {

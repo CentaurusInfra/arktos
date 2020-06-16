@@ -40,6 +40,7 @@ var csinodesKind = schema.GroupVersionKind{Group: "storage.k8s.io", Version: "v1
 
 // Get takes name of the cSINode, and returns the corresponding cSINode object, and an error if there is any.
 func (c *FakeCSINodes) Get(name string, options v1.GetOptions) (result *v1beta1.CSINode, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(csinodesResource, name), &v1beta1.CSINode{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeCSINodes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 
 // Create takes the representation of a cSINode and creates it.  Returns the server's representation of the cSINode, and an error, if there is any.
 func (c *FakeCSINodes) Create(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(csinodesResource, cSINode), &v1beta1.CSINode{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeCSINodes) Create(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode
 
 // Update takes the representation of a cSINode and updates it. Returns the server's representation of the cSINode, and an error, if there is any.
 func (c *FakeCSINodes) Update(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(csinodesResource, cSINode), &v1beta1.CSINode{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeCSINodes) Update(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode
 
 // Delete takes name of the cSINode and deletes it. Returns an error if one occurs.
 func (c *FakeCSINodes) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(csinodesResource, name), &v1beta1.CSINode{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeCSINodes) DeleteCollection(options *v1.DeleteOptions, listOptions v
 
 // Patch applies the patch and returns the patched cSINode.
 func (c *FakeCSINodes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CSINode, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(csinodesResource, name, pt, data, subresources...), &v1beta1.CSINode{})
 	if obj == nil {

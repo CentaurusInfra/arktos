@@ -41,8 +41,13 @@ var certificatesigningrequestsKind = schema.GroupVersionKind{Group: "certificate
 
 // Get takes name of the certificateSigningRequest, and returns the corresponding certificateSigningRequest object, and an error if there is any.
 func (c *FakeCertificateSigningRequests) Get(name string, options v1.GetOptions) (result *v1beta1.CertificateSigningRequest, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantGetAction(certificatesigningrequestsResource, name, c.te), &v1beta1.CertificateSigningRequest{})
+		Invokes(testing.NewTenantGetAction(certificatesigningrequestsResource, name, tenant), &v1beta1.CertificateSigningRequest{})
 
 	if obj == nil {
 		return nil, err
@@ -85,8 +90,13 @@ func (c *FakeCertificateSigningRequests) Watch(opts v1.ListOptions) watch.Aggreg
 
 // Create takes the representation of a certificateSigningRequest and creates it.  Returns the server's representation of the certificateSigningRequest, and an error, if there is any.
 func (c *FakeCertificateSigningRequests) Create(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantCreateAction(certificatesigningrequestsResource, certificateSigningRequest, c.te), &v1beta1.CertificateSigningRequest{})
+		Invokes(testing.NewTenantCreateAction(certificatesigningrequestsResource, certificateSigningRequest, tenant), &v1beta1.CertificateSigningRequest{})
 
 	if obj == nil {
 		return nil, err
@@ -97,8 +107,13 @@ func (c *FakeCertificateSigningRequests) Create(certificateSigningRequest *v1bet
 
 // Update takes the representation of a certificateSigningRequest and updates it. Returns the server's representation of the certificateSigningRequest, and an error, if there is any.
 func (c *FakeCertificateSigningRequests) Update(certificateSigningRequest *v1beta1.CertificateSigningRequest) (result *v1beta1.CertificateSigningRequest, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateAction(certificatesigningrequestsResource, certificateSigningRequest, c.te), &v1beta1.CertificateSigningRequest{})
+		Invokes(testing.NewTenantUpdateAction(certificatesigningrequestsResource, certificateSigningRequest, tenant), &v1beta1.CertificateSigningRequest{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeCertificateSigningRequests) Update(certificateSigningRequest *v1bet
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeCertificateSigningRequests) UpdateStatus(certificateSigningRequest *v1beta1.CertificateSigningRequest) (*v1beta1.CertificateSigningRequest, error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateSubresourceAction(certificatesigningrequestsResource, "status", certificateSigningRequest, c.te), &v1beta1.CertificateSigningRequest{})
+		Invokes(testing.NewTenantUpdateSubresourceAction(certificatesigningrequestsResource, "status", certificateSigningRequest, tenant), &v1beta1.CertificateSigningRequest{})
 
 	if obj == nil {
 		return nil, err
@@ -121,8 +141,13 @@ func (c *FakeCertificateSigningRequests) UpdateStatus(certificateSigningRequest 
 
 // Delete takes name of the certificateSigningRequest and deletes it. Returns an error if one occurs.
 func (c *FakeCertificateSigningRequests) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	_, err := c.Fake.
-		Invokes(testing.NewTenantDeleteAction(certificatesigningrequestsResource, name, c.te), &v1beta1.CertificateSigningRequest{})
+		Invokes(testing.NewTenantDeleteAction(certificatesigningrequestsResource, name, tenant), &v1beta1.CertificateSigningRequest{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeCertificateSigningRequests) DeleteCollection(options *v1.DeleteOpti
 
 // Patch applies the patch and returns the patched certificateSigningRequest.
 func (c *FakeCertificateSigningRequests) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CertificateSigningRequest, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantPatchSubresourceAction(certificatesigningrequestsResource, c.te, name, pt, data, subresources...), &v1beta1.CertificateSigningRequest{})
+		Invokes(testing.NewTenantPatchSubresourceAction(certificatesigningrequestsResource, tenant, name, pt, data, subresources...), &v1beta1.CertificateSigningRequest{})
 
 	if obj == nil {
 		return nil, err

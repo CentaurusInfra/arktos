@@ -42,8 +42,13 @@ var deploymentsKind = schema.GroupVersionKind{Group: "extensions", Version: "v1b
 
 // Get takes name of the deployment, and returns the corresponding deployment object, and an error if there is any.
 func (c *FakeDeployments) Get(name string, options v1.GetOptions) (result *v1beta1.Deployment, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(deploymentsResource, c.ns, name, c.te), &v1beta1.Deployment{})
+		Invokes(testing.NewGetActionWithMultiTenancy(deploymentsResource, c.ns, name, tenant), &v1beta1.Deployment{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeDeployments) Watch(opts v1.ListOptions) watch.AggregatedWatchInterf
 
 // Create takes the representation of a deployment and creates it.  Returns the server's representation of the deployment, and an error, if there is any.
 func (c *FakeDeployments) Create(deployment *v1beta1.Deployment) (result *v1beta1.Deployment, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(deploymentsResource, c.ns, deployment, c.te), &v1beta1.Deployment{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(deploymentsResource, c.ns, deployment, tenant), &v1beta1.Deployment{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeDeployments) Create(deployment *v1beta1.Deployment) (result *v1beta
 
 // Update takes the representation of a deployment and updates it. Returns the server's representation of the deployment, and an error, if there is any.
 func (c *FakeDeployments) Update(deployment *v1beta1.Deployment) (result *v1beta1.Deployment, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(deploymentsResource, c.ns, deployment, c.te), &v1beta1.Deployment{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(deploymentsResource, c.ns, deployment, tenant), &v1beta1.Deployment{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeDeployments) Update(deployment *v1beta1.Deployment) (result *v1beta
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeDeployments) UpdateStatus(deployment *v1beta1.Deployment) (*v1beta1.Deployment, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(deploymentsResource, "status", c.ns, deployment, c.te), &v1beta1.Deployment{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(deploymentsResource, "status", c.ns, deployment, tenant), &v1beta1.Deployment{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeDeployments) UpdateStatus(deployment *v1beta1.Deployment) (*v1beta1
 
 // Delete takes name of the deployment and deletes it. Returns an error if one occurs.
 func (c *FakeDeployments) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(deploymentsResource, c.ns, name, c.te), &v1beta1.Deployment{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(deploymentsResource, c.ns, name, tenant), &v1beta1.Deployment{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeDeployments) DeleteCollection(options *v1.DeleteOptions, listOption
 
 // Patch applies the patch and returns the patched deployment.
 func (c *FakeDeployments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Deployment, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(deploymentsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.Deployment{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(deploymentsResource, tenant, c.ns, name, pt, data, subresources...), &v1beta1.Deployment{})
 
 	if obj == nil {
 		return nil, err
@@ -150,8 +180,13 @@ func (c *FakeDeployments) Patch(name string, pt types.PatchType, data []byte, su
 
 // GetScale takes name of the deployment, and returns the corresponding scale object, and an error if there is any.
 func (c *FakeDeployments) GetScale(deploymentName string, options v1.GetOptions) (result *v1beta1.Scale, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetSubresourceActionWithMultiTenancy(deploymentsResource, c.ns, "scale", deploymentName, c.te), &v1beta1.Scale{})
+		Invokes(testing.NewGetSubresourceActionWithMultiTenancy(deploymentsResource, c.ns, "scale", deploymentName, tenant), &v1beta1.Scale{})
 
 	if obj == nil {
 		return nil, err
@@ -162,8 +197,13 @@ func (c *FakeDeployments) GetScale(deploymentName string, options v1.GetOptions)
 
 // UpdateScale takes the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
 func (c *FakeDeployments) UpdateScale(deploymentName string, scale *v1beta1.Scale) (result *v1beta1.Scale, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(deploymentsResource, "scale", c.ns, scale, c.te), &v1beta1.Scale{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(deploymentsResource, "scale", c.ns, scale, tenant), &v1beta1.Scale{})
 
 	if obj == nil {
 		return nil, err

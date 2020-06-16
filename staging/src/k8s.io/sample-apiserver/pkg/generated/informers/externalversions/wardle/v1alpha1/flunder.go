@@ -61,7 +61,13 @@ func NewFlunderInformerWithMultiTenancy(client versioned.Interface, namespace st
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredFlunderInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewFilteredFlunderInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, tweakListOptions, "system")
+	// If the operation is across all namespaces, we extend it to all tenants.
+	// If the operation targets a given namespace, it is for the system tenant.
+	tenant := "system"
+	if namespace == "" {
+		tenant = "all"
+	}
+	return NewFilteredFlunderInformerWithMultiTenancy(client, namespace, resyncPeriod, indexers, tweakListOptions, tenant)
 }
 
 func NewFilteredFlunderInformerWithMultiTenancy(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {

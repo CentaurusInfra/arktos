@@ -79,8 +79,13 @@ func newPodDisruptionBudgetsWithMultiTenancy(c *PolicyV1beta1Client, namespace s
 // Get takes name of the podDisruptionBudget, and returns the corresponding podDisruptionBudget object, and an error if there is any.
 func (c *podDisruptionBudgets) Get(name string, options v1.GetOptions) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *podDisruptionBudgets) Create(podDisruptionBudget *v1beta1.PodDisruption
 	objectTenant := podDisruptionBudget.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *podDisruptionBudgets) Update(podDisruptionBudget *v1beta1.PodDisruption
 	objectTenant := podDisruptionBudget.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *podDisruptionBudgets) UpdateStatus(podDisruptionBudget *v1beta1.PodDisr
 	objectTenant := podDisruptionBudget.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *podDisruptionBudgets) UpdateStatus(podDisruptionBudget *v1beta1.PodDisr
 
 // Delete takes name of the podDisruptionBudget and deletes it. Returns an error if one occurs.
 func (c *podDisruptionBudgets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *podDisruptionBudgets) DeleteCollection(options *v1.DeleteOptions, listO
 // Patch applies the patch and returns the patched podDisruptionBudget.
 func (c *podDisruptionBudgets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodDisruptionBudget, err error) {
 	result = &v1beta1.PodDisruptionBudget{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("poddisruptionbudgets").
 		SubResource(subresources...).

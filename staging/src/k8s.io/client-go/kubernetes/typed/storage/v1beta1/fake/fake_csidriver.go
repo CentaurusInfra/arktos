@@ -40,6 +40,7 @@ var csidriversKind = schema.GroupVersionKind{Group: "storage.k8s.io", Version: "
 
 // Get takes name of the cSIDriver, and returns the corresponding cSIDriver object, and an error if there is any.
 func (c *FakeCSIDrivers) Get(name string, options v1.GetOptions) (result *v1beta1.CSIDriver, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(csidriversResource, name), &v1beta1.CSIDriver{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeCSIDrivers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfa
 
 // Create takes the representation of a cSIDriver and creates it.  Returns the server's representation of the cSIDriver, and an error, if there is any.
 func (c *FakeCSIDrivers) Create(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDriver, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(csidriversResource, cSIDriver), &v1beta1.CSIDriver{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeCSIDrivers) Create(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.C
 
 // Update takes the representation of a cSIDriver and updates it. Returns the server's representation of the cSIDriver, and an error, if there is any.
 func (c *FakeCSIDrivers) Update(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.CSIDriver, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(csidriversResource, cSIDriver), &v1beta1.CSIDriver{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeCSIDrivers) Update(cSIDriver *v1beta1.CSIDriver) (result *v1beta1.C
 
 // Delete takes name of the cSIDriver and deletes it. Returns an error if one occurs.
 func (c *FakeCSIDrivers) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(csidriversResource, name), &v1beta1.CSIDriver{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeCSIDrivers) DeleteCollection(options *v1.DeleteOptions, listOptions
 
 // Patch applies the patch and returns the patched cSIDriver.
 func (c *FakeCSIDrivers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CSIDriver, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(csidriversResource, name, pt, data, subresources...), &v1beta1.CSIDriver{})
 	if obj == nil {

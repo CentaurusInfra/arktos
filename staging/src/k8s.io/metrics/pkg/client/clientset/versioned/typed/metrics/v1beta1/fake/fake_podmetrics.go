@@ -41,8 +41,13 @@ var podmetricsesKind = schema.GroupVersionKind{Group: "metrics.k8s.io", Version:
 
 // Get takes name of the podMetrics, and returns the corresponding podMetrics object, and an error if there is any.
 func (c *FakePodMetricses) Get(name string, options v1.GetOptions) (result *v1beta1.PodMetrics, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(podmetricsesResource, c.ns, name, c.te), &v1beta1.PodMetrics{})
+		Invokes(testing.NewGetActionWithMultiTenancy(podmetricsesResource, c.ns, name, tenant), &v1beta1.PodMetrics{})
 
 	if obj == nil {
 		return nil, err

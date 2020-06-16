@@ -68,6 +68,7 @@ func newStorageClusters(c *CoreV1Client) *storageClusters {
 // Get takes name of the storageCluster, and returns the corresponding storageCluster object, and an error if there is any.
 func (c *storageClusters) Get(name string, options metav1.GetOptions) (result *v1.StorageCluster, err error) {
 	result = &v1.StorageCluster{}
+
 	err = c.client.Get().
 		Resource("storageclusters").
 		Name(name).
@@ -180,6 +181,7 @@ func (c *storageClusters) Update(storageCluster *v1.StorageCluster) (result *v1.
 
 // Delete takes name of the storageCluster and deletes it. Returns an error if one occurs.
 func (c *storageClusters) Delete(name string, options *metav1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("storageclusters").
 		Name(name).
@@ -206,6 +208,7 @@ func (c *storageClusters) DeleteCollection(options *metav1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched storageCluster.
 func (c *storageClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StorageCluster, err error) {
 	result = &v1.StorageCluster{}
+
 	err = c.client.Patch(pt).
 		Resource("storageclusters").
 		SubResource(subresources...).

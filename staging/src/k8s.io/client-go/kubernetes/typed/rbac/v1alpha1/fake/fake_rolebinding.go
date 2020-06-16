@@ -42,8 +42,13 @@ var rolebindingsKind = schema.GroupVersionKind{Group: "rbac.authorization.k8s.io
 
 // Get takes name of the roleBinding, and returns the corresponding roleBinding object, and an error if there is any.
 func (c *FakeRoleBindings) Get(name string, options v1.GetOptions) (result *v1alpha1.RoleBinding, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(rolebindingsResource, c.ns, name, c.te), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewGetActionWithMultiTenancy(rolebindingsResource, c.ns, name, tenant), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeRoleBindings) Watch(opts v1.ListOptions) watch.AggregatedWatchInter
 
 // Create takes the representation of a roleBinding and creates it.  Returns the server's representation of the roleBinding, and an error, if there is any.
 func (c *FakeRoleBindings) Create(roleBinding *v1alpha1.RoleBinding) (result *v1alpha1.RoleBinding, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(rolebindingsResource, c.ns, roleBinding, c.te), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(rolebindingsResource, c.ns, roleBinding, tenant), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeRoleBindings) Create(roleBinding *v1alpha1.RoleBinding) (result *v1
 
 // Update takes the representation of a roleBinding and updates it. Returns the server's representation of the roleBinding, and an error, if there is any.
 func (c *FakeRoleBindings) Update(roleBinding *v1alpha1.RoleBinding) (result *v1alpha1.RoleBinding, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(rolebindingsResource, c.ns, roleBinding, c.te), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(rolebindingsResource, c.ns, roleBinding, tenant), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeRoleBindings) Update(roleBinding *v1alpha1.RoleBinding) (result *v1
 
 // Delete takes name of the roleBinding and deletes it. Returns an error if one occurs.
 func (c *FakeRoleBindings) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(rolebindingsResource, c.ns, name, c.te), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(rolebindingsResource, c.ns, name, tenant), &v1alpha1.RoleBinding{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeRoleBindings) DeleteCollection(options *v1.DeleteOptions, listOptio
 
 // Patch applies the patch and returns the patched roleBinding.
 func (c *FakeRoleBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.RoleBinding, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(rolebindingsResource, c.te, c.ns, name, pt, data, subresources...), &v1alpha1.RoleBinding{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(rolebindingsResource, tenant, c.ns, name, pt, data, subresources...), &v1alpha1.RoleBinding{})
 
 	if obj == nil {
 		return nil, err

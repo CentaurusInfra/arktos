@@ -104,7 +104,9 @@ func (s aPIServiceTenantLister) List(selector labels.Selector) (ret []*v1beta1.A
 // Get retrieves the APIService from the indexer for a given tenant and name.
 func (s aPIServiceTenantLister) Get(name string) (*v1beta1.APIService, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
+	// The backward-compatible informer may have the tenant set as "system" or "all",
+	// Yet when it comes to get an object, the tenant can only be "system", where the key is {name}
+	if s.tenant == "system" || s.tenant == "all" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

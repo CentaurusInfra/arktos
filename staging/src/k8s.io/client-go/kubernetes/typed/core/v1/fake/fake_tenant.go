@@ -39,6 +39,7 @@ var tenantsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Tenan
 
 // Get takes name of the tenant, and returns the corresponding tenant object, and an error if there is any.
 func (c *FakeTenants) Get(name string, options v1.GetOptions) (result *corev1.Tenant, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(tenantsResource, name), &corev1.Tenant{})
 	if obj == nil {
@@ -80,6 +81,7 @@ func (c *FakeTenants) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 
 // Create takes the representation of a tenant and creates it.  Returns the server's representation of the tenant, and an error, if there is any.
 func (c *FakeTenants) Create(tenant *corev1.Tenant) (result *corev1.Tenant, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(tenantsResource, tenant), &corev1.Tenant{})
 	if obj == nil {
@@ -91,6 +93,7 @@ func (c *FakeTenants) Create(tenant *corev1.Tenant) (result *corev1.Tenant, err 
 
 // Update takes the representation of a tenant and updates it. Returns the server's representation of the tenant, and an error, if there is any.
 func (c *FakeTenants) Update(tenant *corev1.Tenant) (result *corev1.Tenant, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(tenantsResource, tenant), &corev1.Tenant{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeTenants) Update(tenant *corev1.Tenant) (result *corev1.Tenant, err 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeTenants) UpdateStatus(tenant *corev1.Tenant) (*corev1.Tenant, error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(tenantsResource, "status", tenant), &corev1.Tenant{})
 	if obj == nil {
@@ -113,6 +117,7 @@ func (c *FakeTenants) UpdateStatus(tenant *corev1.Tenant) (*corev1.Tenant, error
 
 // Delete takes name of the tenant and deletes it. Returns an error if one occurs.
 func (c *FakeTenants) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(tenantsResource, name), &corev1.Tenant{})
 	return err
@@ -120,6 +125,7 @@ func (c *FakeTenants) Delete(name string, options *v1.DeleteOptions) error {
 
 // Patch applies the patch and returns the patched tenant.
 func (c *FakeTenants) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Tenant, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(tenantsResource, name, pt, data, subresources...), &corev1.Tenant{})
 	if obj == nil {

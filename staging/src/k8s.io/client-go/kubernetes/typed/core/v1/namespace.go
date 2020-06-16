@@ -76,8 +76,13 @@ func newNamespacesWithMultiTenancy(c *CoreV1Client, tenant string) *namespaces {
 // Get takes name of the namespace, and returns the corresponding namespace object, and an error if there is any.
 func (c *namespaces) Get(name string, options metav1.GetOptions) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("namespaces").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -170,6 +175,9 @@ func (c *namespaces) Create(namespace *v1.Namespace) (result *v1.Namespace, err 
 	objectTenant := namespace.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -189,6 +197,9 @@ func (c *namespaces) Update(namespace *v1.Namespace) (result *v1.Namespace, err 
 	objectTenant := namespace.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -211,6 +222,9 @@ func (c *namespaces) UpdateStatus(namespace *v1.Namespace) (result *v1.Namespace
 	objectTenant := namespace.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -227,8 +241,13 @@ func (c *namespaces) UpdateStatus(namespace *v1.Namespace) (result *v1.Namespace
 
 // Delete takes name of the namespace and deletes it. Returns an error if one occurs.
 func (c *namespaces) Delete(name string, options *metav1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("namespaces").
 		Name(name).
 		Body(options).
@@ -239,8 +258,13 @@ func (c *namespaces) Delete(name string, options *metav1.DeleteOptions) error {
 // Patch applies the patch and returns the patched namespace.
 func (c *namespaces) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Namespace, err error) {
 	result = &v1.Namespace{}
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Resource("namespaces").
 		SubResource(subresources...).
 		Name(name).

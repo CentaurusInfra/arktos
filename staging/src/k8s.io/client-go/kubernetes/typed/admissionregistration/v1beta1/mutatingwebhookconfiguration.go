@@ -69,6 +69,7 @@ func newMutatingWebhookConfigurations(c *AdmissionregistrationV1beta1Client) *mu
 // Get takes name of the mutatingWebhookConfiguration, and returns the corresponding mutatingWebhookConfiguration object, and an error if there is any.
 func (c *mutatingWebhookConfigurations) Get(name string, options v1.GetOptions) (result *v1beta1.MutatingWebhookConfiguration, err error) {
 	result = &v1beta1.MutatingWebhookConfiguration{}
+
 	err = c.client.Get().
 		Resource("mutatingwebhookconfigurations").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *mutatingWebhookConfigurations) Update(mutatingWebhookConfiguration *v1b
 
 // Delete takes name of the mutatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *mutatingWebhookConfigurations) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("mutatingwebhookconfigurations").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *mutatingWebhookConfigurations) DeleteCollection(options *v1.DeleteOptio
 // Patch applies the patch and returns the patched mutatingWebhookConfiguration.
 func (c *mutatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.MutatingWebhookConfiguration, err error) {
 	result = &v1beta1.MutatingWebhookConfiguration{}
+
 	err = c.client.Patch(pt).
 		Resource("mutatingwebhookconfigurations").
 		SubResource(subresources...).

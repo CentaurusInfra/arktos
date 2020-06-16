@@ -42,8 +42,13 @@ var podtemplatesKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "
 
 // Get takes name of the podTemplate, and returns the corresponding podTemplate object, and an error if there is any.
 func (c *FakePodTemplates) Get(name string, options v1.GetOptions) (result *corev1.PodTemplate, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(podtemplatesResource, c.ns, name, c.te), &corev1.PodTemplate{})
+		Invokes(testing.NewGetActionWithMultiTenancy(podtemplatesResource, c.ns, name, tenant), &corev1.PodTemplate{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakePodTemplates) Watch(opts v1.ListOptions) watch.AggregatedWatchInter
 
 // Create takes the representation of a podTemplate and creates it.  Returns the server's representation of the podTemplate, and an error, if there is any.
 func (c *FakePodTemplates) Create(podTemplate *corev1.PodTemplate) (result *corev1.PodTemplate, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(podtemplatesResource, c.ns, podTemplate, c.te), &corev1.PodTemplate{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(podtemplatesResource, c.ns, podTemplate, tenant), &corev1.PodTemplate{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakePodTemplates) Create(podTemplate *corev1.PodTemplate) (result *core
 
 // Update takes the representation of a podTemplate and updates it. Returns the server's representation of the podTemplate, and an error, if there is any.
 func (c *FakePodTemplates) Update(podTemplate *corev1.PodTemplate) (result *corev1.PodTemplate, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(podtemplatesResource, c.ns, podTemplate, c.te), &corev1.PodTemplate{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(podtemplatesResource, c.ns, podTemplate, tenant), &corev1.PodTemplate{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakePodTemplates) Update(podTemplate *corev1.PodTemplate) (result *core
 
 // Delete takes name of the podTemplate and deletes it. Returns an error if one occurs.
 func (c *FakePodTemplates) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(podtemplatesResource, c.ns, name, c.te), &corev1.PodTemplate{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(podtemplatesResource, c.ns, name, tenant), &corev1.PodTemplate{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakePodTemplates) DeleteCollection(options *v1.DeleteOptions, listOptio
 
 // Patch applies the patch and returns the patched podTemplate.
 func (c *FakePodTemplates) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.PodTemplate, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(podtemplatesResource, c.te, c.ns, name, pt, data, subresources...), &corev1.PodTemplate{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(podtemplatesResource, tenant, c.ns, name, pt, data, subresources...), &corev1.PodTemplate{})
 
 	if obj == nil {
 		return nil, err

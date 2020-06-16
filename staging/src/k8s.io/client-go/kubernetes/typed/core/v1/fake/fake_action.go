@@ -41,8 +41,13 @@ var actionsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Actio
 
 // Get takes name of the action, and returns the corresponding action object, and an error if there is any.
 func (c *FakeActions) Get(name string, options v1.GetOptions) (result *corev1.Action, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(actionsResource, c.ns, name, c.te), &corev1.Action{})
+		Invokes(testing.NewGetActionWithMultiTenancy(actionsResource, c.ns, name, tenant), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -85,8 +90,13 @@ func (c *FakeActions) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 
 // Create takes the representation of a action and creates it.  Returns the server's representation of the action, and an error, if there is any.
 func (c *FakeActions) Create(action *corev1.Action) (result *corev1.Action, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(actionsResource, c.ns, action, c.te), &corev1.Action{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(actionsResource, c.ns, action, tenant), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -97,8 +107,13 @@ func (c *FakeActions) Create(action *corev1.Action) (result *corev1.Action, err 
 
 // Update takes the representation of a action and updates it. Returns the server's representation of the action, and an error, if there is any.
 func (c *FakeActions) Update(action *corev1.Action) (result *corev1.Action, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(actionsResource, c.ns, action, c.te), &corev1.Action{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(actionsResource, c.ns, action, tenant), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeActions) Update(action *corev1.Action) (result *corev1.Action, err 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeActions) UpdateStatus(action *corev1.Action) (*corev1.Action, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(actionsResource, "status", c.ns, action, c.te), &corev1.Action{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(actionsResource, "status", c.ns, action, tenant), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err
@@ -121,8 +141,13 @@ func (c *FakeActions) UpdateStatus(action *corev1.Action) (*corev1.Action, error
 
 // Delete takes name of the action and deletes it. Returns an error if one occurs.
 func (c *FakeActions) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(actionsResource, c.ns, name, c.te), &corev1.Action{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(actionsResource, c.ns, name, tenant), &corev1.Action{})
 
 	return err
 }
@@ -137,8 +162,13 @@ func (c *FakeActions) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 
 // Patch applies the patch and returns the patched action.
 func (c *FakeActions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Action, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(actionsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Action{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(actionsResource, tenant, c.ns, name, pt, data, subresources...), &corev1.Action{})
 
 	if obj == nil {
 		return nil, err

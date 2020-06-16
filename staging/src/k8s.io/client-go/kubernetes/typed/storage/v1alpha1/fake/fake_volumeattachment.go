@@ -41,8 +41,13 @@ var volumeattachmentsKind = schema.GroupVersionKind{Group: "storage.k8s.io", Ver
 
 // Get takes name of the volumeAttachment, and returns the corresponding volumeAttachment object, and an error if there is any.
 func (c *FakeVolumeAttachments) Get(name string, options v1.GetOptions) (result *v1alpha1.VolumeAttachment, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantGetAction(volumeattachmentsResource, name, c.te), &v1alpha1.VolumeAttachment{})
+		Invokes(testing.NewTenantGetAction(volumeattachmentsResource, name, tenant), &v1alpha1.VolumeAttachment{})
 
 	if obj == nil {
 		return nil, err
@@ -85,8 +90,13 @@ func (c *FakeVolumeAttachments) Watch(opts v1.ListOptions) watch.AggregatedWatch
 
 // Create takes the representation of a volumeAttachment and creates it.  Returns the server's representation of the volumeAttachment, and an error, if there is any.
 func (c *FakeVolumeAttachments) Create(volumeAttachment *v1alpha1.VolumeAttachment) (result *v1alpha1.VolumeAttachment, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantCreateAction(volumeattachmentsResource, volumeAttachment, c.te), &v1alpha1.VolumeAttachment{})
+		Invokes(testing.NewTenantCreateAction(volumeattachmentsResource, volumeAttachment, tenant), &v1alpha1.VolumeAttachment{})
 
 	if obj == nil {
 		return nil, err
@@ -97,8 +107,13 @@ func (c *FakeVolumeAttachments) Create(volumeAttachment *v1alpha1.VolumeAttachme
 
 // Update takes the representation of a volumeAttachment and updates it. Returns the server's representation of the volumeAttachment, and an error, if there is any.
 func (c *FakeVolumeAttachments) Update(volumeAttachment *v1alpha1.VolumeAttachment) (result *v1alpha1.VolumeAttachment, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateAction(volumeattachmentsResource, volumeAttachment, c.te), &v1alpha1.VolumeAttachment{})
+		Invokes(testing.NewTenantUpdateAction(volumeattachmentsResource, volumeAttachment, tenant), &v1alpha1.VolumeAttachment{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeVolumeAttachments) Update(volumeAttachment *v1alpha1.VolumeAttachme
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeVolumeAttachments) UpdateStatus(volumeAttachment *v1alpha1.VolumeAttachment) (*v1alpha1.VolumeAttachment, error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateSubresourceAction(volumeattachmentsResource, "status", volumeAttachment, c.te), &v1alpha1.VolumeAttachment{})
+		Invokes(testing.NewTenantUpdateSubresourceAction(volumeattachmentsResource, "status", volumeAttachment, tenant), &v1alpha1.VolumeAttachment{})
 
 	if obj == nil {
 		return nil, err
@@ -121,8 +141,13 @@ func (c *FakeVolumeAttachments) UpdateStatus(volumeAttachment *v1alpha1.VolumeAt
 
 // Delete takes name of the volumeAttachment and deletes it. Returns an error if one occurs.
 func (c *FakeVolumeAttachments) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	_, err := c.Fake.
-		Invokes(testing.NewTenantDeleteAction(volumeattachmentsResource, name, c.te), &v1alpha1.VolumeAttachment{})
+		Invokes(testing.NewTenantDeleteAction(volumeattachmentsResource, name, tenant), &v1alpha1.VolumeAttachment{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeVolumeAttachments) DeleteCollection(options *v1.DeleteOptions, list
 
 // Patch applies the patch and returns the patched volumeAttachment.
 func (c *FakeVolumeAttachments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.VolumeAttachment, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantPatchSubresourceAction(volumeattachmentsResource, c.te, name, pt, data, subresources...), &v1alpha1.VolumeAttachment{})
+		Invokes(testing.NewTenantPatchSubresourceAction(volumeattachmentsResource, tenant, name, pt, data, subresources...), &v1alpha1.VolumeAttachment{})
 
 	if obj == nil {
 		return nil, err

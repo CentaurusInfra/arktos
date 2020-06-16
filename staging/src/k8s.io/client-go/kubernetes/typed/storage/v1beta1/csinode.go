@@ -69,6 +69,7 @@ func newCSINodes(c *StorageV1beta1Client) *cSINodes {
 // Get takes name of the cSINode, and returns the corresponding cSINode object, and an error if there is any.
 func (c *cSINodes) Get(name string, options v1.GetOptions) (result *v1beta1.CSINode, err error) {
 	result = &v1beta1.CSINode{}
+
 	err = c.client.Get().
 		Resource("csinodes").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *cSINodes) Update(cSINode *v1beta1.CSINode) (result *v1beta1.CSINode, er
 
 // Delete takes name of the cSINode and deletes it. Returns an error if one occurs.
 func (c *cSINodes) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("csinodes").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *cSINodes) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 // Patch applies the patch and returns the patched cSINode.
 func (c *cSINodes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CSINode, err error) {
 	result = &v1beta1.CSINode{}
+
 	err = c.client.Patch(pt).
 		Resource("csinodes").
 		SubResource(subresources...).

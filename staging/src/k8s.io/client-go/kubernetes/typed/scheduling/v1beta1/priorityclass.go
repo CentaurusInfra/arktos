@@ -69,6 +69,7 @@ func newPriorityClasses(c *SchedulingV1beta1Client) *priorityClasses {
 // Get takes name of the priorityClass, and returns the corresponding priorityClass object, and an error if there is any.
 func (c *priorityClasses) Get(name string, options v1.GetOptions) (result *v1beta1.PriorityClass, err error) {
 	result = &v1beta1.PriorityClass{}
+
 	err = c.client.Get().
 		Resource("priorityclasses").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *priorityClasses) Update(priorityClass *v1beta1.PriorityClass) (result *
 
 // Delete takes name of the priorityClass and deletes it. Returns an error if one occurs.
 func (c *priorityClasses) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("priorityclasses").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *priorityClasses) DeleteCollection(options *v1.DeleteOptions, listOption
 // Patch applies the patch and returns the patched priorityClass.
 func (c *priorityClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PriorityClass, err error) {
 	result = &v1beta1.PriorityClass{}
+
 	err = c.client.Patch(pt).
 		Resource("priorityclasses").
 		SubResource(subresources...).

@@ -42,8 +42,13 @@ var resourcequotasKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind:
 
 // Get takes name of the resourceQuota, and returns the corresponding resourceQuota object, and an error if there is any.
 func (c *FakeResourceQuotas) Get(name string, options v1.GetOptions) (result *corev1.ResourceQuota, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(resourcequotasResource, c.ns, name, c.te), &corev1.ResourceQuota{})
+		Invokes(testing.NewGetActionWithMultiTenancy(resourcequotasResource, c.ns, name, tenant), &corev1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeResourceQuotas) Watch(opts v1.ListOptions) watch.AggregatedWatchInt
 
 // Create takes the representation of a resourceQuota and creates it.  Returns the server's representation of the resourceQuota, and an error, if there is any.
 func (c *FakeResourceQuotas) Create(resourceQuota *corev1.ResourceQuota) (result *corev1.ResourceQuota, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(resourcequotasResource, c.ns, resourceQuota, c.te), &corev1.ResourceQuota{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(resourcequotasResource, c.ns, resourceQuota, tenant), &corev1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeResourceQuotas) Create(resourceQuota *corev1.ResourceQuota) (result
 
 // Update takes the representation of a resourceQuota and updates it. Returns the server's representation of the resourceQuota, and an error, if there is any.
 func (c *FakeResourceQuotas) Update(resourceQuota *corev1.ResourceQuota) (result *corev1.ResourceQuota, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(resourcequotasResource, c.ns, resourceQuota, c.te), &corev1.ResourceQuota{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(resourcequotasResource, c.ns, resourceQuota, tenant), &corev1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeResourceQuotas) Update(resourceQuota *corev1.ResourceQuota) (result
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeResourceQuotas) UpdateStatus(resourceQuota *corev1.ResourceQuota) (*corev1.ResourceQuota, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(resourcequotasResource, "status", c.ns, resourceQuota, c.te), &corev1.ResourceQuota{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(resourcequotasResource, "status", c.ns, resourceQuota, tenant), &corev1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeResourceQuotas) UpdateStatus(resourceQuota *corev1.ResourceQuota) (
 
 // Delete takes name of the resourceQuota and deletes it. Returns an error if one occurs.
 func (c *FakeResourceQuotas) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(resourcequotasResource, c.ns, name, c.te), &corev1.ResourceQuota{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(resourcequotasResource, c.ns, name, tenant), &corev1.ResourceQuota{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeResourceQuotas) DeleteCollection(options *v1.DeleteOptions, listOpt
 
 // Patch applies the patch and returns the patched resourceQuota.
 func (c *FakeResourceQuotas) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.ResourceQuota, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(resourcequotasResource, c.te, c.ns, name, pt, data, subresources...), &corev1.ResourceQuota{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(resourcequotasResource, tenant, c.ns, name, pt, data, subresources...), &corev1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err

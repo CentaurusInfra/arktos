@@ -40,6 +40,7 @@ var mutatingwebhookconfigurationsKind = schema.GroupVersionKind{Group: "admissio
 
 // Get takes name of the mutatingWebhookConfiguration, and returns the corresponding mutatingWebhookConfiguration object, and an error if there is any.
 func (c *FakeMutatingWebhookConfigurations) Get(name string, options v1.GetOptions) (result *v1beta1.MutatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(mutatingwebhookconfigurationsResource, name), &v1beta1.MutatingWebhookConfiguration{})
 	if obj == nil {
@@ -81,6 +82,7 @@ func (c *FakeMutatingWebhookConfigurations) Watch(opts v1.ListOptions) watch.Agg
 
 // Create takes the representation of a mutatingWebhookConfiguration and creates it.  Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeMutatingWebhookConfigurations) Create(mutatingWebhookConfiguration *v1beta1.MutatingWebhookConfiguration) (result *v1beta1.MutatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(mutatingwebhookconfigurationsResource, mutatingWebhookConfiguration), &v1beta1.MutatingWebhookConfiguration{})
 	if obj == nil {
@@ -92,6 +94,7 @@ func (c *FakeMutatingWebhookConfigurations) Create(mutatingWebhookConfiguration 
 
 // Update takes the representation of a mutatingWebhookConfiguration and updates it. Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeMutatingWebhookConfigurations) Update(mutatingWebhookConfiguration *v1beta1.MutatingWebhookConfiguration) (result *v1beta1.MutatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(mutatingwebhookconfigurationsResource, mutatingWebhookConfiguration), &v1beta1.MutatingWebhookConfiguration{})
 	if obj == nil {
@@ -103,6 +106,7 @@ func (c *FakeMutatingWebhookConfigurations) Update(mutatingWebhookConfiguration 
 
 // Delete takes name of the mutatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *FakeMutatingWebhookConfigurations) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(mutatingwebhookconfigurationsResource, name), &v1beta1.MutatingWebhookConfiguration{})
 	return err
@@ -118,6 +122,7 @@ func (c *FakeMutatingWebhookConfigurations) DeleteCollection(options *v1.DeleteO
 
 // Patch applies the patch and returns the patched mutatingWebhookConfiguration.
 func (c *FakeMutatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.MutatingWebhookConfiguration, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(mutatingwebhookconfigurationsResource, name, pt, data, subresources...), &v1beta1.MutatingWebhookConfiguration{})
 	if obj == nil {

@@ -83,8 +83,13 @@ func newReplicaSetsWithMultiTenancy(c *AppsV1Client, namespace string, tenant st
 // Get takes name of the replicaSet, and returns the corresponding replicaSet object, and an error if there is any.
 func (c *replicaSets) Get(name string, options metav1.GetOptions) (result *v1.ReplicaSet, err error) {
 	result = &v1.ReplicaSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(name).
@@ -179,6 +184,9 @@ func (c *replicaSets) Create(replicaSet *v1.ReplicaSet) (result *v1.ReplicaSet, 
 	objectTenant := replicaSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -199,6 +207,9 @@ func (c *replicaSets) Update(replicaSet *v1.ReplicaSet) (result *v1.ReplicaSet, 
 	objectTenant := replicaSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -222,6 +233,9 @@ func (c *replicaSets) UpdateStatus(replicaSet *v1.ReplicaSet) (result *v1.Replic
 	objectTenant := replicaSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -239,8 +253,13 @@ func (c *replicaSets) UpdateStatus(replicaSet *v1.ReplicaSet) (result *v1.Replic
 
 // Delete takes name of the replicaSet and deletes it. Returns an error if one occurs.
 func (c *replicaSets) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(name).
@@ -269,8 +288,13 @@ func (c *replicaSets) DeleteCollection(options *metav1.DeleteOptions, listOption
 // Patch applies the patch and returns the patched replicaSet.
 func (c *replicaSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ReplicaSet, err error) {
 	result = &v1.ReplicaSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		SubResource(subresources...).
@@ -285,8 +309,13 @@ func (c *replicaSets) Patch(name string, pt types.PatchType, data []byte, subres
 // GetScale takes name of the replicaSet, and returns the corresponding autoscalingv1.Scale object, and an error if there is any.
 func (c *replicaSets) GetScale(replicaSetName string, options metav1.GetOptions) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(replicaSetName).
@@ -305,6 +334,9 @@ func (c *replicaSets) UpdateScale(replicaSetName string, scale *autoscalingv1.Sc
 	objectTenant := scale.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().

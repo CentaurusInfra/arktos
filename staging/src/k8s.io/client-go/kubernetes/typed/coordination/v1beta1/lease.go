@@ -78,8 +78,13 @@ func newLeasesWithMultiTenancy(c *CoordinationV1beta1Client, namespace string, t
 // Get takes name of the lease, and returns the corresponding lease object, and an error if there is any.
 func (c *leases) Get(name string, options v1.GetOptions) (result *v1beta1.Lease, err error) {
 	result = &v1beta1.Lease{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("leases").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *leases) Create(lease *v1beta1.Lease) (result *v1beta1.Lease, err error)
 	objectTenant := lease.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *leases) Update(lease *v1beta1.Lease) (result *v1beta1.Lease, err error)
 	objectTenant := lease.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *leases) Update(lease *v1beta1.Lease) (result *v1beta1.Lease, err error)
 
 // Delete takes name of the lease and deletes it. Returns an error if one occurs.
 func (c *leases) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("leases").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *leases) DeleteCollection(options *v1.DeleteOptions, listOptions v1.List
 // Patch applies the patch and returns the patched lease.
 func (c *leases) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Lease, err error) {
 	result = &v1beta1.Lease{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("leases").
 		SubResource(subresources...).

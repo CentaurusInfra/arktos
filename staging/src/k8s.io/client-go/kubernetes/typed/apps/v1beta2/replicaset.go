@@ -79,8 +79,13 @@ func newReplicaSetsWithMultiTenancy(c *AppsV1beta2Client, namespace string, tena
 // Get takes name of the replicaSet, and returns the corresponding replicaSet object, and an error if there is any.
 func (c *replicaSets) Get(name string, options v1.GetOptions) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *replicaSets) Create(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.Re
 	objectTenant := replicaSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *replicaSets) Update(replicaSet *v1beta2.ReplicaSet) (result *v1beta2.Re
 	objectTenant := replicaSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *replicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (result *v1be
 	objectTenant := replicaSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *replicaSets) UpdateStatus(replicaSet *v1beta2.ReplicaSet) (result *v1be
 
 // Delete takes name of the replicaSet and deletes it. Returns an error if one occurs.
 func (c *replicaSets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *replicaSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 // Patch applies the patch and returns the patched replicaSet.
 func (c *replicaSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.ReplicaSet, err error) {
 	result = &v1beta2.ReplicaSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicasets").
 		SubResource(subresources...).

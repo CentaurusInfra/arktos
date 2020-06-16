@@ -39,6 +39,7 @@ var datapartitionconfigsKind = schema.GroupVersionKind{Group: "", Version: "v1",
 
 // Get takes name of the dataPartitionConfig, and returns the corresponding dataPartitionConfig object, and an error if there is any.
 func (c *FakeDataPartitionConfigs) Get(name string, options v1.GetOptions) (result *corev1.DataPartitionConfig, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(datapartitionconfigsResource, name), &corev1.DataPartitionConfig{})
 	if obj == nil {
@@ -80,6 +81,7 @@ func (c *FakeDataPartitionConfigs) Watch(opts v1.ListOptions) watch.AggregatedWa
 
 // Create takes the representation of a dataPartitionConfig and creates it.  Returns the server's representation of the dataPartitionConfig, and an error, if there is any.
 func (c *FakeDataPartitionConfigs) Create(dataPartitionConfig *corev1.DataPartitionConfig) (result *corev1.DataPartitionConfig, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(datapartitionconfigsResource, dataPartitionConfig), &corev1.DataPartitionConfig{})
 	if obj == nil {
@@ -91,6 +93,7 @@ func (c *FakeDataPartitionConfigs) Create(dataPartitionConfig *corev1.DataPartit
 
 // Update takes the representation of a dataPartitionConfig and updates it. Returns the server's representation of the dataPartitionConfig, and an error, if there is any.
 func (c *FakeDataPartitionConfigs) Update(dataPartitionConfig *corev1.DataPartitionConfig) (result *corev1.DataPartitionConfig, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(datapartitionconfigsResource, dataPartitionConfig), &corev1.DataPartitionConfig{})
 	if obj == nil {
@@ -102,6 +105,7 @@ func (c *FakeDataPartitionConfigs) Update(dataPartitionConfig *corev1.DataPartit
 
 // Delete takes name of the dataPartitionConfig and deletes it. Returns an error if one occurs.
 func (c *FakeDataPartitionConfigs) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(datapartitionconfigsResource, name), &corev1.DataPartitionConfig{})
 	return err
@@ -117,6 +121,7 @@ func (c *FakeDataPartitionConfigs) DeleteCollection(options *v1.DeleteOptions, l
 
 // Patch applies the patch and returns the patched dataPartitionConfig.
 func (c *FakeDataPartitionConfigs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.DataPartitionConfig, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(datapartitionconfigsResource, name, pt, data, subresources...), &corev1.DataPartitionConfig{})
 	if obj == nil {

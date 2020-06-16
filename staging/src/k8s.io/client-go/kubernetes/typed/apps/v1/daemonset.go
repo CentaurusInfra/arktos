@@ -79,8 +79,13 @@ func newDaemonSetsWithMultiTenancy(c *AppsV1Client, namespace string, tenant str
 // Get takes name of the daemonSet, and returns the corresponding daemonSet object, and an error if there is any.
 func (c *daemonSets) Get(name string, options metav1.GetOptions) (result *v1.DaemonSet, err error) {
 	result = &v1.DaemonSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *daemonSets) Create(daemonSet *v1.DaemonSet) (result *v1.DaemonSet, err 
 	objectTenant := daemonSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *daemonSets) Update(daemonSet *v1.DaemonSet) (result *v1.DaemonSet, err 
 	objectTenant := daemonSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *daemonSets) UpdateStatus(daemonSet *v1.DaemonSet) (result *v1.DaemonSet
 	objectTenant := daemonSet.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *daemonSets) UpdateStatus(daemonSet *v1.DaemonSet) (result *v1.DaemonSet
 
 // Delete takes name of the daemonSet and deletes it. Returns an error if one occurs.
 func (c *daemonSets) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *daemonSets) DeleteCollection(options *metav1.DeleteOptions, listOptions
 // Patch applies the patch and returns the patched daemonSet.
 func (c *daemonSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.DaemonSet, err error) {
 	result = &v1.DaemonSet{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("daemonsets").
 		SubResource(subresources...).

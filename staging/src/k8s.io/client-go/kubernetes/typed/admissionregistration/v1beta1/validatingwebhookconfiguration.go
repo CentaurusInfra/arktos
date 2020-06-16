@@ -69,6 +69,7 @@ func newValidatingWebhookConfigurations(c *AdmissionregistrationV1beta1Client) *
 // Get takes name of the validatingWebhookConfiguration, and returns the corresponding validatingWebhookConfiguration object, and an error if there is any.
 func (c *validatingWebhookConfigurations) Get(name string, options v1.GetOptions) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
 	result = &v1beta1.ValidatingWebhookConfiguration{}
+
 	err = c.client.Get().
 		Resource("validatingwebhookconfigurations").
 		Name(name).
@@ -181,6 +182,7 @@ func (c *validatingWebhookConfigurations) Update(validatingWebhookConfiguration 
 
 // Delete takes name of the validatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *validatingWebhookConfigurations) Delete(name string, options *v1.DeleteOptions) error {
+
 	return c.client.Delete().
 		Resource("validatingwebhookconfigurations").
 		Name(name).
@@ -207,6 +209,7 @@ func (c *validatingWebhookConfigurations) DeleteCollection(options *v1.DeleteOpt
 // Patch applies the patch and returns the patched validatingWebhookConfiguration.
 func (c *validatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
 	result = &v1beta1.ValidatingWebhookConfiguration{}
+
 	err = c.client.Patch(pt).
 		Resource("validatingwebhookconfigurations").
 		SubResource(subresources...).

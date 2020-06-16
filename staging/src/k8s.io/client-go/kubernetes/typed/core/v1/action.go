@@ -78,8 +78,13 @@ func newActionsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string
 // Get takes name of the action, and returns the corresponding action object, and an error if there is any.
 func (c *actions) Get(name string, options metav1.GetOptions) (result *v1.Action, err error) {
 	result = &v1.Action{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *actions) Create(action *v1.Action) (result *v1.Action, err error) {
 	objectTenant := action.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *actions) Update(action *v1.Action) (result *v1.Action, err error) {
 	objectTenant := action.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -217,6 +228,9 @@ func (c *actions) UpdateStatus(action *v1.Action) (result *v1.Action, err error)
 	objectTenant := action.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -234,8 +248,13 @@ func (c *actions) UpdateStatus(action *v1.Action) (result *v1.Action, err error)
 
 // Delete takes name of the action and deletes it. Returns an error if one occurs.
 func (c *actions) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("actions").
 		Name(name).
@@ -264,8 +283,13 @@ func (c *actions) DeleteCollection(options *metav1.DeleteOptions, listOptions me
 // Patch applies the patch and returns the patched action.
 func (c *actions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Action, err error) {
 	result = &v1.Action{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("actions").
 		SubResource(subresources...).

@@ -42,8 +42,13 @@ var statefulsetsKind = schema.GroupVersionKind{Group: "apps", Version: "v1beta1"
 
 // Get takes name of the statefulSet, and returns the corresponding statefulSet object, and an error if there is any.
 func (c *FakeStatefulSets) Get(name string, options v1.GetOptions) (result *v1beta1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(statefulsetsResource, c.ns, name, c.te), &v1beta1.StatefulSet{})
+		Invokes(testing.NewGetActionWithMultiTenancy(statefulsetsResource, c.ns, name, tenant), &v1beta1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeStatefulSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInter
 
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *FakeStatefulSets) Create(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, c.te), &v1beta1.StatefulSet{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, tenant), &v1beta1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeStatefulSets) Create(statefulSet *v1beta1.StatefulSet) (result *v1b
 
 // Update takes the representation of a statefulSet and updates it. Returns the server's representation of the statefulSet, and an error, if there is any.
 func (c *FakeStatefulSets) Update(statefulSet *v1beta1.StatefulSet) (result *v1beta1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, c.te), &v1beta1.StatefulSet{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(statefulsetsResource, c.ns, statefulSet, tenant), &v1beta1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeStatefulSets) Update(statefulSet *v1beta1.StatefulSet) (result *v1b
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeStatefulSets) UpdateStatus(statefulSet *v1beta1.StatefulSet) (*v1beta1.StatefulSet, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(statefulsetsResource, "status", c.ns, statefulSet, c.te), &v1beta1.StatefulSet{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(statefulsetsResource, "status", c.ns, statefulSet, tenant), &v1beta1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeStatefulSets) UpdateStatus(statefulSet *v1beta1.StatefulSet) (*v1be
 
 // Delete takes name of the statefulSet and deletes it. Returns an error if one occurs.
 func (c *FakeStatefulSets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(statefulsetsResource, c.ns, name, c.te), &v1beta1.StatefulSet{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(statefulsetsResource, c.ns, name, tenant), &v1beta1.StatefulSet{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeStatefulSets) DeleteCollection(options *v1.DeleteOptions, listOptio
 
 // Patch applies the patch and returns the patched statefulSet.
 func (c *FakeStatefulSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.StatefulSet, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(statefulsetsResource, c.te, c.ns, name, pt, data, subresources...), &v1beta1.StatefulSet{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(statefulsetsResource, tenant, c.ns, name, pt, data, subresources...), &v1beta1.StatefulSet{})
 
 	if obj == nil {
 		return nil, err

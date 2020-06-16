@@ -83,8 +83,13 @@ func newReplicationControllersWithMultiTenancy(c *CoreV1Client, namespace string
 // Get takes name of the replicationController, and returns the corresponding replicationController object, and an error if there is any.
 func (c *replicationControllers) Get(name string, options metav1.GetOptions) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(name).
@@ -179,6 +184,9 @@ func (c *replicationControllers) Create(replicationController *v1.ReplicationCon
 	objectTenant := replicationController.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -199,6 +207,9 @@ func (c *replicationControllers) Update(replicationController *v1.ReplicationCon
 	objectTenant := replicationController.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -222,6 +233,9 @@ func (c *replicationControllers) UpdateStatus(replicationController *v1.Replicat
 	objectTenant := replicationController.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -239,8 +253,13 @@ func (c *replicationControllers) UpdateStatus(replicationController *v1.Replicat
 
 // Delete takes name of the replicationController and deletes it. Returns an error if one occurs.
 func (c *replicationControllers) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(name).
@@ -269,8 +288,13 @@ func (c *replicationControllers) DeleteCollection(options *metav1.DeleteOptions,
 // Patch applies the patch and returns the patched replicationController.
 func (c *replicationControllers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ReplicationController, err error) {
 	result = &v1.ReplicationController{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		SubResource(subresources...).
@@ -285,8 +309,13 @@ func (c *replicationControllers) Patch(name string, pt types.PatchType, data []b
 // GetScale takes name of the replicationController, and returns the corresponding autoscalingv1.Scale object, and an error if there is any.
 func (c *replicationControllers) GetScale(replicationControllerName string, options metav1.GetOptions) (result *autoscalingv1.Scale, err error) {
 	result = &autoscalingv1.Scale{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("replicationcontrollers").
 		Name(replicationControllerName).
@@ -305,6 +334,9 @@ func (c *replicationControllers) UpdateScale(replicationControllerName string, s
 	objectTenant := scale.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().

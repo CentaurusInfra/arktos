@@ -39,6 +39,7 @@ var controllerinstancesKind = schema.GroupVersionKind{Group: "", Version: "v1", 
 
 // Get takes name of the controllerInstance, and returns the corresponding controllerInstance object, and an error if there is any.
 func (c *FakeControllerInstances) Get(name string, options v1.GetOptions) (result *corev1.ControllerInstance, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(controllerinstancesResource, name), &corev1.ControllerInstance{})
 	if obj == nil {
@@ -80,6 +81,7 @@ func (c *FakeControllerInstances) Watch(opts v1.ListOptions) watch.AggregatedWat
 
 // Create takes the representation of a controllerInstance and creates it.  Returns the server's representation of the controllerInstance, and an error, if there is any.
 func (c *FakeControllerInstances) Create(controllerInstance *corev1.ControllerInstance) (result *corev1.ControllerInstance, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(controllerinstancesResource, controllerInstance), &corev1.ControllerInstance{})
 	if obj == nil {
@@ -91,6 +93,7 @@ func (c *FakeControllerInstances) Create(controllerInstance *corev1.ControllerIn
 
 // Update takes the representation of a controllerInstance and updates it. Returns the server's representation of the controllerInstance, and an error, if there is any.
 func (c *FakeControllerInstances) Update(controllerInstance *corev1.ControllerInstance) (result *corev1.ControllerInstance, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(controllerinstancesResource, controllerInstance), &corev1.ControllerInstance{})
 	if obj == nil {
@@ -102,6 +105,7 @@ func (c *FakeControllerInstances) Update(controllerInstance *corev1.ControllerIn
 
 // Delete takes name of the controllerInstance and deletes it. Returns an error if one occurs.
 func (c *FakeControllerInstances) Delete(name string, options *v1.DeleteOptions) error {
+
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(controllerinstancesResource, name), &corev1.ControllerInstance{})
 	return err
@@ -117,6 +121,7 @@ func (c *FakeControllerInstances) DeleteCollection(options *v1.DeleteOptions, li
 
 // Patch applies the patch and returns the patched controllerInstance.
 func (c *FakeControllerInstances) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.ControllerInstance, err error) {
+
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(controllerinstancesResource, name, pt, data, subresources...), &corev1.ControllerInstance{})
 	if obj == nil {

@@ -42,8 +42,13 @@ var secretsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secre
 
 // Get takes name of the secret, and returns the corresponding secret object, and an error if there is any.
 func (c *FakeSecrets) Get(name string, options v1.GetOptions) (result *corev1.Secret, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(secretsResource, c.ns, name, c.te), &corev1.Secret{})
+		Invokes(testing.NewGetActionWithMultiTenancy(secretsResource, c.ns, name, tenant), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeSecrets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 
 // Create takes the representation of a secret and creates it.  Returns the server's representation of the secret, and an error, if there is any.
 func (c *FakeSecrets) Create(secret *corev1.Secret) (result *corev1.Secret, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(secretsResource, c.ns, secret, c.te), &corev1.Secret{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(secretsResource, c.ns, secret, tenant), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeSecrets) Create(secret *corev1.Secret) (result *corev1.Secret, err 
 
 // Update takes the representation of a secret and updates it. Returns the server's representation of the secret, and an error, if there is any.
 func (c *FakeSecrets) Update(secret *corev1.Secret) (result *corev1.Secret, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(secretsResource, c.ns, secret, c.te), &corev1.Secret{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(secretsResource, c.ns, secret, tenant), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeSecrets) Update(secret *corev1.Secret) (result *corev1.Secret, err 
 
 // Delete takes name of the secret and deletes it. Returns an error if one occurs.
 func (c *FakeSecrets) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(secretsResource, c.ns, name, c.te), &corev1.Secret{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(secretsResource, c.ns, name, tenant), &corev1.Secret{})
 
 	return err
 }
@@ -126,8 +146,13 @@ func (c *FakeSecrets) DeleteCollection(options *v1.DeleteOptions, listOptions v1
 
 // Patch applies the patch and returns the patched secret.
 func (c *FakeSecrets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Secret, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(secretsResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Secret{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(secretsResource, tenant, c.ns, name, pt, data, subresources...), &corev1.Secret{})
 
 	if obj == nil {
 		return nil, err

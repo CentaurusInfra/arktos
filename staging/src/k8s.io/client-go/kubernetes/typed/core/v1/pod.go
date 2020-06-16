@@ -79,8 +79,13 @@ func newPodsWithMultiTenancy(c *CoreV1Client, namespace string, tenant string) *
 // Get takes name of the pod, and returns the corresponding pod object, and an error if there is any.
 func (c *pods) Get(name string, options metav1.GetOptions) (result *v1.Pod, err error) {
 	result = &v1.Pod{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *pods) Create(pod *v1.Pod) (result *v1.Pod, err error) {
 	objectTenant := pod.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *pods) Update(pod *v1.Pod) (result *v1.Pod, err error) {
 	objectTenant := pod.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *pods) UpdateStatus(pod *v1.Pod) (result *v1.Pod, err error) {
 	objectTenant := pod.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *pods) UpdateStatus(pod *v1.Pod) (result *v1.Pod, err error) {
 
 // Delete takes name of the pod and deletes it. Returns an error if one occurs.
 func (c *pods) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("pods").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *pods) DeleteCollection(options *metav1.DeleteOptions, listOptions metav
 // Patch applies the patch and returns the patched pod.
 func (c *pods) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Pod, err error) {
 	result = &v1.Pod{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("pods").
 		SubResource(subresources...).

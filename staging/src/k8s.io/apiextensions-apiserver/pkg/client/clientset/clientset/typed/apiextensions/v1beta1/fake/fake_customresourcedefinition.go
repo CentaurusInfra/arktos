@@ -41,8 +41,13 @@ var customresourcedefinitionsKind = schema.GroupVersionKind{Group: "apiextension
 
 // Get takes name of the customResourceDefinition, and returns the corresponding customResourceDefinition object, and an error if there is any.
 func (c *FakeCustomResourceDefinitions) Get(name string, options v1.GetOptions) (result *v1beta1.CustomResourceDefinition, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantGetAction(customresourcedefinitionsResource, name, c.te), &v1beta1.CustomResourceDefinition{})
+		Invokes(testing.NewTenantGetAction(customresourcedefinitionsResource, name, tenant), &v1beta1.CustomResourceDefinition{})
 
 	if obj == nil {
 		return nil, err
@@ -85,8 +90,13 @@ func (c *FakeCustomResourceDefinitions) Watch(opts v1.ListOptions) watch.Aggrega
 
 // Create takes the representation of a customResourceDefinition and creates it.  Returns the server's representation of the customResourceDefinition, and an error, if there is any.
 func (c *FakeCustomResourceDefinitions) Create(customResourceDefinition *v1beta1.CustomResourceDefinition) (result *v1beta1.CustomResourceDefinition, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantCreateAction(customresourcedefinitionsResource, customResourceDefinition, c.te), &v1beta1.CustomResourceDefinition{})
+		Invokes(testing.NewTenantCreateAction(customresourcedefinitionsResource, customResourceDefinition, tenant), &v1beta1.CustomResourceDefinition{})
 
 	if obj == nil {
 		return nil, err
@@ -97,8 +107,13 @@ func (c *FakeCustomResourceDefinitions) Create(customResourceDefinition *v1beta1
 
 // Update takes the representation of a customResourceDefinition and updates it. Returns the server's representation of the customResourceDefinition, and an error, if there is any.
 func (c *FakeCustomResourceDefinitions) Update(customResourceDefinition *v1beta1.CustomResourceDefinition) (result *v1beta1.CustomResourceDefinition, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateAction(customresourcedefinitionsResource, customResourceDefinition, c.te), &v1beta1.CustomResourceDefinition{})
+		Invokes(testing.NewTenantUpdateAction(customresourcedefinitionsResource, customResourceDefinition, tenant), &v1beta1.CustomResourceDefinition{})
 
 	if obj == nil {
 		return nil, err
@@ -110,8 +125,13 @@ func (c *FakeCustomResourceDefinitions) Update(customResourceDefinition *v1beta1
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeCustomResourceDefinitions) UpdateStatus(customResourceDefinition *v1beta1.CustomResourceDefinition) (*v1beta1.CustomResourceDefinition, error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateSubresourceAction(customresourcedefinitionsResource, "status", customResourceDefinition, c.te), &v1beta1.CustomResourceDefinition{})
+		Invokes(testing.NewTenantUpdateSubresourceAction(customresourcedefinitionsResource, "status", customResourceDefinition, tenant), &v1beta1.CustomResourceDefinition{})
 
 	if obj == nil {
 		return nil, err
@@ -121,16 +141,26 @@ func (c *FakeCustomResourceDefinitions) UpdateStatus(customResourceDefinition *v
 
 // Delete takes name of the customResourceDefinition and deletes it. Returns an error if one occurs.
 func (c *FakeCustomResourceDefinitions) Delete(name string, options *v1.DeleteOptions) error {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	_, err := c.Fake.
-		Invokes(testing.NewTenantDeleteAction(customresourcedefinitionsResource, name, c.te), &v1beta1.CustomResourceDefinition{})
+		Invokes(testing.NewTenantDeleteAction(customresourcedefinitionsResource, name, tenant), &v1beta1.CustomResourceDefinition{})
 
 	return err
 }
 
 // Patch applies the patch and returns the patched customResourceDefinition.
 func (c *FakeCustomResourceDefinitions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CustomResourceDefinition, err error) {
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
+
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantPatchSubresourceAction(customresourcedefinitionsResource, c.te, name, pt, data, subresources...), &v1beta1.CustomResourceDefinition{})
+		Invokes(testing.NewTenantPatchSubresourceAction(customresourcedefinitionsResource, tenant, name, pt, data, subresources...), &v1beta1.CustomResourceDefinition{})
 
 	if obj == nil {
 		return nil, err

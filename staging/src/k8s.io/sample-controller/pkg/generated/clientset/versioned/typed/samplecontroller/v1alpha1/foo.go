@@ -79,8 +79,13 @@ func newFoosWithMultiTenancy(c *SamplecontrollerV1alpha1Client, namespace string
 // Get takes name of the foo, and returns the corresponding foo object, and an error if there is any.
 func (c *foos) Get(name string, options v1.GetOptions) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *foos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	objectTenant := foo.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *foos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
 	objectTenant := foo.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *foos) UpdateStatus(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error)
 	objectTenant := foo.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *foos) UpdateStatus(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error)
 
 // Delete takes name of the foo and deletes it. Returns an error if one occurs.
 func (c *foos) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("foos").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *foos) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOp
 // Patch applies the patch and returns the patched foo.
 func (c *foos) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Foo, err error) {
 	result = &v1alpha1.Foo{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("foos").
 		SubResource(subresources...).

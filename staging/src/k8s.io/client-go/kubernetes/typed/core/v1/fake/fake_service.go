@@ -42,8 +42,13 @@ var servicesKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Serv
 
 // Get takes name of the service, and returns the corresponding service object, and an error if there is any.
 func (c *FakeServices) Get(name string, options v1.GetOptions) (result *corev1.Service, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(servicesResource, c.ns, name, c.te), &corev1.Service{})
+		Invokes(testing.NewGetActionWithMultiTenancy(servicesResource, c.ns, name, tenant), &corev1.Service{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeServices) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 
 // Create takes the representation of a service and creates it.  Returns the server's representation of the service, and an error, if there is any.
 func (c *FakeServices) Create(service *corev1.Service) (result *corev1.Service, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(servicesResource, c.ns, service, c.te), &corev1.Service{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(servicesResource, c.ns, service, tenant), &corev1.Service{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeServices) Create(service *corev1.Service) (result *corev1.Service, 
 
 // Update takes the representation of a service and updates it. Returns the server's representation of the service, and an error, if there is any.
 func (c *FakeServices) Update(service *corev1.Service) (result *corev1.Service, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(servicesResource, c.ns, service, c.te), &corev1.Service{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(servicesResource, c.ns, service, tenant), &corev1.Service{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeServices) Update(service *corev1.Service) (result *corev1.Service, 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeServices) UpdateStatus(service *corev1.Service) (*corev1.Service, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(servicesResource, "status", c.ns, service, c.te), &corev1.Service{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(servicesResource, "status", c.ns, service, tenant), &corev1.Service{})
 
 	if obj == nil {
 		return nil, err
@@ -122,16 +142,26 @@ func (c *FakeServices) UpdateStatus(service *corev1.Service) (*corev1.Service, e
 
 // Delete takes name of the service and deletes it. Returns an error if one occurs.
 func (c *FakeServices) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(servicesResource, c.ns, name, c.te), &corev1.Service{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(servicesResource, c.ns, name, tenant), &corev1.Service{})
 
 	return err
 }
 
 // Patch applies the patch and returns the patched service.
 func (c *FakeServices) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *corev1.Service, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(servicesResource, c.te, c.ns, name, pt, data, subresources...), &corev1.Service{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(servicesResource, tenant, c.ns, name, pt, data, subresources...), &corev1.Service{})
 
 	if obj == nil {
 		return nil, err

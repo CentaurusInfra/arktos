@@ -78,8 +78,13 @@ func newRoleBindingsWithMultiTenancy(c *RbacV1Client, namespace string, tenant s
 // Get takes name of the roleBinding, and returns the corresponding roleBinding object, and an error if there is any.
 func (c *roleBindings) Get(name string, options metav1.GetOptions) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *roleBindings) Create(roleBinding *v1.RoleBinding) (result *v1.RoleBindi
 	objectTenant := roleBinding.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *roleBindings) Update(roleBinding *v1.RoleBinding) (result *v1.RoleBindi
 	objectTenant := roleBinding.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *roleBindings) Update(roleBinding *v1.RoleBinding) (result *v1.RoleBindi
 
 // Delete takes name of the roleBinding and deletes it. Returns an error if one occurs.
 func (c *roleBindings) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *roleBindings) DeleteCollection(options *metav1.DeleteOptions, listOptio
 // Patch applies the patch and returns the patched roleBinding.
 func (c *roleBindings) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.RoleBinding, err error) {
 	result = &v1.RoleBinding{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("rolebindings").
 		SubResource(subresources...).

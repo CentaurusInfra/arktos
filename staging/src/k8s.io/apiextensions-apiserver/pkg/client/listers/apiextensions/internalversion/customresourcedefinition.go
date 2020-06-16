@@ -104,7 +104,9 @@ func (s customResourceDefinitionTenantLister) List(selector labels.Selector) (re
 // Get retrieves the CustomResourceDefinition from the indexer for a given tenant and name.
 func (s customResourceDefinitionTenantLister) Get(name string) (*apiextensions.CustomResourceDefinition, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "system" {
+	// The backward-compatible informer may have the tenant set as "system" or "all",
+	// Yet when it comes to get an object, the tenant can only be "system", where the key is {name}
+	if s.tenant == "system" || s.tenant == "all" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

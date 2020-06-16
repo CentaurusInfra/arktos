@@ -42,8 +42,13 @@ var flundersKind = schema.GroupVersionKind{Group: "wardle.k8s.io", Version: "v1a
 
 // Get takes name of the flunder, and returns the corresponding flunder object, and an error if there is any.
 func (c *FakeFlunders) Get(name string, options v1.GetOptions) (result *v1alpha1.Flunder, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithMultiTenancy(flundersResource, c.ns, name, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewGetActionWithMultiTenancy(flundersResource, c.ns, name, tenant), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -86,8 +91,13 @@ func (c *FakeFlunders) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 
 // Create takes the representation of a flunder and creates it.  Returns the server's representation of the flunder, and an error, if there is any.
 func (c *FakeFlunders) Create(flunder *v1alpha1.Flunder) (result *v1alpha1.Flunder, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithMultiTenancy(flundersResource, c.ns, flunder, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewCreateActionWithMultiTenancy(flundersResource, c.ns, flunder, tenant), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -98,8 +108,13 @@ func (c *FakeFlunders) Create(flunder *v1alpha1.Flunder) (result *v1alpha1.Flund
 
 // Update takes the representation of a flunder and updates it. Returns the server's representation of the flunder, and an error, if there is any.
 func (c *FakeFlunders) Update(flunder *v1alpha1.Flunder) (result *v1alpha1.Flunder, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithMultiTenancy(flundersResource, c.ns, flunder, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewUpdateActionWithMultiTenancy(flundersResource, c.ns, flunder, tenant), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -111,8 +126,13 @@ func (c *FakeFlunders) Update(flunder *v1alpha1.Flunder) (result *v1alpha1.Flund
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeFlunders) UpdateStatus(flunder *v1alpha1.Flunder) (*v1alpha1.Flunder, error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(flundersResource, "status", c.ns, flunder, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(flundersResource, "status", c.ns, flunder, tenant), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err
@@ -122,8 +142,13 @@ func (c *FakeFlunders) UpdateStatus(flunder *v1alpha1.Flunder) (*v1alpha1.Flunde
 
 // Delete takes name of the flunder and deletes it. Returns an error if one occurs.
 func (c *FakeFlunders) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithMultiTenancy(flundersResource, c.ns, name, c.te), &v1alpha1.Flunder{})
+		Invokes(testing.NewDeleteActionWithMultiTenancy(flundersResource, c.ns, name, tenant), &v1alpha1.Flunder{})
 
 	return err
 }
@@ -138,8 +163,13 @@ func (c *FakeFlunders) DeleteCollection(options *v1.DeleteOptions, listOptions v
 
 // Patch applies the patch and returns the patched flunder.
 func (c *FakeFlunders) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Flunder, err error) {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(flundersResource, c.te, c.ns, name, pt, data, subresources...), &v1alpha1.Flunder{})
+		Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(flundersResource, tenant, c.ns, name, pt, data, subresources...), &v1alpha1.Flunder{})
 
 	if obj == nil {
 		return nil, err

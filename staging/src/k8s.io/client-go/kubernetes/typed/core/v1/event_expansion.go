@@ -48,7 +48,7 @@ type EventExpansion interface {
 // event; it must either match this event client's namespace, or this event
 // client must have been created with the "" namespace.
 func (e *events) CreateWithEventNamespace(event *v1.Event) (*v1.Event, error) {
-	if e.te != "" && event.Tenant != e.te {
+	if e.te != metav1.TenantAll && event.Tenant != e.te {
 		return nil, fmt.Errorf("can't create an event with tenant '%v' in tenant '%v'", event.Tenant, e.te)
 	}
 	if e.ns != "" && event.Namespace != e.ns {
@@ -115,10 +115,10 @@ func (e *events) Search(scheme *runtime.Scheme, objOrRef runtime.Object) (*v1.Ev
 	if err != nil {
 		return nil, err
 	}
-	// uncomment the follwoing line after the Tenant in objOrRef is defined.
-	//if e.te != "" && ref.Tenant != e.te {
-	//	return nil, fmt.Errorf("won't be able to find any events of tenant '%v' in tenant '%v'", ref.Tenant, e.te)
-	//}
+
+	if e.te != metav1.TenantAll && ref.Tenant != e.te {
+		return nil, fmt.Errorf("won't be able to find any events of tenant '%v' in tenant '%v'", ref.Tenant, e.te)
+	}
 	if e.ns != "" && ref.Namespace != e.ns {
 		return nil, fmt.Errorf("won't be able to find any events of namespace '%v' in namespace '%v'", ref.Namespace, e.ns)
 	}

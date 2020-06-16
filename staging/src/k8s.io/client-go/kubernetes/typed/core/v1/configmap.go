@@ -78,8 +78,13 @@ func newConfigMapsWithMultiTenancy(c *CoreV1Client, namespace string, tenant str
 // Get takes name of the configMap, and returns the corresponding configMap object, and an error if there is any.
 func (c *configMaps) Get(name string, options metav1.GetOptions) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Name(name).
@@ -174,6 +179,9 @@ func (c *configMaps) Create(configMap *v1.ConfigMap) (result *v1.ConfigMap, err 
 	objectTenant := configMap.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -194,6 +202,9 @@ func (c *configMaps) Update(configMap *v1.ConfigMap) (result *v1.ConfigMap, err 
 	objectTenant := configMap.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -210,8 +221,13 @@ func (c *configMaps) Update(configMap *v1.ConfigMap) (result *v1.ConfigMap, err 
 
 // Delete takes name of the configMap and deletes it. Returns an error if one occurs.
 func (c *configMaps) Delete(name string, options *metav1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("configmaps").
 		Name(name).
@@ -240,8 +256,13 @@ func (c *configMaps) DeleteCollection(options *metav1.DeleteOptions, listOptions
 // Patch applies the patch and returns the patched configMap.
 func (c *configMaps) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ConfigMap, err error) {
 	result = &v1.ConfigMap{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("configmaps").
 		SubResource(subresources...).

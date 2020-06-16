@@ -79,8 +79,13 @@ func newIngressesWithMultiTenancy(c *NetworkingV1beta1Client, namespace string, 
 // Get takes name of the ingress, and returns the corresponding ingress object, and an error if there is any.
 func (c *ingresses) Get(name string, options v1.GetOptions) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Get().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(name).
@@ -175,6 +180,9 @@ func (c *ingresses) Create(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, e
 	objectTenant := ingress.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Post().
@@ -195,6 +203,9 @@ func (c *ingresses) Update(ingress *v1beta1.Ingress) (result *v1beta1.Ingress, e
 	objectTenant := ingress.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -218,6 +229,9 @@ func (c *ingresses) UpdateStatus(ingress *v1beta1.Ingress) (result *v1beta1.Ingr
 	objectTenant := ingress.ObjectMeta.Tenant
 	if objectTenant == "" {
 		objectTenant = c.te
+		if c.te == "all" {
+			objectTenant = "system"
+		}
 	}
 
 	err = c.client.Put().
@@ -235,8 +249,13 @@ func (c *ingresses) UpdateStatus(ingress *v1beta1.Ingress) (result *v1beta1.Ingr
 
 // Delete takes name of the ingress and deletes it. Returns an error if one occurs.
 func (c *ingresses) Delete(name string, options *v1.DeleteOptions) error {
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	return c.client.Delete().
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("ingresses").
 		Name(name).
@@ -265,8 +284,13 @@ func (c *ingresses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 // Patch applies the patch and returns the patched ingress.
 func (c *ingresses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Ingress, err error) {
 	result = &v1beta1.Ingress{}
+
+	tenant := c.te
+	if tenant == "all" {
+		tenant = "system"
+	}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
+		Tenant(tenant).
 		Namespace(c.ns).
 		Resource("ingresses").
 		SubResource(subresources...).
