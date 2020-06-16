@@ -487,8 +487,10 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) {
 			{"name": manifest.VirtualMachine.Scheduling.SecurityGroup[0].Name},
 		},
 	}
+	serverJson := map[string]server{}
+	serverJson["server"] = serverStruct
 
-	finalData, _ := json.Marshal(serverStruct)
+	finalData, _ := json.Marshal(serverJson)
 	fmt.Println(bytes.NewBuffer(finalData))
 }
 
