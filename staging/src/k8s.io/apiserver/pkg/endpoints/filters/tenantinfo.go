@@ -118,10 +118,6 @@ func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
 		requestInfo.Tenant = userTenant
 	}
 
-	if resourceTenant == metav1.TenantAllExplicit {
-		requestInfo.Tenant = metav1.TenantAll
-	}
-
 	req = req.WithContext(request.WithRequestInfo(ctx, requestInfo))
 
 	return req, nil
