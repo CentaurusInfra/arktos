@@ -23,5 +23,8 @@ spec:
     keyPairName: "KeyMy"
     name: provider-instance
     image: "cbe8ec60-7b5e-4bad-b8a5-f51842be8e7f"
+    scheduling:
+      securityGroup:
+        - name: "bcf80900-b3ea-4e49-8e29-ade65f4f399b"
     resources:
       flavorRef: "1"

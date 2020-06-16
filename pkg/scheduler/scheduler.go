@@ -21,14 +21,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	// "strings"
 	"time"
-
-	// queue "github.com/golang-collections/go-datastructures/queue"
+	"net/http"
+	"bytes"
+	"encoding/json"
+	// TODO: Try to find an official way to import this module
+	queue "github.com/golang-collections/go-datastructures/queue"
 
 	"k8s.io/apimachinery/pkg/util/wait"
-
-	"golang.org/x/crypto/ssh"
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
@@ -75,6 +75,14 @@ type schedulerOptions struct {
 	disablePreemption              bool
 	percentageOfNodesToScore       int32
 	bindTimeoutSeconds             int64
+}
+
+type server struct {
+	name string
+	imageRef string
+	flavorRef string
+	networks []map[string]string
+	security_groups []map[string]string
 }
 
 // Option configures a Scheduler
@@ -262,8 +270,8 @@ func (sched *Scheduler) Run() {
 		return
 	}
 
-	go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
-	//go wait.Until(sched.globalScheduleOne, 0, sched.config.StopEverything)
+	// go wait.Until(sched.scheduleOne, 0, sched.config.StopEverything)
+	go wait.Until(sched.globalScheduleOne, 0, sched.config.StopEverything)
 }
 
 // Config returns scheduler's config pointer. It is exposed for testing purposes.
@@ -445,100 +453,95 @@ func (sched *Scheduler) bind(assumed *v1.Pod, b *v1.Binding) error {
 	return nil
 }
 
-func connectToHost(user string, host string) (*ssh.Client, *ssh.Session, error) {
-	sshConfig := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			PublicKeyFile("/home/ubuntu/go/src/kzhang2key.pem"),
+func requestToken(host string) string {
+	tokenRequestURL := "http://" + host + "/identity/v3/auth/tokens"
+
+	// TODO: Please don't hard code json data
+	tokenJsonData := `{"auth":{"identity":{"methods":["password"],"password":{"user":{"name":"admin","domain":{"id":"default"},"password":"root"}}},"scope":{"project":{"name":"admin","domain":{"id":"default"}}}}}`
+	var tokenJsonDataBytes = []byte(tokenJsonData)
+	req, err := http.NewRequest("POST", tokenRequestURL, bytes.NewBuffer(tokenJsonDataBytes))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		klog.V(3).Infof("HTTP Post Request Failed: %v", err)
+	}
+	klog.V(3).Infof("HTTP Post Request Succeeded")
+	defer resp.Body.Close()
+
+	respHeader := resp.Header
+
+	return respHeader["X-Subject-Token"][0]
+}
+
+func serverCreate(host string, authToken string, manifest *v1.PodSpec) {
+	// serverCreateRequestURL := "http://" + host + "/compute/v2.1/servers"
+	serverStruct := server{
+		name: manifest.VirtualMachine.Name,
+		imageRef: manifest.VirtualMachine.Image,
+		flavorRef: manifest.VirtualMachine.Resources.FlavorRef,
+		networks: []map[string]string{
+			{"uuid": manifest.Nics[0].Uuid},
+		},
+		security_groups: []map[string]string{
+			{"name": manifest.VirtualMachine.Scheduling.SecurityGroup[0].Name},
 		},
 	}
-	sshConfig.HostKeyCallback = ssh.InsecureIgnoreHostKey()
 
-	client, err := ssh.Dial("tcp", host, sshConfig)
-	if err != nil {
-		return nil, nil, err
-	}
+	// jsonData := map[string]server{
+	// 	"server": serverStruct,
+	// }
 
-	session, err := client.NewSession()
-	if err != nil {
-		client.Close()
-		return nil, nil, err
-	}
+	finalData, _ := json.Marshal(serverStruct)
 
-	return client, session, nil
+
+	fmt.Println(bytes.NewBuffer(finalData))
 }
 
-// PublicKeyFile Generate Public Key
-func PublicKeyFile(file string) ssh.AuthMethod {
-	buffer, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil
+func (sched *Scheduler) globalScheduleOne() {
+	// 1. Get the Pod to be scheduled from the queue
+	pod := sched.config.NextPod()
+	// pod could be nil when schedulerQueue is closed
+	if pod == nil {
+		return
+	}
+	if pod.DeletionTimestamp != nil {
+		sched.config.Recorder.Eventf(pod, v1.EventTypeWarning, "FailedScheduling", "skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+		klog.V(3).Infof("Skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+		return
+	}
+	// TODO: Just for jump over testing script
+	manifest := &(pod.Spec)
+	if manifest.VirtualMachine == nil {
+		return
 	}
 
-	key, err := ssh.ParsePrivateKey(buffer)
-	if err != nil {
-		return nil
-	}
-	return ssh.PublicKeys(key)
+	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+
+	finishedWrite := make(chan string)
+	finishedRead := make(chan string)
+	scheduleResultQueue := queue.New(1)
+
+	go func() {
+		scheduleResultQueue.Put("172.31.15.216")
+		finishedWrite <- "done"
+	}()
+
+	go func() {
+		<- finishedWrite
+		res, _ := scheduleResultQueue.Get(1)
+		host := fmt.Sprintf("%v", res[0])
+
+		// Post Request For Token
+		// authToken := requestToken(host)
+		authToken := "gAAAAABe5taKRvITfc8G5pG1sEdmSEaj8lqKisovUDFhoJDMvpESiyPg_jV-zc8TTB5rLWUJxAdIt1hhoCHg6onITEXnfaStLY2YiMBqAgLLTJgfyALWy9n_abMXqkMNNk41juR6i-9IhyvvFbtPX3RmklxVyO90BCWwKEmb7ou17AXdA45I2Ro"
+		serverCreate(host, authToken, manifest)
+
+		finishedRead <- "done"
+	}()
+
+	<-finishedRead
 }
-
-// func (sched *Scheduler) globalScheduleOne() {
-// 	// 1. Get the Pod to be scheduled from the queue
-// 	pod := sched.config.NextPod()
-// 	// pod could be nil when schedulerQueue is closed
-// 	if pod == nil {
-// 		return
-// 	}
-// 	if pod.DeletionTimestamp != nil {
-// 		sched.config.Recorder.Eventf(pod, v1.EventTypeWarning, "FailedScheduling", "skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
-// 		klog.V(3).Infof("Skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
-// 		return
-// 	}
-
-// 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
-
-// 	// suggestedHost := "ec2-54-148-84-253.us-west-2.compute.amazonaws.com:22"
-// 	// channel := make(chan string)
-// 	finishedWrite := make(chan string)
-// 	finishedRead := make(chan string)
-// 	// manifest := &(pod.Spec)
-// 	scheduleResultQueue := queue.New(1)
-
-// 	go func() {
-// 		scheduleResultQueue.Put("172.31.15.216")
-// 		finishedWrite <- "done"
-// 	}()
-
-// 	go func() {
-// 		<- finishedWrite
-// 		host := scheduleResultQueue.Get(1)
-// 		var jsonStr = []byte(jsonData)
-// 		client, session, err := connectToHost("ubuntu", host)
-// 		if err != nil {
-// 			klog.V(3).Infof("Remote ssh connection fail")
-// 			return
-// 		}
-
-// 		klog.V(3).Infof("Successfully connect to remote openstack cluster")
-
-// 		provideAdmin := []string{
-// 			"cd /home/ubuntu/devstack",
-// 			". admin-openrc",
-// 		}
-// 		provideAdminCombined := strings.Join(commands, " && ")
-
-// 		out, err := session.CombinedOutput(provideAdminCombined)
-// 		if err != nil {
-// 			klog.V(3).Infof("Failed to run commands: %v", err)
-// 			return
-// 		}
-
-// 		client.Close()
-// 		finishedRead <- "done"
-// 	}()
-
-// 	<-finishedRead
-// }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
 func (sched *Scheduler) scheduleOne() {
@@ -557,12 +560,6 @@ func (sched *Scheduler) scheduleOne() {
 	}
 
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
-
-	manifest := &(pod.Spec)
-	if manifest.VirtualMachine != nil {
-		rf := manifest.VirtualMachine.Resources.FlavorRef
-		klog.V(3).Infof("--------------------- FlavorRef is %v", rf)
-	}
 
 	// Synchronously attempt to find a fit for the pod.
 	start := time.Now()
