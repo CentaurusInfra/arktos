@@ -62,6 +62,9 @@ fi
 if [[ -z ${PRESET_INSTANCES_ENABLED:-} ]]; then
   PRESET_INSTANCES_ENABLED=$FALSE
 fi
+if [[ -z ${IS_PRESET_INSTANCES_DRY_RUN:-} ]]; then
+  IS_PRESET_INSTANCES_DRY_RUN=$FALSE
+fi
 if [[ $PRESET_INSTANCES_ENABLED == $TRUE ]]; then
   KUBE_MASTER_IP=$PRESET_KUBE_MASTER_IP
   MASTER_INTERNAL_IP=$PRESET_KUBE_MASTER_IP
@@ -733,11 +736,13 @@ function upload-server-tars() {
     SERVER_BINARY_TAR_URL=$PRESET_SERVER_BINARY_TAR_URL
     BOOTSTRAP_SCRIPT_URL=$PRESET_BOOTSTRAP_SCRIPT_URL
 
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
-    if [[ -n ${KUBE_MINION2_IP:-} ]]; then
-      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
-    fi    
+    if [[ $IS_PRESET_INSTANCES_DRY_RUN == $FALSE ]]; then
+      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
+      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
+      if [[ -n ${KUBE_MINION2_IP:-} ]]; then
+        scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${SERVER_BINARY_TAR} ${BOOTSTRAP_SCRIPT} ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
+      fi
+    fi
   fi
 
   echo "Uploaded server tars:"
@@ -1134,6 +1139,10 @@ function kube-up {
     if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
       # Start minions. The kube bootstrap script will be executed during minions starting.
       start-minions
+
+      if [[ $PRESET_INSTANCES_ENABLED == $TRUE && $IS_PRESET_INSTANCES_DRY_RUN == $TRUE ]]; then
+        return
+      fi
       if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
         wait-minions
       fi
@@ -1273,6 +1282,8 @@ function start-master() {
       echo "/etc/kubernetes/bootstrap > /tmp/bootstrap.log"
     fi
   ) > "${KUBE_TEMP}/master-user-data"
+  
+  cp ${KUBE_TEMP}/master-user-data /tmp/master-user-data
 
   if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     # Compress the data to fit under the 16KB limit (cloud-init accepts compressed data)
@@ -1334,11 +1345,13 @@ function start-master() {
       echo "Started master: public_ip= $ip"
     done
   else
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/master-user-data ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
-    execute-ssh ${KUBE_MASTER_IP} "sudo mkdir -p /mnt/master-pd && chmod 755 /tmp/master-user-data && sudo /tmp/master-user-data"
-    execute-ssh ${KUBE_MASTER_IP} "sudo /etc/kubernetes/bootstrap &>/tmp/bootstrap.log & disown"
+    if [[ $IS_PRESET_INSTANCES_DRY_RUN == $FALSE ]]; then
+      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/master-user-data ${SSH_USER}@${KUBE_MASTER_IP}:/tmp
+      execute-ssh ${KUBE_MASTER_IP} "sudo mkdir -p /mnt/master-pd && chmod 755 /tmp/master-user-data && sudo /tmp/master-user-data"
+      execute-ssh ${KUBE_MASTER_IP} "sudo /etc/kubernetes/bootstrap &>/tmp/bootstrap.log & disown"
 
-    echo "Master is running: public_ip= $KUBE_MASTER_IP"    
+      echo "Master is running: public_ip= $KUBE_MASTER_IP"
+    fi
   fi
 }
 
@@ -1384,6 +1397,8 @@ function start-minions() {
     fi
   ) > "${KUBE_TEMP}/node-user-data"
 
+  cp ${KUBE_TEMP}/node-user-data /tmp/node-user-data
+
   if [[ $PRESET_INSTANCES_ENABLED != $TRUE ]]; then
     # Compress the data to fit under the 16KB limit (cloud-init accepts compressed data)
     gzip "${KUBE_TEMP}/node-user-data"
@@ -1423,17 +1438,19 @@ function start-minions() {
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=Role,Value=${NODE_TAG} \
               ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=KubernetesCluster,Value=${CLUSTER_ID}
   else
-    scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
-    execute-ssh ${KUBE_MINION1_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
-    execute-ssh ${KUBE_MINION1_IP} "sudo /etc/kubernetes/bootstrap"
-    echo "Minion1 is running"
+    if [[ $IS_PRESET_INSTANCES_DRY_RUN == $FALSE ]]; then
+      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION1_IP}:/tmp
+      execute-ssh ${KUBE_MINION1_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
+      execute-ssh ${KUBE_MINION1_IP} "sudo /etc/kubernetes/bootstrap"
+      echo "Minion1 is running"
 
-    if [[ -n ${KUBE_MINION2_IP:-} ]]; then
-      scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
-      execute-ssh ${KUBE_MINION2_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
-      execute-ssh ${KUBE_MINION2_IP} "sudo /etc/kubernetes/bootstrap"
-      echo "Minion2 is running"
-    fi    
+      if [[ -n ${KUBE_MINION2_IP:-} ]]; then
+        scp -o 'StrictHostKeyChecking no' -i ${ACCESS_FILE} ${KUBE_TEMP}/node-user-data ${SSH_USER}@${KUBE_MINION2_IP}:/tmp
+        execute-ssh ${KUBE_MINION2_IP} "chmod 755 /tmp/node-user-data && sudo /tmp/node-user-data"
+        execute-ssh ${KUBE_MINION2_IP} "sudo /etc/kubernetes/bootstrap"
+        echo "Minion2 is running"
+      fi
+    fi
   fi
 }
 
