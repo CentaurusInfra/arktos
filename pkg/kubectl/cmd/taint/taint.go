@@ -250,7 +250,6 @@ func (o TaintOptions) RunTaint() error {
 
 		obj := info.Object
 		name, namespace, tenant := info.Name, info.Namespace, info.Tenant
-		fmt.Printf("\n ~~~~~~~~~~~~~~~~~~~~~~ (%v) (%v) (%v) (%#v) ", info.Name, info.Namespace, info.Tenant, info)
 		oldData, err := json.Marshal(obj)
 		if err != nil {
 			return err
