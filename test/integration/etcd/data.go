@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/test/integration/framework"
 	"k8s.io/utils/pointer"
 )
 
@@ -85,7 +86,7 @@ func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionRes
 			ExpectedEtcdPath: "/registry/tenants/tenant1",
 		},
 		gvr("", "v1", "storageclusters"): {
-			Stub:             `{"metadata": {"name": "storagecluster1"}, "storageClusterId": "cluster1", "serviceAddress": "cluster1.arktos.futurewei.com:2379"}`,
+			Stub:             `{"metadata": {"name": "storagecluster1"}, "storageClusterId": "cluster1", "serviceAddress": "` + framework.GetEtcdURL() + `"}`,
 			ExpectedEtcdPath: "/registry/storageclusters/storagecluster1",
 		},
 		gvr("", "v1", "nodes"): {
