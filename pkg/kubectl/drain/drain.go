@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -93,7 +94,7 @@ func (d *Helper) makeDeleteOptions() *metav1.DeleteOptions {
 
 // DeletePod will delete the given pod, or return an error if it couldn't
 func (d *Helper) DeletePod(pod corev1.Pod) error {
-	return d.Client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, d.makeDeleteOptions())
+	return d.Client.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Delete(pod.Name, d.makeDeleteOptions())
 }
 
 // EvictPod will evict the give pod, or return an error if it couldn't
@@ -106,11 +107,12 @@ func (d *Helper) EvictPod(pod corev1.Pod, policyGroupVersion string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
+			Tenant:    pod.Tenant,
 		},
 		DeleteOptions: d.makeDeleteOptions(),
 	}
 	// Remember to change change the URL manipulation func when Eviction's version change
-	return d.Client.PolicyV1beta1().Evictions(eviction.Namespace).Evict(eviction)
+	return d.Client.PolicyV1beta1().EvictionsWithMultiTenancy(eviction.Namespace, eviction.Tenant).Evict(eviction)
 }
 
 // GetPodsForDeletion receives resource info for a node, and returns those pods as PodDeleteList,

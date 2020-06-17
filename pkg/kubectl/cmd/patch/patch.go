@@ -61,6 +61,8 @@ type PatchOptions struct {
 
 	namespace                    string
 	enforceNamespace             bool
+	tenant                       string
+	enforceTenant                bool
 	dryRun                       bool
 	outputFormat                 string
 	args                         []string
@@ -152,6 +154,7 @@ func (o *PatchOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 	}
 
 	o.namespace, o.enforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
+	o.tenant, o.enforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
 	if err != nil {
 		return err
 	}
@@ -193,8 +196,9 @@ func (o *PatchOptions) RunPatch() error {
 		Unstructured().
 		ContinueOnError().
 		LocalParam(o.Local).
+		TenantParam(o.tenant).DefaultTenant().
 		NamespaceParam(o.namespace).DefaultNamespace().
-		FilenameParam(o.enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.enforceTenant, o.enforceNamespace, &o.FilenameOptions).
 		ResourceTypeOrNameArgs(false, o.args...).
 		Flatten().
 		Do()
@@ -209,7 +213,7 @@ func (o *PatchOptions) RunPatch() error {
 			return err
 		}
 		count++
-		name, namespace := info.Name, info.Namespace
+		name, namespace, tenant := info.Name, info.Namespace, info.Tenant
 
 		if !o.Local && !o.dryRun {
 			mapping := info.ResourceMapping()
@@ -220,7 +224,7 @@ func (o *PatchOptions) RunPatch() error {
 
 			// patch is single client task
 			helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
-			patchedObj, err := helper.Patch(namespace, name, patchType, patchBytes, nil)
+			patchedObj, err := helper.PatchWithMultiTenancy(tenant, namespace, name, patchType, patchBytes, nil)
 			if err != nil {
 				return err
 			}
@@ -231,7 +235,7 @@ func (o *PatchOptions) RunPatch() error {
 			if mergePatch, err := o.Recorder.MakeRecordMergePatch(patchedObj); err != nil {
 				klog.V(4).Infof("error recording current command: %v", err)
 			} else if len(mergePatch) > 0 {
-				if recordedObj, err := helper.Patch(info.Namespace, info.Name, types.MergePatchType, mergePatch, nil); err != nil {
+				if recordedObj, err := helper.PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.MergePatchType, mergePatch, nil); err != nil {
 					klog.V(4).Infof("error recording reason: %v", err)
 				} else {
 					patchedObj = recordedObj

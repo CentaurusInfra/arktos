@@ -51,6 +51,7 @@ type ClusterInfoOptions struct {
 	genericclioptions.IOStreams
 
 	Namespace string
+	Tenant    string
 
 	Builder *resource.Builder
 	Client  *restclient.Config
@@ -88,6 +89,10 @@ func (o *ClusterInfoOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) err
 	}
 	o.Namespace = cmdNamespace
 
+	cmdTenant := cmdutil.GetFlagString(cmd, "tenant")
+	// no action is taken if the cmdTenant is empty, as APIServer short-path mechanism will set per user info
+	o.Tenant = cmdTenant
+
 	o.Builder = f.NewBuilder()
 	return nil
 }
@@ -97,6 +102,7 @@ func (o *ClusterInfoOptions) Run() error {
 	// TODO use generalized labels once they are implemented (#341)
 	b := o.Builder.
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		LabelSelectorParam("kubernetes.io/cluster-service=true").
 		ResourceTypeOrNameArgs(false, []string{"services"}...).
@@ -138,9 +144,9 @@ func (o *ClusterInfoOptions) Run() error {
 				}
 
 				if len(client.GroupVersion.Group) == 0 {
-					link = client.Host + "/api/" + client.GroupVersion.Version + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
+					link = client.Host + "/api/" + client.GroupVersion.Version + "/tenants/" + service.ObjectMeta.Tenant + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
 				} else {
-					link = client.Host + "/api/" + client.GroupVersion.Group + "/" + client.GroupVersion.Version + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
+					link = client.Host + "/api/" + client.GroupVersion.Group + "/" + client.GroupVersion.Version + "/tenants/" + service.ObjectMeta.Tenant + "/namespaces/" + service.ObjectMeta.Namespace + "/services/" + name + "/proxy"
 
 				}
 			}
