@@ -265,6 +265,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "rc",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 		},
@@ -277,6 +278,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -299,6 +301,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "ds",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 		},
 		Spec: appsv1.DaemonSetSpec{
@@ -310,6 +313,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -331,6 +335,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -355,6 +360,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -382,6 +388,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 		},
@@ -394,6 +401,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "job",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 		},
 		Spec: batchv1.JobSpec{
@@ -405,6 +413,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -432,6 +441,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -462,6 +472,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "rs",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 		},
@@ -474,6 +485,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 			OwnerReferences: []metav1.OwnerReference{
@@ -495,6 +507,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 		},
@@ -507,6 +520,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 		},
@@ -524,6 +538,7 @@ func TestDrain(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "bar",
 			Namespace:         "default",
+			Tenant:            metav1.TenantSystem,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels:            labels,
 		},
@@ -602,7 +617,7 @@ func TestDrain(t *testing.T) {
 			args:          []string{"node", "--force"},
 			expectFatal:   false,
 			expectDelete:  true,
-			expectWarning: "WARNING: deleting Pods not managed by ReplicationController, ReplicaSet, Job, DaemonSet or StatefulSet: default/bar",
+			expectWarning: "WARNING: deleting Pods not managed by ReplicationController, ReplicaSet, Job, DaemonSet or StatefulSet: system/default/bar",
 		},
 		{
 			description:  "DS-managed pod with --ignore-daemonsets",
@@ -621,7 +636,7 @@ func TestDrain(t *testing.T) {
 			pods:          []corev1.Pod{dsPodWithEmptyDir},
 			rcs:           []corev1.ReplicationController{rc},
 			args:          []string{"node", "--ignore-daemonsets"},
-			expectWarning: "WARNING: ignoring DaemonSet-managed Pods: default/bar",
+			expectWarning: "WARNING: ignoring DaemonSet-managed Pods: system/default/bar",
 			expectFatal:   false,
 			expectDelete:  false,
 		},
@@ -916,7 +931,7 @@ func TestDeletePods(t *testing.T) {
 		expectPendingPods bool
 		expectError       bool
 		expectedError     *error
-		getPodFn          func(namespace, name string) (*corev1.Pod, error)
+		getPodFn          func(tenant, namespace, name string) (*corev1.Pod, error)
 	}{
 		{
 			description:       "Wait for deleting to complete",
@@ -925,7 +940,7 @@ func TestDeletePods(t *testing.T) {
 			expectPendingPods: false,
 			expectError:       false,
 			expectedError:     nil,
-			getPodFn: func(namespace, name string) (*corev1.Pod, error) {
+			getPodFn: func(tenant, namespace, name string) (*corev1.Pod, error) {
 				oldPodMap, _ := createPods(false)
 				newPodMap, _ := createPods(true)
 				if oldPod, found := oldPodMap[name]; found {
@@ -950,7 +965,7 @@ func TestDeletePods(t *testing.T) {
 			expectPendingPods: true,
 			expectError:       true,
 			expectedError:     &wait.ErrWaitTimeout,
-			getPodFn: func(namespace, name string) (*corev1.Pod, error) {
+			getPodFn: func(tenant, namespace, name string) (*corev1.Pod, error) {
 				oldPodMap, _ := createPods(false)
 				if oldPod, found := oldPodMap[name]; found {
 					return &oldPod, nil
@@ -965,7 +980,7 @@ func TestDeletePods(t *testing.T) {
 			expectPendingPods: true,
 			expectError:       true,
 			expectedError:     nil,
-			getPodFn: func(namespace, name string) (*corev1.Pod, error) {
+			getPodFn: func(tenant, namespace, name string) (*corev1.Pod, error) {
 				return nil, errors.New("This is a random error for testing")
 			},
 		},
@@ -1026,6 +1041,7 @@ func createPods(ifCreateNewPods bool) (map[string]corev1.Pod, []corev1.Pod) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:       "pod" + strconv.Itoa(i),
 				Namespace:  "default",
+				Tenant:     metav1.TenantSystem,
 				UID:        uid,
 				Generation: int64(i),
 			},

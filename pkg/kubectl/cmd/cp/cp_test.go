@@ -56,9 +56,17 @@ func TestExtractFileSpec(t *testing.T) {
 		spec              string
 		expectedPod       string
 		expectedNamespace string
+		expectedTenant    string
 		expectedFile      string
 		expectErr         bool
 	}{
+		{
+			spec:              "tenant/namespace/pod:/some/file",
+			expectedPod:       "pod",
+			expectedNamespace: "namespace",
+			expectedTenant:    "tenant",
+			expectedFile:      "/some/file",
+		},
 		{
 			spec:              "namespace/pod:/some/file",
 			expectedPod:       "pod",
@@ -79,7 +87,7 @@ func TestExtractFileSpec(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			spec:      "namespace/pod/invalid:/some/file",
+			spec:      "tenant/namespace/pod/invalid:/some/file",
 			expectErr: true,
 		},
 		{
@@ -103,6 +111,9 @@ func TestExtractFileSpec(t *testing.T) {
 		}
 		if spec.PodNamespace != test.expectedNamespace {
 			t.Errorf("expected: %s, saw: %s", test.expectedNamespace, spec.PodNamespace)
+		}
+		if spec.PodTenant != test.expectedTenant {
+			t.Errorf("expected: %s, saw: %s", test.expectedTenant, spec.PodTenant)
 		}
 		if spec.File != test.expectedFile {
 			t.Errorf("expected: %s, saw: %s", test.expectedFile, spec.File)
