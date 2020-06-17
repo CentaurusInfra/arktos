@@ -506,7 +506,32 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
 	if err := json.Unmarshal(body, &instanceResponse); err != nil {
 		klog.V(3).Infof("Unmarshal Failed")
 	}
-	return instanceResponse["id"].(string)
+	serverResponse := instanceResponse["server"].(map[string]interface{})
+	instanceID := serverResponse["id"].(string)
+
+	return instanceID
+}
+
+func checkInstanceStatus(host string, authToken string, instanceID string) string{
+	instanceDetailsURL := "http://" + host + "/compute/v2.1/servers/" + instanceID
+	req, err := http.NewRequest("GET", instanceDetailsURL, nil)
+	req.Header.Set("X-Auth-Token", authToken)
+	client := &http.Client{}
+    resp, err := client.Do(req)
+	if err != nil {
+        klog.V(3).Infof("HTTP GET Instance Status Request Failed: %v", err)
+    }
+    defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	var instanceDetailsResponse map[string]interface{}
+	if err := json.Unmarshal(body, &instanceDetailsResponse); err != nil {
+		klog.V(3).Infof("Unmarshal Failed")
+	}
+	serverResponse := instanceDetailsResponse["server"].(map[string]interface{})
+	instanceStatus := serverResponse["status"].(string)
+
+	return instanceStatus
 }
 
 func (sched *Scheduler) globalScheduleOne() {
@@ -545,9 +570,11 @@ func (sched *Scheduler) globalScheduleOne() {
 
 		// Post Request For Token
 		// authToken := requestToken(host)
-		authToken := "gAAAAABe6SXodlSt3JjMnS6nW0mdZJJorUGKAsmr9QSha-tIDL1-B1mZNjHQdiWJK33cLQTKWvbP8kaBrLMTgChKCSko7isn85DIQw2DkxK924bNvy4tf77PJk3NolaAD473gWoF2kta-80QprYkJIv8jVEgF7Lfr_dTleLem-xbL_T4Gcq87QA"
+		// authToken := "gAAAAABe6UIyBPswDjNwK6Hjtw95EDlGfLpyXHTC9LZ_GRfZobQLIo1TJvAfoZL4mjPuVCwais9H4d3wzrhPFPbS4Mebgo9VTIhm5SZ2BsbG9sjtSCbuEM-PzUnq_-2aGFCz15654IUfutMYQE6l0r_EOlHlQaMCiXx9t7RORzQjCMbl6PfZubI"
 		instanceID := serverCreate(host, authToken, manifest)
-		
+		klog.V(3).Infof("Instance ID: %v", instanceID)
+		instanceStatus := checkInstanceStatus(host, authToken, instanceID)
+		klog.V(3).Infof("Instance Status: %v", instanceStatus)
 
 		finishedRead <- "done"
 	}()
