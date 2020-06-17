@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,8 +37,8 @@ func (w *WorkArgs) KeyFromWorkArgs() string {
 }
 
 // NewWorkArgs is a helper function to create new `WorkArgs`
-func NewWorkArgs(name, namespace string) *WorkArgs {
-	return &WorkArgs{types.NamespacedName{Namespace: namespace, Name: name}}
+func NewWorkArgs(name, namespace, tenant string) *WorkArgs {
+	return &WorkArgs{types.NamespacedName{Tenant: tenant, Namespace: namespace, Name: name}}
 }
 
 // TimedWorker is a responsible for executing a function no earlier than at FireAt time.

@@ -125,6 +125,11 @@ func (o *TaintOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 		return err
 	}
 
+	tenant, _, err := f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	// retrieves resource and taint args from args
 	// also checks args to verify that all resources are specified before taints
 	taintArgs := []string{}
@@ -162,6 +167,7 @@ func (o *TaintOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 	o.builder = f.NewBuilder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		ContinueOnError().
+		TenantParam(tenant).DefaultTenant().
 		NamespaceParam(namespace).DefaultNamespace()
 	if o.selector != "" {
 		o.builder = o.builder.LabelSelectorParam(o.selector).ResourceTypes("node")
@@ -243,7 +249,8 @@ func (o TaintOptions) RunTaint() error {
 		}
 
 		obj := info.Object
-		name, namespace := info.Name, info.Namespace
+		name, namespace, tenant := info.Name, info.Namespace, info.Tenant
+		fmt.Printf("\n ~~~~~~~~~~~~~~~~~~~~~~ (%v) (%v) (%v) (%#v) ", info.Name, info.Namespace, info.Tenant, info)
 		oldData, err := json.Marshal(obj)
 		if err != nil {
 			return err
@@ -272,9 +279,9 @@ func (o TaintOptions) RunTaint() error {
 
 		var outputObj runtime.Object
 		if createdPatch {
-			outputObj, err = helper.Patch(namespace, name, types.StrategicMergePatchType, patchBytes, nil)
+			outputObj, err = helper.PatchWithMultiTenancy(tenant, namespace, name, types.StrategicMergePatchType, patchBytes, nil)
 		} else {
-			outputObj, err = helper.Replace(namespace, name, false, obj)
+			outputObj, err = helper.ReplaceWithMultiTenancy(tenant, namespace, name, false, obj)
 		}
 		if err != nil {
 			return err
