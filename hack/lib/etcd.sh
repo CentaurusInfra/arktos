@@ -17,7 +17,7 @@
 
 # A set of helpers for starting/running etcd for tests
 
-ETCD_VERSION=${ETCD_VERSION:-3.4.4}
+ETCD_VERSION=${ETCD_VERSION:-3.4.4.1}
 INT_NAME=$(ip route | awk '/default/ { print $5 }')
 ETCD_LOCAL_HOST=${ETCD_LOCAL_HOST:-127.0.0.1}
 ETCD_HOST=$(ip addr show $INT_NAME | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
@@ -130,13 +130,16 @@ kube::etcd::install() {
       unzip -o "${download_file}"
       ln -fns "etcd-v${ETCD_VERSION}-darwin-amd64" etcd
       rm "${download_file}"
-    else
-      url="https://github.com/coreos/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-${arch}.tar.gz"
-      download_file="etcd-v${ETCD_VERSION}-linux-${arch}.tar.gz"
+    elif [[ ${os} == "linux" && ${arch} == "amd64" ]]; then
+      url="https://github.com/futurewei-cloud/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
+      download_file="etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
       kube::util::download_file "${url}" "${download_file}"
       tar xzf "${download_file}"
-      ln -fns "etcd-v${ETCD_VERSION}-linux-${arch}" etcd
+      ln -fns "etcd-v${ETCD_VERSION}-${os}-${arch}" etcd
       rm "${download_file}"
+    else
+      kube::log::info "etcd installation does not support ${os} ${arch}."
+      return
     fi
     kube::log::info "etcd v${ETCD_VERSION} installed. To use:"
     kube::log::info "export PATH=\"$(pwd)/etcd:\${PATH}\""
