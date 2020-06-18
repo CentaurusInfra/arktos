@@ -54,13 +54,6 @@ $ export REUSE_CERTS=true
 $ ./hack/arktos-apiserver-partition.sh start_apiserver <ETCD server ip>
 ```
 
-### Start a new workload controller managers on host-2
-. Copy workload controller manager config and binary files
-. Start workload controller manager
-```
-$ workload-controller-manager --kubeconfig /var/run/kubernetes/workload-controller.kubeconfig --controllerconfig=/var/run/kubernetes/controllerconfig.json > /tmp/workload-controller-manager.log 2>&1
-```
-
 ### Aggregated watch with kubectl
 . Create KubeConfig for all api servers that needs to be connected together
 ```
