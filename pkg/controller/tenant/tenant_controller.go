@@ -51,12 +51,12 @@ var tenantDefaultNamespaces = [...]string{core.NamespaceDefault, core.NamespaceS
 
 const (
 	initialClusterRoleUser        = "admin"
-	initialClusterRoleName        = "admin-role"
-	initialClusterRoleBindingName = "admin-role-binding"
+	InitialClusterRoleName        = "admin-role"
+	InitialClusterRoleBindingName = "admin-role-binding"
 )
 
-// tenantController is responsible for performing actions dependent upon a tenant phase
-type tenantController struct {
+// TenantController is responsible for performing actions dependent upon a tenant phase
+type TenantController struct {
 	// lister that can list tenants from a shared cache
 	lister corelisters.TenantLister
 	// returns true when the tenant cache is ready
@@ -87,10 +87,10 @@ func NewTenantController(
 	defaultNetworkTemplatePath string,
 	dynamicClient dynamic.Interface,
 	discoverResourcesFn func() ([]*metav1.APIResourceList, error),
-	finalizerToken v1.FinalizerName) *tenantController {
+	finalizerToken v1.FinalizerName) *TenantController {
 
 	// create the controller so we can inject the enqueue function
-	tenantController := &tenantController{
+	tenantController := &TenantController{
 		kubeClient:                 kubeClient,
 		networkClient:              networkClient,
 		queue:                      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tenant"),
@@ -122,7 +122,7 @@ func NewTenantController(
 }
 
 // Run starts the controller with the specified number of workers.
-func (tc *tenantController) Run(workers int, stopCh <-chan struct{}) {
+func (tc *TenantController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer tc.queue.ShutDown()
 
@@ -141,7 +141,7 @@ func (tc *tenantController) Run(workers int, stopCh <-chan struct{}) {
 }
 
 // worker processes the queue of tenant objects.
-func (tc *tenantController) worker() {
+func (tc *TenantController) worker() {
 	workFunc := func() bool {
 		key, quit := tc.queue.Get()
 		if quit {
@@ -172,7 +172,7 @@ func (tc *tenantController) worker() {
 }
 
 // enqueue adds an object to the controller work queue
-func (tc *tenantController) enqueue(obj interface{}) {
+func (tc *TenantController) enqueue(obj interface{}) {
 	klog.Infof("Starting tenant enque.")
 
 	tenant, ok := obj.(*v1.Tenant)
@@ -185,7 +185,7 @@ func (tc *tenantController) enqueue(obj interface{}) {
 }
 
 // processQueue looks for a tenant with the specified name and synchronizes it
-func (tc *tenantController) processQueue(tenantName string) (err error) {
+func (tc *TenantController) processQueue(tenantName string) (err error) {
 	klog.Infof("Starting processsing queue for tenant: %v", tenantName)
 
 	startTime := time.Now()
@@ -208,7 +208,7 @@ func (tc *tenantController) processQueue(tenantName string) (err error) {
 
 // syncTenant creates the default resources for a new tenant,
 // and deletes the resources under the tenant and the tenant itself if the deletion timestamp is set
-func (tc *tenantController) syncTenant(tenantName string) (err error) {
+func (tc *TenantController) syncTenant(tenantName string) (err error) {
 	klog.Infof("Starting syncing tenant: %v", tenantName)
 
 	startTime := time.Now()
@@ -239,7 +239,7 @@ func (tc *tenantController) syncTenant(tenantName string) (err error) {
 	return nil
 }
 
-func (tc *tenantController) createDefaultNetworkObject(tenantName string) (error, bool) {
+func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error, bool) {
 	failures := []error{}
 
 	// create default network object, if applicable
@@ -262,7 +262,7 @@ func (tc *tenantController) createDefaultNetworkObject(tenantName string) (error
 	return flattenedError(failures, tenantName)
 }
 
-func (tc *tenantController) createNamespaces(tenant string) (error, bool) {
+func (tc *TenantController) createNamespaces(tenant string) (error, bool) {
 	failures := []error{}
 	for _, nsName := range tenantDefaultNamespaces {
 		ns := v1.Namespace{
@@ -275,11 +275,11 @@ func (tc *tenantController) createNamespaces(tenant string) (error, bool) {
 	return flattenedError(failures, tenant)
 }
 
-func (tc *tenantController) createInitialRoleAndBinding(tenant string) (error, bool) {
+func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, bool) {
 	// tenant admin act as cluster admin for tha tenant
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   initialClusterRoleName,
+			Name:   InitialClusterRoleName,
 			Tenant: tenant,
 		},
 		Rules: []rbacv1.PolicyRule{initialClusterRoleRules()},
@@ -287,13 +287,13 @@ func (tc *tenantController) createInitialRoleAndBinding(tenant string) (error, b
 
 	binding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   initialClusterRoleBindingName,
+			Name:   InitialClusterRoleBindingName,
 			Tenant: tenant,
 		},
 		Subjects: []rbacv1.Subject{
 			{Kind: rbacv1.UserKind, Name: initialClusterRoleUser},
 		},
-		RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: initialClusterRoleName},
+		RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: InitialClusterRoleName},
 	}
 
 	var failures []error
@@ -313,7 +313,7 @@ func initialClusterRoleRules() rbacv1.PolicyRule {
 		Resources: []string{"*"},
 	}
 }
-func (tc *tenantController) getDefaultNetwork(tenant string, net *arktosv1.Network) error {
+func (tc *TenantController) getDefaultNetwork(tenant string, net *arktosv1.Network) error {
 	// todo: validate content of template file
 	tmpl, err := tc.templateGetter(tc.defaultNetworkTemplatePath)
 	if err != nil {

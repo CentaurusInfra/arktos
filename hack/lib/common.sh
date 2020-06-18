@@ -173,44 +173,6 @@ function kube::common::guess_built_binary_path {
   echo -n "$(dirname "${hyperkube_path}")"
 }
 
-
-function kube::common::build  {
-  ### Allow user to supply the source directory.
-  GO_OUT=${GO_OUT:-}
-  echo "The option is ${GO_OUT}"
-  while getopts "ho:O" OPTION
-  do
-      case ${OPTION} in
-          o)
-              echo "skipping build"
-              GO_OUT="${OPTARG}"
-              echo "using source ${GO_OUT}"
-              ;;
-          O)
-              GO_OUT=$(kube::common::guess_built_binary_path)
-              if [ "${GO_OUT}" == "" ]; then
-                  echo "Could not guess the correct output directory to use."
-                  exit 1
-              fi
-              ;;
-          h)
-              usage
-              exit
-              ;;
-          ?)
-              usage
-              exit
-              ;;
-      esac
-  done
-
-  if [ "x${GO_OUT}" == "x" ]; then
-    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
-  else
-    echo "skipped the build."
-  fi
-}
-
 function kube::common::set_service_accounts {
     SERVICE_ACCOUNT_LOOKUP=${SERVICE_ACCOUNT_LOOKUP:-true}
     SERVICE_ACCOUNT_KEY=${SERVICE_ACCOUNT_KEY:-/tmp/kube-serviceaccount.key}
