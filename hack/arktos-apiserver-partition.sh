@@ -30,6 +30,38 @@ source "${KUBE_ROOT}/hack/lib/common.sh"
 kube::util::test_openssl_installed
 kube::util::ensure-cfssl
 
+### Allow user to supply the source directory.
+GO_OUT=${GO_OUT:-}
+while getopts "ho:O" OPTION
+do
+    case ${OPTION} in
+        o)
+            echo "skipping build"
+            GO_OUT="${OPTARG}"
+            echo "using source ${GO_OUT}"
+            ;;
+        O)
+            GO_OUT=$(kube::common::guess_built_binary_path)
+            if [ "${GO_OUT}" == "" ]; then
+                echo "Could not guess the correct output directory to use."
+                exit 1
+            fi
+            ;;
+        h)
+            usage
+            exit
+            ;;
+        ?)
+            usage
+            exit
+            ;;
+    esac
+done
+### IF the user didn't supply an output/ for the build... Then we detect.
+if [ "${GO_OUT}" == "" ]; then
+  kube::common::detect_binary
+fi
+
 function apply_test_data {
   echo "Creating apiserver partion test data"
   # use kubectl to create the dashboard
@@ -57,35 +89,6 @@ function kill_process {
   fi
 }
 
-function build_binary {
-   exists="false"
-   if [[ -n ${BINARY_DIR} ]] ; then
-       exists="true"
-       for file in "$@"; do
-           echo "The file is $file"
-           if [[ -f ${BINARY_DIR}$file ]] ; then
-               echo "${BINARY_DIR}$file does exist."
-           else
-               echo "${BINARY_DIR}$file does not exist."
-               exists="false"
-               break
-           fi
-       done
-       if  [ "$exists" == "true" ]; then
-           echo "GO_OUT has to be set"
-           GO_OUT=${BINARY_DIR}
-       fi
-   fi
-   if [ "$exists" == "false" ]; then
-       echo "starting to build binaries"
-       kube::common::build
-   fi
-   ### IF the user didn't supply an output/ for the build... Then we detect.
-   if [ "${GO_OUT}"=="" ]; then
-      kube::common::detect_binary
-   fi
-}
-
 function start_apiserver {
   kill_process kube-apiserver
   # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
@@ -94,113 +97,18 @@ function start_apiserver {
   # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
   kube::util::ensure-gnu-sed
 
-  build_binary kube-apiserver hyperkube
+  if [ "x${GO_OUT}" == "x" ]; then
+    make -C "${KUBE_ROOT}" WHAT="cmd/hyperkube cmd/kube-apiserver"
+  else
+    echo "skipped the build."
+  fi
   kube::common::set_service_accounts
+
   echo "starting apiserver"
   if [ $# -gt 0 ] ; then
     ETCD_HOST=$1
   fi
   kube::common::start_apiserver 0
-
-}
-
-function start_workload_controller_manager {
-  kill_process workload-controller-manager
-  # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
-  mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
-
-  # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-  kube::util::ensure-gnu-sed
-
-  build_binary workload-controller-manager hyperkube
-  kube::common::set_service_accounts
-
-  ### IF the user didn't supply an output/ for the build... Then we detect.
-  if [ "${GO_OUT}" == "" ]; then
-    kube::common::detect_binary
-  fi
-  echo "starting workload controller managers"
-  kube::common::start_workload_controller_manager $@
-
-}
-
-function start_kube_controller_manager {
-  kill_process kube-controller-manager
-  # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
-  mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
-
-  # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-  kube::util::ensure-gnu-sed
-
-  build_binary kube-controller-manager hyperkube
-  kube::common::set_service_accounts
-
-  ### IF the user didn't supply an output/ for the build... Then we detect.
-  if [ "${GO_OUT}" == "" ]; then
-    kube::common::detect_binary
-  fi
-  echo "starting kube controller managers"
-  kube::common::start_controller_manager $@
-
-}
-
-function start_kube_scheduler {
-  kill_process kube-scheduler
-  # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
-  mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
-
-  # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-  kube::util::ensure-gnu-sed
-
-  build_binary kube-scheduler hyperkube
-  kube::common::set_service_accounts
-
-  ### IF the user didn't supply an output/ for the build... Then we detect.
-  if [ "${GO_OUT}" == "" ]; then
-    kube::common::detect_binary
-  fi
-  echo "starting scheduler"
-  kube::common::start_kubescheduler $@
-
-}
-
-function start_kubelet {
-  kill_process kubelet
-  # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
-  mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
-
-  # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-  kube::util::ensure-gnu-sed
-
-  build_binary kubelet hyperkube
-  kube::common::set_service_accounts
-
-  ### IF the user didn't supply an output/ for the build... Then we detect.
-  if [ "${GO_OUT}" == "" ]; then
-    kube::common::detect_binary
-  fi
-  echo "starting kubelet"
-  kube::common::start_kubelet $@
-
-}
-
-function start_kube_proxy {
-  kill_process kube-proxy
-  # Ensure CERT_DIR is created for auto-generated crt/key and kubeconfig
-  mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
-
-  # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-  kube::util::ensure-gnu-sed
-
-  build_binary kube-proxy hyperkube
-  kube::common::set_service_accounts
-
-  ### IF the user didn't supply an output/ for the build... Then we detect.
-  if [ "${GO_OUT}" == "" ]; then
-    kube::common::detect_binary
-  fi
-  echo "starting kube-proxy"
-  kube::common::start_kubeproxy $@
 
 }
 

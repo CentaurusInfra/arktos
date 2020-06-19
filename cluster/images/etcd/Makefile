@@ -27,10 +27,13 @@
 # Except from etcd-$(version) and etcdctl-$(version) binaries, we also
 # need etcd and etcdctl binaries for backward compatibility reasons.
 # That binary will be set to the last version from $(BUNDLED_ETCD_VERSIONS).
-BUNDLED_ETCD_VERSIONS?=3.4.4
+BUNDLED_ETCD_VERSIONS?=3.4.4.1
 
 # LATEST_ETCD_VERSION identifies the most recent etcd version available.
-LATEST_ETCD_VERSION?=3.4.4
+LATEST_ETCD_VERSION?=3.4.4.1
+
+# ETCD branch to build etcd binaries
+ETCD_BRANCH?=release-3.4-ETCDPartition-RevGeneration
 
 # REVISION provides a version number fo this image and all it's bundled
 # artifacts. It should start at zero for each LATEST_ETCD_VERSION and increment
@@ -89,7 +92,7 @@ ifeq ($(ARCH),amd64)
 	# For each release create a tmp dir 'etcd_release_tmp_dir' and unpack the release tar there.
 	for version in $(BUNDLED_ETCD_VERSIONS); do \
 		etcd_release_tmp_dir=$(shell mktemp -d); \
-		curl -sSL --retry 5 https://github.com/coreos/etcd/releases/download/v$$version/etcd-v$$version-linux-amd64.tar.gz | tar -xz -C $$etcd_release_tmp_dir --strip-components=1; \
+		curl -sSL --retry 5 https://github.com/futurewei-cloud/etcd/download/v$$version/etcd-v$$version-linux-amd64.tar.gz | tar -xz -C $$etcd_release_tmp_dir --strip-components=1; \
 		cp $$etcd_release_tmp_dir/etcd $$etcd_release_tmp_dir/etcdctl $(TEMP_DIR)/; \
 		cp $(TEMP_DIR)/etcd $(TEMP_DIR)/etcd-$$version; \
 		cp $(TEMP_DIR)/etcdctl $(TEMP_DIR)/etcdctl-$$version; \
@@ -111,7 +114,7 @@ else
 			etcd_build_dir="/go/src/go.etcd.io/etcd"; \
 		fi; \
 		docker run --interactive -v $${etcd_release_tmp_dir}:/etcdbin golang:$(GOLANG_VERSION)$(DOCKER_VOL_OPTS) /bin/bash -c \
-			"git clone https://github.com/coreos/etcd $$etcd_build_dir \
+			"git clone --single-branch --branch $(ETCD_BRANCH) https://github.com/futurewei-cloud/etcd.git $$etcd_build_dir \
 			&& cd $$etcd_build_dir \
 			&& git checkout v$${version} \
 			&& $(arch_prefix) GOARCH=$(ARCH) ./build \
