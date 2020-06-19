@@ -101,15 +101,15 @@ var validationSet = sets.NewString(
 
 // NewPodEvaluator returns an evaluator that can evaluate pods
 func NewPodEvaluator(f quota.ListerForResourceFunc, clock clock.Clock) quota.Evaluator {
-	listFuncByNamespace := generic.ListResourceUsingListerFunc(f, corev1.SchemeGroupVersion.WithResource("pods"))
-	podEvaluator := &podEvaluator{listFuncByNamespace: listFuncByNamespace, clock: clock}
+	listFuncByTenantNamespace := generic.ListResourceUsingListerFunc(f, corev1.SchemeGroupVersion.WithResource("pods"))
+	podEvaluator := &podEvaluator{listFuncByTenantAndNamespace: listFuncByTenantNamespace, clock: clock}
 	return podEvaluator
 }
 
 // podEvaluator knows how to measure usage of pods.
 type podEvaluator struct {
 	// knows how to list pods
-	listFuncByNamespace generic.ListFuncByNamespace
+	listFuncByTenantAndNamespace generic.ListFuncByTenantAndNamespace
 	// used to track time
 	clock clock.Clock
 }
@@ -219,7 +219,7 @@ func (p *podEvaluator) Usage(item runtime.Object) (corev1.ResourceList, error) {
 
 // UsageStats calculates aggregate usage for the object.
 func (p *podEvaluator) UsageStats(options quota.UsageStatsOptions) (quota.UsageStats, error) {
-	return generic.CalculateUsageStats(options, p.listFuncByNamespace, podMatchesScopeFunc, p.Usage)
+	return generic.CalculateUsageStats(options, p.listFuncByTenantAndNamespace, podMatchesScopeFunc, p.Usage)
 }
 
 // verifies we implement the required interface.

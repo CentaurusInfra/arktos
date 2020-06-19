@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ type NamespacedResourcesFunc func() ([]*metav1.APIResourceList, error)
 
 // ReplenishmentFunc is a signal that a resource changed in specified namespace
 // that may require quota to be recalculated.
-type ReplenishmentFunc func(groupResource schema.GroupResource, namespace string)
+type ReplenishmentFunc func(groupResource schema.GroupResource, namespace, tenant string)
 
 // ResourceQuotaControllerOptions holds options for creating a quota controller
 type ResourceQuotaControllerOptions struct {
@@ -296,11 +297,11 @@ func (rq *ResourceQuotaController) syncResourceQuotaFromKey(key string) (err err
 		klog.V(4).Infof("Finished syncing resource quota %q (%v)", key, time.Since(startTime))
 	}()
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	quota, err := rq.rqLister.ResourceQuotas(namespace).Get(name)
+	quota, err := rq.rqLister.ResourceQuotasWithMultiTenancy(namespace, tenant).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("Resource quota has been deleted %v", key)
 		return nil
@@ -330,7 +331,7 @@ func (rq *ResourceQuotaController) syncResourceQuota(resourceQuota *v1.ResourceQ
 
 	errors := []error{}
 
-	newUsage, err := quota.CalculateUsage(resourceQuota.Namespace, resourceQuota.Spec.Scopes, hardLimits, rq.registry, resourceQuota.Spec.ScopeSelector)
+	newUsage, err := quota.CalculateUsage(resourceQuota.Tenant, resourceQuota.Namespace, resourceQuota.Spec.Scopes, hardLimits, rq.registry, resourceQuota.Spec.ScopeSelector)
 	if err != nil {
 		// if err is non-nil, remember it to return, but continue updating status with any resources in newUsage
 		errors = append(errors, err)
@@ -355,7 +356,7 @@ func (rq *ResourceQuotaController) syncResourceQuota(resourceQuota *v1.ResourceQ
 
 	// there was a change observed by this controller that requires we update quota
 	if dirty {
-		_, err = rq.rqClient.ResourceQuotas(usage.Namespace).UpdateStatus(usage)
+		_, err = rq.rqClient.ResourceQuotasWithMultiTenancy(usage.Namespace, usage.Tenant).UpdateStatus(usage)
 		if err != nil {
 			errors = append(errors, err)
 		}
@@ -364,7 +365,7 @@ func (rq *ResourceQuotaController) syncResourceQuota(resourceQuota *v1.ResourceQ
 }
 
 // replenishQuota is a replenishment function invoked by a controller to notify that a quota should be recalculated
-func (rq *ResourceQuotaController) replenishQuota(groupResource schema.GroupResource, namespace string) {
+func (rq *ResourceQuotaController) replenishQuota(groupResource schema.GroupResource, namespace, tenant string) {
 	// check if the quota controller can evaluate this groupResource, if not, ignore it altogether...
 	evaluator := rq.registry.Get(groupResource)
 	if evaluator == nil {
@@ -372,7 +373,7 @@ func (rq *ResourceQuotaController) replenishQuota(groupResource schema.GroupReso
 	}
 
 	// check if this namespace even has a quota...
-	resourceQuotas, err := rq.rqLister.ResourceQuotas(namespace).List(labels.Everything())
+	resourceQuotas, err := rq.rqLister.ResourceQuotasWithMultiTenancy(namespace, tenant).List(labels.Everything())
 	if errors.IsNotFound(err) {
 		utilruntime.HandleError(fmt.Errorf("quota controller could not find ResourceQuota associated with namespace: %s, could take up to %v before a quota replenishes", namespace, rq.resyncPeriod()))
 		return

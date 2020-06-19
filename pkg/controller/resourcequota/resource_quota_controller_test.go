@@ -45,6 +45,8 @@ import (
 	"k8s.io/kubernetes/pkg/quota/v1/install"
 )
 
+const testTenant = "johndoe"
+
 func getResourceList(cpu, memory string) v1.ResourceList {
 	res := v1.ResourceList{}
 	if cpu != "" {
@@ -144,7 +146,7 @@ func setupQuotaController(t *testing.T, kubeClient kubernetes.Interface, lister 
 func newTestPods() []runtime.Object {
 	return []runtime.Object{
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-running", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-running", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodRunning},
 			Spec: v1.PodSpec{
 				Volumes:    []v1.Volume{{Name: "vol"}},
@@ -152,7 +154,7 @@ func newTestPods() []runtime.Object {
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-running-2", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-running-2", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodRunning},
 			Spec: v1.PodSpec{
 				Volumes:    []v1.Volume{{Name: "vol"}},
@@ -160,7 +162,7 @@ func newTestPods() []runtime.Object {
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-failed", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-failed", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodFailed},
 			Spec: v1.PodSpec{
 				Volumes:    []v1.Volume{{Name: "vol"}},
@@ -173,7 +175,7 @@ func newTestPods() []runtime.Object {
 func newBestEffortTestPods() []runtime.Object {
 	return []runtime.Object{
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-running", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-running", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodRunning},
 			Spec: v1.PodSpec{
 				Volumes:    []v1.Volume{{Name: "vol"}},
@@ -181,7 +183,7 @@ func newBestEffortTestPods() []runtime.Object {
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-running-2", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-running-2", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodRunning},
 			Spec: v1.PodSpec{
 				Volumes:    []v1.Volume{{Name: "vol"}},
@@ -189,7 +191,7 @@ func newBestEffortTestPods() []runtime.Object {
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-failed", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-failed", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodFailed},
 			Spec: v1.PodSpec{
 				Volumes:    []v1.Volume{{Name: "vol"}},
@@ -202,7 +204,7 @@ func newBestEffortTestPods() []runtime.Object {
 func newTestPodsWithPriorityClasses() []runtime.Object {
 	return []runtime.Object{
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-running", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-running", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodRunning},
 			Spec: v1.PodSpec{
 				Volumes:           []v1.Volume{{Name: "vol"}},
@@ -211,7 +213,7 @@ func newTestPodsWithPriorityClasses() []runtime.Object {
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-running-2", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-running-2", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodRunning},
 			Spec: v1.PodSpec{
 				Volumes:           []v1.Volume{{Name: "vol"}},
@@ -220,7 +222,7 @@ func newTestPodsWithPriorityClasses() []runtime.Object {
 			},
 		},
 		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: "pod-failed", Namespace: "testing", Tenant: metav1.TenantSystem},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-failed", Namespace: "testing", Tenant: testTenant},
 			Status:     v1.PodStatus{Phase: v1.PodFailed},
 			Spec: v1.PodSpec{
 				Volumes:    []v1.Volume{{Name: "vol"}},
@@ -243,7 +245,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"non-matching-best-effort-scoped-quota": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -273,7 +275,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"matching-best-effort-scoped-quota": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -303,7 +305,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"non-matching-priorityclass-scoped-quota-OpExists": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -339,7 +341,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"matching-priorityclass-scoped-quota-OpExists": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -375,7 +377,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"matching-priorityclass-scoped-quota-OpIn": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -413,7 +415,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"matching-priorityclass-scoped-quota-OpIn-high": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -451,7 +453,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"matching-priorityclass-scoped-quota-OpIn-low": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -489,7 +491,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"matching-priorityclass-scoped-quota-OpNotIn-low": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -527,7 +529,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"non-matching-priorityclass-scoped-quota-OpIn": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -565,7 +567,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"non-matching-priorityclass-scoped-quota-OpNotIn": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -603,7 +605,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"matching-priorityclass-scoped-quota-OpDoesNotExist": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -640,7 +642,7 @@ func TestSyncResourceQuota(t *testing.T) {
 		"pods": {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
-				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: metav1.TenantSystem},
+				ObjectMeta: metav1.ObjectMeta{Name: "quota", Namespace: "testing", Tenant: testTenant},
 				Spec: v1.ResourceQuotaSpec{
 					Hard: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("3"),
@@ -670,7 +672,7 @@ func TestSyncResourceQuota(t *testing.T) {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -705,7 +707,7 @@ func TestSyncResourceQuota(t *testing.T) {
 			gvr: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -735,7 +737,7 @@ func TestSyncResourceQuota(t *testing.T) {
 			errorGVR: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -760,7 +762,7 @@ func TestSyncResourceQuota(t *testing.T) {
 			errorGVR: v1.SchemeGroupVersion.WithResource("pods"),
 			quota: v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -870,7 +872,7 @@ func TestAddQuota(t *testing.T) {
 			expectedPriority: true,
 			quota: &v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -886,7 +888,7 @@ func TestAddQuota(t *testing.T) {
 			expectedPriority: true,
 			quota: &v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -907,7 +909,7 @@ func TestAddQuota(t *testing.T) {
 			expectedPriority: true,
 			quota: &v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -928,7 +930,7 @@ func TestAddQuota(t *testing.T) {
 			expectedPriority: true,
 			quota: &v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -952,7 +954,7 @@ func TestAddQuota(t *testing.T) {
 			expectedPriority: false,
 			quota: &v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},
@@ -973,7 +975,7 @@ func TestAddQuota(t *testing.T) {
 			expectedPriority: false,
 			quota: &v1.ResourceQuota{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    metav1.TenantSystem,
+					Tenant:    testTenant,
 					Namespace: "default",
 					Name:      "rq",
 				},

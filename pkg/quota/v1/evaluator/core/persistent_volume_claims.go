@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,15 +67,15 @@ func V1ResourceByStorageClass(storageClass string, resourceName corev1.ResourceN
 
 // NewPersistentVolumeClaimEvaluator returns an evaluator that can evaluate persistent volume claims
 func NewPersistentVolumeClaimEvaluator(f quota.ListerForResourceFunc) quota.Evaluator {
-	listFuncByNamespace := generic.ListResourceUsingListerFunc(f, corev1.SchemeGroupVersion.WithResource("persistentvolumeclaims"))
-	pvcEvaluator := &pvcEvaluator{listFuncByNamespace: listFuncByNamespace}
+	listFuncByTenantAndNamespace := generic.ListResourceUsingListerFunc(f, corev1.SchemeGroupVersion.WithResource("persistentvolumeclaims"))
+	pvcEvaluator := &pvcEvaluator{listFuncByTenantAndNamespace: listFuncByTenantAndNamespace}
 	return pvcEvaluator
 }
 
 // pvcEvaluator knows how to evaluate quota usage for persistent volume claims
 type pvcEvaluator struct {
-	// listFuncByNamespace knows how to list pvc claims
-	listFuncByNamespace generic.ListFuncByNamespace
+	// listFuncByTenantAndNamespace knows how to list pvc claims
+	listFuncByTenantAndNamespace generic.ListFuncByTenantAndNamespace
 }
 
 // Constraints verifies that all required resources are present on the item.
@@ -173,7 +174,7 @@ func (p *pvcEvaluator) Usage(item runtime.Object) (corev1.ResourceList, error) {
 
 // UsageStats calculates aggregate usage for the object.
 func (p *pvcEvaluator) UsageStats(options quota.UsageStatsOptions) (quota.UsageStats, error) {
-	return generic.CalculateUsageStats(options, p.listFuncByNamespace, generic.MatchesNoScopeFunc, p.Usage)
+	return generic.CalculateUsageStats(options, p.listFuncByTenantAndNamespace, generic.MatchesNoScopeFunc, p.Usage)
 }
 
 // ensure we implement required interface
