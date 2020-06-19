@@ -1513,7 +1513,7 @@ function wait-master() {
         sed -i "s/server: https:\/\/.*:6443/server: https:\/\/${KUBE_MASTER_IP}:6443/" $HOME/.kube/config
         LOCAL_KUBECONFIG="$HOME/.kube/config"
       else
-        execute-ssh @${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $LOCAL_KUBECONFIG
+        execute-ssh ${KUBE_MASTER_IP} "cat /home/${SSH_USER}/.kube/config" > $LOCAL_KUBECONFIG
         sed -i "s/server: https:\/\/.*:${API_BIND_PORT}/server: https:\/\/${KUBE_MASTER_IP}:${API_BIND_PORT}/" $LOCAL_KUBECONFIG
       fi
       break
