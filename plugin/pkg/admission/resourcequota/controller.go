@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +35,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/admission"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/kubernetes/pkg/features"
 	quota "k8s.io/kubernetes/pkg/quota/v1"
 	"k8s.io/kubernetes/pkg/quota/v1/generic"
 	resourcequotaapi "k8s.io/kubernetes/plugin/pkg/admission/resourcequota/apis/resourcequota"
@@ -506,7 +509,14 @@ func CheckRequest(quotas []corev1.ResourceQuota, a admission.Attributes, evaluat
 			if innerErr != nil {
 				return quotas, innerErr
 			}
-			deltaUsage = quota.SubtractWithNonNegativeResult(deltaUsage, prevUsage)
+			if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+				// allow negative usage for pods as pod resources can increase or decrease
+				if a.GetResource().GroupResource() == corev1.Resource("pods") {
+					deltaUsage = quota.Subtract(deltaUsage, prevUsage)
+				}
+			} else {
+				deltaUsage = quota.SubtractWithNonNegativeResult(deltaUsage, prevUsage)
+			}
 		}
 	}
 
