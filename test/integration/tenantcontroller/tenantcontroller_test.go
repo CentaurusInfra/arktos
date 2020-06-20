@@ -82,6 +82,23 @@ func cleanup(t *testing.T, client clientset.Interface, name string) {
 	}
 }
 
+func TestSystemTenantCreatedAutomically(t *testing.T) {
+	_, closeFn, controller, _, clientSet, _ := setup(t)
+	defer closeFn()
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
+	go controller.Run(1, stopCh)
+
+	if err := wait.Poll(1*time.Second, 30*time.Second, func() (bool, error) {
+		_, err := clientSet.CoreV1().Tenants().Get(metav1.TenantSystem, metav1.GetOptions{})
+		return err == nil, err
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestClusterRoleAndBindingBootstrap(t *testing.T) {
 	_, closeFn, controller, informerSet, clientSet, _ := setup(t)
 	defer closeFn()

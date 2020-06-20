@@ -35,7 +35,8 @@ import (
 )
 
 const (
-	roleActionCountPerBootstrap = 2
+	roleActionCountPerBootstrap          = 2
+	systemTenantCreateActionPerBootstrap = 1
 )
 
 func TestTenantCreation(t *testing.T) {
@@ -71,7 +72,7 @@ func TestTenantCreation(t *testing.T) {
 			},
 			ExpectInitialRole:        initialClusterRole("test-tenant-1"),
 			ExpectInitialRoleBinding: initialClusterRoleBinding("test-tenant-1"),
-			ExpectActionCount:        len(tenantDefaultNamespaces) + roleActionCountPerBootstrap,
+			ExpectActionCount:        len(tenantDefaultNamespaces) + roleActionCountPerBootstrap + systemTenantCreateActionPerBootstrap,
 		},
 		"new-tenants-with-empty-default-network-tmpl-path": {
 			Tenant: &v1.Tenant{
@@ -85,7 +86,7 @@ func TestTenantCreation(t *testing.T) {
 			ExpectedNetwork:          nil,
 			ExpectInitialRole:        initialClusterRole("test-tenant-2"),
 			ExpectInitialRoleBinding: initialClusterRoleBinding("test-tenant-2"),
-			ExpectActionCount:        len(tenantDefaultNamespaces) + roleActionCountPerBootstrap,
+			ExpectActionCount:        len(tenantDefaultNamespaces) + roleActionCountPerBootstrap + systemTenantCreateActionPerBootstrap,
 		},
 		"terminating-tenant-not-create-default-network": {
 			Tenant: &v1.Tenant{
@@ -102,7 +103,7 @@ func TestTenantCreation(t *testing.T) {
 			ExpectedNetwork:          nil,
 			ExpectInitialRole:        initialClusterRole("test-tenant-3"),
 			ExpectInitialRoleBinding: initialClusterRoleBinding("test-tenant-3"),
-			ExpectActionCount:        len(tenantDefaultNamespaces) + roleActionCountPerBootstrap,
+			ExpectActionCount:        len(tenantDefaultNamespaces) + roleActionCountPerBootstrap + systemTenantCreateActionPerBootstrap,
 		},
 	}
 
