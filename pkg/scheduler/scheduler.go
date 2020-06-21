@@ -587,7 +587,8 @@ func (sched *Scheduler) globalScheduleOne() {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					break
 				} else {
-					time.Sleep()
+					time.Sleep(2 * time.Second)
+					instanceStatus = checkInstanceStatus(host, authToken, instanceID)
 				}
 			}
 		}()
