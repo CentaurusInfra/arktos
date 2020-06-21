@@ -458,6 +458,8 @@ func requestToken(host string) string {
 
 	// TODO: Please don't hard code json data
 	tokenJsonData := `{"auth":{"identity":{"methods":["password"],"password":{"user":{"name":"admin","domain":{"id":"default"},"password":"root"}}},"scope":{"project":{"name":"admin","domain":{"id":"default"}}}}}`
+	
+	// Make HTTP Request
 	var tokenJsonDataBytes = []byte(tokenJsonData)
 	req, err := http.NewRequest("POST", tokenRequestURL, bytes.NewBuffer(tokenJsonDataBytes))
 	req.Header.Set("Content-Type", "application/json")
@@ -469,6 +471,7 @@ func requestToken(host string) string {
 	klog.V(3).Infof("HTTP Post Request Succeeded")
 	defer resp.Body.Close()
 
+	// Token is stored in header
 	respHeader := resp.Header
 	klog.V(3).Infof("HTTP Post Token: %v", respHeader["X-Subject-Token"][0])
 
@@ -504,7 +507,7 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
 	body, _ := ioutil.ReadAll(resp.Body)
 	var instanceResponse map[string]interface{}
 	if err := json.Unmarshal(body, &instanceResponse); err != nil {
-		klog.V(3).Infof("Unmarshal Failed")
+		klog.V(3).Infof("Instance Create Response Unmarshal Failed")
 	}
 	serverResponse := instanceResponse["server"].(map[string]interface{})
 	instanceID := serverResponse["id"].(string)
@@ -526,7 +529,7 @@ func checkInstanceStatus(host string, authToken string, instanceID string) strin
 	body, _ := ioutil.ReadAll(resp.Body)
 	var instanceDetailsResponse map[string]interface{}
 	if err := json.Unmarshal(body, &instanceDetailsResponse); err != nil {
-		klog.V(3).Infof("Unmarshal Failed")
+		klog.V(3).Infof("Instance Detail Response Unmarshal Failed")
 	}
 	serverResponse := instanceDetailsResponse["server"].(map[string]interface{})
 	instanceStatus := serverResponse["status"].(string)
@@ -556,6 +559,7 @@ func (sched *Scheduler) globalScheduleOne() {
 
 	finishedWrite := make(chan string)
 	finishedRead := make(chan string)
+	// processFinished := make(chan string)
 	scheduleResultQueue := queue.New(1)
 
 	go func() {
@@ -569,15 +573,29 @@ func (sched *Scheduler) globalScheduleOne() {
 		host := fmt.Sprintf("%v", res[0])
 
 		// Post Request For Token
-		// authToken := requestToken(host)
+		authToken := requestToken(host)
 		// authToken := "gAAAAABe6UIyBPswDjNwK6Hjtw95EDlGfLpyXHTC9LZ_GRfZobQLIo1TJvAfoZL4mjPuVCwais9H4d3wzrhPFPbS4Mebgo9VTIhm5SZ2BsbG9sjtSCbuEM-PzUnq_-2aGFCz15654IUfutMYQE6l0r_EOlHlQaMCiXx9t7RORzQjCMbl6PfZubI"
 		instanceID := serverCreate(host, authToken, manifest)
 		klog.V(3).Infof("Instance ID: %v", instanceID)
-		instanceStatus := checkInstanceStatus(host, authToken, instanceID)
-		klog.V(3).Infof("Instance Status: %v", instanceStatus)
+		// instanceStatus := checkInstanceStatus(host, authToken, instanceID)
+		// klog.V(3).Infof("Instance Status: %v", instanceStatus)
+
+		go func() {
+			instanceStatus := checkInstanceStatus(host, authToken, instanceID)
+			for {
+				if instanceStatus != "BUILD" {
+					klog.V(3).Infof("Instance Status: %v", instanceStatus)
+					break
+				} else {
+					time.Sleep()
+				}
+			}
+		}()
 
 		finishedRead <- "done"
 	}()
+
+	klog.V(3).Infof("-------------------------- Process Done! ------------------------")
 
 	<-finishedRead
 }
