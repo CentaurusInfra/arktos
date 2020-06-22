@@ -457,7 +457,7 @@ func requestToken(host string) string {
 	tokenRequestURL := "http://" + host + "/identity/v3/auth/tokens"
 
 	// TODO: Please don't hard code json data
-	tokenJsonData := `{"auth":{"identity":{"methods":["password"],"password":{"user":{"name":"admin","domain":{"id":"default"},"password":"root"}}},"scope":{"project":{"name":"admin","domain":{"id":"default"}}}}}`
+	tokenJsonData := `{"auth":{"identity":{"methods":["password"],"password":{"user":{"name":"admin","domain":{"id":"default"},"password":"StrongAdminSecret"}}},"scope":{"project":{"name":"admin","domain":{"id":"default"}}}}}`
 	
 	// Make HTTP Request
 	var tokenJsonDataBytes = []byte(tokenJsonData)
@@ -575,7 +575,8 @@ func (sched *Scheduler) globalScheduleOne() {
 	scheduleResultQueue := queue.New(1)
 
 	go func() {
-		scheduleResultQueue.Put("172.31.15.216")
+		// scheduleResultQueue.Put("172.31.15.216")
+		scheduleResultQueue.Put("172.31.11.243")
 		finishedWrite <- "done"
 	}()
 
@@ -586,11 +587,9 @@ func (sched *Scheduler) globalScheduleOne() {
 
 		// Post Request For Token
 		// authToken := requestToken(host)
-		authToken := "gAAAAABe8PiKZ_viAI3G8EQeQY74LRMj-2CCt5V1upJi5kbVFphr1fikP4ayTkn9yLlor5RYGR_UO1Y6GaYct5H9E3DbqP0NEzfyMurUFvHlyH6vk4gJ-1gKjVbkdGmJ3d2CCCQlgUl9QncRVSCVrVRzaFJ4ZAyy6fQ7L3UklVhidmUo99C5OMg"
+		authToken := "gAAAAABe8RAYkiwq5svCCFLd35Bs6lgO4wQr12FEUt8X8vGXAamGSa_U7NiYS6uNpDaV-b0DooycdViyWMzBT3ymIyw1CdwJFXtkCJJqwHQAcu2O8txbOsbZRZ6QSYQSVoGc9_9POCH5BkLLMca5o5WOddGbkE0xWWnGF3hMNYAPgTJvVLarVQc"
 		instanceID := serverCreate(host, authToken, manifest)
 		klog.V(3).Infof("Instance ID: %v", instanceID)
-		// instanceStatus := checkInstanceStatus(host, authToken, instanceID)
-		// klog.V(3).Infof("Instance Status: %v", instanceStatus)
 
 		go func() {
 			instanceStatus := checkInstanceStatus(host, authToken, instanceID)
@@ -603,10 +602,15 @@ func (sched *Scheduler) globalScheduleOne() {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					deleteInstance(host, authToken, instanceID)
 					break
+				} else if instanceStatus == "ACTIVE" {
+					klog.V(3).Infof("Instance Status: %v", instanceStatus)
+					// Update ETCD
+					break
 				}
 			}
 		}()
-
+		
+		klog.V(3).Infof("-------------------------- Finish Read! ------------------------")
 		finishedRead <- "done"
 	}()
 

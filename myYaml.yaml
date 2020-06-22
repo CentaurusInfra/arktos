@@ -15,16 +15,16 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test3pod
+  name: test2pod
 spec:
   nics:
-    - uuid: "aa51b9e7-29ac-48c7-9cc5-11928717abbf"
+    - uuid: "25852074-4854-4143-ad9e-b41267e1cc23"
   virtualMachine:
     keyPairName: "KeyMy"
     name: provider-instance-test
-    image: "cbe8ec60-7b5e-4bad-b8a5-f51842be8e7f"
+    image: "697d3415-0433-4613-8839-b1673c81d191"
     scheduling:
       securityGroup:
-        - name: "bcf80900-b3ea-4e49-8e29-ade65f4f399b"
+        - name: "3750adf3-798e-4285-8b73-2f1ee078c257"
     resources:
-      flavorRef: "1"
+      flavorRef: "d2"
