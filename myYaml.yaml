@@ -21,7 +21,7 @@ spec:
     - uuid: "aa51b9e7-29ac-48c7-9cc5-11928717abbf"
   virtualMachine:
     keyPairName: "KeyMy"
-    name: provider-instance
+    name: provider-instance-test
     image: "cbe8ec60-7b5e-4bad-b8a5-f51842be8e7f"
     scheduling:
       securityGroup:

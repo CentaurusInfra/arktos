@@ -537,6 +537,18 @@ func checkInstanceStatus(host string, authToken string, instanceID string) strin
 	return instanceStatus
 }
 
+func deleteInstance(host string, authToken string, instanceID string) {
+	instanceDetailsURL := "http://" + host + "/compute/v2.1/servers/" + instanceID
+	req, err := http.NewRequest("DELETE", instanceDetailsURL, nil)
+	req.Header.Set("X-Auth-Token", authToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+        klog.V(3).Infof("HTTP DELETE Instance Status Request Failed: %v", err)
+    }
+    defer resp.Body.Close()
+}
+
 func (sched *Scheduler) globalScheduleOne() {
 	// 1. Get the Pod to be scheduled from the queue
 	pod := sched.config.NextPod()
@@ -573,8 +585,8 @@ func (sched *Scheduler) globalScheduleOne() {
 		host := fmt.Sprintf("%v", res[0])
 
 		// Post Request For Token
-		authToken := requestToken(host)
-		// authToken := "gAAAAABe6UIyBPswDjNwK6Hjtw95EDlGfLpyXHTC9LZ_GRfZobQLIo1TJvAfoZL4mjPuVCwais9H4d3wzrhPFPbS4Mebgo9VTIhm5SZ2BsbG9sjtSCbuEM-PzUnq_-2aGFCz15654IUfutMYQE6l0r_EOlHlQaMCiXx9t7RORzQjCMbl6PfZubI"
+		// authToken := requestToken(host)
+		authToken := "gAAAAABe8PiKZ_viAI3G8EQeQY74LRMj-2CCt5V1upJi5kbVFphr1fikP4ayTkn9yLlor5RYGR_UO1Y6GaYct5H9E3DbqP0NEzfyMurUFvHlyH6vk4gJ-1gKjVbkdGmJ3d2CCCQlgUl9QncRVSCVrVRzaFJ4ZAyy6fQ7L3UklVhidmUo99C5OMg"
 		instanceID := serverCreate(host, authToken, manifest)
 		klog.V(3).Infof("Instance ID: %v", instanceID)
 		// instanceStatus := checkInstanceStatus(host, authToken, instanceID)
@@ -583,12 +595,14 @@ func (sched *Scheduler) globalScheduleOne() {
 		go func() {
 			instanceStatus := checkInstanceStatus(host, authToken, instanceID)
 			for {
-				if instanceStatus != "BUILD" {
-					klog.V(3).Infof("Instance Status: %v", instanceStatus)
-					break
-				} else {
+				if instanceStatus == "BUILD" {
 					time.Sleep(2 * time.Second)
 					instanceStatus = checkInstanceStatus(host, authToken, instanceID)
+					
+				} else if instanceStatus == "ERROR" {
+					klog.V(3).Infof("Instance Status: %v", instanceStatus)
+					deleteInstance(host, authToken, instanceID)
+					break
 				}
 			}
 		}()
