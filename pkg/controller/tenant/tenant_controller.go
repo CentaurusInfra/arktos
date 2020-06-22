@@ -27,6 +27,7 @@ import (
 	"k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -127,6 +128,7 @@ func (tc *TenantController) Run(workers int, stopCh <-chan struct{}) {
 	defer tc.queue.ShutDown()
 
 	klog.Infof("Starting tenant controller.")
+	tc.cerateSystemTenantIfNotExist()
 	defer klog.Infof("Shutting down tenant controller")
 
 	if !controller.WaitForCacheSync("tenant", stopCh, tc.listerSynced) {
@@ -354,4 +356,21 @@ func flattenedError(failures []error, tenant string) (error, bool) {
 		return ret, false
 	}
 	return nil, true
+}
+
+// not returning any error as the system should continue run without an explicit system tenant
+func (tc *TenantController) cerateSystemTenantIfNotExist() {
+	_, err := tc.lister.Get(metav1.TenantSystem)
+
+	if apierrors.IsNotFound(err) {
+		klog.Infof("Creating the syste tenant...")
+		tc.kubeClient.CoreV1().Tenants().Create(&v1.Tenant{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: metav1.TenantSystem,
+			},
+			Spec: v1.TenantSpec{
+				StorageClusterId: "system",
+			},
+		})
+	}
 }
