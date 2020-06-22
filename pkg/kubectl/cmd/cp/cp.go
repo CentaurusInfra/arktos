@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -70,6 +71,7 @@ var (
 type CopyOptions struct {
 	Container  string
 	Namespace  string
+	Tenant     string
 	NoPreserve bool
 
 	ClientConfig *restclient.Config
@@ -107,13 +109,14 @@ func NewCmdCp(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cobra.C
 }
 
 type fileSpec struct {
+	PodTenant    string
 	PodNamespace string
 	PodName      string
 	File         string
 }
 
 var (
-	errFileSpecDoesntMatchFormat = errors.New("Filespec must match the canonical format: [[namespace/]pod:]file/path")
+	errFileSpecDoesntMatchFormat = errors.New("Filespec must match the canonical format: [[tenant/][namespace/]pod:]file/path")
 	errFileCannotBeEmpty         = errors.New("Filepath can not be empty")
 )
 
@@ -137,6 +140,14 @@ func extractFileSpec(arg string) (fileSpec, error) {
 				File:         file,
 			}, nil
 		}
+		if len(pieces) == 3 {
+			return fileSpec{
+				PodTenant:    pieces[0],
+				PodNamespace: pieces[1],
+				PodName:      pieces[2],
+				File:         file,
+			}, nil
+		}
 	}
 
 	return fileSpec{}, errFileSpecDoesntMatchFormat
@@ -146,6 +157,11 @@ func extractFileSpec(arg string) (fileSpec, error) {
 func (o *CopyOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 	var err error
 	o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
+	if err != nil {
+		return err
+	}
+
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
 	if err != nil {
 		return err
 	}
@@ -212,6 +228,7 @@ func (o *CopyOptions) checkDestinationIsDir(dest fileSpec) error {
 				ErrOut: bytes.NewBuffer([]byte{}),
 			},
 
+			Tenant:    dest.PodTenant,
 			Namespace: dest.PodNamespace,
 			PodName:   dest.PodName,
 		},
@@ -266,6 +283,7 @@ func (o *CopyOptions) copyToPod(src, dest fileSpec, options *exec.ExecOptions) e
 		},
 		Stdin: true,
 
+		Tenant:    dest.PodTenant,
 		Namespace: dest.PodNamespace,
 		PodName:   dest.PodName,
 	}
@@ -289,6 +307,7 @@ func (o *CopyOptions) copyFromPod(src, dest fileSpec) error {
 				ErrOut: o.Out,
 			},
 
+			Tenant:    src.PodTenant,
 			Namespace: src.PodNamespace,
 			PodName:   src.PodName,
 		},
@@ -523,6 +542,10 @@ func getPrefix(file string) string {
 }
 
 func (o *CopyOptions) execute(options *exec.ExecOptions) error {
+	if len(options.Tenant) == 0 {
+		options.Tenant = o.Tenant
+	}
+
 	if len(options.Namespace) == 0 {
 		options.Namespace = o.Namespace
 	}

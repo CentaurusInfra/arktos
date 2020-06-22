@@ -68,6 +68,8 @@ type AnnotateOptions struct {
 	Recorder                     genericclioptions.Recorder
 	namespace                    string
 	enforceNamespace             bool
+	tenant                       string
+	enforceTenant                bool
 	builder                      *resource.Builder
 	unstructuredClientForMapping func(mapping *meta.RESTMapping) (resource.RESTClient, error)
 
@@ -183,6 +185,12 @@ func (o *AnnotateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 	if err != nil {
 		return err
 	}
+
+	o.tenant, o.enforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.builder = f.NewBuilder()
 	o.unstructuredClientForMapping = f.UnstructuredClientForMapping
 
@@ -224,8 +232,9 @@ func (o AnnotateOptions) RunAnnotate() error {
 		Unstructured().
 		LocalParam(o.local).
 		ContinueOnError().
+		TenantParam(o.tenant).DefaultTenant().
 		NamespaceParam(o.namespace).DefaultNamespace().
-		FilenameParam(o.enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.enforceTenant, o.enforceNamespace, &o.FilenameOptions).
 		Flatten()
 
 	if !o.local {
@@ -265,7 +274,7 @@ func (o AnnotateOptions) RunAnnotate() error {
 			}
 			outputObj = obj
 		} else {
-			name, namespace := info.Name, info.Namespace
+			name, namespace, tenant := info.Name, info.Namespace, info.Tenant
 			oldData, err := json.Marshal(obj)
 			if err != nil {
 				return err
@@ -295,9 +304,9 @@ func (o AnnotateOptions) RunAnnotate() error {
 			helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
 
 			if createdPatch {
-				outputObj, err = helper.Patch(namespace, name, types.MergePatchType, patchBytes, nil)
+				outputObj, err = helper.PatchWithMultiTenancy(tenant, namespace, name, types.MergePatchType, patchBytes, nil)
 			} else {
-				outputObj, err = helper.Replace(namespace, name, false, obj)
+				outputObj, err = helper.ReplaceWithMultiTenancy(tenant, namespace, name, false, obj)
 			}
 			if err != nil {
 				return err

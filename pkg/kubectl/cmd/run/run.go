@@ -287,6 +287,12 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 	if err != nil {
 		return err
 	}
+
+	tenant, _, err := f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	restartPolicy, err := getRestartPolicy(cmd, o.Interactive)
 	if err != nil {
 		return err
@@ -361,7 +367,7 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 	params["env"] = cmdutil.GetFlagStringArray(cmd, "env")
 
 	var createdObjects = []*RunObject{}
-	runObject, err := o.createGeneratedObject(f, cmd, generator, names, params, cmdutil.GetFlagString(cmd, "overrides"), namespace)
+	runObject, err := o.createGeneratedObject(f, cmd, generator, names, params, cmdutil.GetFlagString(cmd, "overrides"), namespace, tenant)
 	if err != nil {
 		return err
 	}
@@ -373,7 +379,7 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		if len(serviceGenerator) == 0 {
 			return cmdutil.UsageErrorf(cmd, "No service generator specified")
 		}
-		serviceRunObject, err := o.generateService(f, cmd, serviceGenerator, params, namespace)
+		serviceRunObject, err := o.generateService(f, cmd, serviceGenerator, params, namespace, tenant)
 		if err != nil {
 			allErrs = append(allErrs, err)
 		} else {
@@ -414,7 +420,7 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		if err != nil {
 			return err
 		}
-		err = handleAttachPod(f, clientset.CoreV1(), attachablePod.Namespace, attachablePod.Name, opts)
+		err = handleAttachPod(f, clientset.CoreV1(), attachablePod.Tenant, attachablePod.Namespace, attachablePod.Name, opts)
 		if err != nil {
 			return err
 		}
@@ -423,7 +429,7 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		leaveStdinOpen := o.LeaveStdinOpen
 		waitForExitCode := !leaveStdinOpen && restartPolicy == corev1.RestartPolicyNever
 		if waitForExitCode {
-			pod, err = waitForPod(clientset.CoreV1(), attachablePod.Namespace, attachablePod.Name, kubectl.PodCompleted)
+			pod, err = waitForPod(clientset.CoreV1(), attachablePod.Tenant, attachablePod.Namespace, attachablePod.Name, kubectl.PodCompleted)
 			if err != nil {
 				return err
 			}
@@ -438,7 +444,7 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		case corev1.PodSucceeded:
 			return nil
 		case corev1.PodFailed:
-			unknownRcErr := fmt.Errorf("pod %s/%s failed with unknown exit code", pod.Namespace, pod.Name)
+			unknownRcErr := fmt.Errorf("pod %s/%s/%s failed with unknown exit code", pod.Tenant, pod.Namespace, pod.Name)
 			if len(pod.Status.ContainerStatuses) == 0 || pod.Status.ContainerStatuses[0].State.Terminated == nil {
 				return unknownRcErr
 			}
@@ -448,11 +454,11 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 				return unknownRcErr
 			}
 			return uexec.CodeExitError{
-				Err:  fmt.Errorf("pod %s/%s terminated (%s)\n%s", pod.Namespace, pod.Name, pod.Status.ContainerStatuses[0].State.Terminated.Reason, pod.Status.ContainerStatuses[0].State.Terminated.Message),
+				Err:  fmt.Errorf("pod %s/%s/%s terminated (%s)\n%s", pod.Tenant, pod.Namespace, pod.Name, pod.Status.ContainerStatuses[0].State.Terminated.Reason, pod.Status.ContainerStatuses[0].State.Terminated.Message),
 				Code: int(rc),
 			}
 		default:
-			return fmt.Errorf("pod %s/%s left in phase %s", pod.Namespace, pod.Name, pod.Status.Phase)
+			return fmt.Errorf("pod %s/%s/%s left in phase %s", pod.Tenant, pod.Namespace, pod.Name, pod.Status.Phase)
 		}
 
 	}
@@ -467,6 +473,10 @@ func (o *RunOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 
 func (o *RunOptions) removeCreatedObjects(f cmdutil.Factory, createdObjects []*RunObject) error {
 	for _, obj := range createdObjects {
+		tenant, err := metadataAccessor.Tenant(obj.Object)
+		if err != nil {
+			return err
+		}
 		namespace, err := metadataAccessor.Namespace(obj.Object)
 		if err != nil {
 			return err
@@ -479,6 +489,7 @@ func (o *RunOptions) removeCreatedObjects(f cmdutil.Factory, createdObjects []*R
 		r := f.NewBuilder().
 			WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 			ContinueOnError().
+			TenantParam(tenant).DefaultTenant().
 			NamespaceParam(namespace).DefaultNamespace().
 			ResourceNames(obj.Mapping.Resource.Resource+"."+obj.Mapping.Resource.Group, name).
 			Flatten().
@@ -492,13 +503,13 @@ func (o *RunOptions) removeCreatedObjects(f cmdutil.Factory, createdObjects []*R
 }
 
 // waitForPod watches the given pod until the exitCondition is true
-func waitForPod(podClient corev1client.PodsGetter, ns, name string, exitCondition watchtools.ConditionFunc) (*corev1.Pod, error) {
+func waitForPod(podClient corev1client.PodsGetter, tenant, ns, name string, exitCondition watchtools.ConditionFunc) (*corev1.Pod, error) {
 	// TODO: expose the timeout
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), 0*time.Second)
 	defer cancel()
 
 	preconditionFunc := func(store cache.Store) (bool, error) {
-		_, exists, err := store.Get(&metav1.ObjectMeta{Namespace: ns, Name: name})
+		_, exists, err := store.Get(&metav1.ObjectMeta{Tenant: tenant, Namespace: ns, Name: name})
 		if err != nil {
 			return true, err
 		}
@@ -539,8 +550,8 @@ func waitForPod(podClient corev1client.PodsGetter, ns, name string, exitConditio
 	return result, err
 }
 
-func handleAttachPod(f cmdutil.Factory, podClient corev1client.PodsGetter, ns, name string, opts *attach.AttachOptions) error {
-	pod, err := waitForPod(podClient, ns, name, kubectl.PodRunningAndReady)
+func handleAttachPod(f cmdutil.Factory, podClient corev1client.PodsGetter, tenant, ns, name string, opts *attach.AttachOptions) error {
+	pod, err := waitForPod(podClient, tenant, ns, name, kubectl.PodRunningAndReady)
 	if err != nil && err != kubectl.ErrPodCompleted {
 		return err
 	}
@@ -552,6 +563,7 @@ func handleAttachPod(f cmdutil.Factory, podClient corev1client.PodsGetter, ns, n
 	opts.Pod = pod
 	opts.PodName = name
 	opts.Namespace = ns
+	opts.Tenant = tenant
 
 	if opts.AttachFunc == nil {
 		opts.AttachFunc = attach.DefaultAttachFunc
@@ -614,7 +626,7 @@ func verifyImagePullPolicy(cmd *cobra.Command) error {
 	return cmdutil.UsageErrorf(cmd, "invalid image pull policy: %s", pullPolicy)
 }
 
-func (o *RunOptions) generateService(f cmdutil.Factory, cmd *cobra.Command, serviceGenerator string, paramsIn map[string]interface{}, namespace string) (*RunObject, error) {
+func (o *RunOptions) generateService(f cmdutil.Factory, cmd *cobra.Command, serviceGenerator string, paramsIn map[string]interface{}, namespace, tenant string) (*RunObject, error) {
 	generators := generateversioned.GeneratorFn("expose")
 	generator, found := generators[serviceGenerator]
 	if !found {
@@ -644,7 +656,7 @@ func (o *RunOptions) generateService(f cmdutil.Factory, cmd *cobra.Command, serv
 		params["default-name"] = name
 	}
 
-	runObject, err := o.createGeneratedObject(f, cmd, generator, names, params, cmdutil.GetFlagString(cmd, "service-overrides"), namespace)
+	runObject, err := o.createGeneratedObject(f, cmd, generator, names, params, cmdutil.GetFlagString(cmd, "service-overrides"), namespace, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -660,7 +672,7 @@ func (o *RunOptions) generateService(f cmdutil.Factory, cmd *cobra.Command, serv
 	return runObject, nil
 }
 
-func (o *RunOptions) createGeneratedObject(f cmdutil.Factory, cmd *cobra.Command, generator generate.Generator, names []generate.GeneratorParam, params map[string]interface{}, overrides, namespace string) (*RunObject, error) {
+func (o *RunOptions) createGeneratedObject(f cmdutil.Factory, cmd *cobra.Command, generator generate.Generator, names []generate.GeneratorParam, params map[string]interface{}, overrides, namespace, tenant string) (*RunObject, error) {
 	err := generate.ValidateParams(names, params)
 	if err != nil {
 		return nil, err
@@ -708,7 +720,7 @@ func (o *RunOptions) createGeneratedObject(f cmdutil.Factory, cmd *cobra.Command
 			return nil, err
 		}
 		// creating an object is a single client job
-		actualObj, err = resource.NewHelper([]resource.RESTClient{client}, mapping).Create(namespace, false, obj, nil)
+		actualObj, err = resource.NewHelper([]resource.RESTClient{client}, mapping).CreateWithMultiTenancy(tenant, namespace, false, obj, nil)
 		if err != nil {
 			return nil, err
 		}

@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,7 +59,7 @@ func (l *podDeleteList) Warnings() string {
 	ps := make(map[string][]string)
 	for _, i := range l.items {
 		if i.status.reason == podDeleteStatusTypeWarning {
-			ps[i.status.message] = append(ps[i.status.message], fmt.Sprintf("%s/%s", i.pod.Namespace, i.pod.Name))
+			ps[i.status.message] = append(ps[i.status.message], fmt.Sprintf("%s/%s/%s", i.pod.Tenant, i.pod.Namespace, i.pod.Name))
 		}
 	}
 
@@ -77,7 +78,7 @@ func (l *podDeleteList) errors() []error {
 			if msg == "" {
 				msg = "unexpected error"
 			}
-			failedPods[msg] = append(failedPods[msg], fmt.Sprintf("%s/%s", i.pod.Namespace, i.pod.Name))
+			failedPods[msg] = append(failedPods[msg], fmt.Sprintf("%s/%s/%s", i.pod.Tenant, i.pod.Namespace, i.pod.Name))
 		}
 	}
 	errs := make([]error, 0)
@@ -168,7 +169,7 @@ func (d *Helper) daemonSetFilter(pod corev1.Pod) podDeleteStatus {
 		return makePodDeleteStatusOkay()
 	}
 
-	if _, err := d.Client.AppsV1().DaemonSets(pod.Namespace).Get(controllerRef.Name, metav1.GetOptions{}); err != nil {
+	if _, err := d.Client.AppsV1().DaemonSetsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(controllerRef.Name, metav1.GetOptions{}); err != nil {
 		// remove orphaned pods with a warning if --force is used
 		if apierrors.IsNotFound(err) && d.Force {
 			return makePodDeleteStatusWithWarning(true, err.Error())

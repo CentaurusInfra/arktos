@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,6 +49,7 @@ type DrainCmdOptions struct {
 	ToPrinter  func(string) (printers.ResourcePrinterFunc, error)
 
 	Namespace string
+	Tenant    string
 
 	drainer   *drain.Helper
 	nodeInfos []*resource.Info
@@ -213,6 +215,11 @@ func (o *DrainCmdOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 		return err
 	}
 
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.ToPrinter = func(operation string) (printers.ResourcePrinterFunc, error) {
 		o.PrintFlags.NamePrintFlags.Operation = operation
 		if o.drainer.DryRun {
@@ -229,6 +236,7 @@ func (o *DrainCmdOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 
 	builder := f.NewBuilder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		ResourceNames("nodes", args...).
 		SingleResourceType().
@@ -339,8 +347,8 @@ func (o *DrainCmdOptions) deleteOrEvictPods(pods []corev1.Pod) error {
 		return err
 	}
 
-	getPodFn := func(namespace, name string) (*corev1.Pod, error) {
-		return o.drainer.Client.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	getPodFn := func(tenant, namespace, name string) (*corev1.Pod, error) {
+		return o.drainer.Client.CoreV1().PodsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
 
 	if len(policyGroupVersion) > 0 {
@@ -350,7 +358,7 @@ func (o *DrainCmdOptions) deleteOrEvictPods(pods []corev1.Pod) error {
 	}
 }
 
-func (o *DrainCmdOptions) evictPods(pods []corev1.Pod, policyGroupVersion string, getPodFn func(namespace, name string) (*corev1.Pod, error)) error {
+func (o *DrainCmdOptions) evictPods(pods []corev1.Pod, policyGroupVersion string, getPodFn func(tenant, namespace, name string) (*corev1.Pod, error)) error {
 	returnCh := make(chan error, 1)
 
 	for _, pod := range pods {
@@ -406,7 +414,7 @@ func (o *DrainCmdOptions) evictPods(pods []corev1.Pod, policyGroupVersion string
 	return utilerrors.NewAggregate(errors)
 }
 
-func (o *DrainCmdOptions) deletePods(pods []corev1.Pod, getPodFn func(namespace, name string) (*corev1.Pod, error)) error {
+func (o *DrainCmdOptions) deletePods(pods []corev1.Pod, getPodFn func(tenant, namespace, name string) (*corev1.Pod, error)) error {
 	// 0 timeout means infinite, we use MaxInt64 to represent it.
 	var globalTimeout time.Duration
 	if o.drainer.Timeout == 0 {
@@ -424,7 +432,7 @@ func (o *DrainCmdOptions) deletePods(pods []corev1.Pod, getPodFn func(namespace,
 	return err
 }
 
-func (o *DrainCmdOptions) waitForDelete(pods []corev1.Pod, interval, timeout time.Duration, usingEviction bool, getPodFn func(string, string) (*corev1.Pod, error)) ([]corev1.Pod, error) {
+func (o *DrainCmdOptions) waitForDelete(pods []corev1.Pod, interval, timeout time.Duration, usingEviction bool, getPodFn func(string, string, string) (*corev1.Pod, error)) ([]corev1.Pod, error) {
 	var verbStr string
 	if usingEviction {
 		verbStr = "evicted"
@@ -439,7 +447,7 @@ func (o *DrainCmdOptions) waitForDelete(pods []corev1.Pod, interval, timeout tim
 	err = wait.PollImmediate(interval, timeout, func() (bool, error) {
 		pendingPods := []corev1.Pod{}
 		for i, pod := range pods {
-			p, err := getPodFn(pod.Namespace, pod.Name)
+			p, err := getPodFn(pod.Tenant, pod.Namespace, pod.Name)
 			if apierrors.IsNotFound(err) || (p != nil && p.ObjectMeta.UID != pod.ObjectMeta.UID) {
 				printObj(&pod, o.Out)
 				continue

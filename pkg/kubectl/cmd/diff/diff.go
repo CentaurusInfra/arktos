@@ -81,6 +81,8 @@ type DiffOptions struct {
 	DryRunVerifier   *apply.DryRunVerifier
 	CmdNamespace     string
 	EnforceNamespace bool
+	CmdTenant        string
+	EnforceTenant    bool
 	Builder          *resource.Builder
 	Diff             *DiffProgram
 }
@@ -279,7 +281,8 @@ func (obj InfoObject) Merged() (runtime.Object, error) {
 			Force:  &obj.ForceConflicts,
 			DryRun: []string{metav1.DryRunAll},
 		}
-		return resource.NewHelper(obj.Info.Clients, obj.Info.Mapping).Patch(
+		return resource.NewHelper(obj.Info.Clients, obj.Info.Mapping).PatchWithMultiTenancy(
+			obj.Info.Tenant,
 			obj.Info.Namespace,
 			obj.Info.Name,
 			types.ApplyPatchType,
@@ -291,7 +294,8 @@ func (obj InfoObject) Merged() (runtime.Object, error) {
 	// Build the patcher, and then apply the patch with dry-run, unless the object doesn't exist, in which case we need to create it.
 	if obj.Live() == nil {
 		// Dry-run create if the object doesn't exist.
-		return resource.NewHelper(obj.Info.Clients, obj.Info.Mapping).Create(
+		return resource.NewHelper(obj.Info.Clients, obj.Info.Mapping).CreateWithMultiTenancy(
+			obj.Info.Tenant,
 			obj.Info.Namespace,
 			true,
 			obj.LocalObj,
@@ -326,7 +330,7 @@ func (obj InfoObject) Merged() (runtime.Object, error) {
 		ResourceVersion: resourceVersion,
 	}
 
-	_, result, err := patcher.Patch(obj.Info.Object, modified, obj.Info.Source, obj.Info.Namespace, obj.Info.Name, nil)
+	_, result, err := patcher.PatchWithMultiTenancy(obj.Info.Object, modified, obj.Info.Source, obj.Info.Tenant, obj.Info.Namespace, obj.Info.Name, nil)
 	return result, err
 }
 
@@ -336,9 +340,10 @@ func (obj InfoObject) Name() string {
 		group = fmt.Sprintf("%v.", obj.Info.Mapping.GroupVersionKind.Group)
 	}
 	return group + fmt.Sprintf(
-		"%v.%v.%v.%v",
+		"%v.%v.%v.%v.%v",
 		obj.Info.Mapping.GroupVersionKind.Version,
 		obj.Info.Mapping.GroupVersionKind.Kind,
+		obj.Info.Tenant,
 		obj.Info.Namespace,
 		obj.Info.Name,
 	)
@@ -432,6 +437,10 @@ func (o *DiffOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	o.CmdTenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 
 	o.Builder = f.NewBuilder()
 	return nil
@@ -451,8 +460,9 @@ func (o *DiffOptions) Run() error {
 
 	r := o.Builder.
 		Unstructured().
+		TenantParam(o.CmdTenant).DefaultTenant().
 		NamespaceParam(o.CmdNamespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.FilenameOptions).
 		Flatten().
 		Do()
 	if err := r.Err(); err != nil {

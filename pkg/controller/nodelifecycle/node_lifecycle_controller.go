@@ -366,7 +366,9 @@ func NewNodeLifecycleController(
 
 	if nc.runTaintManager {
 		podLister := podInformer.Lister()
-		podGetter := func(name, namespace string) (*v1.Pod, error) { return podLister.Pods(namespace).Get(name) }
+		podGetter := func(name, namespace, tenant string) (*v1.Pod, error) {
+			return podLister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+		}
 		nodeLister := nodeInformer.Lister()
 		nodeGetter := func(name string) (*v1.Node, error) { return nodeLister.Get(name) }
 		nc.taintManager = scheduler.NewNoExecuteTaintManager(kubeClient, podGetter, nodeGetter)
