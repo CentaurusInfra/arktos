@@ -47,13 +47,25 @@ type NetworkSpec struct {
 	// VPCID is vpc identifier specific to network provider
 	// +optional
 	VPCID string `json:"vpcID,omitempty"`
+	// Service specifies service related properties
+	Service NetworkService `json: "service,omitempty"`
 }
+
+type NetworkService struct {
+	// IPAM is the IPM type of services
+	IPAM NetworkServiceIPAM `json:"ipam,omitempty"`
+	// CIDRS specifies ranges of service VIP
+	CIDRS []string `json:"cidrs"`
+}
+
+// NetworkServiceIPAM describes the IPAM type of services
+type NetworkServiceIPAM string
 
 // NetworkPhase describes the lifecycle phase of Network
 type NetworkPhase string
 
-// Valid values of network lifecycle phase
 const (
+	// Valid values of network lifecycle phase
 	// NetworkPending means the network accepted by the system, but
 	// has not been ready for use.
 	NetworkPending NetworkPhase = "Pending"
@@ -67,6 +79,12 @@ const (
 	// NetworkUnknown means the state of network cannot be decided due to
 	// communication problems.
 	NetworkUnknown NetworkPhase = "Unknown"
+
+	// valid values of network service IPAM
+	// IPAMKubernetes is the IPAM that Kubernetes assigns VIP for service
+	IPAMKubernetes NetworkServiceIPAM = "Kubernetes"
+	// IPAMExternal is the IPAM that external network controller assigns VIP of service
+	IPAMExternal NetworkServiceIPAM = "External"
 )
 
 // NetworkStatus is the status for Network resource
