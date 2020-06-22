@@ -229,8 +229,9 @@ Service IPAM is provided through 2 changes:
     spec:
       type: flat
       service:
-      - cidr: 10.0.0.0/16
-      - cidr: 192.168.0.0/24
+        cidrs:
+        - 10.0.0.0/16
+        - 192.168.0.0/24
     ```
    
 1. on service creation, the current service IP address assignment mechanism is used - in scope of individual network instead of the whole cluster, though.
