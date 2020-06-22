@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"math"
 	"net"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/apimachinery/pkg/util/diff"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -647,6 +650,11 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient)
 	}
 
+	runtimeRegistry, err := runtimeregistry.NewKubeRuntimeRegistry(remoteRuntimeEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed construct runtime registry object %v", err)
+	}
+
 	runtimeManager, err := kuberuntime.NewKubeGenericRuntimeManager(
 		kubecontainer.FilterEventRecorder(kubeDeps.Recorder),
 		klet.livenessManager,
@@ -663,10 +671,10 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		int(kubeCfg.RegistryBurst),
 		kubeCfg.CPUCFSQuota,
 		kubeCfg.CPUCFSQuotaPeriod,
-		kubeDeps.ContainerManager.InternalContainerLifecycle(),
+		kubeDeps.ContainerManager,
 		legacyLogProvider,
 		klet.runtimeClassManager,
-		remoteRuntimeEndpoint,
+		runtimeRegistry,
 	)
 	if err != nil {
 		return nil, err
@@ -675,7 +683,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	klet.containerRuntime = runtimeManager
 	klet.streamingRuntime = runtimeManager
 	klet.runner = runtimeManager
-	klet.runtimeManager = runtimeManager
+	klet.runtimeManager = runtimeRegistry
 
 	runtimeCache, err := kubecontainer.NewRuntimeCache(klet.containerRuntime)
 	if err != nil {
@@ -973,8 +981,7 @@ type Kubelet struct {
 	// Manager for image garbage collection.
 	imageManager images.ImageGCManager
 
-	// Manager for all runtimes.
-	runtimeManager kubecontainer.RuntimeManager
+	runtimeManager runtimeregistry.Interface
 
 	// Manager for container logs.
 	containerLogManager logs.ContainerLogManager
@@ -1204,6 +1211,9 @@ type Kubelet struct {
 
 	// Handles RuntimeClass objects for the Kubelet.
 	runtimeClassManager *runtimeclass.Manager
+
+	// Mutex to serialize new pod admission and existing pod resizing
+	podResizeMutex sync.Mutex
 }
 
 // setupDataDirs creates:
@@ -1682,6 +1692,12 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	// Fetch the pull secrets for the pod
 	pullSecrets := kl.getPullSecretsForPod(pod)
 
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		if !kl.podIsTerminated(pod) && !kubepod.IsStaticPod(pod) {
+			kl.handlePodResourcesResize(pod)
+		}
+	}
+
 	// Call the container runtime's SyncPod callback
 	result := kl.containerRuntime.SyncPod(pod, podStatus, pullSecrets, kl.backOff)
 	kl.reasonCache.Update(pod.UID, result)
@@ -1699,6 +1715,59 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	}
 
 	return nil
+}
+
+func (kl *Kubelet) canResizePod(pod *v1.Pod) (bool, string) {
+	var otherActivePods []*v1.Pod
+	activePods := kl.GetActivePods()
+	for _, p := range activePods {
+		if p.UID != pod.UID {
+			otherActivePods = append(otherActivePods, p)
+		}
+	}
+	if ok, failReason, failMessage := kl.canAdmitPod(otherActivePods, pod); !ok {
+		// Log reason and return. Let the next sync iteration retry the resize
+		klog.V(2).Infof("Pod '%s' resize cannot be accommodated. Reason: '%s' Message: '%s'", pod.Name, failReason, failMessage)
+		return false, ""
+	}
+
+	var containersPatchData string
+	for _, container := range pod.Spec.Containers {
+		var resourcesPatchData string
+		for rName, rQuantity := range container.Resources.Requests {
+			container.ResourcesAllocated[rName] = rQuantity
+			resourcesPatchData += fmt.Sprintf(`"%s":"%s",`, rName, rQuantity.String())
+		}
+		resourcesPatchData = strings.TrimRight(resourcesPatchData, ",")
+		containersPatchData += fmt.Sprintf(`{"name":"%s","resourcesAllocated":{%s}},`, container.Name, resourcesPatchData)
+	}
+	kl.podManager.UpdatePod(pod)
+	containersPatchData = strings.TrimRight(containersPatchData, ",")
+	patchData := fmt.Sprintf(`{"spec":{"containers":[%s]}}`, containersPatchData)
+	return true, patchData
+}
+
+func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
+	podResized := false
+	for _, container := range pod.Spec.Containers {
+		if len(diff.ObjectDiff(container.ResourcesAllocated, container.Resources.Requests)) > 0 {
+			podResized = true
+			break
+		}
+	}
+	if !podResized {
+		return
+	}
+
+	kl.podResizeMutex.Lock()
+	defer kl.podResizeMutex.Unlock()
+	if fit, patchData := kl.canResizePod(pod); fit {
+		_, patchError := kl.kubeClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, []byte(patchData))
+		if patchError != nil {
+			klog.Errorf("Failed to patch ResourcesAllocated values for pod %s: %+v\n", pod.Name, patchError)
+		}
+	}
+	return
 }
 
 // Get pods which should be resynchronized. Currently, the following pod should be resynchronized:
@@ -2087,6 +2156,8 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 func (kl *Kubelet) HandlePodAdditions(pods []*v1.Pod) {
 	start := kl.clock.Now()
 	sort.Sort(sliceutils.PodsByCreationTime(pods))
+	kl.podResizeMutex.Lock()
+	defer kl.podResizeMutex.Unlock()
 	for _, pod := range pods {
 		// Responsible for checking limits in resolv.conf
 		if kl.dnsConfigurer != nil && kl.dnsConfigurer.ResolverConfig != "" {
@@ -2112,10 +2183,26 @@ func (kl *Kubelet) HandlePodAdditions(pods []*v1.Pod) {
 			// pods that are alive.
 			activePods := kl.filterOutTerminatedPods(existingPods)
 
-			// Check if we can admit the pod; if not, reject it.
-			if ok, reason, message := kl.canAdmitPod(activePods, pod); !ok {
-				kl.rejectPod(pod, reason, message)
-				continue
+			if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+				// To handle kubelet restarts, test pod admissibility with ResourcesAllocated values (cpu & memory)
+				podCopy := pod.DeepCopy()
+				for _, c := range podCopy.Spec.Containers {
+					if c.Resources.Requests != nil {
+						c.Resources.Requests[v1.ResourceCPU] = c.ResourcesAllocated[v1.ResourceCPU]
+						c.Resources.Requests[v1.ResourceMemory] = c.ResourcesAllocated[v1.ResourceMemory]
+					}
+				}
+				// Check if we can admit the pod; if not, reject it.
+				if ok, reason, message := kl.canAdmitPod(activePods, podCopy); !ok {
+					kl.rejectPod(pod, reason, message)
+					continue
+				}
+			} else {
+				// Check if we can admit the pod; if not, reject it.
+				if ok, reason, message := kl.canAdmitPod(activePods, pod); !ok {
+					kl.rejectPod(pod, reason, message)
+					continue
+				}
 			}
 		}
 		mirrorPod, _ := kl.podManager.GetMirrorPodByPod(pod)
@@ -2182,13 +2269,6 @@ func (kl *Kubelet) HandlePodReconcile(pods []*v1.Pod) {
 		// After an evicted pod is synced, all dead containers in the pod can be removed.
 		if eviction.PodIsEvicted(pod.Status) {
 			if podStatus, err := kl.podCache.Get(pod.UID); err == nil {
-				runtimeService, err := kl.runtimeManager.GetRuntimeServiceByPod(pod)
-				if err != nil {
-					klog.V(2).Infof("GetRuntimeServiceByPodID Failed: %v", err)
-					return
-				}
-
-				kl.containerDeletor.runtime = runtimeService
 				kl.containerDeletor.deleteContainersInPod("", podStatus, true)
 			}
 		}
@@ -2226,7 +2306,7 @@ func (kl *Kubelet) updateRuntimeUp() {
 		klog.Errorf("GetPrimaryRuntimeService Failed: %v", err)
 		return
 	}
-	s1, err := runtime.Status()
+	s1, err := runtime.ServiceApi.Status()
 	if err != nil {
 		klog.Errorf("Container runtime sanity check failed: %v", err)
 		return
@@ -2339,13 +2419,7 @@ func (kl *Kubelet) cleanUpContainersInPod(podID types.UID, exitedContainerID str
 			// When an evicted or deleted pod has already synced, all containers can be removed.
 			removeAll = eviction.PodIsEvicted(syncedPod.Status) || (syncedPod.DeletionTimestamp != nil && notRunning(apiPodStatus.ContainerStatuses))
 		}
-		runtimeService, err := kl.runtimeManager.GetRuntimeServiceByPodID(podID)
-		if err != nil {
-			klog.V(2).Infof("GetRuntimeServiceByPodID Failed: %v", err)
-			return
-		}
 
-		kl.containerDeletor.runtime = runtimeService
 		kl.containerDeletor.deleteContainersInPod(exitedContainerID, podStatus, removeAll)
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"os"
 	"path"
 	"strconv"
@@ -549,7 +550,7 @@ func (cm *containerManagerImpl) Start(node *v1.Node,
 	activePods ActivePodsFunc,
 	sourcesReady config.SourcesReady,
 	podStatusProvider status.PodStatusProvider,
-	runtimeManager kubecontainer.RuntimeManager) error {
+	runtimeManager runtimeregistry.Interface) error {
 
 	// Initialize CPU manager
 	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.CPUManager) {

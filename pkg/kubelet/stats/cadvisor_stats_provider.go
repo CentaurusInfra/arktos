@@ -256,6 +256,8 @@ func (p *cadvisorStatsProvider) ImageFsStats() (*statsapi.FsStats, error) {
 
 // ImageFsDevice returns name of the device where the image filesystem locates,
 // e.g. /dev/sda1.
+// TODO: support multiple image FS
+// Arktos issue 350
 func (p *cadvisorStatsProvider) ImageFsDevice() (string, error) {
 	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
 	if err != nil {

@@ -18,6 +18,7 @@ limitations under the License.
 package kuberuntime
 
 import (
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"net/http"
 	"time"
 
@@ -73,6 +74,26 @@ func (f *fakePodStateProvider) IsPodTerminated(uid types.UID) bool {
 func newFakeKubeRuntimeManager(rs internalapi.RuntimeService, is internalapi.ImageManagerService, machineInfo *cadvisorapi.MachineInfo, osInterface kubecontainer.OSInterface, runtimeHelper kubecontainer.RuntimeHelper, keyring credentialprovider.DockerKeyring) (*kubeGenericRuntimeManager, error) {
 	recorder := &record.FakeRecorder{}
 
+	// TODO: Add new UTs and dynamic set the filed for the runtimeService type
+	//
+	defaultRuntimeServiceName = reservedDefaultRuntimeServiceName
+	imageServices := make(map[string]*runtimeregistry.ImageService)
+	imageServices[defaultRuntimeServiceName] = &runtimeregistry.ImageService{}
+	imageServices[defaultRuntimeServiceName].ServiceApi = is
+	imageServices[defaultRuntimeServiceName].Name = reservedDefaultRuntimeServiceName
+	imageServices[defaultRuntimeServiceName].WorkloadType = runtimeregistry.ContainerWorkloadType
+	imageServices[defaultRuntimeServiceName].IsDefault = true
+
+	runtimeServices := make(map[string]*runtimeregistry.RuntimeService)
+	runtimeServices[defaultRuntimeServiceName] = &runtimeregistry.RuntimeService{}
+	runtimeServices[defaultRuntimeServiceName].ServiceApi = rs
+	runtimeServices[defaultRuntimeServiceName].Name = reservedDefaultRuntimeServiceName
+	runtimeServices[defaultRuntimeServiceName].WorkloadType = runtimeregistry.ContainerWorkloadType
+	runtimeServices[defaultRuntimeServiceName].IsDefault = true
+	runtimeServices[defaultRuntimeServiceName].IsPrimary = true
+
+	rr := runtimeregistry.KubeRuntimeRegistry{RuntimeServices: runtimeServices, ImageServices: imageServices}
+
 	kubeRuntimeManager := &kubeGenericRuntimeManager{
 		recorder:            recorder,
 		cpuCFSQuota:         false,
@@ -86,29 +107,11 @@ func newFakeKubeRuntimeManager(rs internalapi.RuntimeService, is internalapi.Ima
 		seccompProfileRoot:  fakeSeccompProfileRoot,
 		internalLifecycle:   cm.NewFakeInternalContainerLifecycle(),
 		logReduction:        logreduction.NewLogReduction(identicalErrorDelay),
+		runtimeRegistry:     &rr,
 	}
-
-	// TODO: Add new UTs and dynamic set the filed for the runtimeService type
-	//
-	defaultRuntimeServiceName = reservedDefaultRuntimeServiceName
-	imageServices := make(map[string]*imageService)
-	imageServices[defaultRuntimeServiceName] = &imageService{}
-	imageServices[defaultRuntimeServiceName].serviceApi = is
-	imageServices[defaultRuntimeServiceName].name = reservedDefaultRuntimeServiceName
-	imageServices[defaultRuntimeServiceName].workloadType = containerWorkloadType
-	imageServices[defaultRuntimeServiceName].isDefault = true
-
-	runtimeServices := make(map[string]*runtimeService)
-	runtimeServices[defaultRuntimeServiceName] = &runtimeService{}
-	runtimeServices[defaultRuntimeServiceName].serviceApi = rs
-	runtimeServices[defaultRuntimeServiceName].name = reservedDefaultRuntimeServiceName
-	runtimeServices[defaultRuntimeServiceName].workloadType = containerWorkloadType
-	runtimeServices[defaultRuntimeServiceName].isDefault = true
 
 	kubeRuntimeManager.podRuntimeServiceMap = make(map[string]internalapi.RuntimeService)
 
-	kubeRuntimeManager.imageServices = imageServices
-	kubeRuntimeManager.runtimeServices = runtimeServices
 	typedVersion, err := rs.Version(kubeRuntimeAPIVersion)
 	if err != nil {
 		return nil, err

@@ -18,6 +18,7 @@ limitations under the License.
 package stats
 
 import (
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -25,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	gomock "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 	cadvisorfs "github.com/google/cadvisor/fs"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,6 @@ import (
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
-	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	kubecontainertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
 	"k8s.io/kubernetes/pkg/kubelet/leaky"
@@ -224,7 +224,7 @@ func TestCRIListPodStats(t *testing.T) {
 		resourceAnalyzer,
 		mockPodManager,
 		mockRuntimeCache,
-		kubecontainer.NewFakeRuntimeManager(fakeRuntimeService, fakeImageService),
+		runtimeregistry.NewFakeRuntimeManager(fakeRuntimeService, fakeImageService),
 		fakeLogStatsProvider,
 		fakeOS,
 	)
@@ -406,7 +406,7 @@ func TestCRIListPodCPUAndMemoryStats(t *testing.T) {
 		resourceAnalyzer,
 		mockPodManager,
 		mockRuntimeCache,
-		kubecontainer.NewFakeRuntimeManager(fakeRuntimeService, nil),
+		runtimeregistry.NewFakeRuntimeManager(fakeRuntimeService, nil),
 		nil,
 		&kubecontainertest.FakeOS{},
 	)
@@ -525,7 +525,7 @@ func TestCRIImagesFsStats(t *testing.T) {
 		resourceAnalyzer,
 		mockPodManager,
 		mockRuntimeCache,
-		kubecontainer.NewFakeRuntimeManager(fakeRuntimeService, fakeImageService),
+		runtimeregistry.NewFakeRuntimeManager(fakeRuntimeService, fakeImageService),
 		fakeLogStatsProvider,
 		&kubecontainertest.FakeOS{},
 	)

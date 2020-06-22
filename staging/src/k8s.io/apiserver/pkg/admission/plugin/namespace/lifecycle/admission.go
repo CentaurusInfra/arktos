@@ -56,7 +56,7 @@ func Register(plugins *admission.Plugins) {
 	plugins.Register(PluginName, func(config io.Reader) (admission.Interface, error) {
 		return NewLifecycle(
 			sets.NewString(metav1.NamespaceDefault, metav1.NamespaceSystem, metav1.NamespacePublic),
-			sets.NewString(metav1.TenantSystem, metav1.TenantSystem),
+			sets.NewString(metav1.TenantSystem),
 		)
 	})
 }
@@ -250,8 +250,8 @@ func (l *Lifecycle) Admit(a admission.Attributes, o admission.ObjectInterfaces) 
 		// is slow to update, we add the namespace into a force live lookup list to ensure
 		// we are not looking at stale state.
 		if a.GetOperation() == admission.Delete {
-			if l.immortalNamespaces.Has(a.GetName()) {
-				return errors.NewForbidden(a.GetResource().GroupResource(), a.GetName(), fmt.Errorf("this namespace may not be deleted"))
+			if l.immortalNamespaces.Has(a.GetName()) && a.GetTenant() == metav1.TenantSystem {
+				return errors.NewForbidden(a.GetResource().GroupResource(), a.GetTenant()+"/"+a.GetName(), fmt.Errorf("this namespace may not be deleted"))
 			}
 			l.forceLiveNamespaceLookupCache.Add(a.GetTenant()+"/"+a.GetName(), true, forceLiveLookupTTL)
 		}

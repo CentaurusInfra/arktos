@@ -59,6 +59,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
@@ -66,6 +67,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubectl/describe"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	"k8s.io/kubernetes/pkg/kubectl/util/certificate"
@@ -1665,6 +1667,15 @@ func describeContainerResource(container corev1.Container, w PrefixWriter) {
 	for _, name := range SortedResourceNames(resources.Requests) {
 		quantity := resources.Requests[name]
 		w.Write(LEVEL_3, "%s:\t%s\n", name, quantity.String())
+	}
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		if len(container.ResourcesAllocated) > 0 {
+			w.Write(LEVEL_2, "Allocations:\n")
+		}
+		for _, name := range SortedResourceNames(container.ResourcesAllocated) {
+			quantity := resources.Requests[name]
+			w.Write(LEVEL_3, "%s:\t%s\n", name, quantity.String())
+		}
 	}
 }
 
@@ -3298,8 +3309,13 @@ func describeHorizontalPodAutoscalerV1(hpa *autoscalingv1.HorizontalPodAutoscale
 
 func describeNodeResource(nodeNonTerminatedPodsList *corev1.PodList, node *corev1.Node, w PrefixWriter) {
 	w.Write(LEVEL_0, "Non-terminated Pods:\t(%d in total)\n", len(nodeNonTerminatedPodsList.Items))
-	w.Write(LEVEL_1, "Namespace\tName\t\tCPU Requests\tCPU Limits\tMemory Requests\tMemory Limits\tAGE\n")
-	w.Write(LEVEL_1, "---------\t----\t\t------------\t----------\t---------------\t-------------\t---\n")
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		w.Write(LEVEL_1, "Namespace\tName\t\tCPU Requests\tCPU Limits\tCPU Allocations\tMemory Requests\tMemory Limits\tMemory Allocations\tAGE\n")
+		w.Write(LEVEL_1, "---------\t----\t\t------------\t----------\t---------------\t---------------\t-------------\t------------------\t---\n")
+	} else {
+		w.Write(LEVEL_1, "Namespace\tName\t\tCPU Requests\tCPU Limits\tMemory Requests\tMemory Limits\tAGE\n")
+		w.Write(LEVEL_1, "---------\t----\t\t------------\t----------\t---------------\t-------------\t---\n")
+	}
 	allocatable := node.Status.Capacity
 	if len(node.Status.Allocatable) > 0 {
 		allocatable = node.Status.Allocatable
@@ -3312,15 +3328,31 @@ func describeNodeResource(nodeNonTerminatedPodsList *corev1.PodList, node *corev
 		fractionCpuLimit := float64(cpuLimit.MilliValue()) / float64(allocatable.Cpu().MilliValue()) * 100
 		fractionMemoryReq := float64(memoryReq.Value()) / float64(allocatable.Memory().Value()) * 100
 		fractionMemoryLimit := float64(memoryLimit.Value()) / float64(allocatable.Memory().Value()) * 100
-		w.Write(LEVEL_1, "%s\t%s\t\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s\n", pod.Namespace, pod.Name,
-			cpuReq.String(), int64(fractionCpuReq), cpuLimit.String(), int64(fractionCpuLimit),
-			memoryReq.String(), int64(fractionMemoryReq), memoryLimit.String(), int64(fractionMemoryLimit), translateTimestampSince(pod.CreationTimestamp))
+		if !utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			w.Write(LEVEL_1, "%s\t%s\t\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s\n", pod.Namespace, pod.Name,
+				cpuReq.String(), int64(fractionCpuReq), cpuLimit.String(), int64(fractionCpuLimit),
+				memoryReq.String(), int64(fractionMemoryReq), memoryLimit.String(), int64(fractionMemoryLimit), translateTimestampSince(pod.CreationTimestamp))
+		} else {
+			alloc := resourcehelper.PodResourceAllocations(&pod)
+			cpuAlloc, memoryAlloc := alloc[corev1.ResourceCPU], alloc[corev1.ResourceMemory]
+			fractionCpuAlloc := float64(cpuAlloc.MilliValue()) / float64(allocatable.Cpu().MilliValue()) * 100
+			fractionMemoryAlloc := float64(memoryAlloc.Value()) / float64(allocatable.Memory().Value()) * 100
+			w.Write(LEVEL_1, "%s\t%s\t\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s\n", pod.Namespace, pod.Name,
+				cpuReq.String(), int64(fractionCpuReq), cpuLimit.String(), int64(fractionCpuLimit), cpuAlloc.String(), int64(fractionCpuAlloc),
+				memoryReq.String(), int64(fractionMemoryReq), memoryLimit.String(), int64(fractionMemoryLimit), memoryAlloc.String(), int64(fractionMemoryAlloc),
+				translateTimestampSince(pod.CreationTimestamp))
+		}
 	}
 
 	w.Write(LEVEL_0, "Allocated resources:\n  (Total limits may be over 100 percent, i.e., overcommitted.)\n")
-	w.Write(LEVEL_1, "Resource\tRequests\tLimits\n")
-	w.Write(LEVEL_1, "--------\t--------\t------\n")
-	reqs, limits := getPodsTotalRequestsAndLimits(nodeNonTerminatedPodsList)
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		w.Write(LEVEL_1, "Resource\tRequests\tAllocations\tLimits\n")
+		w.Write(LEVEL_1, "--------\t--------\t-----------\t------\n")
+	} else {
+		w.Write(LEVEL_1, "Resource\tRequests\tLimits\n")
+		w.Write(LEVEL_1, "--------\t--------\t------\n")
+	}
+	reqs, allocs, limits := getPodsTotalRequestsAllocsAndLimits(nodeNonTerminatedPodsList)
 	cpuReqs, cpuLimits, memoryReqs, memoryLimits, ephemeralstorageReqs, ephemeralstorageLimits :=
 		reqs[corev1.ResourceCPU], limits[corev1.ResourceCPU], reqs[corev1.ResourceMemory], limits[corev1.ResourceMemory], reqs[corev1.ResourceEphemeralStorage], limits[corev1.ResourceEphemeralStorage]
 	fractionCpuReqs := float64(0)
@@ -3341,12 +3373,38 @@ func describeNodeResource(nodeNonTerminatedPodsList *corev1.PodList, node *corev
 		fractionEphemeralStorageReqs = float64(ephemeralstorageReqs.Value()) / float64(allocatable.StorageEphemeral().Value()) * 100
 		fractionEphemeralStorageLimits = float64(ephemeralstorageLimits.Value()) / float64(allocatable.StorageEphemeral().Value()) * 100
 	}
-	w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\n",
-		corev1.ResourceCPU, cpuReqs.String(), int64(fractionCpuReqs), cpuLimits.String(), int64(fractionCpuLimits))
-	w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\n",
-		corev1.ResourceMemory, memoryReqs.String(), int64(fractionMemoryReqs), memoryLimits.String(), int64(fractionMemoryLimits))
-	w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\n",
-		corev1.ResourceEphemeralStorage, ephemeralstorageReqs.String(), int64(fractionEphemeralStorageReqs), ephemeralstorageLimits.String(), int64(fractionEphemeralStorageLimits))
+
+	if !utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\n",
+			corev1.ResourceCPU, cpuReqs.String(), int64(fractionCpuReqs), cpuLimits.String(), int64(fractionCpuLimits))
+		w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\n",
+			corev1.ResourceMemory, memoryReqs.String(), int64(fractionMemoryReqs), memoryLimits.String(), int64(fractionMemoryLimits))
+		w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\n",
+			corev1.ResourceEphemeralStorage, ephemeralstorageReqs.String(), int64(fractionEphemeralStorageReqs), ephemeralstorageLimits.String(), int64(fractionEphemeralStorageLimits))
+	} else {
+		cpuAllocs, memoryAllocs, ephemeralstorageAllocs := allocs[corev1.ResourceCPU], allocs[corev1.ResourceMemory], allocs[corev1.ResourceEphemeralStorage]
+		fractionCpuAllocs := float64(0)
+		if allocatable.Cpu().MilliValue() != 0 {
+			fractionCpuAllocs = float64(cpuAllocs.MilliValue()) / float64(allocatable.Cpu().MilliValue()) * 100
+		}
+		fractionMemoryAllocs := float64(0)
+		if allocatable.Memory().Value() != 0 {
+			fractionMemoryAllocs = float64(memoryAllocs.Value()) / float64(allocatable.Memory().Value()) * 100
+		}
+		fractionEphemeralStorageAllocs := float64(0)
+		if allocatable.StorageEphemeral().Value() != 0 {
+			fractionEphemeralStorageAllocs = float64(ephemeralstorageAllocs.Value()) / float64(allocatable.StorageEphemeral().Value()) * 100
+		}
+		w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\n",
+			corev1.ResourceCPU, cpuReqs.String(), int64(fractionCpuReqs), cpuAllocs.String(),
+			int64(fractionCpuAllocs), cpuLimits.String(), int64(fractionCpuLimits))
+		w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\n",
+			corev1.ResourceMemory, memoryReqs.String(), int64(fractionMemoryReqs), memoryAllocs.String(),
+			int64(fractionMemoryAllocs), memoryLimits.String(), int64(fractionMemoryLimits))
+		w.Write(LEVEL_1, "%s\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\n",
+			corev1.ResourceEphemeralStorage, ephemeralstorageReqs.String(), int64(fractionEphemeralStorageReqs), ephemeralstorageAllocs.String(),
+			int64(fractionEphemeralStorageAllocs), ephemeralstorageLimits.String(), int64(fractionEphemeralStorageLimits))
+	}
 	extResources := make([]string, 0, len(allocatable))
 	for resource := range allocatable {
 		if !resourcehelper.IsStandardContainerResourceName(string(resource)) && resource != corev1.ResourcePods {
@@ -3360,8 +3418,9 @@ func describeNodeResource(nodeNonTerminatedPodsList *corev1.PodList, node *corev
 	}
 }
 
-func getPodsTotalRequestsAndLimits(podList *corev1.PodList) (reqs map[corev1.ResourceName]resource.Quantity, limits map[corev1.ResourceName]resource.Quantity) {
+func getPodsTotalRequestsAllocsAndLimits(podList *corev1.PodList) (reqs, allocs, limits map[corev1.ResourceName]resource.Quantity) {
 	reqs, limits = map[corev1.ResourceName]resource.Quantity{}, map[corev1.ResourceName]resource.Quantity{}
+	allocs = map[corev1.ResourceName]resource.Quantity{}
 	for _, pod := range podList.Items {
 		podReqs, podLimits := resourcehelper.PodRequestsAndLimits(&pod)
 		for podReqName, podReqValue := range podReqs {
@@ -3378,6 +3437,17 @@ func getPodsTotalRequestsAndLimits(podList *corev1.PodList) (reqs map[corev1.Res
 			} else {
 				value.Add(podLimitValue)
 				limits[podLimitName] = value
+			}
+		}
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			podAllocs := resourcehelper.PodResourceAllocations(&pod)
+			for podAllocName, podAllocValue := range podAllocs {
+				if value, ok := allocs[podAllocName]; !ok {
+					allocs[podAllocName] = *podAllocValue.Copy()
+				} else {
+					value.Add(podAllocValue)
+					allocs[podAllocName] = value
+				}
 			}
 		}
 	}

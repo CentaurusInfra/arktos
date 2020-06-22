@@ -224,6 +224,7 @@ func CreateKubeAPIServer(kubeAPIServerConfig *master.Config, delegateAPIServer g
 	kubeAPIServer.GenericAPIServer.AddPostStartHookOrDie("start-kube-apiserver-admission-initializer", admissionPostStartHook)
 	go kubeAPIServerConfig.ExtraConfig.DataPartitionManager.Run(stopCh)
 	go kubeAPIServerConfig.ExtraConfig.StorageClusterManager.Run(stopCh)
+	go kubeAPIServerConfig.ExtraConfig.TenantStorageManager.Run(stopCh)
 
 	return kubeAPIServer, nil
 }
@@ -374,6 +375,11 @@ func CreateKubeAPIServerConfig(
 	if config.ExtraConfig.StorageClusterManager == nil {
 		config.ExtraConfig.StorageClusterManager = storagecluster.NewStorageClusterManager(
 			config.ExtraConfig.VersionedInformers.Core().V1().StorageClusters())
+	}
+	config.ExtraConfig.TenantStorageManager = storagecluster.GetTenantStorageManager()
+	if config.ExtraConfig.TenantStorageManager == nil {
+		config.ExtraConfig.TenantStorageManager = storagecluster.NewTenantStorageMapManager(
+			config.ExtraConfig.VersionedInformers.Core().V1().Tenants())
 	}
 
 	if nodeTunneler != nil {

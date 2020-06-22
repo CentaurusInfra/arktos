@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,4 +53,20 @@ func (m *podContainerManagerStub) GetAllPodsFromCgroups() (map[types.UID]CgroupN
 
 func (m *podContainerManagerStub) IsPodCgroup(cgroupfs string) (bool, types.UID) {
 	return false, types.UID("")
+}
+
+func (m *podContainerManagerStub) GetPodCgroupMemoryConfig(_ *v1.Pod) (uint64, error) {
+	return 0, nil
+}
+
+func (m *podContainerManagerStub) GetPodCgroupCpuConfig(_ *v1.Pod) (int64, uint64, uint64, error) {
+	return 0, 0, 0, nil
+}
+
+func (m *podContainerManagerStub) SetPodCgroupMemoryConfig(_ *v1.Pod, _ int64) error {
+	return nil
+}
+
+func (m *podContainerManagerStub) SetPodCgroupCpuConfig(_ *v1.Pod, _ *int64, _, _ *uint64) error {
+	return nil
 }

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@ package options
 import (
 	"fmt"
 	"io"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"net"
 	"net/url"
 
@@ -105,6 +107,12 @@ func (o CustomResourceDefinitionsServerOptions) Config() (*apiserver.Config, err
 			ServiceResolver:      &serviceResolver{serverConfig.SharedInformerFactory.Core().V1().Services().Lister()},
 			AuthResolverWrapper:  webhook.NewDefaultAuthenticationInfoResolverWrapper(nil, serverConfig.LoopbackClientConfig),
 		},
+	}
+
+	config.ExtraConfig.TenantStorageManager = storagecluster.GetTenantStorageManager()
+	if config.ExtraConfig.TenantStorageManager == nil {
+		config.ExtraConfig.TenantStorageManager = storagecluster.NewTenantStorageMapManager(
+			serverConfig.SharedInformerFactory.Core().V1().Tenants())
 	}
 	return config, nil
 }
