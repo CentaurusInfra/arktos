@@ -764,13 +764,6 @@ func (r *Request) request(fn func(*http.Request, *http.Response)) error {
 		return r.err
 	}
 
-	// TODO: added to catch programmer errors (invoking operations with an object with an empty namespace)
-	if (r.verb == "GET" || r.verb == "PUT" || r.verb == "DELETE") && r.tenantSet && len(r.resourceName) > 0 && len(r.tenant) == 0 {
-		r = r.Tenant(metav1.TenantSystem)
-	}
-	if (r.verb == "POST") && r.tenantSet && len(r.tenant) == 0 {
-		r = r.Tenant(metav1.TenantSystem)
-	}
 	if (r.verb == "GET" || r.verb == "PUT" || r.verb == "DELETE") && r.namespaceSet && len(r.resourceName) > 0 && len(r.namespace) == 0 {
 		return fmt.Errorf("an empty namespace may not be set when a resource name is provided")
 	}
