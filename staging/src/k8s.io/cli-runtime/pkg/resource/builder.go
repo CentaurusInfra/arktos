@@ -484,6 +484,11 @@ func (b *Builder) ExportParam(export bool) *Builder {
 // TenantParam accepts the tenant that these resources should be
 // considered under from - used by DefaultTenant() and RequireTenant()
 func (b *Builder) TenantParam(tenant string) *Builder {
+	if tenant == metav1.TenantSystem {
+		b.AddError(fmt.Errorf("If you are a regular user, you are not allowed to access resource under system tenant. \n If you are a system tenant, you don't need specify tenant as system."))
+		return b
+	}
+
 	b.tenant = tenant
 	return b
 }
@@ -991,19 +996,11 @@ func (b *Builder) checkResourceTenantNamespace(mappingScope meta.RESTScopeName) 
 
 	case meta.RESTScopeNameTenant:
 		selectorNamespace = ""
-		if len(b.tenant) == 0 {
-			b.tenant = metav1.TenantSystem
-			selectorTenant = metav1.TenantSystem
-		}
 		if b.allTenant {
 			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")
 		}
 
 	case meta.RESTScopeNameNamespace:
-		if len(b.tenant) == 0 {
-			b.tenant = metav1.TenantSystem
-			selectorTenant = metav1.TenantSystem
-		}
 		if b.allTenant {
 			return "", "", fmt.Errorf("a resource cannot be retrieved by name across all tenants")
 		}

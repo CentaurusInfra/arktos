@@ -1681,3 +1681,17 @@ func TestHasNames(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantParam(t *testing.T) {
+	builder := newDefaultBuilder().TenantParam("system")
+
+	if len(builder.errs) != 1 {
+		t.Errorf("Expected to get 1 error, but got %d errors ", len(builder.errs))
+	}
+
+	builder = newDefaultBuilder().TenantParam("foo")
+
+	if len(builder.errs) != 0 {
+		t.Errorf("Expected to get no error, but got %d errors ", len(builder.errs))
+	}
+}
