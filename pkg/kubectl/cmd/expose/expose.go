@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,6 +101,9 @@ type ExposeServiceOptions struct {
 
 	Namespace string
 	Mapper    meta.RESTMapper
+
+	Tenant        string
+	EnforceTenant bool
 
 	DynamicClient dynamic.Interface
 	Builder       *resource.Builder
@@ -206,6 +210,11 @@ func (o *ExposeServiceOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) e
 		return err
 	}
 
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	return err
 }
 
@@ -213,8 +222,9 @@ func (o *ExposeServiceOptions) RunExpose(cmd *cobra.Command, args []string) erro
 	r := o.Builder.
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		ContinueOnError().
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.FilenameOptions).
 		ResourceTypeOrNameArgs(false, args...).
 		Flatten().
 		Do()
@@ -345,7 +355,7 @@ func (o *ExposeServiceOptions) RunExpose(cmd *cobra.Command, args []string) erro
 			return err
 		}
 		// Serialize the object with the annotation applied.
-		actualObject, err := o.DynamicClient.Resource(objMapping.Resource).Namespace(o.Namespace).Create(asUnstructured, metav1.CreateOptions{})
+		actualObject, err := o.DynamicClient.Resource(objMapping.Resource).NamespaceWithMultiTenancy(o.Namespace, o.Tenant).Create(asUnstructured, metav1.CreateOptions{})
 		if err != nil {
 			return err
 		}

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,6 +64,7 @@ type CreateJobOptions struct {
 	Command []string
 
 	Namespace string
+	Tenant    string
 	Client    batchv1client.BatchV1Interface
 	DryRun    bool
 	Builder   *resource.Builder
@@ -129,6 +131,10 @@ func (o *CreateJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 	if err != nil {
 		return err
 	}
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	o.Builder = f.NewBuilder()
 	o.Cmd = cmd
 
@@ -166,6 +172,7 @@ func (o *CreateJobOptions) Run() error {
 	} else {
 		infos, err := o.Builder.
 			Unstructured().
+			TenantParam(o.Tenant).DefaultTenant().
 			NamespaceParam(o.Namespace).DefaultNamespace().
 			ResourceTypeOrNameArgs(false, o.From).
 			Flatten().
@@ -192,7 +199,7 @@ func (o *CreateJobOptions) Run() error {
 	}
 	if !o.DryRun {
 		var err error
-		job, err = o.Client.Jobs(o.Namespace).Create(job)
+		job, err = o.Client.JobsWithMultiTenancy(o.Namespace, o.Tenant).Create(job)
 		if err != nil {
 			return fmt.Errorf("failed to create job: %v", err)
 		}

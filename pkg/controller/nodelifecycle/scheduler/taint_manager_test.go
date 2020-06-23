@@ -35,8 +35,8 @@ import (
 var timeForControllerToProgress = 500 * time.Millisecond
 
 func getPodFromClientset(clientset *fake.Clientset) GetPodFunc {
-	return func(name, namespace string) (*v1.Pod, error) {
-		return clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	return func(name, namespace, tenant string) (*v1.Pod, error) {
+		return clientset.CoreV1().PodsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
 }
 
@@ -51,7 +51,7 @@ type podHolder struct {
 	sync.Mutex
 }
 
-func (p *podHolder) getPod(name, namespace string) (*v1.Pod, error) {
+func (p *podHolder) getPod(name, namespace, tenant string) (*v1.Pod, error) {
 	p.Lock()
 	defer p.Unlock()
 	return p.pod, nil

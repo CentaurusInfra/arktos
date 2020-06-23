@@ -399,7 +399,7 @@ func TestGenerateService(t *testing.T) {
 				test.params["port"] = test.port
 			}
 
-			_, err = opts.generateService(tf, cmd, test.serviceGenerator, test.params, "test")
+			_, err = opts.generateService(tf, cmd, test.serviceGenerator, test.params, "test", metav1.TenantSystem)
 			if test.expectErr {
 				if err == nil {
 					t.Error("unexpected non-error")

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,6 +74,8 @@ type AutoscaleOptions struct {
 	args             []string
 	enforceNamespace bool
 	namespace        string
+	tenant           string
+	enforceTenant    bool
 	dryRun           bool
 	builder          *resource.Builder
 	generatorFunc    func(string, *meta.RESTMapping) (generate.StructuredGenerator, error)
@@ -179,6 +182,11 @@ func (o *AutoscaleOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 		return err
 	}
 
+	o.tenant, o.enforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.ToPrinter = func(operation string) (printers.ResourcePrinter, error) {
 		o.PrintFlags.NamePrintFlags.Operation = operation
 		if o.dryRun {
@@ -208,8 +216,9 @@ func (o *AutoscaleOptions) Run() error {
 	r := o.builder.
 		Unstructured().
 		ContinueOnError().
+		TenantParam(o.tenant).DefaultTenant().
 		NamespaceParam(o.namespace).DefaultNamespace().
-		FilenameParam(o.enforceNamespace, o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.enforceTenant, o.enforceNamespace, o.FilenameOptions).
 		ResourceTypeOrNameArgs(false, o.args...).
 		Flatten().
 		Do()
@@ -262,7 +271,7 @@ func (o *AutoscaleOptions) Run() error {
 			return err
 		}
 
-		actualHPA, err := o.HPAClient.HorizontalPodAutoscalers(o.namespace).Create(hpa)
+		actualHPA, err := o.HPAClient.HorizontalPodAutoscalersWithMultiTenancy(o.namespace, o.tenant).Create(hpa)
 		if err != nil {
 			return err
 		}

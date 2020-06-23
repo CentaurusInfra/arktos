@@ -61,6 +61,7 @@ type nodeUpdateItem struct {
 type podUpdateItem struct {
 	podName      string
 	podNamespace string
+	podTenant    string
 	nodeName     string
 }
 
@@ -71,7 +72,7 @@ func hash(val string, max int) int {
 }
 
 // GetPodFunc returns the pod for the specified name/namespace, or a NotFound error if missing.
-type GetPodFunc func(name, namespace string) (*v1.Pod, error)
+type GetPodFunc func(name, namespace, tenant string) (*v1.Pod, error)
 
 // GetNodeFunc returns the node for the specified name, or a NotFound error if missing.
 type GetNodeFunc func(name string) (*v1.Node, error)
@@ -98,6 +99,7 @@ type NoExecuteTaintManager struct {
 
 func deletePodHandler(c clientset.Interface, emitEventFunc func(types.NamespacedName)) func(args *WorkArgs) error {
 	return func(args *WorkArgs) error {
+		tenant := args.NamespacedName.Tenant
 		ns := args.NamespacedName.Namespace
 		name := args.NamespacedName.Name
 		klog.V(0).Infof("NoExecuteTaintManager is deleting Pod: %v", args.NamespacedName.String())
@@ -106,7 +108,7 @@ func deletePodHandler(c clientset.Interface, emitEventFunc func(types.Namespaced
 		}
 		var err error
 		for i := 0; i < retries; i++ {
-			err = c.CoreV1().Pods(ns).Delete(name, &metav1.DeleteOptions{})
+			err = c.CoreV1().PodsWithMultiTenancy(ns, tenant).Delete(name, &metav1.DeleteOptions{})
 			if err == nil {
 				break
 			}
@@ -128,12 +130,12 @@ func getNoExecuteTaints(taints []v1.Taint) []v1.Taint {
 
 func getPodsAssignedToNode(c clientset.Interface, nodeName string) ([]v1.Pod, error) {
 	selector := fields.SelectorFromSet(fields.Set{"spec.nodeName": nodeName})
-	pods, err := c.CoreV1().Pods(v1.NamespaceAll).List(metav1.ListOptions{
+	pods, err := c.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
 		FieldSelector: selector.String(),
 		LabelSelector: labels.Everything().String(),
 	})
 	for i := 0; i < retries && err != nil; i++ {
-		pods, err = c.CoreV1().Pods(v1.NamespaceAll).List(metav1.ListOptions{
+		pods, err = c.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
 			FieldSelector: selector.String(),
 			LabelSelector: labels.Everything().String(),
 		})
@@ -286,11 +288,13 @@ func (tc *NoExecuteTaintManager) worker(worker int, done func(), stopCh <-chan s
 func (tc *NoExecuteTaintManager) PodUpdated(oldPod *v1.Pod, newPod *v1.Pod) {
 	podName := ""
 	podNamespace := ""
+	podTenant := ""
 	nodeName := ""
 	oldTolerations := []v1.Toleration{}
 	if oldPod != nil {
 		podName = oldPod.Name
 		podNamespace = oldPod.Namespace
+		podTenant = oldPod.Tenant
 		nodeName = oldPod.Spec.NodeName
 		oldTolerations = oldPod.Spec.Tolerations
 	}
@@ -298,6 +302,7 @@ func (tc *NoExecuteTaintManager) PodUpdated(oldPod *v1.Pod, newPod *v1.Pod) {
 	if newPod != nil {
 		podName = newPod.Name
 		podNamespace = newPod.Namespace
+		podTenant = newPod.Tenant
 		nodeName = newPod.Spec.NodeName
 		newTolerations = newPod.Spec.Tolerations
 	}
@@ -308,6 +313,7 @@ func (tc *NoExecuteTaintManager) PodUpdated(oldPod *v1.Pod, newPod *v1.Pod) {
 	updateItem := podUpdateItem{
 		podName:      podName,
 		podNamespace: podNamespace,
+		podTenant:    podTenant,
 		nodeName:     nodeName,
 	}
 
@@ -360,7 +366,7 @@ func (tc *NoExecuteTaintManager) processPodOnNode(
 		klog.V(2).Infof("Not all taints are tolerated after update for Pod %v on %v", podNamespacedName.String(), nodeName)
 		// We're canceling scheduled work (if any), as we're going to delete the Pod right away.
 		tc.cancelWorkWithEvent(podNamespacedName)
-		tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace), time.Now(), time.Now())
+		tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace, podNamespacedName.Tenant), time.Now(), time.Now())
 		return
 	}
 	minTolerationTime := getMinTolerationTime(usedTolerations)
@@ -380,20 +386,20 @@ func (tc *NoExecuteTaintManager) processPodOnNode(
 		}
 		tc.cancelWorkWithEvent(podNamespacedName)
 	}
-	tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace), startTime, triggerTime)
+	tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace, podNamespacedName.Tenant), startTime, triggerTime)
 }
 
 func (tc *NoExecuteTaintManager) handlePodUpdate(podUpdate podUpdateItem) {
-	pod, err := tc.getPod(podUpdate.podName, podUpdate.podNamespace)
+	pod, err := tc.getPod(podUpdate.podName, podUpdate.podNamespace, podUpdate.podTenant)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Delete
-			podNamespacedName := types.NamespacedName{Namespace: podUpdate.podNamespace, Name: podUpdate.podName}
+			podNamespacedName := types.NamespacedName{Tenant: podUpdate.podTenant, Namespace: podUpdate.podNamespace, Name: podUpdate.podName}
 			klog.V(4).Infof("Noticed pod deletion: %#v", podNamespacedName)
 			tc.cancelWorkWithEvent(podNamespacedName)
 			return
 		}
-		utilruntime.HandleError(fmt.Errorf("could not get pod %s/%s: %v", podUpdate.podName, podUpdate.podNamespace, err))
+		utilruntime.HandleError(fmt.Errorf("could not get pod %s/%s/%s: %v", podUpdate.podName, podUpdate.podNamespace, podUpdate.podTenant, err))
 		return
 	}
 
@@ -403,7 +409,7 @@ func (tc *NoExecuteTaintManager) handlePodUpdate(podUpdate podUpdateItem) {
 	}
 
 	// Create or Update
-	podNamespacedName := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
+	podNamespacedName := types.NamespacedName{Tenant: podUpdate.podTenant, Namespace: pod.Namespace, Name: pod.Name}
 	klog.V(4).Infof("Noticed pod update: %#v", podNamespacedName)
 	nodeName := pod.Spec.NodeName
 	if nodeName == "" {
@@ -463,7 +469,7 @@ func (tc *NoExecuteTaintManager) handleNodeUpdate(nodeUpdate nodeUpdateItem) {
 	if len(taints) == 0 {
 		klog.V(4).Infof("All taints were removed from the Node %v. Cancelling all evictions...", node.Name)
 		for i := range pods {
-			tc.cancelWorkWithEvent(types.NamespacedName{Namespace: pods[i].Namespace, Name: pods[i].Name})
+			tc.cancelWorkWithEvent(types.NamespacedName{Tenant: pods[i].Tenant, Namespace: pods[i].Namespace, Name: pods[i].Name})
 		}
 		return
 	}
@@ -471,7 +477,7 @@ func (tc *NoExecuteTaintManager) handleNodeUpdate(nodeUpdate nodeUpdateItem) {
 	now := time.Now()
 	for i := range pods {
 		pod := &pods[i]
-		podNamespacedName := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
+		podNamespacedName := types.NamespacedName{Tenant: pod.Tenant, Namespace: pod.Namespace, Name: pod.Name}
 		tc.processPodOnNode(podNamespacedName, node.Name, pod.Spec.Tolerations, taints, now)
 	}
 }
@@ -484,6 +490,7 @@ func (tc *NoExecuteTaintManager) emitPodDeletionEvent(nsName types.NamespacedNam
 		Kind:      "Pod",
 		Name:      nsName.Name,
 		Namespace: nsName.Namespace,
+		Tenant:    nsName.Tenant,
 	}
 	tc.recorder.Eventf(ref, v1.EventTypeNormal, "TaintManagerEviction", "Marking for deletion Pod %s", nsName.String())
 }
@@ -496,6 +503,7 @@ func (tc *NoExecuteTaintManager) emitCancelPodDeletionEvent(nsName types.Namespa
 		Kind:      "Pod",
 		Name:      nsName.Name,
 		Namespace: nsName.Namespace,
+		Tenant:    nsName.Tenant,
 	}
 	tc.recorder.Eventf(ref, v1.EventTypeNormal, "TaintManagerEviction", "Cancelling deletion of Pod %s", nsName.String())
 }
