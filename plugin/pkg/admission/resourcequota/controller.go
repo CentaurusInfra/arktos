@@ -150,15 +150,24 @@ func (e *quotaEvaluator) run() {
 
 func (e *quotaEvaluator) doWork() {
 	workFunc := func() bool {
-		ns, admissionAttributes, quit := e.getWork()
+		key, admissionAttributes, quit := e.getWork()
 		if quit {
 			return true
 		}
-		defer e.completeWork(ns)
+		defer e.completeWork(key)
 		if len(admissionAttributes) == 0 {
 			return false
 		}
-		e.checkAttributes(ns, admissionAttributes)
+
+		parts := strings.Split(key, "/")
+		if len(parts) < 2 {
+			klog.Warningf("wrong key format %s, skipped this work", key)
+			return false
+		}
+		tenant := parts[0]
+		namespace := parts[1]
+
+		e.checkAttributes(tenant, namespace, admissionAttributes)
 		return false
 	}
 	for {
@@ -170,8 +179,8 @@ func (e *quotaEvaluator) doWork() {
 }
 
 // checkAttributes iterates evaluates all the waiting admissionAttributes.  It will always notify all waiters
-// before returning.  The default is to deny.
-func (e *quotaEvaluator) checkAttributes(ns string, admissionAttributes []*admissionWaiter) {
+// before returning. The default is to deny.
+func (e *quotaEvaluator) checkAttributes(tenant, ns string, admissionAttributes []*admissionWaiter) {
 	// notify all on exit
 	defer func() {
 		for _, admissionAttribute := range admissionAttributes {
@@ -179,7 +188,7 @@ func (e *quotaEvaluator) checkAttributes(ns string, admissionAttributes []*admis
 		}
 	}()
 
-	quotas, err := e.quotaAccessor.GetQuotas(ns)
+	quotas, err := e.quotaAccessor.GetQuotas(tenant, ns)
 	if err != nil {
 		for _, admissionAttribute := range admissionAttributes {
 			admissionAttribute.result = err
@@ -306,7 +315,7 @@ func (e *quotaEvaluator) checkQuotas(quotas []corev1.ResourceQuota, admissionAtt
 	// you've added a new documented, then updated an old one, your resource matches both and you're only checking one
 	// updates for these quota names failed.  Get the current quotas in the namespace, compare by name, check to see if the
 	// resource versions have changed.  If not, we're going to fall through an fail everything.  If they all have, then we can try again
-	newQuotas, err := e.quotaAccessor.GetQuotas(quotas[0].Namespace)
+	newQuotas, err := e.quotaAccessor.GetQuotas(quotas[0].Tenant, quotas[0].Namespace)
 	if err != nil {
 		// this means that updates failed.  Anything with a default deny error has failed and we need to let them know
 		for _, admissionAttribute := range admissionAttributes {
@@ -639,26 +648,28 @@ func (e *quotaEvaluator) addWork(a *admissionWaiter) {
 	defer e.workLock.Unlock()
 
 	ns := a.attributes.GetNamespace()
+	tenant := a.attributes.GetTenant()
+	key := cacheKey(tenant, ns)
 	// this Add can trigger a Get BEFORE the work is added to a list, but this is ok because the getWork routine
 	// waits the worklock before retrieving the work to do, so the writes in this method will be observed
-	e.queue.Add(ns)
+	e.queue.Add(key)
 
-	if e.inProgress.Has(ns) {
-		e.dirtyWork[ns] = append(e.dirtyWork[ns], a)
+	if e.inProgress.Has(key) {
+		e.dirtyWork[key] = append(e.dirtyWork[key], a)
 		return
 	}
 
-	e.work[ns] = append(e.work[ns], a)
+	e.work[key] = append(e.work[key], a)
 }
 
-func (e *quotaEvaluator) completeWork(ns string) {
+func (e *quotaEvaluator) completeWork(key string) {
 	e.workLock.Lock()
 	defer e.workLock.Unlock()
 
-	e.queue.Done(ns)
-	e.work[ns] = e.dirtyWork[ns]
-	delete(e.dirtyWork, ns)
-	e.inProgress.Delete(ns)
+	e.queue.Done(key)
+	e.work[key] = e.dirtyWork[key]
+	delete(e.dirtyWork, key)
+	e.inProgress.Delete(key)
 }
 
 // getWork returns a namespace, a list of work items in that
@@ -667,11 +678,11 @@ func (e *quotaEvaluator) completeWork(ns string) {
 // returned namespace (regardless of whether the work item list is
 // empty).
 func (e *quotaEvaluator) getWork() (string, []*admissionWaiter, bool) {
-	uncastNS, shutdown := e.queue.Get()
+	item, shutdown := e.queue.Get()
 	if shutdown {
 		return "", []*admissionWaiter{}, shutdown
 	}
-	ns := uncastNS.(string)
+	key := item.(string)
 
 	e.workLock.Lock()
 	defer e.workLock.Unlock()
@@ -679,11 +690,11 @@ func (e *quotaEvaluator) getWork() (string, []*admissionWaiter, bool) {
 	// that our workqueue has another item requeued to it, but we'll pick it up early.  This ok
 	// because the next time will go into our dirty list
 
-	work := e.work[ns]
-	delete(e.work, ns)
-	delete(e.dirtyWork, ns)
-	e.inProgress.Insert(ns)
-	return ns, work, false
+	work := e.work[key]
+	delete(e.work, key)
+	delete(e.dirtyWork, key)
+	e.inProgress.Insert(key)
+	return key, work, false
 }
 
 // prettyPrint formats a resource list for usage in errors

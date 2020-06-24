@@ -146,6 +146,7 @@ func (w *ClientSetsWatcher) NotifyDone() {
 	w.mux.Lock()
 	defer w.mux.Unlock()
 	if w.waitingCount == 1 {
+		w.waitingCount--
 		// waiting done
 		muxUpdateServerMap.Unlock()
 		w.muxStartWaiting.Unlock()

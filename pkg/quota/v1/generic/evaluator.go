@@ -123,13 +123,13 @@ func (p *protectedNamespaceLister) Get(name string) (runtime.Object, error) {
 }
 
 // ListResourceUsingListerFunc returns a listing function based on the shared informer factory for the specified resource.
-func ListResourceUsingListerFunc(l quota.ListerForResourceFunc, resource schema.GroupVersionResource) ListFuncByNamespace {
-	return func(namespace string) ([]runtime.Object, error) {
+func ListResourceUsingListerFunc(l quota.ListerForResourceFunc, resource schema.GroupVersionResource) ListFuncByTenantAndNamespace {
+	return func(tenant, namespace string) ([]runtime.Object, error) {
 		lister, err := l(resource)
 		if err != nil {
 			return nil, err
 		}
-		return lister.ByNamespace(namespace).List(labels.Everything())
+		return lister.ByNamespaceWithMultiTenancy(namespace, tenant).List(labels.Everything())
 	}
 }
 
@@ -141,8 +141,8 @@ func ObjectCountQuotaResourceNameFor(groupResource schema.GroupResource) corev1.
 	return corev1.ResourceName("count/" + groupResource.Resource + "." + groupResource.Group)
 }
 
-// ListFuncByNamespace knows how to list resources in a namespace
-type ListFuncByNamespace func(namespace string) ([]runtime.Object, error)
+// ListFuncByTenantAndNamespace knows how to list resources by tenant and namespace
+type ListFuncByTenantAndNamespace func(tenant, namespace string) ([]runtime.Object, error)
 
 // MatchesScopeFunc knows how to evaluate if an object matches a scope
 type MatchesScopeFunc func(scope corev1.ScopedResourceSelectorRequirement, object runtime.Object) (bool, error)
@@ -194,7 +194,7 @@ func getScopeSelectorsFromQuota(quota *corev1.ResourceQuota) []corev1.ScopedReso
 
 // CalculateUsageStats is a utility function that knows how to calculate aggregate usage.
 func CalculateUsageStats(options quota.UsageStatsOptions,
-	listFunc ListFuncByNamespace,
+	listFunc ListFuncByTenantAndNamespace,
 	scopeFunc MatchesScopeFunc,
 	usageFunc UsageFunc) (quota.UsageStats, error) {
 	// default each tracked resource to zero
@@ -202,7 +202,7 @@ func CalculateUsageStats(options quota.UsageStatsOptions,
 	for _, resourceName := range options.Resources {
 		result.Used[resourceName] = resource.Quantity{Format: resource.DecimalSI}
 	}
-	items, err := listFunc(options.Namespace)
+	items, err := listFunc(options.Tenant, options.Namespace)
 	if err != nil {
 		return result, fmt.Errorf("failed to list content: %v", err)
 	}
@@ -248,7 +248,7 @@ type objectCountEvaluator struct {
 	groupResource schema.GroupResource
 	// A function that knows how to list resources by namespace.
 	// TODO move to dynamic client in future
-	listFuncByNamespace ListFuncByNamespace
+	listFuncByTenantAndNamespace ListFuncByTenantAndNamespace
 	// Names associated with this resource in the quota for generic counting.
 	resourceNames []corev1.ResourceName
 }
@@ -303,7 +303,7 @@ func (o *objectCountEvaluator) GroupResource() schema.GroupResource {
 
 // UsageStats calculates aggregate usage for the object.
 func (o *objectCountEvaluator) UsageStats(options quota.UsageStatsOptions) (quota.UsageStats, error) {
-	return CalculateUsageStats(options, o.listFuncByNamespace, MatchesNoScopeFunc, o.Usage)
+	return CalculateUsageStats(options, o.listFuncByTenantAndNamespace, MatchesNoScopeFunc, o.Usage)
 }
 
 // Verify implementation of interface at compile time.
@@ -314,7 +314,7 @@ var _ quota.Evaluator = &objectCountEvaluator{}
 // purposes for the legacy object counting names in quota.  Unless its supporting
 // backward compatibility, alias should not be used.
 func NewObjectCountEvaluator(
-	groupResource schema.GroupResource, listFuncByNamespace ListFuncByNamespace,
+	groupResource schema.GroupResource, listFuncByTenantAndNamespace ListFuncByTenantAndNamespace,
 	alias corev1.ResourceName) quota.Evaluator {
 
 	resourceNames := []corev1.ResourceName{ObjectCountQuotaResourceNameFor(groupResource)}
@@ -323,8 +323,8 @@ func NewObjectCountEvaluator(
 	}
 
 	return &objectCountEvaluator{
-		groupResource:       groupResource,
-		listFuncByNamespace: listFuncByNamespace,
-		resourceNames:       resourceNames,
+		groupResource:                groupResource,
+		listFuncByTenantAndNamespace: listFuncByTenantAndNamespace,
+		resourceNames:                resourceNames,
 	}
 }

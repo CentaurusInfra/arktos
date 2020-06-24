@@ -39,7 +39,7 @@ type QuotaAccessor interface {
 	UpdateQuotaStatus(newQuota *corev1.ResourceQuota) error
 
 	// GetQuotas gets all possible quotas for a given namespace
-	GetQuotas(namespace string) ([]corev1.ResourceQuota, error)
+	GetQuotas(tenant, namespace string) ([]corev1.ResourceQuota, error)
 }
 
 type quotaAccessor struct {
@@ -79,12 +79,12 @@ func newQuotaAccessor() (*quotaAccessor, error) {
 }
 
 func (e *quotaAccessor) UpdateQuotaStatus(newQuota *corev1.ResourceQuota) error {
-	updatedQuota, err := e.client.CoreV1().ResourceQuotas(newQuota.Namespace).UpdateStatus(newQuota)
+	updatedQuota, err := e.client.CoreV1().ResourceQuotasWithMultiTenancy(newQuota.Namespace, newQuota.Tenant).UpdateStatus(newQuota)
 	if err != nil {
 		return err
 	}
 
-	key := newQuota.Namespace + "/" + newQuota.Name
+	key := cacheKeyWithName(newQuota.Tenant, newQuota.Namespace, newQuota.Name)
 	e.updatedQuotas.Add(key, updatedQuota)
 	return nil
 }
@@ -95,7 +95,7 @@ var etcdVersioner = etcd3.APIObjectVersioner{}
 // if the cache is out of date, it deletes the stale entry.  This only works because of etcd resourceVersions
 // being monotonically increasing integers
 func (e *quotaAccessor) checkCache(quota *corev1.ResourceQuota) *corev1.ResourceQuota {
-	key := quota.Namespace + "/" + quota.Name
+	key := cacheKeyWithName(quota.Tenant, quota.Namespace, quota.Name)
 	uncastCachedQuota, ok := e.updatedQuotas.Get(key)
 	if !ok {
 		return quota
@@ -109,24 +109,33 @@ func (e *quotaAccessor) checkCache(quota *corev1.ResourceQuota) *corev1.Resource
 	return cachedQuota
 }
 
-func (e *quotaAccessor) GetQuotas(namespace string) ([]corev1.ResourceQuota, error) {
+func cacheKey(tenant, namespace string) string {
+	return tenant + "/" + namespace + "/"
+}
+
+func cacheKeyWithName(tenant, namespace, name string) string {
+	return cacheKey(tenant, namespace) + "/" + name
+
+}
+
+func (e *quotaAccessor) GetQuotas(tenant, namespace string) ([]corev1.ResourceQuota, error) {
 	// determine if there are any quotas in this namespace
 	// if there are no quotas, we don't need to do anything
-	items, err := e.lister.ResourceQuotas(namespace).List(labels.Everything())
+	items, err := e.lister.ResourceQuotasWithMultiTenancy(namespace, tenant).List(labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("error resolving quota: %v", err)
 	}
 
 	// if there are no items held in our indexer, check our live-lookup LRU, if that misses, do the live lookup to prime it.
 	if len(items) == 0 {
-		lruItemObj, ok := e.liveLookupCache.Get(namespace)
+		lruItemObj, ok := e.liveLookupCache.Get(cacheKey(tenant, namespace))
 		if !ok || lruItemObj.(liveLookupEntry).expiry.Before(time.Now()) {
 			// TODO: If there are multiple operations at the same time and cache has just expired,
 			// this may cause multiple List operations being issued at the same time.
 			// If there is already in-flight List() for a given namespace, we should wait until
 			// it is finished and cache is updated instead of doing the same, also to avoid
 			// throttling - see #22422 for details.
-			liveList, err := e.client.CoreV1().ResourceQuotas(namespace).List(metav1.ListOptions{})
+			liveList, err := e.client.CoreV1().ResourceQuotasWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -134,7 +143,7 @@ func (e *quotaAccessor) GetQuotas(namespace string) ([]corev1.ResourceQuota, err
 			for i := range liveList.Items {
 				newEntry.items = append(newEntry.items, &liveList.Items[i])
 			}
-			e.liveLookupCache.Add(namespace, newEntry)
+			e.liveLookupCache.Add(cacheKey(tenant, namespace), newEntry)
 			lruItemObj = newEntry
 		}
 		lruEntry := lruItemObj.(liveLookupEntry)
