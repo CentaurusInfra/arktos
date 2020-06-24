@@ -57,6 +57,13 @@ do
             ;;
     esac
 done
+
+if [ "x${GO_OUT}" == "x" ]; then
+  make -C "${KUBE_ROOT}" WHAT="cmd/hyperkube cmd/kube-apiserver"
+else
+  echo "skipped the build."
+fi
+
 ### IF the user didn't supply an output/ for the build... Then we detect.
 if [ "${GO_OUT}" == "" ]; then
   kube::common::detect_binary
@@ -97,22 +104,21 @@ function start_apiserver {
   # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
   kube::util::ensure-gnu-sed
 
-  if [ "x${GO_OUT}" == "x" ]; then
-    make -C "${KUBE_ROOT}" WHAT="cmd/hyperkube cmd/kube-apiserver"
-  else
-    echo "skipped the build."
-  fi
   kube::common::set_service_accounts
 
   echo "starting apiserver"
-  if [ $# -gt 0 ] ; then
-    ETCD_HOST=$1
+  if [ $# -eq 2 ] ; then
+    ETCD_HOST=$2
   fi
+  if [ $# -eq 3 ] ; then
+    ETCD_HOST=$3
+  fi
+
   kube::common::start_apiserver 0
 
 }
 
-"$@"
+start_apiserver $@
 
 
 
