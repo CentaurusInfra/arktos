@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -269,7 +270,7 @@ func ToSet(resourceNames []corev1.ResourceName) sets.String {
 
 // CalculateUsage calculates and returns the requested ResourceList usage.
 // If an error is returned, usage only contains the resources which encountered no calculation errors.
-func CalculateUsage(namespaceName string, scopes []corev1.ResourceQuotaScope, hardLimits corev1.ResourceList, registry Registry, scopeSelector *corev1.ScopeSelector) (corev1.ResourceList, error) {
+func CalculateUsage(tenant string, namespace string, scopes []corev1.ResourceQuotaScope, hardLimits corev1.ResourceList, registry Registry, scopeSelector *corev1.ScopeSelector) (corev1.ResourceList, error) {
 	// find the intersection between the hard resources on the quota
 	// and the resources this controller can track to know what we can
 	// look to measure updated usage stats for
@@ -293,7 +294,13 @@ func CalculateUsage(namespaceName string, scopes []corev1.ResourceQuotaScope, ha
 			continue
 		}
 
-		usageStatsOptions := UsageStatsOptions{Namespace: namespaceName, Scopes: scopes, Resources: intersection, ScopeSelector: scopeSelector}
+		usageStatsOptions := UsageStatsOptions{
+			Tenant:        tenant,
+			Namespace:     namespace,
+			Scopes:        scopes,
+			Resources:     intersection,
+			ScopeSelector: scopeSelector,
+		}
 		stats, err := evaluator.UsageStats(usageStatsOptions)
 		if err != nil {
 			// remember the error

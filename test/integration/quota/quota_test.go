@@ -48,6 +48,12 @@ import (
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
+const (
+	testTenant          = "johndoe"
+	quotaedNamespace    = "quotaed"
+	nonQuotaedNamespace = "non-quotaed"
+)
+
 // 1.2 code gets:
 // 	quota_test.go:95: Took 4.218619579s to scale up without quota
 // 	quota_test.go:199: unexpected error: timed out waiting for the condition, ended with 342 pods (1 minute)
@@ -66,7 +72,7 @@ func TestQuota(t *testing.T) {
 	kubeConfig := &restclient.KubeConfig{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}}
 	clientset := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	config := &resourcequotaapi.Configuration{}
-	admission, err := resourcequota.NewResourceQuota(config, 5, admissionCh)
+	admission, err := resourcequota.NewResourceQuotaAdmission(config, 5, admissionCh)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,9 +88,9 @@ func TestQuota(t *testing.T) {
 	_, _, closeFn := framework.RunAMasterUsingServer(masterConfig, s, h)
 	defer closeFn()
 
-	ns := framework.CreateTestingNamespace("quotaed", s, t)
+	ns := framework.CreateTestingNamespaceWithMultiTenancy(quotaedNamespace, s, t, testTenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
-	ns2 := framework.CreateTestingNamespace("non-quotaed", s, t)
+	ns2 := framework.CreateTestingNamespaceWithMultiTenancy(nonQuotaedNamespace, s, t, testTenant)
 	defer framework.DeleteTestingNamespace(ns2, s, t)
 
 	controllerCh := make(chan struct{})
@@ -129,12 +135,13 @@ func TestQuota(t *testing.T) {
 	close(informersStarted)
 
 	startTime := time.Now()
-	scale(t, ns2.Name, clientset)
+	scale(t, testTenant, ns2.Name, clientset)
 	endTime := time.Now()
 	t.Logf("Took %v to scale up without quota", endTime.Sub(startTime))
 
 	quota := &v1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    testTenant,
 			Name:      "quota",
 			Namespace: ns.Name,
 		},
@@ -147,19 +154,19 @@ func TestQuota(t *testing.T) {
 	waitForQuota(t, quota, clientset)
 
 	startTime = time.Now()
-	scale(t, "quotaed", clientset)
+	scale(t, testTenant, quotaedNamespace, clientset)
 	endTime = time.Now()
 	t.Logf("Took %v to scale up with quota", endTime.Sub(startTime))
 }
 
 func waitForQuota(t *testing.T, quota *v1.ResourceQuota, clientset *clientset.Clientset) {
-	w := clientset.CoreV1().ResourceQuotas(quota.Namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: quota.Name}))
+	w := clientset.CoreV1().ResourceQuotasWithMultiTenancy(quota.Namespace, quota.Tenant).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: quota.Name}))
 	err := w.GetErrors()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if _, err := clientset.CoreV1().ResourceQuotas(quota.Namespace).Create(quota); err != nil {
+	if _, err := clientset.CoreV1().ResourceQuotasWithMultiTenancy(quota.Namespace, quota.Tenant).Create(quota); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -185,11 +192,12 @@ func waitForQuota(t *testing.T, quota *v1.ResourceQuota, clientset *clientset.Cl
 	}
 }
 
-func scale(t *testing.T, namespace string, clientset *clientset.Clientset) {
+func scale(t *testing.T, tenant string, namespace string, clientset *clientset.Clientset) {
 	target := int32(100)
 	rc := &v1.ReplicationController{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
+			Tenant:    tenant,
 			Namespace: namespace,
 		},
 		Spec: v1.ReplicationControllerSpec{
@@ -213,13 +221,13 @@ func scale(t *testing.T, namespace string, clientset *clientset.Clientset) {
 		},
 	}
 
-	w := clientset.CoreV1().ReplicationControllers(namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: rc.Name}))
+	w := clientset.CoreV1().ReplicationControllersWithMultiTenancy(namespace, tenant).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: rc.Name}))
 	err := w.GetErrors()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if _, err := clientset.CoreV1().ReplicationControllers(namespace).Create(rc); err != nil {
+	if _, err := clientset.CoreV1().ReplicationControllersWithMultiTenancy(namespace, tenant).Create(rc); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -243,7 +251,7 @@ func scale(t *testing.T, namespace string, clientset *clientset.Clientset) {
 		return false, nil
 	})
 	if err != nil {
-		pods, _ := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labels.Everything().String(), FieldSelector: fields.Everything().String()})
+		pods, _ := clientset.CoreV1().PodsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{LabelSelector: labels.Everything().String(), FieldSelector: fields.Everything().String()})
 		t.Fatalf("unexpected error: %v, ended with %v pods", err, len(pods.Items))
 	}
 }
@@ -270,7 +278,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 		},
 	}
 	qca := quotainstall.NewQuotaConfigurationForAdmission()
-	admission, err := resourcequota.NewResourceQuota(config, 5, admissionCh)
+	admission, err := resourcequota.NewResourceQuotaAdmission(config, 5, admissionCh)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -285,7 +293,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 	_, _, closeFn := framework.RunAMasterUsingServer(masterConfig, s, h)
 	defer closeFn()
 
-	ns := framework.CreateTestingNamespace("quota", s, t)
+	ns := framework.CreateTestingNamespaceWithMultiTenancy("quota", s, t, testTenant)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	controllerCh := make(chan struct{})
@@ -333,6 +341,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
+			Tenant:    testTenant,
 			Namespace: ns.Name,
 		},
 		Spec: v1.PodSpec{
@@ -344,7 +353,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 			},
 		},
 	}
-	if _, err := clientset.CoreV1().Pods(ns.Name).Create(pod); err == nil {
+	if _, err := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, testTenant).Create(pod); err == nil {
 		t.Fatalf("expected error for insufficient quota")
 	}
 
@@ -352,6 +361,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 	// note: limited resource does a matchContains, so we now have "pods" matching "pods" and "count/pods"
 	quota := &v1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    testTenant,
 			Name:      "quota",
 			Namespace: ns.Name,
 		},
@@ -363,11 +373,14 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 		},
 	}
 	waitForQuota(t, quota, clientset)
+	if _, err := clientset.CoreV1().ResourceQuotasWithMultiTenancy(ns.Name, testTenant).Get(quota.Name, metav1.GetOptions{}); err != nil {
+		t.Fatalf("expected error for insufficient quota")
+	}
 
 	// attempt to create a new pod once the quota is propagated
 	err = wait.PollImmediate(5*time.Second, time.Minute, func() (bool, error) {
 		// retry until we succeed (to allow time for all changes to propagate)
-		if _, err := clientset.CoreV1().Pods(ns.Name).Create(pod); err == nil {
+		if _, err := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, testTenant).Create(pod); err == nil {
 			return true, nil
 		}
 		return false, nil
