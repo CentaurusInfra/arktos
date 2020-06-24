@@ -305,6 +305,11 @@ func (sched *Scheduler) schedule(pod *v1.Pod, pluginContext *framework.PluginCon
 	return result, err
 }
 
+func (sched *Scheduler) globalSchedule(pod *v1.Pod) (core.ScheduleResult, error) {
+	result, err := sched.config.Algorithm.GlobalSchedule(pod)
+	return result, err
+}
+
 // preempt tries to create room for a pod that has failed to schedule, by preempting lower priority pods if possible.
 // If it succeeds, it adds the name of the node where preemption has happened to the pod spec.
 // It returns the node name and an error if any.
@@ -573,10 +578,12 @@ func (sched *Scheduler) globalScheduleOne() {
 	finishedRead := make(chan string)
 	// processFinished := make(chan string)
 	scheduleResultQueue := queue.New(1)
+	scheduleResult, _ := sched.globalSchedule(pod)
 
 	go func() {
 		// scheduleResultQueue.Put("172.31.15.216")
-		scheduleResultQueue.Put("172.31.11.243")
+		// scheduleResultQueue.Put("172.31.11.243")
+		scheduleResultQueue.Put(scheduleResult.SuggestedHost)
 		finishedWrite <- "done"
 	}()
 
@@ -586,8 +593,8 @@ func (sched *Scheduler) globalScheduleOne() {
 		host := fmt.Sprintf("%v", res[0])
 
 		// Post Request For Token
-		// authToken := requestToken(host)
-		authToken := "gAAAAABe8RAYkiwq5svCCFLd35Bs6lgO4wQr12FEUt8X8vGXAamGSa_U7NiYS6uNpDaV-b0DooycdViyWMzBT3ymIyw1CdwJFXtkCJJqwHQAcu2O8txbOsbZRZ6QSYQSVoGc9_9POCH5BkLLMca5o5WOddGbkE0xWWnGF3hMNYAPgTJvVLarVQc"
+		authToken := requestToken(host)
+		// authToken := "gAAAAABe8RAYkiwq5svCCFLd35Bs6lgO4wQr12FEUt8X8vGXAamGSa_U7NiYS6uNpDaV-b0DooycdViyWMzBT3ymIyw1CdwJFXtkCJJqwHQAcu2O8txbOsbZRZ6QSYQSVoGc9_9POCH5BkLLMca5o5WOddGbkE0xWWnGF3hMNYAPgTJvVLarVQc"
 		instanceID := serverCreate(host, authToken, manifest)
 		klog.V(3).Infof("Instance ID: %v", instanceID)
 
@@ -601,10 +608,26 @@ func (sched *Scheduler) globalScheduleOne() {
 				} else if instanceStatus == "ERROR" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					deleteInstance(host, authToken, instanceID)
+					if err := sched.config.SchedulingQueue.Add(pod); err != nil {
+						klog.V(3).Infof("ERROR Status instance failed to add into queue.")
+					}
 					break
 				} else if instanceStatus == "ACTIVE" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					// Update ETCD
+					assumedPod := pod.DeepCopy()
+					err := sched.bind(assumedPod, &v1.Binding{
+						ObjectMeta: metav1.ObjectMeta{Tenant: assumedPod.Tenant, Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID, HashKey: assumedPod.HashKey},
+						Target: v1.ObjectReference{
+							Kind: "Node",
+							Name: scheduleResult.SuggestedHost,
+						},
+					})
+					if err != nil {
+						klog.Errorf("error binding pod: %v", err)
+					} else {
+						klog.V(2).Infof("pod %v/%v/%v is bound successfully on node %v, %d nodes evaluated, %d nodes were found feasible", assumedPod.Tenant, assumedPod.Namespace, assumedPod.Name, scheduleResult.SuggestedHost, scheduleResult.EvaluatedNodes, scheduleResult.FeasibleNodes)
+					}
 					break
 				}
 			}
