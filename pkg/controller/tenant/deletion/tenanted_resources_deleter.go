@@ -24,6 +24,7 @@ import (
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
+	crdregistry "k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -151,6 +152,7 @@ func (d *tenantedResourcesDeleter) Delete(tenantName string) error {
 	if finalized(tenant) {
 		return d.deleteTenant(tenant)
 	}
+
 	return nil
 }
 
@@ -367,6 +369,15 @@ func (d *tenantedResourcesDeleter) listCollection(gvr schema.GroupVersionResourc
 
 	unstructuredList, err := d.dynamicClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).List(metav1.ListOptions{})
 	if err == nil {
+		newItems := []unstructured.Unstructured{}
+		for _, item := range unstructuredList.Items {
+			if crdregistry.IsSystemForcedCrd(item) {
+				continue
+			}
+
+			newItems = append(newItems, item)
+		}
+		unstructuredList.Items = newItems
 		return unstructuredList, true, nil
 	}
 
