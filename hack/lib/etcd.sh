@@ -52,21 +52,40 @@ kube::etcd::validate() {
   fi
 
   # validate installed version is at least equal to minimum
-  version=$(etcd --version | tail -n +1 | head -n 1 | cut -d " " -f 3)
-  if [[ $(kube::etcd::version "${ETCD_VERSION}") -gt $(kube::etcd::version "${version}") ]]; then
-   export PATH=${KUBE_ROOT}/third_party/etcd:${PATH}
-   hash etcd
-   version=$(etcd --version | head -n 1 | cut -d " " -f 3)
-   if [[ $(kube::etcd::version "${ETCD_VERSION}") -gt $(kube::etcd::version "${version}") ]]; then
-    kube::log::usage "etcd version ${ETCD_VERSION} or greater required."
-    kube::log::info "You can use 'hack/install-etcd.sh' to install a copy in third_party/."
+  if kube::etcd::need_update ; then
     exit 1
-   fi
   fi
 }
 
+kube::etcd::need_update() {
+   command -v etcd >/dev/null || return 0
+   # validate installed version is at least equal to minimum
+   version=$(etcd --version | tail -n +1 | head -n 1 | cut -d " " -f 3)
+   kube::log::usage "The current version is ${version}"
+   if [[ $(kube::etcd::version "${ETCD_VERSION}") -gt $(kube::etcd::version "${version}") ]]; then
+    export PATH=${KUBE_ROOT}/third_party/etcd:${PATH}
+    hash etcd
+    version=$(etcd --version | head -n 1 | cut -d " " -f 3)
+    kube::log::usage "The third_party etcd version is ${version}"
+    if [[ $(kube::etcd::version "${ETCD_VERSION}") -gt $(kube::etcd::version "${version}") ]]; then
+      kube::log::usage "etcd version ${ETCD_VERSION} or greater required."
+      kube::log::info "You can use 'hack/install-etcd.sh' to install a copy in third_party/."
+      return 0
+    fi
+  fi
+  return 1
+}
+
 kube::etcd::version() {
-  printf '%s\n' "${@}" | awk -F . '{ printf("%d%03d%03d\n", $1, $2, $3) }'
+  # convert arktos customized version, such as 3.4.4-arktos.1
+  semver=$(echo "$1" | awk -F'-arktos.' '{print $1}')
+  cusver=$(echo "$1" | awk -F'-arktos.' '{print $2}')
+
+  if [ -z "$cusver" ]; then
+    cusver=0
+  fi
+  ver="${semver}.${cusver}"
+  printf '%s\n' "${ver}" | awk -F . '{ printf("%d%03d%03d%03d\n", $1, $2, $3, $4 ) }'
 }
 
 kube::etcd::start() {
