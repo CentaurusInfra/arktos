@@ -56,6 +56,15 @@ else
     validate)
       kube::etcd::validate
       ;;
+    version)
+      # hack/install-etcd.sh version version1(3.4.4-arktos.1) version2(3.4.4) for comparing versions
+      ver1=$(kube::etcd::version $2)
+      echo "The version $2 has been converted to $ver1"
+      ver2=$(kube::etcd::version $3)
+      echo "The version $3 has been converted to $ver2"
+      echo "The $ver1 is greater than $ver2 "
+      [[ $ver1 -gt $ver2 ]] && echo true || echo false
+      ;;
     *)
       echo "Unknown operation"
       ;;
