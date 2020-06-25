@@ -576,7 +576,6 @@ func (sched *Scheduler) globalScheduleOne() {
 
 	finishedWrite := make(chan string)
 	finishedRead := make(chan string)
-	// processFinished := make(chan string)
 	scheduleResultQueue := queue.New(1)
 	scheduleResult, _ := sched.globalSchedule(pod)
 
@@ -591,6 +590,7 @@ func (sched *Scheduler) globalScheduleOne() {
 		<- finishedWrite
 		res, _ := scheduleResultQueue.Get(1)
 		host := fmt.Sprintf("%v", res[0])
+		scheduleStatus := make(chan bool)
 
 		// Post Request For Token
 		authToken := requestToken(host)
@@ -600,13 +600,22 @@ func (sched *Scheduler) globalScheduleOne() {
 
 		go func() {
 			instanceStatus := checkInstanceStatus(host, authToken, instanceID)
+			count := 0
 			for {
 				if instanceStatus == "BUILD" {
+					count += 1
+					// Wait one minute for creating instance if instance status is BUILD
+					if count == 30 {
+						klog.V(3).Infof("Create Instance Timeout!")
+						scheduleStatus <- false
+						break
+					}
 					time.Sleep(2 * time.Second)
 					instanceStatus = checkInstanceStatus(host, authToken, instanceID)
 					
 				} else if instanceStatus == "ERROR" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
+					scheduleStatus <- false
 					deleteInstance(host, authToken, instanceID)
 					if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 						klog.V(3).Infof("ERROR Status instance failed to add into queue.")
@@ -626,20 +635,26 @@ func (sched *Scheduler) globalScheduleOne() {
 					if err != nil {
 						klog.Errorf("error binding pod: %v", err)
 					} else {
-						klog.V(2).Infof("pod %v/%v/%v is bound successfully on node %v, %d nodes evaluated, %d nodes were found feasible", assumedPod.Tenant, assumedPod.Namespace, assumedPod.Name, scheduleResult.SuggestedHost, scheduleResult.EvaluatedNodes, scheduleResult.FeasibleNodes)
+						klog.V(3).Infof("pod %v/%v/%v is bound successfully on node %v, %d nodes evaluated, %d nodes were found feasible", assumedPod.Tenant, assumedPod.Namespace, assumedPod.Name, scheduleResult.SuggestedHost, scheduleResult.EvaluatedNodes, scheduleResult.FeasibleNodes)
 					}
+					scheduleStatus <- false
 					break
 				}
 			}
 		}()
-		
-		klog.V(3).Infof("-------------------------- Finish Read! ------------------------")
-		finishedRead <- "done"
+		msg := <-scheduleStatus
+		if msg == false {
+			finishedRead <- "failed"
+		}
+		// klog.V(3).Infof("-------------------------- Finish Read! ------------------------")
 	}()
 
-	klog.V(3).Infof("-------------------------- Process Done! ------------------------")
+	// klog.V(3).Infof("-------------------------- Process Done! ------------------------")
 
-	<-finishedRead
+	readStatus := <-finishedRead
+	if (readStatus == "failed") {
+		klog.V(3).Infof("Read Status Failed")
+	}
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
