@@ -128,9 +128,10 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 	a.addWatcherAndError(watcher, err)
 	//klog.Infof("Added watch channel %v into aggregated chan %#v.", watcher, a.aggChan)
 
-	go func(w Interface, a *AggregatedWatcher) {
-		if w != nil {
-			stopCh := a.stopChGrp.Join()
+	if watcher != nil {
+		stopCh := a.stopChGrp.Join()
+
+		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
 			for {
 				select {
 				case <-stopCh.Read:
@@ -154,8 +155,8 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 					}
 				}
 			}
-		}
-	}(watcher, a)
+		}(watcher, a, stopCh)
+	}
 }
 
 func (a *AggregatedWatcher) closeWatcher(watcher Interface, stopCh *bcast.Member) {

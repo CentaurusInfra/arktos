@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,7 +52,7 @@ func Register(plugins *admission.Plugins) {
 					return nil, errs.ToAggregate()
 				}
 			}
-			return NewResourceQuota(configuration, 5, make(chan struct{}))
+			return NewResourceQuotaAdmission(configuration, 5, make(chan struct{}))
 		})
 }
 
@@ -76,10 +77,10 @@ type liveLookupEntry struct {
 	items  []*corev1.ResourceQuota
 }
 
-// NewResourceQuota configures an admission controller that can enforce quota constraints
+// NewResourceQuotaAdmission configures an admission controller that can enforce quota constraints
 // using the provided registry.  The registry must have the capability to handle group/kinds that
 // are persisted by the server this admission controller is intercepting
-func NewResourceQuota(config *resourcequotaapi.Configuration, numEvaluators int, stopCh <-chan struct{}) (*QuotaAdmission, error) {
+func NewResourceQuotaAdmission(config *resourcequotaapi.Configuration, numEvaluators int, stopCh <-chan struct{}) (*QuotaAdmission, error) {
 	quotaAccessor, err := newQuotaAccessor()
 	if err != nil {
 		return nil, err

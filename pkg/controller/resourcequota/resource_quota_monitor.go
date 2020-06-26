@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -351,7 +352,8 @@ func (qm *QuotaMonitor) processResourceChanges() bool {
 		utilruntime.HandleError(fmt.Errorf("cannot access obj: %v", err))
 		return true
 	}
-	klog.V(4).Infof("QuotaMonitor process object: %s, namespace %s, name %s, uid %s, event type %v", event.gvr.String(), accessor.GetNamespace(), accessor.GetName(), string(accessor.GetUID()), event.eventType)
-	qm.replenishmentFunc(event.gvr.GroupResource(), accessor.GetNamespace())
+	klog.V(4).Infof("QuotaMonitor process object: %s, tenant %s, namespace %s, name %s, uid %s, event type %v",
+		event.gvr.String(), accessor.GetTenant(), accessor.GetNamespace(), accessor.GetName(), string(accessor.GetUID()), event.eventType)
+	qm.replenishmentFunc(event.gvr.GroupResource(), accessor.GetNamespace(), accessor.GetTenant())
 	return true
 }

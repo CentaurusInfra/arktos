@@ -12,6 +12,7 @@ go_test(
         "main_test.go",
         "quota_test.go",
     ],
+    args = ["-test.v"],
     tags = ["integration"],
     deps = [
         "//pkg/controller:go_default_library",

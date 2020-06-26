@@ -26,7 +26,6 @@ import (
 	"k8s.io/klog"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
@@ -186,21 +185,12 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 	userTenant := user.GetTenant()
 
 	var targetClusterRoleBindings []*rbacv1.ClusterRoleBinding
-	// REMOVE userTenant empty when bearer token tenant
-	// validation is done: https://github.com/futurewei-cloud/arktos/issues/38
-	// in rbac_test.go integration tests are using bearer tokens without tenants
-	targetTenants := []string{"", metav1.TenantSystem}
-	if userTenant != metav1.TenantSystem && userTenant != "" {
-		targetTenants = append(targetTenants, userTenant)
-	}
-	for _, tenant := range targetTenants {
-		if bindings, err := r.clusterRoleBindingLister.ListClusterRoleBindingsWithMultiTenancy(tenant); err != nil {
-			if !visitor(nil, nil, err) {
-				return
-			}
-		} else {
-			targetClusterRoleBindings = append(targetClusterRoleBindings, bindings...)
+	if bindings, err := r.clusterRoleBindingLister.ListClusterRoleBindingsWithMultiTenancy(userTenant); err != nil {
+		if !visitor(nil, nil, err) {
+			return
 		}
+	} else {
+		targetClusterRoleBindings = append(targetClusterRoleBindings, bindings...)
 	}
 
 	sourceDescriber := &clusterRoleBindingDescriber{}
@@ -226,20 +216,13 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 	}
 
 	if len(namespace) > 0 {
-		// get role bindings from userTenat, system tenant and default tenant
 		var targetRoleBindings []*rbacv1.RoleBinding
-		targetTenants := []string{metav1.TenantSystem}
-		if userTenant != metav1.TenantSystem {
-			targetTenants = append(targetTenants, userTenant)
-		}
-		for _, tenant := range targetTenants {
-			if bindings, err := r.roleBindingLister.ListRoleBindingsWithMultiTenancy(tenant, namespace); err != nil {
-				if !visitor(nil, nil, err) {
-					return
-				}
-			} else {
-				targetRoleBindings = append(targetRoleBindings, bindings...)
+		if bindings, err := r.roleBindingLister.ListRoleBindingsWithMultiTenancy(userTenant, namespace); err != nil {
+			if !visitor(nil, nil, err) {
+				return
 			}
+		} else {
+			targetRoleBindings = append(targetRoleBindings, bindings...)
 		}
 
 		if len(targetRoleBindings) == 0 {

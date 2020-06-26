@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,15 +44,15 @@ var serviceResources = []corev1.ResourceName{
 
 // NewServiceEvaluator returns an evaluator that can evaluate services.
 func NewServiceEvaluator(f quota.ListerForResourceFunc) quota.Evaluator {
-	listFuncByNamespace := generic.ListResourceUsingListerFunc(f, corev1.SchemeGroupVersion.WithResource("services"))
-	serviceEvaluator := &serviceEvaluator{listFuncByNamespace: listFuncByNamespace}
+	listFuncByTenantAndNamespace := generic.ListResourceUsingListerFunc(f, corev1.SchemeGroupVersion.WithResource("services"))
+	serviceEvaluator := &serviceEvaluator{listFuncByTenantAndNamespace: listFuncByTenantAndNamespace}
 	return serviceEvaluator
 }
 
 // serviceEvaluator knows how to measure usage for services.
 type serviceEvaluator struct {
 	// knows how to list items by namespace
-	listFuncByNamespace generic.ListFuncByNamespace
+	listFuncByTenantAndNamespace generic.ListFuncByTenantAndNamespace
 }
 
 // Constraints verifies that all required resources are present on the item
@@ -138,7 +139,7 @@ func (p *serviceEvaluator) Usage(item runtime.Object) (corev1.ResourceList, erro
 
 // UsageStats calculates aggregate usage for the object.
 func (p *serviceEvaluator) UsageStats(options quota.UsageStatsOptions) (quota.UsageStats, error) {
-	return generic.CalculateUsageStats(options, p.listFuncByNamespace, generic.MatchesNoScopeFunc, p.Usage)
+	return generic.CalculateUsageStats(options, p.listFuncByTenantAndNamespace, generic.MatchesNoScopeFunc, p.Usage)
 }
 
 var _ quota.Evaluator = &serviceEvaluator{}
