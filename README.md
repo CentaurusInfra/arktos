@@ -51,8 +51,9 @@ make
 ```
 
 ## Run Arktos
+Arktos requires a few dependencies to run, and [a bash script](hack/setup-dev-node.sh) is provided to install them.
 
-To run a single-node Arktos cluster in your local development box:
+With the dependencies in place, to run a single-node Arktos cluster in your local development box:
 
 ```
 cd $GOPATH/src/github.com/arktos
