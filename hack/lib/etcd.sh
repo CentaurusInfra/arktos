@@ -62,6 +62,9 @@ kube::etcd::need_update() {
    # validate installed version is at least equal to minimum
    version=$(etcd --version | tail -n +1 | head -n 1 | cut -d " " -f 3)
    kube::log::usage "The current version is ${version}"
+   path=$(which etcd)
+   kube::log::usage $PATH
+   kube::log::usage "The current path is ${path}"
    if [[ $(kube::etcd::version "${ETCD_VERSION}") -gt $(kube::etcd::version "${version}") ]]; then
     export PATH=${KUBE_ROOT}/third_party/etcd:${PATH}
     hash etcd
