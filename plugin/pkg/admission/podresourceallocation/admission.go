@@ -77,41 +77,42 @@ func (p *Plugin) Admit(attributes admission.Attributes, o admission.ObjectInterf
 	switch op {
 	case admission.Create:
 		podQoS := qos.GetPodQOS(pod)
-		for i := range pod.Spec.Containers {
+		for i := range pod.Spec.Workloads() {
 			// set container resize policy to nil for best-effort class
 			if podQoS == api.PodQOSBestEffort {
-				pod.Spec.Containers[i].ResizePolicy = nil
+				pod.Spec.WorkloadInfo[i].ResizePolicy = nil
 				continue
 			}
 			// set resources allocated equal to requests, if not specified
-			if pod.Spec.Containers[i].Resources.Requests != nil {
-				if pod.Spec.Containers[i].ResourcesAllocated == nil {
-					pod.Spec.Containers[i].ResourcesAllocated = make(api.ResourceList)
-					for key, value := range pod.Spec.Containers[i].Resources.Requests {
-						pod.Spec.Containers[i].ResourcesAllocated[key] = value.DeepCopy()
+			if pod.Spec.WorkloadInfo[i].Resources.Requests != nil {
+				if pod.Spec.WorkloadInfo[i].ResourcesAllocated == nil {
+					pod.Spec.WorkloadInfo[i].ResourcesAllocated = make(api.ResourceList)
+					for key, value := range pod.Spec.WorkloadInfo[i].Resources.Requests {
+						pod.Spec.WorkloadInfo[i].ResourcesAllocated[key] = value.DeepCopy()
 					}
 				}
 			}
 			// set resize policy to defaults, if not specified
 			resources := make(map[api.ResourceName]bool)
-			for _, p := range pod.Spec.Containers[i].ResizePolicy {
+			for _, p := range pod.Spec.WorkloadInfo[i].ResizePolicy {
 				resources[p.ResourceName] = true
 			}
 			if _, found := resources[api.ResourceCPU]; !found {
-				pod.Spec.Containers[i].ResizePolicy = append(pod.Spec.Containers[i].ResizePolicy,
+				pod.Spec.WorkloadInfo[i].ResizePolicy = append(pod.Spec.WorkloadInfo[i].ResizePolicy,
 					api.ResizePolicy{
 						ResourceName: api.ResourceCPU,
 						Policy:       api.NoRestart,
 					})
 			}
 			if _, found := resources[api.ResourceMemory]; !found {
-				pod.Spec.Containers[i].ResizePolicy = append(pod.Spec.Containers[i].ResizePolicy,
+				pod.Spec.WorkloadInfo[i].ResizePolicy = append(pod.Spec.WorkloadInfo[i].ResizePolicy,
 					api.ResizePolicy{
 						ResourceName: api.ResourceMemory,
 						Policy:       api.NoRestart,
 					})
 			}
 		}
+		pod.Spec.SetWorkloads()
 
 	case admission.Update:
 		oldPod, ok := attributes.GetOldObject().(*api.Pod)
@@ -119,21 +120,22 @@ func (p *Plugin) Admit(attributes admission.Attributes, o admission.ObjectInterf
 			return apierrors.NewBadRequest("Resource was marked with kind Pod but was unable to be converted")
 		}
 
-		if len(pod.Spec.Containers) != len(oldPod.Spec.Containers) {
+		if len(pod.Spec.Workloads()) != len(oldPod.Spec.Workloads()) {
 			return admission.NewForbidden(attributes, fmt.Errorf("Pod updates may not add or remove containers"))
 		}
 		// if ResourcesAllocated or ResizePolicy fields are being dropped due to older client versions
 		// because they do not know about these new fields, then just copy the fields over
-		for i, c := range pod.Spec.Containers {
+		for i, w := range pod.Spec.Workloads() {
 			// ResizePolicy is never empty. If not specified by user, it is set to defaults
-			if c.ResizePolicy == nil || len(c.ResizePolicy) == 0 {
-				pod.Spec.Containers[i].ResizePolicy = oldPod.Spec.Containers[i].ResizePolicy
+			if w.ResizePolicy == nil || len(w.ResizePolicy) == 0 {
+				pod.Spec.WorkloadInfo[i].ResizePolicy = oldPod.Spec.Workloads()[i].ResizePolicy
 			}
 			// if Resources.Requests is not nil, ResourcesAllocated must be non-nil as well
-			if oldPod.Spec.Containers[i].Resources.Requests != nil && c.ResourcesAllocated == nil {
-				pod.Spec.Containers[i].ResourcesAllocated = oldPod.Spec.Containers[i].ResourcesAllocated
+			if oldPod.Spec.Workloads()[i].Resources.Requests != nil && w.ResourcesAllocated == nil {
+				pod.Spec.WorkloadInfo[i].ResourcesAllocated = oldPod.Spec.Workloads()[i].ResourcesAllocated
 			}
 		}
+		pod.Spec.SetWorkloads()
 	}
 	return nil
 }
@@ -157,12 +159,12 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 	switch op {
 	case admission.Create:
 		// newly created pods must have ResourcesAllocated field either empty or equal to Requests
-		for _, c := range pod.Spec.Containers {
-			if c.Resources.Requests == nil {
+		for _, w := range pod.Spec.Workloads() {
+			if w.Resources.Requests == nil {
 				continue
 			}
-			if c.ResourcesAllocated == nil || len(c.ResourcesAllocated) != len(c.Resources.Requests) ||
-				!reflect.DeepEqual(c.ResourcesAllocated, c.Resources.Requests) {
+			if w.ResourcesAllocated == nil || len(w.ResourcesAllocated) != len(w.Resources.Requests) ||
+				!reflect.DeepEqual(w.ResourcesAllocated, w.Resources.Requests) {
 				return apierrors.NewBadRequest("Resource allocation must equal desired resources for new pod")
 			}
 		}
@@ -173,7 +175,7 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 			return apierrors.NewBadRequest("Resource was marked with kind Pod but was unable to be converted")
 		}
 
-		if len(pod.Spec.Containers) != len(oldPod.Spec.Containers) {
+		if len(pod.Spec.Workloads()) != len(oldPod.Spec.Workloads()) {
 			return admission.NewForbidden(attributes, fmt.Errorf("Pod updates may not add or remove containers"))
 		}
 		// only node can update ResourcesAllocated field (for CPU and memory fields only - checked during validation)
@@ -181,12 +183,12 @@ func (p *Plugin) Validate(attributes admission.Attributes, o admission.ObjectInt
 		// noderestriction plugin (if enabled) ensures that node isn't modifying anything besides ResourcesAllocated
 		userInfo := attributes.GetUserInfo()
 		nodeName, isNode := p.nodeidentifier.NodeIdentity(userInfo)
-		for i, c := range pod.Spec.Containers {
-			if c.Resources.Requests == nil || len(c.Resources.Requests) == 0 {
+		for i, w := range pod.Spec.Workloads() {
+			if w.Resources.Requests == nil || len(w.Resources.Requests) == 0 {
 				continue
 			}
-			if c.ResourcesAllocated != nil &&
-				!reflect.DeepEqual(c.ResourcesAllocated, oldPod.Spec.Containers[i].ResourcesAllocated) {
+			if w.ResourcesAllocated != nil &&
+				!reflect.DeepEqual(w.ResourcesAllocated, oldPod.Spec.Workloads()[i].ResourcesAllocated) {
 				if !isNode {
 					return admission.NewForbidden(attributes, fmt.Errorf("Only node can modify pod resource allocations"))
 				}

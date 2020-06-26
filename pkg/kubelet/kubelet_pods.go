@@ -1433,7 +1433,7 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 	// TODO: redefine VM state and powerState to match current containerRuntime state
 	//       OR switch to using libvirt VM runtime state which matches with current VM power state
 	if vmPod {
-		apiPodStatus.VirtualMachineStatus = &v1.VirtualMachineStatus{Name: pod.Name}
+		apiPodStatus.VirtualMachineStatus = &v1.VirtualMachineStatus{Name: pod.Spec.VirtualMachine.Name}
 
 		// mark vm pod as to shutdown
 		// scheduler observes this and make the kill by unbinding pod from this node
@@ -1463,6 +1463,41 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 				apiPodStatus.VirtualMachineStatus.State = v1.VmSuspended
 				apiPodStatus.VirtualMachineStatus.PowerState = v1.NoState
 				apiPodStatus.VirtualMachineStatus.Ready = false
+			}
+
+			if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+				vmContainers := []v1.Container{
+					{
+						Name:               pod.Spec.VirtualMachine.Name,
+						Image:              pod.Spec.VirtualMachine.Image,
+						ImagePullPolicy:    pod.Spec.VirtualMachine.ImagePullPolicy,
+						Resources:          pod.Spec.VirtualMachine.Resources,
+						ResourcesAllocated: pod.Spec.VirtualMachine.ResourcesAllocated,
+					},
+				}
+				var oldVmContainerStatuses []v1.ContainerStatus
+				if oldPodStatus.VirtualMachineStatus != nil {
+					var oldVmContainerState v1.ContainerState
+					if oldPodStatus.VirtualMachineStatus.State == v1.VmActive {
+						oldVmContainerState = v1.ContainerState{Running: &v1.ContainerStateRunning{StartedAt: *oldPodStatus.StartTime}}
+					}
+					oldVmContainerStatuses = []v1.ContainerStatus{
+						{
+							Name:         oldPodStatus.VirtualMachineStatus.Name,
+							ContainerID:  oldPodStatus.VirtualMachineStatus.VirtualMachineId,
+							State:        oldVmContainerState,
+							Ready:        oldPodStatus.VirtualMachineStatus.Ready,
+							RestartCount: oldPodStatus.VirtualMachineStatus.RestartCount,
+							Image:        oldPodStatus.VirtualMachineStatus.Image,
+							ImageID:      oldPodStatus.VirtualMachineStatus.ImageId,
+							Resources:    oldPodStatus.VirtualMachineStatus.Resources,
+						},
+					}
+				}
+				apiContainerStatuses := kl.convertToAPIContainerStatuses(pod, podStatus, oldVmContainerStatuses, vmContainers, false, false)
+				if len(apiContainerStatuses) != 0 {
+					apiPodStatus.VirtualMachineStatus.Resources = apiContainerStatuses[0].Resources
+				}
 			}
 			klog.V(4).Infof("ContainerStatuses[0] = %+v, Set virtual machine status for pod: %v to %+v",
 				podStatus.ContainerStatuses[0], pod.Name, apiPodStatus.VirtualMachineStatus)
