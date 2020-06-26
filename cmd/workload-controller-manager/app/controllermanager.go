@@ -31,8 +31,6 @@ import (
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/mux"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/klog"
@@ -156,9 +154,6 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 	versionedClient := rootClientBuilder.ClientOrDie("shared-informers")
 	sharedInformers := informers.NewSharedInformerFactory(versionedClient, resyncPeriod)
 
-	dynamicClient := dynamic.NewForConfigOrDie(rootClientBuilder.ConfigOrDie("dynamic-informers"))
-	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, resyncPeriod)
-
 	// If apiserver is not running we should wait for some time and fail only then. This is particularly
 	// important when we start apiserver and controller manager at the same time.
 	if err := WaitForAPIServer(versionedClient, 10*time.Second); err != nil {
@@ -188,7 +183,7 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 	ctx := ControllerContext{
 		ClientBuilder:                 clientBuilder,
 		InformerFactory:               sharedInformers,
-		GenericInformerFactory:        controller.NewInformerFactory(sharedInformers, dynamicInformers),
+		GenericInformerFactory:        controller.NewInformerFactory(sharedInformers),
 		RESTMapper:                    restMapper,
 		AvailableResources:            availableResources,
 		Stop:                          stop,
