@@ -125,20 +125,19 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 
 	cim.mux.Lock()
 	klog.V(4).Infof("mux acquired addControllerInstance. CIM %v", cim.instanceId)
-	defer func() {
-		cim.mux.Unlock()
-		klog.V(4).Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
-	}()
 
 	if cim.currentControllers == nil {
 		cim.currentControllers = make(map[string](map[string]v1.ControllerInstance))
 	}
 	existingInstancesForType, ok := cim.currentControllers[newControllerInstance.ControllerType]
+
 	if !ok { // real new controller instance
 		cim.currentControllers[newControllerInstance.ControllerType] = make(map[string]v1.ControllerInstance)
 	} else { // check existing controller instance
 		existingInstance, ok1 := existingInstancesForType[newControllerInstance.Name]
 		if ok1 {
+			cim.mux.Unlock()
+			klog.V(4).Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
 			cim.updateControllerInstance(&existingInstance, newControllerInstance)
 			klog.V(4).Infof("Got existing controller instance %s in AddFunc. CIM %v", newControllerInstance.Name, cim.instanceId)
 			return
@@ -148,6 +147,9 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 
 	// notify appropriate controller
 	cim.notifyHandler(newControllerInstance)
+
+	cim.mux.Unlock()
+	klog.V(4).Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
 }
 
 func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interface{}) {
@@ -186,10 +188,6 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 
 	cim.mux.Lock()
 	klog.V(4).Infof("mux acquired updateControllerInstance. CIM %v", cim.instanceId)
-	defer func() {
-		cim.mux.Unlock()
-		klog.V(4).Infof("mux released updateControllerInstance. CIM %v", cim.instanceId)
-	}()
 
 	cim.currentControllers[oldControllerInstance.ControllerType][oldControllerInstance.Name] = *curControllerInstance
 
@@ -198,6 +196,9 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 		klog.V(4).Infof("Notify controller instance %v was updated. CIM %v", curControllerInstance.Name, cim.instanceId)
 		cim.notifyHandler(curControllerInstance)
 	}
+
+	cim.mux.Unlock()
+	klog.V(4).Infof("mux released updateControllerInstance. CIM %v", cim.instanceId)
 }
 
 func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) {
@@ -218,10 +219,6 @@ func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) 
 	klog.V(3).Infof("Received event for deleting controller instance %v. CIM %v", controllerinstance.Name, cim.instanceId)
 	cim.mux.Lock()
 	klog.V(4).Infof("mux acquired deleteControllerInstance. CIM %v", cim.instanceId)
-	defer func() {
-		cim.mux.Unlock()
-		klog.V(4).Infof("mux released deleteControllerInstance. CIM %v", cim.instanceId)
-	}()
 
 	if l, ok := cim.currentControllers[controllerinstance.ControllerType]; ok {
 		if _, ok1 := l[controllerinstance.Name]; ok1 {
@@ -231,6 +228,8 @@ func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) 
 			cim.notifyHandler(controllerinstance)
 		}
 	}
+	cim.mux.Unlock()
+	klog.V(4).Infof("mux released deleteControllerInstance. CIM %v", cim.instanceId)
 }
 
 func (cim *ControllerInstanceManager) Run(stopCh <-chan struct{}) {
@@ -266,7 +265,6 @@ func (cim *ControllerInstanceManager) syncControllerInstances() error {
 		cim.mux.Unlock()
 		klog.V(4).Infof("mux released syncControllerInstances. CIM %v", cim.instanceId)
 	}()
-
 	controllerInstanceList, err := cim.kubeClient.CoreV1().ControllerInstances().List(metav1.ListOptions{})
 	if err != nil {
 		return err
