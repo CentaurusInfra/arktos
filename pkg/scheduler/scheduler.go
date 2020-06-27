@@ -462,7 +462,7 @@ func requestToken(host string) string {
 	tokenRequestURL := "http://" + host + "/identity/v3/auth/tokens"
 
 	// TODO: Please don't hard code json data
-	tokenJsonData := `{"auth":{"identity":{"methods":["password"],"password":{"user":{"name":"admin","domain":{"id":"default"},"password":"StrongAdminSecret"}}},"scope":{"project":{"name":"admin","domain":{"id":"default"}}}}}`
+	tokenJsonData := `{"auth":{"identity":{"methods":["password"],"password":{"user":{"name":"admin","domain":{"id":"default"},"password":"secret"}}},"scope":{"project":{"name":"admin","domain":{"id":"default"}}}}}`
 	
 	// Make HTTP Request
 	var tokenJsonDataBytes = []byte(tokenJsonData)
@@ -575,7 +575,6 @@ func (sched *Scheduler) globalScheduleOne() {
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 
 	finishedWrite := make(chan string)
-	finishedRead := make(chan string)
 	scheduleResultQueue := queue.New(1)
 	scheduleResult, _ := sched.globalSchedule(pod)
 
@@ -590,7 +589,6 @@ func (sched *Scheduler) globalScheduleOne() {
 		<- finishedWrite
 		res, _ := scheduleResultQueue.Get(1)
 		host := fmt.Sprintf("%v", res[0])
-		scheduleStatus := make(chan bool)
 
 		// Post Request For Token
 		authToken := requestToken(host)
@@ -607,7 +605,9 @@ func (sched *Scheduler) globalScheduleOne() {
 					// Wait one minute for creating instance if instance status is BUILD
 					if count == 30 {
 						klog.V(3).Infof("Create Instance Timeout!")
-						scheduleStatus <- false
+						if err := sched.config.SchedulingQueue.Add(pod); err != nil {
+							klog.V(3).Infof("ERROR Status instance failed to add into queue.")
+						}
 						break
 					}
 					time.Sleep(2 * time.Second)
@@ -615,7 +615,6 @@ func (sched *Scheduler) globalScheduleOne() {
 					
 				} else if instanceStatus == "ERROR" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
-					scheduleStatus <- false
 					deleteInstance(host, authToken, instanceID)
 					if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 						klog.V(3).Infof("ERROR Status instance failed to add into queue.")
@@ -637,24 +636,13 @@ func (sched *Scheduler) globalScheduleOne() {
 					} else {
 						klog.V(3).Infof("pod %v/%v/%v is bound successfully on node %v, %d nodes evaluated, %d nodes were found feasible", assumedPod.Tenant, assumedPod.Namespace, assumedPod.Name, scheduleResult.SuggestedHost, scheduleResult.EvaluatedNodes, scheduleResult.FeasibleNodes)
 					}
-					scheduleStatus <- false
 					break
 				}
 			}
 		}()
-		msg := <-scheduleStatus
-		if msg == false {
-			finishedRead <- "failed"
-		}
-		// klog.V(3).Infof("-------------------------- Finish Read! ------------------------")
 	}()
 
 	// klog.V(3).Infof("-------------------------- Process Done! ------------------------")
-
-	readStatus := <-finishedRead
-	if (readStatus == "failed") {
-		klog.V(3).Infof("Read Status Failed")
-	}
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.

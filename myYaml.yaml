@@ -11,20 +11,22 @@
 #     - "1000"
 
 # openstack server create --flavor m1.tiny --image cbe8ec60-7b5e-4bad-b8a5-f51842be8e7f --nic net-id=aa51b9e7-29ac-48c7-9cc5-11928717abbf --security-group bcf80900-b3ea-4e49-8e29-ade65f4f399b provider-instance
+# cb1f4df5-b4cb-4790-91c6-6371e5396b39 error
+# 25852074-4854-4143-ad9e-b41267e1cc23 active
 
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test2pod
+  name: test3pod
 spec:
   nics:
-    - uuid: "25852074-4854-4143-ad9e-b41267e1cc23"
+    - uuid: "fb3b536b-c07a-42f8-97bd-6d279ff07dd3"
   virtualMachine:
     keyPairName: "KeyMy"
     name: provider-instance-test
-    image: "697d3415-0433-4613-8839-b1673c81d191"
+    image: "0644079b-33f4-4a55-a180-7fa7f2eec8c8"
     scheduling:
       securityGroup:
-        - name: "3750adf3-798e-4285-8b73-2f1ee078c257"
+        - name: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7"
     resources:
-      flavorRef: "d2"
+      flavorRef: "d1"
