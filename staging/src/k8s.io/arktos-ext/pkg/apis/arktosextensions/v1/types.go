@@ -87,7 +87,7 @@ const (
 	IPAMExternal NetworkServiceIPAM = "External"
 
 	// various network-related label & annotations
-	NetworkLabel = "arktos.futurewei.com/network"
+	NetworkLabel     = "arktos.futurewei.com/network"
 	NetworkReadiness = "arktos.futurewei.com/network-readiness"
 )
 

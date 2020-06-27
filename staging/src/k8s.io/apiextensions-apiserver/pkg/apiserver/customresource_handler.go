@@ -147,7 +147,6 @@ type crdInfo struct {
 // crdStorageMap goes from customresourcedefinition to its storage
 type crdStorageMap map[types.UID]*crdInfo
 
-
 func NewCustomResourceDefinitionHandler(
 	versionDiscoveryHandler *versionDiscoveryHandler,
 	groupDiscoveryHandler *groupDiscoveryHandler,
@@ -503,7 +502,6 @@ func (r *crdHandler) GetCustomResourceStorage(tenant, crdName, version string) (
 
 	return nil, fmt.Errorf("cannot find storage of version %s for crd %s/%s/%s, err: %v", version, crd.Tenant, crd.Namespace, crd.Name, err)
 }
-
 
 func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResourceDefinition) (*crdInfo, error) {
 	storageMap := r.customStorage.Load().(crdStorageMap)
