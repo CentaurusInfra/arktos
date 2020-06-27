@@ -85,6 +85,10 @@ const (
 	IPAMKubernetes NetworkServiceIPAM = "Kubernetes"
 	// IPAMExternal is the IPAM that external network controller assigns VIP of service
 	IPAMExternal NetworkServiceIPAM = "External"
+
+	// various network-related label & annotations
+	NetworkLabel = "arktos.futurewei.com/network"
+	NetworkReadiness = "arktos.futurewei.com/network-readiness"
 )
 
 // NetworkStatus is the status for Network resource

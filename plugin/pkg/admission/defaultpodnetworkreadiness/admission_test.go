@@ -84,7 +84,7 @@ func TestAdmit(t *testing.T) {
 				t.Fatalf("Unexpected error returned from admission handler: %v", err)
 			}
 
-			v, ok := pod.Annotations[networkReadiness]
+			v, ok := pod.Annotations["arktos.futurewei.com/network-readiness"]
 			if tc.notExpectingReadiness && ok {
 				t.Fatalf("should not have added readiness annotation")
 			}

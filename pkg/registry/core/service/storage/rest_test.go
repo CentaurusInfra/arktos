@@ -19,6 +19,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -65,6 +67,34 @@ type serviceStorage struct {
 	OldService         *api.Service
 	ServiceList        *api.ServiceList
 	Err                error
+}
+
+type testNetworkGetter struct {
+	ipamType string
+	err      error
+}
+
+func (n testNetworkGetter) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	if n.err == nil {
+		return &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "arktos.futurewei.com/v1",
+				"kind":       "Network",
+				"metadata": map[string]interface{}{
+					"tenant": "test-te",
+					"name":   "test-network",
+				},
+				"spec": map[string]interface{}{
+					"type": "mizar",
+					"service": map[string]interface{}{
+						"ipam": n.ipamType,
+					},
+				},
+			},
+		}, nil
+	}
+
+	return nil, n.err
 }
 
 func (s *serviceStorage) NamespaceScoped() bool {
@@ -218,6 +248,8 @@ func NewTestRESTWithPods(t *testing.T, endpoints *api.EndpointsList, pods *api.P
 
 	rest, _ := NewREST(serviceStorage, endpointStorage, podStorage.Pod, r, portAllocator, nil)
 
+	testNetworkStorage := testNetworkGetter{}
+	rest.networks = &testNetworkStorage
 	return rest, serviceStorage, server
 }
 
@@ -2278,5 +2310,77 @@ func TestUpdateNodePorts(t *testing.T) {
 			// Release the node port at the end of the test case.
 			storage.serviceNodePorts.Release(nodePort)
 		}
+	}
+}
+
+func TestServiceRegistryCreateWithNetworkOfExternalIPAM(t *testing.T) {
+	storage, registry, server := NewTestREST(t, nil)
+	storage.networks = &testNetworkGetter{ipamType: "External"}
+	defer server.Terminate(t)
+
+	svc := &api.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+		Spec: api.ServiceSpec{
+			Selector:        map[string]string{"bar": "baz"},
+			SessionAffinity: api.ServiceAffinityNone,
+			Type:            api.ServiceTypeClusterIP,
+			Ports: []api.ServicePort{{
+				Port:       6502,
+				Protocol:   api.ProtocolTCP,
+				TargetPort: intstr.FromInt(6502),
+			}},
+		},
+	}
+	ctx := genericapirequest.NewDefaultContext()
+	created_svc, err := storage.Create(ctx, svc, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	created_service := created_svc.(*api.Service)
+
+	if created_service.Spec.ClusterIP != "" {
+		t.Errorf("expected no ClusterIP on creation; got %s", created_service.Spec.ClusterIP)
+	}
+
+	srv, err := registry.GetService(ctx, svc.Name, &metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if srv == nil {
+		t.Errorf("Failed to find service: %s", svc.Name)
+	}
+
+	if srv.Spec.ClusterIP != "" {
+		t.Fatalf("expected no ClusterIP on query; got %s", srv.Spec.ClusterIP)
+	}
+}
+
+func TestServiceRegistryCreateWithoutExistingNetwork(t *testing.T) {
+	storage, _, server := NewTestREST(t, nil)
+	storage.networks = &testNetworkGetter{err: fmt.Errorf("network not found")}
+	defer server.Terminate(t)
+
+	svc := &api.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+			Labels: map[string]string{
+				"arktos.futurewei.com/network": "ne-not-created-yet",
+			},
+		},
+		Spec: api.ServiceSpec{
+			Selector:        map[string]string{"bar": "baz"},
+			SessionAffinity: api.ServiceAffinityNone,
+			Type:            api.ServiceTypeClusterIP,
+			Ports: []api.ServicePort{{
+				Port:       6502,
+				Protocol:   api.ProtocolTCP,
+				TargetPort: intstr.FromInt(6502),
+			}},
+		},
+	}
+	ctx := genericapirequest.NewDefaultContext()
+	_, err := storage.Create(ctx, svc, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err == nil {
+		t.Fatalf("expected error; got none")
 	}
 }
