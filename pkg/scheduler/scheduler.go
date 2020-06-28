@@ -469,7 +469,7 @@ func requestToken(host string) string {
 	
 	// Make HTTP Request
 	var tokenJsonDataBytes = []byte(tokenJsonData)
-	req, err := http.NewRequest("POST", tokenRequestURL, bytes.NewBuffer(tokenJsonDataBytes))
+	req, _ := http.NewRequest("POST", tokenRequestURL, bytes.NewBuffer(tokenJsonDataBytes))
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -502,7 +502,7 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
 	serverJson := map[string]server{}
 	serverJson["server"] = serverStruct
 	finalData, _ := json.Marshal(serverJson)
-	req, err := http.NewRequest("POST", serverCreateRequestURL, bytes.NewBuffer(finalData))
+	req, _ := http.NewRequest("POST", serverCreateRequestURL, bytes.NewBuffer(finalData))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Auth-Token", authToken)
 	client := &http.Client{}
@@ -525,7 +525,7 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
 
 func checkInstanceStatus(host string, authToken string, instanceID string) string{
 	instanceDetailsURL := "http://" + host + "/compute/v2.1/servers/" + instanceID
-	req, err := http.NewRequest("GET", instanceDetailsURL, nil)
+	req, _ := http.NewRequest("GET", instanceDetailsURL, nil)
 	req.Header.Set("X-Auth-Token", authToken)
 	client := &http.Client{}
     resp, err := client.Do(req)
@@ -547,7 +547,7 @@ func checkInstanceStatus(host string, authToken string, instanceID string) strin
 
 func deleteInstance(host string, authToken string, instanceID string) {
 	instanceDetailsURL := "http://" + host + "/compute/v2.1/servers/" + instanceID
-	req, err := http.NewRequest("DELETE", instanceDetailsURL, nil)
+	req, _ := http.NewRequest("DELETE", instanceDetailsURL, nil)
 	req.Header.Set("X-Auth-Token", authToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -557,8 +557,24 @@ func deleteInstance(host string, authToken string, instanceID string) {
     defer resp.Body.Close()
 }
 
-func tokenExpired(authToken string) bool {
+func tokenExpired(host string, authToken string) bool {
+	checkTokenURL := "http://" + host + "/identity/v3/auth/tokens"
+	req, _ := http.NewRequest("HEAD", checkTokenURL, nil)
+	req.Header.Set("X-Auth-Token", authToken)
+	req.Header.Set("X-Subject-Token", authToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+        klog.V(3).Infof("HTTP Check Token Request Failed: %v", err)
+    }
+	defer resp.Body.Close()
 	
+	if resp.StatusCode != http.StatusOK {
+		klog.V(3).Infof("Token Expired")
+		return true
+	}
+	klog.V(3).Infof("Token Not Expired")
+	return false
 }
 
 func (sched *Scheduler) globalScheduleOne() {
@@ -593,7 +609,7 @@ func (sched *Scheduler) globalScheduleOne() {
 		host := fmt.Sprintf("%v", res[0])
 
 		authToken, exist := tokenMap[host]
-		if !exist || tokenExpired(authToken){
+		if !exist || tokenExpired(host, authToken){
 			// Post Request a new token
 			authToken = requestToken(host)
 			// Update tokenMap
