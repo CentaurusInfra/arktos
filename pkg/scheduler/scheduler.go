@@ -574,19 +574,14 @@ func (sched *Scheduler) globalScheduleOne() {
 
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 
-	finishedWrite := make(chan string)
 	scheduleResultQueue := queue.New(1)
 	scheduleResult, _ := sched.globalSchedule(pod)
 
 	go func() {
-		// scheduleResultQueue.Put("172.31.15.216")
-		// scheduleResultQueue.Put("172.31.11.243")
 		scheduleResultQueue.Put(scheduleResult.SuggestedHost)
-		finishedWrite <- "done"
 	}()
 
 	go func() {
-		<- finishedWrite
 		res, _ := scheduleResultQueue.Get(1)
 		host := fmt.Sprintf("%v", res[0])
 
@@ -615,6 +610,7 @@ func (sched *Scheduler) globalScheduleOne() {
 					
 				} else if instanceStatus == "ERROR" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
+					// Send delete instance request
 					deleteInstance(host, authToken, instanceID)
 					if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 						klog.V(3).Infof("ERROR Status instance failed to add into queue.")
@@ -641,8 +637,6 @@ func (sched *Scheduler) globalScheduleOne() {
 			}
 		}()
 	}()
-
-	// klog.V(3).Infof("-------------------------- Process Done! ------------------------")
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
