@@ -58,6 +58,9 @@ const (
 	SchedulerError = "SchedulerError"
 )
 
+// Global variable storing token which avoid generating token every time
+var tokenMap = make(map[string]string)
+
 // Scheduler watches for new unscheduled pods. It attempts to find
 // nodes that they fit on and writes bindings back to the api server.
 type Scheduler struct {
@@ -554,6 +557,10 @@ func deleteInstance(host string, authToken string, instanceID string) {
     defer resp.Body.Close()
 }
 
+func tokenExpired(authToken string) bool {
+	
+}
+
 func (sched *Scheduler) globalScheduleOne() {
 	// 1. Get the Pod to be scheduled from the queue
 	pod := sched.config.NextPod()
@@ -585,9 +592,14 @@ func (sched *Scheduler) globalScheduleOne() {
 		res, _ := scheduleResultQueue.Get(1)
 		host := fmt.Sprintf("%v", res[0])
 
-		// Post Request For Token
-		authToken := requestToken(host)
-		// authToken := "gAAAAABe8RAYkiwq5svCCFLd35Bs6lgO4wQr12FEUt8X8vGXAamGSa_U7NiYS6uNpDaV-b0DooycdViyWMzBT3ymIyw1CdwJFXtkCJJqwHQAcu2O8txbOsbZRZ6QSYQSVoGc9_9POCH5BkLLMca5o5WOddGbkE0xWWnGF3hMNYAPgTJvVLarVQc"
+		authToken, exist := tokenMap[host]
+		if !exist || tokenExpired(authToken){
+			// Post Request a new token
+			authToken = requestToken(host)
+			// Update tokenMap
+			tokenMap[host] = authToken
+		}
+
 		instanceID := serverCreate(host, authToken, manifest)
 		klog.V(3).Infof("Instance ID: %v", instanceID)
 
