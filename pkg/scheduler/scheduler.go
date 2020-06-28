@@ -18,13 +18,13 @@ limitations under the License.
 package scheduler
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"time"
-	"net/http"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"time"
 	// TODO: Try to find an official way to import this module
 	queue "github.com/golang-collections/go-datastructures/queue"
 
@@ -81,10 +81,10 @@ type schedulerOptions struct {
 }
 
 type server struct {
-	Name string `json:"name"`
-	ImageRef string `json:"imageRef"`
-	FlavorRef string `json:"flavorRef"`
-	Networks []map[string]string `json:"networks"`
+	Name           string              `json:"name"`
+	ImageRef       string              `json:"imageRef"`
+	FlavorRef      string              `json:"flavorRef"`
+	Networks       []map[string]string `json:"networks"`
 	SecurityGroups []map[string]string `json:"security_groups"`
 }
 
@@ -466,7 +466,7 @@ func requestToken(host string) string {
 
 	// TODO: Please don't hard code json data
 	tokenJsonData := `{"auth":{"identity":{"methods":["password"],"password":{"user":{"name":"admin","domain":{"id":"default"},"password":"secret"}}},"scope":{"project":{"name":"admin","domain":{"id":"default"}}}}}`
-	
+
 	// Make HTTP Request
 	var tokenJsonDataBytes = []byte(tokenJsonData)
 	req, _ := http.NewRequest("POST", tokenRequestURL, bytes.NewBuffer(tokenJsonDataBytes))
@@ -486,11 +486,11 @@ func requestToken(host string) string {
 	return respHeader["X-Subject-Token"][0]
 }
 
-func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
+func serverCreate(host string, authToken string, manifest *v1.PodSpec) string {
 	serverCreateRequestURL := "http://" + host + "/compute/v2.1/servers"
 	serverStruct := server{
-		Name: manifest.VirtualMachine.Name,
-		ImageRef: manifest.VirtualMachine.Image,
+		Name:      manifest.VirtualMachine.Name,
+		ImageRef:  manifest.VirtualMachine.Image,
 		FlavorRef: manifest.VirtualMachine.Resources.FlavorRef,
 		Networks: []map[string]string{
 			{"uuid": manifest.Nics[0].Uuid},
@@ -506,11 +506,11 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Auth-Token", authToken)
 	client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        klog.V(3).Infof("HTTP Post Instance Request Failed: %v", err)
-    }
-    defer resp.Body.Close()
+	resp, err := client.Do(req)
+	if err != nil {
+		klog.V(3).Infof("HTTP Post Instance Request Failed: %v", err)
+	}
+	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	var instanceResponse map[string]interface{}
@@ -523,16 +523,16 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) string{
 	return instanceID
 }
 
-func checkInstanceStatus(host string, authToken string, instanceID string) string{
+func checkInstanceStatus(host string, authToken string, instanceID string) string {
 	instanceDetailsURL := "http://" + host + "/compute/v2.1/servers/" + instanceID
 	req, _ := http.NewRequest("GET", instanceDetailsURL, nil)
 	req.Header.Set("X-Auth-Token", authToken)
 	client := &http.Client{}
-    resp, err := client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-        klog.V(3).Infof("HTTP GET Instance Status Request Failed: %v", err)
-    }
-    defer resp.Body.Close()
+		klog.V(3).Infof("HTTP GET Instance Status Request Failed: %v", err)
+	}
+	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	var instanceDetailsResponse map[string]interface{}
@@ -552,9 +552,9 @@ func deleteInstance(host string, authToken string, instanceID string) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-        klog.V(3).Infof("HTTP DELETE Instance Status Request Failed: %v", err)
-    }
-    defer resp.Body.Close()
+		klog.V(3).Infof("HTTP DELETE Instance Status Request Failed: %v", err)
+	}
+	defer resp.Body.Close()
 }
 
 func tokenExpired(host string, authToken string) bool {
@@ -565,10 +565,10 @@ func tokenExpired(host string, authToken string) bool {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-        klog.V(3).Infof("HTTP Check Token Request Failed: %v", err)
-    }
+		klog.V(3).Infof("HTTP Check Token Request Failed: %v", err)
+	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		klog.V(3).Infof("Token Expired")
 		return true
@@ -609,7 +609,7 @@ func (sched *Scheduler) globalScheduleOne() {
 		host := fmt.Sprintf("%v", res[0])
 
 		authToken, exist := tokenMap[host]
-		if !exist || tokenExpired(host, authToken){
+		if !exist || tokenExpired(host, authToken) {
 			// Post Request a new token
 			authToken = requestToken(host)
 			// Update tokenMap
@@ -628,6 +628,7 @@ func (sched *Scheduler) globalScheduleOne() {
 					// Wait one minute for creating instance if instance status is BUILD
 					if count == 30 {
 						klog.V(3).Infof("Create Instance Timeout!")
+						deleteInstance(host, authToken, instanceID)
 						if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 							klog.V(3).Infof("ERROR Status instance failed to add into queue.")
 						}
@@ -635,7 +636,6 @@ func (sched *Scheduler) globalScheduleOne() {
 					}
 					time.Sleep(2 * time.Second)
 					instanceStatus = checkInstanceStatus(host, authToken, instanceID)
-					
 				} else if instanceStatus == "ERROR" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					// Send delete instance request
