@@ -51,6 +51,7 @@ type NetworkSpec struct {
 	Service NetworkService `json: "service,omitempty"`
 }
 
+// NetworkService defines service related information of the network
 type NetworkService struct {
 	// IPAM is the IPM type of services
 	IPAM NetworkServiceIPAM `json:"ipam,omitempty"`
