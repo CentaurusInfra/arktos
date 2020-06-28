@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
@@ -61,7 +62,8 @@ type REST struct {
 	serviceNodePorts portallocator.Interface
 	proxyTransport   http.RoundTripper
 	pods             rest.Getter
-	lock             sync.Mutex
+	done             uint32
+	m                sync.Mutex
 	networks         rest.Getter
 }
 
@@ -138,24 +140,41 @@ func (rs *REST) Categories() []string {
 }
 
 func (rs *REST) getNetworkStorage(tenant string) (rest.Getter, error) {
-	rs.lock.Lock()
-	defer rs.lock.Unlock()
-
-	if rs.networks != nil {
+	if atomic.LoadUint32(&rs.done) == 1 {
+		if rs.networks == nil {
+			return nil, fmt.Errorf("service storage failed to identify proper network getter")
+		}
 		return rs.networks, nil
 	}
 
-	crStorageGetter := extensionsapiserver.GetCustomResourceStoragesGetter()
-	if crStorageGetter == nil {
-		return nil, fmt.Errorf("api extension server not initialized properly")
+	// Slow-path.
+	rs.m.Lock()
+	defer rs.m.Unlock()
+	if rs.done == 0 {
+		if rs.networks != nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			return rs.networks, nil
+		}
+
+		crStorageGetter := extensionsapiserver.GetCustomResourceStoragesGetter()
+		if crStorageGetter == nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			return nil, fmt.Errorf("api extension server not initialized properly")
+		}
+
+		if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, "networks.arktos.futurewei.com", "v1"); err == nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			rs.networks = storage.CustomResource
+			return rs.networks, nil
+		} else {
+			return nil, fmt.Errorf("custom resource storage not set up yet")
+		}
 	}
 
-	if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, "networks.arktos.futurewei.com", "v1"); err == nil {
-		rs.networks = storage.CustomResource
-		return rs.networks, nil
-	} else {
-		return nil, fmt.Errorf("custom resource storage not set up yet")
+	if rs.networks == nil {
+		return nil, fmt.Errorf("service storage failed to identify proper network getter")
 	}
+	return rs.networks, nil
 }
 
 func (rs *REST) getNetwork(ctx context.Context, tenant, name string) (runtime.Object, error) {
