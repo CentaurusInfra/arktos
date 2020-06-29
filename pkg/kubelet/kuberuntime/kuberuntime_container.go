@@ -576,7 +576,11 @@ func (m *kubeGenericRuntimeManager) restoreSpecsFromContainerLabels(containerID 
 	var pod *v1.Pod
 	var container *v1.Container
 
-	runtimeService, _ := m.GetRuntimeServiceByContainerID(containerID)
+	runtimeService, err := m.GetRuntimeServiceByContainerID(containerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	s, err := runtimeService.ContainerStatus(containerID.ID)
 	if err != nil {
 		return nil, nil, err
@@ -666,8 +670,14 @@ func (m *kubeGenericRuntimeManager) killContainer(pod *v1.Pod, containerID kubec
 
 	runtimeService, err := m.GetRuntimeServiceByContainerID(containerID)
 	if err != nil {
+		// if container doesn't exist, no further action to the caller
+		if err == ErrContainerDoesNotExistAtRuntimeService {
+			klog.V(4).Infof("Container %v does not exist at runtime service", containerID)
+			return nil
+		}
 		return err
 	}
+
 	err = runtimeService.StopContainer(containerID.ID, gracePeriod)
 	if err != nil {
 		klog.Errorf("Container %q termination failed with gracePeriod %d: %v", containerID.String(), gracePeriod, err)
@@ -854,7 +864,10 @@ func (m *kubeGenericRuntimeManager) GetExec(id kubecontainer.ContainerID, cmd []
 		Stderr:      stderr,
 	}
 
-	runtimeService, _ := m.GetRuntimeServiceByContainerID(id)
+	runtimeService, err := m.GetRuntimeServiceByContainerID(id)
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := runtimeService.Exec(req)
 	if err != nil {
@@ -873,7 +886,11 @@ func (m *kubeGenericRuntimeManager) GetAttach(id kubecontainer.ContainerID, stdi
 		Stderr:      stderr,
 		Tty:         tty,
 	}
-	runtimeService, _ := m.GetRuntimeServiceByContainerID(id)
+	runtimeService, err := m.GetRuntimeServiceByContainerID(id)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := runtimeService.Attach(req)
 	if err != nil {
 		return nil, err
@@ -884,7 +901,11 @@ func (m *kubeGenericRuntimeManager) GetAttach(id kubecontainer.ContainerID, stdi
 // RunInContainer synchronously executes the command in the container, and returns the output.
 func (m *kubeGenericRuntimeManager) RunInContainer(id kubecontainer.ContainerID, cmd []string, timeout time.Duration) ([]byte, error) {
 
-	runtimeService, _ := m.GetRuntimeServiceByContainerID(id)
+	runtimeService, err := m.GetRuntimeServiceByContainerID(id)
+	if err != nil {
+		return nil, err
+	}
+
 	stdout, stderr, err := runtimeService.ExecSync(id.ID, cmd, timeout)
 	// NOTE(tallclair): This does not correctly interleave stdout & stderr, but should be sufficient
 	// for logging purposes. A combined output option will need to be added to the ExecSyncRequest
@@ -911,7 +932,16 @@ func (m *kubeGenericRuntimeManager) removeContainer(containerID string) error {
 		return err
 	}
 	// Remove the container.
-	runtimeService, _ := m.GetRuntimeServiceByContainerIDString(containerID)
+	runtimeService, err := m.GetRuntimeServiceByContainerIDString(containerID)
+	if err != nil {
+		// if container doesn't exist, no further action to the caller
+		if err == ErrContainerDoesNotExistAtRuntimeService {
+			klog.V(4).Infof("Container %v does not exist at runtime service", containerID)
+			return nil
+		}
+		return err
+	}
+
 	return runtimeService.RemoveContainer(containerID)
 }
 
@@ -920,6 +950,11 @@ func (m *kubeGenericRuntimeManager) removeContainerLog(containerID string) error
 	// Remove the container log.
 	runtimeService, err := m.GetRuntimeServiceByContainerIDString(containerID)
 	if err != nil {
+		// if container doesn't exist, no further action to the caller
+		if err == ErrContainerDoesNotExistAtRuntimeService {
+			klog.V(4).Infof("Container %v does not exist at runtime service", containerID)
+			return nil
+		}
 		return fmt.Errorf("failed to get container runtimeService %q: %v", containerID, err)
 	}
 
