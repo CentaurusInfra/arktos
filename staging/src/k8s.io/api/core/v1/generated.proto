@@ -2581,6 +2581,9 @@ message ObjectReference {
 
   // +optional
   optional string tenant = 8;
+
+  // +optional
+  optional string instanceStatus = 9;
 }
 
 message OpenStackPersonality {

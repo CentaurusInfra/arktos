@@ -1272,7 +1272,8 @@
         "apiVersion": "425",
         "resourceVersion": "426",
         "fieldPath": "427",
-        "tenant": "428"
+        "tenant": "428",
+        "instanceStatus": "429"
       }
     ]
   }

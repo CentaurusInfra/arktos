@@ -5234,6 +5234,9 @@ type ObjectReference struct {
 
 	// +optional
 	Tenant string `json:"tenant,omitempty" protobuf:"bytes,8,opt,name=tenant"`
+
+	// +optional
+	InstanceStatus string `json:"instanceStatus, omitempty" protobuf:"bytes,9,opt,name=instanceStatus"`
 }
 
 // LocalObjectReference contains enough information to let you locate the

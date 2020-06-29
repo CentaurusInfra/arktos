@@ -51,6 +51,7 @@
     "apiVersion": "28",
     "resourceVersion": "29",
     "fieldPath": "30",
-    "tenant": "31"
+    "tenant": "31",
+    "instanceStatus": "32"
   }
 }

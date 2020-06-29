@@ -37,6 +37,7 @@ metadata:
 target:
   apiVersion: "28"
   fieldPath: "30"
+  instanceStatus: "32"
   kind: "25"
   name: "27"
   namespace: "26"
