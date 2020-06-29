@@ -1177,7 +1177,7 @@ func TestNetworkReadinessWithoutHostNetwork(t *testing.T) {
 		podStatus:  &kubecontainer.PodStatus{},
 		updateType: kubetypes.SyncPodUpdate,
 	})
-	assert.NoError(t, err, "expected pod without explcit network-readiness to succeed")
+	assert.NoError(t, err, "expected pod without explicit network-readiness to succeed")
 
 	pod.Annotations["arktos.futurewei.com/network-readiness"] = "false"
 	err = kubelet.syncPod(syncPodOptions{

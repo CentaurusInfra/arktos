@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"math"
 	"net"
@@ -1692,7 +1693,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 
 	// If pod is not host network, check network-readiness (only fails the cases with explicit not true value)
 	if !kubecontainer.IsHostNetworkPod(pod) {
-		if v, ok := pod.Annotations["arktos.futurewei.com/network-readiness"]; ok {
+		if v, ok := pod.Annotations[arktosv1.NetworkReadiness]; ok {
 			if strings.ToLower(v) != "true" {
 				err := fmt.Errorf("pod network-readiness is %s", v)
 				kl.recorder.Eventf(pod, v1.EventTypeWarning, events.FailedNetworkReadiness, "external component indicates network is not ready: %v", err)
