@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apiserver/pkg/storage/datapartition"
 	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"path"
@@ -672,10 +673,11 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 	}
 
 	// TODO - multiple list run in parrallel - also need to consider locking in s.versioner.UpdateList
+	lastRV := returnedRV
 	for i, c := range clients {
 		klog.V(6).Infof("List key %s from multi partitions. client %d, endpoint %v, paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v], resourceVersion [%v]",
 			key, i, c.Endpoints(), paging, returnedRV, continueKey, keyPrefix, resourceVersion)
-		err := s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix)
+		err, lastRV = s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix, lastRV)
 		if err != nil {
 			return err
 		}
@@ -685,7 +687,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 }
 
 func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key string, pred storage.SelectionPredicate, listObj runtime.Object,
-	options []clientv3.OpOption, paging bool, returnedRV int64, continueKey string, keyPrefix string) error {
+	options []clientv3.OpOption, paging bool, returnedRV int64, continueKey string, keyPrefix string, lastRV int64) (error, int64) {
 
 	// error checked in List()
 	listPtr, _ := meta.GetItemsPtr(listObj)
@@ -701,12 +703,12 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 		getResp, err = client.KV.Get(ctx, key, options...)
 		metrics.RecordEtcdRequestLatency("list", getTypeName(listPtr), startTime)
 		if err != nil {
-			return interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix)
+			return interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix), lastRV
 		}
 		hasMore = getResp.More
 
 		if len(getResp.Kvs) == 0 && getResp.More {
-			return fmt.Errorf("no results were found, but etcd indicated there were more values remaining")
+			return fmt.Errorf("no results were found, but etcd indicated there were more values remaining"), lastRV
 		}
 
 		// avoid small allocations for the result slice, since this can be called in many
@@ -727,11 +729,11 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 
 			data, _, err := s.transformer.TransformFromStorage(kv.Value, authenticatedDataString(kv.Key))
 			if err != nil {
-				return storage.NewInternalErrorf("unable to transform key %q: %v", kv.Key, err)
+				return storage.NewInternalErrorf("unable to transform key %q: %v", kv.Key, err), lastRV
 			}
 
 			if err := appendListItem(v, data, uint64(kv.ModRevision), pred, s.codec, s.versioner); err != nil {
-				return err
+				return err, lastRV
 			}
 		}
 
@@ -751,13 +753,20 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 		key = string(lastKey) + "\x00"
 	}
 
+	// For multi ETCD partition - do not update to earlier revision
+	if diff.RevisionIsNewer(uint64(lastRV), uint64(returnedRV)) {
+		returnedRV = lastRV
+	} else {
+		lastRV = returnedRV
+	}
+
 	// instruct the client to begin querying from immediately after the last key we returned
 	// we never return a key that the client wouldn't be allowed to see
 	if hasMore {
 		// we want to start immediately after the last key
 		next, err := encodeContinue(string(lastKey)+"\x00", keyPrefix, returnedRV)
 		if err != nil {
-			return err
+			return err, lastRV
 		}
 		var remainingItemCount *int64
 		// getResp.Count counts in objects that do not match the pred.
@@ -769,11 +778,11 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 				remainingItemCount = &c
 			}
 		}
-		return s.versioner.UpdateList(listObj, uint64(returnedRV), next, remainingItemCount)
+		return s.versioner.UpdateList(listObj, uint64(returnedRV), next, remainingItemCount), lastRV
 	}
 
 	// no continuation
-	return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil)
+	return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil), lastRV
 }
 
 // growSlice takes a slice value and grows its capacity up
