@@ -58,37 +58,35 @@
             "apiVersion": "31",
             "resourceVersion": "32",
             "fieldPath": "33",
-            "tenant": "34",
-            "instanceStatus": "35"
+            "tenant": "34"
           }
         }
       ],
       "notReadyAddresses": [
         {
-          "ip": "36",
-          "hostname": "37",
-          "nodeName": "38",
+          "ip": "35",
+          "hostname": "36",
+          "nodeName": "37",
           "targetRef": {
-            "kind": "39",
-            "namespace": "40",
-            "name": "41",
+            "kind": "38",
+            "namespace": "39",
+            "name": "40",
             "uid": "颋ǅ",
-            "apiVersion": "42",
-            "resourceVersion": "43",
-            "fieldPath": "44",
-            "tenant": "45",
-            "instanceStatus": "46"
+            "apiVersion": "41",
+            "resourceVersion": "42",
+            "fieldPath": "43",
+            "tenant": "44"
           }
         }
       ],
       "ports": [
         {
-          "name": "47",
+          "name": "45",
           "port": 1575426699,
           "protocol": "ƏS$+½H牗洝尿"
         }
       ],
-      "serviceGroupId": "48"
+      "serviceGroupId": "46"
     }
   ]
 }

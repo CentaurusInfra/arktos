@@ -4647,8 +4647,6 @@ type ObjectReference struct {
 	FieldPath string
 
 	Tenant string
-
-	InstanceStatus string
 }
 
 // LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.

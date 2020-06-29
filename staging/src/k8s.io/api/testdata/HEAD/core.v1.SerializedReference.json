@@ -9,7 +9,6 @@
     "apiVersion": "5",
     "resourceVersion": "6",
     "fieldPath": "7",
-    "tenant": "8",
-    "instanceStatus": "9"
+    "tenant": "8"
   }
 }

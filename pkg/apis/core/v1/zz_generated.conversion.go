@@ -5525,7 +5525,6 @@ func autoConvert_v1_ObjectReference_To_core_ObjectReference(in *v1.ObjectReferen
 	out.ResourceVersion = in.ResourceVersion
 	out.FieldPath = in.FieldPath
 	out.Tenant = in.Tenant
-	out.InstanceStatus = in.InstanceStatus
 	return nil
 }
 
@@ -5543,7 +5542,6 @@ func autoConvert_core_ObjectReference_To_v1_ObjectReference(in *core.ObjectRefer
 	out.ResourceVersion = in.ResourceVersion
 	out.FieldPath = in.FieldPath
 	out.Tenant = in.Tenant
-	out.InstanceStatus = in.InstanceStatus
 	return nil
 }
 

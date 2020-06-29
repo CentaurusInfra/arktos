@@ -870,7 +870,6 @@ status:
   active:
   - apiVersion: "425"
     fieldPath: "427"
-    instanceStatus: "429"
     kind: "422"
     name: "424"
     namespace: "423"

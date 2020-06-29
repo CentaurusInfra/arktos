@@ -3,7 +3,6 @@ kind: SerializedReference
 reference:
   apiVersion: "5"
   fieldPath: "7"
-  instanceStatus: "9"
   kind: "2"
   name: "4"
   namespace: "3"

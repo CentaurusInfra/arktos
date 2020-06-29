@@ -61,25 +61,23 @@
     "apiVersion": "32",
     "resourceVersion": "33",
     "fieldPath": "34",
-    "tenant": "35",
-    "instanceStatus": "36"
+    "tenant": "35"
   },
   "related": {
-    "kind": "37",
-    "namespace": "38",
-    "name": "39",
+    "kind": "36",
+    "namespace": "37",
+    "name": "38",
     "uid": "4%a鯿r",
-    "apiVersion": "40",
-    "resourceVersion": "41",
-    "fieldPath": "42",
-    "tenant": "43",
-    "instanceStatus": "44"
+    "apiVersion": "39",
+    "resourceVersion": "40",
+    "fieldPath": "41",
+    "tenant": "42"
   },
-  "note": "45",
-  "type": "46",
+  "note": "43",
+  "type": "44",
   "deprecatedSource": {
-    "component": "47",
-    "host": "48"
+    "component": "45",
+    "host": "46"
   },
   "deprecatedFirstTimestamp": "2149-06-18T16:38:18Z",
   "deprecatedLastTimestamp": "2567-05-09T03:50:37Z",
