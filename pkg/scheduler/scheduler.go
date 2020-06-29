@@ -56,6 +56,7 @@ const (
 	BindTimeoutSeconds = 100
 	// SchedulerError is the reason recorded for events when an error occurs during scheduling a pod.
 	SchedulerError = "SchedulerError"
+	Forbidden      = 403
 )
 
 // Global variable storing token which avoid generating token every time
@@ -486,7 +487,7 @@ func requestToken(host string) string {
 	return respHeader["X-Subject-Token"][0]
 }
 
-func serverCreate(host string, authToken string, manifest *v1.PodSpec) string {
+func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, error) {
 	serverCreateRequestURL := "http://" + host + "/compute/v2.1/servers"
 	serverStruct := server{
 		Name:      manifest.VirtualMachine.Name,
@@ -517,10 +518,14 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) string {
 	if err := json.Unmarshal(body, &instanceResponse); err != nil {
 		klog.V(3).Infof("Instance Create Response Unmarshal Failed")
 	}
+
+	if resp.StatusCode == Forbidden {
+		return "", fmt.Errorf("Instance capacity has reached its limit")
+	}
 	serverResponse := instanceResponse["server"].(map[string]interface{})
 	instanceID := serverResponse["id"].(string)
 
-	return instanceID
+	return instanceID, nil
 }
 
 func checkInstanceStatus(host string, authToken string, instanceID string) string {
@@ -616,7 +621,14 @@ func (sched *Scheduler) globalScheduleOne() {
 			tokenMap[host] = authToken
 		}
 
-		instanceID := serverCreate(host, authToken, manifest)
+		instanceID, err := serverCreate(host, authToken, manifest)
+		if err != nil {
+			if err := sched.config.SchedulingQueue.Add(pod); err != nil {
+				klog.V(3).Infof("ERROR Status instance failed to add into queue.")
+			}
+			return
+		}
+
 		klog.V(3).Infof("Instance ID: %v", instanceID)
 
 		go func() {
@@ -660,6 +672,9 @@ func (sched *Scheduler) globalScheduleOne() {
 					} else {
 						klog.V(3).Infof("pod %v/%v/%v is bound successfully on node %v, %d nodes evaluated, %d nodes were found feasible", assumedPod.Tenant, assumedPod.Namespace, assumedPod.Name, scheduleResult.SuggestedHost, scheduleResult.EvaluatedNodes, scheduleResult.FeasibleNodes)
 					}
+					// if err := sched.config.SchedulingQueue.Add(pod); err != nil {
+					// 	klog.V(3).Infof("ERROR Status instance failed to add into queue.")
+					// }
 					break
 				}
 			}
