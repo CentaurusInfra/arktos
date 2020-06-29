@@ -1459,6 +1459,7 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 //   already have a mirror pod
 // * Create the data directories for the pod if they do not exist
 // * Wait for volumes to attach/mount
+// * If pod is not of host network, check network readiness
 // * Fetch the pull secrets for the pod
 // * Call the container runtime's SyncPod callback
 // * Update the traffic shaping for the pod's ingress and egress limits
@@ -1686,6 +1687,18 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 			kl.recorder.Eventf(pod, v1.EventTypeWarning, events.FailedMountVolume, "Unable to mount volumes for pod %q: %v", format.Pod(pod), err)
 			klog.Errorf("Unable to mount volumes for pod %q: %v; skipping pod", format.Pod(pod), err)
 			return err
+		}
+	}
+
+	// If pod is not host network, check network-readiness (only fails the cases with explicit not true value)
+	if !kubecontainer.IsHostNetworkPod(pod) {
+		if v, ok := pod.Annotations["arktos.futurewei.com/network-readiness"]; ok {
+			if strings.ToLower(v) != "true" {
+				err := fmt.Errorf("pod network-readiness is %s", v)
+				kl.recorder.Eventf(pod, v1.EventTypeWarning, events.FailedNetworkReadiness, "external component indicates network is not ready: %v", err)
+				klog.Errorf("Pod network readiness is not true")
+				return err
+			}
 		}
 	}
 
