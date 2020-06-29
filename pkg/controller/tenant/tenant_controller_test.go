@@ -262,7 +262,7 @@ func initialClusterRole(tenant string) *rbacv1.ClusterRole {
 			Name:   InitialClusterRoleName,
 			Tenant: tenant,
 		},
-		Rules: []rbacv1.PolicyRule{initialClusterRoleRules()},
+		Rules: initialClusterRoleRules(),
 	}
 }
 
