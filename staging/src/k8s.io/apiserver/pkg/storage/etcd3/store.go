@@ -1034,6 +1034,13 @@ func (s *store) getClientsFromKey(key string) []*clientv3.Client {
 		return []*clientv3.Client{client}
 	}
 
+	// TODO: currently paginated list is not supported for multi etcd partition
+	// Events can have more than one page - workaround
+	// Fix later
+	if strings.HasPrefix(key, "/registry/events/") {
+		return []*clientv3.Client{client}
+	}
+
 	// TODO - check whether key can only be in system cluster
 	clients := []*clientv3.Client{s.client}
 	if len(s.dataClusterClients) > 0 {
