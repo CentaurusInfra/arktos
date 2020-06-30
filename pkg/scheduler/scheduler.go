@@ -660,18 +660,11 @@ func (sched *Scheduler) globalScheduleOne() {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					// Update ETCD
 					assumedPod := pod.DeepCopy()
-					err := sched.bind(assumedPod, &v1.Binding{
-						ObjectMeta: metav1.ObjectMeta{Tenant: assumedPod.Tenant, Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID, HashKey: assumedPod.HashKey},
-						Target: v1.ObjectReference{
-							Kind: "Node",
-							Name: scheduleResult.SuggestedHost,
-						},
+					sched.config.PodConditionUpdater.Update(assumedPod, &v1.PodCondition{
+						Type:   v1.PodReady,
+						Status: v1.ConditionTrue,
 					})
-					if err != nil {
-						klog.Errorf("error binding pod: %v", err)
-					} else {
-						klog.V(3).Infof("pod %v/%v/%v is bound successfully on node %v, %d nodes evaluated, %d nodes were found feasible", assumedPod.Tenant, assumedPod.Namespace, assumedPod.Name, scheduleResult.SuggestedHost, scheduleResult.EvaluatedNodes, scheduleResult.FeasibleNodes)
-					}
+					sched.config.PodPhaseUpdater.Update(assumedPod, v1.PodRunning)
 					// if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 					// 	klog.V(3).Infof("ERROR Status instance failed to add into queue.")
 					// }

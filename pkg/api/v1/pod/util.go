@@ -308,3 +308,17 @@ func UpdatePodCondition(status *v1.PodStatus, condition *v1.PodCondition) bool {
 	// Return true if one of the fields have changed.
 	return !isEqual
 }
+
+func UpdatePodPhase(status *v1.PodStatus, podPhase v1.PodPhase) bool {
+	// Try to find this pod phase
+	oldPodPhase := status.Phase
+
+	if oldPodPhase == "" {
+		status.Phase = podPhase
+		return true
+	}
+
+	isEqual := status.Phase == podPhase
+	status.Phase = podPhase
+	return !isEqual
+}

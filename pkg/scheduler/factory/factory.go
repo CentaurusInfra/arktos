@@ -78,6 +78,10 @@ type PodConditionUpdater interface {
 	Update(pod *v1.Pod, podCondition *v1.PodCondition) error
 }
 
+type PodPhaseUpdater interface {
+	Update(pod *v1.Pod, podPhase v1.PodPhase) error
+}
+
 // Config is an implementation of the Scheduler's configured input data.
 // TODO over time we should make this struct a hidden implementation detail of the scheduler.
 type Config struct {
@@ -92,6 +96,8 @@ type Config struct {
 	// with scheduling, PodScheduled condition will be updated in apiserver in /bind
 	// handler so that binding and setting PodCondition it is atomic.
 	PodConditionUpdater PodConditionUpdater
+	// PodPhaseUpdater is used for update global scheduling OpenStack instance status
+	PodPhaseUpdater PodPhaseUpdater
 	// PodPreemptor is used to evict pods and update 'NominatedNode' field of
 	// the preemptor pod.
 	PodPreemptor PodPreemptor
@@ -482,6 +488,7 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		Algorithm:           algo,
 		GetBinder:           getBinderFunc(c.client, extenders),
 		PodConditionUpdater: &podConditionUpdater{c.client},
+		PodPhaseUpdater:     &podPhaseUpdater{c.client},
 		PodPreemptor:        &podPreemptor{c.client},
 		Framework:           c.framework,
 		WaitForCacheSync: func() bool {
@@ -741,6 +748,19 @@ type podConditionUpdater struct {
 func (p *podConditionUpdater) Update(pod *v1.Pod, condition *v1.PodCondition) error {
 	klog.V(3).Infof("Updating pod condition for%s/ %s/%s to (%s==%s, Reason=%s)", pod.Tenant, pod.Namespace, pod.Name, condition.Type, condition.Status, condition.Reason)
 	if podutil.UpdatePodCondition(&pod.Status, condition) {
+		_, err := p.Client.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).UpdateStatus(pod)
+		return err
+	}
+	return nil
+}
+
+type podPhaseUpdater struct {
+	Client clientset.Interface
+}
+
+func (p *podPhaseUpdater) Update(pod *v1.Pod, podPhase v1.PodPhase) error {
+	// klog.V(3).Infof("Updating pod condition for%s/ %s/%s to (%s==%s, Reason=%s)", pod.Tenant, pod.Namespace, pod.Name, condition.Type, condition.Status, condition.Reason)
+	if podutil.UpdatePodPhase(&pod.Status, podPhase) {
 		_, err := p.Client.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).UpdateStatus(pod)
 		return err
 	}
