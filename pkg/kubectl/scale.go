@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,10 +36,10 @@ type Scaler interface {
 	// retries in the event of resource version mismatch (if retry is not nil),
 	// and optionally waits until the status of the resource matches newSize (if wait is not nil)
 	// TODO: Make the implementation of this watch-based (#56075) once #31345 is fixed.
-	Scale(namespace, name string, newSize uint, preconditions *ScalePrecondition, retry, wait *RetryParams, gr schema.GroupResource) error
+	Scale(tenant, namespace, name string, newSize uint, preconditions *ScalePrecondition, retry, wait *RetryParams, gr schema.GroupResource) error
 	// ScaleSimple does a simple one-shot attempt at scaling - not useful on its own, but
 	// a necessary building block for Scale
-	ScaleSimple(namespace, name string, preconditions *ScalePrecondition, newSize uint, gr schema.GroupResource) (updatedResourceVersion string, err error)
+	ScaleSimple(tenant, namespace, name string, preconditions *ScalePrecondition, newSize uint, gr schema.GroupResource) (updatedResourceVersion string, err error)
 }
 
 // NewScaler get a scaler for a given resource
@@ -77,9 +78,9 @@ func NewRetryParams(interval, timeout time.Duration) *RetryParams {
 }
 
 // ScaleCondition is a closure around Scale that facilitates retries via util.wait
-func ScaleCondition(r Scaler, precondition *ScalePrecondition, namespace, name string, count uint, updatedResourceVersion *string, gr schema.GroupResource) wait.ConditionFunc {
+func ScaleCondition(r Scaler, precondition *ScalePrecondition, tenant, namespace, name string, count uint, updatedResourceVersion *string, gr schema.GroupResource) wait.ConditionFunc {
 	return func() (bool, error) {
-		rv, err := r.ScaleSimple(namespace, name, precondition, count, gr)
+		rv, err := r.ScaleSimple(tenant, namespace, name, precondition, count, gr)
 		if updatedResourceVersion != nil {
 			*updatedResourceVersion = rv
 		}
@@ -105,7 +106,7 @@ func (precondition *ScalePrecondition) validate(scale *autoscalingv1.Scale) erro
 	return nil
 }
 
-// genericScaler can update scales for resources in a particular namespace
+// genericScaler can update scales for resources in a particular tenant, namespace
 type genericScaler struct {
 	scaleNamespacer scaleclient.ScalesGetter
 }
@@ -113,13 +114,13 @@ type genericScaler struct {
 var _ Scaler = &genericScaler{}
 
 // ScaleSimple updates a scale of a given resource. It returns the resourceVersion of the scale if the update was successful.
-func (s *genericScaler) ScaleSimple(namespace, name string, preconditions *ScalePrecondition, newSize uint, gr schema.GroupResource) (updatedResourceVersion string, err error) {
+func (s *genericScaler) ScaleSimple(tenant, namespace, name string, preconditions *ScalePrecondition, newSize uint, gr schema.GroupResource) (updatedResourceVersion string, err error) {
 	scale := &autoscalingv1.Scale{
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
+		ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: namespace, Name: name},
 	}
 	if preconditions != nil {
 		var err error
-		scale, err = s.scaleNamespacer.Scales(namespace).Get(gr, name)
+		scale, err = s.scaleNamespacer.ScalesWithMultiTenancy(namespace, tenant).Get(gr, name)
 		if err != nil {
 			return "", err
 		}
@@ -129,7 +130,7 @@ func (s *genericScaler) ScaleSimple(namespace, name string, preconditions *Scale
 	}
 
 	scale.Spec.Replicas = int32(newSize)
-	updatedScale, err := s.scaleNamespacer.Scales(namespace).Update(gr, scale)
+	updatedScale, err := s.scaleNamespacer.ScalesWithMultiTenancy(namespace, tenant).Update(gr, scale)
 	if err != nil {
 		return "", err
 	}
@@ -138,26 +139,26 @@ func (s *genericScaler) ScaleSimple(namespace, name string, preconditions *Scale
 
 // Scale updates a scale of a given resource to a new size, with optional precondition check (if preconditions is not nil),
 // optional retries (if retry is not nil), and then optionally waits for the status to reach desired count.
-func (s *genericScaler) Scale(namespace, resourceName string, newSize uint, preconditions *ScalePrecondition, retry, waitForReplicas *RetryParams, gr schema.GroupResource) error {
+func (s *genericScaler) Scale(tenant, namespace, resourceName string, newSize uint, preconditions *ScalePrecondition, retry, waitForReplicas *RetryParams, gr schema.GroupResource) error {
 	if retry == nil {
 		// make it try only once, immediately
 		retry = &RetryParams{Interval: time.Millisecond, Timeout: time.Millisecond}
 	}
-	cond := ScaleCondition(s, preconditions, namespace, resourceName, newSize, nil, gr)
+	cond := ScaleCondition(s, preconditions, tenant, namespace, resourceName, newSize, nil, gr)
 	if err := wait.PollImmediate(retry.Interval, retry.Timeout, cond); err != nil {
 		return err
 	}
 	if waitForReplicas != nil {
-		return WaitForScaleHasDesiredReplicas(s.scaleNamespacer, gr, resourceName, namespace, newSize, waitForReplicas)
+		return WaitForScaleHasDesiredReplicas(s.scaleNamespacer, gr, resourceName, namespace, tenant, newSize, waitForReplicas)
 	}
 	return nil
 }
 
 // scaleHasDesiredReplicas returns a condition that will be true if and only if the desired replica
 // count for a scale (Spec) equals its updated replicas count (Status)
-func scaleHasDesiredReplicas(sClient scaleclient.ScalesGetter, gr schema.GroupResource, resourceName string, namespace string, desiredReplicas int32) wait.ConditionFunc {
+func scaleHasDesiredReplicas(sClient scaleclient.ScalesGetter, gr schema.GroupResource, resourceName string, tenant, namespace string, desiredReplicas int32) wait.ConditionFunc {
 	return func() (bool, error) {
-		actualScale, err := sClient.Scales(namespace).Get(gr, resourceName)
+		actualScale, err := sClient.ScalesWithMultiTenancy(namespace, tenant).Get(gr, resourceName)
 		if err != nil {
 			return false, err
 		}
@@ -172,14 +173,14 @@ func scaleHasDesiredReplicas(sClient scaleclient.ScalesGetter, gr schema.GroupRe
 
 // WaitForScaleHasDesiredReplicas waits until condition scaleHasDesiredReplicas is satisfied
 // or returns error when timeout happens
-func WaitForScaleHasDesiredReplicas(sClient scaleclient.ScalesGetter, gr schema.GroupResource, resourceName string, namespace string, newSize uint, waitForReplicas *RetryParams) error {
+func WaitForScaleHasDesiredReplicas(sClient scaleclient.ScalesGetter, gr schema.GroupResource, resourceName string, namespace, tenant string, newSize uint, waitForReplicas *RetryParams) error {
 	if waitForReplicas == nil {
 		return fmt.Errorf("waitForReplicas parameter cannot be nil")
 	}
 	err := wait.PollImmediate(
 		waitForReplicas.Interval,
 		waitForReplicas.Timeout,
-		scaleHasDesiredReplicas(sClient, gr, resourceName, namespace, int32(newSize)))
+		scaleHasDesiredReplicas(sClient, gr, resourceName, tenant, namespace, int32(newSize)))
 	if err == wait.ErrWaitTimeout {
 		return fmt.Errorf("timed out waiting for %q to be synced", resourceName)
 	}
