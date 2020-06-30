@@ -167,13 +167,18 @@ func (o *SetResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, ar
 	if err != nil {
 		return err
 	}
+	cmdTenant, enforceTenant, err := f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 
 	builder := f.NewBuilder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		LocalParam(o.Local).
 		ContinueOnError().
+		TenantParam(cmdTenant).DefaultTenant().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(enforceTenant, enforceNamespace, &o.FilenameOptions).
 		Flatten()
 
 	if !o.Local {
@@ -280,7 +285,7 @@ func (o *SetResourcesOptions) Run() error {
 			continue
 		}
 
-		actual, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+		actual, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch limit update to pod template %v", err))
 			continue
