@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -104,12 +105,13 @@ func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations m
 	}
 	name := accessor.GetName()
 	namespace := accessor.GetNamespace()
+	tenant := accessor.GetTenant()
 
 	// TODO: Fix this after kubectl has been removed from core. It is not possible to convert the runtime.Object
 	// to the external appsv1 Deployment without round-tripping through an internal version of Deployment. We're
 	// currently getting rid of all internal versions of resources. So we specifically request the appsv1 version
 	// here. This follows the same pattern as for DaemonSet and StatefulSet.
-	deployment, err := r.c.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+	deployment, err := r.c.AppsV1().DeploymentsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve Deployment %s: %v", name, err)
 	}
@@ -153,7 +155,7 @@ func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations m
 	}
 
 	// Restore revision
-	if _, err = r.c.AppsV1().Deployments(namespace).Patch(name, patchType, patch); err != nil {
+	if _, err = r.c.AppsV1().DeploymentsWithMultiTenancy(namespace, tenant).Patch(name, patchType, patch); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 	return rollbackSuccess, nil
@@ -262,7 +264,7 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 	if err != nil {
 		return "", fmt.Errorf("failed to create accessor for kind %v: %s", obj.GetObjectKind(), err.Error())
 	}
-	ds, history, err := daemonSetHistory(r.c.AppsV1(), accessor.GetNamespace(), accessor.GetName())
+	ds, history, err := daemonSetHistory(r.c.AppsV1(), accessor.GetTenant(), accessor.GetNamespace(), accessor.GetName())
 	if err != nil {
 		return "", err
 	}
@@ -293,7 +295,7 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 	}
 
 	// Restore revision
-	if _, err = r.c.AppsV1().DaemonSets(accessor.GetNamespace()).Patch(accessor.GetName(), types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
+	if _, err = r.c.AppsV1().DaemonSetsWithMultiTenancy(accessor.GetNamespace(), accessor.GetNamespace()).Patch(accessor.GetName(), types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 
@@ -349,7 +351,7 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 	if err != nil {
 		return "", fmt.Errorf("failed to create accessor for kind %v: %s", obj.GetObjectKind(), err.Error())
 	}
-	sts, history, err := statefulSetHistory(r.c.AppsV1(), accessor.GetNamespace(), accessor.GetName())
+	sts, history, err := statefulSetHistory(r.c.AppsV1(), accessor.GetNamespace(), accessor.GetNamespace(), accessor.GetName())
 	if err != nil {
 		return "", err
 	}
@@ -380,7 +382,7 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 	}
 
 	// Restore revision
-	if _, err = r.c.AppsV1().StatefulSets(sts.Namespace).Patch(sts.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
+	if _, err = r.c.AppsV1().StatefulSetsWithMultiTenancy(sts.Namespace, sts.Tenant).Patch(sts.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 
