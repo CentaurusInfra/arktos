@@ -12,6 +12,7 @@ metadata:
   namespace: edit-test
   resourceVersion: "2936"
   selfLink: /api/v1/namespaces/edit-test/services/svc2
+  tenant: system
   uid: 3e9b10db-e9dc-11e6-8c3b-acbc32c1ca87
 spec:
   clusterIP: 10.0.0.182

@@ -15,6 +15,7 @@ items:
     namespace: edit-test
     resourceVersion: "1903"
     selfLink: /api/v1/namespaces/edit-test/configmaps/cm1
+    tenant: system
     uid: b09bffab-e9d7-11e6-8c3b-acbc32c1ca87
 - apiVersion: v1
   kind: Service
@@ -26,6 +27,7 @@ items:
     namespace: edit-test
     resourceVersion: "1904"
     selfLink: /api/v1/namespaces/edit-test/services/svc1
+    tenant: system
     uid: 9bec82be-e9d7-11e6-8c3b-acbc32c1ca87
   spec:
     clusterIP: 10.0.0.248

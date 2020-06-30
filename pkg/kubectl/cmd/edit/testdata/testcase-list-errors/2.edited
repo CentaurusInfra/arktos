@@ -12,6 +12,7 @@ items:
       app: svc1
     name: svc1
     namespace: edit-test
+    tenant: system
     resourceVersion: "1904"
     selfLink: /api/v1/namespaces/edit-test/services/svc1
     uid: 9bec82be-e9d7-11e6-8c3b-acbc32c1ca87
@@ -35,6 +36,7 @@ items:
     creationTimestamp: "2017-02-03T06:12:07Z"
     name: cm1
     namespace: edit-test
+    tenant: system
     resourceVersion: "1903"
     selfLink: /api/v1/namespaces/edit-test/configmaps/cm1
     uid: b09bffab-e9d7-11e6-8c3b-acbc32c1ca87
