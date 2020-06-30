@@ -82,6 +82,8 @@ const (
 	NetworkUnknown NetworkPhase = "Unknown"
 
 	// valid values of network service IPAM
+	// IPAMArktos is the IPAM that Arktos assigns VIP for service
+	IPAMArktos NetworkServiceIPAM = "Arktos"
 	// IPAMKubernetes is the IPAM that Kubernetes assigns VIP for service
 	IPAMKubernetes NetworkServiceIPAM = "Kubernetes"
 	// IPAMExternal is the IPAM that external network controller assigns VIP of service

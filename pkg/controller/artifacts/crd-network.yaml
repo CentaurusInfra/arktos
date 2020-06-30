@@ -36,7 +36,7 @@ spec:
               properties:
                 ipam:
                   type: string
-                  enum: ["Kubernetes", "External"]
+                  enum: ["Arktos", "Kubernetes", "External"]
                 cidrs:
                   type: array
                   items:
