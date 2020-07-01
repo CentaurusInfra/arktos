@@ -91,6 +91,7 @@ const (
 
 	// various network-related label & annotations
 	NetworkLabel     = "arktos.futurewei.com/network"
+	// network related annotation keys
 	NetworkReadiness = "arktos.futurewei.com/network-readiness"
 )
 

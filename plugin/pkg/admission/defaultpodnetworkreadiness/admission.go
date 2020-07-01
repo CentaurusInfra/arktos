@@ -20,7 +20,7 @@ import (
 	"io"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apiserver/pkg/admission"
-	arktosextensionsv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -57,7 +57,7 @@ func (p plugin) Admit(attributes admission.Attributes, o admission.ObjectInterfa
 		return nil
 	}
 
-	if _, readinessExists := pod.Annotations[arktosextensionsv1.NetworkReadiness]; readinessExists {
+	if _, readinessExists := pod.Annotations[arktosv1.NetworkReadiness]; readinessExists {
 		return nil
 	}
 
@@ -65,7 +65,7 @@ func (p plugin) Admit(attributes admission.Attributes, o admission.ObjectInterfa
 	if pod.ObjectMeta.Annotations == nil {
 		pod.ObjectMeta.Annotations = map[string]string{}
 	}
-	pod.ObjectMeta.Annotations[arktosextensionsv1.NetworkReadiness] = "false"
+	pod.ObjectMeta.Annotations[arktosv1.NetworkReadiness] = "false"
 	return nil
 }
 
