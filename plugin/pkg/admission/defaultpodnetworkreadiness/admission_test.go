@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/admission"
 	admissiontesting "k8s.io/apiserver/pkg/admission/testing"
-	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
