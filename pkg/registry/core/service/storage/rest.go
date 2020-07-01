@@ -488,7 +488,6 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 	nodePortOp := portallocator.StartOperation(rs.serviceNodePorts, dryrun.IsDryRun(options.DryRun))
 	defer nodePortOp.Finish()
 
-
 	if !dryrun.IsDryRun(options.DryRun) {
 		isExternalIPAM, err := rs.isExternalIPAM(ctx, service)
 		if err != nil {
