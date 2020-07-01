@@ -547,7 +547,7 @@ func TestRBAC(t *testing.T) {
 			t.Errorf("case %d: failed to apply initial roles: %v", i, err)
 			continue
 		}
-		previousResourceVersion := make(map[string]float64)
+		previousResourceVersion := make(map[string]uint64)
 
 		for j, r := range tc.requests {
 			testGroup, ok := testapi.Groups[r.apiGroup]

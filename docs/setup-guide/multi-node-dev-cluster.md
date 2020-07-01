@@ -49,26 +49,4 @@ After both nodes are in READY state, you should be able to run container or vm b
 
 It may be desired to setup a cluster having 2 or 3 apiservers in order to play with the scalability features of Arktos. It is simple and easy to implement it using arktos-up.sh, arktos-apiserver-partition.sh, and install-etcd.sh. The  doc describes the minimum effort to run a cluster havinbg 2 apiservers (1 apiserver first, plus a apiserver who joins later).
 
-1. start the master node 
- On the master node, run the follwoing command to start cluster, which has the master only.
-```bash
-./hack/arktos-up.sh parition_begin partition_end
-```
-2. start the second apiserver 
-  On another host, run the following command to join the existing etcd cluster in step 1 as a member
-```bash
-./hack/install-etcd.sh add hostname http://hostip:2379
-./hack/arktos-apiserver-partition.sh start_apiserver parition_begin partition_end
-```
-3.  push kubeconfig on the host as secret
- ```bash
-./hack/arktos-apiserver-partition.sh save_kubeconfig
-```
-4.  extract kubeconfig on the master
- ```bash
-./hack/arktos-apiserver-partition.sh extract_kubeconfig path_to_kubeconfig
-```
-5.  restart workload controller manager 
- ```bash
-./hack/arktos-apiserver-partition.sh start_workload_controller_manager path_to_kubeconfig_files
-```
+Instructions are in [API Server Partition](arktos-apiserver-partition.md)

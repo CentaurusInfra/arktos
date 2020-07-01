@@ -418,7 +418,7 @@ func TestAuthModeAlwaysAllow(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	transport := http.DefaultTransport
-	previousResourceVersion := make(map[string]float64)
+	previousResourceVersion := make(map[string]uint64)
 
 	for _, r := range getTestRequests(ns.Name) {
 		var bodyStr string
@@ -471,7 +471,7 @@ func TestAuthModeAlwaysAllow(t *testing.T) {
 	}
 }
 
-func parseResourceVersion(response []byte) (string, float64, error) {
+func parseResourceVersion(response []byte) (string, uint64, error) {
 	var resultBodyMap map[string]interface{}
 	err := json.Unmarshal(response, &resultBodyMap)
 	if err != nil {
@@ -489,9 +489,9 @@ func parseResourceVersion(response []byte) (string, float64, error) {
 	if !ok {
 		return "", 0, fmt.Errorf("unexpected error, resourceVersion not found in JSON response: %v", string(response))
 	}
-	resourceVersion, err := strconv.ParseFloat(resourceVersionString, 64)
+	resourceVersion, err := strconv.ParseUint(resourceVersionString, 10, 64)
 	if err != nil {
-		return "", 0, fmt.Errorf("unexpected error, could not parse resourceVersion as float64, err: %s. JSON response: %v", err, string(response))
+		return "", 0, fmt.Errorf("unexpected error, could not parse resourceVersion as uint64, err: %s. JSON response: %v", err, string(response))
 	}
 	return id, resourceVersion, nil
 }
@@ -567,7 +567,7 @@ func TestAliceNotForbiddenOrUnauthorized(t *testing.T) {
 	ns := framework.CreateTestingNamespace("auth-alice-not-forbidden", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
-	previousResourceVersion := make(map[string]float64)
+	previousResourceVersion := make(map[string]uint64)
 	transport := http.DefaultTransport
 
 	for _, r := range getTestRequests(ns.Name) {
@@ -955,7 +955,7 @@ func TestNamespaceAuthorization(t *testing.T) {
 	ns := framework.CreateTestingNamespace("auth-namespace", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
-	previousResourceVersion := make(map[string]float64)
+	previousResourceVersion := make(map[string]uint64)
 	transport := http.DefaultTransport
 
 	requests := []struct {
@@ -1053,7 +1053,7 @@ func TestKindAuthorization(t *testing.T) {
 	ns := framework.CreateTestingNamespace("auth-kind", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
-	previousResourceVersion := make(map[string]float64)
+	previousResourceVersion := make(map[string]uint64)
 	transport := http.DefaultTransport
 
 	requests := []struct {
