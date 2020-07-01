@@ -69,12 +69,12 @@ type serviceStorage struct {
 	Err                error
 }
 
-type testNetworkGetter struct {
+type dummyNetworkGetter struct {
 	ipamType string
 	err      error
 }
 
-func (n testNetworkGetter) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+func (n dummyNetworkGetter) Get(_ context.Context, _ string, options *metav1.GetOptions) (runtime.Object, error) {
 	if n.err == nil {
 		return &unstructured.Unstructured{
 			Object: map[string]interface{}{
@@ -248,7 +248,7 @@ func NewTestRESTWithPods(t *testing.T, endpoints *api.EndpointsList, pods *api.P
 
 	rest, _ := NewREST(serviceStorage, endpointStorage, podStorage.Pod, r, portAllocator, nil)
 
-	testNetworkStorage := testNetworkGetter{}
+	testNetworkStorage := dummyNetworkGetter{}
 	rest.networks = &testNetworkStorage
 	return rest, serviceStorage, server
 }
@@ -2315,11 +2315,15 @@ func TestUpdateNodePorts(t *testing.T) {
 
 func TestServiceRegistryCreateWithNetworkOfExternalIPAM(t *testing.T) {
 	storage, registry, server := NewTestREST(t, nil)
-	storage.networks = &testNetworkGetter{ipamType: "External"}
+	storage.networks = &dummyNetworkGetter{ipamType: "External"}
 	defer server.Terminate(t)
 
 	svc := &api.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Tenant:    "system",
+			Namespace: "default",
+		},
 		Spec: api.ServiceSpec{
 			Selector:        map[string]string{"bar": "baz"},
 			SessionAffinity: api.ServiceAffinityNone,
@@ -2357,7 +2361,7 @@ func TestServiceRegistryCreateWithNetworkOfExternalIPAM(t *testing.T) {
 
 func TestServiceRegistryCreateWithoutExistingNetwork(t *testing.T) {
 	storage, _, server := NewTestREST(t, nil)
-	storage.networks = &testNetworkGetter{err: fmt.Errorf("network not found")}
+	storage.networks = &dummyNetworkGetter{err: fmt.Errorf("network not found")}
 	defer server.Terminate(t)
 
 	svc := &api.Service{

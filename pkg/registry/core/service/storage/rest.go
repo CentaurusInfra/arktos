@@ -159,7 +159,7 @@ func (rs *REST) getNetworkStorage(tenant string) (rest.Getter, error) {
 		crStorageGetter := extensionsapiserver.GetCustomResourceStoragesGetter()
 		if crStorageGetter == nil {
 			defer atomic.StoreUint32(&rs.done, 1)
-			return nil, fmt.Errorf("api extension server not initialized properly")
+			return nil, fmt.Errorf("failed to get Custom Resource Storages Getter: api extension server not initialized properly")
 		}
 
 		if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, "networks.arktos.futurewei.com", "v1"); err == nil {
@@ -219,17 +219,19 @@ func (rs *REST) Export(ctx context.Context, name string, opts metav1.ExportOptio
 }
 
 func (rs *REST) isExternalIPAM(ctx context.Context, service *api.Service) (bool, error) {
+	const defaultNetwork = "default"
 	netName := service.Labels[arktosextensionsv1.NetworkLabel]
 	if netName == "" {
 		// choose the default network name if not specified
-		netName = "default"
+		netName = defaultNetwork
 	}
 
-	network, err := rs.getNetwork(context.Background(), service.Tenant, netName)
+	// todo: consider having a sub context of the ctx param
+	network, err := rs.getNetwork(genericapirequest.NewContext(), service.Tenant, netName)
 	if err != nil {
 		// for now, temporarily ignore the default network not found error
 		// todo: remove below line after tenant controller enables automatic default network creation on new tenants
-		if netName == "default" {
+		if netName == defaultNetwork {
 			return false, nil
 		}
 
@@ -483,9 +485,15 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 	nodePortOp := portallocator.StartOperation(rs.serviceNodePorts, dryrun.IsDryRun(options.DryRun))
 	defer nodePortOp.Finish()
 
+
 	if !dryrun.IsDryRun(options.DryRun) {
+		isExternalIPAM, err := rs.isExternalIPAM(ctx, service)
+		if err != nil {
+			return nil, false, err
+		}
+
 		// Update service from ExternalName to non-ExternalName, should initialize ClusterIP.
-		if oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
+		if !isExternalIPAM && oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
 			if releaseServiceIP, err = initClusterIP(service, rs.serviceIPs); err != nil {
 				return nil, false, err
 			}
