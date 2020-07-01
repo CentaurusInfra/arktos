@@ -140,6 +140,9 @@ func (rs *REST) Categories() []string {
 }
 
 func (rs *REST) getNetworkStorage(tenant string) (rest.Getter, error) {
+	const networkResourceName = "networks.arktos.futurewei.com"
+	const networkResourceVersion = "v1"
+
 	if atomic.LoadUint32(&rs.done) == 1 {
 		if rs.networks == nil {
 			return nil, fmt.Errorf("service storage failed to identify proper network getter")
@@ -162,7 +165,7 @@ func (rs *REST) getNetworkStorage(tenant string) (rest.Getter, error) {
 			return nil, fmt.Errorf("failed to get Custom Resource Storages Getter: api extension server not initialized properly")
 		}
 
-		if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, "networks.arktos.futurewei.com", "v1"); err == nil {
+		if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, networkResourceName, networkResourceVersion); err == nil {
 			defer atomic.StoreUint32(&rs.done, 1)
 			rs.networks = storage.CustomResource
 			return rs.networks, nil
