@@ -67,6 +67,7 @@ const (
 	SandboxChanged                       = "SandboxChanged"
 	FailedCreatePodSandBox               = "FailedCreatePodSandBox"
 	FailedStatusPodSandBox               = "FailedPodSandBoxStatus"
+	FailedNetworkReadiness               = "FailedPodNetworkReadiness"
 
 	// Image manager event reason list
 	InvalidDiskCapacity = "InvalidDiskCapacity"
