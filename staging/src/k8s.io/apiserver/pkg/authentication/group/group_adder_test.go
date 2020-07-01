@@ -26,11 +26,15 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 )
 
+const (
+	testTenant = "test-tenant"
+)
+
 func TestGroupAdder(t *testing.T) {
 	adder := authenticator.Request(
 		NewGroupAdder(
 			authenticator.RequestFunc(func(req *http.Request) (*authenticator.Response, bool, error) {
-				return &authenticator.Response{User: &user.DefaultInfo{Tenant: "test-tenant", Name: "user", Groups: []string{"original"}}}, true, nil
+				return &authenticator.Response{User: &user.DefaultInfo{Tenant: testTenant, Name: "user", Groups: []string{"original"}}}, true, nil
 			}),
 			[]string{"added"},
 		),
@@ -53,12 +57,12 @@ func TestAuthenticatedGroupAdder(t *testing.T) {
 			inputUser: &user.DefaultInfo{
 				Name:   "user",
 				Groups: []string{"some-group"},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 			expectedUser: &user.DefaultInfo{
 				Name:   "user",
 				Groups: []string{"some-group", user.AllAuthenticated},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 		},
 		{
@@ -66,12 +70,12 @@ func TestAuthenticatedGroupAdder(t *testing.T) {
 			inputUser: &user.DefaultInfo{
 				Name:   "user",
 				Groups: []string{user.AllAuthenticated, "some-group"},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 			expectedUser: &user.DefaultInfo{
 				Name:   "user",
 				Groups: []string{user.AllAuthenticated, "some-group"},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 		},
 		{
@@ -79,12 +83,12 @@ func TestAuthenticatedGroupAdder(t *testing.T) {
 			inputUser: &user.DefaultInfo{
 				Name:   user.Anonymous,
 				Groups: []string{"some-group"},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 			expectedUser: &user.DefaultInfo{
 				Name:   user.Anonymous,
 				Groups: []string{"some-group"},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 		},
 		{
@@ -92,12 +96,12 @@ func TestAuthenticatedGroupAdder(t *testing.T) {
 			inputUser: &user.DefaultInfo{
 				Name:   "user",
 				Groups: []string{user.AllUnauthenticated, "some-group"},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 			expectedUser: &user.DefaultInfo{
 				Name:   "user",
 				Groups: []string{user.AllUnauthenticated, "some-group"},
-				Tenant: "test-tenant",
+				Tenant: testTenant,
 			},
 		},
 	}
