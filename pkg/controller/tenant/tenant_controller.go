@@ -284,7 +284,7 @@ func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, b
 			Name:   InitialClusterRoleName,
 			Tenant: tenant,
 		},
-		Rules: []rbacv1.PolicyRule{initialClusterRoleRules()},
+		Rules: initialClusterRoleRules(),
 	}
 
 	binding := &rbacv1.ClusterRoleBinding{
@@ -308,11 +308,17 @@ func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, b
 	return flattenedError(failures, tenant)
 }
 
-func initialClusterRoleRules() rbacv1.PolicyRule {
-	return rbacv1.PolicyRule{
-		Verbs:     []string{"*"},
-		APIGroups: []string{"*"},
-		Resources: []string{"*"},
+func initialClusterRoleRules() []rbacv1.PolicyRule {
+	return []rbacv1.PolicyRule{
+		{
+			Verbs:     []string{"*"},
+			APIGroups: []string{"*"},
+			Resources: []string{"*"},
+		},
+		{
+			Verbs:           []string{"*"},
+			NonResourceURLs: []string{"*"},
+		},
 	}
 }
 func (tc *TenantController) getDefaultNetwork(tenant string, net *arktosv1.Network) error {

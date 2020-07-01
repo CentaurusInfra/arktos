@@ -74,6 +74,8 @@ const (
 )
 
 var (
+	// ErrContainerDoesNotExist at runtime service
+	ErrContainerDoesNotExistAtRuntimeService = errors.New("Container does not exist at runtime")
 	// ErrVersionNotSupported is returned when the api version of runtime interface is not supported
 	ErrVersionNotSupported            = errors.New("Runtime api version is not supported")
 	defaultRuntimeServiceName         string
