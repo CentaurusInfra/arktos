@@ -7,7 +7,7 @@ Qian Chen, Xiaoning Ding
 
 ## Introduction
 
-This document is a part of the multi-tenancy design documents in Arktos. It mainly describes how we organize API resources in API server in a multi-tenancy manner.
+This doc is a part of the multi-tenancy design documents in Arktos. It mainly describes how we organize API resources in API server in a multi-tenancy manner.
 
 Please refer to other design documents in the "multi-tenancy" document directory if you want to learn about other parts in the multi-tenancy design.
 
