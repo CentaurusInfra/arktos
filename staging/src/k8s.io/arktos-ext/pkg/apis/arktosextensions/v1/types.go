@@ -67,6 +67,9 @@ const (
 	// NetworkUnknown means the state of network cannot be decided due to
 	// communication problems.
 	NetworkUnknown NetworkPhase = "Unknown"
+
+	// network related annotation keys
+	NetworkReadiness = "arktos.futurewei.com/network-readiness"
 )
 
 // NetworkStatus is the status for Network resource

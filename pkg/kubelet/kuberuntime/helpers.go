@@ -321,6 +321,14 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPodID(podId types.UID) (i
 	var filter *runtimeapi.PodSandboxFilter
 
 	for _, runtimeService := range runtimeServices {
+		// ensure runtime is ready before query the container from runtime service. might consider retries and
+		// further verify the RPC error here for refined error handling
+		// continue to the rest of runtime services
+		_, err := runtimeService.ServiceApi.Status()
+		if err != nil {
+			continue
+		}
+
 		resp, err := runtimeService.ServiceApi.ListPodSandbox(filter)
 		if err != nil {
 			klog.Errorf("ListPodSandbox failed: %v", err)
@@ -388,9 +396,17 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByContainerIDString(id stri
 	var filter *runtimeapi.ContainerFilter
 
 	for _, runtimeService := range runtimeServices {
+		// ensure runtime is ready before query the container from runtime service. might consider retries and
+		// further verify the RPC error here for refined error handling
+		// continue to the rest of runtime services
+		_, err := runtimeService.ServiceApi.Status()
+		if err != nil {
+			continue
+		}
+
 		resp, err := runtimeService.ServiceApi.ListContainers(filter)
 		if err != nil {
-			klog.Errorf("ListPodSandbox failed: %v", err)
+			klog.Errorf("ListContainers failed: %v", err)
 			return nil, err
 		}
 
@@ -402,7 +418,7 @@ func (m *kubeGenericRuntimeManager) GetRuntimeServiceByContainerIDString(id stri
 		}
 	}
 
-	return nil, fmt.Errorf("cannot find specified runtime for ContainerID: %v", id)
+	return nil, ErrContainerDoesNotExistAtRuntimeService
 }
 
 // GetAllRuntimeServices returns all the runtime services.

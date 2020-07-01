@@ -1157,6 +1157,54 @@ func TestNetworkErrorsWithoutHostNetwork(t *testing.T) {
 	assert.NoError(t, err, "expected pod with hostNetwork=true to succeed when network in error")
 }
 
+func TestNetworkReadinessWithoutHostNetwork(t *testing.T) {
+	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+	defer testKubelet.Cleanup()
+	kubelet := testKubelet.kubelet
+
+	pod := podWithUIDNameNsSpec("12345678", "hostnetwork", "new", v1.PodSpec{
+		HostNetwork: false,
+
+		Containers: []v1.Container{
+			{Name: "foo"},
+		},
+	})
+
+	kubelet.podManager.SetPods([]*v1.Pod{pod})
+
+	err := kubelet.syncPod(syncPodOptions{
+		pod:        pod,
+		podStatus:  &kubecontainer.PodStatus{},
+		updateType: kubetypes.SyncPodUpdate,
+	})
+	assert.NoError(t, err, "expected pod without explicit network-readiness to succeed")
+
+	pod.Annotations["arktos.futurewei.com/network-readiness"] = "false"
+	err = kubelet.syncPod(syncPodOptions{
+		pod:        pod,
+		podStatus:  &kubecontainer.PodStatus{},
+		updateType: kubetypes.SyncPodUpdate,
+	})
+	assert.Error(t, err, "pod network-readiness is false")
+
+	pod.Annotations["arktos.futurewei.com/network-readiness"] = "true"
+	err = kubelet.syncPod(syncPodOptions{
+		pod:        pod,
+		podStatus:  &kubecontainer.PodStatus{},
+		updateType: kubetypes.SyncPodUpdate,
+	})
+	assert.NoError(t, err, "expected pod with network-readiness=true to succeed")
+
+	pod.Spec.HostNetwork = true
+	pod.Annotations["arktos.futurewei.com/network-readiness"] = "false"
+	err = kubelet.syncPod(syncPodOptions{
+		pod:        pod,
+		podStatus:  &kubecontainer.PodStatus{},
+		updateType: kubetypes.SyncPodUpdate,
+	})
+	assert.NoError(t, err, "expected pod with hostNetwork=true to succeed when network-readiness in not true")
+}
+
 func TestFilterOutTerminatedPods(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
 	defer testKubelet.Cleanup()

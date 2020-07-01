@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -131,7 +132,7 @@ func TestBootstrapTokenAuth(t *testing.T) {
 		ns := framework.CreateTestingNamespace("auth-bootstrap-token", s, t)
 		defer framework.DeleteTestingNamespace(ns, s, t)
 
-		previousResourceVersion := make(map[string]float64)
+		previousResourceVersion := make(map[string]uint64)
 		transport := http.DefaultTransport
 
 		token := tokenID + "." + secret
