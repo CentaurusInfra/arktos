@@ -23,6 +23,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/client-go/datapartition"
 	"k8s.io/client-go/informers"
 	"math/rand"
@@ -408,6 +409,7 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		ContainerManager:    nil,
 		DockerClientConfig:  dockerClientConfig,
 		KubeClient:          nil,
+		ArktosExtClient:     nil,
 		HeartbeatClient:     nil,
 		EventClient:         nil,
 		Mounter:             mounter,
@@ -566,7 +568,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		kubeDeps.HeartbeatClient = nil
 		klog.Warningf("standalone mode, no API client")
 
-	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil:
+	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
 		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
 		if err != nil {
 			return err
@@ -579,6 +581,16 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		kubeDeps.KubeClient, err = clientset.NewForConfig(clientConfigs)
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet client: %v", err)
+		}
+
+		arktosExtClientConfig := *clientConfigs
+		for _, cfg := range arktosExtClientConfig.GetAllConfigs() {
+			cfg.ContentType = "application/json"
+			cfg.AcceptContentTypes = "application/json"
+		}
+		kubeDeps.ArktosExtClient, err = arktos.NewForConfig(&arktosExtClientConfig)
+		if err != nil {
+			return fmt.Errorf("failed to initialize kubelet client to access network CR: %v", err)
 		}
 
 		// make a separate client for events

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +27,9 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	arktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/typed/arktosextensions/v1"
 	"k8s.io/client-go/tools/record"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
@@ -63,10 +66,13 @@ type Configurer struct {
 	// the container's DNS resolver configuration file. This can be used in
 	// conjunction with clusterDomain and clusterDNS.
 	ResolverConfig string
+
+	// client to access network CR
+	arktosV1Client arktosv1.ArktosV1Interface
 }
 
 // NewConfigurer returns a DNS configurer for launching pods.
-func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string) *Configurer {
+func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, arktosV1Client arktosv1.ArktosV1Interface) *Configurer {
 	return &Configurer{
 		recorder:       recorder,
 		nodeRef:        nodeRef,
@@ -74,7 +80,34 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 		clusterDNS:     clusterDNS,
 		ClusterDomain:  clusterDomain,
 		ResolverConfig: resolverConfig,
+		arktosV1Client: arktosV1Client,
 	}
+}
+
+func (c *Configurer) getClusterDNS(pod *v1.Pod) []net.IP {
+	const defaultNetwork = "default"
+	networkName, ok := pod.Labels["arktos.futurewei.com/network"]
+	if !ok {
+		networkName = defaultNetwork
+	}
+	if network, err := c.arktosV1Client.NetworksWithMultiTenancy(pod.Tenant).Get(networkName, metav1.GetOptions{}); err == nil {
+		sip := network.Status.DNSServiceIP
+		ip := net.ParseIP(sip)
+		if ip != nil {
+			return []net.IP{ip}
+		}
+	} else {
+		klog.Errorf("failed to get network %s/%s: %v", pod.Tenant, networkName)
+	}
+
+	// for now, fallback to default cluster DNS for pod that has no explicit network and no valid dns service ip of the default network not set yet.
+	// This is temporary measure to keep system unbroken before all multi-tenant network dependencies are in place.
+	// todo: disable the fallback when every components are ready.
+	if networkName == defaultNetwork {
+		return c.clusterDNS
+	}
+
+	return nil
 }
 
 func omitDuplicates(strs []string) []string {
@@ -337,14 +370,15 @@ func (c *Configurer) GetPodDNS(pod *v1.Pod) (*runtimeapi.DNSConfig, error) {
 		// DNSNone should use empty DNS settings as the base.
 		dnsConfig = &runtimeapi.DNSConfig{}
 	case podDNSCluster:
-		if len(c.clusterDNS) != 0 {
+		clusterDNS := c.getClusterDNS(pod)
+		if len(clusterDNS) != 0 {
 			// For a pod with DNSClusterFirst policy, the cluster DNS server is
 			// the only nameserver configured for the pod. The cluster DNS server
 			// itself will forward queries to other nameservers that is configured
 			// to use, in case the cluster DNS server cannot resolve the DNS query
 			// itself.
 			dnsConfig.Servers = []string{}
-			for _, ip := range c.clusterDNS {
+			for _, ip := range clusterDNS {
 				dnsConfig.Servers = append(dnsConfig.Servers, ip.String())
 			}
 			dnsConfig.Searches = c.generateSearchesForDNSClusterFirst(dnsConfig.Searches, pod)
