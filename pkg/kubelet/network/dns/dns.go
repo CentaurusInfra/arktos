@@ -97,7 +97,7 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) []net.IP {
 			return []net.IP{ip}
 		}
 	} else {
-		klog.Errorf("failed to get network %s/%s: %v", pod.Tenant, networkName)
+		klog.Errorf("failed to get network %s/%s: %v", pod.Tenant, networkName, err)
 	}
 
 	// for now, fallback to default cluster DNS for pod that has no explicit network and no valid dns service ip of the default network not set yet.
