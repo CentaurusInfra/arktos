@@ -45,12 +45,13 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
+
 	//apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/authentication/request/fakeuser"
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/tokentest"
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/webhook"
-	"k8s.io/client-go/tools/clientcmd/api/v1"
+	v1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -68,8 +69,8 @@ const (
 
 func getTestTokenAuth() authenticator.Request {
 	tokenAuthenticator := tokentest.New()
-	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "fake-tenant:alice", UID: "1"}
-	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "fake-tenant:bob", UID: "2"}
+	tokenAuthenticator.Tokens[AliceToken] = &user.DefaultInfo{Name: "alice", UID: "1", Tenant: testTenant}
+	tokenAuthenticator.Tokens[BobToken] = &user.DefaultInfo{Name: "bob", UID: "2", Tenant: testTenant}
 	return group.NewGroupAdder(bearertoken.New(tokenAuthenticator), []string{user.AllAuthenticated})
 }
 
@@ -546,9 +547,16 @@ func TestAuthModeAlwaysDeny(t *testing.T) {
 type allowAliceAuthorizer struct{}
 
 func (allowAliceAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
-	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "alice" && a.GetUser().GetTenant() == testTenant {
 		return authorizer.DecisionAllow, "", nil
 	}
+
+	// This is a workaround as the multi-tenancy change for webhook authenticator is not done.
+	// TODO: remove the following three lines when it is done.
+	if a.GetUser() != nil && a.GetUser().GetName() == "test-tenant:alice" {
+		return authorizer.DecisionAllow, "", nil
+	}
+
 	return authorizer.DecisionNoOpinion, "I can't allow that.  Go ask alice.", nil
 }
 
@@ -713,14 +721,14 @@ type impersonateAuthorizer struct{}
 // alice can't act as anyone and bob can't do anything but act-as someone
 func (impersonateAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
 	// alice can impersonate service accounts and do other actions
-	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" && a.GetVerb() == "impersonate" && a.GetResource() == "serviceaccounts" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "alice" && a.GetVerb() == "impersonate" && a.GetResource() == "serviceaccounts" {
 		return authorizer.DecisionAllow, "", nil
 	}
-	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:alice" && a.GetVerb() != "impersonate" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "alice" && a.GetVerb() != "impersonate" {
 		return authorizer.DecisionAllow, "", nil
 	}
 	// bob can impersonate anyone, but that it
-	if a.GetUser() != nil && a.GetUser().GetName() == "fake-tenant:bob" && a.GetVerb() == "impersonate" {
+	if a.GetUser() != nil && a.GetUser().GetName() == "bob" && a.GetVerb() == "impersonate" {
 		return authorizer.DecisionAllow, "", nil
 	}
 	// service accounts can do everything
@@ -778,7 +786,7 @@ func TestImpersonateIsForbidden(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-		req.Header.Set("Impersonate-User", "fake-tenant:alice")
+		req.Header.Set("Impersonate-User", "alice")
 		func() {
 			resp, err := transport.RoundTrip(req)
 			defer resp.Body.Close()
@@ -803,7 +811,7 @@ func TestImpersonateIsForbidden(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-		req.Header.Set("Impersonate-User", "fake-tenant:bob")
+		req.Header.Set("Impersonate-User", "bob")
 
 		func() {
 			resp, err := transport.RoundTrip(req)
@@ -1266,10 +1274,13 @@ func newTestWebhookTokenAuthServer() *httptest.Server {
 		}
 		var username, uid string
 		authenticated := false
+		// Using tenanted username in the format of "[tenantName]:[userName]"
+		// is a workaround as the multi-tenancy change for webhook authenticator is not done.
+		// TODO: Define tenant and user name in separate fields
 		if review.Spec.Token == AliceToken {
-			authenticated, username, uid = true, "fake-tenant:alice", "1"
+			authenticated, username, uid = true, "test-tenant:alice", "1"
 		} else if review.Spec.Token == BobToken {
-			authenticated, username, uid = true, "fake-tenant:bob", "2"
+			authenticated, username, uid = true, "test-tenant:bob", "2"
 		}
 
 		resp := struct {
