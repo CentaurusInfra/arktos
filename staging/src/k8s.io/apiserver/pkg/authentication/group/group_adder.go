@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,6 +47,7 @@ func (g *GroupAdder) AuthenticateRequest(req *http.Request) (*authenticator.Resp
 		UID:    r.User.GetUID(),
 		Groups: append(r.User.GetGroups(), g.Groups...),
 		Extra:  r.User.GetExtra(),
+		Tenant: r.User.GetTenant(),
 	}
 	return r, true, nil
 }

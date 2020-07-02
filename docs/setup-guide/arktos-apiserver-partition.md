@@ -72,7 +72,7 @@ Note: Kubectl currently does not support automatically detect api servers during
 
 Step 1: Set data partition for api servers
 ```
-kubectl apply -f datapartition-s1.yaml
+kubectl apply -f datapartition.yaml
 ```
 Sample data partition spec:
 ```
@@ -85,6 +85,16 @@ rangeEnd: "m"
 isRangeEndValid: true
 metadata:
   name: "partition-1"
+---
+apiVersion: v1
+kind: DataPartitionConfig
+serviceGroupId: "2"
+rangeStart: "m"
+isRangeStartValid: true 
+rangeEnd: "Z"
+isRangeEndValid: false 
+metadata:
+  name: "partition-2"
 ```
 Note: No matter what partitions have been set, we always load default tenant
 ```

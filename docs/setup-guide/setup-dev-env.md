@@ -1,6 +1,7 @@
 ## Set up developer environment
 
-Note: tested on AWS EC2 Ubuntu 16.04 x86 image 
+Note: tested on AWS EC2 Ubuntu 16.04 x86 image.
+ 
 
 ### Clone repo
 ```
@@ -8,6 +9,8 @@ $ mkdir -p go/src/
 $ cd go/src/
 $ git clone https://github.com/futurewei-cloud/arktos
 ```
+
+Note: the following steps can be simplified by running hack/setup-dev-node.sh
 
 ### Install Golang
 ```

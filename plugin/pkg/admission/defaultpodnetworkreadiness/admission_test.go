@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/admission"
 	admissiontesting "k8s.io/apiserver/pkg/admission/testing"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -84,7 +85,7 @@ func TestAdmit(t *testing.T) {
 				t.Fatalf("Unexpected error returned from admission handler: %v", err)
 			}
 
-			v, ok := pod.Annotations[networkReadiness]
+			v, ok := pod.Annotations[arktosv1.NetworkReadiness]
 			if tc.notExpectingReadiness && ok {
 				t.Fatalf("should not have added readiness annotation")
 			}
