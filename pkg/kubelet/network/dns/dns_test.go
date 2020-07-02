@@ -58,13 +58,13 @@ func newTestConfigurer(recorder *record.FakeRecorder, nodeRef *v1.ObjectReferenc
 			Tenant: "system",
 		},
 		Spec: arktosv1.NetworkSpec{
-			Type:  "test-type",
+			Type: "test-type",
 		},
-		Status:arktosv1.NetworkStatus{
+		Status: arktosv1.NetworkStatus{
 			DNSServiceIP: dnsVIPOfTestNetwork,
 		},
 	})
-	return  NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
+	return NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
 }
 
 func TestParseResolvConf(t *testing.T) {
