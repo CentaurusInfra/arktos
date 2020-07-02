@@ -31,7 +31,10 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/client-go/datapartition"
+	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -175,6 +178,7 @@ func run(config *hollowNodeConfig) {
 		klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 	}
 
+	startAPIServerConfigManager(client, wait.NeverStop)
 	if config.Morph == "kubelet" {
 		f, c := kubemark.GetHollowKubeletConfig(config.createHollowKubeletOptions())
 
@@ -247,5 +251,25 @@ func run(config *hollowNodeConfig) {
 			klog.Fatalf("Failed to create hollowProxy instance: %v", err)
 		}
 		hollowProxy.Run()
+	}
+}
+
+// API Server Config Manager is used to watch api server configuration update
+// Upon the inroduction of api server data partition, it needs to connect to update
+// connections when API Server Configuration is updated
+// Hallow kubelet and proxy can be start as static pod - do not fail when it cannot connect to API Server
+func startAPIServerConfigManager(client clientset.Interface, stopCh <-chan struct{}) {
+	informerFactory := informers.NewSharedInformerFactory(client, 10*time.Minute)
+	for {
+		apiServerConfigManager, err := datapartition.NewAPIServerConfigManagerWithInformer(
+			informerFactory.Core().V1().Endpoints(), client)
+		if err == nil {
+			go apiServerConfigManager.Run(stopCh)
+			informerFactory.Start(stopCh)
+			return
+		} else {
+			klog.Errorf("Error creating api server config manager. %v. Retry after 10 seconds", err)
+			time.Sleep(10 * time.Second)
+		}
 	}
 }
