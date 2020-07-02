@@ -285,9 +285,9 @@ __EndpointSlices__, the new type introduced in k8s v1.17, is out of current scop
 
 ### Network Policy
 
-Network policies, expressed as intents, are used to enforce desired network security within Arktos. Without any network policy in place, Arktos allows any pod to access other pods, across all tenants and namespaces for a flat typed network environment. VPC typed network environment, on the other hand, does provide strong tenant level network security even in the absence of any network policy in place.
+Network policies are used to depict the desired network security within Arktos. Without any network policy in place, Arktos allows any pod to access other pods, across all tenants and namespaces for a flat typed network environment. VPC typed network environment, on the other hand, does provide strong tenant level network security even in the absence of any network policy in place.
 
-Existing k8s network policy specifications provide support for enforcing tenant scoped network security. Allowing access across tenant boundary is currently not supported within Arktos.
+Without any syntax change, Existing k8s network policy specifications provide support for enforcing tenant scoped network security. Allowing access across tenant boundary is currently not supported within Arktos.
 
 Network-isolation mode makes more sense in most cases. Below is an example for specific network, my-network, in one namespace. Similar network policies need to apply to other namespaces, too.
 ```yaml
@@ -296,7 +296,6 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-all
-  tenant: foo
   namesapce: bar
 spec:
   podSelector: {}
@@ -308,7 +307,6 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: network-isolated-policy-for-my-network
-  tenant: foo
   namesapce: bar
 spec:
   podSelector:
@@ -338,7 +336,6 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-all
-  tenant: foo
   namesapce: bar
 spec:
   podSelector: {}
@@ -350,7 +347,6 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: implicit-default-network-isolated-policy
-  tenant: foo
   namesapce: bar
 spec:
   podSelector:
@@ -389,7 +385,6 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: explcit-default-network-isolated-policy
-  tenant: foo
   namesapce: bar
 spec:
   podSelector:
