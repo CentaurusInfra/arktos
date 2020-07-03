@@ -2366,8 +2366,8 @@ func TestServiceRegistryCreateWithoutExistingNetwork(t *testing.T) {
 
 	svc := &api.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
-			Tenant: "system",
+			Name:      "foo",
+			Tenant:    "system",
 			Namespace: "default",
 			Labels: map[string]string{
 				"arktos.futurewei.com/network": "ne-not-created-yet",
