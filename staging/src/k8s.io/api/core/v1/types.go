@@ -3279,6 +3279,25 @@ func (ps *PodSpec) Workloads() []CommonInfo {
 	return ps.WorkloadInfo
 }
 
+func (ps *PodSpec) SetWorkloads() {
+	// Update mutable fields
+	if len(ps.WorkloadInfo) != 0 {
+		if ps.VirtualMachine != nil {
+			ps.VirtualMachine.Image = ps.WorkloadInfo[0].Image
+			ps.VirtualMachine.Resources = ps.WorkloadInfo[0].Resources
+			ps.VirtualMachine.ResourcesAllocated = ps.WorkloadInfo[0].ResourcesAllocated
+			ps.VirtualMachine.ResizePolicy = ps.WorkloadInfo[0].ResizePolicy
+		} else {
+			for i := range ps.Containers {
+				ps.Containers[i].Image = ps.WorkloadInfo[i].Image
+				ps.Containers[i].Resources = ps.WorkloadInfo[i].Resources
+				ps.Containers[i].ResourcesAllocated = ps.WorkloadInfo[i].ResourcesAllocated
+				ps.Containers[i].ResizePolicy = ps.WorkloadInfo[i].ResizePolicy
+			}
+		}
+	}
+}
+
 const (
 	// The default value for enableServiceLinks attribute.
 	DefaultEnableServiceLinks = true

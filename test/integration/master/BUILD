@@ -8,7 +8,7 @@ load(
 
 go_test(
     name = "go_default_test",
-    size = "large",
+    timeout = "long",
     srcs = [
         "audit_dynamic_test.go",
         "audit_test.go",
