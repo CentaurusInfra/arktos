@@ -192,10 +192,15 @@ func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, e
 	}
 
 	var store storage.StorageClusterInterface
+	klog.Infof("partition config file [%v]", c.PartitionConfigFilepath)
 	if c.PartitionConfigFilepath != "" {
-		configMap, _ := parseConfig(c.PartitionConfigFilepath)
+		configMap, err := parseConfig(c.PartitionConfigFilepath)
+		if err != nil {
+			klog.Errorf("Error reading partition config file. Err %v", err)
+		}
 		store = etcd3.NewWithPartitionConfig(client, c.Codec, c.Prefix, transformer, c.Paging, configMap)
 	} else {
+		klog.Info("partition config file not set")
 		store = etcd3.New(client, c.Codec, c.Prefix, transformer, c.Paging)
 	}
 

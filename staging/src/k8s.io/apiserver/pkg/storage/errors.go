@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +19,9 @@ package storage
 
 import (
 	"fmt"
+	"reflect"
 
+	errorsutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -159,6 +162,24 @@ func (e InternalError) Error() string {
 func IsInternalError(err error) bool {
 	_, ok := err.(InternalError)
 	return ok
+}
+
+func HasInternalError(err error) bool {
+	if reflect.TypeOf(err).Kind() == reflect.Slice {
+		errs, ok := err.(errorsutils.Aggregate)
+		if !ok {
+			return false
+		}
+
+		for _, e := range errs.Errors() {
+			if IsInternalError(e) {
+				return true
+			}
+		}
+	} else {
+		return IsInternalError(err)
+	}
+	return false
 }
 
 func NewInternalError(reason string) InternalError {

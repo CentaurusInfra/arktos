@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	errorsutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"path"
 	"reflect"
@@ -734,7 +735,7 @@ func TestTransformationFailure(t *testing.T) {
 
 	// List should fail
 	var got example.PodList
-	if err := store.List(ctx, "/", "", storage.Everything, &got); !storage.IsInternalError(err) {
+	if err := store.List(ctx, "/", "", storage.Everything, &got); !storage.HasInternalError(err) {
 		t.Errorf("Unexpected error %v", err)
 	}
 
@@ -1326,10 +1327,22 @@ func TestListInconsistentContinuation(t *testing.T) {
 	if !strings.Contains(err.Error(), inconsistentContinue) {
 		t.Fatalf("unexpected error message %v", err)
 	}
-	status, ok := err.(apierrors.APIStatus)
+
+	var status apierrors.APIStatus
+	ok := false
+	if reflect.TypeOf(err).Kind() == reflect.Slice {
+		var errs errorsutils.Aggregate
+		errs, ok = err.(errorsutils.Aggregate)
+		if ok {
+			status, ok = errs.Errors()[0].(apierrors.APIStatus)
+		}
+	} else {
+		status, ok = err.(apierrors.APIStatus)
+	}
 	if !ok {
 		t.Fatalf("expect error of implements the APIStatus interface, got %v", reflect.TypeOf(err))
 	}
+
 	inconsistentContinueFromSecondItem := status.Status().ListMeta.Continue
 	if len(inconsistentContinueFromSecondItem) == 0 {
 		t.Fatalf("expect non-empty continue token")
@@ -1541,8 +1554,8 @@ func TestGetClientFromKey(t *testing.T) {
 		storagecluster.GetClusterIdFromTenantHandler = originHandler
 	}()
 
-	systemClient := &clientv3.Client{Username: "system"}
-	dataClientV3 := &clientv3.Client{Username: "data"}
+	systemClient, _ := clientv3.NewFromURL("http://1.1.1.1")
+	dataClientV3, _ := clientv3.NewFromURL("http://2.2.2.2")
 	storeT := &store{
 		client:             systemClient,
 		dataClusterClients: make(map[string]*clientv3.Client),

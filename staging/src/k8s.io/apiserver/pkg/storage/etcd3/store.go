@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"k8s.io/apimachinery/pkg/util/diff"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/storage/datapartition"
 	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"path"
@@ -88,7 +89,8 @@ type store struct {
 
 	partitionConfigMap map[string]storage.Interval
 
-	mux sync.Mutex
+	mux           sync.Mutex
+	listAppendMux sync.Mutex
 }
 
 type objState struct {
@@ -672,22 +674,75 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 		options = append(options, clientv3.WithPrefix())
 	}
 
-	// TODO - multiple list run in parrallel - also need to consider locking in s.versioner.UpdateList
-	lastRV := returnedRV
+	listResults := make(map[int]*listPartitionResult, len(clients))
+	var wg sync.WaitGroup
+	wg.Add(len(clients))
+
 	for i, c := range clients {
-		klog.V(6).Infof("List key %s from multi partitions. client %d, endpoint %v, paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v], resourceVersion [%v]",
-			key, i, c.Endpoints(), paging, returnedRV, continueKey, keyPrefix, resourceVersion)
-		err, lastRV = s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix, lastRV)
-		if err != nil {
-			return err
+		go func(c *clientv3.Client, listResults map[int]*listPartitionResult, i int) {
+			klog.V(6).Infof("List key %s from multi partitions. client %d, endpoint %v, paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v], resourceVersion [%v]",
+				key, i, c.Endpoints(), paging, returnedRV, continueKey, keyPrefix, resourceVersion)
+			result := s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix)
+			s.listAppendMux.Lock()
+			listResults[i] = result
+			s.listAppendMux.Unlock()
+			wg.Done()
+		}(c, listResults, i)
+	}
+
+	wg.Wait()
+	klog.V(3).Infof("list partition completed. len(clients) = %v", len(clients))
+	return s.updatelist(listObj, listResults)
+}
+
+func (s *store) updatelist(listObj runtime.Object, listPartitionResult map[int]*listPartitionResult) error {
+	aggErr := []error{}
+	returnedRV := int64(0)
+	hasNext := false
+	nexts := []int{}
+	for i, result := range listPartitionResult {
+		if result.err != nil {
+			aggErr = append(aggErr, result.err)
+		} else if diff.RevisionIsNewer(uint64(result.returnedRV), uint64(returnedRV)) {
+			returnedRV = result.returnedRV
+		}
+
+		if result.hasNext { // only list that does not have more items can have latest revision
+			hasNext = true
+			nexts = append(nexts, i)
 		}
 	}
 
-	return nil
+	if len(aggErr) > 0 {
+		return utilerrors.NewAggregate(aggErr)
+	}
+
+	if hasNext {
+		// TODO - deal with multiple next
+		return s.versioner.UpdateList(listObj, uint64(returnedRV), listPartitionResult[nexts[0]].next, listPartitionResult[nexts[0]].remainingItemCount)
+	}
+
+	return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil)
+}
+
+type listPartitionResult struct {
+	err                error
+	returnedRV         int64
+	hasNext            bool
+	next               string
+	remainingItemCount *int64
 }
 
 func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key string, pred storage.SelectionPredicate, listObj runtime.Object,
-	options []clientv3.OpOption, paging bool, returnedRV int64, continueKey string, keyPrefix string, lastRV int64) (error, int64) {
+	options []clientv3.OpOption, paging bool, returnedRV int64, continueKey string, keyPrefix string) *listPartitionResult {
+
+	result := &listPartitionResult{
+		err:                nil,
+		returnedRV:         returnedRV,
+		hasNext:            false,
+		next:               "",
+		remainingItemCount: nil,
+	}
 
 	// error checked in List()
 	listPtr, _ := meta.GetItemsPtr(listObj)
@@ -703,12 +758,16 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 		getResp, err = client.KV.Get(ctx, key, options...)
 		metrics.RecordEtcdRequestLatency("list", getTypeName(listPtr), startTime)
 		if err != nil {
-			return interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix), lastRV
+			result.err = interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix)
+			result.returnedRV = returnedRV
+			return result
 		}
 		hasMore = getResp.More
 
 		if len(getResp.Kvs) == 0 && getResp.More {
-			return fmt.Errorf("no results were found, but etcd indicated there were more values remaining"), lastRV
+			result.err = fmt.Errorf("no results were found, but etcd indicated there were more values remaining")
+			result.returnedRV = returnedRV
+			return result
 		}
 
 		// avoid small allocations for the result slice, since this can be called in many
@@ -720,6 +779,7 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 		}
 
 		// take items from the response until the bucket is full, filtering as we go
+		s.listAppendMux.Lock()
 		for _, kv := range getResp.Kvs {
 			if paging && int64(v.Len()) >= pred.Limit {
 				hasMore = true
@@ -729,13 +789,20 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 
 			data, _, err := s.transformer.TransformFromStorage(kv.Value, authenticatedDataString(kv.Key))
 			if err != nil {
-				return storage.NewInternalErrorf("unable to transform key %q: %v", kv.Key, err), lastRV
+				s.listAppendMux.Unlock()
+				result.err = storage.NewInternalErrorf("unable to transform key %q: %v", kv.Key, err)
+				result.returnedRV = returnedRV
+				return result
 			}
 
 			if err := appendListItem(v, data, uint64(kv.ModRevision), pred, s.codec, s.versioner); err != nil {
-				return err, lastRV
+				s.listAppendMux.Unlock()
+				result.err = err
+				result.returnedRV = returnedRV
+				return result
 			}
 		}
+		s.listAppendMux.Unlock()
 
 		// indicate to the client which resource version was returned
 		if returnedRV == 0 {
@@ -753,36 +820,34 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 		key = string(lastKey) + "\x00"
 	}
 
-	// For multi ETCD partition - do not update to earlier revision
-	if diff.RevisionIsNewer(uint64(lastRV), uint64(returnedRV)) {
-		returnedRV = lastRV
-	} else {
-		lastRV = returnedRV
-	}
-
 	// instruct the client to begin querying from immediately after the last key we returned
 	// we never return a key that the client wouldn't be allowed to see
 	if hasMore {
 		// we want to start immediately after the last key
-		next, err := encodeContinue(string(lastKey)+"\x00", keyPrefix, returnedRV)
+		result.next, result.err = encodeContinue(string(lastKey)+"\x00", keyPrefix, returnedRV)
 		if err != nil {
-			return err, lastRV
+			result.returnedRV = returnedRV
+			return result
 		}
-		var remainingItemCount *int64
 		// getResp.Count counts in objects that do not match the pred.
 		// Instead of returning inaccurate count for non-empty selectors, we return nil.
 		// Only set remainingItemCount if the predicate is empty.
 		if utilfeature.DefaultFeatureGate.Enabled(features.RemainingItemCount) {
 			if pred.Empty() {
 				c := int64(getResp.Count - pred.Limit)
-				remainingItemCount = &c
+				result.remainingItemCount = &c
 			}
 		}
-		return s.versioner.UpdateList(listObj, uint64(returnedRV), next, remainingItemCount), lastRV
+		result.returnedRV = returnedRV
+		result.hasNext = true
+		return result
+		//return s.versioner.UpdateList(listObj, uint64(returnedRV), next, remainingItemCount), lastRV
 	}
 
 	// no continuation
-	return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil), lastRV
+	result.returnedRV = returnedRV
+	return result
+	//return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil), lastRV
 }
 
 // growSlice takes a slice value and grows its capacity up
@@ -978,7 +1043,7 @@ func (s *store) getClientFromKey(key string) *clientv3.Client {
 	message := fmt.Sprintf("key [%s] segments %v len %d", key, segs, len(segs))
 
 	if len(segs) <= 2 {
-		klog.V(6).Infof("system client: key segments len <= 2. %s ", message)
+		klog.V(3).Infof("system client: key segments len <= 2. %s ", message)
 		return s.client
 	}
 
@@ -998,10 +1063,13 @@ func (s *store) getClientFromKey(key string) *clientv3.Client {
 		tenant = getTenantForKey(segs, 1)
 	}
 	if tenant == "" {
+		klog.V(3).Infof("system client: %s ", message)
 		return s.client
 	}
 
-	return s.getClientForTenant(tenant)
+	c := s.getClientForTenant(tenant)
+	klog.V(3).Infof("client %v: %s ", c.Endpoints(), message)
+	return c
 }
 
 // Based on different data segment, map to differnet data clients
