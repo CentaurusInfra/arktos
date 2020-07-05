@@ -69,31 +69,35 @@ func TestListWatchesCanList(t *testing.T) {
 		location      string
 		resource      string
 		namespace     string
+		tenant        string
 		fieldSelector fields.Selector
 	}{
 		// Node
 		{
-			location:      testapi.Default.ResourcePath("nodes", metav1.NamespaceAll, ""),
+			location:      testapi.Default.ResourcePathWithMultiTenancy("nodes", metav1.TenantAll, metav1.NamespaceAll, ""),
 			resource:      "nodes",
 			namespace:     metav1.NamespaceAll,
+			tenant:        metav1.TenantSystem,
 			fieldSelector: parseSelectorOrDie(""),
 		},
 		// pod with "assigned" field selector.
 		{
 			location: buildLocation(
-				testapi.Default.ResourcePath("pods", metav1.NamespaceAll, ""),
+				testapi.Default.ResourcePathWithMultiTenancy("pods", metav1.TenantAll, metav1.NamespaceAll, ""),
 				buildQueryValues(url.Values{fieldSelectorQueryParamName: []string{"spec.host="}})),
 			resource:      "pods",
 			namespace:     metav1.NamespaceAll,
+			tenant:        metav1.TenantSystem,
 			fieldSelector: fields.Set{"spec.host": ""}.AsSelector(),
 		},
 		// pod in namespace "foo"
 		{
 			location: buildLocation(
-				testapi.Default.ResourcePath("pods", "foo", ""),
+				testapi.Default.ResourcePathWithMultiTenancy("pods", metav1.TenantSystem, "foo", ""),
 				buildQueryValues(url.Values{fieldSelectorQueryParamName: []string{"spec.host="}})),
 			resource:      "pods",
 			namespace:     "foo",
+			tenant:        metav1.TenantSystem,
 			fieldSelector: fields.Set{"spec.host": ""}.AsSelector(),
 		},
 	}
@@ -123,45 +127,50 @@ func TestListWatchesCanWatch(t *testing.T) {
 		location      string
 		resource      string
 		namespace     string
+		tenant        string
 		fieldSelector fields.Selector
 	}{
 		// Node
 		{
 			location: buildLocation(
-				testapi.Default.ResourcePath("nodes", metav1.NamespaceAll, ""),
+				testapi.Default.ResourcePathWithMultiTenancy("nodes", metav1.TenantAll, metav1.NamespaceAll, ""),
 				buildQueryValues(url.Values{"watch": []string{"true"}})),
 			rv:            "",
 			resource:      "nodes",
 			namespace:     metav1.NamespaceAll,
+			tenant:        metav1.TenantSystem,
 			fieldSelector: parseSelectorOrDie(""),
 		},
 		{
 			location: buildLocation(
-				testapi.Default.ResourcePath("nodes", metav1.NamespaceAll, ""),
+				testapi.Default.ResourcePathWithMultiTenancy("nodes", metav1.TenantAll, metav1.NamespaceAll, ""),
 				buildQueryValues(url.Values{"resourceVersion": []string{"42"}, "watch": []string{"true"}})),
 			rv:            "42",
 			resource:      "nodes",
 			namespace:     metav1.NamespaceAll,
+			tenant:        metav1.TenantSystem,
 			fieldSelector: parseSelectorOrDie(""),
 		},
 		// pod with "assigned" field selector.
 		{
 			location: buildLocation(
-				testapi.Default.ResourcePath("pods", metav1.NamespaceAll, ""),
+				testapi.Default.ResourcePathWithMultiTenancy("pods", metav1.TenantAll, metav1.NamespaceAll, ""),
 				buildQueryValues(url.Values{fieldSelectorQueryParamName: []string{"spec.host="}, "resourceVersion": []string{"0"}, "watch": []string{"true"}})),
 			rv:            "0",
 			resource:      "pods",
 			namespace:     metav1.NamespaceAll,
+			tenant:        metav1.TenantSystem,
 			fieldSelector: fields.Set{"spec.host": ""}.AsSelector(),
 		},
 		// pod with namespace foo and assigned field selector
 		{
 			location: buildLocation(
-				testapi.Default.ResourcePath("pods", "foo", ""),
+				testapi.Default.ResourcePathWithMultiTenancy("pods", metav1.TenantSystem, "foo", ""),
 				buildQueryValues(url.Values{fieldSelectorQueryParamName: []string{"spec.host="}, "resourceVersion": []string{"0"}, "watch": []string{"true"}})),
 			rv:            "0",
 			resource:      "pods",
 			namespace:     "foo",
+			tenant:        metav1.TenantSystem,
 			fieldSelector: fields.Set{"spec.host": ""}.AsSelector(),
 		},
 	}
