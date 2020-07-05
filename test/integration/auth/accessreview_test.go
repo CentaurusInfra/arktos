@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	testTenant string = metav1.TenantSystem
+	testTenant string = "fake-tenant"
 )
 
 // Inject into master an authorizer that uses user info.

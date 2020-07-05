@@ -126,14 +126,15 @@ func ConvertVmPodToContainerPod(pod *v1.Pod) *v1.Pod {
 	// for now, just ensure resources were converted along with other essentials
 	cpod.Spec.Containers = []v1.Container{
 		{
-			Name:            pod.Spec.VirtualMachine.Name,
-			Image:           pod.Spec.VirtualMachine.Image,
-			ImagePullPolicy: pod.Spec.VirtualMachine.ImagePullPolicy,
-			VolumeMounts:    pod.Spec.VirtualMachine.VolumeMounts,
-			VolumeDevices:   pod.Spec.VirtualMachine.VolumeDevices,
-			TTY:             true,
-			Stdin:           true,
-			Resources:       pod.Spec.VirtualMachine.Resources,
+			Name:               pod.Spec.VirtualMachine.Name,
+			Image:              pod.Spec.VirtualMachine.Image,
+			ImagePullPolicy:    pod.Spec.VirtualMachine.ImagePullPolicy,
+			VolumeMounts:       pod.Spec.VirtualMachine.VolumeMounts,
+			VolumeDevices:      pod.Spec.VirtualMachine.VolumeDevices,
+			TTY:                true,
+			Stdin:              true,
+			Resources:          pod.Spec.VirtualMachine.Resources,
+			ResourcesAllocated: pod.Spec.VirtualMachine.ResourcesAllocated,
 		},
 	}
 
