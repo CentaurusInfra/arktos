@@ -82,11 +82,11 @@ func GetEtcdStorageDataForNamespace(namespace string) map[schema.GroupVersionRes
 			ExpectedEtcdPath: "/registry/namespaces/namespace1",
 		},
 		gvr("", "v1", "tenants"): {
-			Stub:             `{"metadata": {"name": "tenant1"}, "spec": {"storageClusterId": "cluster1", "finalizers": ["kubernetes"]}}`,
+			Stub:             `{"metadata": {"name": "tenant1"}, "spec": {"storageClusterId": "1", "finalizers": ["kubernetes"]}}`,
 			ExpectedEtcdPath: "/registry/tenants/tenant1",
 		},
 		gvr("", "v1", "storageclusters"): {
-			Stub:             `{"metadata": {"name": "storagecluster1"}, "storageClusterId": "cluster1", "serviceAddress": "` + framework.GetEtcdURL() + `"}`,
+			Stub:             `{"metadata": {"name": "storagecluster1"}, "storageClusterId": "1", "serviceAddress": "` + framework.GetEtcdURL() + `"}`,
 			ExpectedEtcdPath: "/registry/storageclusters/storagecluster1",
 		},
 		gvr("", "v1", "nodes"): {
