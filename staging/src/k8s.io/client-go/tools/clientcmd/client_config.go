@@ -43,6 +43,9 @@ var (
 	DefaultClientConfig = DirectClientConfig{*clientcmdapi.NewConfig(), "", &ConfigOverrides{
 		ClusterDefaults: ClusterDefaults,
 	}, nil, NewDefaultClientConfigLoadingRules(), promptedCredentials{}}
+
+	// Define the error as public string for convenience of test
+	RegularTenantAccessSystemSpaceError = "System space is not accessible for tenant %v"
 )
 
 // getDefaultServer returns a default setting for DefaultClientConfig
@@ -311,9 +314,29 @@ func canIdentifyUser(config restclient.KubeConfig) bool {
 		config.ExecProvider != nil
 }
 
+// getUserTenantInContext gets the tenant name from the context.
+// First try the context specified in the commandline. If not found, try the current context in use.
+func (config *DirectClientConfig) getUserTenantInContext() string {
+
+	if config.overrides != nil && config.overrides.CurrentContext != "" {
+		if config.config.Contexts[config.overrides.CurrentContext] != nil {
+			return config.config.Contexts[config.overrides.CurrentContext].Tenant
+		}
+	}
+
+	currentContextName, _ := config.getContextName()
+	if currentContextName == "" {
+		return ""
+	}
+
+	return config.config.Contexts[currentContextName].Tenant
+}
+
 // Tenant implements ClientConfig
 func (config *DirectClientConfig) Tenant() (string, bool, error) {
-	if config.overrides != nil && config.overrides.Context.Tenant != "" {
+	// It is OK to run a kubectl command with an option of "--tenant system" if it is running in a system context,
+	// while rejected if running in a context of regular tenant
+	if config.overrides != nil && config.overrides.Context.Tenant != "" && config.overrides.Context.Tenant != metav1.TenantSystem {
 		// In the event we have an empty config but we do have a tenant override, we should return
 		// the tenant override instead of having config.ConfirmUsable() return an error. This allows
 		// things like in-cluster clients to execute `kubectl get pods --tenant=foo` and have the
@@ -321,23 +344,28 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 		if config.overrides.Context.Tenant == metav1.TenantAllExplicit {
 			return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
 		}
+
 		return config.overrides.Context.Tenant, true, nil
 	}
 
 	if err := config.ConfirmUsable(); err != nil {
 		return "", false, err
 	}
+	ctxTenant := config.getUserTenantInContext()
 
-	configContext, err := config.getContext()
-	if err != nil {
-		return "", false, err
+	if config.overrides != nil && config.overrides.Context.Tenant == metav1.TenantSystem {
+		if ctxTenant != metav1.TenantNone && ctxTenant != metav1.TenantSystem {
+			return "", false, fmt.Errorf(RegularTenantAccessSystemSpaceError, ctxTenant)
+		} else {
+			return metav1.TenantSystem, true, nil
+		}
 	}
 
-	if configContext.Tenant == metav1.TenantAllExplicit {
+	if ctxTenant == metav1.TenantAllExplicit {
 		return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
 	}
 
-	return configContext.Tenant, false, nil
+	return ctxTenant, false, nil
 }
 
 // Namespace implements ClientConfig

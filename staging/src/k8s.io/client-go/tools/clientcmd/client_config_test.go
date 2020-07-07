@@ -18,6 +18,7 @@ limitations under the License.
 package clientcmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/imdario/mergo"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -676,6 +678,84 @@ func TestNamespaceOverride(t *testing.T) {
 	}
 
 	matchStringArg("foo", ns, t)
+}
+
+func TestTenantOverrideWhenNoContext(t *testing.T) {
+	config := &DirectClientConfig{
+		overrides: &ConfigOverrides{
+			Context: clientcmdapi.Context{
+				Tenant: "foo",
+			},
+		},
+	}
+
+	tenant, overridden, err := config.Tenant()
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if !overridden {
+		t.Errorf("Expected overridden = true")
+	}
+
+	matchStringArg("foo", tenant, t)
+}
+
+func TestRegularTenantCannotSetSystemTenantOverride(t *testing.T) {
+	config := &DirectClientConfig{
+		overrides: &ConfigOverrides{
+			Context: clientcmdapi.Context{
+				Tenant: metav1.TenantSystem,
+			},
+		},
+	}
+
+	testTenant := "regular-tenant"
+	config.config = *createValidTestConfig()
+	config.config.Contexts[config.config.CurrentContext].Tenant = testTenant
+
+	tenant, overridden, err := config.Tenant()
+	expectedError := fmt.Sprintf(RegularTenantAccessSystemSpaceError, testTenant)
+
+	if err == nil {
+		t.Errorf("Unexpected no error, expected error %q", expectedError)
+	} else {
+		if err.Error() != expectedError {
+			t.Errorf("Expected error: %q, got: %q", expectedError, err)
+		}
+	}
+
+	if overridden {
+		t.Errorf("Expected overridden = false")
+	}
+
+	matchStringArg("", tenant, t)
+}
+
+func TestSystemTenantSetSystemTenantOverride(t *testing.T) {
+	config := &DirectClientConfig{
+		overrides: &ConfigOverrides{
+			Context: clientcmdapi.Context{
+				Tenant: metav1.TenantSystem,
+			},
+		},
+	}
+
+	config.config = *createValidTestConfig()
+	config.config.Contexts[config.config.CurrentContext].Tenant = metav1.TenantSystem
+
+	tenant, overridden, err := config.Tenant()
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if !overridden {
+		t.Errorf("Expected overridden = true")
+	}
+
+	matchStringArg(metav1.TenantSystem, tenant, t)
 }
 
 func TestAuthConfigMerge(t *testing.T) {
