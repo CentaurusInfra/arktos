@@ -18,10 +18,10 @@ package versioned
 
 import (
 	"fmt"
-	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/kubernetes/pkg/kubectl/generate"
 )
 
@@ -82,8 +82,9 @@ func (g *TenantGeneratorV1) validate() error {
 	if len(g.Name) == 0 {
 		return fmt.Errorf("name must be specified")
 	}
-	if len(strings.TrimSpace(g.StorageClusterId)) == 0 {
-		return fmt.Errorf("StorageClusterId can not be empty")
+
+	if _, err := diff.GetClusterIdFromString(g.StorageClusterId); err != nil {
+		return fmt.Errorf("Invalid StorageClusterId: %v", err)
 	}
 	return nil
 }
