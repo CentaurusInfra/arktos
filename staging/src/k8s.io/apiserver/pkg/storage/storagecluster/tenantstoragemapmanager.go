@@ -256,18 +256,22 @@ func (ts *TenantStorageMapManager) deleteTenant(obj interface{}) {
 	klog.V(4).Infof("mux released deleteTenant.")
 }
 
-func (ts *TenantStorageMapManager) GetClusterIdFromTenant(tenant string) string {
+func (ts *TenantStorageMapManager) GetClusterIdFromTenant(tenant string) uint8 {
 	ts.mux.RLock()
 	tenantStorage, isOK := ts.tenantToClusterMap[tenant]
-	clusterId := ""
+	clusterId := uint8(0)
+	var err error
 	if isOK {
-		clusterId = tenantStorage.clusterId
+		clusterId, err = diff.GetClusterIdFromString(tenantStorage.clusterId)
+		if err != nil {
+			klog.Errorf("Tenant %s storage cluster id is not valid. Use system cluster instead", tenant)
+		}
 	}
 
 	ts.mux.RUnlock()
 	return clusterId
 }
 
-func getClusterIdFromTenant(tenant string) string {
+func getClusterIdFromTenant(tenant string) uint8 {
 	return GetTenantStorageManager().GetClusterIdFromTenant(tenant)
 }

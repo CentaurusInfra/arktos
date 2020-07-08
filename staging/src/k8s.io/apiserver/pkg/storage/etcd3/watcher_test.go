@@ -596,7 +596,8 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			keyRanges := GetKeyAndOptFromPartitionConfig(tc.key, tc.partitionedConfig)
+			w := &watcher{partitionConfig: tc.partitionedConfig}
+			keyRanges := w.getKeyAndOptFromPartitionConfig(tc.key)
 			if len(keyRanges) != len(tc.expectedKey) {
 				t.Fatalf("The actual size %d is not expected as %d", len(keyRanges), len(tc.expectedKey))
 			}
