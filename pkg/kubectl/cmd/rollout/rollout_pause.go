@@ -45,6 +45,8 @@ type PauseOptions struct {
 	Builder          func() *resource.Builder
 	Namespace        string
 	EnforceNamespace bool
+	Tenant           string
+	EnforceTenant    bool
 	Resources        []string
 
 	resource.FilenameOptions
@@ -106,6 +108,11 @@ func (o *PauseOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 		return err
 	}
 
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.Resources = args
 	o.Builder = f.NewBuilder
 
@@ -128,8 +135,9 @@ func (o *PauseOptions) Validate() error {
 func (o *PauseOptions) RunPause() error {
 	r := o.Builder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.FilenameOptions).
 		ResourceTypeOrNameArgs(true, o.Resources...).
 		ContinueOnError().
 		Latest().
@@ -174,7 +182,7 @@ func (o *PauseOptions) RunPause() error {
 			continue
 		}
 
-		obj, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+		obj, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch: %v", err))
 			continue

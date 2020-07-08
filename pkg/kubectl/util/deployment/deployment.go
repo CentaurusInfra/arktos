@@ -94,8 +94,8 @@ func GetAllReplicaSets(deployment *appsv1.Deployment, c appsclient.AppsV1Interfa
 
 // RsListFromClient returns an rsListFunc that wraps the given client.
 func rsListFromClient(c appsclient.AppsV1Interface) rsListFunc {
-	return func(namespace string, options metav1.ListOptions) ([]*appsv1.ReplicaSet, error) {
-		rsList, err := c.ReplicaSets(namespace).List(options)
+	return func(tenant, namespace string, options metav1.ListOptions) ([]*appsv1.ReplicaSet, error) {
+		rsList, err := c.ReplicaSetsWithMultiTenancy(namespace, tenant).List(options)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +108,7 @@ func rsListFromClient(c appsclient.AppsV1Interface) rsListFunc {
 }
 
 // TODO: switch this to full namespacers
-type rsListFunc func(string, metav1.ListOptions) ([]*appsv1.ReplicaSet, error)
+type rsListFunc func(tenant, namespace string, options metav1.ListOptions) ([]*appsv1.ReplicaSet, error)
 
 // listReplicaSets returns a slice of RSes the given deployment targets.
 // Note that this does NOT attempt to reconcile ControllerRef (adopt/orphan),
@@ -118,12 +118,13 @@ func listReplicaSets(deployment *appsv1.Deployment, getRSList rsListFunc) ([]*ap
 	// TODO: Right now we list replica sets by their labels. We should list them by selector, i.e. the replica set's selector
 	//       should be a superset of the deployment's selector, see https://github.com/kubernetes/kubernetes/issues/19830.
 	namespace := deployment.Namespace
+	tenant := deployment.Tenant
 	selector, err := metav1.LabelSelectorAsSelector(deployment.Spec.Selector)
 	if err != nil {
 		return nil, err
 	}
 	options := metav1.ListOptions{LabelSelector: selector.String()}
-	all, err := getRSList(namespace, options)
+	all, err := getRSList(tenant, namespace, options)
 	if err != nil {
 		return nil, err
 	}

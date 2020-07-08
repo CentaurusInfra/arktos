@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -95,6 +96,8 @@ type RollingUpdateOptions struct {
 	OutputFormat     string
 	Namespace        string
 	EnforceNamespace bool
+	Tenant           string
+	EnforceTenant    bool
 
 	ScaleClient scaleclient.ScalesGetter
 	ClientSet   kubernetes.Interface
@@ -212,6 +215,11 @@ func (o *RollingUpdateOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, a
 		return err
 	}
 
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	o.ScaleClient, err = cmdutil.ScaleClientFn(f)
 	if err != nil {
 		return err
@@ -249,13 +257,13 @@ func (o *RollingUpdateOptions) Run() error {
 
 	var newRc *corev1.ReplicationController
 	// fetch rc
-	oldRc, err := coreClient.ReplicationControllers(o.Namespace).Get(o.OldName, metav1.GetOptions{})
+	oldRc, err := coreClient.ReplicationControllersWithMultiTenancy(o.Namespace, o.Tenant).Get(o.OldName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) || len(o.Image) == 0 || !o.KeepOldName {
 			return err
 		}
 		// We're in the middle of a rename, look for an RC with a source annotation of oldName
-		newRc, err := kubectl.FindSourceController(coreClient, o.Namespace, o.OldName)
+		newRc, err := kubectl.FindSourceController(coreClient, o.Tenant, o.Namespace, o.OldName)
 		if err != nil {
 			return err
 		}
@@ -273,8 +281,9 @@ func (o *RollingUpdateOptions) Run() error {
 		request := o.Builder.
 			Unstructured().
 			Schema(schema).
+			TenantParam(o.Tenant).DefaultTenant().
 			NamespaceParam(o.Namespace).DefaultNamespace().
-			FilenameParam(o.EnforceNamespace, &resource.FilenameOptions{Recursive: false, Filenames: []string{filename}}).
+			FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &resource.FilenameOptions{Recursive: false, Filenames: []string{filename}}).
 			Flatten().
 			Do()
 		infos, err := request.Infos()
@@ -311,7 +320,7 @@ func (o *RollingUpdateOptions) Run() error {
 	if len(o.Image) != 0 {
 		codec := scheme.Codecs.LegacyCodec(corev1.SchemeGroupVersion)
 		newName := o.FindNewName(oldRc)
-		if newRc, err = kubectl.LoadExistingNextReplicationController(coreClient, o.Namespace, newName); err != nil {
+		if newRc, err = kubectl.LoadExistingNextReplicationController(coreClient, o.Tenant, o.Namespace, newName); err != nil {
 			return err
 		}
 		if newRc != nil {
@@ -321,6 +330,7 @@ func (o *RollingUpdateOptions) Run() error {
 			fmt.Fprintf(o.Out, "Found existing update in progress (%s), resuming.\n", newRc.Name)
 		} else {
 			config := &kubectl.NewControllerConfig{
+				Tenant:        o.Tenant,
 				Namespace:     o.Namespace,
 				OldName:       o.OldName,
 				NewName:       newName,
@@ -347,7 +357,7 @@ func (o *RollingUpdateOptions) Run() error {
 		}
 		// If new image is same as old, the hash may not be distinct, so add a suffix.
 		oldHash += "-orig"
-		oldRc, err = kubectl.UpdateExistingReplicationController(coreClient, coreClient, oldRc, o.Namespace, newRc.Name, o.DeploymentKey, oldHash, o.Out)
+		oldRc, err = kubectl.UpdateExistingReplicationController(coreClient, coreClient, oldRc, o.Tenant, o.Namespace, newRc.Name, o.DeploymentKey, oldHash, o.Out)
 		if err != nil {
 			return err
 		}
@@ -355,7 +365,7 @@ func (o *RollingUpdateOptions) Run() error {
 
 	if o.Rollback {
 		newName := o.FindNewName(oldRc)
-		if newRc, err = kubectl.LoadExistingNextReplicationController(coreClient, o.Namespace, newName); err != nil {
+		if newRc, err = kubectl.LoadExistingNextReplicationController(coreClient, o.Tenant, o.Namespace, newName); err != nil {
 			return err
 		}
 
@@ -369,7 +379,7 @@ func (o *RollingUpdateOptions) Run() error {
 			filename, o.OldName)
 	}
 
-	updater := kubectl.NewRollingUpdater(newRc.Namespace, coreClient, coreClient, o.ScaleClient)
+	updater := kubectl.NewRollingUpdater(newRc.Tenant, newRc.Namespace, coreClient, coreClient, o.ScaleClient)
 
 	// To successfully pull off a rolling update the new and old rc have to differ
 	// by at least one selector. Every new pod should have the selector and every
@@ -432,7 +442,7 @@ func (o *RollingUpdateOptions) Run() error {
 		if err != nil {
 			return err
 		}
-		coreClient.ReplicationControllers(config.NewRc.Namespace).Update(config.NewRc)
+		coreClient.ReplicationControllersWithMultiTenancy(config.NewRc.Namespace, config.NewRc.Tenant).Update(config.NewRc)
 	}
 	err = updater.Update(config)
 	if err != nil {
@@ -445,7 +455,7 @@ func (o *RollingUpdateOptions) Run() error {
 	} else {
 		message = fmt.Sprintf("rolling updated to %q", newRc.Name)
 	}
-	newRc, err = coreClient.ReplicationControllers(o.Namespace).Get(newRc.Name, metav1.GetOptions{})
+	newRc, err = coreClient.ReplicationControllersWithMultiTenancy(o.Namespace, o.Tenant).Get(newRc.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
