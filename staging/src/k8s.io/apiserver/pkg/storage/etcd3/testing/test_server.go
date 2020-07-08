@@ -306,9 +306,9 @@ func NewUnsecuredEtcd3TestClientServer(t *testing.T) (*EtcdTestServer, *storageb
 	return server, config
 }
 
-func mockGetClusterIdFromTenant(tenant string) string {
+func mockGetClusterIdFromTenant(tenant string) uint8 {
 	if tenant == "t1" {
-		return "c1"
+		return 1
 	}
-	return ""
+	return 0
 }

@@ -41,7 +41,7 @@ var (
 
 	//TODO: to refer the default value defined in future storage cluster work, instead of hard-coded
 	//tracking issue: https://github.com/futurewei-cloud/arktos/issues/326
-	defaultStorageClusterId = "system"
+	defaultStorageClusterId = "0"
 )
 
 // TenantOpts is the options for 'create tenant' sub command

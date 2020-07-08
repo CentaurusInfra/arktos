@@ -124,6 +124,32 @@ func TestTenantGenerate(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		{
+			name: "test11",
+			params: map[string]interface{}{
+				"name":           "foo",
+				"storagecluster": "non-integer",
+			},
+			expectErr: true,
+		},
+		{
+			name: "test12",
+			params: map[string]interface{}{
+				"name": "foo",
+				// the value must be 0-63
+				"storagecluster": "-1",
+			},
+			expectErr: true,
+		},
+		{
+			name: "test13",
+			params: map[string]interface{}{
+				"name": "foo",
+				// the value must be 0-63
+				"storagecluster": "64",
+			},
+			expectErr: true,
+		},
 	}
 	generator := TenantGeneratorV1{}
 	for index, tt := range tests {

@@ -39,7 +39,7 @@ type StorageClusterManager struct {
 	storageClusterListerSynced cache.InformerSynced
 	storageClusterLister       corelisters.StorageClusterLister
 
-	backendClusters map[string]*v1.StorageCluster
+	backendClusters map[uint8]*v1.StorageCluster
 
 	mux sync.Mutex
 	rev int64
@@ -60,7 +60,7 @@ func NewStorageClusterManager(scInformer coreinformers.StorageClusterInformer) *
 
 	manager := &StorageClusterManager{
 		rev:             int64(0),
-		backendClusters: make(map[string]*v1.StorageCluster),
+		backendClusters: make(map[uint8]*v1.StorageCluster),
 	}
 
 	scInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -109,7 +109,12 @@ func (s *StorageClusterManager) syncClusters() error {
 
 	aggErr := []error{}
 	for _, cluster := range clusters {
-		s.backendClusters[cluster.StorageClusterId] = cluster
+		clusterId, err := diff.GetClusterIdFromString(cluster.StorageClusterId)
+		if err != nil {
+			klog.Fatalf("Invalid storage cluster id %v", cluster.StorageClusterId)
+		}
+
+		s.backendClusters[clusterId] = cluster
 		newRev, err := strconv.ParseInt(cluster.ResourceVersion, 10, 64)
 		if err != nil {
 			aggErr = append(aggErr, errors.New(fmt.Sprintf("Got invalid resource version %s for storage cluster %v.", cluster.ResourceVersion, cluster)))
@@ -143,7 +148,12 @@ func (s *StorageClusterManager) addCluster(obj interface{}) {
 		klog.V(3).Infof("Received duplicated storage cluster add event. Ignore [%v]. Current rev %v.", c, s.rev)
 		return
 	}
-	existedCluster, isOK := s.backendClusters[c.StorageClusterId]
+	clusterId, err := diff.GetClusterIdFromString(c.StorageClusterId)
+	if err != nil {
+		klog.Fatalf("Invalid storage cluster id %v", c.StorageClusterId)
+	}
+
+	existedCluster, isOK := s.backendClusters[clusterId]
 	if isOK {
 		klog.Errorf("Storage cluster id %s already used in %s. Skipping now", c.StorageClusterId, existedCluster.Name)
 		return
@@ -151,8 +161,8 @@ func (s *StorageClusterManager) addCluster(obj interface{}) {
 
 	s.mux.Lock()
 	klog.V(4).Infof("mux acquired addCluster.")
-	s.backendClusters[c.StorageClusterId] = c
-	s.updateBackendStorageConfig(c.StorageClusterId, "ADD")
+	s.backendClusters[clusterId] = c
+	s.updateBackendStorageConfig(clusterId, "ADD")
 
 	s.rev = rev
 	s.mux.Unlock()
@@ -189,11 +199,17 @@ func (s *StorageClusterManager) updateCluster(old, cur interface{}) {
 			s.mux.Unlock()
 			klog.V(4).Infof("mux released updateCluster.")
 		}()
-		if curCluster.ServiceAddress != oldCluster.ServiceAddress {
-			go s.updateBackendStorageConfig(curCluster.StorageClusterId, "UPDATE")
+
+		clusterId, err := diff.GetClusterIdFromString(curCluster.StorageClusterId)
+		if err != nil {
+			klog.Fatalf("Invalid storage cluster id %v", clusterId)
 		}
 
-		s.backendClusters[curCluster.StorageClusterId] = curCluster
+		if curCluster.ServiceAddress != oldCluster.ServiceAddress {
+			go s.updateBackendStorageConfig(clusterId, "UPDATE")
+		}
+
+		s.backendClusters[clusterId] = curCluster
 		s.rev = newRev
 
 	} else {
@@ -226,7 +242,12 @@ func (s *StorageClusterManager) deleteCluster(obj interface{}) {
 		klog.V(3).Infof("Received duplicated storage cluster delete event. Ignore [%v]. Current rev %v.", cluster, s.rev)
 	}
 
-	_, isOK := s.backendClusters[cluster.StorageClusterId]
+	clusterId, err := diff.GetClusterIdFromString(cluster.StorageClusterId)
+	if err != nil {
+		klog.Fatalf("Invalid storage cluster id %v", clusterId)
+	}
+
+	_, isOK := s.backendClusters[clusterId]
 	if isOK {
 		s.mux.Lock()
 		klog.V(4).Infof("mux acquired deleteCluster.")
@@ -235,15 +256,15 @@ func (s *StorageClusterManager) deleteCluster(obj interface{}) {
 			klog.V(4).Infof("mux released deleteCluster.")
 		}()
 
-		s.updateBackendStorageConfig(cluster.StorageClusterId, "DELETE")
-		delete(s.backendClusters, cluster.StorageClusterId)
+		s.updateBackendStorageConfig(clusterId, "DELETE")
+		delete(s.backendClusters, clusterId)
 		s.rev = rev
 	} else {
 		klog.Errorf("Trying to delete cluster [%+v] but not in current storage cluster config [%+v]", cluster, s.backendClusters)
 	}
 }
 
-func (s *StorageClusterManager) updateBackendStorageConfig(storageClusterId string, action string) {
+func (s *StorageClusterManager) updateBackendStorageConfig(storageClusterId uint8, action string) {
 	addresses := []string{s.backendClusters[storageClusterId].ServiceAddress}
 
 	storageClusterAction := StorageClusterAction{

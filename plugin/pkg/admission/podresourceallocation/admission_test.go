@@ -109,6 +109,7 @@ func TestAdmitCreate(t *testing.T) {
 		pod.Spec.Containers[0].Resources = tc.resources
 		pod.Spec.Containers[0].ResourcesAllocated = tc.resourcesAllocated
 		pod.Spec.Containers[0].ResizePolicy = tc.resizePolicy
+		pod.Spec.WorkloadInfo = nil
 		err := handler.Admit(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"),
 			pod.Tenant, pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "",
 			admission.Create, nil, false, nil), nil)
@@ -204,8 +205,10 @@ func TestAdmitUpdate(t *testing.T) {
 		newPod := oldPod.DeepCopy()
 		oldPod.Spec.Containers[0].ResourcesAllocated = tc.oldResourcesAllocated
 		oldPod.Spec.Containers[0].ResizePolicy = tc.oldResizePolicy
+		oldPod.Spec.WorkloadInfo = nil
 		newPod.Spec.Containers[0].ResourcesAllocated = tc.newResourcesAllocated
 		newPod.Spec.Containers[0].ResizePolicy = tc.newResizePolicy
+		newPod.Spec.WorkloadInfo = nil
 		err := handler.Admit(admission.NewAttributesRecord(newPod, oldPod, api.Kind("Pod").WithVersion("version"),
 			newPod.Tenant, newPod.Namespace, newPod.Name, api.Resource("pods").WithVersion("version"), "",
 			admission.Update, nil, false, nil), nil)
@@ -274,6 +277,7 @@ func TestValidateCreate(t *testing.T) {
 	for _, tc := range tests {
 		pod.Spec.Containers[0].Resources = tc.resources
 		pod.Spec.Containers[0].ResourcesAllocated = tc.resourcesAllocated
+		pod.Spec.WorkloadInfo = nil
 		err := handler.Validate(admission.NewAttributesRecord(&pod, nil, api.Kind("Pod").WithVersion("version"),
 			pod.Tenant, pod.Namespace, pod.Name, api.Resource("pods").WithVersion("version"), "",
 			admission.Create, nil, false, nil), nil)
@@ -334,6 +338,8 @@ func TestValidateUpdate(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		oldPod.Spec.WorkloadInfo = nil
+		newPod.Spec.WorkloadInfo = nil
 		err := handler.Validate(admission.NewAttributesRecord(newPod, oldPod, api.Kind("Pod").WithVersion("version"),
 			newPod.Tenant, newPod.Namespace, newPod.Name, api.Resource("pods").WithVersion("version"), "",
 			admission.Update, nil, false, tc.userInfo), nil)

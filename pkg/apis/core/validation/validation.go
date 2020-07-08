@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"k8s.io/klog"
@@ -5385,7 +5386,12 @@ func ValidateNamespace(namespace *core.Namespace) field.ErrorList {
 func validateStorageClusterId(stringValue string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if len(stringValue) > 0 {
-		allErrs = append(allErrs, ValidateDNS1123Label(stringValue, fldPath)...)
+		intValue, err := strconv.ParseInt(stringValue, 10, 8)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath, stringValue, "must be integer 0-63"))
+		} else if intValue < 0 || intValue > 63 {
+			allErrs = append(allErrs, field.Invalid(fldPath, stringValue, "must be integer 0-63"))
+		}
 	} else {
 		allErrs = append(allErrs, field.Required(fldPath, "must specify storage cluster id"))
 	}
