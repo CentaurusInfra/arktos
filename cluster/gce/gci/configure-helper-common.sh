@@ -1778,7 +1778,10 @@ function start-kube-apiserver {
   fi
   echo "APISERVER_SERVICEGROUPID: ${APISERVER_SERVICEGROUPID:-0}"
   params+=" --service-group-id=${APISERVER_SERVICEGROUPID:-0}"
-  params+=" --partition-config=${KUBE_HOME}/apiserver.config"
+  if [[ -f "${KUBE_HOME}/apiserver.config" ]]; then
+    mv ${KUBE_HOME}/apiserver.config /etc/srv/kubernetes/
+    params+=" --partition-config=/etc/srv/kubernetes/apiserver.config"
+  fi
   local webhook_authn_config_mount=""
   local webhook_authn_config_volume=""
   if [[ -n "${GCP_AUTHN_URL:-}" ]]; then
