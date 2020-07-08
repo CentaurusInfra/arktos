@@ -375,7 +375,7 @@ func (tc *TenantController) cerateSystemTenantIfNotExist() {
 				Name: metav1.TenantSystem,
 			},
 			Spec: v1.TenantSpec{
-				StorageClusterId: "system",
+				StorageClusterId: "0",
 			},
 		})
 	}

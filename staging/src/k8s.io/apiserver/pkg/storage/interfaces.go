@@ -249,13 +249,13 @@ type StorageClusterInterface interface {
 	Interface
 
 	// Add a new backend storage client for clusterId
-	AddDataClient(c *clientv3.Client, clusterId string, destroyFunc func()) error
+	AddDataClient(c *clientv3.Client, clusterId uint8, destroyFunc func()) error
 
 	// Update the new backend storage client for clusterId
-	UpdateDataClient(c *clientv3.Client, clusterId string, destroyFunc func()) error
+	UpdateDataClient(c *clientv3.Client, clusterId uint8, destroyFunc func()) error
 
 	// Delete backend client for clusterId
-	DeleteDataClient(clusterId string)
+	DeleteDataClient(clusterId uint8)
 }
 
 // Interval defines a left closed Begin bound and a right open End bound.

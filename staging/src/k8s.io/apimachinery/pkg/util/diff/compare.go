@@ -16,7 +16,11 @@ limitations under the License.
 
 package diff
 
-import "time"
+import (
+	"errors"
+	"strconv"
+	"time"
+)
 
 var allowedNTPDiffInMilliSecond = uint64(5000)
 
@@ -91,6 +95,17 @@ func revisionCompare(revision1, revision2 uint64) (result int, isSameCluster boo
 // as we are using uint64 here. Not sure how conversion happened
 func extractClusterId(rev uint64) uint64 {
 	return (rev >> 13) % 64
+}
+
+func GetClusterIdFromString(stringValue string) (uint8, error) {
+	clusterId, err := strconv.ParseInt(stringValue, 10, 8)
+	if err != nil {
+		return 0, err
+	}
+	if clusterId < 0 || clusterId > 63 {
+		return 0, errors.New("Cluster id needs to be 0 - 63.")
+	}
+	return uint8(clusterId), nil
 }
 
 func extractMilliSecond(rev uint64) uint64 {

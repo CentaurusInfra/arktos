@@ -43,7 +43,7 @@ func validNewTenantStorage() *api.StorageCluster {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
-		StorageClusterId: "cluster1",
+		StorageClusterId: "1",
 		ServiceAddress:   "10.10.1.5:2379",
 	}
 }

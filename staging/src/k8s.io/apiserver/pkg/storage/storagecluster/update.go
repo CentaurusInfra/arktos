@@ -25,7 +25,7 @@ var storageClusterUpdateChgrp *bcast.Group
 var muxCreateStorageUpdateCh sync.Mutex
 
 type StorageClusterAction struct {
-	StorageClusterId string
+	StorageClusterId uint8
 	ServerAddresses  []string
 	// Action can be
 	// ADD - added a new storage cluster
