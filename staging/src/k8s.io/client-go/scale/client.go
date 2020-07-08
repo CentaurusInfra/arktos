@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	autoscaling "k8s.io/api/autoscaling/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
@@ -107,12 +108,18 @@ func (c *scaleClient) pathAndVersionFor(resource schema.GroupResource) (string, 
 type namespacedScaleClient struct {
 	client    *scaleClient
 	namespace string
+	tenant    string
 }
 
 func (c *scaleClient) Scales(namespace string) ScaleInterface {
+	return c.ScalesWithMultiTenancy(namespace, metav1.TenantSystem)
+}
+
+func (c *scaleClient) ScalesWithMultiTenancy(namespace, tenant string) ScaleInterface {
 	return &namespacedScaleClient{
 		client:    c,
 		namespace: namespace,
+		tenant:    tenant,
 	}
 }
 
@@ -129,6 +136,7 @@ func (c *namespacedScaleClient) Get(resource schema.GroupResource, name string) 
 
 	result := c.client.clientBase.Get().
 		AbsPath(path).
+		Tenant(c.tenant).
 		Namespace(c.namespace).
 		Resource(gvr.Resource).
 		Name(name).
@@ -186,6 +194,7 @@ func (c *namespacedScaleClient) Update(resource schema.GroupResource, scale *aut
 
 	result := c.client.clientBase.Put().
 		AbsPath(path).
+		Tenant(c.tenant).
 		Namespace(c.namespace).
 		Resource(gvr.Resource).
 		Name(scale.Name).

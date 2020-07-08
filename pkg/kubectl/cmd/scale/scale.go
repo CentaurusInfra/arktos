@@ -84,6 +84,8 @@ type ScaleOptions struct {
 	builder                      *resource.Builder
 	namespace                    string
 	enforceNamespace             bool
+	tenant                       string
+	enforceTenant                bool
 	args                         []string
 	shortOutput                  bool
 	clientSet                    kubernetes.Interface
@@ -155,6 +157,10 @@ func (o *ScaleOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 	if err != nil {
 		return err
 	}
+	o.tenant, o.enforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	o.builder = f.NewBuilder()
 	o.args = args
 	o.shortOutput = cmdutil.GetFlagString(cmd, "output") == "name"
@@ -185,8 +191,9 @@ func (o *ScaleOptions) RunScale() error {
 	r := o.builder.
 		Unstructured().
 		ContinueOnError().
+		TenantParam(o.tenant).DefaultTenant().
 		NamespaceParam(o.namespace).DefaultNamespace().
-		FilenameParam(o.enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.enforceTenant, o.enforceNamespace, &o.FilenameOptions).
 		ResourceTypeOrNameArgs(o.All, o.args...).
 		Flatten().
 		LabelSelectorParam(o.Selector).
@@ -228,7 +235,7 @@ func (o *ScaleOptions) RunScale() error {
 		}
 
 		mapping := info.ResourceMapping()
-		if err := o.scaler.Scale(info.Namespace, info.Name, uint(o.Replicas), precondition, retry, waitForReplicas, mapping.Resource.GroupResource()); err != nil {
+		if err := o.scaler.Scale(info.Tenant, info.Namespace, info.Name, uint(o.Replicas), precondition, retry, waitForReplicas, mapping.Resource.GroupResource()); err != nil {
 			return err
 		}
 
@@ -243,7 +250,7 @@ func (o *ScaleOptions) RunScale() error {
 
 			// scale is a single client job
 			helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
-			if _, err := helper.Patch(info.Namespace, info.Name, types.MergePatchType, mergePatch, nil); err != nil {
+			if _, err := helper.PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.MergePatchType, mergePatch, nil); err != nil {
 				klog.V(4).Infof("error recording reason: %v", err)
 			}
 		}
