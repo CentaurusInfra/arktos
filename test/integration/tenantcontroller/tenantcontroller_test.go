@@ -170,7 +170,7 @@ func newTenant(name string) *v1.Tenant {
 			Name: testTenant,
 		},
 		Spec: v1.TenantSpec{
-			StorageClusterId: "system",
+			StorageClusterId: "0",
 		},
 	}
 }

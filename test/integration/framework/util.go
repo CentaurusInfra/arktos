@@ -54,6 +54,9 @@ func CreateTestingTenant(baseName string, apiserver *httptest.Server, t *testing
 			// TODO: Once we start creating tenants, switch to GenerateName.
 			Name: baseName,
 		},
+		Spec: v1.TenantSpec{
+			StorageClusterId: "1",
+		},
 	}
 }
 
