@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ package fake
 
 import (
 	autoscalingapi "k8s.io/api/autoscaling/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/testing"
@@ -32,20 +34,26 @@ type FakeScaleClient struct {
 }
 
 func (f *FakeScaleClient) Scales(namespace string) scale.ScaleInterface {
+	return f.ScalesWithMultiTenancy(namespace, metav1.TenantSystem)
+}
+
+func (f *FakeScaleClient) ScalesWithMultiTenancy(namespace, tenant string) scale.ScaleInterface {
 	return &fakeNamespacedScaleClient{
+		tenant:    tenant,
 		namespace: namespace,
 		fake:      &f.Fake,
 	}
 }
 
 type fakeNamespacedScaleClient struct {
+	tenant    string
 	namespace string
 	fake      *testing.Fake
 }
 
 func (f *fakeNamespacedScaleClient) Get(resource schema.GroupResource, name string) (*autoscalingapi.Scale, error) {
 	obj, err := f.fake.
-		Invokes(testing.NewGetSubresourceAction(resource.WithVersion(""), f.namespace, "scale", name), &autoscalingapi.Scale{})
+		Invokes(testing.NewGetSubresourceActionWithMultiTenancy(resource.WithVersion(""), f.namespace, "scale", name, f.tenant), &autoscalingapi.Scale{})
 
 	if err != nil {
 		return nil, err
@@ -56,7 +64,7 @@ func (f *fakeNamespacedScaleClient) Get(resource schema.GroupResource, name stri
 
 func (f *fakeNamespacedScaleClient) Update(resource schema.GroupResource, scale *autoscalingapi.Scale) (*autoscalingapi.Scale, error) {
 	obj, err := f.fake.
-		Invokes(testing.NewUpdateSubresourceAction(resource.WithVersion(""), f.namespace, "scale", scale), &autoscalingapi.Scale{})
+		Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(resource.WithVersion(""), f.namespace, "scale", scale, f.tenant), &autoscalingapi.Scale{})
 
 	if err != nil {
 		return nil, err

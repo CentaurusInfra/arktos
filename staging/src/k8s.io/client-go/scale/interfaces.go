@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@ import (
 // for a particular namespace.
 type ScalesGetter interface {
 	Scales(namespace string) ScaleInterface
+	ScalesWithMultiTenancy(namespace, tenant string) ScaleInterface
 }
 
 // ScaleInterface can fetch and update scales for
