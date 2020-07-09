@@ -47,13 +47,26 @@ type NetworkSpec struct {
 	// VPCID is vpc identifier specific to network provider
 	// +optional
 	VPCID string `json:"vpcID,omitempty"`
+	// Service specifies service related properties
+	Service NetworkService `json: "service,omitempty"`
 }
+
+// NetworkService defines service related information of the network
+type NetworkService struct {
+	// IPAM is the IPM type of services
+	IPAM NetworkServiceIPAM `json:"ipam,omitempty"`
+	// CIDRS specifies ranges of service VIP
+	CIDRS []string `json:"cidrs"`
+}
+
+// NetworkServiceIPAM describes the IPAM type of services
+type NetworkServiceIPAM string
 
 // NetworkPhase describes the lifecycle phase of Network
 type NetworkPhase string
 
-// Valid values of network lifecycle phase
 const (
+	// Valid values of network lifecycle phase
 	// NetworkPending means the network accepted by the system, but
 	// has not been ready for use.
 	NetworkPending NetworkPhase = "Pending"
@@ -68,6 +81,16 @@ const (
 	// communication problems.
 	NetworkUnknown NetworkPhase = "Unknown"
 
+	// valid values of network service IPAM
+	// IPAMArktos is the IPAM that Arktos assigns VIP for service
+	IPAMArktos NetworkServiceIPAM = "Arktos"
+	// IPAMKubernetes is the IPAM that Kubernetes assigns VIP for service
+	IPAMKubernetes NetworkServiceIPAM = "Kubernetes"
+	// IPAMExternal is the IPAM that external network controller assigns VIP of service
+	IPAMExternal NetworkServiceIPAM = "External"
+
+	// various network-related label & annotations
+	NetworkLabel = "arktos.futurewei.com/network"
 	// network related annotation keys
 	NetworkReadiness = "arktos.futurewei.com/network-readiness"
 )
