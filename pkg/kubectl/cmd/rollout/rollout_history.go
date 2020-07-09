@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,6 +55,8 @@ type RolloutHistoryOptions struct {
 	Resources        []string
 	Namespace        string
 	EnforceNamespace bool
+	Tenant           string
+	EnforceTenant    bool
 
 	HistoryViewer    polymorphichelpers.HistoryViewerFunc
 	RESTClientGetter genericclioptions.RESTClientGetter
@@ -108,6 +111,10 @@ func (o *RolloutHistoryOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, 
 	if o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace(); err != nil {
 		return err
 	}
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 
 	o.ToPrinter = func(operation string) (printers.ResourcePrinter, error) {
 		o.PrintFlags.NamePrintFlags.Operation = operation
@@ -138,8 +145,9 @@ func (o *RolloutHistoryOptions) Run() error {
 
 	r := o.Builder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.FilenameOptions).
 		ResourceTypeOrNameArgs(true, o.Resources...).
 		ContinueOnError().
 		Latest().
@@ -159,7 +167,7 @@ func (o *RolloutHistoryOptions) Run() error {
 		if err != nil {
 			return err
 		}
-		historyInfo, err := historyViewer.ViewHistory(info.Namespace, info.Name, o.Revision)
+		historyInfo, err := historyViewer.ViewHistory(info.Tenant, info.Namespace, info.Name, o.Revision)
 		if err != nil {
 			return err
 		}
