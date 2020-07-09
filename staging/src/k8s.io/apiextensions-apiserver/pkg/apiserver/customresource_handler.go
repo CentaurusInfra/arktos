@@ -484,6 +484,25 @@ func (r *crdHandler) GetCustomResourceListerCollectionDeleter(crd *apiextensions
 	return info.storages[info.storageVersion].CustomResource, nil
 }
 
+func (r *crdHandler) GetCustomResourceStorage(tenant, crdName, version string) (*customresource.CustomResourceStorage, error) {
+	crd, err := r.crdLister.CustomResourceDefinitionsWithMultiTenancy(tenant).GetAccessibleCrd(crdName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find CRD of %s in tenant %s: %v", crdName, tenant, err)
+	}
+
+	var crdInfo *crdInfo
+	crdInfo, err = r.getOrCreateServingInfoFor(crd)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get or create CRD info struct for %s of tenant %s: %v", crdName, tenant, err)
+	}
+
+	if s, ok := crdInfo.storages[version]; ok {
+		return &s, nil
+	}
+
+	return nil, fmt.Errorf("cannot find storage of version %s for crd %s/%s/%s, err: %v", version, crd.Tenant, crd.Namespace, crd.Name, err)
+}
+
 func (r *crdHandler) getOrCreateServingInfoFor(crd *apiextensions.CustomResourceDefinition) (*crdInfo, error) {
 	storageMap := r.customStorage.Load().(crdStorageMap)
 	if ret, ok := storageMap[crd.UID]; ok {

@@ -25,10 +25,13 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
+	"sync/atomic"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -40,6 +43,8 @@ import (
 	"k8s.io/apiserver/pkg/util/dryrun"
 	"k8s.io/klog"
 
+	extensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
+	arktosextensionsv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/service"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
@@ -57,6 +62,9 @@ type REST struct {
 	serviceNodePorts portallocator.Interface
 	proxyTransport   http.RoundTripper
 	pods             rest.Getter
+	done             uint32
+	m                sync.Mutex
+	networks         rest.Getter
 }
 
 // ServiceNodePort includes protocol and port number of a service NodePort.
@@ -106,6 +114,7 @@ func NewREST(
 		proxyTransport:   proxyTransport,
 		pods:             pods,
 	}
+
 	return rest, &registry.ProxyREST{Redirector: rest, ProxyTransport: proxyTransport}
 }
 
@@ -128,6 +137,56 @@ func (rs *REST) ShortNames() []string {
 // Categories implements the CategoriesProvider interface. Returns a list of categories a resource is part of.
 func (rs *REST) Categories() []string {
 	return []string{"all"}
+}
+
+func (rs *REST) getNetworkStorage(tenant string) (rest.Getter, error) {
+	const networkResourceName = "networks.arktos.futurewei.com"
+	const networkResourceVersion = "v1"
+
+	if atomic.LoadUint32(&rs.done) == 1 {
+		if rs.networks == nil {
+			return nil, fmt.Errorf("service storage failed to identify proper network getter")
+		}
+		return rs.networks, nil
+	}
+
+	// Slow-path.
+	rs.m.Lock()
+	defer rs.m.Unlock()
+	if rs.done == 0 {
+		if rs.networks != nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			return rs.networks, nil
+		}
+
+		crStorageGetter := extensionsapiserver.GetCustomResourceStoragesGetter()
+		if crStorageGetter == nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			return nil, fmt.Errorf("failed to get Custom Resource Storages Getter: api extension server not initialized properly")
+		}
+
+		if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, networkResourceName, networkResourceVersion); err == nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			rs.networks = storage.CustomResource
+			return rs.networks, nil
+		} else {
+			return nil, fmt.Errorf("custom resource storage not set up yet")
+		}
+	}
+
+	if rs.networks == nil {
+		return nil, fmt.Errorf("service storage failed to identify proper network getter")
+	}
+	return rs.networks, nil
+}
+
+func (rs *REST) getNetwork(ctx context.Context, tenant, name string) (runtime.Object, error) {
+	networkGetter, err := rs.getNetworkStorage(tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	return networkGetter.Get(ctx, name, &metav1.GetOptions{})
 }
 
 func (rs *REST) NamespaceScoped() bool {
@@ -162,8 +221,46 @@ func (rs *REST) Export(ctx context.Context, name string, opts metav1.ExportOptio
 	return rs.services.Export(ctx, name, opts)
 }
 
+func (rs *REST) isExternalIPAM(ctx context.Context, service *api.Service) (bool, error) {
+	const defaultNetwork = "default"
+	netName := service.Labels[arktosextensionsv1.NetworkLabel]
+	if netName == "" {
+		// choose the default network name if not specified
+		netName = defaultNetwork
+	}
+
+	// todo: consider having a sub context of the ctx param
+	network, err := rs.getNetwork(genericapirequest.NewContext(), service.Tenant, netName)
+	if err != nil {
+		// for now, temporarily ignore the default network not found error
+		// todo: remove below line after tenant controller enables automatic default network creation on new tenants
+		if netName == defaultNetwork {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	net := network.(*unstructured.Unstructured)
+	netSpec := net.Object["spec"].(map[string]interface{})
+	if s, ok := netSpec["service"]; ok {
+		netSvc := s.(map[string]interface{})
+		if v, ok := netSvc["ipam"]; ok {
+			if vs, ok := v.(string); ok {
+				return vs == string(arktosextensionsv1.IPAMExternal), nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
 func (rs *REST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
 	service := obj.(*api.Service)
+	isExternalIPAM, err := rs.isExternalIPAM(ctx, service)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := rest.BeforeCreate(registry.Strategy, ctx, obj); err != nil {
 		return nil, err
@@ -179,8 +276,7 @@ func (rs *REST) Create(ctx context.Context, obj runtime.Object, createValidation
 		}
 	}()
 
-	var err error
-	if !dryrun.IsDryRun(options.DryRun) {
+	if !isExternalIPAM && !dryrun.IsDryRun(options.DryRun) {
 		if service.Spec.Type != api.ServiceTypeExternalName {
 			if releaseServiceIP, err = initClusterIP(service, rs.serviceIPs); err != nil {
 				return nil, err
@@ -393,8 +489,13 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 	defer nodePortOp.Finish()
 
 	if !dryrun.IsDryRun(options.DryRun) {
+		isExternalIPAM, err := rs.isExternalIPAM(ctx, service)
+		if err != nil {
+			return nil, false, err
+		}
+
 		// Update service from ExternalName to non-ExternalName, should initialize ClusterIP.
-		if oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
+		if !isExternalIPAM && oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
 			if releaseServiceIP, err = initClusterIP(service, rs.serviceIPs); err != nil {
 				return nil, false, err
 			}
