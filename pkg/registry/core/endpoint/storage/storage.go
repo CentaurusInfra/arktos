@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +18,12 @@ limitations under the License.
 package storage
 
 import (
+	"context"
+	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -45,10 +51,12 @@ func NewREST(optsGetter generic.RESTOptionsGetter) *REST {
 
 		TableConvertor: printerstorage.TableConvertor{TableGenerator: printers.NewTableGenerator().With(printersinternal.AddHandlers)},
 	}
+
 	options := &generic.StoreOptions{RESTOptions: optsGetter}
 	if err := store.CompleteWithOptions(options); err != nil {
 		panic(err) // TODO: Propagate error up
 	}
+
 	return &REST{store}
 }
 
@@ -58,4 +66,40 @@ var _ rest.ShortNamesProvider = &REST{}
 // ShortNames implements the ShortNamesProvider interface. Returns a list of short names for a resource.
 func (r *REST) ShortNames() []string {
 	return []string{"ep"}
+}
+
+// Get gets endpoints resource by name in the context (whose significance is tenant and namespace).
+// If the target name starts with prefix of "kubernetes-", and the contextual namespace is "default",
+// this target is considered as "k8s alias", a read-only copy of kubernetes endpoints of default namespace
+// in system tenant, and its content returned is based on the system kubernetes resource.
+func (r *REST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	tenant, ok := genericapirequest.TenantFrom(ctx)
+	if !ok {
+		tenant = "system"
+	}
+
+	namespace, ok := genericapirequest.NamespaceFrom(ctx)
+	if !ok {
+		namespace = "default"
+	}
+
+	// redirect default/kubernetes-<network> EP query to default/kubernetes of system tenant
+	if namespace == "default" && strings.HasPrefix(name, "kubernetes-") {
+		ctx2 := genericapirequest.WithTenantAndNamespace(ctx, "system", "default")
+		obj, err := r.Store.Get(ctx2, "kubernetes", options)
+		if err != nil {
+			return obj, err
+		}
+
+		ep := obj.(*api.Endpoints)
+		ep.Tenant = tenant
+		ep.Name = name
+		if ep.Labels == nil {
+			ep.Labels = make(map[string]string)
+		}
+		ep.Labels["arktos.futurewei.com/network"] = name[len("kubernetes-"):]
+		return ep, err
+	}
+
+	return r.Store.Get(ctx, name, options)
 }
