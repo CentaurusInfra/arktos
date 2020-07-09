@@ -67,6 +67,8 @@ type RolloutStatusOptions struct {
 
 	Namespace        string
 	EnforceNamespace bool
+	Tenant           string
+	EnforceTenant    bool
 	BuilderArgs      []string
 
 	Watch    bool
@@ -130,6 +132,10 @@ func (o *RolloutStatusOptions) Complete(f cmdutil.Factory, args []string) error 
 	if err != nil {
 		return err
 	}
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 
 	o.BuilderArgs = args
 	o.StatusViewerFn = polymorphichelpers.StatusViewerFn
@@ -164,8 +170,9 @@ func (o *RolloutStatusOptions) Validate() error {
 func (o *RolloutStatusOptions) Run() error {
 	r := o.Builder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, o.FilenameOptions).
 		ResourceTypeOrNameArgs(true, o.BuilderArgs...).
 		SingleResourceType().
 		Latest().
@@ -194,16 +201,16 @@ func (o *RolloutStatusOptions) Run() error {
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.FieldSelector = fieldSelector
-			return o.DynamicClient.Resource(info.Mapping.Resource).Namespace(info.Namespace).List(options)
+			return o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).List(options)
 		},
 		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.FieldSelector = fieldSelector
-			return o.DynamicClient.Resource(info.Mapping.Resource).Namespace(info.Namespace).Watch(options)
+			return o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).Watch(options)
 		},
 	}
 
 	preconditionFunc := func(store cache.Store) (bool, error) {
-		_, exists, err := store.Get(&metav1.ObjectMeta{Namespace: info.Namespace, Name: info.Name})
+		_, exists, err := store.Get(&metav1.ObjectMeta{Tenant: info.Tenant, Namespace: info.Namespace, Name: info.Name})
 		if err != nil {
 			return true, err
 		}
