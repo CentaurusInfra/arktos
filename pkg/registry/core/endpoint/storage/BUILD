@@ -40,6 +40,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/registry/generic:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/registry/generic/registry:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/registry/rest:go_default_library",
+        "//staging/src/k8s.io/arktos-ext/pkg/apis/arktosextensions/v1:go_default_library",
     ],
 )
 

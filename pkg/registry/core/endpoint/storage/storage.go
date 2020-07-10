@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/printers"
 	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
@@ -97,7 +98,7 @@ func (r *REST) Get(ctx context.Context, name string, options *metav1.GetOptions)
 		if ep.Labels == nil {
 			ep.Labels = make(map[string]string)
 		}
-		ep.Labels["arktos.futurewei.com/network"] = name[len("kubernetes-"):]
+		ep.Labels[arktosv1.NetworkLabel] = name[len("kubernetes-"):]
 		return ep, err
 	}
 
