@@ -490,7 +490,7 @@ func TestSetEnvRemote(t *testing.T) {
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case p == input.path && m == http.MethodGet:
+					case p == "/tenants/system"+input.path && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(input.object)}, nil
 					case p == input.path && m == http.MethodPatch:
 						stream, err := req.GetBody()
@@ -625,11 +625,11 @@ func TestSetEnvFromResource(t *testing.T) {
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case p == "/namespaces/test/configmaps/testconfigmap" && m == http.MethodGet:
+					case p == "/tenants/system/namespaces/test/configmaps/testconfigmap" && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(mockConfigMap)}, nil
-					case p == "/namespaces/test/secrets/testsecret" && m == http.MethodGet:
+					case p == "/tenants/system/namespaces/test/secrets/testsecret" && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(mockSecret)}, nil
-					case p == "/namespaces/test/deployments/nginx" && m == http.MethodGet:
+					case p == "/tenants/system/namespaces/test/deployments/nginx" && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(mockDeployment)}, nil
 					case p == "/namespaces/test/deployments/nginx" && m == http.MethodPatch:
 						stream, err := req.GetBody()

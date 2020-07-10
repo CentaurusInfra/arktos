@@ -604,11 +604,7 @@ func execPod(tenant string) *corev1.Pod {
 }
 
 func execPodPath(tenant string) string {
-	if tenant == metav1.TenantSystem {
-		return "/namespaces/test/pods/foo"
-	} else {
-		return "/tenants/" + tenant + "/namespaces/test/pods/foo"
-	}
+	return "/tenants/" + tenant + "/namespaces/test/pods/foo"
 }
 
 func TestConvertPodNamedPortToNumber(t *testing.T) {

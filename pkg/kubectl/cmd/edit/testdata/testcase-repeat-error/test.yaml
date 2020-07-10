@@ -11,7 +11,7 @@ expectedExitCode: 1
 steps:
 - type: request
   expectedMethod: GET
-  expectedPath: /api/v1/namespaces/default/services/kubernetes
+  expectedPath: /api/v1/tenants/system/namespaces/default/services/kubernetes
   expectedInput: 0.request
   resultingStatusCode: 200
   resultingOutput: 0.response
