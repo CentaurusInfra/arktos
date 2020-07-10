@@ -392,7 +392,7 @@ func (c *dynamicResourceClient) makeURLSegments(name string) []string {
 	}
 	url = append(url, c.resource.Version)
 
-	if len(c.tenant) > 0 && c.tenant != metav1.TenantSystem {
+	if len(c.tenant) > 0 {
 		url = append(url, "tenants", c.tenant)
 	}
 

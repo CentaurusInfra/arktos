@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,7 +85,7 @@ func TestCreateRoleBinding(t *testing.T) {
 			NegotiatedSerializer: ns,
 			Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 				switch p, m := req.URL.Path, req.Method; {
-				case p == "/namespaces/test/rolebindings" && m == "POST":
+				case p == "/tenants/system/namespaces/test/rolebindings" && m == "POST":
 					bodyBits, err := ioutil.ReadAll(req.Body)
 					if err != nil {
 						t.Fatalf("TestCreateRoleBinding error: %v", err)

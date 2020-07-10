@@ -839,7 +839,7 @@ func TestReplaceAliases(t *testing.T) {
 func TestResourceByName(t *testing.T) {
 	pods, _ := testData()
 	b := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
-		"/namespaces/test/pods/foo": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
+		"/tenants/system/namespaces/test/pods/foo": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
 	})).NamespaceParam("test")
 
 	test := &testVisitor{}
@@ -914,10 +914,10 @@ func TestRestMappingErrors(t *testing.T) {
 func TestMultipleResourceByTheSameName(t *testing.T) {
 	pods, svcs := testData()
 	b := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
-		"/namespaces/test/pods/foo":     runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
-		"/namespaces/test/pods/baz":     runtime.EncodeOrDie(corev1Codec, &pods.Items[1]),
-		"/namespaces/test/services/foo": runtime.EncodeOrDie(corev1Codec, &svcs.Items[0]),
-		"/namespaces/test/services/baz": runtime.EncodeOrDie(corev1Codec, &svcs.Items[0]),
+		"/tenants/system/namespaces/test/pods/foo":     runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
+		"/tenants/system/namespaces/test/pods/baz":     runtime.EncodeOrDie(corev1Codec, &pods.Items[1]),
+		"/tenants/system/namespaces/test/services/foo": runtime.EncodeOrDie(corev1Codec, &svcs.Items[0]),
+		"/tenants/system/namespaces/test/services/baz": runtime.EncodeOrDie(corev1Codec, &svcs.Items[0]),
 	})).
 		NamespaceParam("test")
 
@@ -994,8 +994,8 @@ func TestRequestModifier(t *testing.T) {
 func TestResourceNames(t *testing.T) {
 	pods, svc := testData()
 	b := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
-		"/namespaces/test/pods/foo":     runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
-		"/namespaces/test/services/baz": runtime.EncodeOrDie(corev1Codec, &svc.Items[0]),
+		"/tenants/system/namespaces/test/pods/foo":     runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
+		"/tenants/system/namespaces/test/services/baz": runtime.EncodeOrDie(corev1Codec, &svc.Items[0]),
 	})).NamespaceParam("test")
 
 	test := &testVisitor{}
@@ -1074,7 +1074,7 @@ func TestResourceByNameWithoutRequireObject(t *testing.T) {
 func TestResourceByNameAndEmptySelector(t *testing.T) {
 	pods, _ := testData()
 	b := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
-		"/namespaces/test/pods/foo": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
+		"/tenants/system/namespaces/test/pods/foo": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
 	})).
 		NamespaceParam("test").
 		LabelSelectorParam("").
@@ -1252,9 +1252,9 @@ func TestResourceTuple(t *testing.T) {
 				if requireObject {
 					pods, _ := testData()
 					expectedRequests = map[string]string{
-						"/namespaces/test/pods/foo": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
-						"/namespaces/test/pods/bar": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
-						"/nodes/foo":                runtime.EncodeOrDie(corev1Codec, &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}),
+						"/tenants/system/namespaces/test/pods/foo": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
+						"/tenants/system/namespaces/test/pods/bar": runtime.EncodeOrDie(corev1Codec, &pods.Items[0]),
+						"/nodes/foo": runtime.EncodeOrDie(corev1Codec, &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}),
 					}
 				}
 				b := newDefaultBuilderWith(fakeClientWith(k, t, expectedRequests)).
@@ -1556,9 +1556,9 @@ func TestLatest(t *testing.T) {
 	}
 
 	b := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
-		"/namespaces/test/pods/foo":     runtime.EncodeOrDie(corev1Codec, newPod),
-		"/namespaces/test/pods/bar":     runtime.EncodeOrDie(corev1Codec, newPod2),
-		"/namespaces/test/services/baz": runtime.EncodeOrDie(corev1Codec, newSvc),
+		"/tenants/system/namespaces/test/pods/foo":     runtime.EncodeOrDie(corev1Codec, newPod),
+		"/tenants/system/namespaces/test/pods/bar":     runtime.EncodeOrDie(corev1Codec, newPod2),
+		"/tenants/system/namespaces/test/services/baz": runtime.EncodeOrDie(corev1Codec, newSvc),
 	})).
 		NamespaceParam("other").Stream(r, "STDIN").Flatten().Latest()
 

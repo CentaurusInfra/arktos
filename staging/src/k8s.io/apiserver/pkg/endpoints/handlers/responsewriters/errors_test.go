@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,6 +73,8 @@ func TestForbidden(t *testing.T) {
 `, authorizer.AttributesRecord{User: u, Verb: "get", Resource: "pod", ResourceRequest: true, Name: "mypod"}, "", "application/json"},
 		{`{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"pod.v2 is forbidden: User \"NAME\" cannot get resource \"pod/quota\" in API group \"v2\" in the namespace \"test\"","reason":"Forbidden","details":{"group":"v2","kind":"pod"},"code":403}
 `, authorizer.AttributesRecord{User: u, Verb: "get", Namespace: "test", APIGroup: "v2", Resource: "pod", Subresource: "quota", ResourceRequest: true}, "", "application/json"},
+		{`{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"namespace is forbidden: User \"NAME\" cannot get resource \"namespace/status\" in API group \"\" in the tenant \"test-tenant\"","reason":"Forbidden","details":{"kind":"namespace"},"code":403}
+`, authorizer.AttributesRecord{User: u, Verb: "get", Tenant: "test-tenant", Namespace: "", APIGroup: "", Resource: "namespace", Subresource: "status", ResourceRequest: true}, "", "application/json"},
 	}
 	for _, test := range cases {
 		observer := httptest.NewRecorder()

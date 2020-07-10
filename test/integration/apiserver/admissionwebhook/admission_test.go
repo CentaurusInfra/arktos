@@ -562,11 +562,15 @@ func testResourceCreate(c *testContext) {
 		return
 	}
 	ns := ""
+	tenant := ""
 	if c.resource.Namespaced {
 		ns = testNamespace
 	}
+	if c.resource.Tenanted {
+		tenant = metav1.TenantSystem
+	}
 	c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkCreateOptions, v1beta1.Create, stubObj.GetName(), ns, true, false, true)
-	_, err = c.client.Resource(c.gvr).Namespace(ns).Create(stubObj, metav1.CreateOptions{})
+	_, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(ns, tenant).Create(stubObj, metav1.CreateOptions{})
 	if err != nil {
 		c.t.Error(err)
 		return
@@ -581,7 +585,7 @@ func testResourceUpdate(c *testContext) {
 		}
 		obj.SetAnnotations(map[string]string{"update": "true"})
 		c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkUpdateOptions, v1beta1.Update, obj.GetName(), obj.GetNamespace(), true, true, true)
-		_, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Update(obj, metav1.UpdateOptions{})
+		_, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Update(obj, metav1.UpdateOptions{})
 		return err
 	}); err != nil {
 		c.t.Error(err)
@@ -596,7 +600,7 @@ func testResourcePatch(c *testContext) {
 		return
 	}
 	c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkUpdateOptions, v1beta1.Update, obj.GetName(), obj.GetNamespace(), true, true, true)
-	_, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Patch(
+	_, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Patch(
 		obj.GetName(),
 		types.MergePatchType,
 		[]byte(`{"metadata":{"annotations":{"patch":"true"}}}`),
@@ -617,7 +621,7 @@ func testResourceDelete(c *testContext) {
 	background := metav1.DeletePropagationBackground
 	zero := int64(0)
 	c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkDeleteOptions, v1beta1.Delete, obj.GetName(), obj.GetNamespace(), false, true, true)
-	err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), &metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background})
+	err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Delete(obj.GetName(), &metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background})
 	if err != nil {
 		c.t.Error(err)
 		return
@@ -626,7 +630,7 @@ func testResourceDelete(c *testContext) {
 
 	// wait for the item to be gone
 	err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (bool, error) {
-		obj, err := c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
+		obj, err := c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Get(obj.GetName(), metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
@@ -651,7 +655,7 @@ func testResourceDelete(c *testContext) {
 	// We don't add finalizers by setting DeleteOptions.PropagationPolicy
 	// because some resource (e.g., events) do not support garbage
 	// collector finalizers.
-	_, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Patch(
+	_, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Patch(
 		obj.GetName(),
 		types.MergePatchType,
 		[]byte(`{"metadata":{"finalizers":["test/k8s.io"]}}`),
@@ -661,7 +665,7 @@ func testResourceDelete(c *testContext) {
 		return
 	}
 	c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkDeleteOptions, v1beta1.Delete, obj.GetName(), obj.GetNamespace(), false, true, true)
-	err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), &metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background})
+	err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Delete(obj.GetName(), &metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background})
 	if err != nil {
 		c.t.Error(err)
 		return
@@ -670,7 +674,7 @@ func testResourceDelete(c *testContext) {
 
 	// wait other finalizers (e.g., crd's customresourcecleanup finalizer) to be removed.
 	err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (bool, error) {
-		obj, err := c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
+		obj, err := c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Get(obj.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -686,7 +690,7 @@ func testResourceDelete(c *testContext) {
 	})
 
 	// remove the finalizer
-	_, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Patch(
+	_, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Patch(
 		obj.GetName(),
 		types.MergePatchType,
 		[]byte(`{"metadata":{"finalizers":[]}}`),
@@ -697,7 +701,7 @@ func testResourceDelete(c *testContext) {
 	}
 	// wait for the item to be gone
 	err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (bool, error) {
-		obj, err := c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
+		obj, err := c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Get(obj.GetName(), metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
@@ -723,7 +727,7 @@ func testResourceDeletecollection(c *testContext) {
 	zero := int64(0)
 
 	// update the object with a label that matches our selector
-	_, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Patch(
+	_, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Patch(
 		obj.GetName(),
 		types.MergePatchType,
 		[]byte(`{"metadata":{"labels":{"webhooktest":"true"}}}`),
@@ -737,7 +741,7 @@ func testResourceDeletecollection(c *testContext) {
 	c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkDeleteOptions, v1beta1.Delete, "", obj.GetNamespace(), false, true, true)
 
 	// delete
-	err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).DeleteCollection(&metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background}, metav1.ListOptions{LabelSelector: "webhooktest=true"})
+	err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).DeleteCollection(&metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background}, metav1.ListOptions{LabelSelector: "webhooktest=true"})
 	if err != nil {
 		c.t.Error(err)
 		return
@@ -745,7 +749,7 @@ func testResourceDeletecollection(c *testContext) {
 
 	// wait for the item to be gone
 	err = wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (bool, error) {
-		obj, err := c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
+		obj, err := c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Get(obj.GetName(), metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
@@ -789,7 +793,7 @@ func testSubresourceUpdate(c *testContext) {
 
 		// If the subresource supports get, fetch that as the object to submit (namespaces/finalize, */scale, etc)
 		if sets.NewString(c.resource.Verbs...).Has("get") {
-			submitObj, err = c.client.Resource(gvrWithoutSubresources).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{}, subresources...)
+			submitObj, err = c.client.Resource(gvrWithoutSubresources).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Get(obj.GetName(), metav1.GetOptions{}, subresources...)
 			if err != nil {
 				return err
 			}
@@ -801,7 +805,7 @@ func testSubresourceUpdate(c *testContext) {
 		// set expectations
 		c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkUpdateOptions, v1beta1.Update, obj.GetName(), obj.GetNamespace(), true, true, true)
 
-		_, err = c.client.Resource(gvrWithoutSubresources).Namespace(obj.GetNamespace()).Update(
+		_, err = c.client.Resource(gvrWithoutSubresources).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Update(
 			submitObj,
 			metav1.UpdateOptions{},
 			subresources...,
@@ -828,7 +832,7 @@ func testSubresourcePatch(c *testContext) {
 	// set expectations
 	c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkUpdateOptions, v1beta1.Update, obj.GetName(), obj.GetNamespace(), true, true, true)
 
-	_, err = c.client.Resource(gvrWithoutSubresources).Namespace(obj.GetNamespace()).Patch(
+	_, err = c.client.Resource(gvrWithoutSubresources).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Patch(
 		obj.GetName(),
 		types.MergePatchType,
 		[]byte(`{"metadata":{"annotations":{"subresourcepatch":"true"}}}`),
@@ -871,7 +875,7 @@ func testDeleteWithFinalizer(c *testContext) {
 	zero := int64(0)
 
 	c.admissionHolder.expect(c.gvr, gvk(c.resource.Group, c.resource.Version, c.resource.Kind), gvkDeleteOptions, v1beta1.Delete, obj.GetName(), obj.GetNamespace(), false, true, true)
-	err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), &metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background})
+	err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Delete(obj.GetName(), &metav1.DeleteOptions{GracePeriodSeconds: &zero, PropagationPolicy: &background})
 	if err != nil {
 		c.t.Error(err)
 		return
@@ -879,7 +883,7 @@ func testDeleteWithFinalizer(c *testContext) {
 	c.admissionHolder.verify(c.t)
 
 	// do the finalization so the resource can be deleted
-	obj, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
+	obj, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Get(obj.GetName(), metav1.GetOptions{})
 	if err != nil {
 		c.t.Error(err)
 		return
@@ -889,13 +893,13 @@ func testDeleteWithFinalizer(c *testContext) {
 		c.t.Error(err)
 		return
 	}
-	_, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Update(obj, metav1.UpdateOptions{}, "finalize")
+	_, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Update(obj, metav1.UpdateOptions{}, "finalize")
 	if err != nil {
 		c.t.Error(err)
 		return
 	}
 	// verify the resource is gone
-	obj, err = c.client.Resource(c.gvr).Namespace(obj.GetNamespace()).Get(obj.GetName(), metav1.GetOptions{})
+	obj, err = c.client.Resource(c.gvr).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Get(obj.GetName(), metav1.GetOptions{})
 	if err == nil || !errors.IsNotFound(err) {
 		c.t.Errorf("expected %s to be gone, got %#v, %v", c.gvr.Resource, obj, err)
 	}
@@ -945,7 +949,7 @@ func testDeploymentRollback(c *testContext) {
 	rollbackUnstructuredObj := &unstructured.Unstructured{Object: rollbackUnstructuredBody}
 	rollbackUnstructuredObj.SetName(obj.GetName())
 
-	_, err = c.client.Resource(gvrWithoutSubresources).Namespace(obj.GetNamespace()).Create(rollbackUnstructuredObj, metav1.CreateOptions{}, subresources...)
+	_, err = c.client.Resource(gvrWithoutSubresources).NamespaceWithMultiTenancy(obj.GetNamespace(), obj.GetTenant()).Create(rollbackUnstructuredObj, metav1.CreateOptions{}, subresources...)
 	if err != nil {
 		c.t.Error(err)
 		return
@@ -1071,7 +1075,7 @@ func testSubresourceProxy(c *testContext) {
 
 		// add the namespace if required
 		if len(obj.GetNamespace()) > 0 {
-			request = request.Namespace(obj.GetNamespace())
+			request = request.Namespace(obj.GetNamespace()).Tenant(obj.GetTenant())
 		}
 
 		// set expectations
@@ -1269,17 +1273,21 @@ func createOrGetResource(client dynamic.Interface, gvr schema.GroupVersionResour
 		return nil, err
 	}
 	ns := ""
+	tenant := ""
 	if resource.Namespaced {
 		ns = testNamespace
 	}
-	obj, err := client.Resource(gvr).Namespace(ns).Get(stubObj.GetName(), metav1.GetOptions{})
+	if resource.Tenanted {
+		tenant = metav1.TenantSystem
+	}
+	obj, err := client.Resource(gvr).NamespaceWithMultiTenancy(ns, tenant).Get(stubObj.GetName(), metav1.GetOptions{})
 	if err == nil {
 		return obj, nil
 	}
 	if !errors.IsNotFound(err) {
 		return nil, err
 	}
-	return client.Resource(gvr).Namespace(ns).Create(stubObj, metav1.CreateOptions{})
+	return client.Resource(gvr).NamespaceWithMultiTenancy(ns, tenant).Create(stubObj, metav1.CreateOptions{})
 }
 
 func gvr(group, version, resource string) schema.GroupVersionResource {

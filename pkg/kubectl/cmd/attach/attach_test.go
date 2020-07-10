@@ -449,9 +449,5 @@ func attachPod(tenant string) *corev1.Pod {
 }
 
 func podFetchPath(tenant string) string {
-	if tenant == metav1.TenantSystem {
-		return "/namespaces/test/pods/foo"
-	} else {
-		return "/tenants/" + tenant + "/namespaces/test/pods/foo"
-	}
+	return "/tenants/" + tenant + "/namespaces/test/pods/foo"
 }

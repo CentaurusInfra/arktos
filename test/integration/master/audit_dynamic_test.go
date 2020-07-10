@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -239,7 +240,7 @@ func simpleOp(name string, kubeclient kubernetes.Interface) ([]utils.AuditEvent,
 		{
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps/%s", namespace, name),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps/%s", namespace, name),
 			Verb:              "get",
 			Code:              404,
 			User:              auditTestUser,

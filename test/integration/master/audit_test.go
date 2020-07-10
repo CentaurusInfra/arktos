@@ -65,7 +65,7 @@ rules:
 		{
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps", namespace),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps", namespace),
 			Verb:              "create",
 			Code:              201,
 			User:              auditTestUser,
@@ -77,7 +77,7 @@ rules:
 		}, {
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps/audit-configmap", namespace),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps/audit-configmap", namespace),
 			Verb:              "get",
 			Code:              200,
 			User:              auditTestUser,
@@ -89,7 +89,7 @@ rules:
 		}, {
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps", namespace),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps", namespace),
 			Verb:              "list",
 			Code:              200,
 			User:              auditTestUser,
@@ -101,7 +101,7 @@ rules:
 		}, {
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseStarted,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps?timeout=%ds&timeoutSeconds=%d&watch=true", namespace, watchTestTimeout, watchTestTimeout),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps?timeout=%ds&timeoutSeconds=%d&watch=true", namespace, watchTestTimeout, watchTestTimeout),
 			Verb:              "watch",
 			Code:              200,
 			User:              auditTestUser,
@@ -113,7 +113,7 @@ rules:
 		}, {
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps?timeout=%ds&timeoutSeconds=%d&watch=true", namespace, watchTestTimeout, watchTestTimeout),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps?timeout=%ds&timeoutSeconds=%d&watch=true", namespace, watchTestTimeout, watchTestTimeout),
 			Verb:              "watch",
 			Code:              200,
 			User:              auditTestUser,
@@ -125,7 +125,7 @@ rules:
 		}, {
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps/audit-configmap", namespace),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps/audit-configmap", namespace),
 			Verb:              "update",
 			Code:              200,
 			User:              auditTestUser,
@@ -137,7 +137,7 @@ rules:
 		}, {
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps/audit-configmap", namespace),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps/audit-configmap", namespace),
 			Verb:              "patch",
 			Code:              200,
 			User:              auditTestUser,
@@ -149,7 +149,7 @@ rules:
 		}, {
 			Level:             auditinternal.LevelRequestResponse,
 			Stage:             auditinternal.StageResponseComplete,
-			RequestURI:        fmt.Sprintf("/api/v1/namespaces/%s/configmaps/audit-configmap", namespace),
+			RequestURI:        fmt.Sprintf("/api/v1/tenants/system/namespaces/%s/configmaps/audit-configmap", namespace),
 			Verb:              "delete",
 			Code:              200,
 			User:              auditTestUser,

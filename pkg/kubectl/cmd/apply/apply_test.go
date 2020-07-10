@@ -280,7 +280,7 @@ func walkMapPath(t *testing.T, start map[string]interface{}, path []string) map[
 func TestRunApplyPrintsValidObjectList(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	configMapList := readConfigMapList(t, filenameCM)
-	pathCM := "/namespaces/test/configmaps"
+	pathCM := "/tenants/system/namespaces/test/configmaps"
 
 	tf := cmdtesting.NewTestFactory().WithNamespace("test")
 	defer tf.Cleanup()
@@ -340,7 +340,7 @@ func TestRunApplyViewLastApplied(t *testing.T) {
 	_, rcBytesWithConfig := readReplicationController(t, filenameRCLASTAPPLIED)
 	_, rcBytesWithArgs := readReplicationController(t, filenameRCLastAppliedArgs)
 	nameRC, rcBytes := readReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
 
 	tests := []struct {
 		name, nameRC, pathRC, filePath, outputFormat, expectedErr, expectedOut, selector string
@@ -434,9 +434,9 @@ func TestRunApplyViewLastApplied(t *testing.T) {
 					case p == "/namespaces/test/replicationcontrollers" && m == "GET":
 						bodyRC := ioutil.NopCloser(bytes.NewReader(test.respBytes))
 						return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: bodyRC}, nil
-					case p == "/namespaces/test/replicationcontrollers/no-match" && m == "GET":
+					case p == "/tenants/system/namespaces/test/replicationcontrollers/no-match" && m == "GET":
 						return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Pod{})}, nil
-					case p == "/api/v1/namespaces/test" && m == "GET":
+					case p == "/api/v1/tenants/system/namespaces/test" && m == "GET":
 						return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Namespace{})}, nil
 					default:
 						t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -475,7 +475,7 @@ func TestRunApplyViewLastApplied(t *testing.T) {
 func TestApplyObjectWithoutAnnotation(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	nameRC, rcBytes := readReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
 
 	tf := cmdtesting.NewTestFactory().WithNamespace("test")
 	defer tf.Cleanup()
@@ -518,7 +518,7 @@ func TestApplyObjectWithoutAnnotation(t *testing.T) {
 func TestApplyObject(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	nameRC, currentRC := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
 
 	for _, fn := range testingOpenAPISchemaFns {
 		t.Run("test apply when a local object is specified", func(t *testing.T) {
@@ -566,7 +566,7 @@ func TestApplyObject(t *testing.T) {
 func TestApplyObjectOutput(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	nameRC, currentRC := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
 
 	// Add some extra data to the post-patch object
 	postPatchObj := &unstructured.Unstructured{}
@@ -631,7 +631,7 @@ func TestApplyObjectOutput(t *testing.T) {
 func TestApplyRetry(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	nameRC, currentRC := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
 
 	for _, fn := range testingOpenAPISchemaFns {
 		t.Run("test apply retries on conflict error", func(t *testing.T) {
@@ -694,7 +694,7 @@ func TestApplyRetry(t *testing.T) {
 
 func TestApplyNonExistObject(t *testing.T) {
 	nameRC, currentRC := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers"
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers"
 	pathNameRC := pathRC + "/" + nameRC
 
 	tf := cmdtesting.NewTestFactory().WithNamespace("test")
@@ -704,7 +704,7 @@ func TestApplyNonExistObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/test" && m == "GET":
+			case p == "/api/v1/tenants/system/namespaces/test" && m == "GET":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: ioutil.NopCloser(bytes.NewReader(nil))}, nil
 			case p == pathNameRC && m == "GET":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: ioutil.NopCloser(bytes.NewReader(nil))}, nil
@@ -735,7 +735,7 @@ func TestApplyNonExistObject(t *testing.T) {
 func TestApplyEmptyPatch(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	nameRC, _ := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers"
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers"
 	pathNameRC := pathRC + "/" + nameRC
 
 	verifyPost := false
@@ -750,7 +750,7 @@ func TestApplyEmptyPatch(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/test" && m == "GET":
+			case p == "/api/v1/tenants/system/namespaces/test" && m == "GET":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: ioutil.NopCloser(bytes.NewReader(nil))}, nil
 			case p == pathNameRC && m == "GET":
 				if body == nil {
@@ -808,10 +808,10 @@ func TestApplyMultipleObjectsAsFiles(t *testing.T) {
 
 func testApplyMultipleObjects(t *testing.T, asList bool) {
 	nameRC, currentRC := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
 
 	nameSVC, currentSVC := readAndAnnotateService(t, filenameSVC)
-	pathSVC := "/namespaces/test/services/" + nameSVC
+	pathSVC := "/tenants/system/namespaces/test/services/" + nameSVC
 
 	for _, fn := range testingOpenAPISchemaFns {
 		t.Run("test apply on multiple objects", func(t *testing.T) {
@@ -889,7 +889,7 @@ func readDeploymentFromFile(t *testing.T, file string) []byte {
 func TestApplyNULLPreservation(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	deploymentName := "nginx-deployment"
-	deploymentPath := "/namespaces/test/deployments/" + deploymentName
+	deploymentPath := "/tenants/system/namespaces/test/deployments/" + deploymentName
 
 	verifiedPatch := false
 	deploymentBytes := readDeploymentFromFile(t, filenameDeployObjServerside)
@@ -965,7 +965,7 @@ func TestApplyNULLPreservation(t *testing.T) {
 func TestUnstructuredApply(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	name, curr := readAndAnnotateUnstructured(t, filenameWidgetClientside)
-	path := "/namespaces/test/widgets/" + name
+	path := "/tenants/system/namespaces/test/widgets/" + name
 
 	verifiedPatch := false
 
@@ -1035,7 +1035,7 @@ func TestUnstructuredIdempotentApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := "/namespaces/test/widgets/widget"
+	path := "/tenants/system/namespaces/test/widgets/widget"
 
 	for _, fn := range testingOpenAPISchemaFns {
 		t.Run("test repeated apply operations on an unstructured object", func(t *testing.T) {
@@ -1217,8 +1217,8 @@ func TestForceApply(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	scheme := runtime.NewScheme()
 	nameRC, currentRC := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
-	pathRCList := "/namespaces/test/replicationcontrollers"
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
+	pathRCList := "/tenants/system/namespaces/test/replicationcontrollers"
 	expected := map[string]int{
 		"getOk":       6,
 		"getNotFound": 1,
