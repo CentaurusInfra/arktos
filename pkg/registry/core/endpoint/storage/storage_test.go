@@ -203,6 +203,6 @@ func TestCreateK8SAliasShouldBeForbidden(t *testing.T) {
 	}
 	_, err := storage.Create(ctxCreate, k8s, func(obj runtime.Object) error { return nil }, &metav1.CreateOptions{})
 	if !strings.Contains(err.Error(), "Forbidden: read only resource not allowed to create or update") {
-		t.Errorf("not the expected error: %s", err)
+		t.Errorf("expected '... Forbidden: read only resource not allowed to create or update'; got %q", err)
 	}
 }

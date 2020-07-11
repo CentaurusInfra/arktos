@@ -73,19 +73,20 @@ func (r *REST) ShortNames() []string {
 // If the target name starts with prefix of "kubernetes-", and the contextual namespace is "default",
 // this target is considered as "k8s alias", a read-only copy of kubernetes endpoints of default namespace
 // in system tenant, and its content returned is based on the system kubernetes resource.
+// See Endpoints section of docs/design-proposals/multi-tenancy/multi-tenancy-network.md for the rationale.
 func (r *REST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
 	tenant, ok := genericapirequest.TenantFrom(ctx)
 	if !ok {
-		tenant = "system"
+		tenant = metav1.TenantSystem
 	}
 
 	namespace, ok := genericapirequest.NamespaceFrom(ctx)
 	if !ok {
-		namespace = "default"
+		namespace = metav1.NamespaceDefault
 	}
 
 	// redirect default/kubernetes-<network> EP query to default/kubernetes of system tenant
-	if namespace == "default" && strings.HasPrefix(name, "kubernetes-") {
+	if isK8sAliasEP(namespace, name) {
 		ctx2 := genericapirequest.WithTenantAndNamespace(ctx, "system", "default")
 		obj, err := r.Store.Get(ctx2, "kubernetes", options)
 		if err != nil {
@@ -103,4 +104,9 @@ func (r *REST) Get(ctx context.Context, name string, options *metav1.GetOptions)
 	}
 
 	return r.Store.Get(ctx, name, options)
+}
+
+func isK8sAliasEP(namespace, name string) bool {
+	const k8sAliasPrefix = "kubernetes-"
+	return namespace == metav1.NamespaceDefault && strings.HasPrefix(name, k8sAliasPrefix)
 }
