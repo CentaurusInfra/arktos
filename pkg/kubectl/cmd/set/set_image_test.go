@@ -626,7 +626,7 @@ func TestSetImageRemote(t *testing.T) {
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case p == input.path && m == http.MethodGet:
+					case p == "/tenants/system"+input.path && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(input.object)}, nil
 					case p == input.path && m == http.MethodPatch:
 						stream, err := req.GetBody()
@@ -738,7 +738,7 @@ func TestSetImageRemoteWithSpecificContainers(t *testing.T) {
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case p == input.path && m == http.MethodGet:
+					case p == "/tenants/system"+input.path && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(input.object)}, nil
 					case p == input.path && m == http.MethodPatch:
 						stream, err := req.GetBody()

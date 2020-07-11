@@ -313,7 +313,12 @@ func JSONToUnstructured(stub, namespace string, mapping *meta.RESTMapping, dynam
 		namespace = ""
 	}
 
-	return dynamicClient.Resource(mapping.Resource).Namespace(namespace), &unstructured.Unstructured{Object: typeMetaAdder}, nil
+	tenant := metav1.TenantSystem
+	if mapping.Scope == meta.RESTScopeRoot {
+		tenant = metav1.TenantNone
+	}
+
+	return dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, tenant), &unstructured.Unstructured{Object: typeMetaAdder}, nil
 }
 
 func JSONToUnstructuredWithMultiTenancy(stub, tenant, namespace string, mapping *meta.RESTMapping, dynamicClient dynamic.Interface) (dynamic.ResourceInterface, *unstructured.Unstructured, error) {

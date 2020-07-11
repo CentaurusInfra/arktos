@@ -4,7 +4,7 @@
     "metadata": {
         "name": "cm1",
         "namespace": "myproject",
-        "selfLink": "/api/v1/namespaces/myproject/configmaps/cm1",
+        "selfLink": "/api/v1/tenants/system/namespaces/myproject/configmaps/cm1",
         "uid": "cc08a131-3d6f-11e7-8ef0-c85b76034b7b",
         "resourceVersion": "3554",
         "creationTimestamp": "2017-05-20T15:20:03Z",

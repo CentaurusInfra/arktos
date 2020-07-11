@@ -4,7 +4,7 @@
     "metadata": {
         "name": "svc1",
         "namespace": "myproject",
-        "selfLink": "/api/v1/namespaces/myproject/services/svc1",
+        "selfLink": "/api/v1/tenants/system/namespaces/myproject/services/svc1",
         "uid": "1e16d988-3d72-11e7-8ef0-c85b76034b7b",
         "resourceVersion": "3857",
         "creationTimestamp": "2017-05-20T15:36:39Z",

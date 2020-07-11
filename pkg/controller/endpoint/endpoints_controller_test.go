@@ -117,9 +117,6 @@ func addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(store cache.Store, tenant
 }
 
 func makeEndpointsResourcePath(tenant, namespace, name string) string {
-	if tenant == "" || tenant == metav1.TenantSystem {
-		return testapi.Default.ResourcePath("endpoints", namespace, name)
-	}
 
 	return testapi.Default.ResourcePathWithMultiTenancy("endpoints", tenant, namespace, name)
 }
@@ -130,13 +127,8 @@ func makeTestServer(t *testing.T, tenant, namespace string) (*httptest.Server, *
 		ResponseBody: runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{}),
 	}
 	mux := http.NewServeMux()
-	if tenant == "" || tenant == metav1.TenantSystem {
-		mux.Handle(testapi.Default.ResourcePath("endpoints", namespace, ""), &fakeEndpointsHandler)
-		mux.Handle(testapi.Default.ResourcePath("endpoints/", namespace, ""), &fakeEndpointsHandler)
-	} else {
-		mux.Handle(testapi.Default.ResourcePathWithMultiTenancy("endpoints", tenant, namespace, ""), &fakeEndpointsHandler)
-		mux.Handle(testapi.Default.ResourcePathWithMultiTenancy("endpoints/", tenant, namespace, ""), &fakeEndpointsHandler)
-	}
+	mux.Handle(testapi.Default.ResourcePathWithMultiTenancy("endpoints", tenant, namespace, ""), &fakeEndpointsHandler)
+	mux.Handle(testapi.Default.ResourcePathWithMultiTenancy("endpoints/", tenant, namespace, ""), &fakeEndpointsHandler)
 
 	mux.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
 		t.Errorf("unexpected request: %v", req.RequestURI)
