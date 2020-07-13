@@ -87,7 +87,7 @@ func (r *REST) Get(ctx context.Context, name string, options *metav1.GetOptions)
 
 	// redirect default/kubernetes-<network> EP query to default/kubernetes of system tenant
 	if isK8sAliasEP(namespace, name) {
-		ctx2 := genericapirequest.WithTenantAndNamespace(ctx, "system", "default")
+		ctx2 := genericapirequest.WithTenantAndNamespace(ctx, metav1.TenantSystem, metav1.NamespaceDefault)
 		obj, err := r.Store.Get(ctx2, "kubernetes", options)
 		if err != nil {
 			return obj, err
