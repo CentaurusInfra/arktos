@@ -493,6 +493,9 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, 
 		Name:      manifest.VirtualMachine.Name,
 		ImageRef:  manifest.VirtualMachine.Image,
 		FlavorRef: manifest.VirtualMachine.Resources.FlavorRef,
+		// Networks: []map[string]string{
+		// 	{"uuid": manifest.VPC},
+		// },
 		Networks: []map[string]string{
 			{"uuid": manifest.Nics[0].Uuid},
 		},
@@ -594,6 +597,7 @@ func (sched *Scheduler) globalScheduleOne() {
 		klog.V(3).Infof("Skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 		return
 	}
+
 	// TODO: Just for jump over testing script
 	manifest := &(pod.Spec)
 	if manifest.VirtualMachine == nil {
@@ -604,6 +608,13 @@ func (sched *Scheduler) globalScheduleOne() {
 
 	scheduleResultQueue := queue.New(1)
 	scheduleResult, _ := sched.globalSchedule(pod)
+
+	assumedPod := pod.DeepCopy()
+	err := sched.assume(assumedPod, scheduleResult.SuggestedHost)
+	if err != nil {
+		klog.Errorf("error assuming pod: %v", err)
+		return
+	}
 
 	go func() {
 		scheduleResultQueue.Put(scheduleResult.SuggestedHost)
@@ -636,6 +647,7 @@ func (sched *Scheduler) globalScheduleOne() {
 			count := 0
 			for {
 				if instanceStatus == "BUILD" {
+					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					count += 1
 					// Wait one minute for creating instance if instance status is BUILD
 					if count == 30 {
@@ -658,16 +670,22 @@ func (sched *Scheduler) globalScheduleOne() {
 					break
 				} else if instanceStatus == "ACTIVE" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
-					// Update ETCD
-					assumedPod := pod.DeepCopy()
-					sched.config.PodConditionUpdater.Update(assumedPod, &v1.PodCondition{
-						Type:   v1.PodReady,
-						Status: v1.ConditionTrue,
-					})
 					sched.config.PodPhaseUpdater.Update(assumedPod, v1.PodRunning)
-					// if err := sched.config.SchedulingQueue.Add(pod); err != nil {
-					// 	klog.V(3).Infof("ERROR Status instance failed to add into queue.")
-					// }
+					err := sched.bind(assumedPod, &v1.Binding{
+						ObjectMeta: metav1.ObjectMeta{Tenant: assumedPod.Tenant, Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID, HashKey: assumedPod.HashKey},
+						Target: v1.ObjectReference{
+							Kind: "Node",
+							Name: scheduleResult.SuggestedHost,
+						},
+					})
+
+					if err != nil {
+						klog.V(3).Infof("Pod Binding To ETCD Failed")
+						metrics.PodScheduleErrors.Inc()
+					} else {
+						klog.V(3).Infof("Pod Binding To ETCD Successfully")
+						metrics.PodScheduleSuccesses.Inc()
+					}
 					break
 				}
 			}
