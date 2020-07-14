@@ -358,7 +358,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 				return
 			}
 			if r.ShouldResync == nil || r.ShouldResync() {
-				klog.V(4).Infof("%s: forcing resync", r.name)
+				klog.V(4).Infof("%s: forcing resync. type %v. resync period %v", r.name, r.expectedType, r.resyncPeriod)
 				if err := r.store.Resync(); err != nil {
 					resyncerrc <- err
 					return
@@ -442,7 +442,8 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 						// to allow temporary list from storage directly and avoid too old
 						// resource version in follow up watch
 						r.listFromResourceVersion = ""
-						return err
+						err1 := fmt.Errorf("Error [%v] from watch type %v", err.Error(), r.expectedType)
+						return err1
 					}
 					klog.Warningf("%s: watch of %v ended with: %v", r.name, r.expectedType, err)
 				}
