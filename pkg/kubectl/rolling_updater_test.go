@@ -1183,6 +1183,7 @@ func TestRollingUpdater_cleanupWithClients(t *testing.T) {
 			objs = append(objs, tt.responses...)
 			fake := fake.NewSimpleClientset(objs...)
 			updater := &RollingUpdater{
+				tenant:    metav1.TenantSystem,
 				ns:        "default",
 				rcClient:  fake.CoreV1(),
 				podClient: fake.CoreV1(),
@@ -1325,7 +1326,7 @@ func TestFindSourceController(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(tt.list)
-			ctrl, err := FindSourceController(fakeClient.CoreV1(), "default", tt.name)
+			ctrl, err := FindSourceController(fakeClient.CoreV1(), metav1.TenantSystem, "default", tt.name)
 			if tt.expectError && err == nil {
 				t.Errorf("unexpected non-error")
 			}
@@ -1439,7 +1440,7 @@ func TestUpdateExistingReplicationController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buffer := &bytes.Buffer{}
 			fakeClient := fake.NewSimpleClientset(tt.expectedRc)
-			rc, err := UpdateExistingReplicationController(fakeClient.CoreV1(), fakeClient.CoreV1(), tt.rc, "default", tt.name, tt.deploymentKey, tt.deploymentValue, buffer)
+			rc, err := UpdateExistingReplicationController(fakeClient.CoreV1(), fakeClient.CoreV1(), tt.rc, metav1.TenantSystem, "default", tt.name, tt.deploymentKey, tt.deploymentValue, buffer)
 			if !reflect.DeepEqual(rc, tt.expectedRc) {
 				t.Errorf("expected:\n%#v\ngot:\n%#v\n", tt.expectedRc, rc)
 			}
@@ -1514,7 +1515,7 @@ func TestUpdateRcWithRetries(t *testing.T) {
 		NegotiatedSerializer: scheme.Codecs,
 		Client: manualfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/default/replicationcontrollers/rc" && m == "PUT":
+			case p == "/api/v1/tenants/system/namespaces/default/replicationcontrollers/rc" && m == "PUT":
 				update := updates[0]
 				updates = updates[1:]
 				// We should always get an update with a valid rc even when the get fails. The rc should always
@@ -1528,7 +1529,7 @@ func TestUpdateRcWithRetries(t *testing.T) {
 					delete(c.Spec.Selector, "baz")
 				}
 				return update, nil
-			case p == "/api/v1/namespaces/default/replicationcontrollers/rc" && m == "GET":
+			case p == "/api/v1/tenants/system/namespaces/default/replicationcontrollers/rc" && m == "GET":
 				get := gets[0]
 				gets = gets[1:]
 				return get, nil
@@ -1550,7 +1551,7 @@ func TestUpdateRcWithRetries(t *testing.T) {
 	clientset := kubernetes.New(restClient)
 
 	if rc, err := updateRcWithRetries(
-		clientset.CoreV1(), "default", rc, func(c *corev1.ReplicationController) {
+		clientset.CoreV1(), metav1.TenantSystem, "default", rc, func(c *corev1.ReplicationController) {
 			c.Spec.Selector["baz"] = "foobar"
 		}); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -1618,27 +1619,27 @@ func TestAddDeploymentHash(t *testing.T) {
 			header := http.Header{}
 			header.Set("Content-Type", runtime.ContentTypeJSON)
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/default/pods" && m == "GET":
+			case p == "/api/v1/tenants/system/namespaces/default/pods" && m == "GET":
 				if req.URL.RawQuery != "labelSelector=foo%3Dbar" {
 					t.Errorf("Unexpected query string: %s", req.URL.RawQuery)
 				}
 				return &http.Response{StatusCode: 200, Header: header, Body: objBody(codec, podList)}, nil
-			case p == "/api/v1/namespaces/default/pods/foo" && m == "PUT":
+			case p == "/api/v1/tenants/system/namespaces/default/pods/foo" && m == "PUT":
 				seen.Insert("foo")
 				obj := readOrDie(t, req, codec)
 				podList.Items[0] = *(obj.(*corev1.Pod))
 				return &http.Response{StatusCode: 200, Header: header, Body: objBody(codec, &podList.Items[0])}, nil
-			case p == "/api/v1/namespaces/default/pods/bar" && m == "PUT":
+			case p == "/api/v1/tenants/system/namespaces/default/pods/bar" && m == "PUT":
 				seen.Insert("bar")
 				obj := readOrDie(t, req, codec)
 				podList.Items[1] = *(obj.(*corev1.Pod))
 				return &http.Response{StatusCode: 200, Header: header, Body: objBody(codec, &podList.Items[1])}, nil
-			case p == "/api/v1/namespaces/default/pods/baz" && m == "PUT":
+			case p == "/api/v1/tenants/system/namespaces/default/pods/baz" && m == "PUT":
 				seen.Insert("baz")
 				obj := readOrDie(t, req, codec)
 				podList.Items[2] = *(obj.(*corev1.Pod))
 				return &http.Response{StatusCode: 200, Header: header, Body: objBody(codec, &podList.Items[2])}, nil
-			case p == "/api/v1/namespaces/default/replicationcontrollers/rc" && m == "PUT":
+			case p == "/api/v1/tenants/system/namespaces/default/replicationcontrollers/rc" && m == "PUT":
 				updatedRc = true
 				return &http.Response{StatusCode: 200, Header: header, Body: objBody(codec, rc)}, nil
 			default:
@@ -1658,7 +1659,7 @@ func TestAddDeploymentHash(t *testing.T) {
 	restClient.Client = fakeClient.Client
 	clientset := kubernetes.New(restClient)
 
-	if _, err := AddDeploymentKeyToReplicationController(rc, clientset.CoreV1(), clientset.CoreV1(), "dk", "hash", metav1.NamespaceDefault, buf); err != nil {
+	if _, err := AddDeploymentKeyToReplicationController(rc, clientset.CoreV1(), clientset.CoreV1(), "dk", "hash", metav1.TenantSystem, metav1.NamespaceDefault, buf); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	for _, pod := range podList.Items {

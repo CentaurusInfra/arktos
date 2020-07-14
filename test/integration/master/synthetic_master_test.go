@@ -121,7 +121,7 @@ func TestEmptyList(t *testing.T) {
 	_, s, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
-	u := s.URL + "/api/v1/namespaces/default/pods"
+	u := s.URL + "/api/v1/tenants/system/namespaces/default/pods"
 	resp, err := http.Get(u)
 	if err != nil {
 		t.Fatalf("unexpected error getting %s: %v", u, err)
@@ -175,7 +175,7 @@ func TestStatus(t *testing.T) {
 			name:         "404",
 			masterConfig: nil,
 			statusCode:   http.StatusNotFound,
-			reqPath:      "/apis/batch/v1/namespaces/default/jobs/foo",
+			reqPath:      "/apis/batch/v1/tenants/system/namespaces/default/jobs/foo",
 			reason:       "NotFound",
 			message:      `jobs.batch "foo" not found`,
 		},

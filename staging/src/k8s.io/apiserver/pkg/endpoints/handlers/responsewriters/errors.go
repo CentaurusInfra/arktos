@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,8 +64,12 @@ func forbiddenMessage(attributes authorizer.Attributes) string {
 		resource = resource + "/" + subresource
 	}
 
-	if ns := attributes.GetNamespace(); len(ns) > 0 {
+	if ns := attributes.GetNamespace(); len(ns) > 0 && resource != "namespaces" {
 		return fmt.Sprintf("User %q cannot %s resource %q in API group %q in the namespace %q", username, attributes.GetVerb(), resource, attributes.GetAPIGroup(), ns)
+	}
+
+	if tenant := attributes.GetTenant(); len(tenant) > 0 {
+		return fmt.Sprintf("User %q cannot %s resource %q in API group %q in the tenant %q", username, attributes.GetVerb(), resource, attributes.GetAPIGroup(), tenant)
 	}
 
 	return fmt.Sprintf("User %q cannot %s resource %q in API group %q at the cluster scope", username, attributes.GetVerb(), resource, attributes.GetAPIGroup())

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -159,11 +160,11 @@ func fakeScaleClient(t *testing.T) (ScalesGetter, []schema.GroupResource) {
 	}
 
 	resourcePaths := map[string]runtime.Object{
-		"/api/v1/namespaces/default/replicationcontrollers/foo/scale":                  autoscalingScale,
-		"/apis/extensions/v1beta1/namespaces/default/replicasets/foo/scale":            extScale,
-		"/apis/apps/v1beta1/namespaces/default/statefulsets/foo/scale":                 appsV1beta1Scale,
-		"/apis/apps/v1beta2/namespaces/default/deployments/foo/scale":                  appsV1beta2Scale,
-		"/apis/cheese.testing.k8s.io/v27alpha15/namespaces/default/cheddars/foo/scale": extScale,
+		"/api/v1/tenants/system/namespaces/default/replicationcontrollers/foo/scale":                  autoscalingScale,
+		"/apis/extensions/v1beta1/tenants/system/namespaces/default/replicasets/foo/scale":            extScale,
+		"/apis/apps/v1beta1/tenants/system/namespaces/default/statefulsets/foo/scale":                 appsV1beta1Scale,
+		"/apis/apps/v1beta2/tenants/system/namespaces/default/deployments/foo/scale":                  appsV1beta2Scale,
+		"/apis/cheese.testing.k8s.io/v27alpha15/tenants/system/namespaces/default/cheddars/foo/scale": extScale,
 	}
 
 	fakeReqHandler := func(req *http.Request) (*http.Response, error) {

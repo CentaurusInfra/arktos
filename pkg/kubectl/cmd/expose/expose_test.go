@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,8 +51,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -81,8 +82,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -112,8 +113,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "mayor"},
 			ns:   "default",
 			calls: map[string]string{
-				"GET":  "/namespaces/default/services/mayor",
-				"POST": "/namespaces/default/services",
+				"GET":  "/tenants/system/namespaces/default/services/mayor",
+				"POST": "/tenants/system/namespaces/default/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "mayor", Namespace: "default", ResourceVersion: "12"},
@@ -144,8 +145,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -175,8 +176,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -207,8 +208,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -239,8 +240,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -271,8 +272,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -297,8 +298,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/redis-master",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/redis-master",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "redis-master", Namespace: "test", ResourceVersion: "12"},
@@ -327,8 +328,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"pod", "a-name-that-is-toooo-big-for-a-service-because-it-can-only-handle-63-characters"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/pods/a-name-that-is-toooo-big-for-a-service-because-it-can-only-handle-63-characters",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/pods/a-name-that-is-toooo-big-for-a-service-because-it-can-only-handle-63-characters",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -355,8 +356,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "foo"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/foo",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/foo",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "", Labels: map[string]string{"svc": "multiport"}},
@@ -403,8 +404,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "foo"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/foo",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/foo",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "", Labels: map[string]string{"svc": "multiport"}},
@@ -473,8 +474,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -504,8 +505,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -535,8 +536,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},
@@ -567,8 +568,8 @@ func TestRunExposeService(t *testing.T) {
 			args: []string{"service", "baz"},
 			ns:   "test",
 			calls: map[string]string{
-				"GET":  "/namespaces/test/services/baz",
-				"POST": "/namespaces/test/services",
+				"GET":  "/tenants/system/namespaces/test/services/baz",
+				"POST": "/tenants/system/namespaces/test/services",
 			},
 			input: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{Name: "baz", Namespace: "test", ResourceVersion: "12"},

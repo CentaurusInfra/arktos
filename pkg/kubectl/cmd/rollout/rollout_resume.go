@@ -47,6 +47,8 @@ type ResumeOptions struct {
 	Resumer          polymorphichelpers.ObjectResumerFunc
 	Namespace        string
 	EnforceNamespace bool
+	Tenant           string
+	EnforceTenant    bool
 
 	resource.FilenameOptions
 	genericclioptions.IOStreams
@@ -110,6 +112,10 @@ func (o *ResumeOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []s
 	if err != nil {
 		return err
 	}
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 
 	o.ToPrinter = func(operation string) (printers.ResourcePrinter, error) {
 		o.PrintFlags.NamePrintFlags.Operation = operation
@@ -132,8 +138,9 @@ func (o *ResumeOptions) Validate() error {
 func (o ResumeOptions) RunResume() error {
 	r := o.Builder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.FilenameOptions).
 		ResourceTypeOrNameArgs(true, o.Resources...).
 		ContinueOnError().
 		Latest().
@@ -178,7 +185,7 @@ func (o ResumeOptions) RunResume() error {
 			continue
 		}
 
-		obj, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+		obj, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch: %v", err))
 			continue

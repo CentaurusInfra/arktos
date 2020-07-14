@@ -175,7 +175,7 @@ func TestRunArgsFollowDashRules(t *testing.T) {
 				GroupVersion:         corev1.SchemeGroupVersion,
 				NegotiatedSerializer: ns,
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-					if req.URL.Path == "/namespaces/test/replicationcontrollers" {
+					if req.URL.Path == "/tenants/system/namespaces/test/replicationcontrollers" {
 						return &http.Response{StatusCode: 201, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, rc)}, nil
 					}
 					return &http.Response{
@@ -336,7 +336,7 @@ func TestGenerateService(t *testing.T) {
 				NegotiatedSerializer: ns,
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case test.expectPOST && m == "POST" && p == "/namespaces/test/services":
+					case test.expectPOST && m == "POST" && p == "/tenants/system/namespaces/test/services":
 						sawPOST = true
 						body := cmdtesting.ObjBody(codec, &test.service)
 						data, err := ioutil.ReadAll(req.Body)

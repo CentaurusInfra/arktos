@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -126,7 +127,8 @@ type RollingUpdater struct {
 	podClient   corev1client.PodsGetter
 	scaleClient scaleclient.ScalesGetter
 	// Namespace for resources
-	ns string
+	ns     string
+	tenant string
 	// scaleAndWait scales a controller and returns its updated state.
 	scaleAndWait func(rc *corev1.ReplicationController, retry *RetryParams, wait *RetryParams) (*corev1.ReplicationController, error)
 	//getOrCreateTargetController gets and validates an existing controller or
@@ -141,12 +143,13 @@ type RollingUpdater struct {
 }
 
 // NewRollingUpdater creates a RollingUpdater from a client.
-func NewRollingUpdater(namespace string, rcClient corev1client.ReplicationControllersGetter, podClient corev1client.PodsGetter, sc scaleclient.ScalesGetter) *RollingUpdater {
+func NewRollingUpdater(tenant, namespace string, rcClient corev1client.ReplicationControllersGetter, podClient corev1client.PodsGetter, sc scaleclient.ScalesGetter) *RollingUpdater {
 	updater := &RollingUpdater{
 		rcClient:    rcClient,
 		podClient:   podClient,
 		scaleClient: sc,
 		ns:          namespace,
+		tenant:      tenant,
 	}
 	// Inject real implementations.
 	updater.scaleAndWait = updater.scaleAndWaitWithScaler
@@ -205,7 +208,7 @@ func (r *RollingUpdater) Update(config *RollingUpdaterConfig) error {
 	// annotation if it doesn't yet exist.
 	_, hasOriginalAnnotation := oldRc.Annotations[originalReplicasAnnotation]
 	if !hasOriginalAnnotation {
-		existing, err := r.rcClient.ReplicationControllers(oldRc.Namespace).Get(oldRc.Name, metav1.GetOptions{})
+		existing, err := r.rcClient.ReplicationControllersWithMultiTenancy(oldRc.Namespace, oldRc.Tenant).Get(oldRc.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -216,7 +219,7 @@ func (r *RollingUpdater) Update(config *RollingUpdaterConfig) error {
 			}
 			rc.Annotations[originalReplicasAnnotation] = originReplicas
 		}
-		if oldRc, err = updateRcWithRetries(r.rcClient, existing.Namespace, existing, applyUpdate); err != nil {
+		if oldRc, err = updateRcWithRetries(r.rcClient, existing.Tenant, existing.Namespace, existing, applyUpdate); err != nil {
 			return err
 		}
 	}
@@ -409,10 +412,10 @@ func (r *RollingUpdater) scaleDown(newRc, oldRc *corev1.ReplicationController, d
 // scalerScaleAndWait scales a controller using a Scaler and a real client.
 func (r *RollingUpdater) scaleAndWaitWithScaler(rc *corev1.ReplicationController, retry *RetryParams, wait *RetryParams) (*corev1.ReplicationController, error) {
 	scaler := NewScaler(r.scaleClient)
-	if err := scaler.Scale(rc.Namespace, rc.Name, uint(valOrZero(rc.Spec.Replicas)), &ScalePrecondition{-1, ""}, retry, wait, schema.GroupResource{Resource: "replicationcontrollers"}); err != nil {
+	if err := scaler.Scale(rc.Tenant, rc.Namespace, rc.Name, uint(valOrZero(rc.Spec.Replicas)), &ScalePrecondition{-1, ""}, retry, wait, schema.GroupResource{Resource: "replicationcontrollers"}); err != nil {
 		return nil, err
 	}
-	return r.rcClient.ReplicationControllers(rc.Namespace).Get(rc.Name, metav1.GetOptions{})
+	return r.rcClient.ReplicationControllersWithMultiTenancy(rc.Namespace, rc.Tenant).Get(rc.Name, metav1.GetOptions{})
 }
 
 // readyPods returns the old and new ready counts for their pods.
@@ -430,7 +433,7 @@ func (r *RollingUpdater) readyPods(oldRc, newRc *corev1.ReplicationController, m
 		controller := controllers[i]
 		selector := labels.Set(controller.Spec.Selector).AsSelector()
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err := r.podClient.Pods(controller.Namespace).List(options)
+		pods, err := r.podClient.PodsWithMultiTenancy(controller.Namespace, controller.Tenant).List(options)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -479,7 +482,7 @@ func (r *RollingUpdater) getOrCreateTargetControllerWithClient(controller *corev
 		controller.Annotations[desiredReplicasAnnotation] = fmt.Sprintf("%d", valOrZero(controller.Spec.Replicas))
 		controller.Annotations[sourceIDAnnotation] = sourceID
 		controller.Spec.Replicas = utilpointer.Int32Ptr(0)
-		newRc, err := r.rcClient.ReplicationControllers(r.ns).Create(controller)
+		newRc, err := r.rcClient.ReplicationControllersWithMultiTenancy(r.ns, r.tenant).Create(controller)
 		return newRc, false, err
 	}
 	// Validate and use the existing controller.
@@ -499,7 +502,7 @@ func (r *RollingUpdater) existingController(controller *corev1.ReplicationContro
 		return nil, errors.NewNotFound(corev1.Resource("replicationcontrollers"), controller.Name)
 	}
 	// controller name is required to get rc back
-	return r.rcClient.ReplicationControllers(controller.Namespace).Get(controller.Name, metav1.GetOptions{})
+	return r.rcClient.ReplicationControllersWithMultiTenancy(controller.Namespace, controller.Tenant).Get(controller.Name, metav1.GetOptions{})
 }
 
 // cleanupWithClients performs cleanup tasks after the rolling update. Update
@@ -508,7 +511,7 @@ func (r *RollingUpdater) existingController(controller *corev1.ReplicationContro
 func (r *RollingUpdater) cleanupWithClients(oldRc, newRc *corev1.ReplicationController, config *RollingUpdaterConfig) error {
 	// Clean up annotations
 	var err error
-	newRc, err = r.rcClient.ReplicationControllers(r.ns).Get(newRc.Name, metav1.GetOptions{})
+	newRc, err = r.rcClient.ReplicationControllersWithMultiTenancy(r.ns, r.tenant).Get(newRc.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -516,14 +519,14 @@ func (r *RollingUpdater) cleanupWithClients(oldRc, newRc *corev1.ReplicationCont
 		delete(rc.Annotations, sourceIDAnnotation)
 		delete(rc.Annotations, desiredReplicasAnnotation)
 	}
-	if newRc, err = updateRcWithRetries(r.rcClient, r.ns, newRc, applyUpdate); err != nil {
+	if newRc, err = updateRcWithRetries(r.rcClient, r.tenant, r.ns, newRc, applyUpdate); err != nil {
 		return err
 	}
 
 	if err = wait.Poll(config.Interval, config.Timeout, ControllerHasDesiredReplicas(r.rcClient, newRc)); err != nil {
 		return err
 	}
-	newRc, err = r.rcClient.ReplicationControllers(r.ns).Get(newRc.Name, metav1.GetOptions{})
+	newRc, err = r.rcClient.ReplicationControllersWithMultiTenancy(r.ns, r.tenant).Get(newRc.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -532,11 +535,11 @@ func (r *RollingUpdater) cleanupWithClients(oldRc, newRc *corev1.ReplicationCont
 	case DeleteRollingUpdateCleanupPolicy:
 		// delete old rc
 		fmt.Fprintf(config.Out, "Update succeeded. Deleting %s\n", oldRc.Name)
-		return r.rcClient.ReplicationControllers(r.ns).Delete(oldRc.Name, nil)
+		return r.rcClient.ReplicationControllersWithMultiTenancy(r.ns, r.tenant).Delete(oldRc.Name, nil)
 	case RenameRollingUpdateCleanupPolicy:
 		// delete old rc
 		fmt.Fprintf(config.Out, "Update succeeded. Deleting old controller: %s\n", oldRc.Name)
-		if err := r.rcClient.ReplicationControllers(r.ns).Delete(oldRc.Name, nil); err != nil {
+		if err := r.rcClient.ReplicationControllersWithMultiTenancy(r.ns, r.tenant).Delete(oldRc.Name, nil); err != nil {
 			return err
 		}
 		fmt.Fprintf(config.Out, "Renaming %s to %s\n", newRc.Name, oldRc.Name)
@@ -554,12 +557,12 @@ func Rename(c corev1client.ReplicationControllersGetter, rc *corev1.ReplicationC
 	rc.ResourceVersion = ""
 	// First delete the oldName RC and orphan its pods.
 	policy := metav1.DeletePropagationOrphan
-	err := c.ReplicationControllers(rc.Namespace).Delete(oldName, &metav1.DeleteOptions{PropagationPolicy: &policy})
+	err := c.ReplicationControllersWithMultiTenancy(rc.Namespace, rc.Tenant).Delete(oldName, &metav1.DeleteOptions{PropagationPolicy: &policy})
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	err = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
-		_, err := c.ReplicationControllers(rc.Namespace).Get(oldName, metav1.GetOptions{})
+		_, err := c.ReplicationControllersWithMultiTenancy(rc.Namespace, rc.Tenant).Get(oldName, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		} else if errors.IsNotFound(err) {
@@ -572,15 +575,15 @@ func Rename(c corev1client.ReplicationControllersGetter, rc *corev1.ReplicationC
 		return err
 	}
 	// Then create the same RC with the new name.
-	_, err = c.ReplicationControllers(rc.Namespace).Create(rc)
+	_, err = c.ReplicationControllersWithMultiTenancy(rc.Namespace, rc.Tenant).Create(rc)
 	return err
 }
 
-func LoadExistingNextReplicationController(c corev1client.ReplicationControllersGetter, namespace, newName string) (*corev1.ReplicationController, error) {
+func LoadExistingNextReplicationController(c corev1client.ReplicationControllersGetter, tenant, namespace, newName string) (*corev1.ReplicationController, error) {
 	if len(newName) == 0 {
 		return nil, nil
 	}
-	newRc, err := c.ReplicationControllers(namespace).Get(newName, metav1.GetOptions{})
+	newRc, err := c.ReplicationControllersWithMultiTenancy(namespace, tenant).Get(newName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return nil, nil
 	}
@@ -588,6 +591,7 @@ func LoadExistingNextReplicationController(c corev1client.ReplicationControllers
 }
 
 type NewControllerConfig struct {
+	Tenant           string
 	Namespace        string
 	OldName, NewName string
 	Image            string
@@ -599,7 +603,7 @@ type NewControllerConfig struct {
 func CreateNewControllerFromCurrentController(rcClient corev1client.ReplicationControllersGetter, codec runtime.Codec, cfg *NewControllerConfig) (*corev1.ReplicationController, error) {
 	containerIndex := 0
 	// load the old RC into the "new" RC
-	newRc, err := rcClient.ReplicationControllers(cfg.Namespace).Get(cfg.OldName, metav1.GetOptions{})
+	newRc, err := rcClient.ReplicationControllersWithMultiTenancy(cfg.Namespace, cfg.Tenant).Get(cfg.OldName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -685,10 +689,10 @@ func SetNextControllerAnnotation(rc *corev1.ReplicationController, name string) 
 	rc.Annotations[nextControllerAnnotation] = name
 }
 
-func UpdateExistingReplicationController(rcClient corev1client.ReplicationControllersGetter, podClient corev1client.PodsGetter, oldRc *corev1.ReplicationController, namespace, newName, deploymentKey, deploymentValue string, out io.Writer) (*corev1.ReplicationController, error) {
+func UpdateExistingReplicationController(rcClient corev1client.ReplicationControllersGetter, podClient corev1client.PodsGetter, oldRc *corev1.ReplicationController, tenant, namespace, newName, deploymentKey, deploymentValue string, out io.Writer) (*corev1.ReplicationController, error) {
 	if _, found := oldRc.Spec.Selector[deploymentKey]; !found {
 		SetNextControllerAnnotation(oldRc, newName)
-		return AddDeploymentKeyToReplicationController(oldRc, rcClient, podClient, deploymentKey, deploymentValue, namespace, out)
+		return AddDeploymentKeyToReplicationController(oldRc, rcClient, podClient, deploymentKey, deploymentValue, tenant, namespace, out)
 	}
 
 	// If we didn't need to update the controller for the deployment key, we still need to write
@@ -696,10 +700,10 @@ func UpdateExistingReplicationController(rcClient corev1client.ReplicationContro
 	applyUpdate := func(rc *corev1.ReplicationController) {
 		SetNextControllerAnnotation(rc, newName)
 	}
-	return updateRcWithRetries(rcClient, namespace, oldRc, applyUpdate)
+	return updateRcWithRetries(rcClient, tenant, namespace, oldRc, applyUpdate)
 }
 
-func AddDeploymentKeyToReplicationController(oldRc *corev1.ReplicationController, rcClient corev1client.ReplicationControllersGetter, podClient corev1client.PodsGetter, deploymentKey, deploymentValue, namespace string, out io.Writer) (*corev1.ReplicationController, error) {
+func AddDeploymentKeyToReplicationController(oldRc *corev1.ReplicationController, rcClient corev1client.ReplicationControllersGetter, podClient corev1client.PodsGetter, deploymentKey, deploymentValue, tenant, namespace string, out io.Writer) (*corev1.ReplicationController, error) {
 	var err error
 	// First, update the template label.  This ensures that any newly created pods will have the new label
 	applyUpdate := func(rc *corev1.ReplicationController) {
@@ -708,7 +712,7 @@ func AddDeploymentKeyToReplicationController(oldRc *corev1.ReplicationController
 		}
 		rc.Spec.Template.Labels[deploymentKey] = deploymentValue
 	}
-	if oldRc, err = updateRcWithRetries(rcClient, namespace, oldRc, applyUpdate); err != nil {
+	if oldRc, err = updateRcWithRetries(rcClient, tenant, namespace, oldRc, applyUpdate); err != nil {
 		return nil, err
 	}
 
@@ -716,7 +720,7 @@ func AddDeploymentKeyToReplicationController(oldRc *corev1.ReplicationController
 	// TODO: extract the code from the label command and re-use it here.
 	selector := labels.SelectorFromSet(oldRc.Spec.Selector)
 	options := metav1.ListOptions{LabelSelector: selector.String()}
-	podList, err := podClient.Pods(namespace).List(options)
+	podList, err := podClient.PodsWithMultiTenancy(namespace, tenant).List(options)
 	if err != nil {
 		return nil, err
 	}
@@ -731,7 +735,7 @@ func AddDeploymentKeyToReplicationController(oldRc *corev1.ReplicationController
 				p.Labels[deploymentKey] = deploymentValue
 			}
 		}
-		if pod, err = updatePodWithRetries(podClient, namespace, pod, applyUpdate); err != nil {
+		if pod, err = updatePodWithRetries(podClient, tenant, namespace, pod, applyUpdate); err != nil {
 			return nil, err
 		}
 	}
@@ -748,7 +752,7 @@ func AddDeploymentKeyToReplicationController(oldRc *corev1.ReplicationController
 		rc.Spec.Selector[deploymentKey] = deploymentValue
 	}
 	// Update the selector of the rc so it manages all the pods we updated above
-	if oldRc, err = updateRcWithRetries(rcClient, namespace, oldRc, applyUpdate); err != nil {
+	if oldRc, err = updateRcWithRetries(rcClient, tenant, namespace, oldRc, applyUpdate); err != nil {
 		return nil, err
 	}
 
@@ -757,13 +761,13 @@ func AddDeploymentKeyToReplicationController(oldRc *corev1.ReplicationController
 	// we've finished re-adopting existing pods to the rc.
 	selector = labels.SelectorFromSet(selectorCopy)
 	options = metav1.ListOptions{LabelSelector: selector.String()}
-	if podList, err = podClient.Pods(namespace).List(options); err != nil {
+	if podList, err = podClient.PodsWithMultiTenancy(namespace, tenant).List(options); err != nil {
 		return nil, err
 	}
 	for ix := range podList.Items {
 		pod := &podList.Items[ix]
 		if value, found := pod.Labels[deploymentKey]; !found || value != deploymentValue {
-			if err := podClient.Pods(namespace).Delete(pod.Name, nil); err != nil {
+			if err := podClient.PodsWithMultiTenancy(namespace, tenant).Delete(pod.Name, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -778,20 +782,20 @@ type updateRcFunc func(controller *corev1.ReplicationController)
 // 1. Get latest resource
 // 2. applyUpdate
 // 3. Update the resource
-func updateRcWithRetries(rcClient corev1client.ReplicationControllersGetter, namespace string, rc *corev1.ReplicationController, applyUpdate updateRcFunc) (*corev1.ReplicationController, error) {
+func updateRcWithRetries(rcClient corev1client.ReplicationControllersGetter, tenant, namespace string, rc *corev1.ReplicationController, applyUpdate updateRcFunc) (*corev1.ReplicationController, error) {
 	// Deep copy the rc in case we failed on Get during retry loop
 	oldRc := rc.DeepCopy()
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() (e error) {
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(rc)
-		if rc, e = rcClient.ReplicationControllers(namespace).Update(rc); e == nil {
+		if rc, e = rcClient.ReplicationControllersWithMultiTenancy(namespace, tenant).Update(rc); e == nil {
 			// rc contains the latest controller post update
 			return
 		}
 		updateErr := e
 		// Update the controller with the latest resource version, if the update failed we
 		// can't trust rc so use oldRc.Name.
-		if rc, e = rcClient.ReplicationControllers(namespace).Get(oldRc.Name, metav1.GetOptions{}); e != nil {
+		if rc, e = rcClient.ReplicationControllersWithMultiTenancy(namespace, tenant).Get(oldRc.Name, metav1.GetOptions{}); e != nil {
 			// The Get failed: Value in rc cannot be trusted.
 			rc = oldRc
 		}
@@ -809,17 +813,17 @@ type updatePodFunc func(controller *corev1.Pod)
 // 1. Get latest resource
 // 2. applyUpdate
 // 3. Update the resource
-func updatePodWithRetries(podClient corev1client.PodsGetter, namespace string, pod *corev1.Pod, applyUpdate updatePodFunc) (*corev1.Pod, error) {
+func updatePodWithRetries(podClient corev1client.PodsGetter, tenant, namespace string, pod *corev1.Pod, applyUpdate updatePodFunc) (*corev1.Pod, error) {
 	// Deep copy the pod in case we failed on Get during retry loop
 	oldPod := pod.DeepCopy()
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() (e error) {
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(pod)
-		if pod, e = podClient.Pods(namespace).Update(pod); e == nil {
+		if pod, e = podClient.PodsWithMultiTenancy(namespace, tenant).Update(pod); e == nil {
 			return
 		}
 		updateErr := e
-		if pod, e = podClient.Pods(namespace).Get(oldPod.Name, metav1.GetOptions{}); e != nil {
+		if pod, e = podClient.PodsWithMultiTenancy(namespace, tenant).Get(oldPod.Name, metav1.GetOptions{}); e != nil {
 			pod = oldPod
 		}
 		// Only return the error from update
@@ -830,8 +834,8 @@ func updatePodWithRetries(podClient corev1client.PodsGetter, namespace string, p
 	return pod, err
 }
 
-func FindSourceController(r corev1client.ReplicationControllersGetter, namespace, name string) (*corev1.ReplicationController, error) {
-	list, err := r.ReplicationControllers(namespace).List(metav1.ListOptions{})
+func FindSourceController(r corev1client.ReplicationControllersGetter, tenant, namespace, name string) (*corev1.ReplicationController, error) {
+	list, err := r.ReplicationControllersWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -841,5 +845,5 @@ func FindSourceController(r corev1client.ReplicationControllersGetter, namespace
 			return rc, nil
 		}
 	}
-	return nil, fmt.Errorf("couldn't find a replication controller with source id == %s/%s", namespace, name)
+	return nil, fmt.Errorf("couldn't find a replication controller with source id == %s/%s/%s", tenant, namespace, name)
 }
