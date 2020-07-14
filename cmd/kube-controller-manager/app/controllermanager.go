@@ -368,6 +368,7 @@ func KnownControllers() []string {
 var ControllersDisabledByDefault = sets.NewString(
 	"bootstrapsigner",
 	"tokencleaner",
+	"network",
 )
 
 const (
@@ -417,10 +418,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["pv-protection"] = startPVProtectionController
 	controllers["ttl-after-finished"] = startTTLAfterFinishedController
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
-	networkController, set := os.LookupEnv("network")
-	if set && networkController == "neutron" {
-		controllers["network"] = startNetworkController
-	}
+	controllers["network"] = startNetworkController
 
 	return controllers
 }
