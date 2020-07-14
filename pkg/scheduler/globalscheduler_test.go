@@ -3,7 +3,7 @@ package scheduler
 import (
 	"fmt"
 	"testing"
-	"errors"
+	// "errors"
 	"reflect"
 	"time"
 
@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/kubernetes/pkg/scheduler/volumebinder"
+	"k8s.io/apimachinery/pkg/labels"
 	clientsetfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
@@ -31,8 +32,6 @@ import (
 	volumescheduling "k8s.io/kubernetes/pkg/controller/volume/scheduling"
 )
 
-// EmptyPluginRegistry is an empty plugin registry used in tests.
-var EmptyPluginRegistry = framework.Registry{}
 // EmptyPluginConfig is an empty plugin config used in tests.
 var EmptyPluginConfig = []kubeschedulerconfig.PluginConfig{}
 // EmptyFramework is an empty framework used in tests.
@@ -47,20 +46,32 @@ func PriorityOne(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeI
 	return []schedulerapi.HostPriority{}, nil
 }
 
-type mockScheduler struct {
-	result core.ScheduleResult
-	err    error
-}
+
 
 type nodeLister struct {
 	corelister.NodeLister
+}
+func (n *nodeLister) List() ([]*v1.Node, error) {
+	return n.NodeLister.List(labels.Everything())
 }
 
 type fakeBinder struct {
 	b func(binding *v1.Binding) error
 }
+func (fb fakeBinder) Bind(binding *v1.Binding) error { return fb.b(binding) }
 
 type fakePodConditionUpdater struct{}
+func (fc fakePodConditionUpdater) Update(pod *v1.Pod, podCondition *v1.PodCondition) error {
+	return nil
+}
+
+type mockScheduler struct {
+	result core.ScheduleResult
+	err    error
+}
+func (es mockScheduler) GlobalSchedule(pod *v1.Pod) (core.ScheduleResult, error) {
+	return es.result, es.err
+}
 
 func (es mockScheduler) Schedule(pod *v1.Pod, ml algorithm.NodeLister, pc *framework.PluginContext) (core.ScheduleResult, error) {
 	return es.result, es.err
@@ -132,8 +143,8 @@ func TestSchedulerCreation(t *testing.T) {
 func TestScheduler(t *testing.T) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(t.Logf).Stop()
-	errS := errors.New("scheduler")
-	errB := errors.New("binder")
+	// errS := errors.New("scheduler")
+	// errB := errors.New("binder")
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
 
 	table := []struct {
@@ -236,7 +247,7 @@ func TestScheduler(t *testing.T) {
 				}
 				close(called)
 			})
-			s.globalScheduleOne()
+			s.scheduleOne()
 			<-called
 			if e, a := item.expectAssumedPod, gotAssumedPod; !reflect.DeepEqual(e, a) {
 				t.Errorf("assumed pod: wanted %v, got %v", e, a)
