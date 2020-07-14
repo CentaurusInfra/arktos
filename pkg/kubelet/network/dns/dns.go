@@ -85,11 +85,13 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 }
 
 func (c *Configurer) getClusterDNS(pod *v1.Pod) []net.IP {
+	// todo: consider using exported const of default network name from arktos package
 	const defaultNetwork = "default"
 	networkName, ok := pod.Labels["arktos.futurewei.com/network"]
 	if !ok {
 		networkName = defaultNetwork
 	}
+
 	if network, err := c.arktosV1Client.NetworksWithMultiTenancy(pod.Tenant).Get(networkName, metav1.GetOptions{}); err == nil {
 		sip := network.Status.DNSServiceIP
 		ip := net.ParseIP(sip)
@@ -102,7 +104,7 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) []net.IP {
 
 	// for now, fallback to default cluster DNS for pod that has no explicit network and no valid dns service ip of the default network not set yet.
 	// This is temporary measure to keep system unbroken before all multi-tenant network dependencies are in place.
-	// todo: disable the fallback when every components are ready.
+	// todo: disable the fallback when every multi-tenant networking components are in place.
 	if networkName == defaultNetwork {
 		return c.clusterDNS
 	}
