@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"k8s.io/apimachinery/pkg/util/rand"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -104,7 +104,7 @@ func (i *Info) GetClient() RESTClient {
 
 	if max > 1 {
 		rand.Seed(time.Now().UnixNano())
-		ran := rand.IntnRange(0, max-1)
+		ran := rand.Intn(max)
 		return i.Clients[ran]
 	}
 	return nil

@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"github.com/grafov/bcast"
 	"io/ioutil"
-	"k8s.io/client-go/apiserverupdate"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -36,7 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/apiserverupdate"
 	"k8s.io/client-go/pkg/version"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/transport"
@@ -123,7 +123,7 @@ func (ag *Config) GetConfig() *KubeConfig {
 		return ag.config[0]
 	default:
 		rand.Seed(time.Now().UnixNano())
-		ran := rand.IntnRange(0, max-1)
+		ran := rand.Intn(max)
 		return ag.config[ran]
 	}
 }
