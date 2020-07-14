@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/rand"
+	"math/rand"
 
 	"github.com/golang/protobuf/proto"
 	openapi_v2 "github.com/googleapis/gnostic/OpenAPIv2"
@@ -543,7 +543,7 @@ func (d *DiscoveryClient) RESTClient() restclient.Interface {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	ran := rand.IntnRange(0, max-1)
+	ran := rand.Intn(max)
 	return d.restClients[ran]
 }
 
