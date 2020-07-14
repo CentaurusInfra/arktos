@@ -76,7 +76,6 @@ copyRuntimeDeploymentFile "libvirtd" "apparmor/libvirtd"
 copyRuntimeDeploymentFile "virtlet" "apparmor/virtlet"
 copyRuntimeDeploymentFile "vms" "apparmor/vms"
 copyRuntimeDeploymentFile "vmruntime.yaml" "data/virtlet-ds.yaml"
-copyRuntimeDeploymentFile "images.yaml" "images.yaml"
 
 if [ "${APPARMOR_ENABLED}" == "true" ]; then
   echo "Config test env under apparmor enabled host"
