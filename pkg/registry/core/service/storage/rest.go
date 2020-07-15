@@ -347,7 +347,19 @@ func (rs *REST) Delete(ctx context.Context, id string, deleteValidation rest.Val
 			return nil, false, err
 		}
 
-		rs.releaseAllocatedResources(svc)
+		isExternalIPAM, err := rs.isExternalIPAM(ctx, svc)
+		if err != nil {
+			return nil, false, fmt.Errorf("unable to determine service IPAM type: %v", err)
+		}
+
+		var svcIPs ipallocator.Interface
+		if !isExternalIPAM {
+			if svcIPs, err = rs.getServiceIPs(svc); err != nil {
+				return nil, false, fmt.Errorf("failed to get service IP allocator: %v", err)
+			}
+		}
+
+		rs.releaseAllocatedResources(svc, svcIPs)
 	}
 
 	// TODO: this is duplicated from the generic storage, when this wrapper is fully removed we can drop this
@@ -363,9 +375,9 @@ func (rs *REST) Delete(ctx context.Context, id string, deleteValidation rest.Val
 	return status, true, nil
 }
 
-func (rs *REST) releaseAllocatedResources(svc *api.Service) {
-	if helper.IsServiceIPSet(svc) {
-		rs.serviceIPs.Release(net.ParseIP(svc.Spec.ClusterIP))
+func (rs *REST) releaseAllocatedResources(svc *api.Service, svcIPs ipallocator.Interface) {
+	if helper.IsServiceIPSet(svc) && svcIPs != nil {
+		svcIPs.Release(net.ParseIP(svc.Spec.ClusterIP))
 	}
 
 	for _, nodePort := range collectServiceNodePorts(svc) {

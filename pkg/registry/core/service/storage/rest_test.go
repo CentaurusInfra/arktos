@@ -352,7 +352,14 @@ func TestServiceRegistryCreateDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	if storage.serviceIPs.Has(net.ParseIP("1.2.3.4")) {
+
+	var svcIPs ipallocator.Interface
+	svcIPs, err = storage.getServiceIPs(svc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if svcIPs.Has(net.ParseIP("1.2.3.4")) {
 		t.Errorf("unexpected side effect: ip allocated")
 	}
 	srv, err := registry.GetService(ctx, svc.Name, &metav1.GetOptions{})
@@ -788,7 +795,14 @@ func TestServiceRegistryUpdateDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error: %v", err)
 	}
-	if storage.serviceIPs.Has(net.ParseIP("1.2.3.4")) {
+
+	var svcIPs ipallocator.Interface
+	svcIPs, err = storage.getServiceIPs(svc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if svcIPs.Has(net.ParseIP("1.2.3.4")) {
 		t.Errorf("unexpected side effect: ip allocated")
 	}
 
@@ -872,7 +886,8 @@ func TestServiceRegistryUpdateDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error: %v", err)
 	}
-	if !storage.serviceIPs.Has(net.ParseIP("1.2.3.4")) {
+
+	if !svcIPs.Has(net.ParseIP("1.2.3.4")) {
 		t.Errorf("unexpected side effect: ip unallocated")
 	}
 }
@@ -1023,7 +1038,14 @@ func TestServiceRegistryDeleteDryRun(t *testing.T) {
 	if e, a := "", registry.DeletedID; e != a {
 		t.Errorf("Expected %v, but got %v", e, a)
 	}
-	if !storage.serviceIPs.Has(net.ParseIP("1.2.3.4")) {
+
+	var svcIPs ipallocator.Interface
+	svcIPs, err = storage.getServiceIPs(svc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !svcIPs.Has(net.ParseIP("1.2.3.4")) {
 		t.Errorf("unexpected side effect: ip unallocated")
 	}
 
@@ -1416,10 +1438,21 @@ func TestServiceRegistryIPAllocation(t *testing.T) {
 		t.Errorf("Unexpected ClusterIP: %s", created_service_2.Spec.ClusterIP)
 	}
 
+	var err error
+	var svcIPs1, svcIPs2 ipallocator.Interface
+	svcIPs1, err = storage.getServiceIPs(svc1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	svcIPs2, err = storage.getServiceIPs(svc2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
 	testIPs := []string{"1.2.3.93", "1.2.3.94", "1.2.3.95", "1.2.3.96"}
 	testIP := ""
 	for _, ip := range testIPs {
-		if !storage.serviceIPs.(*ipallocator.Range).Has(net.ParseIP(ip)) {
+		if !svcIPs1.(*ipallocator.Range).Has(net.ParseIP(ip)) && !svcIPs2.(*ipallocator.Range).Has(net.ParseIP(ip)) {
 			testIP = ip
 			break
 		}
@@ -1542,10 +1575,17 @@ func TestServiceRegistryIPUpdate(t *testing.T) {
 		t.Errorf("Expected port 6503, but got %v", updated_service.Spec.Ports[0].Port)
 	}
 
+	var err error
+	var svcIPs ipallocator.Interface
+	svcIPs, err = storage.getServiceIPs(svc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
 	testIPs := []string{"1.2.3.93", "1.2.3.94", "1.2.3.95", "1.2.3.96"}
 	testIP := ""
 	for _, ip := range testIPs {
-		if !storage.serviceIPs.(*ipallocator.Range).Has(net.ParseIP(ip)) {
+		if !svcIPs.(*ipallocator.Range).Has(net.ParseIP(ip)) {
 			testIP = ip
 			break
 		}
@@ -1555,7 +1595,7 @@ func TestServiceRegistryIPUpdate(t *testing.T) {
 	update.Spec.Ports[0].Port = 6503
 	update.Spec.ClusterIP = testIP // Error: Cluster IP is immutable
 
-	_, _, err := storage.Update(ctx, update.Name, rest.DefaultUpdatedObjectInfo(update), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
+	_, _, err = storage.Update(ctx, update.Name, rest.DefaultUpdatedObjectInfo(update), rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
 	if err == nil || !errors.IsInvalid(err) {
 		t.Errorf("Unexpected error type: %v", err)
 	}
@@ -1834,7 +1874,14 @@ func TestInitClusterIP(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		hasAllocatedIP, err := initClusterIP(test.svc, storage.serviceIPs)
+		var err error
+		var svcIPs ipallocator.Interface
+		svcIPs, err = storage.getServiceIPs(test.svc)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		hasAllocatedIP, err := initClusterIP(test.svc, svcIPs)
 		if err != nil {
 			t.Errorf("%q: unexpected error: %v", test.name, err)
 		}
@@ -1844,7 +1891,7 @@ func TestInitClusterIP(t *testing.T) {
 		}
 
 		if test.expectClusterIP {
-			if !storage.serviceIPs.Has(net.ParseIP(test.svc.Spec.ClusterIP)) {
+			if !svcIPs.Has(net.ParseIP(test.svc.Spec.ClusterIP)) {
 				t.Errorf("%q: unexpected ClusterIP %q, out of range", test.name, test.svc.Spec.ClusterIP)
 			}
 		}
@@ -1855,7 +1902,7 @@ func TestInitClusterIP(t *testing.T) {
 
 		if hasAllocatedIP {
 			if helper.IsServiceIPSet(test.svc) {
-				storage.serviceIPs.Release(net.ParseIP(test.svc.Spec.ClusterIP))
+				svcIPs.Release(net.ParseIP(test.svc.Spec.ClusterIP))
 			}
 		}
 	}
