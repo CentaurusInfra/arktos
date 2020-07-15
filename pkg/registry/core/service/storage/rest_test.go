@@ -258,6 +258,7 @@ func NewTestRESTWithPods(t *testing.T, endpoints *api.EndpointsList, pods *api.P
 	portAllocator := portallocator.NewPortAllocator(portRange)
 
 	rest, _ := NewREST(serviceStorage, endpointStorage, podStorage.Pod, r, portAllocator, nil)
+	rest.SetBackendStorageConfig(etcdStorage)
 
 	testNetworkStorage := dummyNetworkGetter{}
 	rest.networks = &testNetworkStorage

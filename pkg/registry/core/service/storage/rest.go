@@ -52,6 +52,8 @@ import (
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	"k8s.io/kubernetes/pkg/features"
 	registry "k8s.io/kubernetes/pkg/registry/core/service"
+	"k8s.io/kubernetes/pkg/registry/core/service/allocator"
+	serviceallocator "k8s.io/kubernetes/pkg/registry/core/service/allocator/storage"
 	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
 	"k8s.io/kubernetes/pkg/registry/core/service/portallocator"
 )
@@ -68,6 +70,9 @@ type REST struct {
 	m                sync.Mutex
 	networks         rest.Getter
 
+	// per-network service IP allocators
+	networkServiceIPs sync.Map
+	lock              sync.Mutex
 	// global reference to backend ETCD config of per-network ip range data persistence
 	backendStorageConfig *storagebackend.Config
 }
@@ -130,10 +135,15 @@ var (
 	_ rest.StorageVersionProvider = &REST{}
 )
 
+// SetBackendStorageConfig initializes the ETCD backend client config
+func (rs *REST) SetBackendStorageConfig(config *storagebackend.Config) {
+	rs.backendStorageConfig = config
+}
+
 // getServiceIPAlloc gets ip allocator object suited for the service on basis of its associated network
 func (rs *REST) getServiceIPAlloc(service *api.Service) (ipallocator.Interface, error) {
 	if utilfeature.DefaultFeatureGate.Enabled(features.PerNetworkServiceIPAlloc) {
-		return nil, fmt.Errorf("to be implemented")
+		return rs.getNetworkServiceIPs(service)
 	}
 
 	return rs.serviceIPs, nil
@@ -879,4 +889,81 @@ func collectServiceNodePorts(service *api.Service) []int {
 		}
 	}
 	return servicePorts
+}
+
+func (rs *REST) getNetworkServiceIPs(service *api.Service) (ipallocator.Interface, error) {
+	netName, ok := service.Labels[arktosv1.NetworkLabel]
+	if !ok {
+		netName = arktosv1.NetworkDefault
+	}
+
+	network, err := rs.getNetwork(genericapirequest.NewContext(), service.Tenant, netName)
+	if err != nil {
+		// todo: remove the temporary measure when we have all the multi-tenant networking components in place
+		// as temporary measure, ignore the error of default network not found
+		if netName == arktosv1.NetworkDefault {
+			return rs.serviceIPs, nil
+		}
+
+		return nil, fmt.Errorf("cannot find network %s of tenant %s: %v", netName, service.Tenant, err)
+	}
+
+	networkUnstructured := network.(*unstructured.Unstructured)
+	var cidrs []string
+	cidrs, ok, err = unstructured.NestedStringSlice(networkUnstructured.Object, "spec", "service", "cidrs")
+	if err != nil {
+		return nil, fmt.Errorf("failed to identify spec.service.cidrs of network %s of tenant %s: %v", netName, service.Tenant, err)
+	}
+	if !ok || len(cidrs) == 0 {
+		return nil, fmt.Errorf("no service cidr found for network network %s of tenant %s", netName, service.Tenant)
+	}
+
+	// todo: to use multiple cidr ranges in the future
+	// for now only first cidr take effect
+	cidr := cidrs[0]
+	var ipNet *net.IPNet
+	if _, ipNet, err = net.ParseCIDR(cidr); err != nil {
+		return nil, fmt.Errorf("%q is not a valid range of network %s of tenant %s: %v", cidr, netName, service.Tenant, err)
+	}
+
+	return rs.getServiceIPsByKey(service.Tenant, netName, ipNet)
+}
+
+func (rs *REST) getServiceIPsByKey(tenant, network string, cidr *net.IPNet) (ipallocator.Interface, error) {
+	etcdBaseKey := fmt.Sprintf("/ranges/network-serviceips/%s/%s/%s/serviceips", tenant, network, cidr.String())
+	if allocator, ok := rs.networkServiceIPs.Load(etcdBaseKey); ok {
+		return allocator.(ipallocator.Interface), nil
+	}
+
+	// slow path: create the allocator on top of the etcd backend
+	return rs.createNetworkServiceIPs(etcdBaseKey, cidr)
+}
+
+func (rs *REST) createNetworkServiceIPs(etcdBaseKey string, cidr *net.IPNet) (ipallocator.Interface, error) {
+	rs.lock.Lock()
+	defer rs.lock.Unlock()
+
+	if ipAllocator, ok := rs.networkServiceIPs.Load(etcdBaseKey); ok {
+		return ipAllocator.(ipallocator.Interface), nil
+	}
+
+	var err error
+	ipAllocator := ipallocator.NewAllocatorCIDRRange(cidr, func(max int, rangeSpec string) allocator.Interface {
+		mem := allocator.NewAllocationMap(max, rangeSpec)
+		etcd := serviceallocator.NewEtcd(mem, etcdBaseKey, api.Resource("serviceipallocations"), rs.backendStorageConfig)
+
+		var snapshot *api.RangeAllocation
+		if snapshot, err = etcd.Get(); err != nil || snapshot.Range == "" {
+			snapshot.Range = cidr.String()
+			err = etcd.CreateOrUpdate(snapshot)
+		}
+
+		return etcd
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate presistent backend for base key %s: %v", etcdBaseKey, err)
+	}
+
+	return ipAllocator, nil
 }

@@ -63,6 +63,8 @@ go_library(
         "//pkg/printers/internalversion:go_default_library",
         "//pkg/printers/storage:go_default_library",
         "//pkg/registry/core/service:go_default_library",
+        "//pkg/registry/core/service/allocator:go_default_library",
+        "//pkg/registry/core/service/allocator/storage:go_default_library",
         "//pkg/registry/core/service/ipallocator:go_default_library",
         "//pkg/registry/core/service/portallocator:go_default_library",
         "//staging/src/k8s.io/apiextensions-apiserver/pkg/apiserver:go_default_library",
