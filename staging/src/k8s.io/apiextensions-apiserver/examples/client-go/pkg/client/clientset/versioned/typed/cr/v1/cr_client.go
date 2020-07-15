@@ -20,11 +20,11 @@ limitations under the License.
 package v1
 
 import (
+	rand "math/rand"
 	"time"
 
 	v1 "k8s.io/apiextensions-apiserver/examples/client-go/pkg/apis/cr/v1"
 	"k8s.io/apiextensions-apiserver/examples/client-go/pkg/client/clientset/versioned/scheme"
-	rand "k8s.io/apimachinery/pkg/util/rand"
 	apiserverupdate "k8s.io/client-go/apiserverupdate"
 	rest "k8s.io/client-go/rest"
 	klog "k8s.io/klog"
@@ -124,7 +124,7 @@ func (c *CrV1Client) RESTClient() rest.Interface {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	ran := rand.IntnRange(0, max-1)
+	ran := rand.Intn(max)
 	return c.restClients[ran]
 }
 

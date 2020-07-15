@@ -21,12 +21,12 @@ package v1
 import (
 	"time"
 
-	rand "k8s.io/apimachinery/pkg/util/rand"
 	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	"k8s.io/arktos-ext/pkg/generated/clientset/versioned/scheme"
 	apiserverupdate "k8s.io/client-go/apiserverupdate"
 	rest "k8s.io/client-go/rest"
 	klog "k8s.io/klog"
+	rand "math/rand"
 )
 
 type ArktosV1Interface interface {
@@ -123,7 +123,7 @@ func (c *ArktosV1Client) RESTClient() rest.Interface {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	ran := rand.IntnRange(0, max-1)
+	ran := rand.Intn(max)
 	return c.restClients[ran]
 }
 

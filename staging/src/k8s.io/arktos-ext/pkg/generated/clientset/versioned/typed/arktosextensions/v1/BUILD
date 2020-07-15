@@ -14,7 +14,6 @@ go_library(
     deps = [
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
-        "//staging/src/k8s.io/apimachinery/pkg/util/rand:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/watch:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/apis/arktosextensions/v1:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/generated/clientset/versioned/scheme:go_default_library",

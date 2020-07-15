@@ -20,9 +20,9 @@ limitations under the License.
 package internalversion
 
 import (
+	rand "math/rand"
 	"time"
 
-	rand "k8s.io/apimachinery/pkg/util/rand"
 	apiserverupdate "k8s.io/client-go/apiserverupdate"
 	rest "k8s.io/client-go/rest"
 	klog "k8s.io/klog"
@@ -130,7 +130,7 @@ func (c *ApiregistrationClient) RESTClient() rest.Interface {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	ran := rand.IntnRange(0, max-1)
+	ran := rand.Intn(max)
 	return c.restClients[ran]
 }
 
