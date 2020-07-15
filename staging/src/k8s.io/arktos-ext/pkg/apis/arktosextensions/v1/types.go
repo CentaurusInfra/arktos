@@ -93,6 +93,9 @@ const (
 	NetworkLabel = "arktos.futurewei.com/network"
 	// network related annotation keys
 	NetworkReadiness = "arktos.futurewei.com/network-readiness"
+
+	// NetworkDefaul is the default network name
+	NetworkDefault = "default"
 )
 
 // NetworkStatus is the status for Network resource

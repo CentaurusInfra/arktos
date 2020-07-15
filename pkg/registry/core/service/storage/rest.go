@@ -28,6 +28,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	extensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,14 +42,14 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/util/dryrun"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	"k8s.io/klog"
-
-	extensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
-	arktosextensionsv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/service"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
+	"k8s.io/kubernetes/pkg/features"
 	registry "k8s.io/kubernetes/pkg/registry/core/service"
 	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
 	"k8s.io/kubernetes/pkg/registry/core/service/portallocator"
@@ -124,6 +125,15 @@ var (
 	_ rest.ShortNamesProvider     = &REST{}
 	_ rest.StorageVersionProvider = &REST{}
 )
+
+// getServiceIPs gets ip allocator object suited for the service on basis of its associated network
+func (rs *REST) getServiceIPs(service *api.Service) (ipallocator.Interface, error) {
+	if utilfeature.DefaultFeatureGate.Enabled(features.PerNetworkServiceIPAlloc) {
+		return nil, fmt.Errorf("to be implemented")
+	}
+
+	return rs.serviceIPs, nil
+}
 
 func (rs *REST) StorageVersion() runtime.GroupVersioner {
 	return rs.services.StorageVersion()
@@ -222,11 +232,10 @@ func (rs *REST) Export(ctx context.Context, name string, opts metav1.ExportOptio
 }
 
 func (rs *REST) isExternalIPAM(ctx context.Context, service *api.Service) (bool, error) {
-	const defaultNetwork = "default"
-	netName := service.Labels[arktosextensionsv1.NetworkLabel]
+	netName := service.Labels[arktosv1.NetworkLabel]
 	if netName == "" {
 		// choose the default network name if not specified
-		netName = defaultNetwork
+		netName = arktosv1.NetworkDefault
 	}
 
 	// todo: consider having a sub context of the ctx param
@@ -234,7 +243,7 @@ func (rs *REST) isExternalIPAM(ctx context.Context, service *api.Service) (bool,
 	if err != nil {
 		// for now, temporarily ignore the default network not found error
 		// todo: remove below line after tenant controller enables automatic default network creation on new tenants
-		if netName == defaultNetwork {
+		if netName == arktosv1.NetworkDefault {
 			return false, nil
 		}
 
@@ -242,14 +251,8 @@ func (rs *REST) isExternalIPAM(ctx context.Context, service *api.Service) (bool,
 	}
 
 	net := network.(*unstructured.Unstructured)
-	netSpec := net.Object["spec"].(map[string]interface{})
-	if s, ok := netSpec["service"]; ok {
-		netSvc := s.(map[string]interface{})
-		if v, ok := netSvc["ipam"]; ok {
-			if vs, ok := v.(string); ok {
-				return vs == string(arktosextensionsv1.IPAMExternal), nil
-			}
-		}
+	if ipam, ok, err := unstructured.NestedString(net.Object, "spec", "service", "ipam"); err == nil && ok {
+		return ipam == string(arktosv1.IPAMExternal), nil
 	}
 
 	return false, nil
@@ -266,19 +269,24 @@ func (rs *REST) Create(ctx context.Context, obj runtime.Object, createValidation
 		return nil, err
 	}
 
+	var svcIPs ipallocator.Interface
+
 	// TODO: this should probably move to strategy.PrepareForCreate()
 	releaseServiceIP := false
 	defer func() {
-		if releaseServiceIP {
+		if releaseServiceIP && svcIPs != nil {
 			if helper.IsServiceIPSet(service) {
-				rs.serviceIPs.Release(net.ParseIP(service.Spec.ClusterIP))
+				svcIPs.Release(net.ParseIP(service.Spec.ClusterIP))
 			}
 		}
 	}()
 
 	if !isExternalIPAM && !dryrun.IsDryRun(options.DryRun) {
 		if service.Spec.Type != api.ServiceTypeExternalName {
-			if releaseServiceIP, err = initClusterIP(service, rs.serviceIPs); err != nil {
+			if svcIPs, err = rs.getServiceIPs(service); err != nil {
+				return nil, fmt.Errorf("failed to get service IP allocator: %v", err)
+			}
+			if releaseServiceIP, err = initClusterIP(service, svcIPs); err != nil {
 				return nil, err
 			}
 		}
@@ -475,12 +483,14 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 		return nil, false, err
 	}
 
+	var svcIPs ipallocator.Interface
+
 	// TODO: this should probably move to strategy.PrepareForCreate()
 	releaseServiceIP := false
 	defer func() {
-		if releaseServiceIP {
+		if releaseServiceIP && svcIPs != nil {
 			if helper.IsServiceIPSet(service) {
-				rs.serviceIPs.Release(net.ParseIP(service.Spec.ClusterIP))
+				svcIPs.Release(net.ParseIP(service.Spec.ClusterIP))
 			}
 		}
 	}()
@@ -496,14 +506,18 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 
 		// Update service from ExternalName to non-ExternalName, should initialize ClusterIP.
 		if !isExternalIPAM && oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
-			if releaseServiceIP, err = initClusterIP(service, rs.serviceIPs); err != nil {
+			if svcIPs, err = rs.getServiceIPs(service); err != nil {
+				return nil, false, fmt.Errorf("failed to get service IP allocator: %v", err)
+			}
+
+			if releaseServiceIP, err = initClusterIP(service, svcIPs); err != nil {
 				return nil, false, err
 			}
 		}
 		// Update service from non-ExternalName to ExternalName, should release ClusterIP if exists.
 		if oldService.Spec.Type != api.ServiceTypeExternalName && service.Spec.Type == api.ServiceTypeExternalName {
 			if helper.IsServiceIPSet(oldService) {
-				rs.serviceIPs.Release(net.ParseIP(oldService.Spec.ClusterIP))
+				svcIPs.Release(net.ParseIP(oldService.Spec.ClusterIP))
 			}
 		}
 	}
