@@ -74,7 +74,7 @@ In addition, we added a field named '**StorageClusterId**' into '**[Tenant](../m
 ```yaml
 apiVersion: v1
 kind: StorageCluster 
-storageClusterId: "c1"
+storageClusterId: "1"
 serviceAddress: "172.30.0.122:2379"
 metadata:
   name: "cluster-1"
@@ -84,7 +84,7 @@ metadata:
 apiVersion: v1
 kind: Tenant
 spec:
-  storageClusterId: c1
+  storageClusterId: "1"
 metadata:
   name: aa 
 ```
@@ -108,7 +108,7 @@ $ curl http://127.0.0.1:8080/api/v1/storageclusters
         "resourceVersion": "426",
         "creationTimestamp": "2020-05-26T21:16:03Z"
       },
-      "storageClusterId": "c1",
+      "storageClusterId": "1",
       "serviceAddress": "172.30.0.122:2379"
     }
   ]
@@ -132,7 +132,7 @@ $ curl http://127.0.0.1:8080/api/v1/tenants/aa
     "finalizers": [
       "kubernetes"
     ],
-    "storageClusterId": "c1"
+    "storageClusterId": "1"
   },
   "status": {
     "phase": "Active"
