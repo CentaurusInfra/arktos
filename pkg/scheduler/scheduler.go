@@ -56,7 +56,6 @@ const (
 	BindTimeoutSeconds = 100
 	// SchedulerError is the reason recorded for events when an error occurs during scheduling a pod.
 	SchedulerError = "SchedulerError"
-	Forbidden      = 403
 )
 
 // Global variable storing token which avoid generating token every time
@@ -462,7 +461,7 @@ func (sched *Scheduler) bind(assumed *v1.Pod, b *v1.Binding) error {
 	return nil
 }
 
-func requestToken(host string) string {
+func requestToken(host string) (string, error) {
 	tokenRequestURL := "http://" + host + "/identity/v3/auth/tokens"
 
 	// TODO: Please don't hard code json data
@@ -476,15 +475,21 @@ func requestToken(host string) string {
 	resp, err := client.Do(req)
 	if err != nil {
 		klog.V(3).Infof("HTTP Post Token Request Failed: %v", err)
+		return "", err
 	}
 	klog.V(3).Infof("HTTP Post Request Succeeded")
 	defer resp.Body.Close()
+
+	// http.StatusCreated = 201
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("Instance capacity has reached its limit")
+	}
 
 	// Token is stored in header
 	respHeader := resp.Header
 	klog.V(3).Infof("HTTP Post Token: %v", respHeader["X-Subject-Token"][0])
 
-	return respHeader["X-Subject-Token"][0]
+	return respHeader["X-Subject-Token"][0], nil
 }
 
 func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, error) {
@@ -513,6 +518,7 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, 
 	resp, err := client.Do(req)
 	if err != nil {
 		klog.V(3).Infof("HTTP Post Instance Request Failed: %v", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
@@ -520,9 +526,11 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, 
 	var instanceResponse map[string]interface{}
 	if err := json.Unmarshal(body, &instanceResponse); err != nil {
 		klog.V(3).Infof("Instance Create Response Unmarshal Failed")
+		return "", err
 	}
 
-	if resp.StatusCode == Forbidden {
+	// http.StatusForbidden = 403
+	if resp.StatusCode == http.StatusForbidden {
 		return "", fmt.Errorf("Instance capacity has reached its limit")
 	}
 	serverResponse := instanceResponse["server"].(map[string]interface{})
@@ -531,7 +539,7 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, 
 	return instanceID, nil
 }
 
-func checkInstanceStatus(host string, authToken string, instanceID string) string {
+func checkInstanceStatus(host string, authToken string, instanceID string) (string, error) {
 	instanceDetailsURL := "http://" + host + "/compute/v2.1/servers/" + instanceID
 	req, _ := http.NewRequest("GET", instanceDetailsURL, nil)
 	req.Header.Set("X-Auth-Token", authToken)
@@ -539,6 +547,7 @@ func checkInstanceStatus(host string, authToken string, instanceID string) strin
 	resp, err := client.Do(req)
 	if err != nil {
 		klog.V(3).Infof("HTTP GET Instance Status Request Failed: %v", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
@@ -546,11 +555,16 @@ func checkInstanceStatus(host string, authToken string, instanceID string) strin
 	var instanceDetailsResponse map[string]interface{}
 	if err := json.Unmarshal(body, &instanceDetailsResponse); err != nil {
 		klog.V(3).Infof("Instance Detail Response Unmarshal Failed")
+		return "", err
+	}
+	
+	if instanceDetailsResponse["server"] == nil {
+		return "", fmt.Errorf("Bad request for instance status check")
 	}
 	serverResponse := instanceDetailsResponse["server"].(map[string]interface{})
 	instanceStatus := serverResponse["status"].(string)
 
-	return instanceStatus
+	return instanceStatus, nil
 }
 
 func deleteInstance(host string, authToken string, instanceID string) {
@@ -577,6 +591,7 @@ func tokenExpired(host string, authToken string) bool {
 	}
 	defer resp.Body.Close()
 
+	// http.StatusOK = 200
 	if resp.StatusCode != http.StatusOK {
 		klog.V(3).Infof("Token Expired")
 		return true
@@ -627,7 +642,11 @@ func (sched *Scheduler) globalScheduleOne() {
 		authToken, exist := tokenMap[host]
 		if !exist || tokenExpired(host, authToken) {
 			// Post Request a new token
-			authToken = requestToken(host)
+			authToken, err = requestToken(host)
+			if err != nil {
+				klog.V(3).Infof("Token Request Failed.")
+				return
+			}
 			// Update tokenMap
 			tokenMap[host] = authToken
 		}
@@ -643,7 +662,10 @@ func (sched *Scheduler) globalScheduleOne() {
 		klog.V(3).Infof("Instance ID: %v", instanceID)
 
 		go func() {
-			instanceStatus := checkInstanceStatus(host, authToken, instanceID)
+			instanceStatus, err := checkInstanceStatus(host, authToken, instanceID)
+			if err != nil {
+				return
+			}
 			count := 0
 			for {
 				if instanceStatus == "BUILD" {
@@ -659,7 +681,10 @@ func (sched *Scheduler) globalScheduleOne() {
 						break
 					}
 					time.Sleep(2 * time.Second)
-					instanceStatus = checkInstanceStatus(host, authToken, instanceID)
+					instanceStatus, err = checkInstanceStatus(host, authToken, instanceID)
+					if err != nil {
+						return
+					}
 				} else if instanceStatus == "ERROR" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					// Send delete instance request

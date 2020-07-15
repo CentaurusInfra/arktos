@@ -46,8 +46,6 @@ func PriorityOne(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeI
 	return []schedulerapi.HostPriority{}, nil
 }
 
-
-
 type nodeLister struct {
 	corelister.NodeLister
 }
@@ -99,6 +97,98 @@ func podWithID(id, desiredHost string) *v1.Pod {
 			NodeName: desiredHost,
 		},
 	}
+}
+
+func TestRequestToken_SingleRequestWithOneValidHost(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	_, err := requestToken(result.SuggestedHost)
+	if err != nil {
+		t.Errorf("excepted request success, but fail")
+	} 
+}
+
+func TestRequestToken_SingleRequestWithOneInvalidHost(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "100.31.14.23", UID: types.UID("100.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	_, err := requestToken(result.SuggestedHost)
+	if err == nil {
+		t.Errorf("excepted request fail, but success")
+	}
+}
+
+func TestCheckInstanceStatus_ACTIVEStatus(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	instanceID := "583795aa-7ce1-4093-aa9c-0d4bbea94c43"
+
+	// Important: token would be expired in 24 hours
+	// Make sure you are using the latest generated token
+	token := "gAAAAABfDoFzHYblb5hjBrn-zCjTkW2okCq6R4xsiiVv-qIRu1V7iN8WqgjdP_snJcXazSfxWFRZmQPV5o-npVZITSjE5VTruVlcj9YErNmTx3yf9cOnFhNYdZ-yrayCnS0o16PqehGZF1LE-O1gBBrtkklc-rgeM6lGuqdFY-TX-0XaV1r2Ozc"
+
+	instanceStatus, err := checkInstanceStatus(result.SuggestedHost, token, instanceID)
+	if err != nil {
+		t.Errorf("check instance status process failed")
+	} else if instanceStatus != "ACTIVE" {
+		t.Errorf("expected instance status is ACTIVE, but is %v", instanceStatus)
+	}
+}
+
+func TestCheckInstanceStatus_InvalidHost(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "100.31.14.23", UID: types.UID("100.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	instanceID := "583795aa-7ce1-4093-aa9c-0d4bbea94c43"
+
+	// Important: token would be expired in 24 hours
+	// Make sure you are using the latest generated token
+	token := "gAAAAABfDoFzHYblb5hjBrn-zCjTkW2okCq6R4xsiiVv-qIRu1V7iN8WqgjdP_snJcXazSfxWFRZmQPV5o-npVZITSjE5VTruVlcj9YErNmTx3yf9cOnFhNYdZ-yrayCnS0o16PqehGZF1LE-O1gBBrtkklc-rgeM6lGuqdFY-TX-0XaV1r2Ozc"
+
+	_, err := checkInstanceStatus(result.SuggestedHost, token, instanceID)
+	if err == nil {
+		t.Errorf("expected instance status check failed but success")
+	}
+}
+
+func TestCheckInstanceStatus_InvalidInstanceID(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	instanceID := []string{"efewer-23sdf", ""}
+
+	// Important: token would be expired in 24 hours
+	// Make sure you are using the latest generated token
+	token := "gAAAAABfDoFzHYblb5hjBrn-zCjTkW2okCq6R4xsiiVv-qIRu1V7iN8WqgjdP_snJcXazSfxWFRZmQPV5o-npVZITSjE5VTruVlcj9YErNmTx3yf9cOnFhNYdZ-yrayCnS0o16PqehGZF1LE-O1gBBrtkklc-rgeM6lGuqdFY-TX-0XaV1r2Ozc"
+
+	for _, id := range instanceID {
+		_, err := checkInstanceStatus(result.SuggestedHost, token, id)
+		if err == nil {
+			t.Errorf("expected instance status check failed but success")
+		}
+	}
+}
+
+func TestCheckInstanceStatus_InvalidToken(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	instanceID := "583795aa-7ce1-4093-aa9c-0d4bbea94c43"
+
+	// Important: token would be expired in 24 hours
+	// Make sure you are using the latest generated token
+	token := []string{"aasoijdoijw-sdofisu", ""}
+
+	for _, tk := range token {
+		_, err := checkInstanceStatus(result.SuggestedHost, tk, instanceID)
+		if err == nil {
+			t.Errorf("expected instance status check failed but success")
+		}
+	}
+}
+
+func TestServerCreate_SingleServerRequest(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	token := "gAAAAABfDoFzHYblb5hjBrn-zCjTkW2okCq6R4xsiiVv-qIRu1V7iN8WqgjdP_snJcXazSfxWFRZmQPV5o-npVZITSjE5VTruVlcj9YErNmTx3yf9cOnFhNYdZ-yrayCnS0o16PqehGZF1LE-O1gBBrtkklc-rgeM6lGuqdFY-TX-0XaV1r2Ozc"
+
+	
 }
 
 func TestSchedulerCreation(t *testing.T) {
