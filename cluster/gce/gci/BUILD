@@ -41,6 +41,7 @@ pkg_tar(
         "//cluster/gce/gci/mounter": "gci-mounter",
         "configure-helper.sh": "gci-configure-helper.sh",
         "apiserver-configure-helper.sh": "apiserver-configure-helper.sh",
+        "workloadcontroller-configure-helper.sh": "workloadcontroller-configure-helper.sh",
         "health-monitor.sh": "health-monitor.sh",
         "configure-helper-common.sh": "configure-helper-common.sh",
     },
@@ -71,5 +72,6 @@ filegroup(
     srcs = [
         "apiserver-configure-helper.sh",
         "configure-helper.sh",
+        "workloadcontroller-configure-helper.sh",
     ],
 )
