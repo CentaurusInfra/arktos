@@ -41,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
+	"k8s.io/apiserver/pkg/storage/storagebackend"
 	"k8s.io/apiserver/pkg/util/dryrun"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
@@ -66,6 +67,9 @@ type REST struct {
 	done             uint32
 	m                sync.Mutex
 	networks         rest.Getter
+
+	// global reference to backend ETCD config of per-network ip range data persistence
+	backendStorageConfig *storagebackend.Config
 }
 
 // ServiceNodePort includes protocol and port number of a service NodePort.

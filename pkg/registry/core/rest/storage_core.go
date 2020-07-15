@@ -199,6 +199,7 @@ func (c LegacyRESTStorageProvider) NewLegacyRESTStorage(restOptionsGetter generi
 	restStorage.ServiceNodePortAllocator = serviceNodePortRegistry
 
 	serviceRest, serviceRestProxy := servicestore.NewREST(serviceRESTStorage, endpointsStorage, podStorage.Pod, serviceClusterIPAllocator, serviceNodePortAllocator, c.ProxyTransport)
+	serviceRest.SetBackendStorageConfig(serviceStorageConfig)
 
 	restStorageMap := map[string]rest.Storage{
 		"pods":             podStorage.Pod,
