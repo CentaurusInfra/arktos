@@ -143,7 +143,7 @@ func (rs *REST) SetBackendStorageConfig(config *storagebackend.Config) {
 // getServiceIPAlloc gets ip allocator object suited for the service on basis of its associated network
 func (rs *REST) getServiceIPAlloc(service *api.Service) (ipallocator.Interface, error) {
 	if utilfeature.DefaultFeatureGate.Enabled(features.PerNetworkServiceIPAlloc) {
-		return rs.getNetworkServiceIPs(service)
+		return rs.getNetworkServiceIPAlloc(service)
 	}
 
 	return rs.serviceIPs, nil
@@ -891,7 +891,7 @@ func collectServiceNodePorts(service *api.Service) []int {
 	return servicePorts
 }
 
-func (rs *REST) getNetworkServiceIPs(service *api.Service) (ipallocator.Interface, error) {
+func (rs *REST) getNetworkServiceIPAlloc(service *api.Service) (ipallocator.Interface, error) {
 	netName, ok := service.Labels[arktosv1.NetworkLabel]
 	if !ok {
 		netName = arktosv1.NetworkDefault
@@ -926,20 +926,20 @@ func (rs *REST) getNetworkServiceIPs(service *api.Service) (ipallocator.Interfac
 		return nil, fmt.Errorf("%q is not a valid range of network %s of tenant %s: %v", cidr, netName, service.Tenant, err)
 	}
 
-	return rs.getServiceIPsByKey(service.Tenant, netName, ipNet)
+	return rs.getServiceIPAllocByKey(service.Tenant, netName, ipNet)
 }
 
-func (rs *REST) getServiceIPsByKey(tenant, network string, cidr *net.IPNet) (ipallocator.Interface, error) {
+func (rs *REST) getServiceIPAllocByKey(tenant, network string, cidr *net.IPNet) (ipallocator.Interface, error) {
 	etcdBaseKey := fmt.Sprintf("/ranges/network-serviceips/%s/%s/%s/serviceips", tenant, network, cidr.String())
 	if allocator, ok := rs.networkServiceIPs.Load(etcdBaseKey); ok {
 		return allocator.(ipallocator.Interface), nil
 	}
 
 	// slow path: create the allocator on top of the etcd backend
-	return rs.createNetworkServiceIPs(etcdBaseKey, cidr)
+	return rs.createNetworkServiceIPAlloc(etcdBaseKey, cidr)
 }
 
-func (rs *REST) createNetworkServiceIPs(etcdBaseKey string, cidr *net.IPNet) (ipallocator.Interface, error) {
+func (rs *REST) createNetworkServiceIPAlloc(etcdBaseKey string, cidr *net.IPNet) (ipallocator.Interface, error) {
 	rs.lock.Lock()
 	defer rs.lock.Unlock()
 
