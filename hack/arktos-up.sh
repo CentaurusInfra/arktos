@@ -59,6 +59,10 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
+echo "Ensuring firewall to allow traffic forward by default"
+sudo iptables -S FORWARD | grep '\-P' | grep DROP && sudo iptables -P FORWARD ACCEPT
+sudo iptables -S FORWARD | grep '\-P'
+
 # install cni plugin based on env var CNIPLUGIN (bridge, alktron)
 source ${KUBE_ROOT}/hack/arktos-cni.rc
 
