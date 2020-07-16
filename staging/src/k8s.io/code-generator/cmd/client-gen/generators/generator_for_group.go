@@ -100,8 +100,8 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 		"types":                          g.types,
 		"apiPath":                        apiPath(g.group),
 		"klogFatal":                      c.Universe.Function(types.Name{Package: "k8s.io/klog", Name: "Fatalf"}),
-		"ranSeed":                        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/rand", Name: "Seed"}),
-		"ranRange":                       c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/rand", Name: "IntnRange"}),
+		"ranSeed":                        c.Universe.Function(types.Name{Package: "math/rand", Name: "Seed"}),
+		"ranIntn":                        c.Universe.Function(types.Name{Package: "math/rand", Name: "Intn"}),
 		"schemaGroupVersion":             c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime/schema", Name: "GroupVersion"}),
 		"runtimeAPIVersionInternal":      c.Universe.Variable(types.Name{Package: "k8s.io/apimachinery/pkg/runtime", Name: "APIVersionInternal"}),
 		"restConfig":                     c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
@@ -255,7 +255,7 @@ func (c *$.GroupGoName$$.Version$Client) RESTClient() $.restRESTClientInterface|
 	}
 
 	$.ranSeed|raw$(time.Now().UnixNano())
-	ran := $.ranRange|raw$(0, max-1)
+	ran := $.ranIntn|raw$(max)
 	return c.restClients[ran]
 }
 `
