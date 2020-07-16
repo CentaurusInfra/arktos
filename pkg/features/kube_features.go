@@ -486,6 +486,12 @@ const (
 	//
 	// Enables In-Place Pod Vertical Scaling
 	InPlacePodVerticalScaling featuregate.Feature = "InPlacePodVerticalScaling"
+
+	// owner: @hwchen
+	// alpha: v1.15
+	//
+	// Enables service IP allocation in per-network pool
+	PerNetworkServiceIPAlloc featuregate.Feature = "PerNetworkServiceIPAlloc"
 )
 
 func init() {
@@ -567,6 +573,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	NonPreemptingPriority:                          {Default: false, PreRelease: featuregate.Alpha},
 	VolumePVCDataSource:                            {Default: false, PreRelease: featuregate.Alpha},
 	InPlacePodVerticalScaling:                      {Default: false, PreRelease: featuregate.Alpha},
+	PerNetworkServiceIPAlloc:                       {Default: false, PreRelease: featuregate.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:

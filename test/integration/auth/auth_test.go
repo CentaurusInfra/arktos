@@ -98,19 +98,35 @@ func getTestWebhookTokenAuth(serverURL string) (authenticator.Request, error) {
 }
 
 func path(resource, namespace, name string) string {
-	return testapi.Default.ResourcePath(resource, namespace, name)
+	return pathWithMultiTenancy(resource, metav1.TenantSystem, namespace, name)
 }
 
 func pathWithPrefix(prefix, resource, namespace, name string) string {
-	return testapi.Default.ResourcePathWithPrefix(prefix, resource, namespace, name)
+	return pathWithPrefixWithMultiTenancy(prefix, resource, metav1.TenantSystem, namespace, name)
 }
 
 func pathWithSubResource(resource, namespace, name, subresource string) string {
-	return testapi.Default.SubResourcePath(resource, namespace, name, subresource)
+	return pathWithSubResourceWithMultiTenancy(resource, metav1.TenantSystem, namespace, name, subresource)
 }
 
 func timeoutPath(resource, namespace, name string) string {
-	return addTimeoutFlag(testapi.Default.ResourcePath(resource, namespace, name))
+	return timeoutPathWithMultiTenancy(resource, metav1.TenantSystem, namespace, name)
+}
+
+func pathWithMultiTenancy(resource, tenant, namespace, name string) string {
+	return testapi.Default.ResourcePathWithMultiTenancy(resource, tenant, namespace, name)
+}
+
+func pathWithPrefixWithMultiTenancy(prefix, resource, tenant, namespace, name string) string {
+	return testapi.Default.ResourcePathWithPrefixWithMultiTenancy(prefix, resource, tenant, namespace, name)
+}
+
+func pathWithSubResourceWithMultiTenancy(resource, tenant, namespace, name, subresource string) string {
+	return testapi.Default.SubResourcePathWithMultiTenancy(resource, tenant, namespace, name, subresource)
+}
+
+func timeoutPathWithMultiTenancy(resource, tenant, namespace, name string) string {
+	return addTimeoutFlag(testapi.Default.ResourcePathWithMultiTenancy(resource, tenant, namespace, name))
 }
 
 // Bodies for requests used in subsequent tests.
@@ -358,11 +374,11 @@ func getTestRequests(namespace string) []struct {
 		{"DELETE", timeoutPath("endpoints", namespace, "a"), "", integration.Code200},
 
 		// Normal methods on nodes
-		{"GET", path("nodes", "", ""), "", integration.Code200},
-		{"POST", timeoutPath("nodes", "", ""), aNode, integration.Code201},
-		{"PUT", timeoutPath("nodes", "", "a"), aNode, integration.Code200},
-		{"GET", path("nodes", "", "a"), "", integration.Code200},
-		{"DELETE", timeoutPath("nodes", "", "a"), "", integration.Code200},
+		{"GET", pathWithMultiTenancy("nodes", "", "", ""), "", integration.Code200},
+		{"POST", timeoutPathWithMultiTenancy("nodes", "", "", ""), aNode, integration.Code201},
+		{"PUT", timeoutPathWithMultiTenancy("nodes", "", "", "a"), aNode, integration.Code200},
+		{"GET", pathWithMultiTenancy("nodes", "", "", "a"), "", integration.Code200},
+		{"DELETE", timeoutPathWithMultiTenancy("nodes", "", "", "a"), "", integration.Code200},
 
 		// Normal methods on events
 		{"GET", path("events", "", ""), "", integration.Code200},
@@ -388,8 +404,8 @@ func getTestRequests(namespace string) []struct {
 		{"DELETE", timeoutPath("foo", namespace, ""), "", integration.Code404},
 
 		// Special verbs on nodes
-		{"GET", pathWithSubResource("nodes", namespace, "a", "proxy"), "", integration.Code404},
-		{"GET", pathWithPrefix("redirect", "nodes", namespace, "a"), "", integration.Code404},
+		{"GET", pathWithSubResourceWithMultiTenancy("nodes", "", namespace, "a", "proxy"), "", integration.Code404},
+		{"GET", pathWithPrefixWithMultiTenancy("redirect", "nodes", "", namespace, "a"), "", integration.Code404},
 		// TODO: test .../watch/..., which doesn't end before the test timeout.
 		// TODO: figure out how to create a node so that it can successfully proxy/redirect.
 

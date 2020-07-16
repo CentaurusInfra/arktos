@@ -283,7 +283,7 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 		opts = append(opts, clientv3.WithPrefix())
 	}
 
-	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
+	klog.V(3).Infof("Starting watcher for wc.key=%v", wc.key)
 
 	if wc.keyRange.begin != "" && wc.keyRange.end != "" {
 		wc.key = wc.keyRange.begin

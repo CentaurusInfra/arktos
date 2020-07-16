@@ -19,6 +19,7 @@ package endpoint
 
 import (
 	"context"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -61,7 +62,17 @@ func (endpointsStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.
 func (endpointsStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
 	allErrs := validation.ValidateEndpoints(obj.(*api.Endpoints))
 	allErrs = append(allErrs, validation.ValidateConditionalEndpoints(obj.(*api.Endpoints), nil)...)
+	allErrs = append(allErrs, validateK8sAliasChange(obj.(*api.Endpoints))...)
+
 	return allErrs
+}
+
+func validateK8sAliasChange(endpoints *api.Endpoints) field.ErrorList {
+	var errs field.ErrorList
+	if endpoints.ObjectMeta.Namespace == "default" && strings.HasPrefix(endpoints.Name, "kubernetes-") {
+		errs = append(errs, field.Forbidden(field.NewPath(endpoints.Name), "read only resource not allowed to create or update."))
+	}
+	return errs
 }
 
 // Canonicalize normalizes the object after validation.
@@ -80,6 +91,7 @@ func (endpointsStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Ob
 	errorList := validation.ValidateEndpoints(obj.(*api.Endpoints))
 	errorList = append(errorList, validation.ValidateEndpointsUpdate(obj.(*api.Endpoints), old.(*api.Endpoints))...)
 	errorList = append(errorList, validation.ValidateConditionalEndpoints(obj.(*api.Endpoints), old.(*api.Endpoints))...)
+	errorList = append(errorList, validateK8sAliasChange(obj.(*api.Endpoints))...)
 	return errorList
 }
 

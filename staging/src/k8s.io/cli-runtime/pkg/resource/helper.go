@@ -18,7 +18,7 @@ limitations under the License.
 package resource
 
 import (
-	"k8s.io/apimachinery/pkg/util/rand"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -63,7 +63,7 @@ func NewHelper(clients []RESTClient, mapping *meta.RESTMapping) *Helper {
 
 	if max > 1 {
 		rand.Seed(time.Now().UnixNano())
-		ran := rand.IntnRange(0, max-1)
+		ran := rand.Intn(max)
 		h.RESTClient = clients[ran]
 	}
 

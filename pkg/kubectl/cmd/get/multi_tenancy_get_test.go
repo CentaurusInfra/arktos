@@ -294,7 +294,7 @@ func TestGetEmptyTableWithMultiTenancy(t *testing.T) {
 "kind":"Table",
 "apiVersion":"meta.k8s.io/v1beta1",
 "metadata":{
-	"selfLink":"/api/v1/namespaces/default/pods",
+	"selfLink":"/api/v1/tenants/system/namespaces/default/pods",
 	"resourceVersion":"346"
 },
 "columnDefinitions":[

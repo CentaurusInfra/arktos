@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,11 +61,11 @@ func TestDeleteObjectByTuple(t *testing.T) {
 			switch p, m := req.URL.Path, req.Method; {
 
 			// replication controller with cascade off
-			case p == "/namespaces/test/replicationcontrollers/redis-master-controller" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master-controller" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 
 			// secret with cascade on, but no client-side reaper
-			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/secrets/mysecret" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 
 			default:
@@ -125,7 +126,7 @@ func TestOrphanDependentsInDeleteObject(t *testing.T) {
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m, b := req.URL.Path, req.Method, req.Body; {
 
-			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE" && hasExpectedPropagationPolicy(b, policy):
+			case p == "/tenants/system/namespaces/test/secrets/mysecret" && m == "DELETE" && hasExpectedPropagationPolicy(b, policy):
 
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 			default:
@@ -176,11 +177,11 @@ func TestDeleteNamedObject(t *testing.T) {
 			switch p, m := req.URL.Path, req.Method; {
 
 			// replication controller with cascade off
-			case p == "/namespaces/test/replicationcontrollers/redis-master-controller" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master-controller" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 
 			// secret with cascade on, but no client-side reaper
-			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/secrets/mysecret" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 
 			default:
@@ -226,7 +227,7 @@ func TestDeleteObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -263,7 +264,7 @@ func TestDeleteObjectGraceZero(t *testing.T) {
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			t.Logf("got request %s %s", req.Method, req.URL.Path)
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/pods/nginx" && m == "GET":
+			case p == "/tenants/system/namespaces/test/pods/nginx" && m == "GET":
 				count++
 				switch count {
 				case 1, 2, 3:
@@ -271,9 +272,9 @@ func TestDeleteObjectGraceZero(t *testing.T) {
 				default:
 					return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &metav1.Status{})}, nil
 				}
-			case p == "/api/v1/namespaces/test" && m == "GET":
+			case p == "/api/v1/tenants/system/namespaces/test" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Namespace{})}, nil
-			case p == "/namespaces/test/pods/nginx" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/pods/nginx" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -306,7 +307,7 @@ func TestDeleteObjectNotFound(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.StringBody("")}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -343,7 +344,7 @@ func TestDeleteObjectIgnoreNotFound(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.StringBody("")}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -381,11 +382,11 @@ func TestDeleteAllNotFound(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/services" && m == "GET":
+			case p == "/tenants/system/namespaces/test/services" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
-			case p == "/namespaces/test/services/foo" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/foo" && m == "DELETE":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, notFoundError)}, nil
-			case p == "/namespaces/test/services/baz" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/baz" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -431,11 +432,11 @@ func TestDeleteAllIgnoreNotFound(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/services" && m == "GET":
+			case p == "/tenants/system/namespaces/test/services" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
-			case p == "/namespaces/test/services/foo" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/foo" && m == "DELETE":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, notFoundError)}, nil
-			case p == "/namespaces/test/services/baz" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/baz" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -469,9 +470,9 @@ func TestDeleteMultipleObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/services/frontend" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -506,9 +507,9 @@ func TestDeleteMultipleObjectContinueOnMissing(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == "DELETE":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.StringBody("")}, nil
-			case p == "/namespaces/test/services/frontend" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -553,13 +554,13 @@ func TestDeleteMultipleResourcesWithTheSameName(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/replicationcontrollers/baz" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/baz" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/replicationcontrollers/foo" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/foo" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/services/baz" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/baz" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
-			case p == "/namespaces/test/services/foo" && m == "DELETE":
+			case p == "/tenants/system/namespaces/test/services/foo" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				// Ensures no GET is performed when deleting by name
@@ -593,7 +594,7 @@ func TestDeleteDirectory(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case strings.HasPrefix(p, "/namespaces/test/replicationcontrollers/") && m == "DELETE":
+			case strings.HasPrefix(p, "/tenants/system/namespaces/test/replicationcontrollers/") && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -627,19 +628,19 @@ func TestDeleteMultipleSelector(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/pods" && m == "GET":
+			case p == "/tenants/system/namespaces/test/pods" && m == "GET":
 				if req.URL.Query().Get(metav1.LabelSelectorQueryParam("v1")) != "a=b" {
 					t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
 				}
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case p == "/namespaces/test/services" && m == "GET":
+			case p == "/tenants/system/namespaces/test/services" && m == "GET":
 				if req.URL.Query().Get(metav1.LabelSelectorQueryParam("v1")) != "a=b" {
 					t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
 				}
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
-			case strings.HasPrefix(p, "/namespaces/test/pods/") && m == "DELETE":
+			case strings.HasPrefix(p, "/tenants/system/namespaces/test/pods/") && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods.Items[0])}, nil
-			case strings.HasPrefix(p, "/namespaces/test/services/") && m == "DELETE":
+			case strings.HasPrefix(p, "/tenants/system/namespaces/test/services/") && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
