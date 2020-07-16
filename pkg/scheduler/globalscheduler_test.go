@@ -380,6 +380,53 @@ func TestDeleteInstance_SingleRequest(t *testing.T) {
 	}
 }
 
+func TestDeleteInstance_SingleRequestWithInvalidHost(t *testing.T) {
+	// Invalid Host
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "100.31.14.23", UID: types.UID("100.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	token := TestToken
+	// Make sure this instanceID exist when testing delete instance request
+	instanceID := "34d16057-ae9e-4758-a81a-1c4d102c3c42"
+
+	err := deleteInstance(result.SuggestedHost, token, instanceID)
+	if err == nil {
+		t.Errorf("expected instance delete fail but success")
+	}
+}
+
+func TestDeleteInstance_SingleRequestWithInvalidToken(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	// Invalid token array
+	token := []string{"", "sadasda-wewjkejwke"}
+	// Make sure this instanceID exist when testing delete instance request
+	instanceID := "34d16057-ae9e-4758-a81a-1c4d102c3c42"
+
+	for _, tk := range token {
+		err := deleteInstance(result.SuggestedHost, tk, instanceID)
+		if err == nil {
+			t.Errorf("expected instance delete fail but success")
+		}
+	}
+}
+
+func TestDeleteInstance_SingleRequestWithInvalidInstanceID(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	token := TestToken
+	// Invalid instanceID array
+	instanceID := []string{"", "saksjdh-23asd"}
+
+	for _, instance_id := range instanceID {
+		err := deleteInstance(result.SuggestedHost, token, instance_id)
+		if err == nil {
+			t.Errorf("expected instance delete fail but success")
+		}
+	}
+}
+
+func TestTokenExpired
+
 func TestSchedulerCreation(t *testing.T) {
 	client := clientsetfake.NewSimpleClientset()
 	informerFactory := informers.NewSharedInformerFactory(client, 0)

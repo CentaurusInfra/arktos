@@ -583,8 +583,13 @@ func deleteInstance(host string, authToken string, instanceID string) error {
 	}
 	defer resp.Body.Close()
 
-	klog.V(3).Infof("HTTP DELETE Instance Status Request Success")
-	return nil
+	// http.StatusNoContent = 204
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Bad request for HTTP DELETE instance request")
+	} else {
+		klog.V(3).Infof("HTTP DELETE Instance Status Request Success")
+		return nil
+	}
 }
 
 func tokenExpired(host string, authToken string) bool {
