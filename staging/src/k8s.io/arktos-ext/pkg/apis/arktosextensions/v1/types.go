@@ -94,7 +94,7 @@ const (
 	// network related annotation keys
 	NetworkReadiness = "arktos.futurewei.com/network-readiness"
 
-	// NetworkDefaul is the default network name
+	// NetworkDefault is the default network name
 	NetworkDefault = "default"
 )
 

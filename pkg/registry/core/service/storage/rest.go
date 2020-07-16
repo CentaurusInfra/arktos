@@ -126,8 +126,8 @@ var (
 	_ rest.StorageVersionProvider = &REST{}
 )
 
-// getServiceIPs gets ip allocator object suited for the service on basis of its associated network
-func (rs *REST) getServiceIPs(service *api.Service) (ipallocator.Interface, error) {
+// getServiceIPAlloc gets ip allocator object suited for the service on basis of its associated network
+func (rs *REST) getServiceIPAlloc(service *api.Service) (ipallocator.Interface, error) {
 	if utilfeature.DefaultFeatureGate.Enabled(features.PerNetworkServiceIPAlloc) {
 		return nil, fmt.Errorf("to be implemented")
 	}
@@ -283,7 +283,7 @@ func (rs *REST) Create(ctx context.Context, obj runtime.Object, createValidation
 
 	if !isExternalIPAM && !dryrun.IsDryRun(options.DryRun) {
 		if service.Spec.Type != api.ServiceTypeExternalName {
-			if svcIPs, err = rs.getServiceIPs(service); err != nil {
+			if svcIPs, err = rs.getServiceIPAlloc(service); err != nil {
 				return nil, fmt.Errorf("failed to get service IP allocator: %v", err)
 			}
 			if releaseServiceIP, err = initClusterIP(service, svcIPs); err != nil {
@@ -354,7 +354,7 @@ func (rs *REST) Delete(ctx context.Context, id string, deleteValidation rest.Val
 
 		var svcIPs ipallocator.Interface
 		if !isExternalIPAM {
-			if svcIPs, err = rs.getServiceIPs(svc); err != nil {
+			if svcIPs, err = rs.getServiceIPAlloc(svc); err != nil {
 				return nil, false, fmt.Errorf("failed to get service IP allocator: %v", err)
 			}
 		}
@@ -518,7 +518,7 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 
 		// Update service from ExternalName to non-ExternalName, should initialize ClusterIP.
 		if !isExternalIPAM && oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
-			if svcIPs, err = rs.getServiceIPs(service); err != nil {
+			if svcIPs, err = rs.getServiceIPAlloc(service); err != nil {
 				return nil, false, fmt.Errorf("failed to get service IP allocator: %v", err)
 			}
 

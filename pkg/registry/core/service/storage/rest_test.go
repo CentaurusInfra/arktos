@@ -354,7 +354,7 @@ func TestServiceRegistryCreateDryRun(t *testing.T) {
 	}
 
 	var svcIPs ipallocator.Interface
-	svcIPs, err = storage.getServiceIPs(svc)
+	svcIPs, err = storage.getServiceIPAlloc(svc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -797,7 +797,7 @@ func TestServiceRegistryUpdateDryRun(t *testing.T) {
 	}
 
 	var svcIPs ipallocator.Interface
-	svcIPs, err = storage.getServiceIPs(svc)
+	svcIPs, err = storage.getServiceIPAlloc(svc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1040,7 +1040,7 @@ func TestServiceRegistryDeleteDryRun(t *testing.T) {
 	}
 
 	var svcIPs ipallocator.Interface
-	svcIPs, err = storage.getServiceIPs(svc)
+	svcIPs, err = storage.getServiceIPAlloc(svc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1440,11 +1440,11 @@ func TestServiceRegistryIPAllocation(t *testing.T) {
 
 	var err error
 	var svcIPs1, svcIPs2 ipallocator.Interface
-	svcIPs1, err = storage.getServiceIPs(svc1)
+	svcIPs1, err = storage.getServiceIPAlloc(svc1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	svcIPs2, err = storage.getServiceIPs(svc2)
+	svcIPs2, err = storage.getServiceIPAlloc(svc2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1577,7 +1577,7 @@ func TestServiceRegistryIPUpdate(t *testing.T) {
 
 	var err error
 	var svcIPs ipallocator.Interface
-	svcIPs, err = storage.getServiceIPs(svc)
+	svcIPs, err = storage.getServiceIPAlloc(svc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1876,7 +1876,7 @@ func TestInitClusterIP(t *testing.T) {
 	for _, test := range testCases {
 		var err error
 		var svcIPs ipallocator.Interface
-		svcIPs, err = storage.getServiceIPs(test.svc)
+		svcIPs, err = storage.getServiceIPAlloc(test.svc)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
