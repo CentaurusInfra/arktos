@@ -533,6 +533,10 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, 
 	if resp.StatusCode == http.StatusForbidden {
 		return "", fmt.Errorf("Instance capacity has reached its limit")
 	}
+
+	if instanceResponse["server"] == nil {
+		return "", fmt.Errorf("Bad request for server create")
+	}
 	serverResponse := instanceResponse["server"].(map[string]interface{})
 	instanceID := serverResponse["id"].(string)
 
@@ -567,7 +571,7 @@ func checkInstanceStatus(host string, authToken string, instanceID string) (stri
 	return instanceStatus, nil
 }
 
-func deleteInstance(host string, authToken string, instanceID string) {
+func deleteInstance(host string, authToken string, instanceID string) error {
 	instanceDetailsURL := "http://" + host + "/compute/v2.1/servers/" + instanceID
 	req, _ := http.NewRequest("DELETE", instanceDetailsURL, nil)
 	req.Header.Set("X-Auth-Token", authToken)
@@ -575,8 +579,12 @@ func deleteInstance(host string, authToken string, instanceID string) {
 	resp, err := client.Do(req)
 	if err != nil {
 		klog.V(3).Infof("HTTP DELETE Instance Status Request Failed: %v", err)
+		return err
 	}
 	defer resp.Body.Close()
+
+	klog.V(3).Infof("HTTP DELETE Instance Status Request Success")
+	return nil
 }
 
 func tokenExpired(host string, authToken string) bool {
@@ -674,7 +682,11 @@ func (sched *Scheduler) globalScheduleOne() {
 					// Wait one minute for creating instance if instance status is BUILD
 					if count == 30 {
 						klog.V(3).Infof("Create Instance Timeout!")
-						deleteInstance(host, authToken, instanceID)
+						err := deleteInstance(host, authToken, instanceID)
+						if err != nil {
+							return
+						}
+						
 						if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 							klog.V(3).Infof("ERROR Status instance failed to add into queue.")
 						}
@@ -688,7 +700,10 @@ func (sched *Scheduler) globalScheduleOne() {
 				} else if instanceStatus == "ERROR" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
 					// Send delete instance request
-					deleteInstance(host, authToken, instanceID)
+					err := deleteInstance(host, authToken, instanceID)
+					if err != nil {
+						return
+					}
 					if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 						klog.V(3).Infof("ERROR Status instance failed to add into queue.")
 					}
