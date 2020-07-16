@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,7 +41,7 @@ func TestPatchObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/services/frontend" && (m == "PATCH" || m == "GET"):
+			case p == "/tenants/system/namespaces/test/services/frontend" && (m == "PATCH" || m == "GET"):
 				obj := svc.Items[0]
 
 				// ensure patched object reflects successful
@@ -81,7 +82,7 @@ func TestPatchObjectFromFile(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/services/frontend" && (m == "PATCH" || m == "GET"):
+			case p == "/tenants/system/namespaces/test/services/frontend" && (m == "PATCH" || m == "GET"):
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -118,9 +119,9 @@ func TestPatchNoop(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/services/frontend" && m == "PATCH":
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == "PATCH":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, patchObject)}, nil
-			case p == "/namespaces/test/services/frontend" && m == "GET":
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, getObject)}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -165,9 +166,9 @@ func TestPatchObjectFromFileOutput(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/services/frontend" && m == "GET":
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
-			case p == "/namespaces/test/services/frontend" && m == "PATCH":
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == "PATCH":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svcCopy)}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)

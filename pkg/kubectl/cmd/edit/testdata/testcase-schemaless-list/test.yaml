@@ -13,19 +13,19 @@ expectedExitCode: 0
 steps:
 - type: request
   expectedMethod: GET
-  expectedPath: /api/v1/namespaces/default/services/kubernetes
+  expectedPath: /api/v1/tenants/system/namespaces/default/services/kubernetes
   expectedInput: 0.request
   resultingStatusCode: 200
   resultingOutput: 0.response
 - type: request
   expectedMethod: GET
-  expectedPath: /apis/company.com/v1/namespaces/default/bars/test
+  expectedPath: /apis/company.com/v1/tenants/system/namespaces/default/bars/test
   expectedInput: 1.request
   resultingStatusCode: 200
   resultingOutput: 1.response
 - type: request
   expectedMethod: GET
-  expectedPath: /apis/company.com/v1/namespaces/default/bars/test2
+  expectedPath: /apis/company.com/v1/tenants/system/namespaces/default/bars/test2
   expectedInput: 2.request
   resultingStatusCode: 200
   resultingOutput: 2.response

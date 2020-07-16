@@ -374,7 +374,7 @@ func (g TestGroup) ResourcePathWithPrefixWithMultiTenancy(prefix, resource, tena
 	if prefix != "" {
 		path = path + "/" + prefix
 	}
-	if tenant != "" && tenant != metav1.TenantSystem {
+	if tenant != "" {
 		path = path + "/tenants/" + tenant
 	}
 	if namespace != "" {

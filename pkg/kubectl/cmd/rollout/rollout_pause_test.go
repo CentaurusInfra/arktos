@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ func TestRolloutPause(t *testing.T) {
 			NegotiatedSerializer: ns,
 			Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 				switch p, m := req.URL.Path, req.Method; {
-				case p == "/namespaces/test/deployments/nginx-deployment" && (m == "GET" || m == "PATCH"):
+				case (p == "/namespaces/test/deployments/nginx-deployment" || p == "/tenants/system/namespaces/test/deployments/nginx-deployment") && (m == "GET" || m == "PATCH"):
 					responseDeployment := &extensionsv1beta1.Deployment{}
 					responseDeployment.Name = deploymentName
 					body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(encoder, responseDeployment))))

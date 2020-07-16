@@ -82,7 +82,7 @@ func TestList(t *testing.T) {
 	}{
 		{
 			name: "normal_list",
-			path: "/apis/gtest/vtest/rtest",
+			path: "/apis/gtest/vtest/tenants/system/rtest",
 			resp: getListJSON("vTest", "rTestList",
 				getJSON("vTest", "rTest", "item1"),
 				getJSON("vTest", "rTest", "item2")),
@@ -100,7 +100,7 @@ func TestList(t *testing.T) {
 		{
 			name:      "namespaced_list",
 			namespace: "nstest",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest",
 			resp: getListJSON("vTest", "rTestList",
 				getJSON("vTest", "rTest", "item1"),
 				getJSON("vTest", "rTest", "item2")),
@@ -161,7 +161,7 @@ func TestGet(t *testing.T) {
 		{
 			resource: "rtest",
 			name:     "normal_get",
-			path:     "/apis/gtest/vtest/rtest/normal_get",
+			path:     "/apis/gtest/vtest/tenants/system/rtest/normal_get",
 			resp:     getJSON("vTest", "rTest", "normal_get"),
 			want:     getObject("vTest", "rTest", "normal_get"),
 		},
@@ -169,7 +169,7 @@ func TestGet(t *testing.T) {
 			resource:  "rtest",
 			namespace: "nstest",
 			name:      "namespaced_get",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_get",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_get",
 			resp:      getJSON("vTest", "rTest", "namespaced_get"),
 			want:      getObject("vTest", "rTest", "namespaced_get"),
 		},
@@ -177,7 +177,7 @@ func TestGet(t *testing.T) {
 			resource:    "rtest",
 			subresource: []string{"srtest"},
 			name:        "normal_subresource_get",
-			path:        "/apis/gtest/vtest/rtest/normal_subresource_get/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/rtest/normal_subresource_get/srtest",
 			resp:        getJSON("vTest", "srTest", "normal_subresource_get"),
 			want:        getObject("vTest", "srTest", "normal_subresource_get"),
 		},
@@ -186,7 +186,7 @@ func TestGet(t *testing.T) {
 			subresource: []string{"srtest"},
 			namespace:   "nstest",
 			name:        "namespaced_subresource_get",
-			path:        "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_subresource_get/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_subresource_get/srtest",
 			resp:        getJSON("vTest", "srTest", "namespaced_subresource_get"),
 			want:        getObject("vTest", "srTest", "namespaced_subresource_get"),
 		},
@@ -240,28 +240,28 @@ func TestDelete(t *testing.T) {
 	}{
 		{
 			name: "normal_delete",
-			path: "/apis/gtest/vtest/rtest/normal_delete",
+			path: "/apis/gtest/vtest/tenants/system/rtest/normal_delete",
 		},
 		{
 			namespace: "nstest",
 			name:      "namespaced_delete",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_delete",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_delete",
 		},
 		{
 			subresource: []string{"srtest"},
 			name:        "normal_delete",
-			path:        "/apis/gtest/vtest/rtest/normal_delete/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/rtest/normal_delete/srtest",
 		},
 		{
 			subresource: []string{"srtest"},
 			namespace:   "nstest",
 			name:        "namespaced_delete",
-			path:        "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_delete/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_delete/srtest",
 		},
 		{
 			namespace:     "nstest",
 			name:          "namespaced_delete_with_options",
-			path:          "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_delete_with_options",
+			path:          "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_delete_with_options",
 			deleteOptions: &metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &uid}, PropagationPolicy: &background},
 		},
 	}
@@ -305,12 +305,12 @@ func TestDeleteCollection(t *testing.T) {
 	}{
 		{
 			name: "normal_delete_collection",
-			path: "/apis/gtest/vtest/rtest",
+			path: "/apis/gtest/vtest/tenants/system/rtest",
 		},
 		{
 			namespace: "nstest",
 			name:      "namespaced_delete_collection",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest",
 		},
 	}
 	for _, tc := range tcs {
@@ -353,21 +353,21 @@ func TestCreate(t *testing.T) {
 		{
 			resource: "rtest",
 			name:     "normal_create",
-			path:     "/apis/gtest/vtest/rtest",
+			path:     "/apis/gtest/vtest/tenants/system/rtest",
 			obj:      getObject("gtest/vTest", "rTest", "normal_create"),
 		},
 		{
 			resource:  "rtest",
 			name:      "namespaced_create",
 			namespace: "nstest",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest",
 			obj:       getObject("gtest/vTest", "rTest", "namespaced_create"),
 		},
 		{
 			resource:    "rtest",
 			subresource: []string{"srtest"},
 			name:        "normal_subresource_create",
-			path:        "/apis/gtest/vtest/rtest/normal_subresource_create/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/rtest/normal_subresource_create/srtest",
 			obj:         getObject("vTest", "srTest", "normal_subresource_create"),
 		},
 		{
@@ -375,7 +375,7 @@ func TestCreate(t *testing.T) {
 			subresource: []string{"srtest"},
 			name:        "namespaced_subresource_create",
 			namespace:   "nstest",
-			path:        "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_subresource_create/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_subresource_create/srtest",
 			obj:         getObject("vTest", "srTest", "namespaced_subresource_create"),
 		},
 	}
@@ -430,21 +430,21 @@ func TestUpdate(t *testing.T) {
 		{
 			resource: "rtest",
 			name:     "normal_update",
-			path:     "/apis/gtest/vtest/rtest/normal_update",
+			path:     "/apis/gtest/vtest/tenants/system/rtest/normal_update",
 			obj:      getObject("gtest/vTest", "rTest", "normal_update"),
 		},
 		{
 			resource:  "rtest",
 			name:      "namespaced_update",
 			namespace: "nstest",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_update",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_update",
 			obj:       getObject("gtest/vTest", "rTest", "namespaced_update"),
 		},
 		{
 			resource:    "rtest",
 			subresource: []string{"srtest"},
 			name:        "normal_subresource_update",
-			path:        "/apis/gtest/vtest/rtest/normal_update/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/rtest/normal_update/srtest",
 			obj:         getObject("gtest/vTest", "srTest", "normal_update"),
 		},
 		{
@@ -452,7 +452,7 @@ func TestUpdate(t *testing.T) {
 			subresource: []string{"srtest"},
 			name:        "namespaced_subresource_update",
 			namespace:   "nstest",
-			path:        "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_update/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_update/srtest",
 			obj:         getObject("gtest/vTest", "srTest", "namespaced_update"),
 		},
 	}
@@ -505,7 +505,7 @@ func TestWatch(t *testing.T) {
 	}{
 		{
 			name:  "normal_watch",
-			path:  "/apis/gtest/vtest/rtest",
+			path:  "/apis/gtest/vtest/tenants/system/rtest",
 			query: "watch=true",
 			events: []watch.Event{
 				{Type: watch.Added, Object: getObject("gtest/vTest", "rTest", "normal_watch")},
@@ -516,7 +516,7 @@ func TestWatch(t *testing.T) {
 		{
 			name:      "namespaced_watch",
 			namespace: "nstest",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest",
 			query:     "watch=true",
 			events: []watch.Event{
 				{Type: watch.Added, Object: getObject("gtest/vTest", "rTest", "namespaced_watch")},
@@ -578,7 +578,7 @@ func TestPatch(t *testing.T) {
 		{
 			resource: "rtest",
 			name:     "normal_patch",
-			path:     "/apis/gtest/vtest/rtest/normal_patch",
+			path:     "/apis/gtest/vtest/tenants/system/rtest/normal_patch",
 			patch:    getJSON("gtest/vTest", "rTest", "normal_patch"),
 			want:     getObject("gtest/vTest", "rTest", "normal_patch"),
 		},
@@ -586,7 +586,7 @@ func TestPatch(t *testing.T) {
 			resource:  "rtest",
 			name:      "namespaced_patch",
 			namespace: "nstest",
-			path:      "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_patch",
+			path:      "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_patch",
 			patch:     getJSON("gtest/vTest", "rTest", "namespaced_patch"),
 			want:      getObject("gtest/vTest", "rTest", "namespaced_patch"),
 		},
@@ -594,7 +594,7 @@ func TestPatch(t *testing.T) {
 			resource:    "rtest",
 			subresource: []string{"srtest"},
 			name:        "normal_subresource_patch",
-			path:        "/apis/gtest/vtest/rtest/normal_subresource_patch/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/rtest/normal_subresource_patch/srtest",
 			patch:       getJSON("gtest/vTest", "srTest", "normal_subresource_patch"),
 			want:        getObject("gtest/vTest", "srTest", "normal_subresource_patch"),
 		},
@@ -603,7 +603,7 @@ func TestPatch(t *testing.T) {
 			subresource: []string{"srtest"},
 			name:        "namespaced_subresource_patch",
 			namespace:   "nstest",
-			path:        "/apis/gtest/vtest/namespaces/nstest/rtest/namespaced_subresource_patch/srtest",
+			path:        "/apis/gtest/vtest/tenants/system/namespaces/nstest/rtest/namespaced_subresource_patch/srtest",
 			patch:       getJSON("gtest/vTest", "srTest", "namespaced_subresource_patch"),
 			want:        getObject("gtest/vTest", "srTest", "namespaced_subresource_patch"),
 		},

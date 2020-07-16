@@ -452,7 +452,7 @@ func (r *Request) Context(ctx context.Context) *Request {
 // URL returns the current working URL.
 func (r *Request) URL() *url.URL {
 	p := r.pathPrefix
-	if r.tenantSet && len(r.tenant) > 0 && r.tenant != metav1.TenantSystem {
+	if r.tenantSet && len(r.tenant) > 0 {
 		p = path.Join(p, "tenants", r.tenant)
 	}
 	if r.namespaceSet && len(r.namespace) > 0 {
