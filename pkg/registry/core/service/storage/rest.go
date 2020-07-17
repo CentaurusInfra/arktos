@@ -925,7 +925,7 @@ func (rs *REST) getNetworkServiceIPAlloc(service *api.Service) (ipallocator.Inte
 	cidr := cidrs[0]
 	var ipNet *net.IPNet
 	if _, ipNet, err = net.ParseCIDR(cidr); err != nil {
-		return nil, fmt.Errorf("%q is not a valid range of network %s of tenant %s: %v", cidr, netName, service.Tenant, err)
+		return nil, fmt.Errorf("%q is not a valid service cidr for network %s of tenant %s: %v", cidr, netName, service.Tenant, err)
 	}
 
 	return rs.getServiceIPAllocByKey(service.Tenant, netName, ipNet)
