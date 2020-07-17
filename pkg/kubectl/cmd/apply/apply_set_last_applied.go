@@ -50,6 +50,8 @@ type SetLastAppliedOptions struct {
 	infoList                     []*resource.Info
 	namespace                    string
 	enforceNamespace             bool
+	tenant                       string
+	enforceTenant                bool
 	dryRun                       bool
 	shortOutput                  bool
 	output                       string
@@ -128,6 +130,10 @@ func (o *SetLastAppliedOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) 
 	if err != nil {
 		return err
 	}
+	o.tenant, o.enforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	o.builder = f.NewBuilder()
 	o.unstructuredClientForMapping = f.UnstructuredClientForMapping
 
@@ -151,8 +157,9 @@ func (o *SetLastAppliedOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) 
 func (o *SetLastAppliedOptions) Validate() error {
 	r := o.builder.
 		Unstructured().
+		TenantParam(o.tenant).DefaultTenant().
 		NamespaceParam(o.namespace).DefaultNamespace().
-		FilenameParam(o.enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.enforceTenant, o.enforceNamespace, &o.FilenameOptions).
 		Flatten().
 		Do()
 
@@ -166,7 +173,7 @@ func (o *SetLastAppliedOptions) Validate() error {
 		}
 
 		// Verify the object exists in the cluster before trying to patch it.
-		if err := info.Get(); err != nil {
+		if err := info.GetWithMultiTenancy(); err != nil {
 			if errors.IsNotFound(err) {
 				return err
 			}
@@ -191,6 +198,7 @@ func (o *SetLastAppliedOptions) Validate() error {
 
 		return nil
 	})
+
 	return err
 }
 
@@ -209,7 +217,7 @@ func (o *SetLastAppliedOptions) RunSetLastApplied() error {
 
 			// single client job
 			helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
-			finalObj, err = helper.Patch(o.namespace, info.Name, patch.PatchType, patch.Patch, nil)
+			finalObj, err = helper.PatchWithMultiTenancy(o.tenant, o.namespace, info.Name, patch.PatchType, patch.Patch, nil)
 			if err != nil {
 				return err
 			}

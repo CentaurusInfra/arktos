@@ -16,7 +16,7 @@ items:
     name: cm1
     namespace: edit-test
     resourceVersion: "1414"
-    selfLink: /api/v1/namespaces/edit-test/configmaps/cm1
+    selfLink: /api/v1/tenants/system/namespaces/edit-test/configmaps/cm1
     uid: b09bffab-e9d7-11e6-8c3b-acbc32c1ca87
 - apiVersion: v1
   kind: Service
