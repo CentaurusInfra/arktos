@@ -20,7 +20,7 @@ steps:
   resultingOutput: 1.edited
 - type: request
   expectedMethod: PATCH
-  expectedPath: /api/v1/namespaces/myproject/services/svc1
+  expectedPath: /api/v1/tenants/system/namespaces/myproject/services/svc1
   expectedContentType: application/merge-patch+json
   expectedInput: 2.request
   resultingStatusCode: 200
