@@ -36,8 +36,10 @@ import (
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/client-go/dynamic"
 	coreinformers "k8s.io/client-go/informers/core/v1"
+	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	rbaclisters "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/apis/core"
@@ -58,10 +60,16 @@ const (
 
 // TenantController is responsible for performing actions dependent upon a tenant phase
 type TenantController struct {
-	// lister that can list tenants from a shared cache
-	lister corelisters.TenantLister
+	// namespaceLister that can list namespaces from a shared cache
+	namespaceLister corelisters.NamespaceLister
+	// clusterRoleLister that can list clusterRoles from a shared cache
+	clusterRoleLister rbaclisters.ClusterRoleLister
+	// clusterRoleBindingLister that can list clusterRoleBindings from a shared cache
+	clusterRoleBindingLister rbaclisters.ClusterRoleBindingLister
+	// tenantLister that can list tenants from a shared cache
+	tenantLister corelisters.TenantLister
 	// returns true when the tenant cache is ready
-	listerSynced cache.InformerSynced
+	tenantListerSynced cache.InformerSynced
 	// tenants that have been queued up for processing by workers
 	queue workqueue.RateLimitingInterface
 	// kubeclient for api calls
@@ -80,10 +88,12 @@ type TenantController struct {
 }
 
 // NewTenantController creates a new iinstance of tenantcontroller
-func NewTenantController(
-	kubeClient clientset.Interface,
+func NewTenantController(kubeClient clientset.Interface,
 	tenantInformer coreinformers.TenantInformer,
-	resyncPeriod time.Duration,
+	namespaceInformer coreinformers.NamespaceInformer,
+	clusterRoleInformer rbacinformers.ClusterRoleInformer,
+	clusterRoleBindingInformer rbacinformers.ClusterRoleBindingInformer,
+	resyncPeriod time.Duration, // split this controller into tenant creation and deletion controllers if resyncPeriod causes performance degradation
 	networkClient arktos.Interface,
 	defaultNetworkTemplatePath string,
 	dynamicClient dynamic.Interface,
@@ -115,10 +125,13 @@ func NewTenantController(
 		},
 		resyncPeriod,
 	)
-	tenantController.lister = tenantInformer.Lister()
-	tenantController.listerSynced = tenantInformer.Informer().HasSynced
+	tenantController.tenantLister = tenantInformer.Lister()
+	tenantController.tenantListerSynced = tenantInformer.Informer().HasSynced
 	tenantController.syncHandler = tenantController.syncTenant
 	tenantController.templateGetter = readTemplate
+	tenantController.namespaceLister = namespaceInformer.Lister()
+	tenantController.clusterRoleLister = clusterRoleInformer.Lister()
+	tenantController.clusterRoleBindingLister = clusterRoleBindingInformer.Lister()
 	return tenantController
 }
 
@@ -128,10 +141,10 @@ func (tc *TenantController) Run(workers int, stopCh <-chan struct{}) {
 	defer tc.queue.ShutDown()
 
 	klog.Infof("Starting tenant controller.")
-	tc.cerateSystemTenantIfNotExist()
+	tc.createSystemTenantIfNotExist()
 	defer klog.Infof("Shutting down tenant controller")
 
-	if !controller.WaitForCacheSync("tenant", stopCh, tc.listerSynced) {
+	if !controller.WaitForCacheSync("tenant", stopCh, tc.tenantListerSynced) {
 		return
 	}
 
@@ -195,7 +208,7 @@ func (tc *TenantController) processQueue(tenantName string) (err error) {
 		klog.V(4).Infof("Finished syncing tenant %q (%v)", tenantName, time.Since(startTime))
 	}()
 
-	_, err = tc.lister.Get(tenantName)
+	_, err = tc.tenantLister.Get(tenantName)
 	if errors.IsNotFound(err) {
 		klog.Infof("tenant has been deleted %v", tenantName)
 		return nil
@@ -219,7 +232,7 @@ func (tc *TenantController) syncTenant(tenantName string) (err error) {
 	}()
 
 	// no error as its caller, processQueue, has checked.
-	tenant, _ := tc.lister.Get(tenantName)
+	tenant, _ := tc.tenantLister.Get(tenantName)
 	if tenant.DeletionTimestamp != nil && !tenant.DeletionTimestamp.IsZero() {
 		//handling the deletion of a tenant
 		return tc.tenantedResourcesDeleter.Delete(tenantName)
@@ -245,7 +258,7 @@ func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error
 	failures := []error{}
 
 	// create default network object, if applicable
-	tenant, _ := tc.lister.Get(tenantName) // no error as its caller, processQueue, has checked.
+	tenant, _ := tc.tenantLister.Get(tenantName) // no error as its caller, processQueue, has checked.
 	if tenant.Status.Phase == v1.TenantTerminating {
 		klog.Infof("Tenant %q is terminating; skipped the creation of default network", tenantName)
 	} else if len(tc.defaultNetworkTemplatePath) == 0 {
@@ -267,6 +280,15 @@ func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error
 func (tc *TenantController) createNamespaces(tenant string) (error, bool) {
 	failures := []error{}
 	for _, nsName := range tenantDefaultNamespaces {
+		switch _, err := tc.namespaceLister.NamespacesWithMultiTenancy(tenant).Get(nsName); {
+		case err == nil:
+			klog.V(8).Infof("namespace %s already exists. skipped creating it", nsName)
+			continue
+		case errors.IsNotFound(err):
+		case err != nil:
+			return err, false
+		}
+
 		ns := v1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Name: nsName},
 		}
@@ -278,33 +300,61 @@ func (tc *TenantController) createNamespaces(tenant string) (error, bool) {
 }
 
 func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, bool) {
-	// tenant admin act as cluster admin for tha tenant
-	role := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   InitialClusterRoleName,
-			Tenant: tenant,
-		},
-		Rules: initialClusterRoleRules(),
-	}
-
-	binding := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   InitialClusterRoleBindingName,
-			Tenant: tenant,
-		},
-		Subjects: []rbacv1.Subject{
-			{Kind: rbacv1.UserKind, Name: initialClusterRoleUser},
-		},
-		RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: InitialClusterRoleName},
-	}
 
 	var failures []error
-	if _, err := tc.kubeClient.RbacV1().ClusterRolesWithMultiTenancy(tenant).Create(role); err != nil && !errors.IsAlreadyExists(err) {
+
+	shouldSkip := false
+	switch _, err := tc.clusterRoleLister.ClusterRolesWithMultiTenancy(tenant).Get(InitialClusterRoleName); {
+	case err == nil:
+		klog.V(8).Infof("cluster role %s already exists. skipped creating it", InitialClusterRoleName)
+		shouldSkip = true
+	case errors.IsNotFound(err):
+	case err != nil:
 		failures = append(failures, err)
 	}
-	if _, err := tc.kubeClient.RbacV1().ClusterRoleBindingsWithMultiTenancy(tenant).Create(binding); err != nil && !errors.IsAlreadyExists(err) {
+
+	if !shouldSkip {
+		// tenant admin acts as cluster admin for the tenant
+		role := &rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   InitialClusterRoleName,
+				Tenant: tenant,
+			},
+			Rules: initialClusterRoleRules(),
+		}
+
+		if _, err := tc.kubeClient.RbacV1().ClusterRolesWithMultiTenancy(tenant).Create(role); err != nil && !errors.IsAlreadyExists(err) {
+			failures = append(failures, err)
+		}
+	}
+
+	shouldSkip = false
+	switch _, err := tc.clusterRoleBindingLister.ClusterRoleBindingsWithMultiTenancy(tenant).Get(InitialClusterRoleBindingName); {
+	case err == nil:
+		klog.V(8).Infof("cluster role binding %s already exists. skipped creating it", InitialClusterRoleBindingName)
+		shouldSkip = true
+	case errors.IsNotFound(err):
+	case err != nil:
 		failures = append(failures, err)
 	}
+
+	if !shouldSkip {
+		binding := &rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   InitialClusterRoleBindingName,
+				Tenant: tenant,
+			},
+			Subjects: []rbacv1.Subject{
+				{Kind: rbacv1.UserKind, Name: initialClusterRoleUser},
+			},
+			RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: InitialClusterRoleName},
+		}
+
+		if _, err := tc.kubeClient.RbacV1().ClusterRoleBindingsWithMultiTenancy(tenant).Create(binding); err != nil && !errors.IsAlreadyExists(err) {
+			failures = append(failures, err)
+		}
+	}
+
 	return flattenedError(failures, tenant)
 }
 
@@ -365,8 +415,8 @@ func flattenedError(failures []error, tenant string) (error, bool) {
 }
 
 // not returning any error as the system should continue run without an explicit system tenant
-func (tc *TenantController) cerateSystemTenantIfNotExist() {
-	_, err := tc.lister.Get(metav1.TenantSystem)
+func (tc *TenantController) createSystemTenantIfNotExist() {
+	_, err := tc.tenantLister.Get(metav1.TenantSystem)
 
 	if apierrors.IsNotFound(err) {
 		klog.Infof("Creating the syste tenant...")
