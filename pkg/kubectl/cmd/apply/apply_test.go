@@ -431,7 +431,7 @@ func TestRunApplyViewLastApplied(t *testing.T) {
 					case p == pathRC && m == "GET":
 						bodyRC := ioutil.NopCloser(bytes.NewReader(test.respBytes))
 						return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: bodyRC}, nil
-					case p == "/namespaces/test/replicationcontrollers" && m == "GET":
+					case p == "/tenants/system/namespaces/test/replicationcontrollers" && m == "GET":
 						bodyRC := ioutil.NopCloser(bytes.NewReader(test.respBytes))
 						return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: bodyRC}, nil
 					case p == "/tenants/system/namespaces/test/replicationcontrollers/no-match" && m == "GET":
@@ -1091,13 +1091,13 @@ func TestUnstructuredIdempotentApply(t *testing.T) {
 func TestRunApplySetLastApplied(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 	nameRC, currentRC := readAndAnnotateReplicationController(t, filenameRC)
-	pathRC := "/namespaces/test/replicationcontrollers/" + nameRC
+	pathRC := "/tenants/system/namespaces/test/replicationcontrollers/" + nameRC
 
 	noExistRC, _ := readAndAnnotateReplicationController(t, filenameNoExistRC)
-	noExistPath := "/namespaces/test/replicationcontrollers/" + noExistRC
+	noExistPath := "/tenants/system/namespaces/test/replicationcontrollers/" + noExistRC
 
 	noAnnotationName, noAnnotationRC := readReplicationController(t, filenameRCNoAnnotation)
-	noAnnotationPath := "/namespaces/test/replicationcontrollers/" + noAnnotationName
+	noAnnotationPath := "/tenants/system/namespaces/test/replicationcontrollers/" + noAnnotationName
 
 	tests := []struct {
 		name, nameRC, pathRC, filePath, expectedErr, expectedOut, output string

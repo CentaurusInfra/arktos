@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,11 +48,11 @@ func NewResourceStore() *ResourceStore {
 }
 
 // getSecretRefValue returns the value of a secret in the supplied namespace
-func getSecretRefValue(client kubernetes.Interface, namespace string, store *ResourceStore, secretSelector *corev1.SecretKeySelector) (string, error) {
+func getSecretRefValue(client kubernetes.Interface, tenant, namespace string, store *ResourceStore, secretSelector *corev1.SecretKeySelector) (string, error) {
 	secret, ok := store.SecretStore[secretSelector.Name]
 	if !ok {
 		var err error
-		secret, err = client.CoreV1().Secrets(namespace).Get(secretSelector.Name, metav1.GetOptions{})
+		secret, err = client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(secretSelector.Name, metav1.GetOptions{})
 		if err != nil {
 			return "", err
 		}
@@ -65,11 +66,11 @@ func getSecretRefValue(client kubernetes.Interface, namespace string, store *Res
 }
 
 // getConfigMapRefValue returns the value of a configmap in the supplied namespace
-func getConfigMapRefValue(client kubernetes.Interface, namespace string, store *ResourceStore, configMapSelector *corev1.ConfigMapKeySelector) (string, error) {
+func getConfigMapRefValue(client kubernetes.Interface, tenant, namespace string, store *ResourceStore, configMapSelector *corev1.ConfigMapKeySelector) (string, error) {
 	configMap, ok := store.ConfigMapStore[configMapSelector.Name]
 	if !ok {
 		var err error
-		configMap, err = client.CoreV1().ConfigMaps(namespace).Get(configMapSelector.Name, metav1.GetOptions{})
+		configMap, err = client.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(configMapSelector.Name, metav1.GetOptions{})
 		if err != nil {
 			return "", err
 		}
@@ -121,6 +122,8 @@ func extractFieldPathAsString(obj interface{}, fieldPath string) (string, error)
 		return accessor.GetName(), nil
 	case "metadata.namespace":
 		return accessor.GetNamespace(), nil
+	case "metadata.tenant":
+		return accessor.GetTenant(), nil
 	case "metadata.uid":
 		return string(accessor.GetUID()), nil
 	}
@@ -224,13 +227,13 @@ func convertResourceEphemeralStorageToString(ephemeralStorage *resource.Quantity
 }
 
 // GetEnvVarRefValue returns the value referenced by the supplied EnvVarSource given the other supplied information.
-func GetEnvVarRefValue(kc kubernetes.Interface, ns string, store *ResourceStore, from *corev1.EnvVarSource, obj runtime.Object, c *corev1.Container) (string, error) {
+func GetEnvVarRefValue(kc kubernetes.Interface, tenant, ns string, store *ResourceStore, from *corev1.EnvVarSource, obj runtime.Object, c *corev1.Container) (string, error) {
 	if from.SecretKeyRef != nil {
-		return getSecretRefValue(kc, ns, store, from.SecretKeyRef)
+		return getSecretRefValue(kc, tenant, ns, store, from.SecretKeyRef)
 	}
 
 	if from.ConfigMapKeyRef != nil {
-		return getConfigMapRefValue(kc, ns, store, from.ConfigMapKeyRef)
+		return getConfigMapRefValue(kc, tenant, ns, store, from.ConfigMapKeyRef)
 	}
 
 	if from.FieldRef != nil {
