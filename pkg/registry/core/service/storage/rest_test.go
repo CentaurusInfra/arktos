@@ -2407,10 +2407,10 @@ func TestServiceRegistryCreateWithNetworkOfExternalIPAM(t *testing.T) {
 
 	srv, err := registry.GetService(ctx, svc.Name, &metav1.GetOptions{})
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if srv == nil {
-		t.Errorf("Failed to find service: %s", svc.Name)
+		t.Fatalf("Failed to find service: %s", svc.Name)
 	}
 
 	if srv.Spec.ClusterIP != "" {
@@ -2492,16 +2492,14 @@ func TestServiceRegistryCreateWithNetworkOfArktosIPAM(t *testing.T) {
 
 	srv, err := registry.GetService(ctx, svc.Name, &metav1.GetOptions{})
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if srv == nil {
-		t.Errorf("Failed to find service: %s", svc.Name)
+		t.Fatalf("Failed to find service: %s", svc.Name)
 	}
 
 	ipFromGet := net.ParseIP(srv.Spec.ClusterIP)
 	if !ipFromGet.Equal(ip) {
 		t.Fatalf("expected %s; got %s from Get op", ip, ipFromGet)
 	}
-
-	t.Logf("allocated service ip = %s", ip)
 }

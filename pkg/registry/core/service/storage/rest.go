@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -892,8 +893,8 @@ func collectServiceNodePorts(service *api.Service) []int {
 }
 
 func (rs *REST) getNetworkServiceIPAlloc(service *api.Service) (ipallocator.Interface, error) {
-	netName, ok := service.Labels[arktosv1.NetworkLabel]
-	if !ok {
+	netName := strings.TrimSpace(service.Labels[arktosv1.NetworkLabel])
+	if len(netName) == 0 {
 		netName = arktosv1.NetworkDefault
 	}
 
@@ -910,12 +911,13 @@ func (rs *REST) getNetworkServiceIPAlloc(service *api.Service) (ipallocator.Inte
 
 	networkUnstructured := network.(*unstructured.Unstructured)
 	var cidrs []string
+	var ok bool
 	cidrs, ok, err = unstructured.NestedStringSlice(networkUnstructured.Object, "spec", "service", "cidrs")
 	if err != nil {
 		return nil, fmt.Errorf("failed to identify spec.service.cidrs of network %s of tenant %s: %v", netName, service.Tenant, err)
 	}
 	if !ok || len(cidrs) == 0 {
-		return nil, fmt.Errorf("no service cidr found for network network %s of tenant %s", netName, service.Tenant)
+		return nil, fmt.Errorf("no service cidr found for network %s of tenant %s", netName, service.Tenant)
 	}
 
 	// todo: to use multiple cidr ranges in the future
