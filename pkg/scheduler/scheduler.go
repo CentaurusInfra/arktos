@@ -561,7 +561,7 @@ func checkInstanceStatus(host string, authToken string, instanceID string) (stri
 		klog.V(3).Infof("Instance Detail Response Unmarshal Failed")
 		return "", err
 	}
-	
+
 	if instanceDetailsResponse["server"] == nil {
 		return "", fmt.Errorf("Bad request for instance status check")
 	}
@@ -691,7 +691,7 @@ func (sched *Scheduler) globalScheduleOne() {
 						if err != nil {
 							return
 						}
-						
+
 						if err := sched.config.SchedulingQueue.Add(pod); err != nil {
 							klog.V(3).Infof("ERROR Status instance failed to add into queue.")
 						}

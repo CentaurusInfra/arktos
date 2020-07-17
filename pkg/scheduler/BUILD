@@ -46,6 +46,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "eventhandlers_test.go",
+        "globalscheduler_test.go",
         "scheduler_test.go",
     ],
     embed = [":go_default_library"],

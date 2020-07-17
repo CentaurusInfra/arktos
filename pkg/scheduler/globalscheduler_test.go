@@ -8,28 +8,28 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/scheduler/core"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm/priorities"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/diff"
-	"k8s.io/kubernetes/pkg/scheduler/volumebinder"
-	"k8s.io/apimachinery/pkg/labels"
-	clientsetfake "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/scheduler/factory"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/informers"
+	clientsetfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
+	corelister "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
+	volumescheduling "k8s.io/kubernetes/pkg/controller/volume/scheduling"
+	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
-	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
+	"k8s.io/kubernetes/pkg/scheduler/algorithm/priorities"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	kubeschedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/scheduler/core"
+	"k8s.io/kubernetes/pkg/scheduler/factory"
+	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	fakecache "k8s.io/kubernetes/pkg/scheduler/internal/cache/fake"
-	corelister "k8s.io/client-go/listers/core/v1"
-	volumescheduling "k8s.io/kubernetes/pkg/controller/volume/scheduling"
+	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
+	"k8s.io/kubernetes/pkg/scheduler/volumebinder"
 )
 
 // Avoid token expired in the Test functions
@@ -37,6 +37,7 @@ var TestToken, _ = requestToken("172.31.14.23")
 
 // EmptyPluginConfig is an empty plugin config used in tests.
 var EmptyPluginConfig = []kubeschedulerconfig.PluginConfig{}
+
 // EmptyFramework is an empty framework used in tests.
 // Note: If the test runs in goroutine, please don't use this variable to avoid a race condition.
 var EmptyFramework, _ = framework.NewFramework(EmptyPluginRegistry, nil, EmptyPluginConfig)
@@ -52,6 +53,7 @@ func PriorityOne(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeI
 type nodeLister struct {
 	corelister.NodeLister
 }
+
 func (n *nodeLister) List() ([]*v1.Node, error) {
 	return n.NodeLister.List(labels.Everything())
 }
@@ -59,9 +61,11 @@ func (n *nodeLister) List() ([]*v1.Node, error) {
 type fakeBinder struct {
 	b func(binding *v1.Binding) error
 }
+
 func (fb fakeBinder) Bind(binding *v1.Binding) error { return fb.b(binding) }
 
 type fakePodConditionUpdater struct{}
+
 func (fc fakePodConditionUpdater) Update(pod *v1.Pod, podCondition *v1.PodCondition) error {
 	return nil
 }
@@ -70,6 +74,7 @@ type mockScheduler struct {
 	result core.ScheduleResult
 	err    error
 }
+
 func (es mockScheduler) GlobalSchedule(pod *v1.Pod) (core.ScheduleResult, error) {
 	return es.result, es.err
 }
@@ -108,7 +113,7 @@ func TestRequestToken_SingleRequestWithOneValidHost(t *testing.T) {
 	_, err := requestToken(result.SuggestedHost)
 	if err != nil {
 		t.Errorf("excepted token request success, but fail")
-	} 
+	}
 }
 
 func TestRequestToken_SingleRequestWithOneInvalidHost(t *testing.T) {
@@ -166,7 +171,7 @@ func TestCheckInstanceStatus_InvalidInstanceID(t *testing.T) {
 	// Invalid instanceID array
 	instanceID := []string{"efewer-23sdf", ""}
 	token := TestToken
-	
+
 	for _, id := range instanceID {
 		_, err := checkInstanceStatus(result.SuggestedHost, token, id)
 		if err == nil {
@@ -196,22 +201,22 @@ func TestServerCreate_SingleServerRequest(t *testing.T) {
 	token := TestToken
 
 	table := []struct {
-		metadataName string
-		nicId string
-		keyPairName string
-		vmName string
-		image string
+		metadataName  string
+		nicId         string
+		keyPairName   string
+		vmName        string
+		image         string
 		securityGroup string
-		flavorRef string
+		flavorRef     string
 	}{
 		{
-			metadataName: "test15pod",
-			nicId: "fb3b536b-c07a-42f8-97bd-6d279ff07dd3",
-			keyPairName: "KeyMy",
-			vmName: "provider-instance-test-15",
-			image: "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
+			metadataName:  "test15pod",
+			nicId:         "fb3b536b-c07a-42f8-97bd-6d279ff07dd3",
+			keyPairName:   "KeyMy",
+			vmName:        "provider-instance-test-15",
+			image:         "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
 			securityGroup: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7",
-			flavorRef: "d1",
+			flavorRef:     "d1",
 		},
 	}
 
@@ -226,8 +231,8 @@ func TestServerCreate_SingleServerRequest(t *testing.T) {
 				},
 				VirtualMachine: &v1.VirtualMachine{
 					KeyPairName: item.keyPairName,
-					Name: item.vmName,
-					Image: item.image,
+					Name:        item.vmName,
+					Image:       item.image,
 					Scheduling: v1.GlobalScheduling{
 						SecurityGroup: []v1.OpenStackSecurityGroup{
 							{Name: item.securityGroup},
@@ -241,7 +246,7 @@ func TestServerCreate_SingleServerRequest(t *testing.T) {
 		}
 		manifest := &(pod.Spec)
 		_, err := serverCreate(result.SuggestedHost, token, manifest)
-		
+
 		if err != nil {
 			t.Errorf("expected instance create success but fail")
 		}
@@ -255,22 +260,22 @@ func TestServerCreate_SingleServerRequestWithInvalidHost(t *testing.T) {
 	token := TestToken
 
 	table := []struct {
-		metadataName string
-		nicId string
-		keyPairName string
-		vmName string
-		image string
+		metadataName  string
+		nicId         string
+		keyPairName   string
+		vmName        string
+		image         string
 		securityGroup string
-		flavorRef string
+		flavorRef     string
 	}{
 		{
-			metadataName: "test15pod",
-			nicId: "fb3b536b-c07a-42f8-97bd-6d279ff07dd3",
-			keyPairName: "KeyMy",
-			vmName: "provider-instance-test-15",
-			image: "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
+			metadataName:  "test15pod",
+			nicId:         "fb3b536b-c07a-42f8-97bd-6d279ff07dd3",
+			keyPairName:   "KeyMy",
+			vmName:        "provider-instance-test-15",
+			image:         "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
 			securityGroup: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7",
-			flavorRef: "d1",
+			flavorRef:     "d1",
 		},
 	}
 
@@ -285,8 +290,8 @@ func TestServerCreate_SingleServerRequestWithInvalidHost(t *testing.T) {
 				},
 				VirtualMachine: &v1.VirtualMachine{
 					KeyPairName: item.keyPairName,
-					Name: item.vmName,
-					Image: item.image,
+					Name:        item.vmName,
+					Image:       item.image,
 					Scheduling: v1.GlobalScheduling{
 						SecurityGroup: []v1.OpenStackSecurityGroup{
 							{Name: item.securityGroup},
@@ -300,7 +305,7 @@ func TestServerCreate_SingleServerRequestWithInvalidHost(t *testing.T) {
 		}
 		manifest := &(pod.Spec)
 		_, err := serverCreate(result.SuggestedHost, token, manifest)
-		
+
 		if err == nil {
 			t.Errorf("expected instance create fail but success")
 		}
@@ -314,22 +319,22 @@ func TestServerCreate_SingleServerRequestWithInvalidToken(t *testing.T) {
 	token := []string{"", "ejlke-eireriu"}
 
 	table := []struct {
-		metadataName string
-		nicId string
-		keyPairName string
-		vmName string
-		image string
+		metadataName  string
+		nicId         string
+		keyPairName   string
+		vmName        string
+		image         string
 		securityGroup string
-		flavorRef string
+		flavorRef     string
 	}{
 		{
-			metadataName: "test15pod",
-			nicId: "fb3b536b-c07a-42f8-97bd-6d279ff07dd3",
-			keyPairName: "KeyMy",
-			vmName: "provider-instance-test-15",
-			image: "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
+			metadataName:  "test15pod",
+			nicId:         "fb3b536b-c07a-42f8-97bd-6d279ff07dd3",
+			keyPairName:   "KeyMy",
+			vmName:        "provider-instance-test-15",
+			image:         "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
 			securityGroup: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7",
-			flavorRef: "d1",
+			flavorRef:     "d1",
 		},
 	}
 
@@ -344,8 +349,8 @@ func TestServerCreate_SingleServerRequestWithInvalidToken(t *testing.T) {
 				},
 				VirtualMachine: &v1.VirtualMachine{
 					KeyPairName: item.keyPairName,
-					Name: item.vmName,
-					Image: item.image,
+					Name:        item.vmName,
+					Image:       item.image,
 					Scheduling: v1.GlobalScheduling{
 						SecurityGroup: []v1.OpenStackSecurityGroup{
 							{Name: item.securityGroup},
