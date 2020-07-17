@@ -425,7 +425,27 @@ func TestDeleteInstance_SingleRequestWithInvalidInstanceID(t *testing.T) {
 	}
 }
 
-func TestTokenExpired
+func TestTokenExpired_SingleRequestWithUnexpiredToken(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	// New token
+	token := TestToken
+
+	if tokenExpired(result.SuggestedHost, token) {
+		t.Errorf("expected token not expired but expired")
+	}
+}
+
+func TestTokenExpired_SingleRequestWithExpiredToken(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	// Expired token
+	token := "ousoidfoisufoiu--ero2o3i23unsd-3343kjhjkhkj"
+
+	if !tokenExpired(result.SuggestedHost, token) {
+		t.Errorf("expected token expired but not expired")
+	}
+}
 
 func TestSchedulerCreation(t *testing.T) {
 	client := clientsetfake.NewSimpleClientset()
