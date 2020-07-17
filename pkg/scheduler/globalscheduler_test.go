@@ -107,6 +107,32 @@ func podWithID(id, desiredHost string) *v1.Pod {
 	}
 }
 
+func podWithSpec() *v1.Pod {
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test15pod",
+		},
+		Spec: v1.PodSpec{
+			Nics: []v1.Nic{
+				{Uuid: "fb3b536b-c07a-42f8-97bd-6d279ff07dd3"},
+			},
+			VirtualMachine: &v1.VirtualMachine{
+				KeyPairName: "KeyMy",
+				Name:        "provider-instance-test-15",
+				Image:       "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
+				Scheduling: v1.GlobalScheduling{
+					SecurityGroup: []v1.OpenStackSecurityGroup{
+						{Name: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7"},
+					},
+				},
+				Resources: v1.ResourceRequirements{
+					FlavorRef: "d1",
+				},
+			},
+		},
+	}
+}
+
 func TestRequestToken_SingleRequestWithOneValidHost(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
@@ -491,7 +517,7 @@ func TestSchedulerCreation(t *testing.T) {
 	}
 }
 
-func TestScheduler(t *testing.T) {
+func TestGlobalScheduler(t *testing.T) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(t.Logf).Stop()
 	// errS := errors.New("scheduler")
@@ -512,9 +538,9 @@ func TestScheduler(t *testing.T) {
 	}{
 		{
 			name:             "bind assumed pod scheduled",
-			sendPod:          podWithID("foo", ""),
+			sendPod:          podWithSpec(),
 			algo:             mockScheduler{core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}, nil},
-			expectBind:       &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: testNode.Name}},
+			expectBind:       &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}, Target: v1.ObjectReference{Kind: "Node", Name: testNode.Name}},
 			expectAssumedPod: podWithID("foo", testNode.Name),
 			eventReason:      "Scheduled",
 		},
@@ -598,7 +624,7 @@ func TestScheduler(t *testing.T) {
 				}
 				close(called)
 			})
-			s.scheduleOne()
+			s.globalScheduleOne()
 			<-called
 			if e, a := item.expectAssumedPod, gotAssumedPod; !reflect.DeepEqual(e, a) {
 				t.Errorf("assumed pod: wanted %v, got %v", e, a)
