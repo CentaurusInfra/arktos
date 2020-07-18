@@ -17,17 +17,17 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test14pod
+  name: test1pod
 spec:
   nics:
-    - uuid: "fb3b536b-c07a-42f8-97bd-6d279ff07dd3"
+    - uuid: "506ceacd-7395-4afc-9385-3f913a3e0620" # make sure it exist in openstack
   virtualMachine:
     keyPairName: "KeyMy"
-    name: provider-instance-test-14
-    image: "0644079b-33f4-4a55-a180-7fa7f2eec8c8"
+    name: provider-instance-test-1
+    image: "9405536b-7dbf-48d4-8120-5e2e4cf2bf0a" # make sure it exist openstack
     scheduling:
       securityGroup:
-        - name: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7"
+        - name: "7e1736d4-ed68-49a3-84b2-d48b5b4474d8" # make sure it exist openstack
     resources:
       flavorRef: "d1"
 

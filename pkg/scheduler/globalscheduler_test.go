@@ -221,7 +221,7 @@ func TestCheckInstanceStatus_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestServerCreate_SingleServerRequest(t *testing.T) {
+func TestServerCreate_SingleServerRequest_1(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	token := TestToken
@@ -237,11 +237,11 @@ func TestServerCreate_SingleServerRequest(t *testing.T) {
 	}{
 		{
 			metadataName:  "test15pod",
-			nicId:         "fb3b536b-c07a-42f8-97bd-6d279ff07dd3",
+			nicId:         "506ceacd-7395-4afc-9385-3f913a3e0620",
 			keyPairName:   "KeyMy",
 			vmName:        "provider-instance-test-15",
-			image:         "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
-			securityGroup: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7",
+			image:         "9405536b-7dbf-48d4-8120-5e2e4cf2bf0a",
+			securityGroup: "7e1736d4-ed68-49a3-84b2-d48b5b4474d8",
 			flavorRef:     "d1",
 		},
 	}

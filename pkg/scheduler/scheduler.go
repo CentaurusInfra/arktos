@@ -534,6 +534,8 @@ func serverCreate(host string, authToken string, manifest *v1.PodSpec) (string, 
 		return "", fmt.Errorf("Instance capacity has reached its limit")
 	}
 
+	fmt.Println(instanceResponse)
+
 	if instanceResponse["server"] == nil {
 		return "", fmt.Errorf("Bad request for server create")
 	}
@@ -637,12 +639,12 @@ func (sched *Scheduler) globalScheduleOne() {
 	scheduleResultQueue := queue.New(1)
 	scheduleResult, _ := sched.globalSchedule(pod)
 
-	// assumedPod := pod.DeepCopy()
-	// err := sched.assume(assumedPod, scheduleResult.SuggestedHost)
-	// if err != nil {
-	// 	klog.Errorf("error assuming pod: %v", err)
-	// 	return
-	// }
+	assumedPod := pod.DeepCopy()
+	err := sched.assume(assumedPod, scheduleResult.SuggestedHost)
+	if err != nil {
+		klog.Errorf("error assuming pod: %v", err)
+		return
+	}
 
 	go func() {
 		scheduleResultQueue.Put(scheduleResult.SuggestedHost)
@@ -655,7 +657,7 @@ func (sched *Scheduler) globalScheduleOne() {
 		authToken, exist := tokenMap[host]
 		if !exist || tokenExpired(host, authToken) {
 			// Post Request a new token
-			authToken, err := requestToken(host)
+			authToken, err = requestToken(host)
 			if err != nil {
 				klog.V(3).Infof("Token Request Failed.")
 				return
@@ -666,19 +668,10 @@ func (sched *Scheduler) globalScheduleOne() {
 
 		instanceID, err := serverCreate(host, authToken, manifest)
 		if err != nil {
-			if err := sched.config.SchedulingQueue.Add(pod); err != nil {
-				klog.V(3).Infof("ERROR Status instance failed to add into queue.")
-			}
+			klog.V(3).Infof("Server create failed")
 			return
 		}
-
 		klog.V(3).Infof("Instance ID: %v", instanceID)
-		// assumedPod := pod.DeepCopy()
-		// assume_err := sched.assume(assumedPod, scheduleResult.SuggestedHost)
-		// if assume_err != nil {
-		// 	klog.Errorf("error assuming pod: %v", err)
-		// 	return
-		// }
 
 		go func() {
 			instanceStatus, err := checkInstanceStatus(host, authToken, instanceID)
@@ -697,10 +690,6 @@ func (sched *Scheduler) globalScheduleOne() {
 						if err != nil {
 							return
 						}
-
-						if err := sched.config.SchedulingQueue.Add(pod); err != nil {
-							klog.V(3).Infof("ERROR Status instance failed to add into queue.")
-						}
 						break
 					}
 					time.Sleep(2 * time.Second)
@@ -715,28 +704,25 @@ func (sched *Scheduler) globalScheduleOne() {
 					if err != nil {
 						return
 					}
-					if err := sched.config.SchedulingQueue.Add(pod); err != nil {
-						klog.V(3).Infof("ERROR Status instance failed to add into queue.")
-					}
 					break
 				} else if instanceStatus == "ACTIVE" {
 					klog.V(3).Infof("Instance Status: %v", instanceStatus)
-					// sched.config.PodPhaseUpdater.Update(assumedPod, v1.PodRunning)
-					// err := sched.bind(assumedPod, &v1.Binding{
-					// 	ObjectMeta: metav1.ObjectMeta{Tenant: assumedPod.Tenant, Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID, HashKey: assumedPod.HashKey},
-					// 	Target: v1.ObjectReference{
-					// 		Kind: "Node",
-					// 		Name: scheduleResult.SuggestedHost,
-					// 	},
-					// })
+					sched.config.PodPhaseUpdater.Update(assumedPod, v1.PodRunning)
+					err := sched.bind(assumedPod, &v1.Binding{
+						ObjectMeta: metav1.ObjectMeta{Tenant: assumedPod.Tenant, Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID, HashKey: assumedPod.HashKey},
+						Target: v1.ObjectReference{
+							Kind: "Node",
+							Name: scheduleResult.SuggestedHost,
+						},
+					})
 
-					// if err != nil {
-					// 	klog.V(3).Infof("Pod Binding To ETCD Failed")
-					// 	metrics.PodScheduleErrors.Inc()
-					// } else {
-					// 	klog.V(3).Infof("Pod Binding To ETCD Successfully")
-					// 	metrics.PodScheduleSuccesses.Inc()
-					// }
+					if err != nil {
+						klog.V(3).Infof("Pod Binding To ETCD Failed")
+						metrics.PodScheduleErrors.Inc()
+					} else {
+						klog.V(3).Infof("Pod Binding To ETCD Successfully")
+						metrics.PodScheduleSuccesses.Inc()
+					}
 					break
 				}
 			}
