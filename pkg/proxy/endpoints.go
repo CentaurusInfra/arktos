@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -155,6 +156,7 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 		// there will be no network programming for them and thus no network programming latency metric
 		// should be exported.
 		delete(ect.lastChangeTriggerTimes, namespacedName)
+		klog.V(3).Infof("No change on endpoints %+v", change.current)
 	}
 
 	metrics.EndpointChangesPending.Set(float64(len(ect.items)))
