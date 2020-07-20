@@ -438,6 +438,7 @@ function install-kube-manifests {
   fi
   cp "${dst_dir}/kubernetes/gci-trusty/gci-configure-helper.sh" "${KUBE_BIN}/configure-helper.sh"
   cp "${dst_dir}/kubernetes/gci-trusty/apiserver-configure-helper.sh" "${KUBE_BIN}/apiserver-configure-helper.sh"
+  cp "${dst_dir}/kubernetes/gci-trusty/workloadcontroller-configure-helper.sh" "${KUBE_BIN}/workloadcontroller-configure-helper.sh"
   if [[ -e "${dst_dir}/kubernetes/gci-trusty/gke-internal-configure-helper.sh" ]]; then
     cp "${dst_dir}/kubernetes/gci-trusty/gke-internal-configure-helper.sh" "${KUBE_BIN}/"
   fi
