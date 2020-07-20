@@ -3,22 +3,16 @@ package scheduler
 import (
 	"fmt"
 	"testing"
-	// "errors"
-	"reflect"
-	"time"
-
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/informers"
 	clientsetfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	corelister "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
-	volumescheduling "k8s.io/kubernetes/pkg/controller/volume/scheduling"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/priorities"
@@ -27,9 +21,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/core"
 	"k8s.io/kubernetes/pkg/scheduler/factory"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
-	fakecache "k8s.io/kubernetes/pkg/scheduler/internal/cache/fake"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
-	"k8s.io/kubernetes/pkg/scheduler/volumebinder"
 )
 
 // Avoid token expired in the Test functions
@@ -64,9 +56,9 @@ type fakeBinder struct {
 
 func (fb fakeBinder) Bind(binding *v1.Binding) error { return fb.b(binding) }
 
-type fakePodConditionUpdater struct{}
+type fakePodPhaseUpdater struct{}
 
-func (fc fakePodConditionUpdater) Update(pod *v1.Pod, podCondition *v1.PodCondition) error {
+func (fp fakePodPhaseUpdater) Update(pod *v1.Pod, podPhase v1.PodPhase) error {
 	return nil
 }
 
@@ -114,15 +106,15 @@ func podWithSpec() *v1.Pod {
 		},
 		Spec: v1.PodSpec{
 			Nics: []v1.Nic{
-				{Uuid: "fb3b536b-c07a-42f8-97bd-6d279ff07dd3"},
+				{Uuid: "506ceacd-7395-4afc-9385-3f913a3e0620"},
 			},
 			VirtualMachine: &v1.VirtualMachine{
 				KeyPairName: "KeyMy",
 				Name:        "provider-instance-test-15",
-				Image:       "0644079b-33f4-4a55-a180-7fa7f2eec8c8",
+				Image:       "9405536b-7dbf-48d4-8120-5e2e4cf2bf0a",
 				Scheduling: v1.GlobalScheduling{
 					SecurityGroup: []v1.OpenStackSecurityGroup{
-						{Name: "d3bc9641-08ba-4a15-b8af-9e035e4d4ae7"},
+						{Name: "7e1736d4-ed68-49a3-84b2-d48b5b4474d8"},
 					},
 				},
 				Resources: v1.ResourceRequirements{
@@ -221,7 +213,7 @@ func TestCheckInstanceStatus_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestServerCreate_SingleServerRequest_1(t *testing.T) {
+func TestServerCreate_SingleServerRequest(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	token := TestToken
@@ -417,7 +409,7 @@ func TestDeleteInstance_SingleRequestWithInvalidHost(t *testing.T) {
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	token := TestToken
 	// Make sure this instanceID exist when testing delete instance request
-	instanceID := "34d16057-ae9e-4758-a81a-1c4d102c3c42"
+	instanceID := "8922cd62-ada8-47d3-8647-52089f47f1d3"
 
 	err := deleteInstance(result.SuggestedHost, token, instanceID)
 	if err == nil {
@@ -514,135 +506,5 @@ func TestSchedulerCreation(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf("Failed to create scheduler: %v", err)
-	}
-}
-
-func TestGlobalScheduler(t *testing.T) {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(t.Logf).Stop()
-	// errS := errors.New("scheduler")
-	// errB := errors.New("binder")
-	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}}
-
-	table := []struct {
-		name             string
-		injectBindError  error
-		sendPod          *v1.Pod
-		algo             core.ScheduleAlgorithm
-		expectErrorPod   *v1.Pod
-		expectForgetPod  *v1.Pod
-		expectAssumedPod *v1.Pod
-		expectError      error
-		expectBind       *v1.Binding
-		eventReason      string
-	}{
-		{
-			name:             "bind assumed pod scheduled",
-			sendPod:          podWithSpec(),
-			algo:             mockScheduler{core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}, nil},
-			expectBind:       &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "172.31.14.23", UID: types.UID("172.31.14.23")}, Target: v1.ObjectReference{Kind: "Node", Name: testNode.Name}},
-			expectAssumedPod: podWithID("foo", testNode.Name),
-			eventReason:      "Scheduled",
-		},
-		// {
-		// 	name:           "error pod failed scheduling",
-		// 	sendPod:        podWithID("foo", ""),
-		// 	algo:           mockScheduler{core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 1, FeasibleNodes: 1}, errS},
-		// 	expectError:    errS,
-		// 	expectErrorPod: podWithID("foo", ""),
-		// 	eventReason:    "FailedScheduling",
-		// },
-		// {
-		// 	name:             "error bind forget pod failed scheduling",
-		// 	sendPod:          podWithID("foo", ""),
-		// 	algo:             mockScheduler{core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 1, FeasibleNodes: 1}, nil},
-		// 	expectBind:       &v1.Binding{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("foo")}, Target: v1.ObjectReference{Kind: "Node", Name: testNode.Name}},
-		// 	expectAssumedPod: podWithID("foo", testNode.Name),
-		// 	injectBindError:  errB,
-		// 	expectError:      errB,
-		// 	expectErrorPod:   podWithID("foo", testNode.Name),
-		// 	expectForgetPod:  podWithID("foo", testNode.Name),
-		// 	eventReason:      "FailedScheduling",
-		// },
-		// {
-		// 	sendPod:     deletingPod("foo"),
-		// 	algo:        mockScheduler{core.ScheduleResult{}, nil},
-		// 	eventReason: "FailedScheduling",
-		// },
-	}
-
-	stop := make(chan struct{})
-	defer close(stop)
-	client := clientsetfake.NewSimpleClientset(&testNode)
-	informerFactory := informers.NewSharedInformerFactory(client, 0)
-	nl := informerFactory.Core().V1().Nodes().Lister()
-
-	informerFactory.Start(stop)
-	informerFactory.WaitForCacheSync(stop)
-
-	for _, item := range table {
-		t.Run(item.name, func(t *testing.T) {
-			var gotError error
-			var gotPod *v1.Pod
-			var gotForgetPod *v1.Pod
-			var gotAssumedPod *v1.Pod
-			var gotBinding *v1.Binding
-
-			s := NewFromConfig(&factory.Config{
-				SchedulerCache: &fakecache.Cache{
-					ForgetFunc: func(pod *v1.Pod) {
-						gotForgetPod = pod
-					},
-					AssumeFunc: func(pod *v1.Pod) {
-						gotAssumedPod = pod
-					},
-				},
-				NodeLister: &nodeLister{nl},
-				Algorithm:  item.algo,
-				GetBinder: func(pod *v1.Pod) factory.Binder {
-					return fakeBinder{func(b *v1.Binding) error {
-						gotBinding = b
-						return item.injectBindError
-					}}
-				},
-				PodConditionUpdater: fakePodConditionUpdater{},
-				Error: func(p *v1.Pod, err error) {
-					gotPod = p
-					gotError = err
-				},
-				NextPod: func() *v1.Pod {
-					return item.sendPod
-				},
-				Framework:    EmptyFramework,
-				Recorder:     eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "scheduler"}),
-				VolumeBinder: volumebinder.NewFakeVolumeBinder(&volumescheduling.FakeVolumeBinderConfig{AllBound: true}),
-			})
-			called := make(chan struct{})
-			events := eventBroadcaster.StartEventWatcher(func(e *v1.Event) {
-				if e, a := item.eventReason, e.Reason; e != a {
-					t.Errorf("expected %v, got %v", e, a)
-				}
-				close(called)
-			})
-			s.globalScheduleOne()
-			<-called
-			if e, a := item.expectAssumedPod, gotAssumedPod; !reflect.DeepEqual(e, a) {
-				t.Errorf("assumed pod: wanted %v, got %v", e, a)
-			}
-			if e, a := item.expectErrorPod, gotPod; !reflect.DeepEqual(e, a) {
-				t.Errorf("error pod: wanted %v, got %v", e, a)
-			}
-			if e, a := item.expectForgetPod, gotForgetPod; !reflect.DeepEqual(e, a) {
-				t.Errorf("forget pod: wanted %v, got %v", e, a)
-			}
-			if e, a := item.expectError, gotError; !reflect.DeepEqual(e, a) {
-				t.Errorf("error: wanted %v, got %v", e, a)
-			}
-			if e, a := item.expectBind, gotBinding; !reflect.DeepEqual(e, a) {
-				t.Errorf("error: %s", diff.ObjectDiff(e, a))
-			}
-			events.Stop()
-			time.Sleep(1 * time.Second) // sleep 1 second as called channel cannot be passed into eventBroadcaster.StartEventWatcher
-		})
 	}
 }
