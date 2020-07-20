@@ -21,8 +21,11 @@ import (
 	"github.com/grafov/bcast"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/apiserverupdate"
+	"k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -30,6 +33,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"reflect"
 	"strconv"
@@ -94,6 +98,7 @@ func mockApiServerConfigSync(a *APIServerConfigManager) error {
 }
 
 func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInformer, kubeClient clientset.Interface) (*APIServerConfigManager, error) {
+	klog.Infof("NewAPIServerConfigManagerWithInformer instance pointer %p", instance)
 	if instance != nil {
 		return instance, nil
 	}
@@ -319,4 +324,23 @@ func StartAPIServerConfigManager(endpointsInformer coreinformers.EndpointsInform
 	go apiServerConfigManager.Run(stopCh)
 
 	return true, nil
+}
+
+func StartAPIServerConfigManagerAndInformerFactory(client clientset.Interface, stopCh <-chan struct{}) {
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(client, 10*time.Minute,
+		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.FieldSelector = fields.OneTermEqualSelector(api.ObjectNameField, types.KubernetesServiceName).String()
+		}))
+	for {
+		apiServerConfigManager, err := NewAPIServerConfigManagerWithInformer(
+			informerFactory.Core().V1().Endpoints(), client)
+		if err == nil {
+			go apiServerConfigManager.Run(stopCh)
+			informerFactory.Start(stopCh)
+			return
+		} else {
+			klog.Errorf("Error creating api server config manager. %v. Retry after 10 seconds", err)
+			time.Sleep(10 * time.Second)
+		}
+	}
 }
