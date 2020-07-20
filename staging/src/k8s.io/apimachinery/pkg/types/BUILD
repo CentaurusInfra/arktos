@@ -9,6 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
+        "mastername.go",
         "namespacedname.go",
         "nodename.go",
         "patch.go",
