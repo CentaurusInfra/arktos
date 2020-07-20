@@ -1,6 +1,6 @@
-# Running Arktos Kubectl E2E Tests
+# Running Arktos Multi-Tenancy E2E Tests
 
-Thanks for your interests in using Arktos and running the kubectl E2E tests. If you are reading this doc, I expect you are a computer professional. So you might be able to get the tests running without this doc. However, I believe it helps if you read this first.
+Thanks for your interests in using Arktos and running the multi-tenancy E2E tests. It may be extended to cover e2e tests for other features. If you are reading this doc, I expect you are a computer professional. So you might be able to get the tests running without this doc. However, I believe it helps if you read this first.
 
 ## Running the Tests
 ### Prerequisites
@@ -11,14 +11,14 @@ The tests requires an Arktos Cluster be running and the current user have the fu
 
 Just run the following script under the same folder as this doc.
 ```
-kubectl-e2e-test.sh
+run-e2e-test.sh
 ``` 
 
 Note: this script does NOT take any commandline options. 
 
 ### Configure the Test Run
 
-Though the test script does not take commandline options, it does not mean you can not configure the test running. All the configurations are defined in the script ```config-kubectl-e2e-test.sh```, which is under the 'helper' sub-folder. The author made this choice as she is pretty bad at typing and suffers the brain loss in remembering command options. 
+Though the test script does not take commandline options, it does not mean you can not configure the test running. All the configurations are defined in the script ```config-e2e-test.sh```, which is under the 'helper' sub-folder. The author made this choice as she is pretty bad at typing and suffers the brain loss in remembering command options. 
 
 The variable names defined in the config script are self-explanatory. For example, variable ```kubectl``` defines the kubectl binary to use in the test. By default, it is the kubectl binary built in the repo. You can point it to a different kubectl if you would like a different binary.
 
@@ -26,7 +26,7 @@ Plase keep in mind that the author thinks you are a computer pro and thus will m
 
 ## Create Test Cases
 
-The  test script will run the test cases in the files specified in the variable "test_case_files" in ```config-kubectl-e2e-test.sh``` in sequence, one case by one case, one file by one file.
+The  test script will run the test cases in the files specified in the variable "test_case_files" in ```config-e2e-test.sh``` in sequence, one case by one case, one file by one file.
 
 ### Defining Test Cases
 
@@ -39,7 +39,7 @@ For Instances, the following defintion means the test expects the output has a l
 ExpectOutput: "AAA,BBB" "CCC"
 ```
 * "ExpectFail: ###": this element is optional. If the value is set as "true", the test expects this command to have a non-zero exit code and report test failure if the command succeeds. By default or any other values, the test expects the command to succeed. Note that it means if you put the value as "yes", the test still expects the command to exit.
-* "TimeOut: ###": this element is optional. It defines the limit of number of seconds you expect the command to complete. The test fails if the command did not finish within the timeout value. The default timeout is configurable in config-kubectl-e2e-test.sh. If you don't want a test case undergo timeout check, set "TimeOut: 0"/
+* "TimeOut: ###": this element is optional. It defines the limit of number of seconds you expect the command to complete. The test fails if the command did not finish within the timeout value. The default timeout is configurable in config-e2e-test.sh. If you don't want a test case undergo timeout check, set "TimeOut: 0"/
 * "RetryCount: ###": this element is optional. It defines the maximal number of retries before a test case is declared as failed. The default retry count is defined to 0, which means no retrial.
 * "RetryInterval: ###": this element is optional. It defines the number of seconds between two retries. The default retry count is set to 1 second.
 
@@ -65,14 +65,16 @@ RetryInterval: 10
 
 Define a test case with as few lines as possible. It also make sense to avoid a long test case file and group related test cases into one file.
 
-Test is the best preventive medicine to code regression. I wish every bug fixing related to kubectl is accompanied by a test case addition.
+Test is the best preventive medicine to code regression. I wish every relevant bug fixing is accompanied by a test case addition.
 
 ## What NOT to Expect
 
 As the test script is built from scratch and based on Linux Bash, the author expects the test is quick & lightweight, and adding new test cases is simple. But please **DO NOT** expect it to have:
-* Clearly Isolated Test Cases
+* Cleanly Isolated Test Cases
 
-Due to the fact it is time-consuming to start a test cluster, the test environment is NOT cleaned after a test case or a test case file is done. Actually the test environment is not cleaned even after a complete test run. So a test case might impact the later tests. Therefore please design the test cases with this constraint in mind. For example, the value of ${new_tenant} in the test is chosen to be a random string generated in each test run to make sure the test "kubectl create tenant ${new_tenant}" passes in each run without cleaning the environment.
+A test suite would be nice if the test cases are cleanly isolated, meaning each test case is independently testing one aspect of the target system, so each test case can be added or removed without affecting the others. Such a test environment usually needs to reset the target system after each test case. 
+
+Due to the fact it is time-consuming to start a test cluster, the test environment is NOT cleaned after a test case or a test case file is done. Actually the test environment is not cleaned even after a complete test run. So a test case might impact the later test cases. Therefore please design the test cases with this constraint in mind. For example, the value of ${new_tenant} in the test is chosen to be a random string generated in each test run to make sure the test "kubectl create tenant ${new_tenant}" passes in each run without cleaning the environment.
 
 If you want to clean the test environment, restart the test cluster by restarting the script hack/arktos-up.sh, and you will get a fresh and clean cluster.
 
