@@ -2719,6 +2719,7 @@ function create-master() {
   APISERVER_ADVERTISE_ADDRESS="${APISERVER_ADVERTISE_ADDRESS:-}"
   APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-0}
   declare -a APISERVER_RESERVED_IP
+  declare -a APISERVER_RESERVED_INTERNAL_IP
   declare -a APISERVER_NAME
   CREATE_CERT_APISERVER_IP=""
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
@@ -2741,10 +2742,10 @@ function create-master() {
   ## create additional apiserver
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
     for num in $(seq ${APISERVERS_EXTRA_NUM}); do
-      APISERVER_ADVERTISE_ADDRESS="${APISERVER_RESERVED_IP[$num]}"
+      APISERVER_ADVERTISE_ADDRESS="${APISERVER_RESERVED_INTERNAL_IP[$num]}"
       APISERVER_SERVICEGROUPID=$num
       echo "APISERVER_SERVICEGROUPID: ${APISERVER_SERVICEGROUPID}"
-      create-apiserver-instance "${APISERVER_NAME[$num]}" "${APISERVER_RESERVED_IP[$num]}"
+      create-apiserver-instance "${APISERVER_NAME[$num]}" "${APISERVER_RESERVED_IP[$num]}" "${APISERVER_RESERVED_INTERNAL_IP[$num]}"
     done
   fi
 }
@@ -2797,7 +2798,9 @@ function config-apiserver() {
         --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
     echo "APISERVER${num}_RESERVED_IP: ${APISERVER_RESERVED_IP[$num]}"
     CREATE_CERT_APISERVER_IP+=" ${APISERVER_RESERVED_IP[$num]}"
-
+    create-static-internalip "${server_name}-internalip" "${REGION}" "${SUBNETWORK}"
+    APISERVER_RESERVED_INTERNAL_IP[$num]=$(gcloud compute addresses describe "${server_name}-internalip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
   done
 }
 
