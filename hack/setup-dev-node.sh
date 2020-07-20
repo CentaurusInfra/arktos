@@ -41,5 +41,5 @@ wget https://dl.google.com/go/go${GOLANG_VERSION}.linux-amd64.tar.gz -P /tmp
 sudo tar -C /usr/local -xzf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz
 
 echo "Done."
-echo "Please run and add 'export PATH=\$PATH:/usr/local/go/bin' into your shell profile."
+echo "Please run and add 'export PATH=$PATH:/usr/local/go/bin' into your shell profile."
 echo "You can proceed to run arktos-up.sh if you want to launch a single-node cluster."

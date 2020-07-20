@@ -185,7 +185,7 @@ func (o *SetSelectorOptions) RunSelector() error {
 			return o.PrintObj(info.Object, o.Out)
 		}
 
-		actual, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+		actual, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
 		if err != nil {
 			return err
 		}

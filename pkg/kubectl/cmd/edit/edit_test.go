@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -54,6 +56,7 @@ type EditTestCase struct {
 	OutputPatch      string   `yaml:"outputPatch"`
 	SaveConfig       string   `yaml:"saveConfig"`
 	Namespace        string   `yaml:"namespace"`
+	Tenant           string   `yaml:"tenant"`
 	ExpectedStdout   []string `yaml:"expectedStdout"`
 	ExpectedStderr   []string `yaml:"expectedStderr"`
 	ExpectedExitCode int      `yaml:"expectedExitCode"`
@@ -225,7 +228,7 @@ func TestEdit(t *testing.T) {
 					Client:               fake.CreateHTTPClient(reqResp),
 				}, nil
 			}
-			tf.WithNamespace(testcase.Namespace)
+			tf.WithNamespaceWithMultiTenancy(testcase.Namespace, metav1.TenantSystem)
 			tf.ClientConfigVal = cmdtesting.DefaultClientConfig()
 			ioStreams, _, buf, errBuf := genericclioptions.NewTestIOStreams()
 

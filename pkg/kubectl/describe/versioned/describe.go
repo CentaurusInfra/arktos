@@ -2760,7 +2760,7 @@ type ClusterRoleDescriber struct {
 }
 
 func (d *ClusterRoleDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	role, err := d.RbacV1().ClusterRoles().Get(name, metav1.GetOptions{})
+	role, err := d.RbacV1().ClusterRolesWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -2849,7 +2849,7 @@ type ClusterRoleBindingDescriber struct {
 }
 
 func (d *ClusterRoleBindingDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	binding, err := d.RbacV1().ClusterRoleBindings().Get(name, metav1.GetOptions{})
+	binding, err := d.RbacV1().ClusterRoleBindingsWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

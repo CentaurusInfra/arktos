@@ -92,7 +92,7 @@ all:
 else
 all: generated_files
 	hack/make-rules/build.sh $(WHAT)
-	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
+	hack/arktos_copyright.sh $(shell pwd) $(OUT_DIR)
 endif
 
 define GINKGO_HELP_INFO
@@ -461,7 +461,7 @@ release-skip-tests quick-release: KUBE_RELEASE_RUN_TESTS = n
 release-skip-tests quick-release: KUBE_FASTBUILD = true
 release-skip-tests quick-release:
 	build/release.sh
-	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
+	hack/arktos_copyright.sh $(shell pwd) $(OUT_DIR)
 endif
 
 define QUICK_RELEASE_IMAGES_HELP_INFO
@@ -558,7 +558,7 @@ generated_files:
 else
 generated_files:
 	$(MAKE) -f Makefile.generated_files $@ CALLED_FROM_MAIN_MAKEFILE=1
-	hack/arktos_copyright.sh $(PWD) $(OUT_DIR)
+	hack/arktos_copyright.sh $(shell pwd) $(OUT_DIR)
 endif
 
 define HELP_INFO

@@ -125,6 +125,8 @@ type EnvOptions struct {
 	updatePodSpecForObject polymorphichelpers.UpdatePodSpecForObjectFunc
 	namespace              string
 	enforceNamespace       bool
+	tenant                 string
+	enforceTenant          bool
 	clientset              *kubernetes.Clientset
 
 	genericclioptions.IOStreams
@@ -240,6 +242,10 @@ func (o *EnvOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 	if err != nil {
 		return err
 	}
+	o.tenant, o.enforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	o.builder = f.NewBuilder
 
 	return nil
@@ -271,8 +277,9 @@ func (o *EnvOptions) RunEnv() error {
 			WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 			LocalParam(o.Local).
 			ContinueOnError().
+			TenantParam(o.tenant).DefaultTenant().
 			NamespaceParam(o.namespace).DefaultNamespace().
-			FilenameParam(o.enforceNamespace, &o.FilenameOptions).
+			FilenameParamWithMultiTenancy(o.enforceTenant, o.enforceNamespace, &o.FilenameOptions).
 			Flatten()
 
 		if !o.Local {
@@ -339,8 +346,9 @@ func (o *EnvOptions) RunEnv() error {
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		LocalParam(o.Local).
 		ContinueOnError().
+		TenantParam(o.tenant).DefaultTenant().
 		NamespaceParam(o.namespace).DefaultNamespace().
-		FilenameParam(o.enforceNamespace, &o.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.enforceTenant, o.enforceNamespace, &o.FilenameOptions).
 		Flatten()
 
 	if !o.Local {
@@ -428,7 +436,7 @@ func (o *EnvOptions) RunEnv() error {
 							continue
 						}
 
-						value, err := envutil.GetEnvVarRefValue(o.clientset, o.namespace, store, env.ValueFrom, obj, c)
+						value, err := envutil.GetEnvVarRefValue(o.clientset, o.tenant, o.namespace, store, env.ValueFrom, obj, c)
 						// Print the resolved value
 						if err == nil {
 							fmt.Fprintf(o.Out, "%s=%s\n", env.Name, value)
@@ -492,7 +500,7 @@ func (o *EnvOptions) RunEnv() error {
 			continue
 		}
 
-		actual, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+		actual, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
 		if err != nil {
 			allErrs = append(allErrs, fmt.Errorf("failed to patch env update to pod template: %v", err))
 			continue

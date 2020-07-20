@@ -527,13 +527,13 @@ echo ""
 
 while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
 
-cluster/kubectl.sh label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
-cluster/kubectl.sh create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
-cluster/kubectl.sh get ds --namespace kube-system
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
 echo ""
 echo "Arktos Setup done."

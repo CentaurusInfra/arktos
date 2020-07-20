@@ -71,6 +71,7 @@ type EditOptions struct {
 	EditMode EditMode
 
 	CmdNamespace    string
+	CmdTenant       string
 	ApplyAnnotation bool
 	ChangeCause     string
 
@@ -172,14 +173,19 @@ func (o *EditOptions) Complete(f cmdutil.Factory, args []string, cmd *cobra.Comm
 	if err != nil {
 		return err
 	}
+	cmdTenant, enforceTenant, err := f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	b := f.NewBuilder().
 		Unstructured()
 	if o.EditMode == NormalEditMode || o.EditMode == ApplyEditMode {
 		// when do normal edit or apply edit we need to always retrieve the latest resource from server
 		b = b.ResourceTypeOrNameArgs(true, args...).Latest()
 	}
-	r := b.NamespaceParam(cmdNamespace).DefaultNamespace().
-		FilenameParam(enforceNamespace, &o.FilenameOptions).
+	r := b.TenantParam(cmdTenant).DefaultTenant().
+		NamespaceParam(cmdNamespace).DefaultNamespace().
+		FilenameParamWithMultiTenancy(enforceTenant, enforceNamespace, &o.FilenameOptions).
 		ContinueOnError().
 		Flatten().
 		Do()
@@ -205,6 +211,7 @@ func (o *EditOptions) Complete(f cmdutil.Factory, args []string, cmd *cobra.Comm
 	}
 
 	o.CmdNamespace = cmdNamespace
+	o.CmdTenant = cmdTenant
 	o.f = f
 
 	return nil
@@ -503,7 +510,7 @@ func (o *EditOptions) annotationPatch(update *resource.Info) error {
 
 	// edit is single client job
 	helper := resource.NewHelper([]resource.RESTClient{client}, mapping)
-	_, err = helper.Patch(o.CmdNamespace, update.Name, patchType, patch, nil)
+	_, err = helper.PatchWithMultiTenancy(o.CmdTenant, o.CmdNamespace, update.Name, patchType, patch, nil)
 	if err != nil {
 		return err
 	}
@@ -632,7 +639,7 @@ func (o *EditOptions) visitToPatch(originalInfos []*resource.Info, patchVisitor 
 			fmt.Fprintf(o.Out, "Patch: %s\n", string(patch))
 		}
 
-		patched, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, patchType, patch, nil)
+		patched, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, patchType, patch, nil)
 		if err != nil {
 			fmt.Fprintln(o.ErrOut, results.addError(err, info))
 			return nil
@@ -649,7 +656,7 @@ func (o *EditOptions) visitToPatch(originalInfos []*resource.Info, patchVisitor 
 
 func (o *EditOptions) visitToCreate(createVisitor resource.Visitor) error {
 	err := createVisitor.Visit(func(info *resource.Info, incomingErr error) error {
-		if err := resource.CreateAndRefresh(info); err != nil {
+		if err := resource.CreateAndRefreshWithMultiTenancy(info); err != nil {
 			return err
 		}
 		printer, err := o.ToPrinter("created")
