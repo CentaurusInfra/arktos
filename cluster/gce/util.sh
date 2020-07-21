@@ -38,6 +38,7 @@ source "${KUBE_ROOT}/cluster/gce/windows/node-helper.sh"
 if [[ "${MASTER_OS_DISTRIBUTION}" == "trusty" || "${MASTER_OS_DISTRIBUTION}" == "gci" || "${MASTER_OS_DISTRIBUTION}" == "ubuntu" ]]; then
   source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/master-helper.sh"
   source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/apiserver-helper.sh"
+  source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/workloadcontroller-helper.sh"
 else
   echo "Cannot operate on cluster using master os distro: ${MASTER_OS_DISTRIBUTION}" >&2
   exit 1
@@ -664,6 +665,22 @@ function write-master-env {
 }
 
 function write-apiserver-env {
+  # If the user requested that the master be part of the cluster, set the
+  # environment variable to program the master kubelet to register itself.
+  if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" && -z "${KUBELET_APISERVER:-}" ]]; then
+    KUBELET_APISERVER="${MASTER_NAME}"
+  fi
+  if [[ -z "${KUBERNETES_MASTER_NAME:-}" ]]; then
+    KUBERNETES_MASTER_NAME="${MASTER_NAME}"
+  fi
+
+  construct-linux-kubelet-flags false true
+  build-linux-kube-env true "${KUBE_TEMP}/master-kube-env.yaml"
+  build-kubelet-config true "linux" "${KUBE_TEMP}/master-kubelet-config.yaml"
+  build-kube-master-certs "${KUBE_TEMP}/kube-master-certs.yaml"
+}
+
+function write-workloadcontroller-env {
   # If the user requested that the master be part of the cluster, set the
   # environment variable to program the master kubelet to register itself.
   if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" && -z "${KUBELET_APISERVER:-}" ]]; then
@@ -2042,10 +2059,10 @@ function make-gcloud-network-argument() {
   local region="$2"
   local network="$3"
   local subnet="$4"
-  local address="$5"          # optional
-  local private_network_ip="$6" # optional
-  local enable_ip_alias="$7"  # optional
-  local alias_size="$8"       # optional
+  local address="${5:-}"          # optional
+  local private_network_ip="${6:-}" # optional
+  local enable_ip_alias="${7:-}"  # optional
+  local alias_size="${8:-}"       # optional
 
   local networkURL="projects/${network_project}/global/networks/${network}"
   local subnetURL="projects/${network_project}/regions/${region}/subnetworks/${subnet:-}"
@@ -2714,17 +2731,23 @@ function create-master() {
   fi
 
   KUBERNETES_MASTER_NAME="${MASTER_RESERVED_IP}"
-  MASTER_ADVERTISE_ADDRESS="${MASTER_RESERVED_IP}"
+  MASTER_ADVERTISE_ADDRESS="${MASTER_RESERVED_INTERNAL_IP}"
   KUBERNETES_MASTER_INTERNAL_IP="${MASTER_RESERVED_INTERNAL_IP}"
   APISERVER_ADVERTISE_ADDRESS="${APISERVER_ADVERTISE_ADDRESS:-}"
   APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-0}
   declare -a APISERVER_RESERVED_IP
+  declare -a APISERVER_RESERVED_INTERNAL_IP
   declare -a APISERVER_NAME
   CREATE_CERT_APISERVER_IP=""
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
     config-apiserver
   fi
   echo "CREATE_CERT_APISERVER_IP: ${CREATE_CERT_APISERVER_IP}"
+
+  if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
+    config-workload-controller
+  fi
+  
 
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_APISERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_APISERVER_IP}"
@@ -2741,10 +2764,17 @@ function create-master() {
   ## create additional apiserver
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
     for num in $(seq ${APISERVERS_EXTRA_NUM}); do
-      APISERVER_ADVERTISE_ADDRESS="${APISERVER_RESERVED_IP[$num]}"
+      APISERVER_ADVERTISE_ADDRESS="${APISERVER_RESERVED_INTERNAL_IP[$num]}"
       APISERVER_SERVICEGROUPID=$num
       echo "APISERVER_SERVICEGROUPID: ${APISERVER_SERVICEGROUPID}"
-      create-apiserver-instance "${APISERVER_NAME[$num]}" "${APISERVER_RESERVED_IP[$num]}"
+      create-apiserver-instance "${APISERVER_NAME[$num]}" "${APISERVER_RESERVED_IP[$num]}" "${APISERVER_RESERVED_INTERNAL_IP[$num]}"
+    done
+  fi
+
+  ## create additional workload-controller-manager
+  if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
+    for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM}); do
+      create-workloadcontroller-instance "${CLUSTER_NAME}-workload-controller${num}"
     done
   fi
 }
@@ -2797,9 +2827,39 @@ function config-apiserver() {
         --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
     echo "APISERVER${num}_RESERVED_IP: ${APISERVER_RESERVED_IP[$num]}"
     CREATE_CERT_APISERVER_IP+=" ${APISERVER_RESERVED_IP[$num]}"
+    create-static-internalip "${server_name}-internalip" "${REGION}" "${SUBNETWORK}"
+    APISERVER_RESERVED_INTERNAL_IP[$num]=$(gcloud compute addresses describe "${server_name}-internalip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  done
+}
+
+# config workload-contrller vm firewall, disks
+function config-workload-controller() {
+  echo "Configing workload-controller and configuring firewalls"
+
+
+  for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM}); do
+    server_name="${CLUSTER_NAME}-workload-controller${num}"
+
+    echo "creating workload-controller: ${server_name} firewall"
+    gcloud compute firewall-rules create "${server_name}-https" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --target-tags "${server_name}" \
+      --allow tcp:443 &
+
+    # We have to make sure the disk is created before creating the server, so
+     # run this in the foreground.
+    echo "creating workload-controller: ${server_name} disks"
+    gcloud compute disks create "${server_name}-pd" \
+      --project "${PROJECT}" \
+      --zone "${ZONE}" \
+      --type "${WORKLOADCONTROLLER_DISK_TYPE}" \
+      --size "${WORKLOADCONTROLLER_DISK_SIZE}"
 
   done
 }
+
 
 # Adds master replica to etcd cluster.
 #
@@ -3378,6 +3438,10 @@ function kube-down() {
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
     delete-apiserver
   fi
+
+  if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
+    delete-workload-controller
+  fi
   # Un-register the master replica from etcd and events etcd.
   remove-replica-from-etcd 2379
   remove-replica-from-etcd 4002
@@ -3886,6 +3950,43 @@ function delete-apiserver() {
         --quiet \
         --project "${PROJECT}" \
         --region "${REGION}" 
+    fi
+
+  done
+}
+
+
+function delete-workload-controller() {
+  for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM}); do
+    server_name="${CLUSTER_NAME}-workload-controller${num}"
+
+    #echo "deleting additional workload-controller: ${server_name}"
+    if gcloud compute instances describe "${server_name}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+        # Now we can safely delete the VM.
+        gcloud compute instances delete \
+          --project "${PROJECT}" \
+          --quiet \
+          --delete-disks all \
+          --zone "${ZONE}" \
+          "${server_name}"
+    fi
+
+    #echo "deleting workload-controller disks: ${server_name}-pd"
+    if gcloud compute disks describe "${server_name}-pd" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute disks delete  \
+        --project "${PROJECT}" \
+        --quiet \
+        --zone "${ZONE}" \
+        "${server_name}-pd"
+    fi
+
+    #echo "deleting workload-controller firewall: ${server_name}-https"
+    if gcloud compute firewall-rules describe "${server_name}-https" --network "${NETWORK}" --project "${NETWORK_PROJECT}" &>/dev/null; then
+      gcloud compute firewall-rules delete  \
+        --project "${NETWORK_PROJECT}" \
+        --quiet \
+        --network "${NETWORK}" \
+        "${server_name}-https"
     fi
 
   done

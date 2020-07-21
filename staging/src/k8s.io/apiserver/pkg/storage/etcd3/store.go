@@ -746,7 +746,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 	}
 
 	wg.Wait()
-	klog.V(3).Infof("list partition completed. len(clients) = %v", len(clients))
+	klog.V(4).Infof("list partition completed. len(clients) = %v", len(clients))
 	return s.updatelist(listObj, listResults)
 }
 
@@ -1110,7 +1110,7 @@ func (s *store) getClientAndClusterIdFromKey(key string) (uint8, *clientv3.Clien
 	message := fmt.Sprintf("key [%s] segments %v len %d", key, segs, len(segs))
 
 	if len(segs) <= 2 {
-		klog.V(3).Infof("system client: key segments len <= 2. %s ", message)
+		klog.V(5).Infof("system client: key segments len <= 2. %s ", message)
 		return 0, s.client
 	}
 
@@ -1130,12 +1130,12 @@ func (s *store) getClientAndClusterIdFromKey(key string) (uint8, *clientv3.Clien
 		tenant = getTenantForKey(segs, 1)
 	}
 	if tenant == "" {
-		klog.V(3).Infof("system client: %s ", message)
+		klog.V(5).Infof("system client: %s ", message)
 		return 0, s.client
 	}
 
 	clusterId, c := s.getClientForTenant(tenant)
-	klog.V(3).Infof("client %v: %s. cluster id %v", c.Endpoints(), message, clusterId)
+	klog.V(5).Infof("client %v: %s. cluster id %v", c.Endpoints(), message, clusterId)
 	return clusterId, c
 }
 
