@@ -37,6 +37,7 @@ const defaultWorkers = 4
 var (
 	masterURL  string
 	kubeconfig string
+	domainName string
 	workers    int
 )
 
@@ -69,7 +70,7 @@ func main() {
 	defer close(stopCh)
 
 	netInformer := informerFactory.Arktos().V1().Networks()
-	controller := app.New(netClient, kubeClient, netInformer)
+	controller := app.New(domainName, netClient, kubeClient, netInformer)
 	netInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			controller.Enqueue(obj)
@@ -86,4 +87,5 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.IntVar(&workers, "concurrent-workers", defaultWorkers, "The number of workers that are allowed to process concurrently.")
+	flag.StringVar(&domainName, "cluster-domain", "cluster.local", "the cluster-internal domain name for Services.")
 }

@@ -44,10 +44,18 @@ import (
 	"k8s.io/klog"
 )
 
-const flatNetworkType = "flat"
+const (
+	dnsServiceDefaultName = "kube-dns"
+	dnsBaseName           = "coredns"
+	dnsRoleName           = "system:coredns"
+	dnsRoleBindingName    = "system:coredns"
+	flatNetworkType       = "flat"
+	clusterAddonLabelKey  = "k8s-app"
+)
 
 // Controller represents the flat network controller
 type Controller struct {
+	domainName   string
 	cacheSynced  cache.InformerSynced
 	store        arktosv1.NetworkLister
 	queue        workqueue.RateLimitingInterface
@@ -57,13 +65,14 @@ type Controller struct {
 }
 
 // New creates the controller object
-func New(netClientset *arktos.Clientset, svcClientset *kubernetes.Clientset, informer arktosinformer.NetworkInformer) *Controller {
+func New(domainName string, netClientset *arktos.Clientset, svcClientset *kubernetes.Clientset, informer arktosinformer.NetworkInformer) *Controller {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: svcClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	return &Controller{
+		domainName:   domainName,
 		store:        informer.Lister(),
 		queue:        workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		cacheSynced:  informer.Informer().HasSynced,
@@ -139,7 +148,7 @@ func (c *Controller) process(item interface{}) {
 
 	klog.V(5).Infof("processing network %s/%s", net.Tenant, net.Name)
 
-	if err := manageFlatNetwork(net, c.netClientset, c.svcClientset); err != nil {
+	if err := manageFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName); err != nil {
 		c.queue.AddRateLimited(key)
 		c.recorder.Eventf(net, corev1.EventTypeWarning, "FailedProvision", "failed to provision network %s/%s: %v", net.Tenant, net.Name, err)
 		return
@@ -150,7 +159,7 @@ func (c *Controller) process(item interface{}) {
 }
 
 // manageFlatNetwork is the core logic to manage a flat typed network object
-func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface) error {
+func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
 	if len(net.Status.DNSServiceIP) != 0 {
 		klog.V(5).Infof("network %s/%s/%s already have DNS service IP %s; skipped", net.Tenant, net.Namespace, net.Name, net.Status.DNSServiceIP)
 		return nil
@@ -158,7 +167,13 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 
 	svc, err := createOrGetDNSService(net, svcClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get or create per-network DNS service: %v", err)
+	}
+
+	if toDeployDNS {
+		if err = deployDNSForNetwork(net, svcClient, domainName); err != nil {
+			return fmt.Errorf("failed to deploy per-network DNS: %v", err)
+		}
 	}
 
 	// since dns service is in place, flat type network is Ready now
@@ -172,13 +187,16 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 
 func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*corev1.Service, error) {
 	nsDNS := metav1.NamespaceSystem
-	const dnsServiceDefaultName = "kube-dns"
 	nameDNS := dnsServiceDefaultName + "-" + net.Name
 	dns := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nameDNS,
 			Tenant:    net.Tenant,
 			Namespace: nsDNS,
+			Labels: map[string]string{
+				v1.NetworkLabel:      net.Name,
+				clusterAddonLabelKey: nameDNS,
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -202,7 +220,7 @@ func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*co
 				},
 			},
 			Selector: map[string]string{
-				"k8s-app": dnsServiceDefaultName,
+				clusterAddonLabelKey: nameDNS,
 			},
 			Type: corev1.ServiceTypeClusterIP,
 		},
