@@ -37,6 +37,7 @@ const defaultWorkers = 4
 var (
 	masterURL  string
 	kubeconfig string
+	domainName string
 	workers    int
 )
 
@@ -86,4 +87,5 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.IntVar(&workers, "concurrent-workers", defaultWorkers, "The number of workers that are allowed to process concurrently.")
+	flag.StringVar(&domainName, "cluster-domain", "cluster.local", "the cluster-internal domain name for Services.")
 }
