@@ -41,7 +41,8 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
 	"k8s.io/apiserver/pkg/util/dryrun"
-
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/component-base/featuregate"
 	"k8s.io/kubernetes/pkg/api/service"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
@@ -71,6 +72,7 @@ type serviceStorage struct {
 
 type dummyNetworkGetter struct {
 	ipamType string
+	cidr     string
 	err      error
 }
 
@@ -87,7 +89,8 @@ func (n dummyNetworkGetter) Get(_ context.Context, _ string, options *metav1.Get
 				"spec": map[string]interface{}{
 					"type": "mizar",
 					"service": map[string]interface{}{
-						"ipam": n.ipamType,
+						"ipam":  n.ipamType,
+						"cidrs": []interface{}{n.cidr},
 					},
 				},
 			},
@@ -202,6 +205,14 @@ func generateRandomNodePort() int32 {
 	return int32(rand.IntnRange(30001, 30999))
 }
 
+func newFeatureGateWithPerNetworkServiceIPAlloc() featuregate.FeatureGate {
+	defaultFeatureGate := utilfeature.DefaultFeatureGate
+	featureGate := defaultFeatureGate.DeepCopy()
+	featureGate.Set("PerNetworkServiceIPAlloc=true")
+	utilfeature.DefaultFeatureGate = featureGate
+	return defaultFeatureGate
+}
+
 func NewTestREST(t *testing.T, endpoints *api.EndpointsList) (*REST, *serviceStorage, *etcd3testing.EtcdTestServer) {
 	return NewTestRESTWithPods(t, endpoints, nil)
 }
@@ -247,6 +258,7 @@ func NewTestRESTWithPods(t *testing.T, endpoints *api.EndpointsList, pods *api.P
 	portAllocator := portallocator.NewPortAllocator(portRange)
 
 	rest, _ := NewREST(serviceStorage, endpointStorage, podStorage.Pod, r, portAllocator, nil)
+	rest.SetBackendStorageConfig(etcdStorage)
 
 	testNetworkStorage := dummyNetworkGetter{}
 	rest.networks = &testNetworkStorage
@@ -2395,10 +2407,10 @@ func TestServiceRegistryCreateWithNetworkOfExternalIPAM(t *testing.T) {
 
 	srv, err := registry.GetService(ctx, svc.Name, &metav1.GetOptions{})
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if srv == nil {
-		t.Errorf("Failed to find service: %s", svc.Name)
+		t.Fatalf("Failed to find service: %s", svc.Name)
 	}
 
 	if srv.Spec.ClusterIP != "" {
@@ -2435,5 +2447,59 @@ func TestServiceRegistryCreateWithoutExistingNetwork(t *testing.T) {
 	_, err := storage.Create(ctx, svc, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
 	if err == nil {
 		t.Fatalf("expected error; got none")
+	}
+}
+
+func TestServiceRegistryCreateWithNetworkOfArktosIPAM(t *testing.T) {
+	origFeatureGate := newFeatureGateWithPerNetworkServiceIPAlloc()
+	defer func() {
+		utilfeature.DefaultFeatureGate = origFeatureGate
+	}()
+
+	storage, registry, server := NewTestREST(t, nil)
+	storage.networks = &dummyNetworkGetter{ipamType: "Arktos", cidr: "3.4.5.0/24"}
+	_, ipRange, _ := net.ParseCIDR("3.4.5.0/24")
+	defer server.Terminate(t)
+
+	svc := &api.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Tenant:    "system",
+			Namespace: "default",
+		},
+		Spec: api.ServiceSpec{
+			Selector:        map[string]string{"bar": "baz"},
+			SessionAffinity: api.ServiceAffinityNone,
+			Type:            api.ServiceTypeClusterIP,
+			Ports: []api.ServicePort{{
+				Port:       6502,
+				Protocol:   api.ProtocolTCP,
+				TargetPort: intstr.FromInt(6502),
+			}},
+		},
+	}
+	ctx := genericapirequest.NewDefaultContext()
+	created_svc, err := storage.Create(ctx, svc, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	created_service := created_svc.(*api.Service)
+
+	ip := net.ParseIP(created_service.Spec.ClusterIP)
+	if !ipRange.Contains(ip) {
+		t.Errorf("expected ip in %s; got %s", ipRange, created_service.Spec.ClusterIP)
+	}
+
+	srv, err := registry.GetService(ctx, svc.Name, &metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if srv == nil {
+		t.Fatalf("Failed to find service: %s", svc.Name)
+	}
+
+	ipFromGet := net.ParseIP(srv.Spec.ClusterIP)
+	if !ipFromGet.Equal(ip) {
+		t.Fatalf("expected %s; got %s from Get op", ip, ipFromGet)
 	}
 }
