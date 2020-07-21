@@ -318,45 +318,88 @@ EOF
     fi
 
     APISERVER_LOG=${LOG_DIR}/$apiserverlog
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-apiserver "${authorizer_arg}" "${priv_arg}" ${runtime_config} \
-      ${cloud_config_arg} \
-      "${advertise_address}" \
-      "${node_port_range}" \
-      --v="${LOG_LEVEL}" \
-      --vmodule="${LOG_SPEC}" \
-      --audit-policy-file="${AUDIT_POLICY_FILE}" \
-      --audit-log-path="${LOG_DIR}/$apiserverauditlog" \
-      --cert-dir="${CERT_DIR}" \
-      --client-ca-file="${CERT_DIR}/client-ca.crt" \
-      --kubelet-client-certificate="${CERT_DIR}/client-kube-apiserver.crt" \
-      --kubelet-client-key="${CERT_DIR}/client-kube-apiserver.key" \
-      --service-account-key-file="${SERVICE_ACCOUNT_KEY}" \
-      --service-account-lookup="${SERVICE_ACCOUNT_LOOKUP}" \
-      --enable-admission-plugins="${ENABLE_ADMISSION_PLUGINS}" \
-      --disable-admission-plugins="${DISABLE_ADMISSION_PLUGINS}" \
-      --admission-control-config-file="${ADMISSION_CONTROL_CONFIG_FILE}" \
-      --bind-address="${API_BIND_ADDR}" \
-      --secure-port=$secureport \
-      --tls-cert-file="${CERT_DIR}/serving-kube-apiserver.crt" \
-      --tls-private-key-file="${CERT_DIR}/serving-kube-apiserver.key" \
-      --insecure-bind-address="${API_HOST_IP}" \
-      --insecure-port=$insecureport \
-      --storage-backend="${STORAGE_BACKEND}" \
-      --storage-media-type="${STORAGE_MEDIA_TYPE}" \
-      --etcd-servers="http://${ETCD_HOST}:${ETCD_PORT}" \
-      --service-cluster-ip-range="${SERVICE_CLUSTER_IP_RANGE}" \
-      --feature-gates="${FEATURE_GATES}" \
-      --external-hostname="${EXTERNAL_HOSTNAME}" \
-      --requestheader-username-headers=X-Remote-User \
-      --requestheader-group-headers=X-Remote-Group \
-      --requestheader-extra-headers-prefix=X-Remote-Extra- \
-      --requestheader-client-ca-file="${CERT_DIR}/request-header-ca.crt" \
-      --requestheader-allowed-names=system:auth-proxy \
-      --proxy-client-cert-file="${CERT_DIR}/client-auth-proxy.crt" \
-      --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
-      ${service_group_id} \
-      --partition-config="${configfilepath}" \
-      --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
+    if [[ "${START_ETCD_EVENT_INSTANCE}" = true ]]; then
+      ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-apiserver "${authorizer_arg}" "${priv_arg}" ${runtime_config} \
+        ${cloud_config_arg} \
+        "${advertise_address}" \
+        "${node_port_range}" \
+        --v="${LOG_LEVEL}" \
+        --vmodule="${LOG_SPEC}" \
+        --audit-policy-file="${AUDIT_POLICY_FILE}" \
+        --audit-log-path="${LOG_DIR}/$apiserverauditlog" \
+        --cert-dir="${CERT_DIR}" \
+        --client-ca-file="${CERT_DIR}/client-ca.crt" \
+        --kubelet-client-certificate="${CERT_DIR}/client-kube-apiserver.crt" \
+        --kubelet-client-key="${CERT_DIR}/client-kube-apiserver.key" \
+        --service-account-key-file="${SERVICE_ACCOUNT_KEY}" \
+        --service-account-lookup="${SERVICE_ACCOUNT_LOOKUP}" \
+        --enable-admission-plugins="${ENABLE_ADMISSION_PLUGINS}" \
+        --disable-admission-plugins="${DISABLE_ADMISSION_PLUGINS}" \
+        --admission-control-config-file="${ADMISSION_CONTROL_CONFIG_FILE}" \
+        --bind-address="${API_BIND_ADDR}" \
+        --secure-port=$secureport \
+        --tls-cert-file="${CERT_DIR}/serving-kube-apiserver.crt" \
+        --tls-private-key-file="${CERT_DIR}/serving-kube-apiserver.key" \
+        --insecure-bind-address="${API_HOST_IP}" \
+        --insecure-port=$insecureport \
+        --storage-backend="${STORAGE_BACKEND}" \
+        --storage-media-type="${STORAGE_MEDIA_TYPE}" \
+        --etcd-servers="http://${ETCD_HOST}:${ETCD_PORT}" \
+        --etcd-servers-overrides=/events#"http://${ETCD_HOST}:${ETCD_EVENT_PORT}" \
+        --service-cluster-ip-range="${SERVICE_CLUSTER_IP_RANGE}" \
+        --feature-gates="${FEATURE_GATES}" \
+        --external-hostname="${EXTERNAL_HOSTNAME}" \
+        --requestheader-username-headers=X-Remote-User \
+        --requestheader-group-headers=X-Remote-Group \
+        --requestheader-extra-headers-prefix=X-Remote-Extra- \
+        --requestheader-client-ca-file="${CERT_DIR}/request-header-ca.crt" \
+        --requestheader-allowed-names=system:auth-proxy \
+        --proxy-client-cert-file="${CERT_DIR}/client-auth-proxy.crt" \
+        --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
+        ${service_group_id} \
+        --partition-config="${configfilepath}" \
+        --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
+    else
+      ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-apiserver "${authorizer_arg}" "${priv_arg}" ${runtime_config} \
+        ${cloud_config_arg} \
+        "${advertise_address}" \
+        "${node_port_range}" \
+        --v="${LOG_LEVEL}" \
+        --vmodule="${LOG_SPEC}" \
+        --audit-policy-file="${AUDIT_POLICY_FILE}" \
+        --audit-log-path="${LOG_DIR}/$apiserverauditlog" \
+        --cert-dir="${CERT_DIR}" \
+        --client-ca-file="${CERT_DIR}/client-ca.crt" \
+        --kubelet-client-certificate="${CERT_DIR}/client-kube-apiserver.crt" \
+        --kubelet-client-key="${CERT_DIR}/client-kube-apiserver.key" \
+        --service-account-key-file="${SERVICE_ACCOUNT_KEY}" \
+        --service-account-lookup="${SERVICE_ACCOUNT_LOOKUP}" \
+        --enable-admission-plugins="${ENABLE_ADMISSION_PLUGINS}" \
+        --disable-admission-plugins="${DISABLE_ADMISSION_PLUGINS}" \
+        --admission-control-config-file="${ADMISSION_CONTROL_CONFIG_FILE}" \
+        --bind-address="${API_BIND_ADDR}" \
+        --secure-port=$secureport \
+        --tls-cert-file="${CERT_DIR}/serving-kube-apiserver.crt" \
+        --tls-private-key-file="${CERT_DIR}/serving-kube-apiserver.key" \
+        --insecure-bind-address="${API_HOST_IP}" \
+        --insecure-port=$insecureport \
+        --storage-backend="${STORAGE_BACKEND}" \
+        --storage-media-type="${STORAGE_MEDIA_TYPE}" \
+        --etcd-servers="http://${ETCD_HOST}:${ETCD_PORT}" \
+        --service-cluster-ip-range="${SERVICE_CLUSTER_IP_RANGE}" \
+        --feature-gates="${FEATURE_GATES}" \
+        --external-hostname="${EXTERNAL_HOSTNAME}" \
+        --requestheader-username-headers=X-Remote-User \
+        --requestheader-group-headers=X-Remote-Group \
+        --requestheader-extra-headers-prefix=X-Remote-Extra- \
+        --requestheader-client-ca-file="${CERT_DIR}/request-header-ca.crt" \
+        --requestheader-allowed-names=system:auth-proxy \
+        --proxy-client-cert-file="${CERT_DIR}/client-auth-proxy.crt" \
+        --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
+        ${service_group_id} \
+        --partition-config="${configfilepath}" \
+        --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
+    fi
     APISERVER_PID=$!
     APISERVER_PID_ARRAY+=($APISERVER_PID)
     # Wait for kube-apiserver to come up before launching the rest of the components.

@@ -250,6 +250,7 @@ function warning_log {
 function start_etcd {
     echo "Starting etcd"
     export ETCD_LOGFILE=${LOG_DIR}/etcd.log
+    export ETCD_EVENT_LOGFILE=${LOG_DIR}/etcd-events.log
     kube::etcd::start
 }
 

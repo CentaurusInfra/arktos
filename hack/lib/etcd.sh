@@ -24,9 +24,13 @@ ETCD_HOST=$(ip addr show $INT_NAME | grep "inet\b" | awk '{print $2}' | cut -d/ 
 ETCD_NAME=$(hostname -s)
 ETCD_CLUSTER_ID=${ETCD_CLUSTER_ID:-0}
 ETCD_PORT=${ETCD_PORT:-2379}
+ETCD_EVENT_PORT=${ETCD_EVENT_PORT:-4002}
 ETCD_PEER_PORT=${ETCD_PEER_PORT:-2380}
+ETCD_EVENT_PEER_PORT=${ETCD_EVENT_PEER_PORT:-2381}
+START_ETCD_EVENT_INSTANCE=${START_ETCD_EVENT_INSTANCE:-false}
 
 export KUBE_INTEGRATION_ETCD_URL="http://${ETCD_HOST}:${ETCD_PORT}"
+export KUBE_INTEGRATION_ETCD_EVENT_URL="http://${ETCD_HOST}:${ETCD_EVENT_PORT}"
 
 kube::etcd::validate() {
   # validate if in path
@@ -97,10 +101,13 @@ kube::etcd::start() {
   ETCD_DIR=${ETCD_DIR:-$(mktemp -d 2>/dev/null || mktemp -d -t test-etcd.XXXXXX)}
   if [[ -d "${ARTIFACTS:-}" ]]; then
     ETCD_LOGFILE="${ARTIFACTS}/etcd.$(uname -n).$(id -un).log.DEBUG.$(date +%Y%m%d-%H%M%S).$$"
+    ETCD_EVENT_LOGFILE="${ARTIFACTS}/etcd-events.$(uname -n).$(id -un).log.DEBUG.$(date +%Y%m%d-%H%M%S).$$"
   else
     ETCD_LOGFILE=${ETCD_LOGFILE:-"/dev/null"}
+    ETCD_EVENT_LOGFILE=${ETCD_EVENT_LOGFILE:-"/dev/null"}
   fi
-  kube::log::info "etcd --name ${ETCD_NAME} --cluster-id ${ETCD_CLUSTER_ID} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT}   --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls ${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT} --debug > \"${ETCD_LOGFILE}\" 2>/dev/null"
+  echo "etcd log file ${ETCD_LOGFILE}"
+  kube::log::info "etcd --name ${ETCD_NAME} --cluster-id ${ETCD_CLUSTER_ID} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT} --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls ${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT} --initial-advertise-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT} --debug > \"${ETCD_LOGFILE}\" 2>/dev/null"
   etcd --name ${ETCD_NAME} --cluster-id ${ETCD_CLUSTER_ID} --listen-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}" --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT}" --initial-advertise-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-token "etcd-cluster-1" --initial-cluster "${ETCD_NAME}=http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-state "new"  --debug 2> "${ETCD_LOGFILE}" >/dev/null &
   ETCD_PID=$!
 
@@ -108,12 +115,32 @@ kube::etcd::start() {
   # Check etcd health
   kube::util::wait_for_url "${KUBE_INTEGRATION_ETCD_URL}/health" "etcd: " 0.25 80
   curl -fs -X POST "${KUBE_INTEGRATION_ETCD_URL}/v3/kv/put" -d '{"key": "X3Rlc3Q=", "value": ""}'
+
+  # Start etcd for events
+  if [[ "${START_ETCD_EVENT_INSTANCE}" == true ]]; then
+    echo "etcd event log file ${ETCD_EVENT_LOGFILE}"
+    echo "\nWaiting for etcd events to come up."
+    ETCD_EVENT_DIR="${ETCD_DIR}-events"
+    kube::log::info "etcd --name ${ETCD_NAME} --cluster-id ${ETCD_CLUSTER_ID} --listen-peer-urls http://${ETCD_HOST}:${ETCD_EVENT_PEER_PORT} --advertise-client-urls ${KUBE_INTEGRATION_ETCD_EVENT_URL} --data-dir ${ETCD_EVENT_DIR} --listen-client-urls ${KUBE_INTEGRATION_ETCD_EVENT_URL},http://${ETCD_LOCAL_HOST}:${ETCD_EVENT_PORT} --initial-advertise-peer-urls http://${ETCD_HOST}:${ETCD_EVENT_PEER_PORT} --debug > \"${ETCD_EVENT_LOGFILE}\" 2>/dev/null"
+    etcd --name ${ETCD_NAME} --cluster-id ${ETCD_CLUSTER_ID} --listen-peer-urls "http://${ETCD_HOST}:${ETCD_EVENT_PEER_PORT}" --advertise-client-urls "${KUBE_INTEGRATION_ETCD_EVENT_URL}" --data-dir "${ETCD_EVENT_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_EVENT_URL},http://${ETCD_LOCAL_HOST}:${ETCD_EVENT_PORT}" --initial-advertise-peer-urls "http://${ETCD_HOST}:${ETCD_EVENT_PEER_PORT}" --initial-cluster-token "etcd-cluster-1" --initial-cluster "${ETCD_NAME}=http://${ETCD_HOST}:${ETCD_EVENT_PEER_PORT}" --initial-cluster-state "new"  --debug 2> "${ETCD_EVENT_LOGFILE}" >/dev/null &
+    ETCD_EVENT_PID=$!
+
+    echo "Waiting for etcd events to come up."
+    # Check etcd health
+    kube::util::wait_for_url "${KUBE_INTEGRATION_ETCD_EVENT_URL}/health" "etcd: " 0.25 80
+    curl -fs -X POST "${KUBE_INTEGRATION_ETCD_EVENT_URL}/v3/kv/put" -d '{"key": "X3Rlc3M=", "value": ""}'
+  fi
 }
 
 kube::etcd::stop() {
   if [[ -n "${ETCD_PID-}" ]]; then
     kill "${ETCD_PID}" &>/dev/null || :
     wait "${ETCD_PID}" &>/dev/null || :
+  fi
+
+  if [[ -n "${ETCD_EVENT_PID-}" ]]; then
+    kill "${ETCD_EVENT_PID}" &>/dev/null || :
+    wait "${ETCD_EVENT_PID}" &>/dev/null || :
   fi
 }
 
