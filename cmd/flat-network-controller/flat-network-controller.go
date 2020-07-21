@@ -70,7 +70,7 @@ func main() {
 	defer close(stopCh)
 
 	netInformer := informerFactory.Arktos().V1().Networks()
-	controller := app.New(netClient, kubeClient, netInformer)
+	controller := app.New(domainName, netClient, kubeClient, netInformer)
 	netInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			controller.Enqueue(obj)
