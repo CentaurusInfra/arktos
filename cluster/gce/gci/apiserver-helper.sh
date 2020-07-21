@@ -54,7 +54,7 @@ function create-apiserver-instance-internal() {
 
   local -r server_name="${1}"
   local -r address="${2:-}"
-  local -r private_netwrok_ip="${3:-}"
+  local -r private_network_ip="${3:-}"
 
   local enable_ip_aliases
   if [[ "${NODE_IPAM_MODE:-}" == "CloudAllocator" ]]; then
@@ -65,7 +65,7 @@ function create-apiserver-instance-internal() {
 
   local network=$(make-gcloud-network-argument \
     "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
-    "${address:-}" "${private_netwrok_ip:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
+    "${address:-}" "${private_network_ip:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
 
   local metadata="kube-env=${KUBE_TEMP}/master-kube-env.yaml"
   metadata="${metadata},kubelet-config=${KUBE_TEMP}/master-kubelet-config.yaml"

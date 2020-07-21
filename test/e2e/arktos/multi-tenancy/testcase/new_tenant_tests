@@ -1,0 +1,31 @@
+########################## Regular Tenant Create/Delete Tests#######################
+
+Command: ${kubectl} create tenant ${new_tenant}
+ExpectOutput: "tenant/${new_tenant} created"
+
+Command: ${kubectl} get tenants
+ExpectOutput: "system,Active" "${new_tenant},Active"
+
+Command: ${kubectl} get namespaces --tenant ${new_tenant}
+ExpectOutput: "default,Active" "kube-system,Active" "kube-public,Active"
+# Allowing retries as the tenant controller might take some time to create the namespaces 
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get serviceaccounts --tenant ${new_tenant} --namespace default
+ExpectOutput: default
+
+Command: ${kubectl} get serviceaccounts --tenant ${new_tenant} --namespace kube-system
+ExpectOutput: default
+
+Command: ${kubectl} get serviceaccounts --tenant ${new_tenant} --namespace kube-system
+ExpectOutput: default
+
+Command: ${kubectl} delete tenant ${new_tenant}
+ExpectOutput: "${new_tenant},deleted"
+Timeout: 60
+
+Command: ${kubectl} get tenant ${new_tenant}
+ExpectFail: true
+ExpectOutput: "${new_tenant},not found"
+
