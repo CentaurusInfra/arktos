@@ -70,24 +70,24 @@ func TestDeployDNSForNetwork(t *testing.T) {
 			objects: []runtime.Object{
 				&corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "coredns",
-						Namespace: "kube-system",
-						Tenant:    "test-te",
-						Annotations: map[string]string{ testTagKey: tagValObjExist },
+						Name:        "coredns",
+						Namespace:   "kube-system",
+						Tenant:      "test-te",
+						Annotations: map[string]string{testTagKey: tagValObjExist},
 					},
 				},
 				&rbacv1.ClusterRole{
-					ObjectMeta:      metav1.ObjectMeta{
-						Name:      "system:coredns",
-						Tenant:    "test-te",
-						Annotations: map[string]string{ testTagKey: tagValObjExist },
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "system:coredns",
+						Tenant:      "test-te",
+						Annotations: map[string]string{testTagKey: tagValObjExist},
 					},
 				},
 				&rbacv1.ClusterRoleBinding{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "system:coredns",
-						Tenant:    "test-te",
-						Annotations: map[string]string{ testTagKey: tagValObjExist },
+						Name:        "system:coredns",
+						Tenant:      "test-te",
+						Annotations: map[string]string{testTagKey: tagValObjExist},
 					},
 				},
 			},
