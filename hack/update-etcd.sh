@@ -21,7 +21,12 @@ set -o pipefail
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 source "${KUBE_ROOT}/hack/lib/init.sh"
 if kube::etcd::need_update ; then
-  kube::log::usage "The current installed etcd version is wrong. Exited."
-  exit 1
-fi
+  kube::log::usage "The current installed etcd version is wrong. Updating etcd..."
+  kube::etcd::install
+  kube::log::usage "Etcd has been updated."
+  if kube::etcd::need_update ; then
+    kube::log::usage "Etcd  has not been installed as expected. Exited"
+    exit 1
+  fi
+ fi
 
