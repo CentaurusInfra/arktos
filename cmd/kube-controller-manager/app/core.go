@@ -381,16 +381,17 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 		}), all), err
 	}
 
-	tenantController := tenantcontroller.NewTenantController(
-		tenantKubeClient,
+	tenantController := tenantcontroller.NewTenantController(tenantKubeClient,
 		ctx.InformerFactory.Core().V1().Tenants(),
+		ctx.InformerFactory.Core().V1().Namespaces(),
+		ctx.InformerFactory.Rbac().V1().ClusterRoles(),
+		ctx.InformerFactory.Rbac().V1().ClusterRoleBindings(),
 		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
 		networkClient,
 		ctx.ComponentConfig.TenantController.DefaultNetworkTemplatePath,
 		dynamicClient,
 		discoverTenantedResourcesFn,
-		v1.FinalizerArktos,
-	)
+		v1.FinalizerArktos)
 	go tenantController.Run(int(ctx.ComponentConfig.TenantController.ConcurrentTenantSyncs), ctx.Stop)
 
 	return nil, true, nil
