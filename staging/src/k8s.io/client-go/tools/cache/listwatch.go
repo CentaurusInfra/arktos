@@ -81,9 +81,21 @@ type Getter interface {
 	RESTClients() []restclient.Interface
 }
 
+// For backwards compatibility concerns, if the lister/watcher operates across all namespaces (namely cluster-scoped),
+// we should let it work on all tenants.
+// If it targets a specific namespaces, we should let it target at the system tenant.
+func InferTenantFromNamespace(namespace string) string {
+	tenant := metav1.TenantSystem
+	if namespace == metav1.NamespaceAll {
+		tenant = metav1.TenantAll
+	}
+
+	return tenant
+}
+
 // NewListWatchFromClient creates a new ListWatch from the specified client, resource, namespace and field selector.
 func NewListWatchFromClient(c Getter, resource string, namespace string, fieldSelector fields.Selector) *ListWatch {
-	return NewListWatchFromClientWithMultiTenancy(c, resource, namespace, fieldSelector, metav1.TenantSystem)
+	return NewListWatchFromClientWithMultiTenancy(c, resource, namespace, fieldSelector, InferTenantFromNamespace(namespace))
 }
 
 func NewListWatchFromClientWithMultiTenancy(c Getter, resource string, namespace string, fieldSelector fields.Selector, tenant string) *ListWatch {
@@ -97,8 +109,9 @@ func NewListWatchFromClientWithMultiTenancy(c Getter, resource string, namespace
 // Option modifier is a function takes a ListOptions and modifies the consumed ListOptions. Provide customized modifier function
 // to apply modification to ListOptions with a field selector, a label selector, or any other desired options.
 func NewFilteredListWatchFromClient(c Getter, resource string, namespace string, optionsModifier func(options *metav1.ListOptions)) *ListWatch {
-	return NewFilteredListWatchFromClientWithMultiTenancy(c, resource, namespace, optionsModifier, metav1.TenantSystem)
+	return NewFilteredListWatchFromClientWithMultiTenancy(c, resource, namespace, optionsModifier, InferTenantFromNamespace(namespace))
 }
+
 func NewFilteredListWatchFromClientWithMultiTenancy(c Getter, resource string, namespace string, optionsModifier func(options *metav1.ListOptions), tenant string) *ListWatch {
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		optionsModifier(&options)
