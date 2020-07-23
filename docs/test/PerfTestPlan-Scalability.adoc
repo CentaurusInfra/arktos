@@ -1,0 +1,151 @@
+= Arktos Scalability Test Plan
+Sonya Fenge Li <fenge.li@futurewei.com>, Ying Huang <ying.huang@futurewei.com>
+v0.2, 2020-07-22
+:toc: right
+:imagesdir: ../../images
+
+== Overview
+
+In this document, we outline the performance test plan for Arktos Scalability and performance comparision with Kubernetes
+Community latest release version (currently 1.18). This test plan elaborates the environment setup, test tools, test suites,
+and performance metrics we used to compare between Arktos and Kubernetes.
+
+To ensure fair comparison between Arktos and Kubernetes, we will maintain the same setting during the tests:
+
+- Same version of ETCD. For example, Kubernetes 1.18 is using ETCD 3.4.4, Arktos will be using ETCD comparable to 3.4.4. (In
+the case of testing Arktos ETCD data partition, Arktos will use ETCD with minor customization from ETCD 3.4.4)
+- Same number of API servers. In the case of testing Arktos API Server data partition, there will be multiple API servers. We
+will use same number of API servers in comparable Kubernetes community version performance test. The differences are in Arktos,
+the api servers are heterogenous, while in Kubernetes, those api servers are homogeneous.
+- Same layout of components deployment. ETCD, API servers, Controller Managers, Schedulers, minions will have same hardware
+configurations and virtual location, i.e., host colocation, network setup, etc.
+- Scale out test follows the community guidelines:
+. 99 percentile API calls within 1s
+. 99 percentile pod startup time within 5s
+
+This test plan covers an ongoing effort to periodically test and fine tuning the performance of Arktos based on industry benchmark
+and Arktos scalability development goal.
+
+== Test Environment Setup & Tools
+
+=== Hardware & OS
+
+Boot disk: cos-77-12371-89-0: Google, Container-Optimized OS, 77-12371.89.0 stable, Kernel: ChromiumOS-4.19.76
+Kubernetes: 1.15.3 Docker: 19.03.1 Family: cos-77-lts, Secure Boot ready
+
+==== Arktos
+[width=90%,options="header"]
+|=========
+|Roles|Machine Num|Machine Type|CPU/Mem
+|Admin Master|1|n1-standard-96|96 vCPUs, 360 GB mem
+|Admin Nodes|26|n1-standard-16|16 vCPUs, 60 GB mem
+|kubemark Master|1|n1-standard-64|64 vCPUs, 240 GB mem
+|=========
+
+110 pods per node (private build on 1/10/2020)
+
+==== Kubernetes (1.17)
+[width=90%,options="header"]
+|=========
+|Roles|Machine Num|Machine Type|CPU/Mem
+|Admin Master|1|n1-standard-96|96 vCPUs, 360 GB mem
+|Admin Nodes|10|n1-standard-16|16 vCPUs, 60 GB mem
+||14|n1-standard-16|32 vCPUs, 120 GB mem
+|kubemark Master|1|n1-standard-64|64 vCPUs, 240 GB mem
+|=========
+
+250 pods per node (private build based on community Kubernetes: v1.17.0-alpha.1)
+
+=== Benchmark Tool
+
+We use link:https://stupefied-goodall-e282f7.netlify.app/contributors/devel/kubemark-guide[kubemark] and link:https://github.com/futurewei-cloud/perf-tests[kubernetes perf-test]
+to run performance test on Arktos and Kubernetes.
+
+=== Setup on GCP
+. Setup personal GCP account, ask it to be added into GCP project that have enough resource to start performance test.
+. Setup your own dev machine in the GCP project. Install golang, docker, build-essential, and link:https://github.com/futurewei-cloud/arktos/blob/master/docs/setup-guide/setup-dev-env.md[other necessary tools]. Ensure your Google Cloud SDK is updated (suggested Google Cloud SDK 298.0.0 and up).
+Please refer to link:https://cloud.google.com/sdk/docs/downloads-apt-get[installing with apt-get] or link:https://cloud.google.com/sdk/docs/downloads-versioned-archives[Installing from versioned archives]
+to upgrade your google cloud SDK
+. Ensure your docker login and access has been configured (sudo usermod -aG docker $USER), if not, please run "gcloud auth configure-docker" to config
+. Git clone link:https://github.com/futurewei-cloud/arktos[arktos] and link:https://github.com/futurewei-cloud/perf-tests[perf-test tool]. Make sure perf-test folder is in src/k8s.io folder
+
+=== Run the performance test
+. Build arktos:
+.. Go to Arktos source code folder: `cd ~/go/src/arktos`
+.. Build Arktos: `make clean; make quick-release`
+. Start kubemark:
+.. Set env: `export MASTER_ROOT_DISK_SIZE=100GB MASTER_DISK_SIZE=200GB KUBE_GCE_ZONE=us-west2-b MASTER_SIZE=n1-highmem-32 NODE_SIZE=n1-highmem-8 NUM_NODES=8 NODE_DISK_SIZE=200GB KUBE_GCE_NETWORK=kubemark-500 GOPATH=$HOME/go KUBE_GCE_ENABLE_IP_ALIASES=true KUBE_GCE_PRIVATE_CLUSTER=true CREATE_CUSTOM_NETWORK=true KUBE_GCE_INSTANCE_PREFIX=kubemark-500 APISERVERS_EXTRA_NUM=0 PROMETHEUS_SCRAPE_ETCD=true ENABLE_PROMETHEUS_SERVER=true`
+.. Start admin cluster: `./cluster/kube-up.sh`
+.. Start kubemark cluster: `./test/kubemark/start-kubemark.sh`
+.. Edit hollow node # (minimal 100 to run perf test) by updating "replicas: 10": `kubectl edit replicationcontroller hollow-node -n kubemark`
+.. Wait for all hollow-nodes are ready (expecting replicas+2): `./cluster/kubectl.sh --kubeconfig=<path to kubeconfig.kubemark> get nodes | wc -l`
+. Start perf test:
+.. Go to perf-test source folder: `cd ~/go/src/k8s.io/perf-tests/clusterloader2/`
+.. Set env: `export PROMETHEUS_SCRAPE_ETCD=true ENABLE_PROMETHEUS_SERVER=true APISERVERS_EXTRA_NUM=0 GOPATH=$HOME/go`
+.. Run perf test: `nohup ./run-e2e.sh --nodes=500 --provider=kubemark --kubeconfig=<path to kubeconfig.kubemark> --report-dir=<folder to save report> --testconfig=testing/load/config.yaml --testconfig=testing/density/config.yaml --testoverrides=./testing/experiments/enable_prometheus_api_responsiveness.yaml --testoverrides=./testing/experiments/use_simple_latency_query.yaml`
+. Shut down cluster
+.. Make sure environment variables set up above still exist as GCP console consistently disconnect
+.. In arktos folder, stop kubemark: `cd ~/go/src/arktos; ./test/kubemark/stop-kubemark.sh`
+.. Shut down cluster: `./cluster/kube-down.sh`
+
+== Metrics
+
+== Test Cases
+
+=== Test Case 1: Kubernetes latest stable release (currently 1.18 and ETCD 3.4.4)
+- 500 nodes with single API server
+- 500 nodes with 3 API servers
+- 5000 nodes with single API server
+- 5000 nodes with 3 API servers(?)
+- 5000+ nodes with single API server
+- 5000+ nodes with 3 API servers
+
+Frequency: per Kubernetes version release
+
+=== Test Case 2: Arktos comparable with Kubernetes
+- 500 nodes (weekly or biweekly)
+- 5000 nodes (per formal release)
+- 5000+ nodes (per formal release)
+
+Setup: 1 API server, 1 workload controller manager, 1 kube CM, 1 scheduler, same ETCD configuration as Kubernetes (one ETCD for objects, one ETCD for events)
+
+Topology: all master components run on same host (same as community)
+
+=== Test Case 3: Arktos with paritioned API Servers
+- 500 nodes (weekly or biweekly)
+- 5000 nodes (per formal release)
+- 5000+ nodes (per formal release)
+
+Setup: 3 API server with data partition, 1 workload controller manager, 1 kube CM, 1 scheduler, same ETCD configuration as Kubernetes
+
+Topology: TBD (currently 1st api server share host with ETCD, workload CM, kubeCM, scheduler; 2nd/3rd api servers run on separate hosts)
+
+=== Test Case 4: Arktos with partitioned ETCD and API Servers
+- 500 nodes (weekly or biweekly)
+- 5000 nodes (per formal release)
+- 5000+ nodes (per formal release)
+
+Setup: 3 API server with data partition, 1 workload controller manager, 1 kube CM, 1 scheduler, 1 ETCD system cluster, 2 ETCD tenant cluster, 1 ETCD event cluster
+
+Topology: TBD (currently 1st api server share host with ETCD system cluster & event cluster, workload CM, kubeCM, scheduler; 2nd/3rd api servers run on separate hosts; ETCD
+tenant clusters share hosts with 2nd & 3rd api servers)
+
+=== Test Case 5: Arktos with paritioned controllers, ETCD, and API Servers
+- 500 nodes (weekly or biweekly)
+- 5000 nodes (per formal release)
+- 5000+ nodes (per formal release)
+
+Setup: 3 API server with data partition, 4 workload controller manager, 1 kube CM, 1 scheduler, 1 ETCD system cluster, 2 ETCD tenant cluster, 1 ETCD event cluster
+
+Topology: TBD (currently 1st api server share host with ETCD system cluster & event cluster, 1st workload CM, kubeCM, scheduler; 2nd/3rd api servers run on separate hosts; ETCD
+tenant clusters share hosts with 2nd & 3rd api servers; 2nd/3rd workload CM share hosts with 2nd/3rd api servers; 4th workload CM standalone)
+
+== Performance Test Report (per formal release)
+Note: can have separate page for performance comparsion each release. Here will host link to reports.
+
+== Stability Improvement Plan
+- Automated performance test pipeline: daily run for 100 or 500 nodes (depends on result reliability)
+- Automated performance test report: failed daily report & weekly 500 nodes report
+
+
+
