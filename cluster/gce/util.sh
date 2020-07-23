@@ -2738,20 +2738,22 @@ function create-master() {
   declare -a APISERVER_RESERVED_IP
   declare -a APISERVER_RESERVED_INTERNAL_IP
   declare -a APISERVER_NAME
-  CREATE_CERT_APISERVER_IP=""
+
+  # add all external and internal IP to cert
+  CREATE_CERT_SERVER_IP="${MASTER_RESERVED_INTERNAL_IP}"
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
     config-apiserver
   fi
-  echo "CREATE_CERT_APISERVER_IP: ${CREATE_CERT_APISERVER_IP}"
+  echo "CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
 
   if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
     config-workload-controller
   fi
   
 
-  create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_APISERVER_IP}"
-  create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_APISERVER_IP}"
-  create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_APISERVER_IP}"
+  create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
+  create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
+  create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
 
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
@@ -2826,10 +2828,11 @@ function config-apiserver() {
     APISERVER_RESERVED_IP[$num]=$(gcloud compute addresses describe "${server_name}-ip" \
         --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
     echo "APISERVER${num}_RESERVED_IP: ${APISERVER_RESERVED_IP[$num]}"
-    CREATE_CERT_APISERVER_IP+=" ${APISERVER_RESERVED_IP[$num]}"
+    CREATE_CERT_SERVER_IP+=" ${APISERVER_RESERVED_IP[$num]}"
     create-static-internalip "${server_name}-internalip" "${REGION}" "${SUBNETWORK}"
     APISERVER_RESERVED_INTERNAL_IP[$num]=$(gcloud compute addresses describe "${server_name}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+    CREATE_CERT_SERVER_IP+=" ${APISERVER_RESERVED_INTERNAL_IP[$num]}"
   done
 }
 
