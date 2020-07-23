@@ -29,7 +29,7 @@ set -o pipefail
 function main() {
   # redirect stdout/stderr to a file
   exec >> /var/log/master-init.log 2>&1
-  echo "Start to configure apiserver instance for kubernetes"
+  echo "Start to configure partitionserver instance for kubernetes"
   source "/home/kubernetes/bin/configure-helper-common.sh"
   readonly UUID_MNT_PREFIX="/mnt/disks/by-uuid/google-local-ssds"
   readonly UUID_BLOCK_PREFIX="/dev/disk/by-uuid/google-local-ssds"
@@ -91,7 +91,7 @@ function main() {
     create-master-etcd-auth
     create-master-etcd-apiserver-auth
     override-pv-recycler
-    gke-master-start
+#    gke-master-start  ####unused function, removing for now
   else
     create-node-pki
     create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}
@@ -115,14 +115,29 @@ function main() {
   start-kubelet
 
   compute-master-manifest-variables
-  start-kube-apiserver
-  wait-till-apiserver-ready
+  if [[ "${ENABLE_ETCD}" == "true" ]]; then
+    start-etcd-servers
+    start-etcd-empty-dir-cleanup-pod
+  fi
+  if [[ "${ENABLE_APISERVER}" == "true" ]]; then
+    start-kube-apiserver
+    wait-till-apiserver-ready
+  fi
+  if [[ "${ENABLE_KUBECONTROLLER}" == "true" ]]; then
+    start-kube-controller-manager
+  fi
+  if [[ "${ENABLE_KUBESCHEDULER}" == "true" ]]; then
+    start-kube-scheduler
+  fi
+  if [[ "${ENABLE_WORKLOADCONTROLLER}" == "true" ]]; then
+    start-workload-controller-manager ${KUBERNETES_MASTER_INTERNAL_IP}
+  fi
 
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
 
-  echo "Done for the configuration for apiserver"
+  echo "Done for the configuration for partitionserver"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
