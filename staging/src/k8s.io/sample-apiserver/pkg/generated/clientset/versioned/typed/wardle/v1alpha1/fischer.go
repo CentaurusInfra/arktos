@@ -21,6 +21,7 @@ package v1alpha1
 
 import (
 	strings "strings"
+	sync "sync"
 	"time"
 
 	errors "k8s.io/apimachinery/pkg/api/errors"
@@ -86,6 +87,71 @@ func (c *fischers) List(opts v1.ListOptions) (result *v1alpha1.FischerList, err 
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1alpha1.FischerList{}
+
+	wgLen := 1
+	// When resource version is not empty, it reads from api server local cache
+	// Need to check all api server partitions
+	if opts.ResourceVersion != "" && len(c.clients) > 1 {
+		wgLen = len(c.clients)
+	}
+
+	if wgLen > 1 {
+		var listLock sync.Mutex
+
+		var wg sync.WaitGroup
+		wg.Add(wgLen)
+		results := make(map[int]*v1alpha1.FischerList)
+		errs := make(map[int]error)
+		for i, client := range c.clients {
+			go func(c *fischers, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1alpha1.FischerList, errMap map[int]error) {
+				r := &v1alpha1.FischerList{}
+				err := ci.Get().
+					Resource("fischers").
+					VersionedParams(&opts, scheme.ParameterCodec).
+					Timeout(timeout).
+					Do().
+					Into(r)
+
+				lock.Lock()
+				resultMap[pos] = r
+				errMap[pos] = err
+				lock.Unlock()
+				wg.Done()
+			}(c, client, opts, listLock, i, results, errs)
+		}
+		wg.Wait()
+
+		// consolidate list result
+		itemsMap := make(map[string]*v1alpha1.Fischer)
+		for j := 0; j < wgLen; j++ {
+			currentErr, isOK := errs[j]
+			if isOK && currentErr != nil {
+				if !(errors.IsForbidden(currentErr) && strings.Contains(currentErr.Error(), "no relationship found between node")) {
+					err = currentErr
+					return
+				} else {
+					continue
+				}
+			}
+
+			currentResult, _ := results[j]
+			if result.Kind == "" {
+				result.TypeMeta = currentResult.TypeMeta
+				result.ListMeta = currentResult.ListMeta
+			}
+			for _, item := range currentResult.Items {
+				if _, exist := itemsMap[item.ResourceVersion]; !exist {
+					itemsMap[item.ResourceVersion] = &item
+				}
+			}
+		}
+
+		for _, item := range itemsMap {
+			result.Items = append(result.Items, *item)
+		}
+		return
+	}
+
 	err = c.client.Get().
 		Resource("fischers").
 		VersionedParams(&opts, scheme.ParameterCodec).

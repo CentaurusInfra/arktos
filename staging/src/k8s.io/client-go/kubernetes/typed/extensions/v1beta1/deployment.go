@@ -21,6 +21,7 @@ package v1beta1
 
 import (
 	strings "strings"
+	sync "sync"
 	"time"
 
 	v1beta1 "k8s.io/api/extensions/v1beta1"
@@ -101,6 +102,72 @@ func (c *deployments) List(opts v1.ListOptions) (result *v1beta1.DeploymentList,
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1beta1.DeploymentList{}
+
+	wgLen := 1
+	// When resource version is not empty, it reads from api server local cache
+	// Need to check all api server partitions
+	if opts.ResourceVersion != "" && len(c.clients) > 1 {
+		wgLen = len(c.clients)
+	}
+
+	if wgLen > 1 {
+		var listLock sync.Mutex
+
+		var wg sync.WaitGroup
+		wg.Add(wgLen)
+		results := make(map[int]*v1beta1.DeploymentList)
+		errs := make(map[int]error)
+		for i, client := range c.clients {
+			go func(c *deployments, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1beta1.DeploymentList, errMap map[int]error) {
+				r := &v1beta1.DeploymentList{}
+				err := ci.Get().
+					Tenant(c.te).Namespace(c.ns).
+					Resource("deployments").
+					VersionedParams(&opts, scheme.ParameterCodec).
+					Timeout(timeout).
+					Do().
+					Into(r)
+
+				lock.Lock()
+				resultMap[pos] = r
+				errMap[pos] = err
+				lock.Unlock()
+				wg.Done()
+			}(c, client, opts, listLock, i, results, errs)
+		}
+		wg.Wait()
+
+		// consolidate list result
+		itemsMap := make(map[string]*v1beta1.Deployment)
+		for j := 0; j < wgLen; j++ {
+			currentErr, isOK := errs[j]
+			if isOK && currentErr != nil {
+				if !(errors.IsForbidden(currentErr) && strings.Contains(currentErr.Error(), "no relationship found between node")) {
+					err = currentErr
+					return
+				} else {
+					continue
+				}
+			}
+
+			currentResult, _ := results[j]
+			if result.Kind == "" {
+				result.TypeMeta = currentResult.TypeMeta
+				result.ListMeta = currentResult.ListMeta
+			}
+			for _, item := range currentResult.Items {
+				if _, exist := itemsMap[item.ResourceVersion]; !exist {
+					itemsMap[item.ResourceVersion] = &item
+				}
+			}
+		}
+
+		for _, item := range itemsMap {
+			result.Items = append(result.Items, *item)
+		}
+		return
+	}
+
 	err = c.client.Get().
 		Tenant(c.te).Namespace(c.ns).
 		Resource("deployments").
