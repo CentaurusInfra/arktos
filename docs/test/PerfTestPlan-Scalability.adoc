@@ -125,16 +125,16 @@ Topology: all master components run on same host (same as community)
 - 5000 nodes (per formal release)
 - 5000+ nodes (per formal release)
 
-Setup: 3 kube-apiserver with data partition, 1 workload-controller-manager, 1 kube-controller-manager, 1 kube-scheduler, same ETCD configuration as Kubernetes
+Setup: 3 kube-apiservers with data partition, 1 workload-controller-manager, 1 kube-controller-manager, 1 kube-scheduler, same ETCD configuration as Kubernetes
 
-Topology: TBD (currently 1st api server share host with ETCD, workload-controller-manager, kube-controller-manager, kube-scheduler; 2nd/3rd api servers run on separate hosts)
+Topology: TBD (currently 1st api server share host with ETCD, workload-controller-manager, kube-controller-manager, kube-scheduler; 2nd/3rd api server run on separate hosts)
 
 === Test Case 4: Arktos with partitioned ETCD and API Servers
 - 500 nodes (weekly or biweekly)
 - 5000 nodes (per formal release)
 - 5000+ nodes (per formal release)
 
-Setup: 3 kube-apiserver with data partition, 1 workload-controller-manager, 1 kube-controller-manager, 1 kube-scheduler, 1 ETCD system cluster, 2 ETCD tenant cluster, 1 ETCD event cluster
+Setup: 3 kube-apiservers with data partition, 1 workload-controller-manager, 1 kube-controller-manager, 1 kube-scheduler, 1 ETCD system cluster, 2 ETCD tenant clusters, 1 ETCD event cluster
 
 Topology: TBD (currently 1st api server share host with ETCD system cluster & event cluster, workload-controller-manager, kube-controller-manager, kube-scheduler; 2nd/3rd kube-apiserver run on separate hosts; ETCD
 tenant clusters share hosts with 2nd & 3rd kube-apiserver)
@@ -144,7 +144,7 @@ tenant clusters share hosts with 2nd & 3rd kube-apiserver)
 - 5000 nodes (per formal release)
 - 5000+ nodes (per formal release)
 
-Setup: 3 kube-apiserver with data partition, 4 workload-controller-manager, 1 kube-controller-manager, 1 kube-scheduler, 1 ETCD system cluster, 2 ETCD tenant cluster, 1 ETCD event cluster
+Setup: 3 kube-apiservers with data partition, 4 workload-controller-managers, 1 kube-controller-manager, 1 kube-scheduler, 1 ETCD system cluster, 2 ETCD tenant clusters, 1 ETCD event cluster
 
 Topology: TBD (currently 1st api server share host with ETCD system cluster & event cluster, 1st workload-controller-manager, kube-controller-manager, kube-scheduler; 2nd/3rd api servers run on separate hosts; ETCD
 tenant clusters share hosts with 2nd & 3rd api servers; 2nd/3rd workload-controller-manager share hosts with 2nd/3rd api servers; 4th workload CM standalone)
