@@ -143,6 +143,9 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"Version":                  namer.IC(g.version),
 		"klogInfof":                c.Universe.Type(types.Name{Package: "k8s.io/klog", Name: "V"}),
 		"errorIsForbidden":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "IsForbidden"}),
+		"errorNewInternal":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "NewInternalError"}),
+		"revisionStringCompare":    c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/diff", Name: "RevisionStrIsNewer"}),
+		"fmtErrorf":                c.Universe.Type(types.Name{Package: "fmt", Name: "Errorf"}),
 		"stringsContains":          c.Universe.Type(types.Name{Package: "strings", Name: "Contains"}),
 		"listLock":                 c.Universe.Type(types.Name{Package: "sync", Name: "Lock"}),
 		"listUnlock":               c.Universe.Type(types.Name{Package: "sync", Name: "Unlock"}),
@@ -510,9 +513,19 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 			}
 
 			currentResult, _ := results[j]
-			if result.Kind == "" {
+			if result.ResourceVersion == "" {
 				result.TypeMeta = currentResult.TypeMeta
 				result.ListMeta = currentResult.ListMeta
+			} else {
+				isNewer, errCompare := $.revisionStringCompare|raw$(currentResult.ResourceVersion, result.ResourceVersion)
+				if errCompare != nil {
+					err = $.errorNewInternal|raw$($.fmtErrorf|raw$("Invalid resource version [%v]", errCompare))
+					return
+				} else if isNewer {
+					// Since the lists are from different api servers with different partition. When used in list and watch,
+					// we cannot watch from the biggest resource version. Leave it to watch for adjustment.
+					result.ResourceVersion = currentResult.ResourceVersion
+				}
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
@@ -527,6 +540,10 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 		return
 	}
 
+	// The following is used for single api server partition and/or resourceVersion is empty
+	// When resourceVersion is empty, objects are read from ETCD directly and will get full
+	// list of data if no permission issue. The list needs to done sequential to avoid increasing
+	// system load.
 	err = c.client.Get().
 		$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
 		$if .tenanted$Tenant(c.te).$end$
