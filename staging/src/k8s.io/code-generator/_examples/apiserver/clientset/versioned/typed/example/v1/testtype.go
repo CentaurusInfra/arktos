@@ -20,6 +20,7 @@ limitations under the License.
 package v1
 
 import (
+	fmt "fmt"
 	strings "strings"
 	sync "sync"
 	"time"
@@ -27,6 +28,7 @@ import (
 	errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
+	diff "k8s.io/apimachinery/pkg/util/diff"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
 	v1 "k8s.io/code-generator/_examples/apiserver/apis/example/v1"
@@ -148,9 +150,19 @@ func (c *testTypes) List(opts metav1.ListOptions) (result *v1.TestTypeList, err 
 			}
 
 			currentResult, _ := results[j]
-			if result.Kind == "" {
+			if result.ResourceVersion == "" {
 				result.TypeMeta = currentResult.TypeMeta
 				result.ListMeta = currentResult.ListMeta
+			} else {
+				isNewer, errCompare := diff.RevisionStrIsNewer(currentResult.ResourceVersion, result.ResourceVersion)
+				if errCompare != nil {
+					err = errors.NewInternalError(fmt.Errorf("Invalid resource version [%v]", errCompare))
+					return
+				} else if isNewer {
+					// Since the lists are from different api servers with different partition. When used in list and watch,
+					// we cannot watch from the biggest resource version. Leave it to watch for adjustment.
+					result.ResourceVersion = currentResult.ResourceVersion
+				}
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
@@ -165,6 +177,10 @@ func (c *testTypes) List(opts metav1.ListOptions) (result *v1.TestTypeList, err 
 		return
 	}
 
+	// The following is used for single api server partition and/or resourceVersion is empty
+	// When resourceVersion is empty, objects are read from ETCD directly and will get full
+	// list of data if no permission issue. The list needs to done sequential to avoid increasing
+	// system load.
 	err = c.client.Get().
 		Tenant(c.te).Namespace(c.ns).
 		Resource("testtypes").
