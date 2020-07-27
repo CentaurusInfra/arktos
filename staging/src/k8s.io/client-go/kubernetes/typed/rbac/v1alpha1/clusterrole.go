@@ -20,13 +20,16 @@ limitations under the License.
 package v1alpha1
 
 import (
+	fmt "fmt"
 	strings "strings"
+	sync "sync"
 	"time"
 
 	v1alpha1 "k8s.io/api/rbac/v1alpha1"
 	errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
+	diff "k8s.io/apimachinery/pkg/util/diff"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
@@ -94,6 +97,86 @@ func (c *clusterRoles) List(opts v1.ListOptions) (result *v1alpha1.ClusterRoleLi
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1alpha1.ClusterRoleList{}
+
+	wgLen := 1
+	// When resource version is not empty, it reads from api server local cache
+	// Need to check all api server partitions
+	if opts.ResourceVersion != "" && len(c.clients) > 1 {
+		wgLen = len(c.clients)
+	}
+
+	if wgLen > 1 {
+		var listLock sync.Mutex
+
+		var wg sync.WaitGroup
+		wg.Add(wgLen)
+		results := make(map[int]*v1alpha1.ClusterRoleList)
+		errs := make(map[int]error)
+		for i, client := range c.clients {
+			go func(c *clusterRoles, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1alpha1.ClusterRoleList, errMap map[int]error) {
+				r := &v1alpha1.ClusterRoleList{}
+				err := ci.Get().
+					Tenant(c.te).
+					Resource("clusterroles").
+					VersionedParams(&opts, scheme.ParameterCodec).
+					Timeout(timeout).
+					Do().
+					Into(r)
+
+				lock.Lock()
+				resultMap[pos] = r
+				errMap[pos] = err
+				lock.Unlock()
+				wg.Done()
+			}(c, client, opts, listLock, i, results, errs)
+		}
+		wg.Wait()
+
+		// consolidate list result
+		itemsMap := make(map[string]*v1alpha1.ClusterRole)
+		for j := 0; j < wgLen; j++ {
+			currentErr, isOK := errs[j]
+			if isOK && currentErr != nil {
+				if !(errors.IsForbidden(currentErr) && strings.Contains(currentErr.Error(), "no relationship found between node")) {
+					err = currentErr
+					return
+				} else {
+					continue
+				}
+			}
+
+			currentResult, _ := results[j]
+			if result.ResourceVersion == "" {
+				result.TypeMeta = currentResult.TypeMeta
+				result.ListMeta = currentResult.ListMeta
+			} else {
+				isNewer, errCompare := diff.RevisionStrIsNewer(currentResult.ResourceVersion, result.ResourceVersion)
+				if errCompare != nil {
+					err = errors.NewInternalError(fmt.Errorf("Invalid resource version [%v]", errCompare))
+					return
+				} else if isNewer {
+					// Since the lists are from different api servers with different partition. When used in list and watch,
+					// we cannot watch from the biggest resource version. Leave it to watch for adjustment.
+					result.ResourceVersion = currentResult.ResourceVersion
+				}
+			}
+			for _, item := range currentResult.Items {
+				if _, exist := itemsMap[item.ResourceVersion]; !exist {
+					itemsMap[item.ResourceVersion] = &item
+				}
+			}
+		}
+
+		for _, item := range itemsMap {
+			result.Items = append(result.Items, *item)
+		}
+		return
+	}
+
+	// The following is used for single api server partition and/or resourceVersion is empty
+	// When resourceVersion is empty, objects are read from ETCD directly and will get full
+	// list of data if no permission issue. The list needs to done sequential to avoid increasing
+	// system load.
 	err = c.client.Get().
 		Tenant(c.te).
 		Resource("clusterroles").
