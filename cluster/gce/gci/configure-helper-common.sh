@@ -1409,6 +1409,7 @@ function prepare-etcd-manifest {
 
   local -r temp_file="/tmp/$5"
   cp "${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd.manifest" "${temp_file}"
+  sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${temp_file}"
   sed -i -e "s@{{ *suffix *}}@$1@g" "${temp_file}"
   sed -i -e "s@{{ *port *}}@$2@g" "${temp_file}"
   sed -i -e "s@{{ *server_port *}}@$3@g" "${temp_file}"
@@ -1459,6 +1460,7 @@ function prepare-etcd-manifest {
 
 function start-etcd-empty-dir-cleanup-pod {
   local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd-empty-dir-cleanup.yaml"
+  sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${src_file}"
   cp "${src_file}" "/etc/kubernetes/manifests"
 }
 

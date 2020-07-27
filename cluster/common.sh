@@ -25,6 +25,8 @@ KUBE_ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 
 DEFAULT_KUBECONFIG="${HOME:-.}/.kube/config"
 
+CONTAINER_REGISTRY="${CONTAINER_REGISTRY:-gcr.io}"
+
 source "${KUBE_ROOT}/hack/lib/util.sh"
 # KUBE_RELEASE_VERSION_REGEX matches things like "v1.2.3" or "v1.2.3-alpha.4"
 #
@@ -1100,3 +1102,46 @@ function tear_down_alive_resources() {
   "${kubectl}" delete pvc --all || true
 }
 
+function registry-authentication() {
+  echo "Configuring registry authentication"
+  mkdir -p "${HOME}/.docker"
+  gcloud beta auth configure-docker -q
+}
+
+function create-and-upload-etcd-image() {
+
+  ETCD_IMAGE_REGISTRY="${ETCD_IMAGE_REGISTRY:-${CONTAINER_REGISTRY}/${PROJECT}}"
+
+  # Build+push the image through makefile.
+  MAKE_DIR="${KUBE_ROOT}/cluster/images/etcd"
+
+  local os
+  local arch
+  os=$(kube::util::host_os)
+  arch=$(kube::util::host_arch)
+  url="https://github.com/futurewei-cloud/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
+  download_file="etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
+  kube::util::download_file "${url}" "${download_file}"
+  tar xzf "${download_file}"
+  ETCD_DIR="etcd-v${ETCD_VERSION}-${os}-${arch}"
+  cp -R  "${ETCD_DIR}" "${MAKE_DIR}"
+  rm  "${download_file}"
+  rm -R "${ETCD_DIR}"
+  CURR_DIR=$(pwd)
+  cd "${MAKE_DIR}"
+  REGISTRY=${ETCD_IMAGE_REGISTRY} IMAGE_TAG=${ETCD_VERSION} make push
+  rm -R "${MAKE_DIR}/${ETCD_DIR}"
+  cd "$CURR_DIR"
+  echo "Created and uploaded the etcd image to docker registry."
+}
+
+function create-and-upload-etcd-empty-dir-cleanup-image() {
+    # Build+push the image through makefile.
+  MAKE_DIR="${KUBE_ROOT}/cluster/images/etcd-empty-dir-cleanup"
+  CURR_DIR=$(pwd)
+  cd "${MAKE_DIR}"
+  ETCD_IMAGE_REGISTRY="${ETCD_IMAGE_REGISTRY:-${CONTAINER_REGISTRY}/${PROJECT}}"
+  REGISTRY=${ETCD_IMAGE_REGISTRY} IMAGE_TAG=${ETCD_VERSION} make push
+  cd "$CURR_DIR"
+  echo "Created and uploaded the etcd-empty-dir-cleanup image to docker registry."
+}

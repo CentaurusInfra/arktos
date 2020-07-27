@@ -16,7 +16,7 @@
 # Build the etcd image
 #
 # Usage:
-# 	[BUNDLED_ETCD_VERSIONS=3.4.4] [REGISTRY=k8s.gcr.io] [ARCH=amd64] [BASEIMAGE=busybox] make (build|push)
+# 	[BUNDLED_ETCD_VERSIONS=3.4.4-arktos.1] [REGISTRY=k8s.gcr.io] [ARCH=amd64] [BASEIMAGE=busybox] make (build|push)
 #
 # The image contains different etcd versions to simplify
 # upgrades. Thus be careful when removing any versions from here.
@@ -47,11 +47,11 @@ ARCH?=amd64
 ALL_ARCH = amd64 arm arm64 ppc64le s390x
 # Image should be pulled from k8s.gcr.io, which will auto-detect
 # region (us, eu, asia, ...) and pull from the closest.
-REGISTRY?=k8s.gcr.io
+REGISTRY?=gcr.io
 # Images should be pushed to staging-k8s.gcr.io.
-PUSH_REGISTRY?=staging-k8s.gcr.io
+PUSH_REGISTRY?=gcr.io
 
-MANIFEST_IMAGE := $(PUSH_REGISTRY)/etcd
+MANIFEST_IMAGE := etcd
 
 # This option is for running docker manifest command
 export DOCKER_CLI_EXPERIMENTAL := enabled
@@ -81,10 +81,6 @@ build:
 	# without copying the subdirectories.
 	find ./ -maxdepth 1 -type f | xargs -I {} cp {} $(TEMP_DIR)
 
-	# Compile migrate
-	docker run --interactive -v $(shell pwd)/../../../:/go/src/k8s.io/kubernetes -v $(TEMP_DIR):/build -e GOARCH=$(ARCH) golang:$(GOLANG_VERSION) \
-		/bin/bash -c "CGO_ENABLED=0 go build -o /build/migrate k8s.io/kubernetes/cluster/images/etcd/migrate"
-
 
 ifeq ($(ARCH),amd64)
 
@@ -92,7 +88,7 @@ ifeq ($(ARCH),amd64)
 	# For each release create a tmp dir 'etcd_release_tmp_dir' and unpack the release tar there.
 	for version in $(BUNDLED_ETCD_VERSIONS); do \
 		etcd_release_tmp_dir=$(shell mktemp -d); \
-		curl -sSL --retry 5 https://github.com/futurewei-cloud/etcd/download/v$$version/etcd-v$$version-linux-amd64.tar.gz | tar -xz -C $$etcd_release_tmp_dir --strip-components=1; \
+		curl -sSL --retry 5 https://github.com/futurewei-cloud/etcd/releases/download/v$$version/etcd-v$$version-linux-amd64.tar.gz | tar -xz -C $$etcd_release_tmp_dir --strip-components=1; \
 		cp $$etcd_release_tmp_dir/etcd $$etcd_release_tmp_dir/etcdctl $(TEMP_DIR)/; \
 		cp $(TEMP_DIR)/etcd $(TEMP_DIR)/etcd-$$version; \
 		cp $(TEMP_DIR)/etcdctl $(TEMP_DIR)/etcdctl-$$version; \
@@ -130,17 +126,10 @@ else
 	# ppc64le is still quite untested, but compiles and is probably in the process of being validated by IBM.
 	cd $(TEMP_DIR) && echo "ENV ETCD_UNSUPPORTED_ARCH=$(ARCH)" >> Dockerfile
 endif
-
-	# Replace BASEIMAGE with the real base image
-	cd $(TEMP_DIR) && sed -i.bak 's|BASEIMAGE|$(BASEIMAGE)|g' Dockerfile
-
-	# And build the image
-	docker build --pull -t $(REGISTRY)/etcd-$(ARCH):$(IMAGE_TAG) $(TEMP_DIR)
-
-push: build
-	docker tag $(REGISTRY)/etcd-$(ARCH):$(IMAGE_TAG) $(MANIFEST_IMAGE)-$(ARCH):$(IMAGE_TAG)
-	docker push $(MANIFEST_IMAGE)-$(ARCH):$(IMAGE_TAG)
-
+push:
+	docker build --pull -t $(REGISTRY)/etcd-$(ARCH):$(IMAGE_TAG)  .
+	docker tag $(REGISTRY)/etcd-$(ARCH):$(IMAGE_TAG) $(REGISTRY)/$(MANIFEST_IMAGE)-$(ARCH):$(IMAGE_TAG)
+	docker push $(REGISTRY)/$(MANIFEST_IMAGE)-$(ARCH):$(IMAGE_TAG)
 sub-build-%:
 	$(MAKE) ARCH=$* build
 

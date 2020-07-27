@@ -25,6 +25,7 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE}")/../..
 source "${KUBE_ROOT}/cluster/gce/${KUBE_CONFIG_FILE-"config-default.sh"}"
 source "${KUBE_ROOT}/cluster/common.sh"
 source "${KUBE_ROOT}/hack/lib/util.sh"
+source "${KUBE_ROOT}/hack/lib/etcd.sh"
 
 if [[ "${NODE_OS_DISTRIBUTION}" == "gci" || "${NODE_OS_DISTRIBUTION}" == "ubuntu" || "${NODE_OS_DISTRIBUTION}" == "custom" ]]; then
   source "${KUBE_ROOT}/cluster/gce/${NODE_OS_DISTRIBUTION}/node-helper.sh"
@@ -2282,6 +2283,9 @@ function kube-up() {
 
   # Make sure we have the tar files staged on Google Storage
   find-release-tars
+  registry-authentication
+  create-and-upload-etcd-image
+  create-and-upload-etcd-empty-dir-cleanup-image
   upload-tars
 
   # ensure that environmental variables specifying number of migs to create
