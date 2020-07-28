@@ -230,7 +230,6 @@ func NewTestRESTWithPods(t *testing.T, endpoints *api.EndpointsList, pods *api.P
 	rest, _ := NewREST(serviceStorage, endpointStorage, podStorage.Pod, r, portAllocator, nil)
 	rest.SetBackendStorageConfig(etcdStorage)
 
-	//testNetworkStorage := dummyNetworkGetter{}
 	rest.fnGetNetwork = func(ctx context.Context, tenant, name string) (object runtime.Object, err error) {
 		return &unstructured.Unstructured{
 			Object: map[string]interface{}{
