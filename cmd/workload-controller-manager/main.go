@@ -35,7 +35,7 @@ import (
 	"k8s.io/kubernetes/pkg/master/ports"
 )
 
-var kubeconfig string
+var kubeconfigFilename string
 var controllerconfigfilepath string
 var workloadControllerPort int
 
@@ -46,7 +46,7 @@ const (
 
 func init() {
 	kubeconfigEnv := os.Getenv("KUBECONFIG")
-	flag.StringVar(&kubeconfig, "kubeconfig", kubeconfigEnv, "absolute path to the kubeconfig file")
+	flag.StringVar(&kubeconfigFilename, "kubeconfig", kubeconfigEnv, "absolute path to the kubeconfig file")
 	flag.StringVar(&controllerconfigfilepath, "controllerconfig", "", "absolute path to the controllerconfig file")
 	flag.IntVar(&workloadControllerPort, "port", ports.InsecureWorkloadControllerManagerPort, "port for current workload controller manager rest service")
 	flag.Parse()
@@ -74,12 +74,17 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 		fmt.Println("using controller configuration from ", controllerconfigfilepath)
 	}
 
-	controllerManagerKubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	controllerManagerKubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigFilename)
 	if err != nil {
 		return nil, err
 	}
 
-	controllerManagerKubeConfig.GetConfig().ContentType = "application/vnd.kubernetes.protobuf"
+	kubeConfigs := controllerManagerKubeConfig.GetAllConfigs()
+	for _, kubeConfig := range kubeConfigs {
+		kubeConfig.ContentType = "application/vnd.kubernetes.protobuf"
+		kubeConfig.QPS = controllerconfig.GetQPS()
+		kubeConfig.Burst = int(kubeConfig.QPS * 2)
+	}
 
 	c := &controllerManagerConfig.Config{
 		ControllerManagerConfig: controllerManagerKubeConfig,
@@ -87,6 +92,7 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 	}
 
 	klog.Infof("Current workload controller port %d", workloadControllerPort)
+	klog.Infof("Rest client QPS %v, kubeconfig [%#v]", controllerManagerKubeConfig.GetConfig().QPS, controllerManagerKubeConfig.GetConfig())
 
 	insecureServing := (&apiserveroptions.DeprecatedInsecureServingOptions{
 		BindAddress: net.ParseIP("0.0.0.0"),
