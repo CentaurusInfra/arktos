@@ -1,5 +1,6 @@
 {
     "reportHealthIntervalInSecond": 10,
+    "qps": 20,
     "controllers": [
         {
             "type":    "node",

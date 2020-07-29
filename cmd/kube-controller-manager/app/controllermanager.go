@@ -242,6 +242,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 
 		// start API Server Config Manager
 		client := rootClientBuilder.ClientOrDie("apiserver-configuration-manager")
+		klog.Infof("rest client QPS %v, client config [%#v]", rootClientBuilder.ClientConfig.GetConfig().QPS, rootClientBuilder.ClientConfig)
 		datapartition.StartAPIServerConfigManager(controllerContext.InformerFactory.Core().V1().Endpoints(),
 			client, controllerContext.Stop)
 
