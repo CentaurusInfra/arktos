@@ -47,7 +47,7 @@ func newObjectStore(obj runtime.Object, lw *cache.ListWatch, selector *ObjectSel
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
 	stopCh := make(chan struct{})
 	name := fmt.Sprintf("%sStore: %s", reflect.TypeOf(obj).String(), selector.String())
-	reflector := cache.NewNamedReflector(name, lw, obj, store, 0)
+	reflector := cache.NewNamedReflector(name, lw, obj, store, 0, false)
 	go reflector.Run(stopCh)
 	if err := wait.PollImmediate(50*time.Millisecond, 2*time.Minute, func() (bool, error) {
 		if len(reflector.LastSyncResourceVersion()) != 0 {
@@ -83,7 +83,7 @@ func NewPodStore(c clientset.Interface, selector *ObjectSelector) (*PodStore, er
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().Pods(selector.Namespace).List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().Pods(selector.Namespace).Watch(options)
@@ -119,7 +119,7 @@ func NewPVCStore(c clientset.Interface, selector *ObjectSelector) (*PVCStore, er
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().PersistentVolumeClaims(selector.Namespace).List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().PersistentVolumeClaims(selector.Namespace).Watch(options)
@@ -155,7 +155,7 @@ func NewPVStore(c clientset.Interface, selector *ObjectSelector) (*PVStore, erro
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().PersistentVolumes().List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().PersistentVolumes().Watch(options)
@@ -191,7 +191,7 @@ func NewNodeStore(c clientset.Interface, selector *ObjectSelector) (*NodeStore, 
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().Nodes().List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
 			return c.CoreV1().Nodes().Watch(options)
