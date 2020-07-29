@@ -19,11 +19,13 @@ package config
 import (
 	"encoding/json"
 	"io/ioutil"
+	"k8s.io/klog"
 	"os"
 )
 
 type controllerManagerConfig struct {
 	ReportHealthIntervalInSecond int              `json:"reportHealthIntervalInSecond"`
+	QPS                          float32          `json:"qps""`
 	Types                        []controllerType `json:"controllers"`
 }
 
@@ -36,6 +38,7 @@ type controllerType struct {
 type ControllerConfig struct {
 	typemap                      map[string]int
 	reportHealthIntervalInSecond int
+	qps                          float32
 }
 
 // NewControllerConfig to load configuration from a local file
@@ -60,7 +63,11 @@ func NewControllerConfig(filePath string) (ControllerConfig, error) {
 	for _, controllerType := range types.Types {
 		controllerMap[controllerType.Type] = controllerType.Workers
 	}
-	return ControllerConfig{typemap: controllerMap, reportHealthIntervalInSecond: types.ReportHealthIntervalInSecond}, nil
+	return ControllerConfig{
+		typemap:                      controllerMap,
+		reportHealthIntervalInSecond: types.ReportHealthIntervalInSecond,
+		qps:                          types.QPS,
+	}, nil
 }
 
 func (c *ControllerConfig) GetWorkerNumber(controllerType string) (int, bool) {
@@ -70,4 +77,13 @@ func (c *ControllerConfig) GetWorkerNumber(controllerType string) (int, bool) {
 
 func (c *ControllerConfig) GetReportHealthIntervalInSecond() int {
 	return c.reportHealthIntervalInSecond
+}
+
+func (c *ControllerConfig) GetQPS() float32 {
+	if c.qps == 0 {
+		c.qps = 20
+		klog.Info("Configured QPS is 0. Force setting to 20")
+	}
+
+	return c.qps
 }
