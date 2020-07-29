@@ -264,11 +264,8 @@ func testAdmissionNamespaceTerminating(t *testing.T, tenant string) {
 
 	// verify delete of namespace default can never proceed
 	err = handler.Admit(admission.NewAttributesRecord(nil, nil, v1.SchemeGroupVersion.WithKind("Namespace").GroupKind().WithVersion("version"), tenant, "", metav1.NamespaceDefault, v1.Resource("namespaces").WithVersion("version"), "", admission.Delete, &metav1.DeleteOptions{}, false, nil), nil)
-	if tenant == metav1.TenantSystem && err == nil {
-		t.Errorf("Expected an error that namespace %s/%s can never be deleted", tenant, metav1.NamespaceDefault)
-	}
-	if tenant != metav1.TenantSystem && err != nil {
-		t.Errorf("Did not expect an error %v", err)
+	if err == nil {
+		t.Errorf("Expected an error that namespace %s/%s can not be deleted", tenant, metav1.NamespaceDefault)
 	}
 
 	// verify delete of namespace other than default can proceed

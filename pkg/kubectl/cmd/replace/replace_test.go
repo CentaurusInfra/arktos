@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,20 +42,20 @@ func TestReplaceObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/test" && m == http.MethodGet:
+			case p == "/api/v1/tenants/system/namespaces/test" && m == http.MethodGet:
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Namespace{})}, nil
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodDelete:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodDelete:
 				deleted = true
 				fallthrough
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodPut:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodPut:
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodGet:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodGet:
 				statusCode := http.StatusOK
 				if deleted {
 					statusCode = http.StatusNotFound
 				}
 				return &http.Response{StatusCode: statusCode, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/replicationcontrollers" && m == http.MethodPost:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers" && m == http.MethodPost:
 				return &http.Response{StatusCode: http.StatusCreated, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -98,33 +99,33 @@ func TestReplaceMultipleObject(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/test" && m == http.MethodGet:
+			case p == "/api/v1/tenants/system/namespaces/test" && m == http.MethodGet:
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Namespace{})}, nil
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodDelete:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodDelete:
 				redisMasterDeleted = true
 				fallthrough
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodPut:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodPut:
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodGet:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && m == http.MethodGet:
 				statusCode := http.StatusOK
 				if redisMasterDeleted {
 					statusCode = http.StatusNotFound
 				}
 				return &http.Response{StatusCode: statusCode, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/replicationcontrollers" && m == http.MethodPost:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers" && m == http.MethodPost:
 				return &http.Response{StatusCode: http.StatusCreated, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case p == "/namespaces/test/services/frontend" && m == http.MethodDelete:
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == http.MethodDelete:
 				frontendDeleted = true
 				fallthrough
-			case p == "/namespaces/test/services/frontend" && m == http.MethodPut:
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == http.MethodPut:
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
-			case p == "/namespaces/test/services/frontend" && m == http.MethodGet:
+			case p == "/tenants/system/namespaces/test/services/frontend" && m == http.MethodGet:
 				statusCode := http.StatusOK
 				if frontendDeleted {
 					statusCode = http.StatusNotFound
 				}
 				return &http.Response{StatusCode: statusCode, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
-			case p == "/namespaces/test/services" && m == http.MethodPost:
+			case p == "/tenants/system/namespaces/test/services" && m == http.MethodPost:
 				return &http.Response{StatusCode: http.StatusCreated, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -167,21 +168,21 @@ func TestReplaceDirectory(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/test" && m == http.MethodGet:
+			case p == "/api/v1/tenants/system/namespaces/test" && m == http.MethodGet:
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Namespace{})}, nil
-			case strings.HasPrefix(p, "/namespaces/test/replicationcontrollers/") && m == http.MethodPut:
+			case strings.HasPrefix(p, "/tenants/system/namespaces/test/replicationcontrollers/") && m == http.MethodPut:
 				created[p] = true
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case strings.HasPrefix(p, "/namespaces/test/replicationcontrollers/") && m == http.MethodGet:
+			case strings.HasPrefix(p, "/tenants/system/namespaces/test/replicationcontrollers/") && m == http.MethodGet:
 				statusCode := http.StatusNotFound
 				if created[p] {
 					statusCode = http.StatusOK
 				}
 				return &http.Response{StatusCode: statusCode, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case strings.HasPrefix(p, "/namespaces/test/replicationcontrollers/") && m == http.MethodDelete:
+			case strings.HasPrefix(p, "/tenants/system/namespaces/test/replicationcontrollers/") && m == http.MethodDelete:
 				delete(created, p)
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
-			case strings.HasPrefix(p, "/namespaces/test/replicationcontrollers") && m == http.MethodPost:
+			case strings.HasPrefix(p, "/tenants/system/namespaces/test/replicationcontrollers") && m == http.MethodPost:
 				return &http.Response{StatusCode: http.StatusCreated, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -223,11 +224,11 @@ func TestForceReplaceObjectNotFound(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/api/v1/namespaces/test" && m == http.MethodGet:
+			case p == "/api/v1/tenants/system/namespaces/test" && m == http.MethodGet:
 				return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Namespace{})}, nil
-			case p == "/namespaces/test/replicationcontrollers/redis-master" && (m == http.MethodGet || m == http.MethodDelete):
+			case p == "/tenants/system/namespaces/test/replicationcontrollers/redis-master" && (m == http.MethodGet || m == http.MethodDelete):
 				return &http.Response{StatusCode: http.StatusNotFound, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.StringBody("")}, nil
-			case p == "/namespaces/test/replicationcontrollers" && m == http.MethodPost:
+			case p == "/tenants/system/namespaces/test/replicationcontrollers" && m == http.MethodPost:
 				return &http.Response{StatusCode: http.StatusCreated, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &rc.Items[0])}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)

@@ -147,6 +147,10 @@ func (o *SetServiceAccountOptions) Complete(f cmdutil.Factory, cmd *cobra.Comman
 	if err != nil {
 		return err
 	}
+	cmdTenant, enforceTenant, err := f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	if len(args) == 0 {
 		return errors.New("serviceaccount is required")
 	}
@@ -156,8 +160,9 @@ func (o *SetServiceAccountOptions) Complete(f cmdutil.Factory, cmd *cobra.Comman
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		LocalParam(o.local).
 		ContinueOnError().
+		TenantParam(cmdTenant).DefaultTenant().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		FilenameParam(enforceNamespace, &o.fileNameOptions).
+		FilenameParamWithMultiTenancy(enforceTenant, enforceNamespace, &o.fileNameOptions).
 		Flatten()
 	if !o.local {
 		builder.ResourceTypeOrNameArgs(o.all, resources...).
@@ -203,7 +208,7 @@ func (o *SetServiceAccountOptions) Run() error {
 			}
 			continue
 		}
-		actual, err := resource.NewHelper(info.Clients, info.Mapping).Patch(info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
+		actual, err := resource.NewHelper(info.Clients, info.Mapping).PatchWithMultiTenancy(info.Tenant, info.Namespace, info.Name, types.StrategicMergePatchType, patch.Patch, nil)
 		if err != nil {
 			patchErrs = append(patchErrs, fmt.Errorf("failed to patch ServiceAccountName %v", err))
 			continue

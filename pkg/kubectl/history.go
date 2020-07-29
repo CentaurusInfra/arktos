@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,7 +47,7 @@ const (
 
 // HistoryViewer provides an interface for resources have historical information.
 type HistoryViewer interface {
-	ViewHistory(namespace, name string, revision int64) (string, error)
+	ViewHistory(tenant, namespace, name string, revision int64) (string, error)
 }
 
 type HistoryVisitor struct {
@@ -99,9 +100,9 @@ type DeploymentHistoryViewer struct {
 
 // ViewHistory returns a revision-to-replicaset map as the revision history of a deployment
 // TODO: this should be a describer
-func (h *DeploymentHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
+func (h *DeploymentHistoryViewer) ViewHistory(tenant, namespace, name string, revision int64) (string, error) {
 	versionedAppsClient := h.c.AppsV1()
-	deployment, err := versionedAppsClient.Deployments(namespace).Get(name, metav1.GetOptions{})
+	deployment, err := versionedAppsClient.DeploymentsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve deployment %s: %v", name, err)
 	}
@@ -177,8 +178,8 @@ type DaemonSetHistoryViewer struct {
 
 // ViewHistory returns a revision-to-history map as the revision history of a deployment
 // TODO: this should be a describer
-func (h *DaemonSetHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
-	ds, history, err := daemonSetHistory(h.c.AppsV1(), namespace, name)
+func (h *DaemonSetHistoryViewer) ViewHistory(tenant, namespace, name string, revision int64) (string, error) {
+	ds, history, err := daemonSetHistory(h.c.AppsV1(), tenant, namespace, name)
 	if err != nil {
 		return "", err
 	}
@@ -233,8 +234,8 @@ type StatefulSetHistoryViewer struct {
 // ViewHistory returns a list of the revision history of a statefulset
 // TODO: this should be a describer
 // TODO: needs to implement detailed revision view
-func (h *StatefulSetHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
-	_, history, err := statefulSetHistory(h.c.AppsV1(), namespace, name)
+func (h *StatefulSetHistoryViewer) ViewHistory(tenant, namespace, name string, revision int64) (string, error) {
+	_, history, err := statefulSetHistory(h.c.AppsV1(), tenant, namespace, name)
 	if err != nil {
 		return "", err
 	}
@@ -261,11 +262,12 @@ func (h *StatefulSetHistoryViewer) ViewHistory(namespace, name string, revision 
 // TODO: Rename this to controllerHistory when other controllers have been upgraded
 func controlledHistoryV1(
 	apps clientappsv1.AppsV1Interface,
+	tenant string,
 	namespace string,
 	selector labels.Selector,
 	accessor metav1.Object) ([]*appsv1.ControllerRevision, error) {
 	var result []*appsv1.ControllerRevision
-	historyList, err := apps.ControllerRevisions(namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	historyList, err := apps.ControllerRevisionsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -282,11 +284,12 @@ func controlledHistoryV1(
 // controlledHistories returns all ControllerRevisions in namespace that selected by selector and owned by accessor
 func controlledHistory(
 	apps clientappsv1.AppsV1Interface,
+	tenant string,
 	namespace string,
 	selector labels.Selector,
 	accessor metav1.Object) ([]*appsv1.ControllerRevision, error) {
 	var result []*appsv1.ControllerRevision
-	historyList, err := apps.ControllerRevisions(namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	historyList, err := apps.ControllerRevisionsWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -303,8 +306,8 @@ func controlledHistory(
 // daemonSetHistory returns the DaemonSet named name in namespace and all ControllerRevisions in its history.
 func daemonSetHistory(
 	apps clientappsv1.AppsV1Interface,
-	namespace, name string) (*appsv1.DaemonSet, []*appsv1.ControllerRevision, error) {
-	ds, err := apps.DaemonSets(namespace).Get(name, metav1.GetOptions{})
+	tenant, namespace, name string) (*appsv1.DaemonSet, []*appsv1.ControllerRevision, error) {
+	ds, err := apps.DaemonSetsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to retrieve DaemonSet %s: %v", name, err)
 	}
@@ -316,7 +319,7 @@ func daemonSetHistory(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create accessor for DaemonSet %s: %v", ds.Name, err)
 	}
-	history, err := controlledHistory(apps, ds.Namespace, selector, accessor)
+	history, err := controlledHistory(apps, ds.Tenant, ds.Namespace, selector, accessor)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to find history controlled by DaemonSet %s: %v", ds.Name, err)
 	}
@@ -326,8 +329,8 @@ func daemonSetHistory(
 // statefulSetHistory returns the StatefulSet named name in namespace and all ControllerRevisions in its history.
 func statefulSetHistory(
 	apps clientappsv1.AppsV1Interface,
-	namespace, name string) (*appsv1.StatefulSet, []*appsv1.ControllerRevision, error) {
-	sts, err := apps.StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	tenant, namespace, name string) (*appsv1.StatefulSet, []*appsv1.ControllerRevision, error) {
+	sts, err := apps.StatefulSetsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to retrieve Statefulset %s: %s", name, err.Error())
 	}
@@ -339,7 +342,7 @@ func statefulSetHistory(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to obtain accessor for StatefulSet %s: %s", name, err.Error())
 	}
-	history, err := controlledHistoryV1(apps, namespace, selector, accessor)
+	history, err := controlledHistoryV1(apps, tenant, namespace, selector, accessor)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to find history controlled by StatefulSet %s: %v", name, err)
 	}

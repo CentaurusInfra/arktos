@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@ package cache
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"sync"
 
 	"k8s.io/api/core/v1"
@@ -197,7 +199,6 @@ type pod struct {
 
 func (dsw *desiredStateOfWorld) AddNode(nodeName k8stypes.NodeName, keepTerminatedPodVolumes bool) {
 	dsw.Lock()
-	defer dsw.Unlock()
 
 	if _, nodeExists := dsw.nodesManaged[nodeName]; !nodeExists {
 		dsw.nodesManaged[nodeName] = nodeManaged{
@@ -205,7 +206,10 @@ func (dsw *desiredStateOfWorld) AddNode(nodeName k8stypes.NodeName, keepTerminat
 			volumesToAttach:          make(map[v1.UniqueVolumeName]volumeToAttach),
 			keepTerminatedPodVolumes: keepTerminatedPodVolumes,
 		}
+		klog.V(4).Infof("Add node %q to attachDetachController", nodeName)
 	}
+
+	dsw.Unlock()
 }
 
 func (dsw *desiredStateOfWorld) AddPod(

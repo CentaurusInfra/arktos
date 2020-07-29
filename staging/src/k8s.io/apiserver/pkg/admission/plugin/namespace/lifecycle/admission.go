@@ -250,8 +250,21 @@ func (l *Lifecycle) Admit(a admission.Attributes, o admission.ObjectInterfaces) 
 		// is slow to update, we add the namespace into a force live lookup list to ensure
 		// we are not looking at stale state.
 		if a.GetOperation() == admission.Delete {
-			if l.immortalNamespaces.Has(a.GetName()) && a.GetTenant() == metav1.TenantSystem {
-				return errors.NewForbidden(a.GetResource().GroupResource(), a.GetTenant()+"/"+a.GetName(), fmt.Errorf("this namespace may not be deleted"))
+			//immortal namespaces in the system spaces are always non-deletable
+			//while immortal namespaces in regular tenants' spaces are only deletable when the tenant is terminating
+			if l.immortalNamespaces.Has(a.GetName()) {
+				if a.GetTenant() == metav1.TenantSystem {
+					return errors.NewForbidden(a.GetResource().GroupResource(), metav1.TenantSystem+"/"+a.GetName(), fmt.Errorf("this namespace may not be deleted"))
+				} else {
+					tenant, err := l.tenantLister.Get(a.GetTenant())
+					if err != nil {
+						return errors.NewInternalError(err)
+					}
+
+					if tenant.Status.Phase != v1.TenantTerminating {
+						return errors.NewForbidden(a.GetResource().GroupResource(), a.GetTenant()+"/"+a.GetName(), fmt.Errorf("this namespace may not be deleted"))
+					}
+				}
 			}
 			l.forceLiveNamespaceLookupCache.Add(a.GetTenant()+"/"+a.GetName(), true, forceLiveLookupTTL)
 		}

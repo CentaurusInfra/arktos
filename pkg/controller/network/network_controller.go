@@ -153,10 +153,6 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 	needCreate := false
 	needUpdate := false
 
-	if new.Spec.NodeName != prev.Spec.NodeName {
-		needUpdate = true
-	}
-
 	client := GetOpenstackClient()
 	pod := new.DeepCopy()
 	for i, nic := range pod.Spec.Nics {
@@ -164,7 +160,8 @@ func (nc *NetworkController) updatePort(old, cur interface{}) {
 			// create port : pod.Spec.Nics[index].PortId
 			pod.Spec.Nics[i].PortId = CreatePort(client, pod.Spec.VPC, nic.SubnetName, pod.Spec.NodeName)
 			needCreate = true
-		} else if needUpdate {
+		} else if new.Spec.NodeName != prev.Spec.NodeName {
+			needUpdate = true
 			// update port binding host only
 			UpdatePort(client, pod.Spec.Nics[i].PortId, new.Spec.NodeName)
 		}

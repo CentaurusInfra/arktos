@@ -182,7 +182,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "env=prod"},
 		},
 		{
@@ -203,7 +203,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "env=prod"},
 		},
 		{
@@ -224,7 +224,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "env=prod"},
 		},
 		{
@@ -245,7 +245,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", "env=prod"},
 		},
 		{
@@ -266,7 +266,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", "env=prod"},
 		},
 		{
@@ -287,7 +287,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", "env=prod"},
 		},
 		{
@@ -308,7 +308,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "env=prod"},
 		},
 		{
@@ -329,7 +329,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "env=prod"},
 		},
 		{
@@ -350,7 +350,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "env=prod"},
 		},
 		{
@@ -371,7 +371,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "env=prod"},
 		},
 		{
@@ -392,7 +392,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", "env=prod"},
 		},
 		{
@@ -413,7 +413,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", "env=prod"},
 		},
 		{
@@ -434,7 +434,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", "env=prod"},
 		},
 		{
@@ -455,7 +455,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: batchv1.SchemeGroupVersion,
-			path:         "/namespaces/test/jobs/nginx",
+			path:         "/tenants/system/namespaces/test/jobs/nginx",
 			args:         []string{"job", "nginx", "env=prod"},
 		},
 		{
@@ -476,7 +476,7 @@ func TestSetEnvRemote(t *testing.T) {
 				},
 			},
 			groupVersion: corev1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicationcontrollers/nginx",
+			path:         "/tenants/system/namespaces/test/replicationcontrollers/nginx",
 			args:         []string{"replicationcontroller", "nginx", "env=prod"},
 		},
 	}
@@ -625,13 +625,13 @@ func TestSetEnvFromResource(t *testing.T) {
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case p == "/namespaces/test/configmaps/testconfigmap" && m == http.MethodGet:
+					case p == "/tenants/system/namespaces/test/configmaps/testconfigmap" && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(mockConfigMap)}, nil
-					case p == "/namespaces/test/secrets/testsecret" && m == http.MethodGet:
+					case p == "/tenants/system/namespaces/test/secrets/testsecret" && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(mockSecret)}, nil
-					case p == "/namespaces/test/deployments/nginx" && m == http.MethodGet:
+					case p == "/tenants/system/namespaces/test/deployments/nginx" && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(mockDeployment)}, nil
-					case p == "/namespaces/test/deployments/nginx" && m == http.MethodPatch:
+					case p == "/tenants/system/namespaces/test/deployments/nginx" && m == http.MethodPatch:
 						stream, err := req.GetBody()
 						if err != nil {
 							return nil, err

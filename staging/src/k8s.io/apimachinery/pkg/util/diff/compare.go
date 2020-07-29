@@ -16,12 +16,29 @@ limitations under the License.
 
 package diff
 
-import "time"
+import (
+	"errors"
+	"strconv"
+	"time"
+)
 
 var allowedNTPDiffInMilliSecond = uint64(5000)
 
 // For backwards compatible - can still use ETCD revision # starting from 1 and increases by 1 as backend storage
 var v2MinRevision = getRevisionNumber(time.Date(2020, 5, 10, 0, 0, 0, 0, time.UTC).UnixNano(), 0, 1)
+
+func RevisionStrIsNewer(rev1, rev2 string) (bool, error) {
+	revision1, err1 := strconv.ParseUint(rev1, 10, 64)
+	if err1 != nil {
+		return false, err1
+	}
+	revision2, err2 := strconv.ParseUint(rev2, 10, 64)
+	if err2 != nil {
+		return false, err2
+	}
+
+	return RevisionIsNewer(revision1, revision2), nil
+}
 
 // RevisionIsNewer is used in event comparison to check whether revision 1 is newer than
 // revision 2 and should be sent/accepted/processed
@@ -91,6 +108,17 @@ func revisionCompare(revision1, revision2 uint64) (result int, isSameCluster boo
 // as we are using uint64 here. Not sure how conversion happened
 func extractClusterId(rev uint64) uint64 {
 	return (rev >> 13) % 64
+}
+
+func GetClusterIdFromString(stringValue string) (uint8, error) {
+	clusterId, err := strconv.ParseInt(stringValue, 10, 8)
+	if err != nil {
+		return 0, err
+	}
+	if clusterId < 0 || clusterId > 63 {
+		return 0, errors.New("Cluster id needs to be 0 - 63.")
+	}
+	return uint8(clusterId), nil
 }
 
 func extractMilliSecond(rev uint64) uint64 {

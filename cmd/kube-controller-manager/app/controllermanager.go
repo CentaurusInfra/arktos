@@ -368,6 +368,7 @@ func KnownControllers() []string {
 var ControllersDisabledByDefault = sets.NewString(
 	"bootstrapsigner",
 	"tokencleaner",
+	"network",
 )
 
 const (

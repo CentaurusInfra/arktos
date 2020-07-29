@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"k8s.io/apimachinery/pkg/util/rand"
+	"math/rand"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -127,7 +127,7 @@ func (c *dynamicResourceClient) getRestClient() *rest.RESTClient {
 		return c.client.clients[0]
 	default:
 		rand.Seed(time.Now().UnixNano())
-		ran := rand.IntnRange(0, max-1)
+		ran := rand.Intn(max)
 		return c.client.clients[ran]
 	}
 }
@@ -392,7 +392,7 @@ func (c *dynamicResourceClient) makeURLSegments(name string) []string {
 	}
 	url = append(url, c.resource.Version)
 
-	if len(c.tenant) > 0 && c.tenant != metav1.TenantSystem {
+	if len(c.tenant) > 0 {
 		url = append(url, "tenants", c.tenant)
 	}
 

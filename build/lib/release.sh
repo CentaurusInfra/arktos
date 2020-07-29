@@ -460,6 +460,7 @@ function kube::release::package_kube_manifests_tarball() {
   done
   cp "${KUBE_ROOT}/cluster/gce/gci/configure-helper.sh" "${dst_dir}/gci-configure-helper.sh"
   cp "${KUBE_ROOT}/cluster/gce/gci/apiserver-configure-helper.sh" "${dst_dir}/apiserver-configure-helper.sh"
+  cp "${KUBE_ROOT}/cluster/gce/gci/workloadcontroller-configure-helper.sh" "${dst_dir}/workloadcontroller-configure-helper.sh"
   if [[ -e "${KUBE_ROOT}/cluster/gce/gci/gke-internal-configure-helper.sh" ]]; then
     cp "${KUBE_ROOT}/cluster/gce/gci/gke-internal-configure-helper.sh" "${dst_dir}/"
   fi

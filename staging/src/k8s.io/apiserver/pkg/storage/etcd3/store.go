@@ -69,9 +69,9 @@ var _ value.Context = authenticatedDataString("")
 type store struct {
 	client *clientv3.Client
 	// map from cluster id to etcd client
-	dataClusterClients     map[string]*clientv3.Client
-	dataClusterDestroyFunc map[string]func()
-	dataClientAddCh        chan string
+	dataClusterClients     map[uint8]*clientv3.Client
+	dataClusterDestroyFunc map[uint8]func()
+	dataClientAddCh        chan uint8
 
 	// getOpts contains additional options that should be passed
 	// to all Get() calls.
@@ -81,14 +81,15 @@ type store struct {
 	transformer         value.Transformer
 	pathPrefix          string
 	watcher             *watcher
-	dataClusterWatchers map[string]*watcher
+	dataClusterWatchers map[uint8]*watcher
 
 	pagingEnabled bool
 	leaseManager  *leaseManager
 
 	partitionConfigMap map[string]storage.Interval
 
-	mux sync.Mutex
+	mux           sync.Mutex
+	listAppendMux sync.Mutex
 }
 
 type objState struct {
@@ -120,9 +121,9 @@ func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec r
 
 	result := &store{
 		client:                 c,
-		dataClusterClients:     make(map[string]*clientv3.Client),
-		dataClusterDestroyFunc: make(map[string]func()),
-		dataClientAddCh:        make(chan string),
+		dataClusterClients:     make(map[uint8]*clientv3.Client),
+		dataClusterDestroyFunc: make(map[uint8]func()),
+		dataClientAddCh:        make(chan uint8),
 		codec:                  codec,
 		versioner:              versioner,
 		transformer:            transformer,
@@ -133,16 +134,16 @@ func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec r
 		// keeps compatibility with etcd2 impl for custom prefixes that don't start with '/'
 		pathPrefix:          path.Join("/", prefix),
 		watcher:             newWatcherWithPartitionConfig(c, codec, versioner, transformer, partitionConfigMap, updatePartitionCh),
-		dataClusterWatchers: make(map[string]*watcher),
+		dataClusterWatchers: make(map[uint8]*watcher),
 		leaseManager:        newDefaultLeaseManager(c),
 	}
 	return result
 }
 
-func (s *store) AddDataClient(c *clientv3.Client, clusterId string, destroyFunc func()) error {
+func (s *store) AddDataClient(c *clientv3.Client, clusterId uint8, destroyFunc func()) error {
 	existingClient, isOK := s.dataClusterClients[clusterId]
 	if isOK {
-		err := errors.New(fmt.Sprintf("Trying to add client for existed storage cluster id %s, endpoints [%+v]. Skipping", clusterId, existingClient.Endpoints()))
+		err := errors.New(fmt.Sprintf("Trying to add client for existed storage cluster id %d, endpoints [%+v]. Skipping", clusterId, existingClient.Endpoints()))
 		return err
 	}
 
@@ -158,19 +159,19 @@ func (s *store) AddDataClient(c *clientv3.Client, clusterId string, destroyFunc 
 
 	s.dataClientAddCh <- clusterId
 
-	klog.V(3).Infof("Added new data client with cluster id %s, endpoints [%+v]", clusterId, c.Endpoints())
+	klog.V(3).Infof("Added new data client with cluster id %d, endpoints [%+v]", clusterId, c.Endpoints())
 	s.mux.Unlock()
 	return nil
 }
 
-func (s *store) UpdateDataClient(c *clientv3.Client, clusterId string, destroyFunc func()) error {
+func (s *store) UpdateDataClient(c *clientv3.Client, clusterId uint8, destroyFunc func()) error {
 	existingClient, isOK := s.dataClusterClients[clusterId]
 	if !isOK {
-		klog.Warningf("Expected cluster %s not found in data client map. Adding data client %v", clusterId, c.Endpoints())
+		klog.Warningf("Expected cluster %d not found in data client map. Adding data client %v", clusterId, c.Endpoints())
 		return s.AddDataClient(c, clusterId, destroyFunc)
 	}
 	if reflect.DeepEqual(existingClient.Endpoints(), c.Endpoints()) {
-		klog.Infof("Cluster %s does not have endpoints update. Skip updating. Endpoint %v", clusterId, c.Endpoints())
+		klog.Infof("Cluster %d does not have endpoints update. Skip updating. Endpoint %v", clusterId, c.Endpoints())
 		return nil
 	}
 
@@ -180,17 +181,17 @@ func (s *store) UpdateDataClient(c *clientv3.Client, clusterId string, destroyFu
 	if isOK {
 		existingDestroyFunc()
 	} else {
-		klog.Warningf("Previous cluster %s did not have destroy func. Skip destroying. Endpoints %v", clusterId, existingClient.Endpoints())
+		klog.Warningf("Previous cluster %d did not have destroy func. Skip destroying. Endpoints %v", clusterId, existingClient.Endpoints())
 	}
 
 	s.dataClusterClients[clusterId] = c
 	s.dataClusterDestroyFunc[clusterId] = destroyFunc
-	klog.V(3).Infof("Updated data client for cluster id %s, endpoints [%+v]", clusterId, c.Endpoints())
+	klog.V(3).Infof("Updated data client for cluster id %d, endpoints [%+v]", clusterId, c.Endpoints())
 	s.mux.Unlock()
 	return nil
 }
 
-func (s *store) DeleteDataClient(clusterId string) {
+func (s *store) DeleteDataClient(clusterId uint8) {
 	s.mux.Lock()
 	client, isOK := s.dataClusterClients[clusterId]
 	if isOK {
@@ -198,13 +199,13 @@ func (s *store) DeleteDataClient(clusterId string) {
 		if isOK {
 			existingDestroyFunc()
 		} else {
-			klog.Warningf("Previous cluster %s did not have destroy func. Skip destroying. Endpoints %v", clusterId, client.Endpoints())
+			klog.Warningf("Previous cluster %d did not have destroy func. Skip destroying. Endpoints %v", clusterId, client.Endpoints())
 		}
 
 		delete(s.dataClusterClients, clusterId)
-		klog.V(3).Infof("Deleted data client for cluster id %s, endpoints [%+v]", clusterId, client.Endpoints())
+		klog.V(3).Infof("Deleted data client for cluster id %d, endpoints [%+v]", clusterId, client.Endpoints())
 	} else {
-		klog.V(3).Infof("Cluster id %s does not have data client. Skip deleting.", clusterId)
+		klog.V(3).Infof("Cluster id %d does not have data client. Skip deleting.", clusterId)
 	}
 	s.mux.Unlock()
 }
@@ -524,55 +525,82 @@ func (s *store) Count(key string) (int64, error) {
 // until all other servers are upgraded (i.e. we need to support rolling schema)
 // This is a public API struct and cannot change.
 type continueToken struct {
+	ClusterId       uint8  `json:"c"`
 	APIVersion      string `json:"v"`
 	ResourceVersion int64  `json:"rv"`
 	StartKey        string `json:"start"`
+	continueKey     string `json:"-"`
 }
 
 // parseFrom transforms an encoded predicate from into a versioned struct.
 // TODO: return a typed error that instructs clients that they must relist
-func decodeContinue(continueValue, keyPrefix string) (fromKey string, rv int64, err error) {
+func decodeContinue(continueValue, keyPrefix string) (continueTokens []*continueToken, err error) {
 	data, err := base64.RawURLEncoding.DecodeString(continueValue)
 	if err != nil {
-		return "", 0, fmt.Errorf("continue key is not valid: %v", err)
+		return nil, fmt.Errorf("continue key is not valid: %v", err)
 	}
-	var c continueToken
-	if err := json.Unmarshal(data, &c); err != nil {
-		return "", 0, fmt.Errorf("continue key is not valid: %v", err)
+	if err := json.Unmarshal(data, &continueTokens); err != nil {
+		return nil, fmt.Errorf("continue key is not valid: %v", err)
 	}
-	switch c.APIVersion {
-	case "meta.k8s.io/v1":
-		if c.ResourceVersion == 0 {
-			return "", 0, fmt.Errorf("continue key is not valid: incorrect encoded start resourceVersion (version meta.k8s.io/v1)")
+
+	foundClusterIds := make(map[uint8]bool, len(continueTokens))
+	for _, c := range continueTokens {
+		switch c.APIVersion {
+		case "meta.k8s.io/v1":
+			if c.ResourceVersion == 0 {
+				return nil, fmt.Errorf("continue key is not valid: incorrect encoded start resourceVersion (version meta.k8s.io/v1)")
+			}
+			if len(c.StartKey) == 0 {
+				return nil, fmt.Errorf("continue key is not valid: encoded start key empty (version meta.k8s.io/v1)")
+			}
+			// defend against path traversal attacks by clients - path.Clean will ensure that startKey cannot
+			// be at a higher level of the hierarchy, and so when we append the key prefix we will end up with
+			// continue start key that is fully qualified and cannot range over anything less specific than
+			// keyPrefix.
+			key := c.StartKey
+			if !strings.HasPrefix(key, "/") {
+				key = "/" + key
+			}
+			cleaned := path.Clean(key)
+			if cleaned != key {
+				return nil, fmt.Errorf("continue key is not valid: %s", c.StartKey)
+			}
+
+			c.continueKey = keyPrefix + cleaned[1:]
+
+			_, ok := foundClusterIds[c.ClusterId]
+			if ok {
+				return nil, fmt.Errorf("continue key is not valid: duplicated cluster id %v", c.ClusterId)
+			}
+			foundClusterIds[c.ClusterId] = true
+		default:
+			return nil, fmt.Errorf("continue key is not valid: server does not recognize this encoded version %q", c.APIVersion)
 		}
-		if len(c.StartKey) == 0 {
-			return "", 0, fmt.Errorf("continue key is not valid: encoded start key empty (version meta.k8s.io/v1)")
-		}
-		// defend against path traversal attacks by clients - path.Clean will ensure that startKey cannot
-		// be at a higher level of the hierarchy, and so when we append the key prefix we will end up with
-		// continue start key that is fully qualified and cannot range over anything less specific than
-		// keyPrefix.
-		key := c.StartKey
-		if !strings.HasPrefix(key, "/") {
-			key = "/" + key
-		}
-		cleaned := path.Clean(key)
-		if cleaned != key {
-			return "", 0, fmt.Errorf("continue key is not valid: %s", c.StartKey)
-		}
-		return keyPrefix + cleaned[1:], c.ResourceVersion, nil
-	default:
-		return "", 0, fmt.Errorf("continue key is not valid: server does not recognize this encoded version %q", c.APIVersion)
 	}
+
+	return
 }
 
 // encodeContinue returns a string representing the encoded continuation of the current query.
-func encodeContinue(key, keyPrefix string, resourceVersion int64) (string, error) {
-	nextKey := strings.TrimPrefix(key, keyPrefix)
-	if nextKey == key {
-		return "", fmt.Errorf("unable to encode next field: the key and key prefix do not match")
+func encodeContinue(listResult []listPartitionResult) (string, error) {
+	continueTokens := []continueToken{}
+
+	for _, result := range listResult {
+		nextKey := strings.TrimPrefix(result.key, result.keyPrefix)
+		if nextKey == result.key {
+			return "", fmt.Errorf("unable to encode next field: the key and key prefix do not match")
+		}
+
+		continueTokens = append(continueTokens,
+			continueToken{
+				ClusterId:       result.clusterId,
+				APIVersion:      "meta.k8s.io/v1",
+				ResourceVersion: result.returnedRV,
+				StartKey:        nextKey,
+			})
 	}
-	out, err := json.Marshal(&continueToken{APIVersion: "meta.k8s.io/v1", ResourceVersion: resourceVersion, StartKey: nextKey})
+
+	out, err := json.Marshal(&continueTokens)
 	if err != nil {
 		return "", err
 	}
@@ -612,37 +640,41 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 		options = append(options, clientv3.WithLimit(pred.Limit))
 	}
 
-	clients := s.getClientsFromKey(key)
+	var clients map[uint8]*clientv3.Client
 
-	var returnedRV, continueRV int64
-	var continueKey string
+	var continueTokens []*continueToken
+	var returnedRV int64
 	switch {
 	case s.pagingEnabled && len(pred.Continue) > 0:
-		continueKey, continueRV, err = decodeContinue(pred.Continue, keyPrefix)
-		if err != nil {
-			return apierrors.NewBadRequest(fmt.Sprintf("invalid continue token: %v", err))
-		}
-
 		if len(resourceVersion) > 0 && resourceVersion != "0" {
 			return apierrors.NewBadRequest("specifying resource version is not allowed when using continue")
 		}
 
+		continueTokens, err = decodeContinue(pred.Continue, keyPrefix)
+		if err != nil {
+			return apierrors.NewBadRequest(fmt.Sprintf("invalid continue token: %v", err))
+		}
 		rangeEnd := clientv3.GetPrefixRangeEnd(keyPrefix)
 		options = append(options, clientv3.WithRange(rangeEnd))
-		key = continueKey
 
-		// If continueRV > 0, the LIST request needs a specific resource version.
-		// continueRV==0 is invalid.
-		// If continueRV < 0, the request is for the latest resource version.
-		if continueRV > 0 {
-			options = append(options, clientv3.WithRev(continueRV))
-			returnedRV = continueRV
+		// get clients
+		clients = make(map[uint8]*clientv3.Client, len(continueTokens))
+		if len(continueTokens) == 1 && continueTokens[0].ResourceVersion == -1 {
+			clients = s.getClientsFromKey(key)
+		} else {
+			for clusterId := range continueTokens {
+				if clusterId == 0 {
+					clients[0] = s.client
+				} else {
+					client, ok := s.dataClusterClients[uint8(clusterId)]
+					if !ok {
+						return apierrors.NewBadRequest(fmt.Sprintf("invalid continue token: %v. clusterId %v does not exist", err, clusterId))
+					}
+					clients[uint8(clusterId)] = client
+				}
+			}
 		}
 	case s.pagingEnabled && pred.Limit > 0:
-		if len(clients) > 1 && len(resourceVersion) > 0 {
-			return apierrors.NewBadRequest(fmt.Sprintf("Currently does not support list continue when key located in multiple partitions. rv=%s", resourceVersion))
-		}
-
 		if len(resourceVersion) > 0 {
 			fromRV, err := s.versioner.ParseResourceVersion(resourceVersion)
 			if err != nil {
@@ -657,6 +689,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 		rangeEnd := clientv3.GetPrefixRangeEnd(keyPrefix)
 		options = append(options, clientv3.WithRange(rangeEnd))
 
+		clients = s.getClientsFromKey(key)
 	default:
 		if len(resourceVersion) > 0 {
 			fromRV, err := s.versioner.ParseResourceVersion(resourceVersion)
@@ -670,24 +703,115 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 		}
 
 		options = append(options, clientv3.WithPrefix())
+		clients = s.getClientsFromKey(key)
 	}
 
-	// TODO - multiple list run in parrallel - also need to consider locking in s.versioner.UpdateList
-	lastRV := returnedRV
+	listResults := make(map[uint8]*listPartitionResult, len(clients))
+	var wg sync.WaitGroup
+	wg.Add(len(clients))
+
 	for i, c := range clients {
-		klog.V(6).Infof("List key %s from multi partitions. client %d, endpoint %v, paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v], resourceVersion [%v]",
-			key, i, c.Endpoints(), paging, returnedRV, continueKey, keyPrefix, resourceVersion)
-		err, lastRV = s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix, lastRV)
-		if err != nil {
-			return err
+		var optionsToUse []clientv3.OpOption
+		keyToUse := key
+		continueKey := ""
+
+		if s.pagingEnabled && len(pred.Continue) > 0 {
+			keyToUse = continueTokens[i].continueKey
+			optionsToUse = append(optionsToUse, options...)
+
+			// If continueRV > 0, the LIST request needs a specific resource version.
+			// continueRV==0 is invalid.
+			// If continueRV < 0, the request is for the latest resource version.
+			if continueTokens[i].ResourceVersion > 0 {
+				optionsToUse = append(optionsToUse, clientv3.WithRev(continueTokens[i].ResourceVersion))
+				returnedRV = continueTokens[i].ResourceVersion
+				continueKey = continueTokens[i].continueKey
+			}
+		} else {
+			optionsToUse = options
+		}
+
+		go func(c *clientv3.Client, key string, returnedRV int64, continueKey string, options []clientv3.OpOption, listResults map[uint8]*listPartitionResult, i uint8) {
+			klog.V(6).Infof("List key %s from multi partitions. client %d, endpoint %v, paging [%v], returnedRV [%v], continueKey [%v], keyPrefix [%v], resourceVersion [%v]",
+				key, i, c.Endpoints(), paging, returnedRV, continueKey, keyPrefix, resourceVersion)
+			result, err := s.listPartition(ctx, c, key, pred, listObj, options, paging, returnedRV, continueKey, keyPrefix)
+			if err != nil {
+				result = &listPartitionResult{err: err}
+			}
+			s.listAppendMux.Lock()
+			listResults[i] = result
+			s.listAppendMux.Unlock()
+			wg.Done()
+		}(c, keyToUse, returnedRV, continueKey, optionsToUse, listResults, i)
+	}
+
+	wg.Wait()
+	klog.V(4).Infof("list partition completed. len(clients) = %v", len(clients))
+	return s.updatelist(listObj, listResults)
+}
+
+type listPartitionResult struct {
+	clusterId          uint8
+	err                error
+	returnedRV         int64
+	hasNext            bool
+	remainingItemCount *int64
+	key                string
+	keyPrefix          string
+}
+
+func (s *store) updatelist(listObj runtime.Object, listResult map[uint8]*listPartitionResult) error {
+	for _, result := range listResult {
+		if result.err != nil {
+			return result.err
 		}
 	}
 
-	return nil
+	returnedRV := int64(0)
+	hasNext := false
+	var remainingItemCount *int64
+	compactedListResult := []listPartitionResult{}
+
+	for clusterId, result := range listResult {
+		if diff.RevisionIsNewer(uint64(result.returnedRV), uint64(returnedRV)) {
+			returnedRV = result.returnedRV
+		}
+
+		if result.hasNext {
+			hasNext = true
+			result.clusterId = clusterId
+			if result.remainingItemCount != nil {
+				if remainingItemCount == nil {
+					remainingItemCount = result.remainingItemCount
+				} else {
+					total := *remainingItemCount + *result.remainingItemCount
+					remainingItemCount = &total
+				}
+			}
+			compactedListResult = append(compactedListResult, *result)
+		}
+	}
+
+	if hasNext {
+		nextKeyEncoded, err := encodeContinue(compactedListResult)
+		if err != nil {
+			return err
+		}
+		return s.versioner.UpdateList(listObj, uint64(returnedRV), nextKeyEncoded, remainingItemCount)
+	}
+
+	return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil)
 }
 
 func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key string, pred storage.SelectionPredicate, listObj runtime.Object,
-	options []clientv3.OpOption, paging bool, returnedRV int64, continueKey string, keyPrefix string, lastRV int64) (error, int64) {
+	options []clientv3.OpOption, paging bool, returnedRV int64, continueKey string, keyPrefix string) (*listPartitionResult, error) {
+
+	result := &listPartitionResult{
+		err:                nil,
+		returnedRV:         returnedRV,
+		hasNext:            false,
+		remainingItemCount: nil,
+	}
 
 	// error checked in List()
 	listPtr, _ := meta.GetItemsPtr(listObj)
@@ -703,16 +827,17 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 		getResp, err = client.KV.Get(ctx, key, options...)
 		metrics.RecordEtcdRequestLatency("list", getTypeName(listPtr), startTime)
 		if err != nil {
-			return interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix), lastRV
+			return nil, interpretListError(err, len(pred.Continue) > 0, continueKey, keyPrefix)
 		}
 		hasMore = getResp.More
 
 		if len(getResp.Kvs) == 0 && getResp.More {
-			return fmt.Errorf("no results were found, but etcd indicated there were more values remaining"), lastRV
+			return nil, fmt.Errorf("no results were found, but etcd indicated there were more values remaining")
 		}
 
 		// avoid small allocations for the result slice, since this can be called in many
 		// different contexts and we don't know how significantly the result will be filtered
+		s.listAppendMux.Lock()
 		if pred.Empty() {
 			growSlice(v, len(getResp.Kvs))
 		} else {
@@ -729,13 +854,16 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 
 			data, _, err := s.transformer.TransformFromStorage(kv.Value, authenticatedDataString(kv.Key))
 			if err != nil {
-				return storage.NewInternalErrorf("unable to transform key %q: %v", kv.Key, err), lastRV
+				s.listAppendMux.Unlock()
+				return nil, storage.NewInternalErrorf("unable to transform key %q: %v", kv.Key, err)
 			}
 
 			if err := appendListItem(v, data, uint64(kv.ModRevision), pred, s.codec, s.versioner); err != nil {
-				return err, lastRV
+				s.listAppendMux.Unlock()
+				return nil, err
 			}
 		}
+		s.listAppendMux.Unlock()
 
 		// indicate to the client which resource version was returned
 		if returnedRV == 0 {
@@ -753,36 +881,32 @@ func (s *store) listPartition(ctx context.Context, client *clientv3.Client, key 
 		key = string(lastKey) + "\x00"
 	}
 
-	// For multi ETCD partition - do not update to earlier revision
-	if diff.RevisionIsNewer(uint64(lastRV), uint64(returnedRV)) {
-		returnedRV = lastRV
-	} else {
-		lastRV = returnedRV
-	}
-
 	// instruct the client to begin querying from immediately after the last key we returned
 	// we never return a key that the client wouldn't be allowed to see
 	if hasMore {
 		// we want to start immediately after the last key
-		next, err := encodeContinue(string(lastKey)+"\x00", keyPrefix, returnedRV)
-		if err != nil {
-			return err, lastRV
-		}
-		var remainingItemCount *int64
+		result.key = string(lastKey) + "\x00"
+		result.keyPrefix = keyPrefix
+		result.returnedRV = returnedRV
+		result.hasNext = true
+
 		// getResp.Count counts in objects that do not match the pred.
 		// Instead of returning inaccurate count for non-empty selectors, we return nil.
 		// Only set remainingItemCount if the predicate is empty.
 		if utilfeature.DefaultFeatureGate.Enabled(features.RemainingItemCount) {
 			if pred.Empty() {
 				c := int64(getResp.Count - pred.Limit)
-				remainingItemCount = &c
+				result.remainingItemCount = &c
 			}
 		}
-		return s.versioner.UpdateList(listObj, uint64(returnedRV), next, remainingItemCount), lastRV
+		return result, nil
+		//return s.versioner.UpdateList(listObj, uint64(returnedRV), next, remainingItemCount), lastRV
 	}
 
 	// no continuation
-	return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil), lastRV
+	result.returnedRV = returnedRV
+	return result, nil
+	//return s.versioner.UpdateList(listObj, uint64(returnedRV), "", nil), lastRV
 }
 
 // growSlice takes a slice value and grows its capacity up
@@ -966,20 +1090,28 @@ var regexPrefixToCheck = []string{
 // 3. For the rest, the 2th segment will be reported as tenant
 // 4. If tenant name is not found from tenant map, goes to system cluster
 func (s *store) getClientFromKey(key string) *clientv3.Client {
+	_, client := s.getClientAndClusterIdFromKey(key)
+	return client
+}
+
+func (s *store) getClientAndClusterIdFromKey(key string) (uint8, *clientv3.Client) {
 	// remove prefix
 	lenPrefix := len(s.pathPrefix)
 	if lenPrefix > 0 && s.pathPrefix[lenPrefix-1:lenPrefix] != "/" {
 		lenPrefix++
 	}
 
+	if lenPrefix > len(key) {
+		return 0, s.client
+	}
 	concisedKey := key[lenPrefix:]
 
 	segs := strings.Split(concisedKey, "/")
 	message := fmt.Sprintf("key [%s] segments %v len %d", key, segs, len(segs))
 
 	if len(segs) <= 2 {
-		klog.V(6).Infof("system client: key segments len <= 2. %s ", message)
-		return s.client
+		klog.V(5).Infof("system client: key segments len <= 2. %s ", message)
+		return 0, s.client
 	}
 
 	tenant := ""
@@ -998,24 +1130,27 @@ func (s *store) getClientFromKey(key string) *clientv3.Client {
 		tenant = getTenantForKey(segs, 1)
 	}
 	if tenant == "" {
-		return s.client
+		klog.V(5).Infof("system client: %s ", message)
+		return 0, s.client
 	}
 
-	return s.getClientForTenant(tenant)
+	clusterId, c := s.getClientForTenant(tenant)
+	klog.V(5).Infof("client %v: %s. cluster id %v", c.Endpoints(), message, clusterId)
+	return clusterId, c
 }
 
 // Based on different data segment, map to differnet data clients
-func (s *store) getClientForTenant(tenant string) *clientv3.Client {
+func (s *store) getClientForTenant(tenant string) (uint8, *clientv3.Client) {
 	clusterId := storagecluster.GetClusterIdFromTenantHandler(tenant)
-	if clusterId == "" {
-		return s.client
+	if clusterId == 0 {
+		return 0, s.client
 	}
 	dataclient, isOK := s.dataClusterClients[clusterId]
 	if !isOK {
-		klog.Warningf("Cluster %s assigned to tenant %s does not exist. Using system cluster instead", clusterId, tenant)
-		return s.client
+		klog.Warningf("Cluster %d assigned to tenant %s does not exist. Using system cluster instead", clusterId, tenant)
+		return 0, s.client
 	}
-	return dataclient
+	return clusterId, dataclient
 }
 
 func getTenantForKey(segs []string, posToGet int) string {
@@ -1027,28 +1162,31 @@ func getTenantForKey(segs []string, posToGet int) string {
 
 // getClientsFromKey is used by list to get all related storage clusters
 // For example: get pods from all tenants
-func (s *store) getClientsFromKey(key string) []*clientv3.Client {
-	client := s.getClientFromKey(key)
-	if client != s.client {
+func (s *store) getClientsFromKey(key string) map[uint8]*clientv3.Client {
+	clientMap := make(map[uint8]*clientv3.Client)
+
+	clusterId, client := s.getClientAndClusterIdFromKey(key)
+	clientMap[clusterId] = client
+	if clusterId != 0 {
 		// This key belongs to a data cluster, no need to check other clusters
-		return []*clientv3.Client{client}
+		return clientMap
 	}
 
 	// TODO: currently paginated list is not supported for multi etcd partition
 	// Events can have more than one page - workaround
 	// Fix later
 	if strings.HasPrefix(key, "/registry/events/") {
-		return []*clientv3.Client{client}
+		clientMap[0] = client
+		return clientMap
 	}
 
 	// TODO - check whether key can only be in system cluster
-	clients := []*clientv3.Client{s.client}
 	if len(s.dataClusterClients) > 0 {
-		for _, client := range s.dataClusterClients {
-			clients = append(clients, client)
+		for clusterId, client := range s.dataClusterClients {
+			clientMap[clusterId] = client
 		}
 	}
-	return clients
+	return clientMap
 }
 
 // decode decodes value of bytes into object. It will also set the object resource version to rev.

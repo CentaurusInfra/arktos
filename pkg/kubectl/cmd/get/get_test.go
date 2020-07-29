@@ -282,25 +282,25 @@ func TestGetMultipleResourceTypesShowKinds(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/pods" && m == "GET":
+			case p == "/tenants/system/namespaces/test/pods" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case p == "/namespaces/test/replicationcontrollers" && m == "GET":
+			case p == "/tenants/system/namespaces/test/replicationcontrollers" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.ReplicationControllerList{})}, nil
-			case p == "/namespaces/test/services" && m == "GET":
+			case p == "/tenants/system/namespaces/test/services" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svcs)}, nil
-			case p == "/namespaces/test/statefulsets" && m == "GET":
+			case p == "/tenants/system/namespaces/test/statefulsets" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &appsv1.StatefulSetList{})}, nil
-			case p == "/namespaces/test/horizontalpodautoscalers" && m == "GET":
+			case p == "/tenants/system/namespaces/test/horizontalpodautoscalers" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &autoscalingv1.HorizontalPodAutoscalerList{})}, nil
-			case p == "/namespaces/test/jobs" && m == "GET":
+			case p == "/tenants/system/namespaces/test/jobs" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &batchv1.JobList{})}, nil
-			case p == "/namespaces/test/cronjobs" && m == "GET":
+			case p == "/tenants/system/namespaces/test/cronjobs" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &batchv1beta1.CronJobList{})}, nil
-			case p == "/namespaces/test/daemonsets" && m == "GET":
+			case p == "/tenants/system/namespaces/test/daemonsets" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &appsv1.DaemonSetList{})}, nil
-			case p == "/namespaces/test/deployments" && m == "GET":
+			case p == "/tenants/system/namespaces/test/deployments" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &extensionsv1beta1.DeploymentList{})}, nil
-			case p == "/namespaces/test/replicasets" && m == "GET":
+			case p == "/tenants/system/namespaces/test/replicasets" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &extensionsv1beta1.ReplicaSetList{})}, nil
 
 			default:
@@ -360,7 +360,7 @@ func TestGetEmptyTable(t *testing.T) {
 "kind":"Table",
 "apiVersion":"meta.k8s.io/v1beta1",
 "metadata":{
-	"selfLink":"/api/v1/namespaces/default/pods",
+	"selfLink":"/api/v1/tenants/system/namespaces/default/pods",
 	"resourceVersion":"346"
 },
 "columnDefinitions":[
@@ -413,9 +413,9 @@ func TestGetObjectIgnoreNotFound(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
-			case p == "/namespaces/test/pods/nonexistentpod" && m == "GET":
+			case p == "/tenants/system/namespaces/test/pods/nonexistentpod" && m == "GET":
 				return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.StringBody("")}, nil
-			case p == "/api/v1/namespaces/test" && m == "GET":
+			case p == "/api/v1/tenants/system/namespaces/test" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &ns.Items[0])}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -849,7 +849,7 @@ func TestGetMixedGenericObjects(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, structuredObj)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -898,9 +898,9 @@ func TestGetMultipleTypeObjects(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/system/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -936,9 +936,9 @@ func TestGetMultipleTypeObjectsAsList(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/system/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -1041,9 +1041,9 @@ func TestGetMultipleTypeObjectsWithLabelSelector(t *testing.T) {
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/system/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -1084,9 +1084,9 @@ func TestGetMultipleTypeObjectsWithFieldSelector(t *testing.T) {
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
-			case "/namespaces/test/services":
+			case "/tenants/system/namespaces/test/services":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, svc)}, nil
 			default:
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
@@ -1131,7 +1131,7 @@ func TestGetMultipleTypeObjectsWithDirectReference(t *testing.T) {
 			switch req.URL.Path {
 			case "/nodes/foo":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, node)}, nil
-			case "/namespaces/test/services/bar":
+			case "/tenants/system/namespaces/test/services/bar":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &svc.Items[0])}, nil
 			default:
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
@@ -1282,7 +1282,7 @@ func TestWatchLabelSelector(t *testing.T) {
 				t.Fatalf("request url: %#v,and request: %#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[2:])}, nil
 				}
@@ -1333,7 +1333,7 @@ func TestWatchFieldSelector(t *testing.T) {
 				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[2:])}, nil
 				}
@@ -1375,9 +1375,9 @@ func TestWatchResource(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods/foo":
+			case "/tenants/system/namespaces/test/pods/foo":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods[1])}, nil
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" && req.URL.Query().Get("fieldSelector") == "metadata.name=foo" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[1:])}, nil
 				}
@@ -1480,7 +1480,7 @@ func TestWatchResourceTable(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				if req.URL.Query().Get("watch") != "true" && req.URL.Query().Get("fieldSelector") == "" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, listTable)}, nil
 				}
@@ -1525,9 +1525,9 @@ func TestWatchResourceIdentifiedByFile(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/replicationcontrollers/cassandra":
+			case "/tenants/system/namespaces/test/replicationcontrollers/cassandra":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods[1])}, nil
-			case "/namespaces/test/replicationcontrollers":
+			case "/tenants/system/namespaces/test/replicationcontrollers":
 				if req.URL.Query().Get("watch") == "true" && req.URL.Query().Get("fieldSelector") == "metadata.name=cassandra" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[1:])}, nil
 				}
@@ -1569,9 +1569,9 @@ func TestWatchOnlyResource(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods/foo":
+			case "/tenants/system/namespaces/test/pods/foo":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods[1])}, nil
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" && req.URL.Query().Get("fieldSelector") == "metadata.name=foo" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[1:])}, nil
 				}
@@ -1617,7 +1617,7 @@ func TestWatchOnlyList(t *testing.T) {
 		NegotiatedSerializer: resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				if req.URL.Query().Get("watch") == "true" {
 					return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: watchBody(codec, events[2:])}, nil
 				}
@@ -1670,10 +1670,10 @@ func TestGetMultipleTypeObjectsWithLabelRangeSelector(t *testing.T) {
 				t.Fatalf("The request does not have expected range params. Request url: %#v,and request: %#v", req.URL, req)
 			}
 			switch req.URL.Path {
-			case "/namespaces/test/pods":
+			case "/tenants/system/namespaces/test/pods":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, pods)}, nil
 			default:
-				t.Fatalf("The request url path does not start with /namespaces/test/pods. Request url: %#v,and request: %#v", req.URL, req)
+				t.Fatalf("The request url path does not start with /tenants/system/namespaces/test/pods. Request url: %#v,and request: %#v", req.URL, req)
 				return nil, nil
 			}
 		}),

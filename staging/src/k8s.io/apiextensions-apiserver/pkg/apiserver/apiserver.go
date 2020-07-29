@@ -19,7 +19,6 @@ package apiserver
 
 import (
 	"fmt"
-	"k8s.io/apiserver/pkg/storage/storagecluster"
 	"net/http"
 	"time"
 
@@ -36,6 +35,7 @@ import (
 	openapicontroller "k8s.io/apiextensions-apiserver/pkg/controller/openapi"
 	"k8s.io/apiextensions-apiserver/pkg/controller/status"
 	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
+	"k8s.io/apiextensions-apiserver/pkg/registry/customresource"
 	"k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -48,6 +48,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/pkg/util/webhook"
 )
@@ -113,6 +114,18 @@ type CustomResourceDefinitions struct {
 
 	// provided for easier embedding
 	Informers internalinformers.SharedInformerFactory
+}
+
+// CustomResourceStorageGetter is the interface that gets storage of the specific crd of version in tenant
+type CustomResourceStorageGetter interface {
+	GetCustomResourceStorage(tenant, crdName, version string) (*customresource.CustomResourceStorage, error)
+}
+
+var customResourceStorages CustomResourceStorageGetter
+
+// GetCustomResourceStoragesGetter gets the CustomResourceStorageGetter object
+func GetCustomResourceStoragesGetter() CustomResourceStorageGetter {
+	return customResourceStorages
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
@@ -200,6 +213,8 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	}
 	s.GenericAPIServer.Handler.NonGoRestfulMux.Handle("/apis", crdHandler)
 	s.GenericAPIServer.Handler.NonGoRestfulMux.HandlePrefix("/apis/", crdHandler)
+
+	customResourceStorages = crdHandler
 
 	crdController := NewDiscoveryController(s.Informers.Apiextensions().InternalVersion().CustomResourceDefinitions(), versionDiscoveryHandler, groupDiscoveryHandler)
 	namingController := status.NewNamingConditionController(s.Informers.Apiextensions().InternalVersion().CustomResourceDefinitions(), crdClient.Apiextensions())

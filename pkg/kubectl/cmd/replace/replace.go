@@ -84,6 +84,9 @@ type ReplaceOptions struct {
 	Namespace        string
 	EnforceNamespace bool
 
+	Tenant        string
+	EnforceTenant bool
+
 	Recorder genericclioptions.Recorder
 
 	genericclioptions.IOStreams
@@ -182,6 +185,11 @@ func (o *ReplaceOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 		return err
 	}
 
+	o.Tenant, o.EnforceTenant, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -210,8 +218,9 @@ func (o *ReplaceOptions) Run() error {
 		Unstructured().
 		Schema(o.Schema).
 		ContinueOnError().
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
 		Flatten().
 		Do()
 	if err := r.Err(); err != nil {
@@ -232,7 +241,7 @@ func (o *ReplaceOptions) Run() error {
 		}
 
 		// Serialize the object with the annotation applied.
-		obj, err := resource.NewHelper(info.Clients, info.Mapping).Replace(info.Namespace, info.Name, true, info.Object)
+		obj, err := resource.NewHelper(info.Clients, info.Mapping).ReplaceWithMultiTenancy(info.Tenant, info.Namespace, info.Name, true, info.Object)
 		if err != nil {
 			return cmdutil.AddSourceToErr("replacing", info.Source, err)
 		}
@@ -262,9 +271,10 @@ func (o *ReplaceOptions) forceReplace() error {
 	r := o.Builder().
 		Unstructured().
 		ContinueOnError().
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		ResourceTypeOrNameArgs(false, o.BuilderArgs...).RequireObject(false).
-		FilenameParam(o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
 		Flatten().
 		Do()
 	if err := r.Err(); err != nil {
@@ -285,7 +295,7 @@ func (o *ReplaceOptions) forceReplace() error {
 		}
 
 		return wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
-			if err := info.Get(); !errors.IsNotFound(err) {
+			if err := info.GetWithMultiTenancy(); !errors.IsNotFound(err) {
 				return false, err
 			}
 			return true, nil
@@ -299,8 +309,9 @@ func (o *ReplaceOptions) forceReplace() error {
 		Unstructured().
 		Schema(o.Schema).
 		ContinueOnError().
+		TenantParam(o.Tenant).DefaultTenant().
 		NamespaceParam(o.Namespace).DefaultNamespace().
-		FilenameParam(o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
+		FilenameParamWithMultiTenancy(o.EnforceTenant, o.EnforceNamespace, &o.DeleteOptions.FilenameOptions).
 		Flatten().
 		Do()
 	err = r.Err()
@@ -322,7 +333,7 @@ func (o *ReplaceOptions) forceReplace() error {
 			klog.V(4).Infof("error recording current command: %v", err)
 		}
 
-		obj, err := resource.NewHelper(info.Clients, info.Mapping).Create(info.Namespace, true, info.Object, nil)
+		obj, err := resource.NewHelper(info.Clients, info.Mapping).CreateWithMultiTenancy(info.Tenant, info.Namespace, true, info.Object, nil)
 		if err != nil {
 			return err
 		}

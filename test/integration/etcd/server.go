@@ -168,7 +168,7 @@ func StartRealMasterOrDie(t *testing.T, configFuncs ...func(*options.ServerRunOp
 	}
 
 	// create CRDs so we can make sure that custom resources do not get lost
-	kubeClient.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}, Spec: v1.TenantSpec{StorageClusterId: "cluster1"}})
+	kubeClient.CoreV1().Tenants().Create(&v1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: testTenant}, Spec: v1.TenantSpec{StorageClusterId: "1"}})
 	crdData := GetCustomResourceDefinitionData()
 	crdData = append(crdData, GetCustomResourceDefinitionDataWithMultiTenancy()...)
 	CreateTestCRDs(t, apiextensionsclientset.NewForConfigOrDie(kubeClientConfigs), false, crdData...)
@@ -313,7 +313,12 @@ func JSONToUnstructured(stub, namespace string, mapping *meta.RESTMapping, dynam
 		namespace = ""
 	}
 
-	return dynamicClient.Resource(mapping.Resource).Namespace(namespace), &unstructured.Unstructured{Object: typeMetaAdder}, nil
+	tenant := metav1.TenantSystem
+	if mapping.Scope == meta.RESTScopeRoot {
+		tenant = metav1.TenantNone
+	}
+
+	return dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, tenant), &unstructured.Unstructured{Object: typeMetaAdder}, nil
 }
 
 func JSONToUnstructuredWithMultiTenancy(stub, tenant, namespace string, mapping *meta.RESTMapping, dynamicClient dynamic.Interface) (dynamic.ResourceInterface, *unstructured.Unstructured, error) {

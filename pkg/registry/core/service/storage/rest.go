@@ -25,10 +25,15 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 
+	extensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -37,14 +42,19 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
+	"k8s.io/apiserver/pkg/storage/storagebackend"
 	"k8s.io/apiserver/pkg/util/dryrun"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	"k8s.io/klog"
-
 	apiservice "k8s.io/kubernetes/pkg/api/service"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
+	"k8s.io/kubernetes/pkg/features"
 	registry "k8s.io/kubernetes/pkg/registry/core/service"
+	"k8s.io/kubernetes/pkg/registry/core/service/allocator"
+	serviceallocator "k8s.io/kubernetes/pkg/registry/core/service/allocator/storage"
 	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
 	"k8s.io/kubernetes/pkg/registry/core/service/portallocator"
 )
@@ -57,6 +67,15 @@ type REST struct {
 	serviceNodePorts portallocator.Interface
 	proxyTransport   http.RoundTripper
 	pods             rest.Getter
+	done             uint32
+	m                sync.Mutex
+	networks         rest.Getter
+
+	// per-network service IP allocators
+	networkServiceIPs sync.Map
+	lock              sync.Mutex
+	// global reference to backend ETCD config of per-network ip range data persistence
+	backendStorageConfig *storagebackend.Config
 }
 
 // ServiceNodePort includes protocol and port number of a service NodePort.
@@ -106,6 +125,7 @@ func NewREST(
 		proxyTransport:   proxyTransport,
 		pods:             pods,
 	}
+
 	return rest, &registry.ProxyREST{Redirector: rest, ProxyTransport: proxyTransport}
 }
 
@@ -115,6 +135,20 @@ var (
 	_ rest.ShortNamesProvider     = &REST{}
 	_ rest.StorageVersionProvider = &REST{}
 )
+
+// SetBackendStorageConfig initializes the ETCD backend client config
+func (rs *REST) SetBackendStorageConfig(config *storagebackend.Config) {
+	rs.backendStorageConfig = config
+}
+
+// getServiceIPAlloc gets ip allocator object suited for the service on basis of its associated network
+func (rs *REST) getServiceIPAlloc(service *api.Service) (ipallocator.Interface, error) {
+	if utilfeature.DefaultFeatureGate.Enabled(features.PerNetworkServiceIPAlloc) {
+		return rs.getNetworkServiceIPAlloc(service)
+	}
+
+	return rs.serviceIPs, nil
+}
 
 func (rs *REST) StorageVersion() runtime.GroupVersioner {
 	return rs.services.StorageVersion()
@@ -128,6 +162,56 @@ func (rs *REST) ShortNames() []string {
 // Categories implements the CategoriesProvider interface. Returns a list of categories a resource is part of.
 func (rs *REST) Categories() []string {
 	return []string{"all"}
+}
+
+func (rs *REST) getNetworkStorage(tenant string) (rest.Getter, error) {
+	const networkResourceName = "networks.arktos.futurewei.com"
+	const networkResourceVersion = "v1"
+
+	if atomic.LoadUint32(&rs.done) == 1 {
+		if rs.networks == nil {
+			return nil, fmt.Errorf("service storage failed to identify proper network getter")
+		}
+		return rs.networks, nil
+	}
+
+	// Slow-path.
+	rs.m.Lock()
+	defer rs.m.Unlock()
+	if rs.done == 0 {
+		if rs.networks != nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			return rs.networks, nil
+		}
+
+		crStorageGetter := extensionsapiserver.GetCustomResourceStoragesGetter()
+		if crStorageGetter == nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			return nil, fmt.Errorf("failed to get Custom Resource Storages Getter: api extension server not initialized properly")
+		}
+
+		if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, networkResourceName, networkResourceVersion); err == nil {
+			defer atomic.StoreUint32(&rs.done, 1)
+			rs.networks = storage.CustomResource
+			return rs.networks, nil
+		} else {
+			return nil, fmt.Errorf("custom resource storage not set up yet")
+		}
+	}
+
+	if rs.networks == nil {
+		return nil, fmt.Errorf("service storage failed to identify proper network getter")
+	}
+	return rs.networks, nil
+}
+
+func (rs *REST) getNetwork(ctx context.Context, tenant, name string) (runtime.Object, error) {
+	networkGetter, err := rs.getNetworkStorage(tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	return networkGetter.Get(ctx, name, &metav1.GetOptions{})
 }
 
 func (rs *REST) NamespaceScoped() bool {
@@ -162,27 +246,62 @@ func (rs *REST) Export(ctx context.Context, name string, opts metav1.ExportOptio
 	return rs.services.Export(ctx, name, opts)
 }
 
+func (rs *REST) isExternalIPAM(ctx context.Context, service *api.Service) (bool, error) {
+	netName := service.Labels[arktosv1.NetworkLabel]
+	if netName == "" {
+		// choose the default network name if not specified
+		netName = arktosv1.NetworkDefault
+	}
+
+	// todo: consider having a sub context of the ctx param
+	network, err := rs.getNetwork(genericapirequest.NewContext(), service.Tenant, netName)
+	if err != nil {
+		// for now, temporarily ignore the default network not found error
+		// todo: remove below line after tenant controller enables automatic default network creation on new tenants
+		if netName == arktosv1.NetworkDefault {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	net := network.(*unstructured.Unstructured)
+	if ipam, ok, err := unstructured.NestedString(net.Object, "spec", "service", "ipam"); err == nil && ok {
+		return ipam == string(arktosv1.IPAMExternal), nil
+	}
+
+	return false, nil
+}
+
 func (rs *REST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
 	service := obj.(*api.Service)
+	isExternalIPAM, err := rs.isExternalIPAM(ctx, service)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := rest.BeforeCreate(registry.Strategy, ctx, obj); err != nil {
 		return nil, err
 	}
 
+	var svcIPs ipallocator.Interface
+
 	// TODO: this should probably move to strategy.PrepareForCreate()
 	releaseServiceIP := false
 	defer func() {
-		if releaseServiceIP {
+		if releaseServiceIP && svcIPs != nil {
 			if helper.IsServiceIPSet(service) {
-				rs.serviceIPs.Release(net.ParseIP(service.Spec.ClusterIP))
+				svcIPs.Release(net.ParseIP(service.Spec.ClusterIP))
 			}
 		}
 	}()
 
-	var err error
-	if !dryrun.IsDryRun(options.DryRun) {
+	if !isExternalIPAM && !dryrun.IsDryRun(options.DryRun) {
 		if service.Spec.Type != api.ServiceTypeExternalName {
-			if releaseServiceIP, err = initClusterIP(service, rs.serviceIPs); err != nil {
+			if svcIPs, err = rs.getServiceIPAlloc(service); err != nil {
+				return nil, fmt.Errorf("failed to get service IP allocator: %v", err)
+			}
+			if releaseServiceIP, err = initClusterIP(service, svcIPs); err != nil {
 				return nil, err
 			}
 		}
@@ -243,7 +362,19 @@ func (rs *REST) Delete(ctx context.Context, id string, deleteValidation rest.Val
 			return nil, false, err
 		}
 
-		rs.releaseAllocatedResources(svc)
+		isExternalIPAM, err := rs.isExternalIPAM(ctx, svc)
+		if err != nil {
+			return nil, false, fmt.Errorf("unable to determine service IPAM type: %v", err)
+		}
+
+		var svcIPs ipallocator.Interface
+		if !isExternalIPAM {
+			if svcIPs, err = rs.getServiceIPAlloc(svc); err != nil {
+				return nil, false, fmt.Errorf("failed to get service IP allocator: %v", err)
+			}
+		}
+
+		rs.releaseAllocatedResources(svc, svcIPs)
 	}
 
 	// TODO: this is duplicated from the generic storage, when this wrapper is fully removed we can drop this
@@ -259,9 +390,9 @@ func (rs *REST) Delete(ctx context.Context, id string, deleteValidation rest.Val
 	return status, true, nil
 }
 
-func (rs *REST) releaseAllocatedResources(svc *api.Service) {
-	if helper.IsServiceIPSet(svc) {
-		rs.serviceIPs.Release(net.ParseIP(svc.Spec.ClusterIP))
+func (rs *REST) releaseAllocatedResources(svc *api.Service, svcIPs ipallocator.Interface) {
+	if helper.IsServiceIPSet(svc) && svcIPs != nil {
+		svcIPs.Release(net.ParseIP(svc.Spec.ClusterIP))
 	}
 
 	for _, nodePort := range collectServiceNodePorts(svc) {
@@ -379,12 +510,14 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 		return nil, false, err
 	}
 
+	var svcIPs ipallocator.Interface
+
 	// TODO: this should probably move to strategy.PrepareForCreate()
 	releaseServiceIP := false
 	defer func() {
-		if releaseServiceIP {
+		if releaseServiceIP && svcIPs != nil {
 			if helper.IsServiceIPSet(service) {
-				rs.serviceIPs.Release(net.ParseIP(service.Spec.ClusterIP))
+				svcIPs.Release(net.ParseIP(service.Spec.ClusterIP))
 			}
 		}
 	}()
@@ -393,16 +526,25 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 	defer nodePortOp.Finish()
 
 	if !dryrun.IsDryRun(options.DryRun) {
+		isExternalIPAM, err := rs.isExternalIPAM(ctx, service)
+		if err != nil {
+			return nil, false, err
+		}
+
 		// Update service from ExternalName to non-ExternalName, should initialize ClusterIP.
-		if oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
-			if releaseServiceIP, err = initClusterIP(service, rs.serviceIPs); err != nil {
+		if !isExternalIPAM && oldService.Spec.Type == api.ServiceTypeExternalName && service.Spec.Type != api.ServiceTypeExternalName {
+			if svcIPs, err = rs.getServiceIPAlloc(service); err != nil {
+				return nil, false, fmt.Errorf("failed to get service IP allocator: %v", err)
+			}
+
+			if releaseServiceIP, err = initClusterIP(service, svcIPs); err != nil {
 				return nil, false, err
 			}
 		}
 		// Update service from non-ExternalName to ExternalName, should release ClusterIP if exists.
 		if oldService.Spec.Type != api.ServiceTypeExternalName && service.Spec.Type == api.ServiceTypeExternalName {
 			if helper.IsServiceIPSet(oldService) {
-				rs.serviceIPs.Release(net.ParseIP(oldService.Spec.ClusterIP))
+				svcIPs.Release(net.ParseIP(oldService.Spec.ClusterIP))
 			}
 		}
 	}
@@ -748,4 +890,82 @@ func collectServiceNodePorts(service *api.Service) []int {
 		}
 	}
 	return servicePorts
+}
+
+func (rs *REST) getNetworkServiceIPAlloc(service *api.Service) (ipallocator.Interface, error) {
+	netName := strings.TrimSpace(service.Labels[arktosv1.NetworkLabel])
+	if len(netName) == 0 {
+		netName = arktosv1.NetworkDefault
+	}
+
+	network, err := rs.getNetwork(genericapirequest.NewContext(), service.Tenant, netName)
+	if err != nil {
+		// todo: remove the temporary measure when we have all the multi-tenant networking components in place
+		// as temporary measure, ignore the error of default network not found
+		if netName == arktosv1.NetworkDefault {
+			return rs.serviceIPs, nil
+		}
+
+		return nil, fmt.Errorf("cannot find network %s of tenant %s: %v", netName, service.Tenant, err)
+	}
+
+	networkUnstructured := network.(*unstructured.Unstructured)
+	var cidrs []string
+	var ok bool
+	cidrs, ok, err = unstructured.NestedStringSlice(networkUnstructured.Object, "spec", "service", "cidrs")
+	if err != nil {
+		return nil, fmt.Errorf("failed to identify spec.service.cidrs of network %s of tenant %s: %v", netName, service.Tenant, err)
+	}
+	if !ok || len(cidrs) == 0 {
+		return nil, fmt.Errorf("no service cidr found for network %s of tenant %s", netName, service.Tenant)
+	}
+
+	// todo: to use multiple cidr ranges in the future
+	// for now only first cidr take effect
+	cidr := cidrs[0]
+	var ipNet *net.IPNet
+	if _, ipNet, err = net.ParseCIDR(cidr); err != nil {
+		return nil, fmt.Errorf("%q is not a valid service cidr for network %s of tenant %s: %v", cidr, netName, service.Tenant, err)
+	}
+
+	return rs.getServiceIPAllocByKey(service.Tenant, netName, ipNet)
+}
+
+func (rs *REST) getServiceIPAllocByKey(tenant, network string, cidr *net.IPNet) (ipallocator.Interface, error) {
+	etcdBaseKey := fmt.Sprintf("/ranges/network-serviceips/%s/%s/%s/serviceips", tenant, network, cidr.String())
+	if allocator, ok := rs.networkServiceIPs.Load(etcdBaseKey); ok {
+		return allocator.(ipallocator.Interface), nil
+	}
+
+	// slow path: create the allocator on top of the etcd backend
+	return rs.createNetworkServiceIPAlloc(etcdBaseKey, cidr)
+}
+
+func (rs *REST) createNetworkServiceIPAlloc(etcdBaseKey string, cidr *net.IPNet) (ipallocator.Interface, error) {
+	rs.lock.Lock()
+	defer rs.lock.Unlock()
+
+	if ipAllocator, ok := rs.networkServiceIPs.Load(etcdBaseKey); ok {
+		return ipAllocator.(ipallocator.Interface), nil
+	}
+
+	var err error
+	ipAllocator := ipallocator.NewAllocatorCIDRRange(cidr, func(max int, rangeSpec string) allocator.Interface {
+		mem := allocator.NewAllocationMap(max, rangeSpec)
+		etcd := serviceallocator.NewEtcd(mem, etcdBaseKey, api.Resource("serviceipallocations"), rs.backendStorageConfig)
+
+		var snapshot *api.RangeAllocation
+		if snapshot, err = etcd.Get(); err != nil || snapshot.Range == "" {
+			snapshot.Range = cidr.String()
+			err = etcd.CreateOrUpdate(snapshot)
+		}
+
+		return etcd
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate presistent backend for base key %s: %v", etcdBaseKey, err)
+	}
+
+	return ipAllocator, nil
 }

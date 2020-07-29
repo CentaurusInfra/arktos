@@ -11,7 +11,7 @@ expectedExitCode: 0
 steps:
 - type: request
   expectedMethod: GET
-  expectedPath: /api/v1/namespaces/myproject/services/svc1
+  expectedPath: /api/v1/tenants/system/namespaces/myproject/services/svc1
   expectedInput: 0.request
   resultingStatusCode: 200
   resultingOutput: 0.response
@@ -20,7 +20,7 @@ steps:
   resultingOutput: 1.edited
 - type: request
   expectedMethod: PATCH
-  expectedPath: /api/v1/namespaces/myproject/services/svc1
+  expectedPath: /api/v1/tenants/system/namespaces/myproject/services/svc1
   expectedContentType: application/merge-patch+json
   expectedInput: 2.request
   resultingStatusCode: 200

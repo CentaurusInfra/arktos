@@ -22,7 +22,6 @@ import (
 	"k8s.io/klog"
 	"net"
 	"os"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/clientcmd"
@@ -32,7 +31,6 @@ import (
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
-	restclient "k8s.io/client-go/rest"
 	controllerManagerConfig "k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
 	"k8s.io/kubernetes/pkg/master/ports"
 )
@@ -48,7 +46,7 @@ const (
 
 func init() {
 	kubeconfigEnv := os.Getenv("KUBECONFIG")
-	flag.StringVar(&kubeconfig, "kubeconfig", kubeconfigEnv, "absolute path to the kubeconfig files")
+	flag.StringVar(&kubeconfig, "kubeconfig", kubeconfigEnv, "absolute path to the kubeconfig file")
 	flag.StringVar(&controllerconfigfilepath, "controllerconfig", "", "absolute path to the controllerconfig file")
 	flag.IntVar(&workloadControllerPort, "port", ports.InsecureWorkloadControllerManagerPort, "port for current workload controller manager rest service")
 	flag.Parse()
@@ -76,28 +74,15 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 		fmt.Println("using controller configuration from ", controllerconfigfilepath)
 	}
 
-	kubeconfigarray := strings.Split(kubeconfig, " ")
-	klog.V(3).Infof("using kube configuration from %+v", kubeconfigarray)
-
-	var configs []*restclient.KubeConfig
-	for _, kubeconfigitem := range kubeconfigarray {
-		if len(kubeconfigitem) > 0 {
-
-			restkubeconfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigitem)
-			if err != nil {
-				return nil, err
-			}
-			configs = append(configs, restkubeconfig.GetAllConfigs()...)
-		}
-	}
-
-	agConfig := restclient.NewAggregatedConfig(configs...)
+	controllerManagerKubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, err
 	}
 
+	controllerManagerKubeConfig.GetConfig().ContentType = "application/vnd.kubernetes.protobuf"
+
 	c := &controllerManagerConfig.Config{
-		ControllerManagerConfig: agConfig,
+		ControllerManagerConfig: controllerManagerKubeConfig,
 		ControllerTypeConfig:    controllerconfig,
 	}
 

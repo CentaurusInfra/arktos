@@ -19,7 +19,7 @@ package resource
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/rand"
+	"math/rand"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -61,7 +61,7 @@ func NewSelector(clients []RESTClient, mapping *meta.RESTMapping, tenant, namesp
 
 	if max > 1 {
 		rand.Seed(time.Now().UnixNano())
-		ran := rand.IntnRange(0, max-1)
+		ran := rand.Intn(max)
 		s.Client = clients[ran]
 	}
 

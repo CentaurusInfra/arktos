@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/scale"
@@ -52,10 +54,10 @@ func ScaleResourceWithRetries(scalesGetter scale.ScalesGetter, namespace, name s
 		ResourceVersion: "",
 	}
 	waitForReplicas := kubectl.NewRetryParams(waitRetryInterval, waitRetryTimeout)
-	cond := RetryErrorCondition(kubectl.ScaleCondition(scaler, preconditions, namespace, name, size, nil, gr))
+	cond := RetryErrorCondition(kubectl.ScaleCondition(scaler, preconditions, metav1.TenantSystem, namespace, name, size, nil, gr))
 	err := wait.PollImmediate(updateRetryInterval, updateRetryTimeout, cond)
 	if err == nil {
-		err = kubectl.WaitForScaleHasDesiredReplicas(scalesGetter, gr, name, namespace, size, waitForReplicas)
+		err = kubectl.WaitForScaleHasDesiredReplicas(scalesGetter, gr, name, namespace, metav1.TenantSystem, size, waitForReplicas)
 	}
 	if err != nil {
 		return fmt.Errorf("Error while scaling %s to %d replicas: %v", name, size, err)

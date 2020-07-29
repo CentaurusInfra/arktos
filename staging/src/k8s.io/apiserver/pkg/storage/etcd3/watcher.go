@@ -77,7 +77,7 @@ type watcher struct {
 	transformer       value.Transformer
 	partitionConfig   map[string]storage.Interval
 	updatePartitionCh *bcast.Member
-	updateMux         sync.Mutex
+	updateMux         sync.RWMutex
 }
 
 // watchChan implements watch.Interface.
@@ -127,7 +127,7 @@ func (w *watcher) Watch(ctx context.Context, key string, rev int64, recursive bo
 
 func (w *watcher) run(ctx context.Context, key string, rev int64, recursive bool, pred storage.SelectionPredicate, res *watch.AggregatedWatcher) {
 	for {
-		keyRanges := GetKeyAndOptFromPartitionConfig(key, w.partitionConfig)
+		keyRanges := w.getKeyAndOptFromPartitionConfig(key)
 		wcs := make([]*watchChan, 0)
 
 		for _, kr := range keyRanges {
@@ -160,9 +160,6 @@ func (w *watcher) run(ctx context.Context, key string, rev int64, recursive bool
 }
 
 func (w *watcher) updatePartitionConfig(dp corev1.DataPartitionConfig) {
-	// try to avoid concurrent map writes error
-	w.updateMux.Lock()
-
 	rangeStartValue := ""
 	if dp.IsRangeStartValid {
 		rangeStartValue = dp.RangeStart
@@ -176,6 +173,8 @@ func (w *watcher) updatePartitionConfig(dp corev1.DataPartitionConfig) {
 		Begin: rangeStartValue,
 		End:   rangeEndValue,
 	}
+
+	w.updateMux.Lock()
 
 	for k := range w.partitionConfig {
 		klog.V(3).Infof("updatePartitionConfig interval key %s, interval [%+v]", k, interval)
@@ -284,7 +283,7 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 		opts = append(opts, clientv3.WithPrefix())
 	}
 
-	klog.V(3).Infof("Starting watcher for wc.ctx=%v, wc.key=%v", wc.ctx, wc.key)
+	klog.V(3).Infof("Starting watcher for wc.key=%v", wc.key)
 
 	if wc.keyRange.begin != "" && wc.keyRange.end != "" {
 		wc.key = wc.keyRange.begin
@@ -322,11 +321,14 @@ func (wc *watchChan) startWatching(watchClosedCh chan struct{}) {
 //  getKeyAndOptFromPartitionConfig does:
 // - update the watchChan key by adding interval begin / end
 // - create the opts by adding opened range end or range beginning if either of them applies
-func GetKeyAndOptFromPartitionConfig(key string, partitionConfig map[string]storage.Interval) []keyRange {
+func (w *watcher) getKeyAndOptFromPartitionConfig(key string) []keyRange {
 
 	var res []keyRange
 
-	if val, ok := partitionConfig[key]; ok {
+	w.updateMux.RLock()
+	if val, ok := w.partitionConfig[key]; ok {
+		w.updateMux.RUnlock()
+
 		updatedKey := key
 		updatedEnd := key
 		// The interval end is not empty.
@@ -357,6 +359,7 @@ func GetKeyAndOptFromPartitionConfig(key string, partitionConfig map[string]stor
 			res = append(res, keyRange{key, ""})
 		}
 	} else {
+		w.updateMux.RUnlock()
 		res = append(res, keyRange{key, ""})
 	}
 	return res

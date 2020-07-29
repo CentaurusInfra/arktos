@@ -64,13 +64,15 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *tenantcontroll
 	networkClient := arktos.NewForConfigOrDie(configs)
 	controller := tenantcontroller.NewTenantController(clientSet,
 		informerSet.Core().V1().Tenants(),
+		informerSet.Core().V1().Namespaces(),
+		informerSet.Rbac().V1().ClusterRoles(),
+		informerSet.Rbac().V1().ClusterRoleBindings(),
 		resyncPeriod,
 		networkClient,
 		"",
 		dynamicClient,
 		discoverTenantedResourcesFn,
-		v1.FinalizerArktos,
-	)
+		v1.FinalizerArktos)
 	return server, closeFn, controller, informerSet, clientSet, *configs
 }
 
@@ -170,7 +172,7 @@ func newTenant(name string) *v1.Tenant {
 			Name: testTenant,
 		},
 		Spec: v1.TenantSpec{
-			StorageClusterId: "system",
+			StorageClusterId: "0",
 		},
 	}
 }

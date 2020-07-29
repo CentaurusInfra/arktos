@@ -982,6 +982,7 @@ EOF
 function create-kubeconfig {
   local component=$1
   local token=$2
+  local master_ip=${3:-localhost}  #optional
   echo "Creating kubeconfig file for component ${component}"
   mkdir -p /etc/srv/kubernetes/${component}
   cat <<EOF >/etc/srv/kubernetes/${component}/kubeconfig
@@ -995,7 +996,7 @@ clusters:
 - name: local
   cluster:
     insecure-skip-tls-verify: true
-    server: https://localhost:443
+    server: https://${master_ip}:443
 contexts:
 - context:
     cluster: local
@@ -2131,7 +2132,8 @@ function start-kube-controller-manager {
 function start-workload-controller-manager {
   mkdir -p /etc/srv/kubernetes/workload-controller-manager
   echo "Start workload controller-manager"
-  create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN}
+  local master_ip=${1:-}  #optional
+  create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN} ${master_ip}
   if [[ -f "${KUBE_HOME}/controllerconfig.json" ]]; then
     cp ${KUBE_HOME}/controllerconfig.json /etc/srv/kubernetes/workload-controller-manager/
   fi

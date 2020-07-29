@@ -480,7 +480,7 @@ func (o *DiffOptions) Run() error {
 
 		local := info.Object.DeepCopyObject()
 		for i := 1; i <= maxRetries; i++ {
-			if err = info.Get(); err != nil {
+			if err = info.GetWithMultiTenancy(); err != nil {
 				if !errors.IsNotFound(err) {
 					return err
 				}

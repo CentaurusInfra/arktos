@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,7 +36,7 @@ import (
 )
 
 const (
-	baseHeapsterServiceAddress = "/api/v1/namespaces/kube-system/services/http:heapster:/proxy"
+	baseHeapsterServiceAddress = "/api/v1/tenants/system/namespaces/kube-system/services/http:heapster:/proxy"
 	baseMetricsAddress         = baseHeapsterServiceAddress + "/apis/metrics"
 	baseMetricsServerAddress   = "/apis/metrics.k8s.io/v1beta1"
 	metricsAPIVersion          = "v1alpha1"

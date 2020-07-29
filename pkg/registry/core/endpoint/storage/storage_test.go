@@ -18,12 +18,14 @@ limitations under the License.
 package storage
 
 import (
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistrytest "k8s.io/apiserver/pkg/registry/generic/testing"
 	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
@@ -142,4 +144,65 @@ func TestWatch(t *testing.T) {
 			{"name": "foo"},
 		},
 	)
+}
+
+func TestGetK8SAlias(t *testing.T) {
+	storage, server := newStorage(t)
+	defer server.Terminate(t)
+	defer storage.Store.DestroyFunc()
+
+	ctxCreate := genericapirequest.NewDefaultContext()
+	k8s := &api.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kubernetes",
+		},
+	}
+	objSaved, err := storage.Create(ctxCreate, k8s, func(obj runtime.Object) error { return nil }, &metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("failed to setup system k8s EP: %v", err)
+	}
+	k8sSaved := objSaved.(*api.Endpoints)
+
+	ctxGet := genericapirequest.NewDefaultContext()
+	ctxGet = genericapirequest.WithTenantAndNamespace(ctxGet, "bar", "default")
+	obj, err := storage.Get(ctxGet, "kubernetes-foo", &metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ep := obj.(*api.Endpoints)
+
+	if ep.UID != k8sSaved.UID {
+		t.Errorf("expected objetct UID %s, got %s", k8sSaved.UID, ep.UID)
+	}
+
+	if ep.Tenant != "bar" {
+		t.Errorf("returned ep was expected tenant %q, got %q", "bar", ep.Tenant)
+	}
+
+	if ep.Name != "kubernetes-foo" {
+		t.Errorf("returned ep was expected name %q, got %q", "kubernetes-foo", ep.Name)
+	}
+
+	networkLabel := ep.Labels["arktos.futurewei.com/network"]
+	if networkLabel != "foo" {
+		t.Errorf("returned ep was expected network label %q, got %q", "foo", networkLabel)
+	}
+}
+
+func TestCreateK8SAliasShouldBeForbidden(t *testing.T) {
+	storage, server := newStorage(t)
+	defer server.Terminate(t)
+	defer storage.Store.DestroyFunc()
+
+	ctxCreate := genericapirequest.NewDefaultContext()
+	k8s := &api.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kubernetes-foo",
+		},
+	}
+	_, err := storage.Create(ctxCreate, k8s, func(obj runtime.Object) error { return nil }, &metav1.CreateOptions{})
+	if !strings.Contains(err.Error(), "Forbidden: read only resource not allowed to create or update") {
+		t.Errorf("expected '... Forbidden: read only resource not allowed to create or update'; got %q", err)
+	}
 }

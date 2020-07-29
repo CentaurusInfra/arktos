@@ -244,7 +244,7 @@ func TestDeleteObjectGraceZeroWithMultiTenancy(t *testing.T) {
 				default:
 					return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &metav1.Status{})}, nil
 				}
-			case p == "/api/v1/namespaces/test" && m == "GET":
+			case p == "/api/v1/tenants/system/namespaces/test" && m == "GET":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Namespace{})}, nil
 			case p == "/tenants/test-te/namespaces/test/pods/nginx" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &pods.Items[0])}, nil

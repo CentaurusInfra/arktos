@@ -835,7 +835,10 @@ func TestList(t *testing.T) {
 	list := &example.PodList{}
 	store.List(ctx, "/two-level", "0", storage.Everything, list)
 	continueRV, _ := strconv.Atoi(list.ResourceVersion)
-	secondContinuation, err := encodeContinue("/two-level/2", "/two-level/", int64(continueRV))
+	listResult := []listPartitionResult{
+		{key: "/two-level/2", keyPrefix: "/two-level/", returnedRV: int64(continueRV)},
+	}
+	secondContinuation, err := encodeContinue(listResult)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1011,7 +1014,7 @@ func TestList(t *testing.T) {
 				Field:    fields.OneTermEqualSelector("metadata.name", "bar"),
 				Label:    labels.Everything(),
 				Limit:    2,
-				Continue: encodeContinueOrDie("meta.k8s.io/v1", int64(continueRV), "z-level/3"),
+				Continue: encodeContinueOrDie(0, "meta.k8s.io/v1", int64(continueRV), "z-level/3"),
 			},
 			expectedOut: []*example.Pod{preset[4].storedObj},
 		},
@@ -1022,7 +1025,7 @@ func TestList(t *testing.T) {
 				Field:    fields.OneTermEqualSelector("metadata.name", "bar"),
 				Label:    labels.Everything(),
 				Limit:    1,
-				Continue: encodeContinueOrDie("meta.k8s.io/v1", int64(continueRV), "z-level/3/test-2"),
+				Continue: encodeContinueOrDie(0, "meta.k8s.io/v1", int64(continueRV), "z-level/3/test-2"),
 			},
 			expectedOut: []*example.Pod{preset[4].storedObj},
 		},
@@ -1033,7 +1036,7 @@ func TestList(t *testing.T) {
 				Field:    fields.OneTermEqualSelector("metadata.name", "bar"),
 				Label:    labels.Everything(),
 				Limit:    2,
-				Continue: encodeContinueOrDie("meta.k8s.io/v1", int64(continueRV), "z-level/3/test-2"),
+				Continue: encodeContinueOrDie(0, "meta.k8s.io/v1", int64(continueRV), "z-level/3/test-2"),
 			},
 			expectedOut: []*example.Pod{preset[4].storedObj},
 		},
@@ -1183,8 +1186,8 @@ func TestListContinuation(t *testing.T) {
 		t.Fatalf("Unexpected continuation token set")
 	}
 	if !reflect.DeepEqual(out.Items, []example.Pod{*preset[1].storedObj, *preset[2].storedObj}) {
-		key, rv, err := decodeContinue(continueFromSecondItem, "/")
-		t.Logf("continue token was %d %s %v", rv, key, err)
+		continueTokens, err := decodeContinue(continueFromSecondItem, "/")
+		t.Logf("continue token was %d %s %v", continueTokens[0].ResourceVersion, continueTokens[0].continueKey, err)
 		t.Fatalf("Unexpected second page: %#v", out.Items)
 	}
 
@@ -1326,10 +1329,12 @@ func TestListInconsistentContinuation(t *testing.T) {
 	if !strings.Contains(err.Error(), inconsistentContinue) {
 		t.Fatalf("unexpected error message %v", err)
 	}
+
 	status, ok := err.(apierrors.APIStatus)
 	if !ok {
 		t.Fatalf("expect error of implements the APIStatus interface, got %v", reflect.TypeOf(err))
 	}
+
 	inconsistentContinueFromSecondItem := status.Status().ListMeta.Continue
 	if len(inconsistentContinueFromSecondItem) == 0 {
 		t.Fatalf("expect non-empty continue token")
@@ -1414,8 +1419,9 @@ func TestPrefix(t *testing.T) {
 	}
 }
 
-func encodeContinueOrDie(apiVersion string, resourceVersion int64, nextKey string) string {
-	out, err := json.Marshal(&continueToken{APIVersion: apiVersion, ResourceVersion: resourceVersion, StartKey: nextKey})
+func encodeContinueOrDie(clusterId uint8, apiVersion string, resourceVersion int64, nextKey string) string {
+	continueTokens := []continueToken{{ClusterId: clusterId, APIVersion: apiVersion, ResourceVersion: resourceVersion, StartKey: nextKey}}
+	out, err := json.Marshal(&continueTokens)
 	if err != nil {
 		panic(err)
 	}
@@ -1428,35 +1434,49 @@ func Test_decodeContinue(t *testing.T) {
 		keyPrefix     string
 	}
 	tests := []struct {
-		name        string
-		args        args
-		wantFromKey string
-		wantRv      int64
-		wantErr     bool
+		name          string
+		args          args
+		wantFromKey   string
+		wantRv        int64
+		wantClusterId uint8
+		wantErr       bool
 	}{
-		{name: "valid", args: args{continueValue: encodeContinueOrDie("meta.k8s.io/v1", 1, "key"), keyPrefix: "/test/"}, wantRv: 1, wantFromKey: "/test/key"},
-		{name: "root path", args: args{continueValue: encodeContinueOrDie("meta.k8s.io/v1", 1, "/"), keyPrefix: "/test/"}, wantRv: 1, wantFromKey: "/test/"},
+		{name: "valid", args: args{continueValue: encodeContinueOrDie(0, "meta.k8s.io/v1", 1, "key"), keyPrefix: "/test/"}, wantRv: 1, wantFromKey: "/test/key", wantClusterId: 0},
+		{name: "root path", args: args{continueValue: encodeContinueOrDie(0, "meta.k8s.io/v1", 1, "/"), keyPrefix: "/test/"}, wantRv: 1, wantFromKey: "/test/", wantClusterId: 0},
+		{name: "empty version", args: args{continueValue: encodeContinueOrDie(0, "", 1, "key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "invalid version", args: args{continueValue: encodeContinueOrDie(0, "v1", 1, "key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - parent", args: args{continueValue: encodeContinueOrDie(0, "meta.k8s.io/v1", 1, "../key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - local", args: args{continueValue: encodeContinueOrDie(0, "meta.k8s.io/v1", 1, "./key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - double parent", args: args{continueValue: encodeContinueOrDie(0, "meta.k8s.io/v1", 1, "./../key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - after parent", args: args{continueValue: encodeContinueOrDie(0, "meta.k8s.io/v1", 1, "key/../.."), keyPrefix: "/test/"}, wantErr: true},
 
-		{name: "empty version", args: args{continueValue: encodeContinueOrDie("", 1, "key"), keyPrefix: "/test/"}, wantErr: true},
-		{name: "invalid version", args: args{continueValue: encodeContinueOrDie("v1", 1, "key"), keyPrefix: "/test/"}, wantErr: true},
-
-		{name: "path traversal - parent", args: args{continueValue: encodeContinueOrDie("meta.k8s.io/v1", 1, "../key"), keyPrefix: "/test/"}, wantErr: true},
-		{name: "path traversal - local", args: args{continueValue: encodeContinueOrDie("meta.k8s.io/v1", 1, "./key"), keyPrefix: "/test/"}, wantErr: true},
-		{name: "path traversal - double parent", args: args{continueValue: encodeContinueOrDie("meta.k8s.io/v1", 1, "./../key"), keyPrefix: "/test/"}, wantErr: true},
-		{name: "path traversal - after parent", args: args{continueValue: encodeContinueOrDie("meta.k8s.io/v1", 1, "key/../.."), keyPrefix: "/test/"}, wantErr: true},
+		{name: "valid", args: args{continueValue: encodeContinueOrDie(1, "meta.k8s.io/v1", 1, "key"), keyPrefix: "/test/"}, wantRv: 1, wantFromKey: "/test/key", wantClusterId: 1},
+		{name: "root path", args: args{continueValue: encodeContinueOrDie(1, "meta.k8s.io/v1", 1, "/"), keyPrefix: "/test/"}, wantRv: 1, wantFromKey: "/test/", wantClusterId: 1},
+		{name: "empty version", args: args{continueValue: encodeContinueOrDie(1, "", 1, "key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "invalid version", args: args{continueValue: encodeContinueOrDie(1, "v1", 1, "key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - parent", args: args{continueValue: encodeContinueOrDie(1, "meta.k8s.io/v1", 1, "../key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - local", args: args{continueValue: encodeContinueOrDie(1, "meta.k8s.io/v1", 1, "./key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - double parent", args: args{continueValue: encodeContinueOrDie(1, "meta.k8s.io/v1", 1, "./../key"), keyPrefix: "/test/"}, wantErr: true},
+		{name: "path traversal - after parent", args: args{continueValue: encodeContinueOrDie(1, "meta.k8s.io/v1", 1, "key/../.."), keyPrefix: "/test/"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFromKey, gotRv, err := decodeContinue(tt.args.continueValue, tt.args.keyPrefix)
+			continueTokens, err := decodeContinue(tt.args.continueValue, tt.args.keyPrefix)
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("decodeContinue() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if gotFromKey != tt.wantFromKey {
-				t.Errorf("decodeContinue() gotFromKey = %v, want %v", gotFromKey, tt.wantFromKey)
-			}
-			if gotRv != tt.wantRv {
-				t.Errorf("decodeContinue() gotRv = %v, want %v", gotRv, tt.wantRv)
+			if !tt.wantErr {
+				if continueTokens[0].continueKey != tt.wantFromKey {
+					t.Errorf("decodeContinue() gotFromKey = %v, want %v", continueTokens[0].continueKey, tt.wantFromKey)
+				}
+				if continueTokens[0].ResourceVersion != tt.wantRv {
+					t.Errorf("decodeContinue() gotRv = %v, want %v", continueTokens[0].ResourceVersion, tt.wantRv)
+				}
+				if continueTokens[0].ClusterId != tt.wantClusterId {
+					t.Errorf("decodeContinue() gotClusterId = %v, want %v", continueTokens[0].ClusterId, tt.wantClusterId)
+				}
 			}
 		})
 	}
@@ -1527,11 +1547,11 @@ func Test_growSlice(t *testing.T) {
 	}
 }
 
-func mockGetClusterIdFromTenant(tenant string) string {
+func mockGetClusterIdFromTenant(tenant string) uint8 {
 	if tenant == "t1" {
-		return "c1"
+		return 1
 	}
-	return ""
+	return 0
 }
 
 func TestGetClientFromKey(t *testing.T) {
@@ -1541,13 +1561,13 @@ func TestGetClientFromKey(t *testing.T) {
 		storagecluster.GetClusterIdFromTenantHandler = originHandler
 	}()
 
-	systemClient := &clientv3.Client{Username: "system"}
-	dataClientV3 := &clientv3.Client{Username: "data"}
+	systemClient, _ := clientv3.NewFromURL("http://1.1.1.1")
+	dataClientV3, _ := clientv3.NewFromURL("http://2.2.2.2")
 	storeT := &store{
 		client:             systemClient,
-		dataClusterClients: make(map[string]*clientv3.Client),
+		dataClusterClients: make(map[uint8]*clientv3.Client),
 	}
-	storeT.dataClusterClients["c1"] = dataClientV3
+	storeT.dataClusterClients[1] = dataClientV3
 
 	tenant := "t1"
 	namespace := "ns"
@@ -1569,6 +1589,7 @@ func TestGetClientFromKey(t *testing.T) {
 		"services/endpoints/kube-system/kube-dns",
 		"namespaces/",
 		"apiextensions.k8s.io/customresourcedefinitions",
+		"/",
 	}
 
 	dataKeys := []string{
@@ -1578,6 +1599,7 @@ func TestGetClientFromKey(t *testing.T) {
 
 	// Various integration test prefix
 	pathPrefixes := []string{
+		"",
 		"/registry",
 		"/registry/",
 		"/9be9cd9e-4d25-4415-b34d-66de47b7c83f",

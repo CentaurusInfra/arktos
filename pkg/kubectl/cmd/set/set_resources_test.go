@@ -167,7 +167,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx"},
 		},
 		{
@@ -188,7 +188,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx"},
 		},
 		{
@@ -209,7 +209,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx"},
 		},
 		{
@@ -230,7 +230,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx"},
 		},
 		{
@@ -251,7 +251,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx"},
 		},
 		{
@@ -272,7 +272,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx"},
 		},
 		{
@@ -293,7 +293,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx"},
 		},
 		{
@@ -314,7 +314,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx"},
 		},
 		{
@@ -335,7 +335,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx"},
 		},
 		{
@@ -356,7 +356,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx"},
 		},
 		{
@@ -377,7 +377,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx"},
 		},
 		{
@@ -398,7 +398,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx"},
 		},
 		{
@@ -419,7 +419,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx"},
 		},
 		{
@@ -440,7 +440,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: batchv1.SchemeGroupVersion,
-			path:         "/namespaces/test/jobs/nginx",
+			path:         "/tenants/system/namespaces/test/jobs/nginx",
 			args:         []string{"job", "nginx"},
 		},
 		{
@@ -461,7 +461,7 @@ func TestSetResourcesRemote(t *testing.T) {
 				},
 			},
 			groupVersion: corev1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicationcontrollers/nginx",
+			path:         "/tenants/system/namespaces/test/replicationcontrollers/nginx",
 			args:         []string{"replicationcontroller", "nginx"},
 		},
 	}

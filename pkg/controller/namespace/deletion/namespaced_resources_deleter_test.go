@@ -132,27 +132,17 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 	groupVersionResources, _ := discovery.GroupVersionResources(resources)
 	for groupVersionResource := range groupVersionResources {
 		var urlPath string
-		if tenant == metav1.TenantSystem {
-			urlPath = path.Join([]string{
-				dynamic.LegacyAPIPathResolverFunc(schema.GroupVersionKind{Group: groupVersionResource.Group, Version: groupVersionResource.Version}),
-				groupVersionResource.Group,
-				groupVersionResource.Version,
-				"namespaces",
-				namespaceName,
-				groupVersionResource.Resource,
-			}...)
-		} else {
-			urlPath = path.Join([]string{
-				dynamic.LegacyAPIPathResolverFunc(schema.GroupVersionKind{Group: groupVersionResource.Group, Version: groupVersionResource.Version}),
-				groupVersionResource.Group,
-				groupVersionResource.Version,
-				"tenants",
-				tenant,
-				"namespaces",
-				namespaceName,
-				groupVersionResource.Resource,
-			}...)
-		}
+
+		urlPath = path.Join([]string{
+			dynamic.LegacyAPIPathResolverFunc(schema.GroupVersionKind{Group: groupVersionResource.Group, Version: groupVersionResource.Version}),
+			groupVersionResource.Group,
+			groupVersionResource.Version,
+			"tenants",
+			tenant,
+			"namespaces",
+			namespaceName,
+			groupVersionResource.Resource,
+		}...)
 
 		dynamicClientActionSet.Insert((&fakeAction{method: "GET", path: urlPath}).String())
 		dynamicClientActionSet.Insert((&fakeAction{method: "DELETE", path: urlPath}).String())

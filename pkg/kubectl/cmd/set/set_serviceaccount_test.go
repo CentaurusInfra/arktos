@@ -154,7 +154,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", serviceAccount},
 		},
 		{
@@ -174,7 +174,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", serviceAccount},
 		},
 		{
@@ -194,7 +194,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", serviceAccount},
 		},
 		{
@@ -202,7 +202,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", serviceAccount},
 		},
 		{
@@ -210,7 +210,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", serviceAccount},
 		},
 		{
@@ -218,7 +218,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", serviceAccount},
 		},
 		{
@@ -226,7 +226,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", serviceAccount},
 		},
 		{
@@ -234,7 +234,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", serviceAccount},
 		},
 		{
@@ -242,7 +242,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", serviceAccount},
 		},
 		{
@@ -262,7 +262,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", serviceAccount},
 		},
 		{
@@ -270,7 +270,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", serviceAccount},
 		},
 		{
@@ -278,7 +278,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", serviceAccount},
 		},
 		{
@@ -298,7 +298,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", serviceAccount},
 		},
 		{
@@ -306,7 +306,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: batchv1.SchemeGroupVersion,
-			path:         "/namespaces/test/jobs/nginx",
+			path:         "/tenants/system/namespaces/test/jobs/nginx",
 			args:         []string{"job", "nginx", serviceAccount},
 		},
 		{
@@ -314,7 +314,7 @@ func TestSetServiceAccountRemote(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 			},
 			groupVersion: corev1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicationcontrollers/nginx",
+			path:         "/tenants/system/namespaces/test/replicationcontrollers/nginx",
 			args:         []string{"replicationcontroller", "nginx", serviceAccount},
 		},
 	}

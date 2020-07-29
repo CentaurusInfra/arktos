@@ -10,6 +10,7 @@
 			"metadata": {
 				"name": "svc1",
 				"namespace": "edit-test",
+				"tenant": "system",
 				"selfLink": "/api/v1/namespaces/edit-test/services/svc1",
 				"uid": "9bec82be-e9d7-11e6-8c3b-acbc32c1ca87",
 				"resourceVersion": "1904",
