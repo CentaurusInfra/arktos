@@ -21,7 +21,6 @@ import (
 	"sync"
 	"time"
 
-	goerrors "github.com/go-errors/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -183,7 +182,7 @@ func (p *profileMeasurement) String() string {
 func (p *profileMeasurement) gatherProfile(c clientset.Interface, SSHToMasterSupported bool, config *measurement.MeasurementConfig) ([]measurement.Summary, error) {
 	getCommand, err := p.getProfileCommand(config)
 	if err != nil {
-		return nil, goerrors.Errorf("profile gathering failed during retrieving profile command: %v", err)
+		return nil, fmt.Errorf("profile gathering failed during retrieving profile command: %v", err)
 	}
 
 	var summaries []measurement.Summary
@@ -227,7 +226,7 @@ func (p *profileMeasurement) shouldExposeApiServerDebugEndpoint() bool {
 func (p *profileMeasurement) getProfileCommand(config *measurement.MeasurementConfig) (string, error) {
 	profilePort, err := getPortForComponent(p.config.componentName)
 	if err != nil {
-		return "", goerrors.Errorf("get profile command failed finding component port: %v", err)
+		return "", fmt.Errorf("get profile command failed finding component port: %v", err)
 	}
 	profileProtocol := getProtocolForComponent(p.config.componentName)
 

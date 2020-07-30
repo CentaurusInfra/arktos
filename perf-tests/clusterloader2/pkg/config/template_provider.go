@@ -30,7 +30,6 @@ import (
 	"sync"
 	"text/template"
 
-	goerrors "github.com/go-errors/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/api"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
@@ -223,7 +222,7 @@ func GetMapping(clusterLoaderConfig *ClusterLoaderConfig) (map[string]interface{
 	mapping["Nodes"] = clusterLoaderConfig.ClusterConfig.Nodes
 	envMapping, err := LoadCL2Envs()
 	if err != nil {
-		return nil, errors.NewErrorList(goerrors.Errorf("mapping creation error: %v", err))
+		return nil, errors.NewErrorList(fmt.Errorf("mapping creation error: %v", err))
 	}
 	MergeMappings(mapping, envMapping)
 	return mapping, nil
@@ -238,7 +237,7 @@ func LoadCL2Envs() (map[string]interface{}, error) {
 		}
 		split := strings.Split(keyValue, "=")
 		if len(split) != 2 {
-			return nil, goerrors.Errorf("unparsable string in os.Eviron(): %v", keyValue)
+			return nil, fmt.Errorf("unparsable string in os.Eviron(): %v", keyValue)
 		}
 		key, value := split[0], split[1]
 		mapping[key] = unpackStringValue(value)
@@ -269,7 +268,7 @@ func MergeMappings(a, b map[string]interface{}) error {
 			continue
 		}
 		if !reflect.DeepEqual(av, bv) {
-			return goerrors.Errorf("merge conflict for key '%v': old value=%v, new value=%v", k, av, bv)
+			return fmt.Errorf("merge conflict for key '%v': old value=%v, new value=%v", k, av, bv)
 		}
 	}
 	return nil

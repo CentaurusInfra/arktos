@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strconv"
 
-	goerrors "github.com/go-errors/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -167,21 +166,21 @@ func GetIsPodUpdatedPredicateFromRuntimeObject(obj runtime.Object) (func(*corev1
 	case *unstructured.Unstructured:
 		return getIsPodUpdatedPodPredicateFromUnstructured(typed)
 	default:
-		return nil, goerrors.Errorf("unsupported kind when getting updated pod predicate: %v", obj)
+		return nil, fmt.Errorf("unsupported kind when getting updated pod predicate: %v", obj)
 	}
 }
 
 func getIsPodUpdatedPodPredicateFromUnstructured(obj *unstructured.Unstructured) (func(_ *corev1.Pod) bool, error) {
 	templateMap, ok, err := unstructured.NestedMap(obj.UnstructuredContent(), "spec", "template")
 	if err != nil {
-		return nil, goerrors.Errorf("failed to get pod template: %v", err)
+		return nil, fmt.Errorf("failed to get pod template: %v", err)
 	}
 	if !ok {
-		return nil, goerrors.Errorf("spec.template is not set in object %v", obj.UnstructuredContent())
+		return nil, fmt.Errorf("spec.template is not set in object %v", obj.UnstructuredContent())
 	}
 	template := corev1.PodTemplateSpec{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(templateMap, &template); err != nil {
-		return nil, goerrors.Errorf("failed to parse spec.teemplate as v1.PodTemplateSpec")
+		return nil, fmt.Errorf("failed to parse spec.teemplate as v1.PodTemplateSpec")
 	}
 
 	return func(pod *corev1.Pod) bool {

@@ -19,7 +19,6 @@ package bundle
 import (
 	"fmt"
 
-	goerrors "github.com/go-errors/errors"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
@@ -276,7 +275,7 @@ func appendResults(summaries *[]measurement.Summary, errList *errors.ErrorList, 
 
 func executeError(measurement, action string, err error) error {
 	if err != nil {
-		return goerrors.Errorf("action %s failed for %s measurement: %v", action, measurement, err)
+		return fmt.Errorf("action %s failed for %s measurement: %v", action, measurement, err)
 	}
 	return nil
 }
