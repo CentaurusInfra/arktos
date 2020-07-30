@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/cmd/flat-network-controller/app"
+	"k8s.io/kubernetes/cmd/arktos-network-controller/app"
 )
 
 const defaultWorkers = 4
@@ -80,7 +80,7 @@ func main() {
 	informerFactory.Start(stopCh)
 	controller.Run(workers, stopCh)
 
-	klog.Infof("flat network controller exited")
+	klog.Infof("arktos network controller exited")
 }
 
 func init() {
