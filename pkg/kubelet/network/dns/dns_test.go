@@ -62,6 +62,23 @@ func newTestConfigurer(recorder *record.FakeRecorder, nodeRef *v1.ObjectReferenc
 		},
 		Status: arktosv1.NetworkStatus{
 			DNSServiceIP: dnsVIPOfTestNetwork,
+			Phase: "Ready",
+		},
+	})
+	return NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
+}
+
+func newTestConfigurerWithNotReadyNetwork(recorder *record.FakeRecorder, nodeRef *v1.ObjectReference, clusterDNS []net.IP, testClusterDNSDomain, resolverConfig string) *Configurer {
+	networkClient := fakearktosv1.NewSimpleClientset(&arktosv1.Network{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "default",
+			Tenant: "system",
+		},
+		Spec: arktosv1.NetworkSpec{
+			Type: "test-type",
+		},
+		Status: arktosv1.NetworkStatus{
+			Phase: "Unknown",
 		},
 	})
 	return NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
@@ -481,6 +498,30 @@ func TestGetPodDNS(t *testing.T) {
 		t.Errorf("expected prepend of cluster domain, got %+v", options[2].DNSSearch)
 	} else if options[2].DNSSearch[0] != ".svc."+configurer.ClusterDomain {
 		t.Errorf("expected domain %s, got %s", ".svc."+configurer.ClusterDomain, options[0].DNSSearch)
+	}
+}
+
+func TestGetPodDNSWithNotReadyNetwork(t *testing.T) {
+	recorder := record.NewFakeRecorder(20)
+	nodeRed := &v1.ObjectReference{
+		Kind:            "Node",
+		Name:            string("testNode"),
+		UID:             types.UID("testNode"),
+	}
+	configurer := newTestConfigurerWithNotReadyNetwork(recorder, nodeRed, nil, "test.domain", "")
+
+	pods := newTestPods(1)
+	pods[0].Spec.DNSPolicy = v1.DNSClusterFirst
+	pods[0].Spec.HostNetwork  =false
+
+	_, err := configurer.GetPodDNS(pods[0])
+
+	if err == nil {
+		t.Fatalf("expected error; got nil")
+	}
+
+	if !strings.Contains(err.Error(), "not ready") {
+		t.Fatalf("expected phase not ready error, got %v", err)
 	}
 }
 

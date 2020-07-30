@@ -29,7 +29,8 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	arktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/typed/arktosextensions/v1"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	arktosextensions "k8s.io/arktos-ext/pkg/generated/clientset/versioned/typed/arktosextensions/v1"
 	"k8s.io/client-go/tools/record"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
@@ -68,11 +69,11 @@ type Configurer struct {
 	ResolverConfig string
 
 	// client to access network CR
-	arktosV1Client arktosv1.ArktosV1Interface
+	arktosV1Client arktosextensions.ArktosV1Interface
 }
 
 // NewConfigurer returns a DNS configurer for launching pods.
-func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, arktosV1Client arktosv1.ArktosV1Interface) *Configurer {
+func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, arktosV1Client arktosextensions.ArktosV1Interface) *Configurer {
 	return &Configurer{
 		recorder:       recorder,
 		nodeRef:        nodeRef,
@@ -84,7 +85,7 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 	}
 }
 
-func (c *Configurer) getClusterDNS(pod *v1.Pod) []net.IP {
+func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 	// todo: consider using exported const of default network name from arktos package
 	const defaultNetwork = "default"
 	networkName, ok := pod.Labels["arktos.futurewei.com/network"]
@@ -93,10 +94,13 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) []net.IP {
 	}
 
 	if network, err := c.arktosV1Client.NetworksWithMultiTenancy(pod.Tenant).Get(networkName, metav1.GetOptions{}); err == nil {
-		sip := network.Status.DNSServiceIP
-		ip := net.ParseIP(sip)
+		if network.Status.Phase != arktosv1.NetworkReady {
+			return nil, fmt.Errorf("network %s/%s is in %q phase, not ready", network.Tenant, network.Name, network.Status.Phase)
+		}
+
+		ip := net.ParseIP(network.Status.DNSServiceIP)
 		if ip != nil {
-			return []net.IP{ip}
+			return []net.IP{ip}, nil
 		}
 	} else {
 		klog.Errorf("failed to get network %s/%s: %v", pod.Tenant, networkName, err)
@@ -106,10 +110,11 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) []net.IP {
 	// This is temporary measure to keep system unbroken before all multi-tenant network dependencies are in place.
 	// todo: disable the fallback when every multi-tenant networking components are in place.
 	if networkName == defaultNetwork {
-		return c.clusterDNS
+		return c.clusterDNS, nil
 	}
 
-	return nil
+	// todo: consider returning an error here
+	return nil, nil
 }
 
 func omitDuplicates(strs []string) []string {
@@ -372,7 +377,11 @@ func (c *Configurer) GetPodDNS(pod *v1.Pod) (*runtimeapi.DNSConfig, error) {
 		// DNSNone should use empty DNS settings as the base.
 		dnsConfig = &runtimeapi.DNSConfig{}
 	case podDNSCluster:
-		clusterDNS := c.getClusterDNS(pod)
+		var clusterDNS []net.IP
+		if clusterDNS, err = c.getClusterDNS(pod); err != nil {
+			return nil, fmt.Errorf("failed to get DNS IP add: %v", err)
+		}
+
 		if len(clusterDNS) != 0 {
 			// For a pod with DNSClusterFirst policy, the cluster DNS server is
 			// the only nameserver configured for the pod. The cluster DNS server
