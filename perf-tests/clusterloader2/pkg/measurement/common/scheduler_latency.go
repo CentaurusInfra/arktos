@@ -42,7 +42,7 @@ const (
 	e2eSchedulingDurationMetricName           = model.LabelValue(schedulermetric.SchedulerSubsystem + "_e2e_scheduling_duration_seconds_bucket")
 	schedulingAlgorithmDurationMetricName     = model.LabelValue(schedulermetric.SchedulerSubsystem + "_scheduling_algorithm_duration_seconds_bucket")
 	frameworkExtensionPointDurationMetricName = model.LabelValue(schedulermetric.SchedulerSubsystem + "_framework_extension_point_duration_seconds_bucket")
-	schedulingLatencyMetricName               = model.LabelValue(schedulermetric.SchedulerSubsystem + "_" + schedulermetric.DeprecatedSchedulingDurationName)
+	schedulingLatencyMetricName               = model.LabelValue(schedulermetric.SchedulerSubsystem + "_" + schedulermetric.DeprecatedSchedulingLatencyName)
 
 	singleRestCallTimeout = 5 * time.Minute
 )
