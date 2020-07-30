@@ -6,7 +6,7 @@ go_library(
         "controller.go",
         "dns_deployment.go",
     ],
-    importpath = "k8s.io/kubernetes/cmd/flat-network-controller/app",
+    importpath = "k8s.io/kubernetes/cmd/arktos-network-controller/app",
     visibility = ["//visibility:public"],
     deps = [
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
