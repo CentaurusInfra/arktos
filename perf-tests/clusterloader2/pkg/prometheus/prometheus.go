@@ -31,12 +31,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/system"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/flags"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/pkg/util/system"
 )
 
 const (

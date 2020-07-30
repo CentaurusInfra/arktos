@@ -324,12 +324,12 @@ func (s *Server) InstallDefaultHandlers(enableCAdvisorJSONEndpoints bool) {
 
 	// prober metrics are exposed under a different endpoint
 	/*
-	p := prometheus.NewRegistry()
-	compbasemetrics.RegisterProcessStartTime(p)
-	p.MustRegister(prober.ProberResults)
-	s.restfulCont.Handle(proberMetricsPath,
-		promhttp.HandlerFor(p, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError}),
-	)
+		p := prometheus.NewRegistry()
+		compbasemetrics.RegisterProcessStartTime(p)
+		p.MustRegister(prober.ProberResults)
+		s.restfulCont.Handle(proberMetricsPath,
+			promhttp.HandlerFor(p, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError}),
+		)
 	*/
 
 	if enableCAdvisorJSONEndpoints {

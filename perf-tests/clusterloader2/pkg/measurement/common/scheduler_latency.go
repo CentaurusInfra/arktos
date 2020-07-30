@@ -28,12 +28,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/master/ports"
-	schedulermetric "k8s.io/kubernetes/pkg/scheduler/metrics"
-	"k8s.io/kubernetes/pkg/util/system"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
 	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/pkg/master/ports"
+	schedulermetric "k8s.io/kubernetes/pkg/scheduler/metrics"
+	"k8s.io/kubernetes/pkg/util/system"
 )
 
 const (
