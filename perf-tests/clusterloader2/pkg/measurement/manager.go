@@ -19,8 +19,8 @@ package measurement
 import (
 	"sync"
 
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
 )
 
 // measurementManager manages all measurement executions.

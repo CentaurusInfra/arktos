@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/errors"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework"
-	"k8s.io/perf-tests/clusterloader2/pkg/state"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/state"
 )
 
 var (

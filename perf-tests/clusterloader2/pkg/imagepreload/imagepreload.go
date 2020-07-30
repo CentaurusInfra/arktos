@@ -25,13 +25,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/flags"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework/client"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util/informer"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/flags"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/informer"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
 )
 
 const (

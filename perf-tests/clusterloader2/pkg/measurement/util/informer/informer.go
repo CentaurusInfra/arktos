@@ -27,7 +27,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
-	measurementutil "k8s.io/perf-tests/clusterloader2/pkg/measurement/util"
+	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
 )
 
 // NewInformer creates a new informer

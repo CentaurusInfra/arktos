@@ -24,7 +24,7 @@ import (
 
 	clientset "k8s.io/client-go/kubernetes"
 	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
 )
 
 const (

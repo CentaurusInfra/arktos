@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/perf-tests/clusterloader2/api"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework/client"
-	"k8s.io/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/api"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

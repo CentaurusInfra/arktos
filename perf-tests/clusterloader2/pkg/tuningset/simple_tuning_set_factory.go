@@ -19,7 +19,7 @@ package tuningset
 import (
 	"fmt"
 
-	"k8s.io/perf-tests/clusterloader2/api"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/api"
 )
 
 type simpleTuningSetFactory struct {

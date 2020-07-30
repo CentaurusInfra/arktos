@@ -24,7 +24,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
-	measurementutil "k8s.io/perf-tests/clusterloader2/pkg/measurement/util"
+	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
 )
 
 func TestGather(t *testing.T) {

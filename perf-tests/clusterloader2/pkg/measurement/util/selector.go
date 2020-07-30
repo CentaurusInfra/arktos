@@ -22,7 +22,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"k8s.io/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 // ObjectSelector is an aggregation of namespace, labelSelector and fieldSelector.

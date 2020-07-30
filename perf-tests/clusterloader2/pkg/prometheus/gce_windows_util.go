@@ -25,8 +25,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework/client"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
 )
 
 // gceNode is a struct storing gce node info

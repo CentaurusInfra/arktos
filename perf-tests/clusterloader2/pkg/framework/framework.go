@@ -26,9 +26,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/errors"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework/client"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
 
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"

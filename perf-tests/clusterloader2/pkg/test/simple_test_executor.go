@@ -19,7 +19,7 @@ package test
 import (
 	"fmt"
 	"io/ioutil"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
 	"path"
 	"strings"
 	"time"
@@ -29,12 +29,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
-	"k8s.io/perf-tests/clusterloader2/api"
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/errors"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
-	"k8s.io/perf-tests/clusterloader2/pkg/state"
-	"k8s.io/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/api"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/state"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 const (

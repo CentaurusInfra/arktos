@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/config"
 )
 
 // MultiClientSet is a set of kubernetes clients.

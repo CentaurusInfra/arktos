@@ -23,7 +23,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/system"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework/client"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
 )
 
 // GetSchedulableUntainedNodesNumber returns number of nodes in the cluster.

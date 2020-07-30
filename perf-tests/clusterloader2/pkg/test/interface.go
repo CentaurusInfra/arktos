@@ -17,14 +17,14 @@ limitations under the License.
 package test
 
 import (
-	"k8s.io/perf-tests/clusterloader2/api"
-	"k8s.io/perf-tests/clusterloader2/pkg/chaos"
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/errors"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement"
-	"k8s.io/perf-tests/clusterloader2/pkg/state"
-	"k8s.io/perf-tests/clusterloader2/pkg/tuningset"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/api"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/chaos"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/state"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/tuningset"
 )
 
 // CreatContextFunc a type for function that creates Context based on given framework client and state.

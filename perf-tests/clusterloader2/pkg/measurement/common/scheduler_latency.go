@@ -31,9 +31,9 @@ import (
 	"k8s.io/kubernetes/pkg/master/ports"
 	schedulermetric "k8s.io/kubernetes/pkg/scheduler/metrics"
 	"k8s.io/kubernetes/pkg/util/system"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement"
-	measurementutil "k8s.io/perf-tests/clusterloader2/pkg/measurement/util"
-	"k8s.io/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
+	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 const (

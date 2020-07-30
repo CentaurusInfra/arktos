@@ -29,15 +29,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 
-	"k8s.io/perf-tests/clusterloader2/pkg/errors"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement"
-	measurementutil "k8s.io/perf-tests/clusterloader2/pkg/measurement/util"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util/checker"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util/informer"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement/util/workerqueue"
-	"k8s.io/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
+	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/checker"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/informer"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/workerqueue"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 const (

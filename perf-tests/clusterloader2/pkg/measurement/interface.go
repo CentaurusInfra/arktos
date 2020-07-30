@@ -19,8 +19,8 @@ package measurement
 import (
 	"time"
 
-	"k8s.io/perf-tests/clusterloader2/pkg/config"
-	"k8s.io/perf-tests/clusterloader2/pkg/framework"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
 )
 
 // MeasurementConfig provides client and parameters required for the measurement execution.

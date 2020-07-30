@@ -24,10 +24,10 @@ import (
 
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"k8s.io/perf-tests/clusterloader2/pkg/errors"
-	"k8s.io/perf-tests/clusterloader2/pkg/measurement"
-	measurementutil "k8s.io/perf-tests/clusterloader2/pkg/measurement/util"
-	"k8s.io/perf-tests/clusterloader2/pkg/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
+	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 const (

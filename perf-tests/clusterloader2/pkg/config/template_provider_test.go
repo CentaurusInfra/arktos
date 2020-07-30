@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/perf-tests/clusterloader2/api"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/api"
 )
 
 func TestValidateTestSuite(t *testing.T) {

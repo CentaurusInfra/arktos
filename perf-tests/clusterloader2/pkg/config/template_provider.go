@@ -32,8 +32,8 @@ import (
 
 	goerrors "github.com/go-errors/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/perf-tests/clusterloader2/api"
-	"k8s.io/perf-tests/clusterloader2/pkg/errors"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/api"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
 )
 
 // TemplateProvider provides object templates. Templates in unstructured form
