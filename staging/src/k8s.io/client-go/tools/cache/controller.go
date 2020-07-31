@@ -108,7 +108,7 @@ func (c *controller) Run(stopCh <-chan struct{}) {
 // It's an error to call Run more than once.
 // Run blocks; call via go.
 func (c *controller) RunWithReset(stopCh <-chan struct{}, filterBounds []filterBound) {
-	klog.V(4).Infof("start controller run with reset %+v. %v", filterBounds, c.config.ObjectType.GetObjectKind())
+	klog.V(4).Infof("start controller run with reset %+v. %v", filterBounds, c.config.ObjectType)
 
 	defer utilruntime.HandleCrash()
 	go func() {
