@@ -8,12 +8,12 @@
 
 ## What is Arktos
 
-Arktos is an open source project designed for large scale cloud compute infrastructure. It is evolved from the open source project [Kubernetes](https://github.com/kubernetes/kubernetesh) codebase with core design changes. 
+Arktos is an open source project designed for large scale cloud compute infrastructure. It is evolved from the open source project [Kubernetes](https://github.com/kubernetes/kubernetes) codebase with core design changes. 
 
 Arktos aims to be an open source solution to address key challenges of large-scale clouds, including system scalability, resource efficiency, multitenancy, edge computing, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
 
 ## Architecture
-![](docs/design-proposals/arch/project_architecture.png)
+![](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals/arch/project_architecture.png)
 ## Key Features
 
 ### Large Scalability
@@ -35,7 +35,7 @@ There are more features under development, such as cloud-edge scheduling, in-pla
 
 ## Build Arktos
 
-Arktos requires a few dependencies to build and run, and [a bash script](hack/setup-dev-node.sh) is provided to install them.
+Arktos requires a few dependencies to build and run, and [a bash script](https://github.com/futurewei-cloud/arktos/tree/master/hack/setup-dev-node.sh) is provided to install them.
 
 After the prerequisites are installed, you just need to clone the repo and run "make":
 
