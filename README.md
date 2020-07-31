@@ -30,7 +30,7 @@ In addition to container orchestration, Arktos implements a built-in support for
 
 ### More Features
 
-There are more features under development, such as cloud-edge scheduling, in-place vertical scaling, etc. Check out [the project introduction] (https://docs.google.com/presentation/d/1PG1m27MYRh4kuq654W9HvdoZ5QDX9tWxoCMCfeOZUrE/edit#slide=id.g8a27d34398_8_0) for more information.
+There are more features under development, such as cloud-edge scheduling, in-place vertical scaling, etc. Check out [the project introduction](https://docs.google.com/presentation/d/1PG1m27MYRh4kuq654W9HvdoZ5QDX9tWxoCMCfeOZUrE/edit#slide=id.g8a27d34398_8_0) for more information.
 
 
 ## Build Arktos
