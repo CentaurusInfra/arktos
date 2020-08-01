@@ -116,7 +116,7 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 		results := make(map[int]*v1alpha1.PodPresetList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *podPresets, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1alpha1.PodPresetList, errMap map[int]error) {
+			go func(c *podPresets, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1alpha1.PodPresetList, errMap map[int]error) {
 				r := &v1alpha1.PodPresetList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -131,7 +131,7 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

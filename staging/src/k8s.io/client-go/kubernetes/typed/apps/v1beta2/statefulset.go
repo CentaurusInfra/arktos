@@ -120,7 +120,7 @@ func (c *statefulSets) List(opts v1.ListOptions) (result *v1beta2.StatefulSetLis
 		results := make(map[int]*v1beta2.StatefulSetList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *statefulSets, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1beta2.StatefulSetList, errMap map[int]error) {
+			go func(c *statefulSets, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1beta2.StatefulSetList, errMap map[int]error) {
 				r := &v1beta2.StatefulSetList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -135,7 +135,7 @@ func (c *statefulSets) List(opts v1.ListOptions) (result *v1beta2.StatefulSetLis
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

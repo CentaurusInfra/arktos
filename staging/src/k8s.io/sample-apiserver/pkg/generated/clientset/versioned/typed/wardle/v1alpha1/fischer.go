@@ -105,7 +105,7 @@ func (c *fischers) List(opts v1.ListOptions) (result *v1alpha1.FischerList, err 
 		results := make(map[int]*v1alpha1.FischerList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *fischers, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1alpha1.FischerList, errMap map[int]error) {
+			go func(c *fischers, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1alpha1.FischerList, errMap map[int]error) {
 				r := &v1alpha1.FischerList{}
 				err := ci.Get().
 					Resource("fischers").
@@ -119,7 +119,7 @@ func (c *fischers) List(opts v1.ListOptions) (result *v1alpha1.FischerList, err 
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

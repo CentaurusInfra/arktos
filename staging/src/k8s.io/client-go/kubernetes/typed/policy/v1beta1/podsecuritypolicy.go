@@ -113,7 +113,7 @@ func (c *podSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.PodSecu
 		results := make(map[int]*v1beta1.PodSecurityPolicyList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *podSecurityPolicies, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1beta1.PodSecurityPolicyList, errMap map[int]error) {
+			go func(c *podSecurityPolicies, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1beta1.PodSecurityPolicyList, errMap map[int]error) {
 				r := &v1beta1.PodSecurityPolicyList{}
 				err := ci.Get().
 					Tenant(c.te).
@@ -128,7 +128,7 @@ func (c *podSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.PodSecu
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
