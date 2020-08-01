@@ -13,7 +13,7 @@ Arktos is an open source project designed for large scale cloud compute infrastr
 Arktos aims to be an open source solution to address key challenges of large-scale clouds, including system scalability, resource efficiency, multitenancy, edge computing, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
 
 ## Architecture
-![](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals/arch/project_architecture.png)
+![Architecture Diagram](https://raw.githubusercontent.com/futurewei-cloud/arktos/master/docs/design-proposals/arch/project_architecture.png)
 ## Key Features
 
 ### Large Scalability
