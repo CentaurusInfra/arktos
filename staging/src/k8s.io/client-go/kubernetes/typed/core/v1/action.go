@@ -116,7 +116,7 @@ func (c *actions) List(opts metav1.ListOptions) (result *v1.ActionList, err erro
 		results := make(map[int]*v1.ActionList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *actions, ci rest.Interface, opts metav1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1.ActionList, errMap map[int]error) {
+			go func(c *actions, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.ActionList, errMap map[int]error) {
 				r := &v1.ActionList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -131,7 +131,7 @@ func (c *actions) List(opts metav1.ListOptions) (result *v1.ActionList, err erro
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

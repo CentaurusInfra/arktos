@@ -105,7 +105,7 @@ func (c *cSIDrivers) List(opts v1.ListOptions) (result *v1beta1.CSIDriverList, e
 		results := make(map[int]*v1beta1.CSIDriverList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *cSIDrivers, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1beta1.CSIDriverList, errMap map[int]error) {
+			go func(c *cSIDrivers, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1beta1.CSIDriverList, errMap map[int]error) {
 				r := &v1beta1.CSIDriverList{}
 				err := ci.Get().
 					Resource("csidrivers").
@@ -119,7 +119,7 @@ func (c *cSIDrivers) List(opts v1.ListOptions) (result *v1beta1.CSIDriverList, e
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

@@ -117,7 +117,7 @@ func (c *horizontalPodAutoscalers) List(opts v1.ListOptions) (result *v2beta2.Ho
 		results := make(map[int]*v2beta2.HorizontalPodAutoscalerList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *horizontalPodAutoscalers, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v2beta2.HorizontalPodAutoscalerList, errMap map[int]error) {
+			go func(c *horizontalPodAutoscalers, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v2beta2.HorizontalPodAutoscalerList, errMap map[int]error) {
 				r := &v2beta2.HorizontalPodAutoscalerList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -132,7 +132,7 @@ func (c *horizontalPodAutoscalers) List(opts v1.ListOptions) (result *v2beta2.Ho
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

@@ -117,7 +117,7 @@ func (c *foos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
 		results := make(map[int]*v1alpha1.FooList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *foos, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1alpha1.FooList, errMap map[int]error) {
+			go func(c *foos, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1alpha1.FooList, errMap map[int]error) {
 				r := &v1alpha1.FooList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -132,7 +132,7 @@ func (c *foos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

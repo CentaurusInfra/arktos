@@ -114,7 +114,7 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 		results := make(map[int]*apiregistration.APIServiceList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *aPIServices, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*apiregistration.APIServiceList, errMap map[int]error) {
+			go func(c *aPIServices, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*apiregistration.APIServiceList, errMap map[int]error) {
 				r := &apiregistration.APIServiceList{}
 				err := ci.Get().
 					Tenant(c.te).
@@ -129,7 +129,7 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

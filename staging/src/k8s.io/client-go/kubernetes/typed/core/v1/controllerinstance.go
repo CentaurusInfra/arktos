@@ -104,7 +104,7 @@ func (c *controllerInstances) List(opts metav1.ListOptions) (result *v1.Controll
 		results := make(map[int]*v1.ControllerInstanceList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *controllerInstances, ci rest.Interface, opts metav1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1.ControllerInstanceList, errMap map[int]error) {
+			go func(c *controllerInstances, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.ControllerInstanceList, errMap map[int]error) {
 				r := &v1.ControllerInstanceList{}
 				err := ci.Get().
 					Resource("controllerinstances").
@@ -118,7 +118,7 @@ func (c *controllerInstances) List(opts metav1.ListOptions) (result *v1.Controll
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

@@ -99,7 +99,7 @@ func (c *nodeMetricses) List(opts v1.ListOptions) (result *v1beta1.NodeMetricsLi
 		results := make(map[int]*v1beta1.NodeMetricsList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *nodeMetricses, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1beta1.NodeMetricsList, errMap map[int]error) {
+			go func(c *nodeMetricses, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1beta1.NodeMetricsList, errMap map[int]error) {
 				r := &v1beta1.NodeMetricsList{}
 				err := ci.Get().
 					Resource("nodes").
@@ -113,7 +113,7 @@ func (c *nodeMetricses) List(opts v1.ListOptions) (result *v1beta1.NodeMetricsLi
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 

@@ -104,7 +104,7 @@ func (c *storageClusters) List(opts metav1.ListOptions) (result *v1.StorageClust
 		results := make(map[int]*v1.StorageClusterList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *storageClusters, ci rest.Interface, opts metav1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1.StorageClusterList, errMap map[int]error) {
+			go func(c *storageClusters, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.StorageClusterList, errMap map[int]error) {
 				r := &v1.StorageClusterList{}
 				err := ci.Get().
 					Resource("storageclusters").
@@ -118,7 +118,7 @@ func (c *storageClusters) List(opts metav1.ListOptions) (result *v1.StorageClust
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
