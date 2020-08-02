@@ -32,9 +32,11 @@ import (
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 
+	crdregistry "k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -773,6 +775,17 @@ func RequireNamespace(namespace string) VisitorFunc {
 	}
 }
 
+//some objects are visible to tenants other the owner tenant
+func IsCrossTenantAllowed(info *Info) bool {
+
+	// so far, system-forced-shared CRD is the only cross-tenant visible
+	if infoObject, ok := info.Object.(*unstructured.Unstructured); ok {
+		return crdregistry.IsSystemForcedCrd(*infoObject)
+	}
+
+	return false
+}
+
 // RequireTenant will either set a tenant if none is provided on the
 // Info object, or if the tenant is set and does not match the provided
 // value, returns an error. This is intended to guard against administrators
@@ -793,7 +806,7 @@ func RequireTenant(tenant string) VisitorFunc {
 			UpdateObjectTenant(info, nil)
 			return nil
 		}
-		if info.Tenant != tenant {
+		if !IsCrossTenantAllowed(info) && info.Tenant != tenant {
 			return fmt.Errorf("the tenant from the provided object %q does not match the tenant %q. You must pass '--tenant=%s' to perform this operation.", info.Tenant, tenant, info.Tenant)
 		}
 		return nil

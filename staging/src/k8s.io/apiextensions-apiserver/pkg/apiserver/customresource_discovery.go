@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	apidiscovery "k8s.io/apiserver/pkg/endpoints/discovery"
 	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
@@ -31,6 +32,8 @@ type versionDiscoveryHandler struct {
 	// TODO, writing is infrequent, optimize this
 	discoveryLock sync.RWMutex
 	discoveryMap  map[string]map[schema.GroupVersion]*apidiscovery.APIVersionHandler
+
+	systemSharedCrdDiscovery map[schema.GroupVersion]*apidiscovery.APIVersionHandler
 
 	delegate http.Handler
 }
@@ -57,11 +60,30 @@ func (r *versionDiscoveryHandler) getDiscovery(tenant string, gv schema.GroupVer
 	r.discoveryLock.RLock()
 	defer r.discoveryLock.RUnlock()
 
+	// for regular tenants, first check the system-forced-sharing CRD
+	if tenant != metav1.TenantSystem && r.systemSharedCrdDiscovery[gv] != nil {
+		return r.systemSharedCrdDiscovery[gv], true
+	}
+
 	if r.discoveryMap[tenant] != nil && r.discoveryMap[tenant][gv] != nil {
 		return r.discoveryMap[tenant][gv], true
 	}
 
 	return nil, false
+}
+
+func (r *versionDiscoveryHandler) setSystemSharedCrdDiscovery(gv schema.GroupVersion, discovery *apidiscovery.APIVersionHandler) {
+	r.discoveryLock.Lock()
+	defer r.discoveryLock.Unlock()
+
+	r.systemSharedCrdDiscovery[gv] = discovery
+}
+
+func (r *versionDiscoveryHandler) unsetSystemSharedCrdDiscovery(gv schema.GroupVersion) {
+	r.discoveryLock.Lock()
+	defer r.discoveryLock.Unlock()
+
+	delete(r.systemSharedCrdDiscovery, gv)
 }
 
 func (r *versionDiscoveryHandler) setDiscovery(tenant string, gv schema.GroupVersion, discovery *apidiscovery.APIVersionHandler) {
@@ -94,6 +116,8 @@ type groupDiscoveryHandler struct {
 	discoveryLock sync.RWMutex
 	discoveryMap  map[string]map[string]*apidiscovery.APIGroupHandler
 
+	systemSharedCrdDiscovery map[string]*apidiscovery.APIGroupHandler
+
 	delegate http.Handler
 }
 
@@ -119,6 +143,11 @@ func (r *groupDiscoveryHandler) getDiscovery(tenant string, group string) (*apid
 	r.discoveryLock.RLock()
 	defer r.discoveryLock.RUnlock()
 
+	// for regular tenants, first check the system-forced-sharing CRD
+	if tenant != metav1.TenantSystem && r.systemSharedCrdDiscovery[group] != nil {
+		return r.systemSharedCrdDiscovery[group], true
+	}
+
 	if r.discoveryMap[tenant] != nil && r.discoveryMap[tenant][group] != nil {
 		return r.discoveryMap[tenant][group], true
 	}
@@ -138,6 +167,20 @@ func (r *groupDiscoveryHandler) setDiscovery(tenant string, group string, discov
 	}
 
 	r.discoveryMap[tenant][group] = discovery
+}
+
+func (r *groupDiscoveryHandler) setSystemSharedCrdDiscovery(group string, discovery *apidiscovery.APIGroupHandler) {
+	r.discoveryLock.Lock()
+	defer r.discoveryLock.Unlock()
+
+	r.systemSharedCrdDiscovery[group] = discovery
+}
+
+func (r *groupDiscoveryHandler) unsetSystemSharedCrdDiscovery(group string) {
+	r.discoveryLock.Lock()
+	defer r.discoveryLock.Unlock()
+
+	delete(r.systemSharedCrdDiscovery, group)
 }
 
 func (r *groupDiscoveryHandler) unsetDiscovery(tenant string, group string) {

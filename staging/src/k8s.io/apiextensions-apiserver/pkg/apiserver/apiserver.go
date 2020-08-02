@@ -185,12 +185,14 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	}
 
 	versionDiscoveryHandler := &versionDiscoveryHandler{
-		discoveryMap: map[string]map[schema.GroupVersion]*discovery.APIVersionHandler{},
-		delegate:     delegateHandler,
+		discoveryMap:             map[string]map[schema.GroupVersion]*discovery.APIVersionHandler{},
+		systemSharedCrdDiscovery: map[schema.GroupVersion]*discovery.APIVersionHandler{},
+		delegate:                 delegateHandler,
 	}
 	groupDiscoveryHandler := &groupDiscoveryHandler{
-		discoveryMap: map[string]map[string]*discovery.APIGroupHandler{},
-		delegate:     delegateHandler,
+		discoveryMap:             map[string]map[string]*discovery.APIGroupHandler{},
+		systemSharedCrdDiscovery: map[string]*discovery.APIGroupHandler{},
+		delegate:                 delegateHandler,
 	}
 	establishingController := establish.NewEstablishingController(s.Informers.Apiextensions().InternalVersion().CustomResourceDefinitions(), crdClient.Apiextensions())
 	crdHandler, err := NewCustomResourceDefinitionHandler(

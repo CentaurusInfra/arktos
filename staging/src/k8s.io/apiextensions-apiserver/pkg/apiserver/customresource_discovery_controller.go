@@ -38,6 +38,7 @@ import (
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
 	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
+	crdregistry "k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition"
 )
 
 type DiscoveryController struct {
@@ -83,8 +84,11 @@ func NewDiscoveryController(crdInformer informers.CustomResourceDefinitionInform
 func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 
 	apiVersionsForDiscovery := []metav1.GroupVersionForDiscovery{}
+	systemSharedApiVersionsForDiscovery := []metav1.GroupVersionForDiscovery{}
 	apiResourcesForDiscovery := []metav1.APIResource{}
+	systemSharedCrdForDiscovery := []metav1.APIResource{}
 	versionsForDiscoveryMap := map[metav1.GroupVersion]bool{}
+	systemSharedVersionsForDiscoveryMap := map[metav1.GroupVersion]bool{}
 
 	groupVersion := schema.GroupVersion{Group: gvt.group, Version: gvt.version}
 
@@ -95,6 +99,7 @@ func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 	foundVersion := false
 	foundGroup := false
 
+	foundSystemSharedCrd := false
 	for _, crd := range crds {
 		if !apiextensions.IsCRDConditionTrue(crd, apiextensions.Established) {
 			continue
@@ -105,7 +110,12 @@ func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 		}
 
 		foundThisVersion := false
+		isSystemSharedCrd := crdregistry.IsCrdSystemForced(crd)
+		if isSystemSharedCrd {
+			foundSystemSharedCrd = true
+		}
 		var storageVersionHash string
+		var apiResource metav1.APIResource
 		for _, v := range crd.Spec.Versions {
 			if !v.Served {
 				continue
@@ -115,12 +125,19 @@ func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 			foundGroup = true
 
 			gv := metav1.GroupVersion{Group: crd.Spec.Group, Version: v.Name}
+			gvForDiscovery := metav1.GroupVersionForDiscovery{
+				GroupVersion: crd.Spec.Group + "/" + v.Name,
+				Version:      v.Name,
+			}
+
 			if !versionsForDiscoveryMap[gv] {
 				versionsForDiscoveryMap[gv] = true
-				apiVersionsForDiscovery = append(apiVersionsForDiscovery, metav1.GroupVersionForDiscovery{
-					GroupVersion: crd.Spec.Group + "/" + v.Name,
-					Version:      v.Name,
-				})
+				apiVersionsForDiscovery = append(apiVersionsForDiscovery, gvForDiscovery)
+			}
+
+			if isSystemSharedCrd && !systemSharedVersionsForDiscoveryMap[gv] {
+				systemSharedVersionsForDiscoveryMap[gv] = true
+				systemSharedApiVersionsForDiscovery = append(systemSharedApiVersionsForDiscovery, gvForDiscovery)
 			}
 
 			if v.Name == gvt.version {
@@ -142,7 +159,7 @@ func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 			verbs = metav1.Verbs([]string{"delete", "deletecollection", "get", "list", "watch"})
 		}
 
-		apiResourcesForDiscovery = append(apiResourcesForDiscovery, metav1.APIResource{
+		apiResource = metav1.APIResource{
 			Name:               crd.Status.AcceptedNames.Plural,
 			SingularName:       crd.Status.AcceptedNames.Singular,
 			Namespaced:         crd.Spec.Scope == apiextensions.NamespaceScoped,
@@ -152,24 +169,35 @@ func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 			ShortNames:         crd.Status.AcceptedNames.ShortNames,
 			Categories:         crd.Status.AcceptedNames.Categories,
 			StorageVersionHash: storageVersionHash,
-		})
+		}
+
+		apiResourcesForDiscovery = append(apiResourcesForDiscovery, apiResource)
+		if isSystemSharedCrd {
+			systemSharedCrdForDiscovery = append(apiResourcesForDiscovery, apiResource)
+		}
 
 		subresources, err := apiextensions.GetSubresourcesForVersion(crd, gvt.version)
 		if err != nil {
 			return err
 		}
 		if subresources != nil && subresources.Status != nil {
-			apiResourcesForDiscovery = append(apiResourcesForDiscovery, metav1.APIResource{
+			apiResource = metav1.APIResource{
 				Name:       crd.Status.AcceptedNames.Plural + "/status",
 				Namespaced: crd.Spec.Scope == apiextensions.NamespaceScoped,
 				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Kind:       crd.Status.AcceptedNames.Kind,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
-			})
+			}
+
+			apiResourcesForDiscovery = append(apiResourcesForDiscovery, apiResource)
+
+			if isSystemSharedCrd {
+				systemSharedCrdForDiscovery = append(apiResourcesForDiscovery, apiResource)
+			}
 		}
 
 		if subresources != nil && subresources.Scale != nil {
-			apiResourcesForDiscovery = append(apiResourcesForDiscovery, metav1.APIResource{
+			apiResource = metav1.APIResource{
 				Group:      autoscaling.GroupName,
 				Version:    "v1",
 				Kind:       "Scale",
@@ -177,17 +205,28 @@ func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 				Namespaced: crd.Spec.Scope == apiextensions.NamespaceScoped,
 				Tenanted:   crd.Spec.Scope == apiextensions.NamespaceScoped || crd.Spec.Scope == apiextensions.TenantScoped,
 				Verbs:      metav1.Verbs([]string{"get", "patch", "update"}),
-			})
+			}
+
+			apiResourcesForDiscovery = append(apiResourcesForDiscovery, apiResource)
+
+			if isSystemSharedCrd {
+				systemSharedCrdForDiscovery = append(apiResourcesForDiscovery, apiResource)
+			}
 		}
 	}
 
 	if !foundGroup {
 		c.groupHandler.unsetDiscovery(gvt.tenant, gvt.group)
 		c.versionHandler.unsetDiscovery(gvt.tenant, groupVersion)
+		if gvt.tenant == metav1.TenantSystem {
+			c.groupHandler.unsetSystemSharedCrdDiscovery(gvt.group)
+			c.versionHandler.unsetSystemSharedCrdDiscovery(groupVersion)
+		}
 		return nil
 	}
 
 	sortGroupDiscoveryByKubeAwareVersion(apiVersionsForDiscovery)
+	sortGroupDiscoveryByKubeAwareVersion(systemSharedApiVersionsForDiscovery)
 
 	apiGroup := metav1.APIGroup{
 		Name:     gvt.group,
@@ -198,14 +237,33 @@ func (c *DiscoveryController) sync(gvt GroupVersionTenant) error {
 	}
 	c.groupHandler.setDiscovery(gvt.tenant, gvt.group, discovery.NewAPIGroupHandler(Codecs, apiGroup))
 
+	if foundSystemSharedCrd {
+		systemSharedAPiGroup := metav1.APIGroup{
+			Name:     gvt.group,
+			Versions: systemSharedApiVersionsForDiscovery,
+			// apiVersionsForDiscovery after it put in the right ordered
+			PreferredVersion: systemSharedApiVersionsForDiscovery[0],
+		}
+		c.groupHandler.setSystemSharedCrdDiscovery(gvt.group, discovery.NewAPIGroupHandler(Codecs, systemSharedAPiGroup))
+	}
+
 	if !foundVersion {
 		c.versionHandler.unsetDiscovery(gvt.tenant, groupVersion)
+		if gvt.tenant == metav1.TenantSystem {
+			c.versionHandler.unsetSystemSharedCrdDiscovery(groupVersion)
+		}
 		return nil
 	}
 
 	c.versionHandler.setDiscovery(gvt.tenant, groupVersion, discovery.NewAPIVersionHandler(Codecs, groupVersion, discovery.APIResourceListerFunc(func() []metav1.APIResource {
 		return apiResourcesForDiscovery
 	})))
+
+	if gvt.tenant == metav1.TenantSystem {
+		c.versionHandler.setSystemSharedCrdDiscovery(groupVersion, discovery.NewAPIVersionHandler(Codecs, groupVersion, discovery.APIResourceListerFunc(func() []metav1.APIResource {
+			return systemSharedCrdForDiscovery
+		})))
+	}
 
 	return nil
 }
