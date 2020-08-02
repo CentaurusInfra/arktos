@@ -1,0 +1,11 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: fakeregularstuffs.samples.mars.com
+spec:
+  group: samples.mars.com
+  version: v1alpha1
+  names:
+    kind: Fakeregularstuff
+    plural: fakeregularstuffs
+  scope: Namespaced

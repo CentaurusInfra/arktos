@@ -15,6 +15,8 @@
 # limitations under the License.
 
 base_dir=$(cd $(dirname $0)/../../../.. ; pwd)
+testdata_dir=${base_dir}/test/e2e/arktos/multi-tenancy/testdata/
+setup_client_script=${base_dir}/hack/setup-multi-tenancy/setup_client.sh
 
 # By default we use the kubectl binary built in the Arktos repository.
 kubectl=${base_dir}/_output/bin/kubectl
@@ -36,6 +38,12 @@ max_retry_interval=30
 
 # create a test tenant name of 8 random characters
 new_tenant="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
+
+printf "creating admin context for tenant ${new_tenant} ...."
+
+${setup_client_script} ${new_tenant} admin
+
+new_tenant_context=${new_tenant}-admin-context
 
 new_namespace="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
 

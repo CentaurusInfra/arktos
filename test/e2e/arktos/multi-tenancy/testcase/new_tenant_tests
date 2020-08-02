@@ -21,6 +21,42 @@ ExpectOutput: default
 Command: ${kubectl} get serviceaccounts --tenant ${new_tenant} --namespace kube-system
 ExpectOutput: default
 
+#creating admin context for tenant ${new_tenant}
+Command: ${setup_client_script} ${new_tenant} admin
+
+### Protection against issue https://github.com/futurewei-cloud/arktos/issues/525
+# create a system forced sharing CRD
+Command: ${kubectl} apply -f ${testdata_dir}/system_forced_crd.yaml
+ExpectOutput: "customresourcedefinition.apiextensions.k8s.io/burgers.arktos.futurewei.com"
+
+#create a regular per-tenant CRD
+Command: ${kubectl} apply -f ${testdata_dir}/regular_crd.yaml --tenant ${new_tenant}
+ExpectOutput: "customresourcedefinition.apiextensions.k8s.io/fakeregularstuffs.samples.mars.com"
+
+# the system tenant should see both CRDs under the regular tenant
+Command: ${kubectl} get crds --tenant ${new_tenant}
+ExpectOutput: "fakeregularstuffs.samples.mars.com" "burgers.arktos.futurewei.com"
+
+# the regulart tenant should see both CRDs when using his context
+Command: ${kubectl} get crds --context ${new_tenant_context}
+ExpectOutput: "fakeregularstuffs.samples.mars.com" "burgers.arktos.futurewei.com"
+
+# system tenant finds his CRD only under his "API-resources"
+Command: ${kubectl} api-resources
+ExpectOutput: "burgers" "arktos.futurewei.com"
+
+Command: ${kubectl} api-versions
+ExpectOutput: "arktos.futurewei.com"
+
+# The regular tenant should see the per-tenant CRD and the system CRD
+Command: ${kubectl} api-resources  --context ${new_tenant}-admin-context
+ExpectOutput: "burgers" "arktos.futurewei.com" "fakeregularstuffs" "samples.mars.com"
+
+Command: ${kubectl} api-versions --context ${new_tenant}-admin-context
+ExpectOutput: "arktos.futurewei.com" "samples.mars.com"
+
+### End of test for protection against issue https://github.com/futurewei-cloud/arktos/issues/525
+
 Command: ${kubectl} delete tenant ${new_tenant}
 ExpectOutput: "${new_tenant},deleted"
 Timeout: 60
