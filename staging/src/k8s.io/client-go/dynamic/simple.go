@@ -21,9 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"k8s.io/apimachinery/pkg/util/diff"
 	"math/rand"
+	"sync"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -303,27 +306,97 @@ func (c *dynamicResourceClient) Get(name string, opts metav1.GetOptions, subreso
 }
 
 func (c *dynamicResourceClient) List(opts metav1.ListOptions) (*unstructured.UnstructuredList, error) {
-	result := c.getRestClient().Get().AbsPath(c.makeURLSegments("")...).SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).Do()
-	if err := result.Error(); err != nil {
-		return nil, err
-	}
-	retBytes, err := result.Raw()
-	if err != nil {
-		return nil, err
-	}
-	uncastObj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, retBytes)
-	if err != nil {
-		return nil, err
-	}
-	if list, ok := uncastObj.(*unstructured.UnstructuredList); ok {
-		return list, nil
+	// When resource version is not empty, it reads from api server local cache
+	// Need to check all api server partitions
+	searchClients := make([]*rest.RESTClient, 1)
+	if opts.ResourceVersion != "" && len(c.client.clients) > 1 {
+		searchClients = c.client.clients
+	} else {
+		searchClients[0] = c.getRestClient()
 	}
 
-	list, err := uncastObj.(*unstructured.Unstructured).ToList()
-	if err != nil {
-		return nil, err
+	var listLock sync.Mutex
+
+	var wg sync.WaitGroup
+	results := make(map[int]*unstructured.UnstructuredList)
+	errs := make(map[int]error)
+	for i, client := range searchClients {
+		wg.Add(1)
+
+		go func(ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*unstructured.UnstructuredList, errMap map[int]error) {
+			defer wg.Done()
+
+			r := ci.Get().AbsPath(c.makeURLSegments("")...).SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).Do()
+			if err := r.Error(); err != nil {
+				setResult(resultMap, errMap, lock, pos, nil, err)
+				return
+			}
+
+			retBytes, err := r.Raw()
+			if err != nil {
+				setResult(resultMap, errMap, lock, pos, nil, err)
+				return
+			}
+
+			uncastObj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, retBytes)
+			if err != nil {
+				setResult(resultMap, errMap, lock, pos, nil, err)
+				return
+			}
+
+			if list, ok := uncastObj.(*unstructured.UnstructuredList); ok {
+				setResult(resultMap, errMap, lock, pos, list, nil)
+				return
+			}
+
+			list, err := uncastObj.(*unstructured.Unstructured).ToList()
+			if err != nil {
+				setResult(resultMap, errMap, lock, pos, nil, err)
+				return
+			} else {
+				setResult(resultMap, errMap, lock, pos, list, nil)
+			}
+
+		}(client, opts, &listLock, i, results, errs)
 	}
-	return list, nil
+	wg.Wait()
+
+	// consolidate list result
+	var aggList *unstructured.UnstructuredList
+	rv := ""
+	for i := 0; i < len(searchClients); i++ {
+		if errs[i] != nil {
+			return nil, errs[i]
+		}
+
+		if rv == "" {
+			rv = results[i].GetResourceVersion()
+			aggList = results[i]
+		} else {
+			isNewer, errCompare := diff.RevisionStrIsNewer(results[i].GetResourceVersion(), rv)
+			if errCompare != nil {
+				err := apierrors.NewInternalError(fmt.Errorf("Invalid resource version [%v]", errCompare))
+				return nil, err
+			}
+
+			if isNewer {
+				rv := results[i].GetResourceVersion()
+				aggList.SetResourceVersion(rv)
+			}
+
+			aggList.Items = append(aggList.Items, results[i].Items...)
+			aggList.Object["items"] = aggList.Items
+		}
+	}
+
+	return aggList, nil
+}
+
+func setResult(resultMap map[int]*unstructured.UnstructuredList, errMap map[int]error, lock *sync.Mutex, pos int, result *unstructured.UnstructuredList, err error) {
+	lock.Lock()
+	resultMap[pos] = result
+	errMap[pos] = err
+	lock.Unlock()
 }
 
 func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
