@@ -18,8 +18,11 @@ package config
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"net"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -35,8 +38,33 @@ const (
 	burst       = 200
 )
 
+var muxInitializedMultiClientConfig sync.Mutex
+
+var extraAPIServerAddresses []string
+
+func SetAPIServers(apiServerAddresses string) error {
+	muxInitializedMultiClientConfig.Lock()
+	defer muxInitializedMultiClientConfig.Unlock()
+	if len(extraAPIServerAddresses) > 0 {
+		return fmt.Errorf("Api Server addresses already set [%v]", extraAPIServerAddresses)
+	}
+
+	addrs := strings.Split(apiServerAddresses, ";")
+	for _, item := range addrs {
+		extraAPIServerAddresses = append(extraAPIServerAddresses, item)
+	}
+
+	if len(extraAPIServerAddresses) == 0 {
+		klog.Infof("Passed in api server addresses [%s]. Keep kubeconfig value instead.", apiServerAddresses)
+	}
+	return nil
+}
+
 // PrepareConfig creates and initializes client config.
 func PrepareConfig(path string) (*restclient.Config, error) {
+	muxInitializedMultiClientConfig.Lock()
+	defer muxInitializedMultiClientConfig.Unlock()
+
 	config, err := loadConfig(path)
 	if err != nil {
 		return nil, err
@@ -44,7 +72,28 @@ func PrepareConfig(path string) (*restclient.Config, error) {
 	if err = initializeWithDefaults(config); err != nil {
 		return nil, fmt.Errorf("config initialization error: %v", err)
 	}
-	return config, nil
+
+	if len(extraAPIServerAddresses) == 0 {
+		return config, nil
+	}
+
+	// create config for additional api server partitioning
+	aggConfig := restclient.NewAggregatedConfig(config.GetConfig())
+	for _, apiServerAddr := range extraAPIServerAddresses {
+		newConfig, _ := loadConfig(path)
+		initializeWithDefaults(newConfig)
+		c := newConfig.GetConfig()
+
+		// format: https://34.1.1.1
+		c.Host = apiServerAddr
+		aggConfig.AddConfig(c)
+	}
+
+	for i, config := range aggConfig.GetAllConfigs() {
+		klog.Infof("Kubeconfig %d host %v", i, config.Host)
+	}
+
+	return aggConfig, nil
 }
 
 func restclientConfig(path string) (*clientcmdapi.Config, error) {

@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	clientconfig "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/config"
 	"k8s.io/kubernetes/pkg/master/ports"
 	"os"
 	"path"
@@ -56,6 +57,7 @@ var (
 	testConfigPaths     []string
 	testOverridePaths   []string
 	testSuiteConfigPath string
+	apiServerAddresses  string
 )
 
 func initClusterFlags() {
@@ -90,6 +92,7 @@ func validateClusterFlags() *errors.ErrorList {
 }
 
 func initFlags() {
+	flags.StringVar(&apiServerAddresses, "api-server-addresses", "","Addresses of partitioned api servers")
 	flags.StringVar(&clusterLoaderConfig.ReportDir, "report-dir", "", "Path to the directory where the reports should be saved. Default is empty, which cause reports being written to standard output.")
 	flags.BoolEnvVar(&clusterLoaderConfig.EnableExecService, "enable-exec-service", "ENABLE_EXEC_SERVICE", false, "Whether to enable exec service that allows executing arbitrary commands from a pod running in the cluster.")
 	// TODO(https://github.com/kubernetes/perf-tests/issues/641): Remove testconfig and testoverrides flags when test suite is fully supported.
@@ -109,6 +112,13 @@ func validateFlags() *errors.ErrorList {
 		errList.Append(fmt.Errorf("test config path and test suite path cannot be provided at the same time"))
 	}
 	errList.Concat(validateClusterFlags())
+
+	if apiServerAddresses != "" {
+		err := clientconfig.SetAPIServers(apiServerAddresses)
+		if err != nil {
+			errList.Append(err)
+		}
+	}
 	return errList
 }
 
@@ -216,6 +226,7 @@ func main() {
 	if errList := validateFlags(); !errList.IsEmpty() {
 		klog.Exitf("Parsing flags error: %v", errList.String())
 	}
+
 
 	mclient, err := framework.NewMultiClientSet(clusterLoaderConfig.ClusterConfig.KubeConfigPath, 1)
 	if err != nil {
