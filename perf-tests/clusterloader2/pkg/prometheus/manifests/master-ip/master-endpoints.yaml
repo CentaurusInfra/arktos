@@ -1,0 +1,35 @@
+{{$PROMETHEUS_SCRAPE_NODE_EXPORTER := DefaultParam .PROMETHEUS_SCRAPE_NODE_EXPORTER false}}
+{{$PROMETHEUS_SCRAPE_APISERVER_ONLY := DefaultParam .PROMETHEUS_SCRAPE_APISERVER_ONLY false}}
+
+# Endpoints object for the kubelet running on master node.
+apiVersion: v1
+kind: Endpoints
+metadata:
+  namespace: monitoring
+  name: master
+  labels:
+    k8s-app: master
+subsets:
+  - addresses:
+    {{range .MasterIps}}
+      - ip: {{.}}
+    {{end}}
+    ports:
+      - name: apiserver
+        port: 443
+      {{if not $PROMETHEUS_SCRAPE_APISERVER_ONLY}}
+      - name: etcd-2379
+        port: 2379
+      - name: etcd-2382
+        port: 2382
+      - name: kubelet
+        port: 10250
+      - name: kube-scheduler
+        port: 10251
+      - name: kube-controller-manager
+        port: 10252
+      {{end}}
+      {{if $PROMETHEUS_SCRAPE_NODE_EXPORTER}}
+      - name: node-exporter
+        port: 9100
+      {{end}}
