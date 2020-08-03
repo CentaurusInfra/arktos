@@ -75,3 +75,11 @@ The [user guide folder](https://github.com/futurewei-cloud/arktos/tree/master/do
 To report a problem, please [create an issue](https://github.com/futurewei-cloud/arktos/issues) in the project repo. 
 
 To ask a question, here is [the invitation](https://join.slack.com/t/arktosworkspace/shared_invite/zt-cmak5gjq-rBxX4vX2TGMyNeU~jzAMLQ) to join [Arktos slack channels](http://arktosworkspace.slack.com/). You can also post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/futurewei-cloud/arktos/issues) of question type in the repo.
+
+## Community Meeting
+
+Pacific Time: **Tuesday, 6:00PM - 8:00PM (Weekly)**
+
+Resources: [Meeting Link](https://futurewei.zoom.us/j/92636035970) | [Meeting Summary](https://docs.google.com/document/d/1Cwpp44pQhMZ_MQ4ebralDHCt0AZHqhSkj14kNAzA7lY/edit#) | [Meeting Recording](https://www.youtube.com/playlist?list=PL_7gYB_Le9d3xGxxFuRYfCGgwR_BnCtd3)
+
+
