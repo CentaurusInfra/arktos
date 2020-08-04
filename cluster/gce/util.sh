@@ -38,8 +38,7 @@ source "${KUBE_ROOT}/cluster/gce/windows/node-helper.sh"
 
 if [[ "${MASTER_OS_DISTRIBUTION}" == "trusty" || "${MASTER_OS_DISTRIBUTION}" == "gci" || "${MASTER_OS_DISTRIBUTION}" == "ubuntu" ]]; then
   source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/master-helper.sh"
-  source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/apiserver-helper.sh"
-  source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/workloadcontroller-helper.sh"
+  source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/partitionserver-helper.sh"
 else
   echo "Cannot operate on cluster using master os distro: ${MASTER_OS_DISTRIBUTION}" >&2
   exit 1
@@ -665,7 +664,7 @@ function write-master-env {
   build-kube-master-certs "${KUBE_TEMP}/kube-master-certs.yaml"
 }
 
-function write-apiserver-env {
+function write-partitionserver-env {
   # If the user requested that the master be part of the cluster, set the
   # environment variable to program the master kubelet to register itself.
   if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" && -z "${KUBELET_APISERVER:-}" ]]; then
@@ -1407,6 +1406,12 @@ MASTER_ADVERTISE_ADDRESS: $(yaml-quote ${MASTER_ADVERTISE_ADDRESS:-})
 APISERVER_SERVICEGROUPID: $(yaml-quote ${APISERVER_SERVICEGROUPID})
 APISERVER_ADVERTISE_ADDRESS: $(yaml-quote ${APISERVER_ADVERTISE_ADDRESS})
 ENABLE_KCM_LEADER_ELECT: $(yaml-quote ${ENABLE_KCM_LEADER_ELECT})
+ETCD_CLUSTERID: $(yaml-quote ${ETCD_CLUSTERID})
+ENABLE_APISERVER: $(yaml-quote ${ENABLE_APISERVER})
+ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
+ENABLE_KUBESCHEDULER: $(yaml-quote ${ENABLE_KUBESCHEDULER})
+ENABLE_KUBECONTROLLER: $(yaml-quote ${ENABLE_KUBECONTROLLER})
+ENABLE_ETCD: $(yaml-quote ${ENABLE_ETCD})
 ETCD_CA_KEY: $(yaml-quote ${ETCD_CA_KEY_BASE64:-})
 ETCD_CA_CERT: $(yaml-quote ${ETCD_CA_CERT_BASE64:-})
 ETCD_PEER_KEY: $(yaml-quote ${ETCD_PEER_KEY_BASE64:-})
@@ -2740,21 +2745,28 @@ function create-master() {
   KUBERNETES_MASTER_INTERNAL_IP="${MASTER_RESERVED_INTERNAL_IP}"
   APISERVER_ADVERTISE_ADDRESS="${APISERVER_ADVERTISE_ADDRESS:-}"
   APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-0}
-  declare -a APISERVER_RESERVED_IP
-  declare -a APISERVER_RESERVED_INTERNAL_IP
-  declare -a APISERVER_NAME
+  ETCD_CLUSTERID=${ETCD_CLUSTERID:-0}
+  declare -a PARTITIONSERVER_RESERVED_IP
+  declare -a PARTITIONSERVER_RESERVED_INTERNAL_IP
+  declare -a PARTITIONSERVER_NAME
 
+  declare -a APISERVER_CREATED
+  declare -a WORLOADSERVER_CREATED
+  
+
+  TOTALSERVER_EXTRA_NUM=${TOTALSERVER_EXTRA_NUM:-0}
+  ENABLE_APISERVER=${ENABLE_APISERVER:-false}
+  ENABLE_WORKLOADCONTROLLER=${ENABLE_WORKLOADCONTROLLER:-false}
+  ENABLE_KUBESCHEDULER=${ENABLE_KUBESCHEDULER:-false}
+  ENABLE_KUBECONTROLLER=${ENABLE_KUBECONTROLLER:-false}
+  ENABLE_ETCD=${ENABLE_ETCD:-false}
   # add all external and internal IP to cert
   CREATE_CERT_SERVER_IP="${MASTER_RESERVED_INTERNAL_IP}"
-  if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
-    config-apiserver
-  fi
+  ###set partition server name, ip
+  set-partitionserver true    
   echo "CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
-
-  if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
-    config-workload-controller
-  fi
   
+ 
 
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
@@ -2765,109 +2777,123 @@ function create-master() {
     # unnecessary work in case master start-up fails (like creation of nodes).
   #  create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
   #else
-    create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
+  create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
   #fi
+  
+  ENABLE_KUBESCHEDULER=false
+  ENABLE_KUBECONTROLLER=false
+  create-partitionserver
+}
 
-  ## create additional apiserver
+function set-partitionserver {
+  local partitionserver_name=""
+  local is_create=${1:-false}
+  TOTALSERVER_EXTRA_NUM=${TOTALSERVER_EXTRA_NUM:-0}
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
-    for num in $(seq ${APISERVERS_EXTRA_NUM}); do
-      APISERVER_ADVERTISE_ADDRESS="${APISERVER_RESERVED_INTERNAL_IP[$num]}"
-      APISERVER_SERVICEGROUPID=$num
-      echo "APISERVER_SERVICEGROUPID: ${APISERVER_SERVICEGROUPID}"
-      create-apiserver-instance "${APISERVER_NAME[$num]}" "${APISERVER_RESERVED_IP[$num]}" "${APISERVER_RESERVED_INTERNAL_IP[$num]}"
+    for num in $(seq ${APISERVERS_EXTRA_NUM:-0}); do
+      partitionserver_name="-api${num}"
+      if [[ "${SHARE_PARTITIONSERVER:-false}" == "true" ]]; then
+        if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" && "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -ge "$num" && "${WORKLOADSERVER_CREATED[$num]:-false}" != "true" ]]; then
+          partitionserver_name+="-workload${num}"
+          WORKLOADSERVER_CREATED[$num]=true
+        else
+          WORKLOADSERVER_CREATED[$num]=false
+        fi
+        
+      fi
+      
+      TOTALSERVER_EXTRA_NUM=$((TOTALSERVER_EXTRA_NUM+1))
+      PARTITIONSERVER_NAME[$TOTALSERVER_EXTRA_NUM]="${partitionserver_name}"
+      APISERVER_CREATED[$num]=true
+      if [[ "${is_create}" == "true" ]]; then
+        create-static-ip "${CLUSTER_NAME}${partitionserver_name}-ip" "${REGION}"
+        PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-ip" \
+            --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
+        echo "PARTITIONSERVER${TOTALSERVER_EXTRA_NUM}_RESERVED_IP: ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
+        CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
+        create-static-internalip "${CLUSTER_NAME}${partitionserver_name}-internalip" "${REGION}" "${SUBNETWORK}"
+        PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-internalip" \
+        --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+        CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]}"
+      fi  
     done
   fi
-
-  ## create additional workload-controller-manager
   if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
-    for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM}); do
-      create-workloadcontroller-instance "${CLUSTER_NAME}-workload-controller${num}"
+    for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM:-0}); do
+      partitionserver_name=""
+      if [[ "${WORKLOADSERVER_CREATED[$num]:-false}" != "true" ]]; then
+        partitionserver_name+="-workload${num}"
+        WORKLOADSERVER_CREATED[$num]=true
+        TOTALSERVER_EXTRA_NUM=$((TOTALSERVER_EXTRA_NUM+1))
+        PARTITIONSERVER_NAME[$TOTALSERVER_EXTRA_NUM]="${partitionserver_name}"
+      fi
     done
   fi
 }
 
-function config-apiserver() {
-  echo "Configing apiserver and configuring firewalls"
+function create-partitionserver {
+  local partitionserver_name=${CLUSTER_NAME}
+  echo "TOTALSERVER_EXTRA_NUM: ${TOTALSERVER_EXTRA_NUM:-0}"
+  if [[ "${TOTALSERVER_EXTRA_NUM:-0}" -gt "0" ]]; then
+    for num in $(seq ${TOTALSERVER_EXTRA_NUM:-0}); do
+      echo "create partitionserver: ${CLUSTER_NAME}${PARTITIONSERVER_NAME[$num]:-}"
+      partitionserver_name="${CLUSTER_NAME}${PARTITIONSERVER_NAME[$num]:-}"
+      if [[ "${PARTITIONSERVER_NAME[$num]:-}" == *"api"* ]]; then
+        APISERVER_ADVERTISE_ADDRESS="${PARTITIONSERVER_RESERVED_INTERNAL_IP[$num]:-}"
+        APISERVER_SERVICEGROUPID=$num
+        echo "APISERVER_SERVICEGROUPID: ${APISERVER_SERVICEGROUPID}"
+        ENABLE_APISERVER=true
+      else
+        ENABLE_APISERVER=false
+      fi
+      if [[ "${PARTITIONSERVER_NAME[$num]:-}" == *"workload"* ]]; then
+        ENABLE_WORKLOADCONTROLLER=true
+      else
+        ENABLE_WORKLOADCONTROLLER=false
+      fi
+      config-partitionserver "${partitionserver_name}"
+      create-server-instance "${partitionserver_name}" "${PARTITIONSERVER_RESERVED_IP[$num]:-}" "${PARTITIONSERVER_RESERVED_INTERNAL_IP[$num]:-}"
+    done
+  fi
+
+}
 
 
-  for num in $(seq ${APISERVERS_EXTRA_NUM}); do
-    server_name="${CLUSTER_NAME}-apiserver${num}"
+#config server
+function config-partitionserver() {
+  local server_name=""
+  
+  [[ -n ${1:-} ]] && server_name="${1}"
+  echo "Configing partition server and configuring firewalls"
 
-    echo "creating apiserver: ${server_name} firewall"
-    gcloud compute firewall-rules create "${server_name}-https" \
+  echo "creating partitionserver: ${server_name} firewall-rules"
+  gcloud compute firewall-rules create "${server_name}-https" \
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
       --target-tags "${server_name}" \
       --allow tcp:443 &
 
-    # We have to make sure the disk is created before creating the server, so
+# We have to make sure the disk is created before creating the server, so
      # run this in the foreground.
-    echo "creating apiserver: ${server_name} disks"
-    gcloud compute disks create "${server_name}-pd" \
-      --project "${PROJECT}" \
-      --zone "${ZONE}" \
-      --type "${APISERVER_DISK_TYPE}" \
-      --size "${APISERVER_DISK_SIZE}"
+  echo "creating partitionserver: ${server_name} disks"
+  gcloud compute disks create "${server_name}-pd" \
+    --project "${PROJECT}" \
+    --zone "${ZONE}" \
+    --type "${PARTITIONSERVER_DISK_TYPE}" \
+    --size "${PARTITIONSERVER_DISK_SIZE}"  
 
-    # Create rule for accessing and securing etcd servers.
-    if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
-      gcloud compute firewall-rules create "${server_name}-etcd" \
-        --project "${NETWORK_PROJECT}" \
-        --network "${NETWORK}" \
-        --source-tags "${server_name}" \
-        --allow "tcp:2380,tcp:2381" \
-        --target-tags "${server_name}" &
-    fi
-
-    # Generate a bearer token for this cluster. We push this separately
-    # from the other cluster variables so that the client (this
-    # computer) can forget it later. This should disappear with
-    # http://issue.k8s.io/3168
-    ####KUBE_PROXY_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
-    ####if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
-    ####  NODE_PROBLEM_DETECTOR_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
-    ####fi
-
-    APISERVER_NAME[$num]=${server_name}
-    create-static-ip "${server_name}-ip" "${REGION}"
-    APISERVER_RESERVED_IP[$num]=$(gcloud compute addresses describe "${server_name}-ip" \
-        --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
-    echo "APISERVER${num}_RESERVED_IP: ${APISERVER_RESERVED_IP[$num]}"
-    CREATE_CERT_SERVER_IP+=" ${APISERVER_RESERVED_IP[$num]}"
-    create-static-internalip "${server_name}-internalip" "${REGION}" "${SUBNETWORK}"
-    APISERVER_RESERVED_INTERNAL_IP[$num]=$(gcloud compute addresses describe "${server_name}-internalip" \
-    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
-    CREATE_CERT_SERVER_IP+=" ${APISERVER_RESERVED_INTERNAL_IP[$num]}"
-  done
-}
-
-# config workload-contrller vm firewall, disks
-function config-workload-controller() {
-  echo "Configing workload-controller and configuring firewalls"
-
-
-  for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM}); do
-    server_name="${CLUSTER_NAME}-workload-controller${num}"
-
-    echo "creating workload-controller: ${server_name} firewall"
-    gcloud compute firewall-rules create "${server_name}-https" \
+  # Create rule for accessing and securing etcd servers.
+  echo "creating partitionserver: ${server_name} etcd firewall-rules"
+  if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
+    gcloud compute firewall-rules create "${server_name}-etcd" \
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
-      --target-tags "${server_name}" \
-      --allow tcp:443 &
+      --source-tags "${server_name}" \
+      --allow "tcp:2380,tcp:2381" \
+      --target-tags "${server_name}" &
+  fi
 
-    # We have to make sure the disk is created before creating the server, so
-     # run this in the foreground.
-    echo "creating workload-controller: ${server_name} disks"
-    gcloud compute disks create "${server_name}-pd" \
-      --project "${PROJECT}" \
-      --zone "${ZONE}" \
-      --type "${WORKLOADCONTROLLER_DISK_TYPE}" \
-      --size "${WORKLOADCONTROLLER_DISK_SIZE}"
-
-  done
 }
-
 
 # Adds master replica to etcd cluster.
 #
@@ -3442,14 +3468,17 @@ function kube-down() {
   local -r REPLICA_NAME="${KUBE_REPLICA_NAME:-$(get-replica-name)}"
 
   set-existing-master
+  declare -a PARTITIONSERVER_NAME
+  TOTALSERVER_EXTRA_NUM="${TOTALSERVER_EXTRA_NUM:-0}"
+  set-partitionserver
+  echo "teardown total extra server num: ${TOTALSERVER_EXTRA_NUM:-0}"
+  for num in $(seq ${TOTALSERVER_EXTRA_NUM:-0}); do
+    echo "tear down PARTITIONSERVER_NAME:${CLUSTER_NAME}${PARTITIONSERVER_NAME[$num]:-}"
+    server_name="${CLUSTER_NAME}${PARTITIONSERVER_NAME[$num]:-}"
+    delete-partitionserver ${server_name}
+  done
 
-  if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
-    delete-apiserver
-  fi
 
-  if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
-    delete-workload-controller
-  fi
   # Un-register the master replica from etcd and events etcd.
   remove-replica-from-etcd 2379
   remove-replica-from-etcd 4002
@@ -3911,91 +3940,61 @@ function delete-image() {
   gcloud container images delete --quiet "$1"
 }
 
-function delete-apiserver() {
-  for num in $(seq ${APISERVERS_EXTRA_NUM}); do
-    server_name="${CLUSTER_NAME}-apiserver${num}"
-
-    #echo "deleting additional apiserver: ${server_name}"
-    if gcloud compute instances describe "${server_name}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
-        # Now we can safely delete the VM.
-        gcloud compute instances delete \
-          --project "${PROJECT}" \
-          --quiet \
-          --delete-disks all \
-          --zone "${ZONE}" \
-          "${server_name}"
-    fi
-
-    #echo "deleting apiserver disks: ${server_name}-pd"
-    if gcloud compute disks describe "${server_name}-pd" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute disks delete  \
-        --project "${PROJECT}" \
-        --quiet \
-        --zone "${ZONE}" \
-        "${server_name}-pd"
-    fi
-
-    #echo "deleting apiserver firewall: ${server_name}-https"
-    if gcloud compute firewall-rules describe "${server_name}-https" --network "${NETWORK}" --project "${NETWORK_PROJECT}" &>/dev/null; then
-      gcloud compute firewall-rules delete  \
-        --project "${NETWORK_PROJECT}" \
-        --quiet \
-        --network "${NETWORK}" \
-        "${server_name}-https"
-    fi
 
 
-    #echo "deleting apiserver firewall-rules: ${server_name}-etcd"
-    if gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
-      gcloud compute firewall-rules delete "${server_name}-etcd" \
-        --quiet \
-        --project "${NETWORK_PROJECT}" 
-    fi
+function delete-partitionserver() {
+  local server_name="${1}"
+  echo "deleting additional partitionserver: ${server_name}"
+  if gcloud compute instances describe "${server_name}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+    # Now we can safely delete the VM.
+    gcloud compute instances delete \
+      --project "${PROJECT}" \
+      --quiet \
+      --delete-disks all \
+      --zone "${ZONE}" \
+      "${server_name}"
+  fi
 
-    #echo "deleting apiserver reserved IP address: ${server_name}-ip"
-    if gcloud compute addresses describe "${server_name}-ip" --project "${PROJECT}" --region "${REGION}" &>/dev/null; then
-      gcloud compute addresses delete "${server_name}-ip" \
-        --quiet \
-        --project "${PROJECT}" \
-        --region "${REGION}" 
-    fi
+  echo "deleting partitionserver disks: ${server_name}-pd"
+  if gcloud compute disks describe "${server_name}-pd" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+    gcloud compute disks delete  \
+      --project "${PROJECT}" \
+      --quiet \
+      --zone "${ZONE}" \
+      "${server_name}-pd"
+  fi
 
-  done
-}
+  echo "deleting partitionserver firewall: ${server_name}-https"
+  if gcloud compute firewall-rules describe "${server_name}-https" --network "${NETWORK}" --project "${NETWORK_PROJECT}" &>/dev/null; then
+    gcloud compute firewall-rules delete  \
+      --project "${NETWORK_PROJECT}" \
+      --quiet \
+      --network "${NETWORK}" \
+      "${server_name}-https"
+  fi
 
 
-function delete-workload-controller() {
-  for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM}); do
-    server_name="${CLUSTER_NAME}-workload-controller${num}"
+  echo "deleting partitionserver firewall-rules: ${server_name}-etcd"
+  if gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
+    gcloud compute firewall-rules delete "${server_name}-etcd" \
+      --quiet \
+      --project "${NETWORK_PROJECT}" 
+  fi
 
-    #echo "deleting additional workload-controller: ${server_name}"
-    if gcloud compute instances describe "${server_name}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
-        # Now we can safely delete the VM.
-        gcloud compute instances delete \
-          --project "${PROJECT}" \
-          --quiet \
-          --delete-disks all \
-          --zone "${ZONE}" \
-          "${server_name}"
-    fi
+  #echo "deleting partitionserver reserved IP address: ${server_name}-ip"
+  if gcloud compute addresses describe "${server_name}-ip" --project "${PROJECT}" --region "${REGION}" &>/dev/null; then
+    gcloud compute addresses delete "${server_name}-ip" \
+      --quiet \
+      --project "${PROJECT}" \
+      --region "${REGION}" 
+  fi
 
-    #echo "deleting workload-controller disks: ${server_name}-pd"
-    if gcloud compute disks describe "${server_name}-pd" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute disks delete  \
-        --project "${PROJECT}" \
-        --quiet \
-        --zone "${ZONE}" \
-        "${server_name}-pd"
-    fi
+  echo "deleting partitionserver reserved internal IP address: ${server_name}-internalip"
+  if gcloud compute addresses describe "${server_name}-internalip" --project "${PROJECT}" --region "${REGION}"  &>/dev/null; then
+    gcloud compute addresses delete "${server_name}-internalip" \
+      --quiet \
+      --project "${PROJECT}" \
+      --region "${REGION}" 
+  fi
 
-    #echo "deleting workload-controller firewall: ${server_name}-https"
-    if gcloud compute firewall-rules describe "${server_name}-https" --network "${NETWORK}" --project "${NETWORK_PROJECT}" &>/dev/null; then
-      gcloud compute firewall-rules delete  \
-        --project "${NETWORK_PROJECT}" \
-        --quiet \
-        --network "${NETWORK}" \
-        "${server_name}-https"
-    fi
-
-  done
 }

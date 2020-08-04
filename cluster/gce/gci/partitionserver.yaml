@@ -1,7 +1,7 @@
 #cloud-config
 
 write_files:
-  - path: /etc/systemd/system/workloadcontroller-installation.service
+  - path: /etc/systemd/system/kube-partitionserver-installation.service
     permissions: 0644
     owner: root
     content: |
@@ -23,19 +23,19 @@ write_files:
       [Install]
       WantedBy=kubernetes.target
 
-  - path: /etc/systemd/system/workloadcontroller-configuration.service
+  - path: /etc/systemd/system/kube-partitionserver-configuration.service
     permissions: 0644
     owner: root
     content: |
       [Unit]
-      Description=Configure arktos workloadcontroller
-      After=workloadcontroller-installation.service
+      Description=Configure kubernetes control plane server
+      After=kube-partitionserver-installation.service
 
       [Service]
       Type=oneshot
       RemainAfterExit=yes
-      ExecStartPre=/bin/chmod 544 /home/kubernetes/bin/workloadcontroller-configure-helper.sh
-      ExecStart=/home/kubernetes/bin/workloadcontroller-configure-helper.sh
+      ExecStartPre=/bin/chmod 544 /home/kubernetes/bin/partitionserver-configure-helper.sh
+      ExecStart=/home/kubernetes/bin/partitionserver-configure-helper.sh
 
       [Install]
       WantedBy=kubernetes.target
@@ -45,8 +45,8 @@ write_files:
     owner: root
     content: |
       [Unit]
-      Description=Arktos health monitoring for container runtime
-      After=workloadcontroller-configuration.service
+      Description=Kubernetes health monitoring for container runtime
+      After=kube-partitionserver-configuration.service
 
       [Service]
       Restart=always
@@ -65,7 +65,7 @@ write_files:
     content: |
       [Unit]
       Description=Kubernetes health monitoring for kubelet
-      After=workloadcontroller-configuration.service
+      After=kube-partitionserver-configuration.service
 
       [Service]
       Restart=always
@@ -97,7 +97,7 @@ write_files:
     content: |
       [Unit]
       Description=Kubernetes log rotation
-      After=workloadcontroller-configuration.service
+      After=kube-partitionserver-configuration.service
 
       [Service]
       Type=oneshot
@@ -118,8 +118,8 @@ write_files:
 
 runcmd:
  - systemctl daemon-reload
- - systemctl enable workloadcontroller-installation.service
- - systemctl enable workloadcontroller-configuration.service
+ - systemctl enable kube-partitionserver-installation.service
+ - systemctl enable kube-partitionserver-configuration.service
  - systemctl enable kube-container-runtime-monitor.service
  - systemctl enable kubelet-monitor.service
  - systemctl enable kube-logrotate.timer
