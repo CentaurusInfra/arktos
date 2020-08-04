@@ -51,11 +51,11 @@ func SetAPIServers(apiServerAddresses string) error {
 
 	addrs := strings.Split(apiServerAddresses, ";")
 	for _, item := range addrs {
-		extraAPIServerAddresses = append(extraAPIServerAddresses, item)
+		extraAPIServerAddresses = append(extraAPIServerAddresses, strings.TrimSpace(item))
 	}
 
 	if len(extraAPIServerAddresses) == 0 {
-		klog.Infof("Passed in api server addresses [%s]. Keep kubeconfig value instead.", apiServerAddresses)
+		klog.Infof("Passed in extra api server addresses [%s]. Keep kubeconfig value.", apiServerAddresses)
 	}
 	return nil
 }
