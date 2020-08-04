@@ -18,10 +18,12 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/kubernetes/pkg/master/ports"
 	"os"
 	"path"
 	"time"
+
+	clientconfig "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/config"
+	"k8s.io/kubernetes/pkg/master/ports"
 
 	ginkgoconfig "github.com/onsi/ginkgo/config"
 	ginkgoreporters "github.com/onsi/ginkgo/reporters"
@@ -56,11 +58,13 @@ var (
 	testConfigPaths     []string
 	testOverridePaths   []string
 	testSuiteConfigPath string
+	apiServerAddresses  string
 )
 
 func initClusterFlags() {
 	flags.StringEnvVar(&clusterLoaderConfig.ClusterConfig.KubeConfigPath, "kubeconfig", "KUBECONFIG", "", "Path to the kubeconfig file")
 	flags.IntEnvVar(&clusterLoaderConfig.ClusterConfig.Nodes, "nodes", "NUM_NODES", 0, "number of nodes")
+	flags.IntEnvVar(&clusterLoaderConfig.ClusterConfig.Apiserverextranum, "apiserver-extra-num", "APISERVERS_EXTRA_NUM", 0, "number of extra apiservers")
 	flags.IntEnvVar(&clusterLoaderConfig.ClusterConfig.KubeletPort, "kubelet-port", "KUBELET_PORT", ports.KubeletPort, "Port of the kubelet to use")
 	flags.StringEnvVar(&clusterLoaderConfig.ClusterConfig.Provider, "provider", "PROVIDER", "", "Cluster provider")
 	flags.StringEnvVar(&clusterLoaderConfig.ClusterConfig.EtcdCertificatePath, "etcd-certificate", "ETCD_CERTIFICATE", "/etc/srv/kubernetes/pki/etcd-apiserver-server.crt", "Path to the etcd certificate on the master machine")
@@ -90,6 +94,7 @@ func validateClusterFlags() *errors.ErrorList {
 }
 
 func initFlags() {
+	flags.StringVar(&apiServerAddresses, "api-server-addresses", "", "Addresses of partitioned api servers")
 	flags.StringVar(&clusterLoaderConfig.ReportDir, "report-dir", "", "Path to the directory where the reports should be saved. Default is empty, which cause reports being written to standard output.")
 	flags.BoolEnvVar(&clusterLoaderConfig.EnableExecService, "enable-exec-service", "ENABLE_EXEC_SERVICE", false, "Whether to enable exec service that allows executing arbitrary commands from a pod running in the cluster.")
 	// TODO(https://github.com/kubernetes/perf-tests/issues/641): Remove testconfig and testoverrides flags when test suite is fully supported.
@@ -109,6 +114,13 @@ func validateFlags() *errors.ErrorList {
 		errList.Append(fmt.Errorf("test config path and test suite path cannot be provided at the same time"))
 	}
 	errList.Concat(validateClusterFlags())
+
+	if apiServerAddresses != "" {
+		err := clientconfig.SetAPIServers(apiServerAddresses)
+		if err != nil {
+			errList.Append(err)
+		}
+	}
 	return errList
 }
 
