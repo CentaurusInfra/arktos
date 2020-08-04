@@ -41,6 +41,7 @@ type ClusterConfig struct {
 	MasterInternalIPs          []string
 	MasterName                 string
 	KubemarkRootKubeConfigPath string
+	Apiserverextranum          int //APISERVER_EXTRA_NUM
 	DeleteStaleNamespaces      bool
 	// SSHToMasterSupported determines whether SSH access to master machines is possible.
 	// If false (impossible for many  providers), ClusterLoader will skip operations requiring it.

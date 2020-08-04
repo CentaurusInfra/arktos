@@ -11,6 +11,7 @@ go_library(
         "//staging/src/k8s.io/client-go/tools/clientcmd:go_default_library",
         "//staging/src/k8s.io/client-go/tools/clientcmd/api:go_default_library",
         "//staging/src/k8s.io/client-go/transport:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
     ],
 )
 

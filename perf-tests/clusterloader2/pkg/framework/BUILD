@@ -13,6 +13,7 @@ go_library(
         "//perf-tests/clusterloader2/pkg/errors:go_default_library",
         "//perf-tests/clusterloader2/pkg/framework/client:go_default_library",
         "//perf-tests/clusterloader2/pkg/framework/config:go_default_library",
+        "//perf-tests/clusterloader2/pkg/util:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1/unstructured:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
