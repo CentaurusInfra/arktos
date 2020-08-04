@@ -222,6 +222,36 @@ message Binding {
   optional ObjectReference target = 2;
 }
 
+// Enables fine grained control of the block device mapping for an instance
+// This is typically used for booting servers from volumes
+message BlockDeviceMappingV2 {
+  optional int64 bootIndex = 1;
+
+  optional bool deleteOnTermination = 2;
+
+  optional string destinationType = 3;
+
+  optional string deviceName = 4;
+
+  optional string deviceType = 5;
+
+  optional string diskBus = 6;
+
+  optional string guestFormat = 7;
+
+  optional bool noDevice = 8;
+
+  optional string sourceType = 9;
+
+  optional string uuid = 10;
+
+  optional int64 volumeSize = 11;
+
+  optional string tag = 12;
+
+  optional string volumeType = 13;
+}
+
 // Represents storage that is managed by an external CSI volume driver (Beta feature)
 message CSIPersistentVolumeSource {
   // Driver is the name of the driver to use for this volume.
@@ -1588,6 +1618,70 @@ message GitRepoVolumeSource {
   optional string directory = 3;
 }
 
+message GlobalScheduling {
+  // IPv4 address that should be used to access this server
+  // +optional
+  optional string accessIpv4 = 1;
+
+  // IPv6 address that should be used to access this serve
+  // +ooptional
+  optional string accessIpv6 = 2;
+
+  // The administrative password of the server
+  // +optional
+  optional string adminPass = 3;
+
+  // The availability zone from which to launch the server
+  // +optional
+  optional string availabilityZone = 4;
+
+  // Enables fine grained control of the block device mapping for an instance
+  // +optional
+  repeated BlockDeviceMappingV2 mappingV2 = 5;
+
+  // Indicates whether a config drive enables metadata injection
+  // +optional
+  optional bool configDrive = 6;
+
+  // Metadata key and value pairs
+  // +optional
+  map<string, string> metadata = 7;
+
+  // Controls how the API partitions the disk when you create, rebuild, or resize servers
+  // A valid value is:
+  // 		AUTO
+  // 		MANUAL
+  // +optional
+  optional string diskConfig = 8;
+
+  // The file path and contents, text only, to inject into the server at launch
+  // +optional
+  repeated OpenStackPersonality personality = 9;
+
+  // One or more security groups. Specify the name of the security group in the name attribute
+  // +optional
+  repeated OpenStackSecurityGroup securityGroup = 10;
+
+  // A free form description of the server. Limited to 255 characters in length
+  // +optional
+  optional string description = 11;
+
+  // +optional
+  repeated string tags = 12;
+
+  // A list of trusted certificate IDs, which are used during image signature verification to verify the signing certificate
+  // +optional
+  repeated string trustedImageCertificates = 13;
+
+  // The name of the compute service host on which the server is to be created
+  // +optional
+  optional string host = 14;
+
+  // The hostname of the hypervisor on which the server is to be created
+  // +optional
+  optional string hypervisorHostname = 15;
+}
+
 // Represents a Glusterfs mount that lasts the lifetime of a pod.
 // Glusterfs volumes do not support ownership management or SELinux relabeling.
 message GlusterfsPersistentVolumeSource {
@@ -2093,6 +2187,11 @@ message Nic {
   // default to false
   // +optional
   optional bool ipv6Enabled = 6;
+
+  // To provision the server instance with a NIC for a network, specify the UUID of the network in the uuid attribute in a networks object
+  // Required if omit the port attribute
+  // +optional
+  optional string uuid = 7;
 }
 
 // Node is a worker node in Kubernetes.
@@ -2482,6 +2581,16 @@ message ObjectReference {
 
   // +optional
   optional string tenant = 8;
+}
+
+message OpenStackPersonality {
+  optional string path = 1;
+
+  optional string contents = 2;
+}
+
+message OpenStackSecurityGroup {
+  optional string name = 1;
 }
 
 // PersistentVolume (PV) is a storage resource provisioned by an administrator.
@@ -5074,6 +5183,14 @@ message VirtualMachine {
   // cloud-init user data script
   // +optional
   optional string cloudInitUserDataScript = 14;
+
+  // Global Scheduling
+  // +optioanl
+  optional GlobalScheduling scheduling = 17;
+
+  // Integrate with OpenStack FlavorList
+  // +optional
+  optional string flavorRef = 18;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance
