@@ -19,10 +19,11 @@ package test
 import (
 	"fmt"
 	"io/ioutil"
-	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
 	"path"
 	"strings"
 	"time"
+
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,7 +53,7 @@ func createSimpleTestExecutor() TestExecutor {
 
 // ExecuteTest executes test based on provided configuration.
 func (ste *simpleTestExecutor) ExecuteTest(ctx Context, conf *api.Config) *errors.ErrorList {
-	ctx.GetClusterFramework().SetAutomanagedNamespacePrefix(fmt.Sprintf("test-%s", util.RandomDNS1123String(6)))
+	ctx.GetClusterFramework().SetAutomanagedNamespacePrefix("testns")
 	klog.Infof("AutomanagedNamespacePrefix: %s", ctx.GetClusterFramework().GetAutomanagedNamespacePrefix())
 	defer cleanupResources(ctx)
 	ctx.GetTuningSetFactory().Init(conf.TuningSets)
@@ -170,15 +171,18 @@ func (ste *simpleTestExecutor) ExecuteStep(ctx Context, step *api.Step) *errors.
 func (ste *simpleTestExecutor) ExecutePhase(ctx Context, phase *api.Phase) *errors.ErrorList {
 	// TODO: add tuning set
 	errList := errors.NewErrorList()
-	nsList := createNamespacesList(ctx, phase.NamespaceRange)
+	automanagedNamespacesList, _, err := ctx.GetClusterFramework().ListAutomanagedNamespaces()
+	if err != nil {
+		return errors.NewErrorList(fmt.Errorf("automanaged namespaces listing failed: %v", err))
+	}
 	tuningSet, err := ctx.GetTuningSetFactory().CreateTuningSet(phase.TuningSet)
 	if err != nil {
 		return errors.NewErrorList(fmt.Errorf("tuning set creation error: %v", err))
 	}
 
 	var actions []func()
-	for namespaceIndex := range nsList {
-		nsName := nsList[namespaceIndex]
+	for namespaceIndex := range automanagedNamespacesList {
+		nsName := automanagedNamespacesList[namespaceIndex]
 		instancesStates := make([]*state.InstancesState, 0)
 		// Updating state (DesiredReplicaCount) of every object in object bundle.
 		for j := range phase.ObjectBundle {
