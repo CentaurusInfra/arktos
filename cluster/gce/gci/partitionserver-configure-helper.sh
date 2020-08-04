@@ -86,7 +86,7 @@ function main() {
     create-node-pki
     create-master-pki
     create-master-auth
-    ensure-master-bootstrap-kubectl-auth
+    ensure-master-bootstrap-kubectl-auth ${KUBERNETES_MASTER_INTERNAL_IP}
     create-master-kubelet-auth
     create-master-etcd-auth
     create-master-etcd-apiserver-auth
