@@ -485,7 +485,6 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     kube::common::start_kubeproxy
   fi
   kube::common::start_kubescheduler
-  start_kubedns
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
   fi
@@ -522,12 +521,6 @@ echo "Setup Arktos components ..."
 echo ""
 
 while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
-
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
-
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
-
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 

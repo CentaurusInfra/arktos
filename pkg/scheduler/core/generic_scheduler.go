@@ -127,6 +127,7 @@ func (f *FitError) Error() string {
 // onto machines.
 // TODO: Rename this type.
 type ScheduleAlgorithm interface {
+	GlobalSchedule(*v1.Pod) (scheduleResult ScheduleResult, err error)
 	Schedule(*v1.Pod, algorithm.NodeLister, *framework.PluginContext) (scheduleResult ScheduleResult, err error)
 	// Preempt receives scheduling errors for a pod and tries to create room for
 	// the pod by preempting lower priority pods if possible.
@@ -177,6 +178,14 @@ type genericScheduler struct {
 func (g *genericScheduler) snapshot() error {
 	// Used for all fit and priority funcs.
 	return g.cache.UpdateNodeInfoSnapshot(g.nodeInfoSnapshot)
+}
+
+func (g *genericScheduler) GlobalSchedule(pod *v1.Pod) (result ScheduleResult, err error) {
+	return ScheduleResult{
+		SuggestedHost:  "172.31.14.23",
+		EvaluatedNodes: 5,
+		FeasibleNodes:  5,
+	}, err
 }
 
 // Schedule tries to schedule the given pod to one of the nodes in the node list.
