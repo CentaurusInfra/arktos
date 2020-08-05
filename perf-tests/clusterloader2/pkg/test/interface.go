@@ -62,5 +62,5 @@ type TestExecutor interface {
 	ExecuteTest(ctx Context, conf *api.Config) *errors.ErrorList
 	ExecuteStep(ctx Context, step *api.Step) *errors.ErrorList
 	ExecutePhase(ctx Context, phase *api.Phase) *errors.ErrorList
-	ExecuteObject(ctx Context, object *api.Object, namespace string, replicaIndex int32, operation OperationType) *errors.ErrorList
+	ExecuteObject(ctx Context, object *api.Object, tenant string, namespace string, replicaIndex int32, operation OperationType) *errors.ErrorList
 }

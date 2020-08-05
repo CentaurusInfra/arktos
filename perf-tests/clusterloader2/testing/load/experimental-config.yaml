@@ -2,12 +2,14 @@
 
 # ASSUMPTIONS:
 # - Underlying cluster should have 100+ nodes.
+# - Number of nodes should be divisible by NODES_PER_TENANT (default 100).
 # - Number of nodes should be divisible by NODES_PER_NAMESPACE (default 100).
 # - The number of created SVCs is half the number of created Deployments.
 # - Only half of Deployments will be assigned 1-1 to existing SVCs.
 
 #Constants
 {{$NODE_MODE := DefaultParam .NODE_MODE "allnodes"}}
+{{$NODES_PER_TENANT := DefaultParam .NODES_PER_TENANT 100}}
 {{$NODES_PER_NAMESPACE := DefaultParam .NODES_PER_NAMESPACE 100}}
 {{$PODS_PER_NODE := DefaultParam .PODS_PER_NODE 30}}
 {{$LOAD_TEST_THROUGHPUT := DefaultParam .LOAD_TEST_THROUGHPUT 10}}
@@ -31,6 +33,7 @@
 {{$ENABLE_RESTART_COUNT_CHECK := DefaultParam .ENABLE_RESTART_COUNT_CHECK false}}
 {{$RESTART_COUNT_THRESHOLD_OVERRIDES:= DefaultParam .RESTART_COUNT_THRESHOLD_OVERRIDES ""}}
 #Variables
+{{$tenants := DivideInt .Nodes $NODES_PER_TENANT}}
 {{$namespaces := DivideInt .Nodes $NODES_PER_NAMESPACE}}
 {{$totalPods := MultiplyInt $namespaces $NODES_PER_NAMESPACE $PODS_PER_NODE}}
 {{$podsPerNamespace := DivideInt $totalPods $namespaces}}
@@ -60,6 +63,7 @@
 # TODO( https://github.com/kubernetes/perf-tests/issues/1027): Lower the number of "min-pods" once we fix the scheduler throughput measurement.
 {{$totalSchedulerThroughputPods := MaxInt (MultiplyInt 2 $MIN_PODS_IN_SMALL_CLUSTERS) (MultiplyInt 2 .Nodes)}}
 {{$schedulerThroughputPodsPerDeployment := .Nodes}}
+{{$schedulerThroughputTenants := DivideInt $totalSchedulerThroughputPods $schedulerThroughputPodsPerDeployment}}
 {{$schedulerThroughputNamespaces := DivideInt $totalSchedulerThroughputPods $schedulerThroughputPodsPerDeployment}}
 {{$schedulerThroughputThreshold := DefaultParam .CL2_SCHEDULER_THROUGHPUT_THRESHOLD 0}}
 # END scheduler-throughput section
@@ -71,6 +75,7 @@
 # END pod-startup-latency section
 
 name: load
+automanagedTenants: {{AddInt $tenants $schedulerThroughputTenants}}
 automanagedNamespaces: {{AddInt $namespaces $schedulerThroughputNamespaces}}
 tuningSets:
 - name: Sequence

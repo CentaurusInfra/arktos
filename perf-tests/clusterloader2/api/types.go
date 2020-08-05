@@ -42,6 +42,8 @@ type Config struct {
 	// Name of the test case.
 	Name string `json: name`
 	// AutomanagedNamespaces is a number of automanaged namespaces.
+	AutomanagedTenants int32 `json: automanagedTenants`
+	// AutomanagedNamespaces is a number of automanaged namespaces.
 	AutomanagedNamespaces int32 `json: automanagedNamespaces`
 	// Steps is a sequence of test steps executed in serial.
 	Steps []Step `json: steps`

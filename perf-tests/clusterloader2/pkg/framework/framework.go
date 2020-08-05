@@ -35,11 +35,16 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+var tenantID = regexp.MustCompile(`^test-[a-z0-9]+-[0-9]+$`)
+
 var namespaceID = regexp.MustCompile(`^test-[a-z0-9]+-[0-9]+$`)
 
 // Framework allows for interacting with Kubernetes cluster via
 // official Kubernetes client.
 type Framework struct {
+	automanagedTenantPrefix string
+	automanagedTenantCount  int
+
 	automanagedNamespacePrefix string
 	automanagedNamespaceCount  int
 	clientSets                 *MultiClientSet
@@ -77,6 +82,16 @@ func newFramework(clusterConfig *config.ClusterConfig, clientsNumber int, kubeCo
 	return &f, nil
 }
 
+// GetAutomanagedTenantPrefix returns automanaged tenant prefix.
+func (f *Framework) GetAutomanagedTenantPrefix() string {
+	return f.automanagedTenantPrefix
+}
+
+// SetAutomanagedTenantPrefix sets automanaged tenant prefix.
+func (f *Framework) SetAutomanagedTenantPrefix(tenantName string) {
+	f.automanagedTenantPrefix = tenantName
+}
+
 // GetAutomanagedNamespacePrefix returns automanaged namespace prefix.
 func (f *Framework) GetAutomanagedNamespacePrefix() string {
 	return f.automanagedNamespacePrefix
@@ -103,16 +118,16 @@ func (f *Framework) GetClusterConfig() *config.ClusterConfig {
 }
 
 // CreateAutomanagedNamespaces creates automanged namespaces.
-func (f *Framework) CreateAutomanagedNamespaces(namespaceCount int) error {
+func (f *Framework) CreateAutomanagedNamespaces(tenant string, namespaceCount int) error {
 	if f.automanagedNamespaceCount != 0 {
-		return fmt.Errorf("automanaged namespaces already created")
+		//return fmt.Errorf("automanaged namespaces already created")
 	}
 	startpos := 0
 	endpos := 0
 	if f.clusterConfig.Apiserverextranum == 0 {
 		for i := 1; i <= namespaceCount; i++ {
 			name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedNamespacePrefix)
-			if err := client.CreateNamespace(f.clientSets.GetClient(), name); err != nil {
+			if err := client.CreateNamespace(f.clientSets.GetClient(), tenant, name); err != nil {
 				return err
 			}
 			f.automanagedNamespaceCount++
@@ -129,7 +144,7 @@ func (f *Framework) CreateAutomanagedNamespaces(namespaceCount int) error {
 			endpos = startpos + (26 / apiservernum)
 			for i := 1; i <= namespaceinterval; i++ {
 				name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedNamespacePrefix)
-				if err := client.CreateNamespace(f.clientSets.GetClient(), name); err != nil {
+				if err := client.CreateNamespace(f.clientSets.GetClient(), tenant, name); err != nil {
 					return err
 				}
 				f.automanagedNamespaceCount++
@@ -147,9 +162,9 @@ func (f *Framework) CreateAutomanagedNamespaces(namespaceCount int) error {
 }
 
 // ListAutomanagedNamespaces returns all existing automanged namespace names.
-func (f *Framework) ListAutomanagedNamespaces() ([]string, []string, error) {
+func (f *Framework) ListAutomanagedNamespaces(tenant string) ([]string, []string, error) {
 	var automanagedNamespacesList, staleNamespaces []string
-	namespacesList, err := client.ListNamespaces(f.clientSets.GetClient())
+	namespacesList, err := client.ListNamespaces(f.clientSets.GetClient(), tenant)
 	if err != nil {
 		return automanagedNamespacesList, staleNamespaces, err
 	}
@@ -173,22 +188,22 @@ func (f *Framework) ListAutomanagedNamespaces() ([]string, []string, error) {
 	return automanagedNamespacesList, staleNamespaces, nil
 }
 
-func (f *Framework) deleteNamespace(namespace string) error {
+func (f *Framework) deleteNamespace(tenant string, namespace string) error {
 	clientSet := f.clientSets.GetClient()
-	if err := client.DeleteNamespace(clientSet, namespace); err != nil {
+	if err := client.DeleteNamespace(clientSet, tenant, namespace); err != nil {
 		return err
 	}
-	if err := client.WaitForDeleteNamespace(clientSet, namespace); err != nil {
+	if err := client.WaitForDeleteNamespace(clientSet, tenant, namespace); err != nil {
 		return err
 	}
 	return nil
 }
 
 // DeleteAutomanagedNamespaces deletes all automanged namespaces.
-func (f *Framework) DeleteAutomanagedNamespaces() *errors.ErrorList {
+func (f *Framework) DeleteAutomanagedNamespaces(tenant string) *errors.ErrorList {
 	var wg wait.Group
 	errList := errors.NewErrorList()
-	automanagedNamespacesList, staleNamespaces, err := f.ListAutomanagedNamespaces()
+	automanagedNamespacesList, staleNamespaces, err := f.ListAutomanagedNamespaces(tenant)
 	if err != nil {
 		errList.Append(err)
 		return errList
@@ -197,7 +212,7 @@ func (f *Framework) DeleteAutomanagedNamespaces() *errors.ErrorList {
 		for namespaceIndex := range automanagedNamespacesList {
 			nsName := automanagedNamespacesList[namespaceIndex]
 			wg.Start(func() {
-				if err := f.deleteNamespace(nsName); err != nil {
+				if err := f.deleteNamespace(tenant, nsName); err != nil {
 					errList.Append(err)
 					return
 				}
@@ -209,7 +224,7 @@ func (f *Framework) DeleteAutomanagedNamespaces() *errors.ErrorList {
 		for namespaceIndex := range staleNamespaces {
 			nsName := staleNamespaces[namespaceIndex]
 			wg.Start(func() {
-				if err := f.deleteNamespace(nsName); err != nil {
+				if err := f.deleteNamespace(tenant, nsName); err != nil {
 					errList.Append(err)
 					return
 				}
@@ -223,13 +238,13 @@ func (f *Framework) DeleteAutomanagedNamespaces() *errors.ErrorList {
 }
 
 // DeleteNamespaces deletes the list of namespaces.
-func (f *Framework) DeleteNamespaces(namespaces []string) *errors.ErrorList {
+func (f *Framework) DeleteNamespaces(tenant string, namespaces []string) *errors.ErrorList {
 	var wg wait.Group
 	errList := errors.NewErrorList()
 	for _, namespace := range namespaces {
 		namespace := namespace
 		wg.Start(func() {
-			if err := f.deleteNamespace(namespace); err != nil {
+			if err := f.deleteNamespace(tenant, namespace); err != nil {
 				errList.Append(err)
 				return
 			}
@@ -240,23 +255,23 @@ func (f *Framework) DeleteNamespaces(namespaces []string) *errors.ErrorList {
 }
 
 // CreateObject creates object base on given object description.
-func (f *Framework) CreateObject(namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
-	return client.CreateObject(f.dynamicClients.GetClient(), namespace, name, obj, options...)
+func (f *Framework) CreateObject(tenant string, namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
+	return client.CreateObject(f.dynamicClients.GetClient(), tenant, namespace, name, obj, options...)
 }
 
 // PatchObject updates object (using patch) with given name using given object description.
-func (f *Framework) PatchObject(namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
-	return client.PatchObject(f.dynamicClients.GetClient(), namespace, name, obj)
+func (f *Framework) PatchObject(tenant string, namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
+	return client.PatchObject(f.dynamicClients.GetClient(), tenant, namespace, name, obj)
 }
 
 // DeleteObject deletes object with given name and group-version-kind.
-func (f *Framework) DeleteObject(gvk schema.GroupVersionKind, namespace string, name string, options ...*client.ApiCallOptions) error {
-	return client.DeleteObject(f.dynamicClients.GetClient(), gvk, namespace, name)
+func (f *Framework) DeleteObject(gvk schema.GroupVersionKind, tenant string, namespace string, name string, options ...*client.ApiCallOptions) error {
+	return client.DeleteObject(f.dynamicClients.GetClient(), gvk, tenant, namespace, name)
 }
 
 // GetObject retrieves object with given name and group-version-kind.
-func (f *Framework) GetObject(gvk schema.GroupVersionKind, namespace string, name string, options ...*client.ApiCallOptions) (*unstructured.Unstructured, error) {
-	return client.GetObject(f.dynamicClients.GetClient(), gvk, namespace, name)
+func (f *Framework) GetObject(gvk schema.GroupVersionKind, tenant string, namespace string, name string, options ...*client.ApiCallOptions) (*unstructured.Unstructured, error) {
+	return client.GetObject(f.dynamicClients.GetClient(), gvk, tenant, namespace, name)
 }
 
 // ApplyTemplatedManifests finds and applies all manifest template files matching the provided
@@ -288,7 +303,7 @@ func (f *Framework) ApplyTemplatedManifests(manifestGlob string, templateMapping
 			objList = list.Items
 		}
 		for _, item := range objList {
-			if err := f.CreateObject(item.GetNamespace(), item.GetName(), &item, options...); err != nil {
+			if err := f.CreateObject(item.GetTenant(), item.GetNamespace(), item.GetName(), &item, options...); err != nil {
 				return fmt.Errorf("error while applying (%s): %v", manifest, err)
 			}
 		}
@@ -303,4 +318,148 @@ func (f *Framework) isAutomanagedNamespace(name string) (bool, error) {
 
 func (f *Framework) isStaleAutomanagedNamespace(name string) bool {
 	return namespaceID.MatchString(name)
+}
+
+func (f *Framework) CreateAutomanagedTenants(tenantCount int) error {
+	if f.automanagedTenantCount != 0 {
+		//return fmt.Errorf("automanaged tenants already created")
+	}
+
+	startpos := 0
+	endpos := 0
+	if f.clusterConfig.Apiserverextranum == 0 {
+		for i := 1; i <= tenantCount; i++ {
+			name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedTenantPrefix)
+			if err := client.CreateTenant(f.clientSets.GetClient(), name); err != nil {
+				return err
+			}
+			f.automanagedNamespaceCount++
+		}
+	} else {
+		tenantinterval := 0
+		apiservernum := f.clusterConfig.Apiserverextranum + 1
+		if tenantCount%apiservernum > 0 {
+			tenantinterval = tenantCount/apiservernum + 1
+		} else {
+			tenantinterval = tenantCount / apiservernum
+		}
+		for server := 1; server <= apiservernum; server++ {
+			endpos = startpos + (26 / apiservernum)
+			for i := 1; i <= tenantinterval; i++ {
+				name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedTenantPrefix)
+				if err := client.CreateTenant(f.clientSets.GetClient(), name); err != nil {
+					return err
+				}
+				f.automanagedTenantCount++
+			}
+			if tenantCount-f.automanagedNamespaceCount < tenantinterval {
+				tenantinterval = tenantCount - f.automanagedNamespaceCount
+			}
+			startpos = endpos
+
+		}
+	}
+
+	return nil
+}
+
+// ListAutomanagedTenants returns all existing automanged tenant names.
+func (f *Framework) ListAutomanagedTenants() ([]string, []string, error) {
+	var automanagedTenantList, staleTenants []string
+	tenantsList, err := client.ListTenants(f.clientSets.GetClient())
+	if err != nil {
+		return automanagedTenantList, staleTenants, err
+	}
+	for _, tenant := range tenantsList {
+		matched, err := f.isAutomanagedTenant(tenant.Name)
+		if err != nil {
+			return automanagedTenantList, staleTenants, err
+		}
+		if matched {
+			automanagedTenantList = append(automanagedTenantList, tenant.Name)
+		} else {
+			// check further whether the tenant is a automanaged namespace created in previous test execution.
+			// this could happen when the execution is aborted abornamlly, and the resource is not able to be
+			// clean up.
+			matched := f.isStaleAutomanagedTenant(tenant.Name)
+			if matched {
+				staleTenants = append(staleTenants, tenant.Name)
+			}
+		}
+	}
+	return automanagedTenantList, staleTenants, nil
+}
+
+func (f *Framework) deleteTenant(tenant string) error {
+	clientSet := f.clientSets.GetClient()
+	if err := client.DeleteTenant(clientSet, tenant); err != nil {
+		return err
+	}
+	if err := client.WaitForDeleteTenant(clientSet, tenant); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteAutomanagedTenants deletes all automanged tenants.
+func (f *Framework) DeleteAutomanagedTenants() *errors.ErrorList {
+	var wg wait.Group
+	errList := errors.NewErrorList()
+	automanagedTenantsList, staleTenants, err := f.ListAutomanagedTenants()
+	if err != nil {
+		errList.Append(err)
+		return errList
+	}
+	if len(automanagedTenantsList) > 0 {
+		for tenantIndex := range automanagedTenantsList {
+			tenantName := automanagedTenantsList[tenantIndex]
+			wg.Start(func() {
+				if err := f.deleteTenant(tenantName); err != nil {
+					errList.Append(err)
+					return
+				}
+			})
+		}
+
+	}
+	if len(staleTenants) > 0 {
+		for tenantIndex := range staleTenants {
+			tenantName := staleTenants[tenantIndex]
+			wg.Start(func() {
+				if err := f.deleteTenant(tenantName); err != nil {
+					errList.Append(err)
+					return
+				}
+			})
+		}
+
+	}
+	wg.Wait()
+	f.automanagedTenantCount = 0
+	return errList
+}
+
+// DeleteTenants deletes the list of tenants.
+func (f *Framework) DeleteTenants(tenants []string) *errors.ErrorList {
+	var wg wait.Group
+	errList := errors.NewErrorList()
+	for _, tenant := range tenants {
+		tenant := tenant
+		wg.Start(func() {
+			if err := f.deleteTenant(tenant); err != nil {
+				errList.Append(err)
+				return
+			}
+		})
+	}
+	wg.Wait()
+	return errList
+}
+
+func (f *Framework) isAutomanagedTenant(name string) (bool, error) {
+	return regexp.MatchString("[a-zA-Z0-9]{6,}-"+f.automanagedTenantPrefix, name)
+}
+
+func (f *Framework) isStaleAutomanagedTenant(name string) bool {
+	return tenantID.MatchString(name)
 }

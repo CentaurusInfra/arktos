@@ -27,6 +27,7 @@ import (
 
 // ObjectSelector is an aggregation of namespace, labelSelector and fieldSelector.
 type ObjectSelector struct {
+	Tenant        string
 	Namespace     string
 	LabelSelector string
 	FieldSelector string
@@ -35,6 +36,7 @@ type ObjectSelector struct {
 // NewObjectSelector creates default object selector.
 func NewObjectSelector() *ObjectSelector {
 	return &ObjectSelector{
+		Tenant:    metav1.TenantAll,
 		Namespace: metav1.NamespaceAll,
 	}
 }
@@ -42,6 +44,10 @@ func NewObjectSelector() *ObjectSelector {
 // Parse parses namespace, labelSelector and fieldSelector from params map.
 func (o *ObjectSelector) Parse(params map[string]interface{}) error {
 	var err error
+	o.Tenant, err = util.GetStringOrDefault(params, "tenant", metav1.TenantAll)
+	if err != nil {
+		return err
+	}
 	o.Namespace, err = util.GetStringOrDefault(params, "namespace", metav1.NamespaceAll)
 	if err != nil {
 		return err
@@ -59,12 +65,15 @@ func (o *ObjectSelector) Parse(params map[string]interface{}) error {
 
 // String returns string representation of the selector.
 func (o *ObjectSelector) String() string {
-	return CreateSelectorsString(o.Namespace, o.LabelSelector, o.FieldSelector)
+	return CreateSelectorsString(o.Tenant, o.Namespace, o.LabelSelector, o.FieldSelector)
 }
 
 // CreateSelectorsString creates a string representation for given namespace, label selector and field selector.
-func CreateSelectorsString(namespace, labelSelector, fieldSelector string) string {
+func CreateSelectorsString(tenant, namespace, labelSelector, fieldSelector string) string {
 	var selectorsStrings []string
+	if tenant != metav1.TenantAll {
+		selectorsStrings = append(selectorsStrings, fmt.Sprintf("tenant(%s)", tenant))
+	}
 	if namespace != metav1.NamespaceAll {
 		selectorsStrings = append(selectorsStrings, fmt.Sprintf("namespace(%s)", namespace))
 	}

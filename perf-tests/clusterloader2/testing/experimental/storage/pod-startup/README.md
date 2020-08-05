@@ -9,6 +9,7 @@
     - use override file in `tests/max_volumes_per_pod` 
     - tries to stress the max number of volumes a single pod can have
 - X pods with 1 volume each on cluster in parallel
+    - run on a cluster with num nodes that is a multiple of `NODES_PER_TENANT` (default 100)
     - run on a cluster with num nodes that is a multiple of `NODES_PER_NAMESPACE` (default 100)
     - use override file in `tests/cluster_load_scale_by_nodes` 
 

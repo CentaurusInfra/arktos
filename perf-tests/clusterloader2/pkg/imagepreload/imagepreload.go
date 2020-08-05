@@ -106,7 +106,7 @@ func (c *controller) PreloadImages() error {
 	}
 
 	klog.Infof("Creating namespace %s...", namespace)
-	if err := client.CreateNamespace(kclient, namespace); err != nil {
+	if err := client.CreateNamespace(kclient, metav1.TenantSystem, namespace); err != nil {
 		return err
 	}
 
@@ -137,10 +137,10 @@ func (c *controller) PreloadImages() error {
 	klog.Info("Waiting... done")
 
 	klog.Infof("Deleting namespace %s...", namespace)
-	if err := client.DeleteNamespace(kclient, namespace); err != nil {
+	if err := client.DeleteNamespace(kclient, metav1.TenantSystem, namespace); err != nil {
 		return err
 	}
-	if err := client.WaitForDeleteNamespace(kclient, namespace); err != nil {
+	if err := client.WaitForDeleteNamespace(kclient, metav1.TenantSystem, namespace); err != nil {
 		return err
 	}
 	return nil

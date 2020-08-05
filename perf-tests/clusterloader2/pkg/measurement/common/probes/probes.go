@@ -21,6 +21,7 @@ import (
 	"path"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
@@ -132,10 +133,10 @@ func (p *probesMeasurement) Dispose() {
 	}
 	klog.Infof("Stopping %s probe...", p)
 	k8sClient := p.framework.GetClientSets().GetClient()
-	if err := client.DeleteNamespace(k8sClient, probesNamespace); err != nil {
+	if err := client.DeleteNamespace(k8sClient, metav1.TenantSystem, probesNamespace); err != nil {
 		klog.Errorf("error while deleting %s namespace: %v", probesNamespace, err)
 	}
-	if err := client.WaitForDeleteNamespace(k8sClient, probesNamespace); err != nil {
+	if err := client.WaitForDeleteNamespace(k8sClient, metav1.TenantSystem, probesNamespace); err != nil {
 		klog.Errorf("error while waiting for %s namespace to be deleted: %v", probesNamespace, err)
 	}
 }
@@ -165,7 +166,7 @@ func (p *probesMeasurement) start(config *measurement.MeasurementConfig) error {
 		return err
 	}
 	k8sClient := p.framework.GetClientSets().GetClient()
-	if err := client.CreateNamespace(k8sClient, probesNamespace); err != nil {
+	if err := client.CreateNamespace(k8sClient, metav1.TenantSystem, probesNamespace); err != nil {
 		return err
 	}
 	if err := p.createProbesObjects(); err != nil {

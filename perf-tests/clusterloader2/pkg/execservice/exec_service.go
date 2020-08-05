@@ -26,6 +26,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
@@ -64,7 +65,7 @@ func SetUpExecService(f *framework.Framework) error {
 	mapping["Name"] = execDeploymentName
 	mapping["Namespace"] = execDeploymentNamespace
 	mapping["Replicas"] = execPodReplicas
-	if err = client.CreateNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace); err != nil {
+	if err = client.CreateNamespace(f.GetClientSets().GetClient(), metav1.TenantSystem, execDeploymentNamespace); err != nil {
 		return fmt.Errorf("namespace %s creation error: %v", execDeploymentNamespace, err)
 	}
 	if err = f.ApplyTemplatedManifests(
@@ -110,10 +111,10 @@ func TearDownExecService(f *framework.Framework) error {
 		podStore.Stop()
 		podStore = nil
 	}
-	if err := client.DeleteNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace); err != nil {
+	if err := client.DeleteNamespace(f.GetClientSets().GetClient(), metav1.TenantSystem, execDeploymentNamespace); err != nil {
 		return fmt.Errorf("deleting %s namespace error: %v", execDeploymentNamespace, err)
 	}
-	if err := client.WaitForDeleteNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace); err != nil {
+	if err := client.WaitForDeleteNamespace(f.GetClientSets().GetClient(), metav1.TenantSystem, execDeploymentNamespace); err != nil {
 		return err
 	}
 	return nil
