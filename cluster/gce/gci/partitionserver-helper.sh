@@ -17,8 +17,10 @@
 # A library of helper functions and constant for GCI distro
 source "${KUBE_ROOT}/cluster/gce/gci/helper.sh"
 
-# create-workloadcontroller-instance creates the workloadcontroller instance. If called with
-
+# create-apiserver-instance creates the apiserver instance. If called with
+# an argument, the argument is used as the name to a reserved IP
+# address for the apiserver. (In the case of upgrade/repair, we re-use
+# the same IP.)
 #
 # It requires a whole slew of assumed variables, partially due to to
 # the call to write-apiservr-env. Listing them would be rather
@@ -28,15 +30,19 @@ source "${KUBE_ROOT}/cluster/gce/gci/helper.sh"
 #   ensure-temp-dir
 #   detect-project
 #   get-bearer-token
-function create-workloadcontroller-instance {
+function create-server-instance {
   local name=""
+  local address=""
+  local private_network_ip=""
   [[ -n ${1:-} ]] && name="${1}"
-  write-workloadcontroller-env
+  [[ -n ${2:-} ]] && address="${2}"
+  [[ -n ${3:-} ]] && private_network_ip="${3}"
+  write-partitionserver-env
   ensure-gci-metadata-files
-  create-workloadcontroller-instance-internal "${name}"
+  create-server-instance-internal "${name}" "${address}" "${private_network_ip}"
 }
 
-function create-workloadcontroller-instance-internal() {
+function create-server-instance-internal() {
   local gcloud="gcloud"
   local retries=5
   local sleep_sec=10
@@ -47,6 +53,8 @@ function create-workloadcontroller-instance-internal() {
   fi
 
   local -r server_name="${1}"
+  local -r address="${2:-}"
+  local -r private_network_ip="${3:-}"
 
   local enable_ip_aliases
   if [[ "${NODE_IPAM_MODE:-}" == "CloudAllocator" ]]; then
@@ -57,11 +65,11 @@ function create-workloadcontroller-instance-internal() {
 
   local network=$(make-gcloud-network-argument \
     "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
-    "" "" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
+    "${address:-}" "${private_network_ip:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
 
   local metadata="kube-env=${KUBE_TEMP}/master-kube-env.yaml"
   metadata="${metadata},kubelet-config=${KUBE_TEMP}/master-kubelet-config.yaml"
-  metadata="${metadata},user-data=${KUBE_ROOT}/cluster/gce/gci/workloadcontroller.yaml"
+  metadata="${metadata},user-data=${KUBE_ROOT}/cluster/gce/gci/partitionserver.yaml"
   metadata="${metadata},configure-sh=${KUBE_ROOT}/cluster/gce/gci/configure.sh"
   metadata="${metadata},apiserver-config=${KUBE_ROOT}/hack/apiserver.config"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
@@ -75,7 +83,7 @@ function create-workloadcontroller-instance-internal() {
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
 
   local disk="name=${server_name}-pd"
-  disk="${disk},device-name=server-pd"
+  disk="${disk},device-name=master-pd"
   disk="${disk},mode=rw"
   disk="${disk},boot=no"
   disk="${disk},auto-delete=no"
@@ -84,28 +92,28 @@ function create-workloadcontroller-instance-internal() {
     if result=$(${gcloud} compute instances create "${server_name}" \
       --project "${PROJECT}" \
       --zone "${ZONE}" \
-      --machine-type "${WORKLOADCONTROLLER_SIZE}" \
-      --image-project="${WORKLOADCONTROLLER_IMAGE_PROJECT:-${MASTER_IMAGE_PROJECT}}" \
-      --image "${WORKLOADCONTROLLER_IMAGE:-${MASTER_IMAGE}}" \
+      --machine-type "${PARTITIONSERVER_SIZE}" \
+      --image-project="${PARTITIONSERVER_IMAGE_PROJECT:-${MASTER_IMAGE_PROJECT}}" \
+      --image "${PARTITIONSERVER_IMAGE:-${MASTER_IMAGE}}" \
       --tags "${server_name}" \
       --scopes "storage-ro,compute-rw,monitoring,logging-write" \
       --metadata-from-file "${metadata}" \
       --disk "${disk}" \
-      --boot-disk-size "${WORKLOADCONTROLLER_ROOT_DISK_SIZE}" \
-      ${WORKLOADCONTROLLER_MIN_CPU_ARCHITECTURE:+"--min-cpu-platform=${WORKLOADCONTROLLER_MIN_CPU_ARCHITECTURE}"} \
+      --boot-disk-size "${PARTITIONSERVER_ROOT_DISK_SIZE}" \
+      ${PARTITIONSERVER_MIN_CPU_ARCHITECTURE:+"--min-cpu-platform=${PARTITIONSERVER_MIN_CPU_ARCHITECTURE}"} \
       ${network} 2>&1); then
       echo "${result}" >&2
       return 0
     else
       echo "${result}" >&2
       if [[ ! "${result}" =~ "try again later" ]]; then
-        echo "Failed to create workload controller instance due to non-retryable error" >&2
+        echo "Failed to create apiserver instance due to non-retryable error" >&2
         return 1
       fi
       sleep $sleep_sec
     fi
   done
 
-  echo "Failed to create workload controller instance despite ${retries} attempts" >&2
+  echo "Failed to create apiserver instance despite ${retries} attempts" >&2
   return 1
 }

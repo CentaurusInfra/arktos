@@ -12,6 +12,7 @@ go_library(
         "//perf-tests/clusterloader2/pkg/execservice:go_default_library",
         "//perf-tests/clusterloader2/pkg/flags:go_default_library",
         "//perf-tests/clusterloader2/pkg/framework:go_default_library",
+        "//perf-tests/clusterloader2/pkg/framework/config:go_default_library",
         "//perf-tests/clusterloader2/pkg/imagepreload:go_default_library",
         "//perf-tests/clusterloader2/pkg/measurement/common:go_default_library",
         "//perf-tests/clusterloader2/pkg/measurement/common/bundle:go_default_library",
