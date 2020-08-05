@@ -20,7 +20,6 @@ import (
 	generalErrors "errors"
 	"fmt"
 	"math"
-	"strings"
 	"sync"
 
 	"github.com/grafov/bcast"
@@ -28,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -180,11 +178,11 @@ func (c *ControllerBase) DoneProcessingWorkItem() {
 
 func (c *ControllerBase) SetWorkloadNum(workloadNum int) {
 	c.mux.Lock()
-	defer c.mux.Unlock()
-
 	_, isOK := c.controllerInstanceMap[c.controllerName]
+
 	if isOK && c.curPos >= 0 {
 		c.sortedControllerInstancesLocal[c.curPos].workloadNum = int32(workloadNum)
+		c.mux.Unlock()
 	} else {
 		klog.Fatalf("Current controller instance not in map")
 	}
@@ -620,19 +618,17 @@ func (c *ControllerBase) ReportHealth() {
 	controllerInstance.WorkloadNum = c.sortedControllerInstancesLocal[c.curPos].workloadNum
 	controllerInstance.IsLocked = c.state == ControllerStateLocked
 	controllerInstance.ControllerKey = c.controllerKey
+	controllerInstance.ResourceVersion = "" // remove resource version. Force report health
 	klog.V(3).Infof("Controller %s instance %s report health. Version %s", c.controllerType, c.controllerName, controllerInstance.ResourceVersion)
 
 	// Write to registry
 	newControllerInstance, err := c.client.CoreV1().ControllerInstances().Update(controllerInstance)
 	if err != nil {
-		errorMessage := err.Error()
-		if strings.Contains(errorMessage, genericregistry.OptimisticLockErrorMsg) && strings.Contains(errorMessage, "Operation cannot be fulfilled") {
-			klog.Infof("Skip reporting health this time as registry was updated. old ResourceVersion %s", controllerInstance.ResourceVersion)
-		} else {
-			klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
-		}
+		klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
 	} else {
+		c.mux.Lock()
 		c.controllerInstanceMap[c.controllerName] = *newControllerInstance
+		c.mux.Unlock()
 	}
 }
 
