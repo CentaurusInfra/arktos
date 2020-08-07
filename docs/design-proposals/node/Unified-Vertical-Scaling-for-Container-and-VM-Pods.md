@@ -345,7 +345,7 @@ Currently in Arktos, the VM workload POD is defined the same way as container po
          cpu:
          memory:
      
-Arktos controls the resource the same way as for containers, i.e. schedule based on requested resource level, and evict 
+Arktos controls the VM pod resources the same way as for containers, i.e. schedule based on requested resource level, and evict 
 POD based on the limits values, per some defined eviction policies.
 
 Unlike the container, which is essentially the isolated process on the host, there are quite some differences for VM that
@@ -363,17 +363,20 @@ Qemu/KVM/Xen. For memory resource allocation, a few essential configurations are
     </domain>
 
 Memory defines the max memory allocation at the boot time, while the currentMemory defines the real memory allocation for
-the guest OS. The delta between the currentMemory and memory is the space for memory ballooning to "reclaim" memory
-between VMs and the hypervisor. The maxMemory defines the max memory allocation for a VM at runtime, which can be achieved
-with memory hotplug.
+the guest OS. The delta between the currentMemory and memory is the space for memory ballooning to scale-up memory, and the
+delta between least memory a guestOS requires (say 512Mi) to the currentMemory is the space for memory ballooning to scale-down
+memory between VMs and the hypervisor. The maxMemory defines the max memory allocation for a VM at runtime, which can 
+be achieved with memory hotplug.
 
 Please be noted that there are a few limitations in current design and workflow:
 1. Only spec.resource.limit was passed to the runtime from Kubelet via the linuxContainerResources.MemoryLimitInBytes
 2. The linuxContainerResources.MemoryLimitInBytes was used to set the "memory" in the VM domain xml definition. currentMemory
    is set to the "memory" setting by default.
-3. Ballooning operation, i.e. to adjust the currentMemory, an explict API call "setmem" need to be called, i.e. no auto 
-   adjust for currentMemory based on the application running in the VM
-4. Adjust "memory" can only be done after VM is restarted
+3. With Ballooning, to adjust the currentMemory, currently there is no auto adjust for currentMemory based on the 
+   application running in the VM. For example, with Libvirt, the "setmem" API has to be called to adjust the currentMemory
+   for a VM.
+4. Direct change "memory" config can only be done after VM is restarted. i.e. setMaxMemory() cannot be done without restart
+   the VM.
 5. Memory hotplug/unplug can be done live to a running VM. this is hypervisor specific. Both QEMU and KVM supports it.
 
 The aforementioned is some essentials to lay the common ground before we enter the design sessions. For more details, please
@@ -434,11 +437,14 @@ Let's summarize the goals in VM to support vertical scaling
         and affect its performance.
       
      3. Ballooning is not NUMA aware
-
-   Memory hotplug/unplug simulates the physical memory device being plugged into the physical machines for a guest OS. 
-   It can increase the memory for the guest OS at runtime without rebooting the VM. The size of the memory device can be 
-   configured as well from Megabytes to Gigabytes. It provides potentially large scale-up space for a VM, along with 
-   NUMA aware memory plugin, faster memory increase to the VM etc. 
+        Ballooning driver just keeps tracking the unused memory blocks in the guest OS and render them back to the hypervisor
+        as needed. It is not NUMA aware. Ballooning cannot support cases where applications are placed to a particular 
+        NUMA node, and need more memory, 
+   
+   On the other hand, memory hotplug/unplug simulates the physical memory device being plugged into the physical machines 
+   for a guest OS. It can increase the memory for the guest OS at runtime without rebooting the VM. The size of the memory 
+   device can be configured as well from Megabytes to Gigabytes. It provides potentially large scale-up space for a VM, 
+   along with NUMA aware memory plugin, faster memory increase to the VM etc. 
    
    However it also carries some limitations, especially with scale-down:
    
@@ -504,28 +510,28 @@ providers, like AWS, has VM flavors from nano type ( 1vcpu, 500MiB RAM ) to extr
 of RAMs. Some customer data or VM usage analysis are needed to determine what size memory device will be needed. Currently Arktos
 starts with the below sizes of devices, that supports from 128MiB to 2GiB for each device. NUMA node can be set as needed.
 
-    const memoryDeviceDefinition = `<memory model='dimm'>
+    const memoryDeviceDefinition1 = `<memory model='dimm'>
 							<target>
 								<size unit='MiB'>128</size>
 								<node>0</node>
 							</target>
 						</memory>`
 
-    const memoryDeviceDefinition = `<memory model='dimm'>
+    const memoryDeviceDefinition2 = `<memory model='dimm'>
 							<target>
 								<size unit='MiB'>512</size>
 								<node>0</node>
 							</target>
 						</memory>`
 
-    const memoryDeviceDefinition = `<memory model='dimm'>
+    const memoryDeviceDefinition3 = `<memory model='dimm'>
 							<target>
 								<size unit='MiB'>1024</size>
 								<node>0</node>
 							</target>
 						</memory>`
 
-    const memoryDeviceDefinition = `<memory model='dimm'>
+    const memoryDeviceDefinition4 = `<memory model='dimm'>
 							<target>
 								<size unit='MiB'>2048</size>
 								<node>0</node>
@@ -547,7 +553,7 @@ The VM runtime internal function, determineNumberOfDeviceNeeded(),  will be modi
     return ArrayOfDevieXml
      
  
-#### API changes
+#### Arktos-vm-runtime internal API changes
 As described in the "CRI changes" section, the Arttos-vm-runtime UpdateContainerResource() were implemented to update
 the VM CGroup settings and update the VM domain definition with the new resource configuration.
 
