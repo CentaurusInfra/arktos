@@ -67,7 +67,7 @@ function create-kubemark-master {
     # listing them here.
 #    unset MASTER_SIZE     ###remove this line to allow setting master_size when start kubemark
 #    unset MASTER_DISK_SIZE ###remove this line to allow setting master_disk_size when start kubemark
-    unset MASTER_ROOT_DISK_SIZE
+    #unset MASTER_ROOT_DISK_SIZE   ###remove this line to allow setting master_root_disk_size when start kubemark
 
     # Set kubemark-specific overrides:
     # for each defined env KUBEMARK_X=Y call export X=Y.
