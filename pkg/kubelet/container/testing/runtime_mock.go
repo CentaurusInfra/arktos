@@ -178,5 +178,5 @@ func (r *Mock) DetachNetworkInterface(pod *v1.Pod, vmName string, nic *v1.Nic) e
 
 func (r *Mock) ListNetworkInterfaces(pod *v1.Pod, vmName string) ([]*v1.Nic, error) {
 	args := r.Called(fmt.Sprintf("%s-%s", pod.Name, vmName))
-	return []*v1.Nic{{"testNic", "testsubnet", "fakePortId", "fakeIP", "test", false}}, args.Error(0)
+	return []*v1.Nic{{"testNic", "testsubnet", "fakePortId", "fakeIP", "test", false, "testID"}}, args.Error(0)
 }

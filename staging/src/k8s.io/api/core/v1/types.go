@@ -2750,6 +2750,8 @@ const (
 	PodScheduled PodConditionType = "PodScheduled"
 	// VmReady indicates whether the virtual machine in the pod is ready
 	VmReady PodConditionType = "VirtualMachineReady"
+	// PodScheduleFailed indicates pod is scheduled failed in Global Scheduler
+	PodScheduleFailed PodConditionType = "ScheduleFailed"
 )
 
 // These are reasons for a pod's transition to a condition.
