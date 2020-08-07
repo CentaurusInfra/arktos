@@ -1409,6 +1409,7 @@ function prepare-etcd-manifest {
 
   local -r temp_file="/tmp/$5"
   cp "${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd.manifest" "${temp_file}"
+  sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${temp_file}"
   sed -i -e "s@{{ *suffix *}}@$1@g" "${temp_file}"
   sed -i -e "s@{{ *port *}}@$2@g" "${temp_file}"
   sed -i -e "s@{{ *server_port *}}@$3@g" "${temp_file}"
@@ -1459,6 +1460,7 @@ function prepare-etcd-manifest {
 
 function start-etcd-empty-dir-cleanup-pod {
   local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd-empty-dir-cleanup.yaml"
+  sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${src_file}"
   cp "${src_file}" "/etc/kubernetes/manifests"
 }
 
@@ -2039,6 +2041,10 @@ function start-kube-controller-manager {
   params+=" --use-service-account-credentials"
   params+=" --cloud-provider=gce"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
+  ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
+  if [[ "${ENABLE_KCM_LEADER_ELECT:-true}" == "false" ]]; then
+    params+=" --leader-elect=false"
+  fi
   params+=" --root-ca-file=${CA_CERT_BUNDLE_PATH}"
   params+=" --service-account-private-key-file=${SERVICEACCOUNT_KEY_PATH}"
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
@@ -2068,7 +2074,7 @@ function start-kube-controller-manager {
   if [[ -n "${TERMINATED_POD_GC_THRESHOLD:-}" ]]; then
     params+=" --terminated-pod-gc-threshold=${TERMINATED_POD_GC_THRESHOLD}"
   fi
-  if [[ "${ENABLE_IP_ALIASES:-}" == 'true' ]]; then
+  if [[ "${ENABLE_IP_ALIASES:-}" == "true" ]]; then
     params+=" --cidr-allocator-type=${NODE_IPAM_MODE}"
     params+=" --configure-cloud-routes=false"
   fi

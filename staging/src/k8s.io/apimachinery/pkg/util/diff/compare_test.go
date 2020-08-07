@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"math"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -135,6 +136,33 @@ func TestRevisionIsNewerBackwardCompatible(t *testing.T) {
 
 	result = RevisionIsNewer(rev1, rev3)
 	assert.False(t, result, "Expecting revision %v is not newer than %v but not true", rev1, rev3)
+}
+
+func TestRevisionStrIsNewer(t *testing.T) {
+	// empty string is not allowed
+	_, err := RevisionStrIsNewer("", "1")
+	assert.NotNil(t, err, "Expected error but got nil")
+
+	_, err = RevisionStrIsNewer("1", "")
+	assert.NotNil(t, err, "Expected error but got nil")
+
+	// backwards compatible
+	isNewer, err := RevisionStrIsNewer("2", "1")
+	assert.Nil(t, err, "Expected no error but got %v", err)
+	assert.True(t, isNewer)
+
+	isNewer, err = RevisionStrIsNewer("1", "2")
+	assert.Nil(t, err, "Expected no error but got %v", err)
+	assert.False(t, isNewer)
+
+	// customized ETCD
+	rev1 := v2MinRevision + 1
+	rev2 := uint64(rand.Int63nRange(int64(rev1+1), math.MaxInt64))
+	rev1Str := strconv.FormatUint(rev1, 10)
+	rev2Str := strconv.FormatUint(rev2, 10)
+	isNewer, err = RevisionStrIsNewer(rev1Str, rev2Str)
+	assert.Nil(t, err, "Expected no error but got %v", err)
+	assert.False(t, isNewer)
 }
 
 // test revision based on timestamp + clusterId + sequence #

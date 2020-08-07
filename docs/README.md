@@ -6,39 +6,38 @@
 [![LICENSE](https://img.shields.io/badge/license-apache%202.0-green)](https://github.com/futurewei-cloud/arktos/blob/master/LICENSE)
 
 
-## What Arktos is
+## What is Arktos
 
-Arktos is an open source cluster management system designed for large scale clouds. It is evolved from the open source [Kubernetes](https://github.com/kubernetes/kubernetesh) v1.15 codebase with some fundamental improvements. 
+Arktos is an open source project designed for large scale cloud compute infrastructure. It is evolved from the open source project [Kubernetes](https://github.com/kubernetes/kubernetes) codebase with core design changes. 
 
-Arktos aims to be an open source solution to address key challenges of large scale clouds, including system scalability, resource efficiency, multitenancy, cross-AZ resiliency, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
+Arktos aims to be an open source solution to address key challenges of large-scale clouds, including system scalability, resource efficiency, multitenancy, edge computing, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
 
-----
-
-## Key Features of Arktos
-
+## Architecture
+![Architecture Diagram](https://raw.githubusercontent.com/futurewei-cloud/arktos/master/docs/design-proposals/arch/project_architecture.png)
+## Key Features
 
 ### Large Scalability
 
-Arktos achieves a scalable architecture by partitioning and replicating system components, including API Server, storage, controllers and data plane. The eventual goal of Arktos is to support 100K nodes with a single cross-AZ control plane.
+Arktos achieves a scalable architecture by partitioning and scaling out components, including API Server, storage, controllers and data plane. The eventual goal of Arktos is to support 300K nodes with a single regional control plane.
 
 ### Multitenancy
 
-Arktos implements a hard multi-tenancy model to meet the strict isolation requirement highly desired by a typical public cloud environment. Tenant is a built-in object in the system, and some flexible multi-tenancy models can also be supported with customized resource authorization rules.
+Arktos implements a hard multitenancy model to meet the strict isolation requirement highly desired by public cloud environment. It's based on the virtual cluster idea and all isolations are transparent to tenants. Each tenant feels it's a dedicated cluster for them. 
 
-### Native VM Support
+### Unified Container/VM Orchestration
 
-In addition to container orchestration, Arktos implements a built-in support for VMs. In Arktos a pod can contain either containers or a VM. They are scheduled the same way and launched by node agent using different runtime servers. VMs and containers are both the first-class citizens in Arktos.
+In addition to container orchestration, Arktos implements a built-in support for VMs. In Arktos a pod can contain either containers or a VM. They are scheduled the same way in a same resource pool. This enables cloud providers use a single converged stack to manage all cloud hosts.
 
+### More Features
 
-### More Planned Features
-
-More features are planned but not started yet, including intelligent scheduling, in-place resource update, QoS enforcement, etc.
+There are more features under development, such as cloud-edge scheduling, in-place vertical scaling, etc. Check out [the project introduction](https://docs.google.com/presentation/d/1PG1m27MYRh4kuq654W9HvdoZ5QDX9tWxoCMCfeOZUrE/edit#slide=id.g8a27d34398_8_0) for more information.
 
 
 ## Build Arktos
 
+Arktos requires a few dependencies to build and run, and [a bash script](https://github.com/futurewei-cloud/arktos/tree/master/hack/setup-dev-node.sh) is provided to install them.
 
-To build Arktos, you just need to clone the repo and run "make":
+After the prerequisites are installed, you just need to clone the repo and run "make":
 
 ##### Note: you need to have a working [Go 1.12 environment](https://golang.org/doc/install). Go 1.13 is not supported yet.
 
@@ -51,8 +50,7 @@ make
 ```
 
 ## Run Arktos
-
-To run a single-node Arktos cluster in your local development box:
+The easiest way to run Arktos is to bring up a single-node cluster in your local development box:
 
 ```
 cd $GOPATH/src/github.com/arktos
@@ -66,7 +64,7 @@ cd $GOPATH/src/github.com/arktos
 cluster/kubectl.sh get nodes
 ```
 
-For more complicated cluster setups, please refer to [Arktos Cluster Setup Guide](https://github.com/futurewei-cloud/arktos/blob/master/docs/setup-guide/multi-node-dev-cluster.md).   
+To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](https://github.com/futurewei-cloud/arktos/blob/master/docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
 
 ## Documents and Support
 
