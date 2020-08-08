@@ -19,14 +19,14 @@ package controllerframework
 import (
 	"github.com/grafov/bcast"
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	"math"
 	"sort"
 )
 
-// Sort Controller Instances by controller key
-func SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap map[string]v1.ControllerInstance) []controllerInstanceLocal {
+// Sort Controller Instances
+func sortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap map[string]v1.ControllerInstance) []controllerInstanceLocal {
 	// copy map
 	var sortedControllerInstancesLocal []controllerInstanceLocal
 	for _, controllerInstance := range controllerInstanceMap {
@@ -34,13 +34,12 @@ func SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap map[str
 			instanceName:  controllerInstance.Name,
 			controllerKey: controllerInstance.ControllerKey,
 			workloadNum:   controllerInstance.WorkloadNum,
-			isLocked:      controllerInstance.IsLocked,
 		}
 		sortedControllerInstancesLocal = append(sortedControllerInstancesLocal, instance)
 	}
 
 	sort.Slice(sortedControllerInstancesLocal, func(i, j int) bool {
-		return sortedControllerInstancesLocal[i].controllerKey < sortedControllerInstancesLocal[j].controllerKey
+		return sortedControllerInstancesLocal[i].instanceName < sortedControllerInstancesLocal[j].instanceName
 	})
 
 	if len(sortedControllerInstancesLocal) > 0 {
@@ -52,6 +51,31 @@ func SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap map[str
 	}
 
 	return sortedControllerInstancesLocal
+}
+
+// evenly split 0 ~ maxInt64 interval
+func reassignControllerKeys(instances []controllerInstanceLocal) []controllerInstanceLocal {
+	if len(instances) == 0 {
+		return instances
+	}
+
+	if len(instances) == 1 {
+		instances[0].controllerKey = math.MaxInt64
+		return instances
+	}
+
+	interval := int64(math.MaxInt64 / len(instances))
+	startKey := int64(math.MaxInt64)
+	instances[0].lowerboundKey = 0
+	for i := len(instances) - 1; i >= 0; i-- {
+		instances[i].controllerKey = startKey
+		startKey -= interval
+		if i > 0 {
+			instances[i].lowerboundKey = startKey
+		}
+	}
+
+	return instances
 }
 
 // The following are test util. Put here so that can be used in other packages' tests
@@ -78,17 +102,6 @@ func CreateTestControllerInstanceManager(stopCh chan struct{}) (*ControllerInsta
 	cim.notifyHandler = mockNotifyHander
 	checkInstanceHandler = mockCheckInstanceHander
 	return GetControllerInstanceManager(), informers
-}
-
-func MockCreateControllerInstance(c *ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
-	fakeControllerInstance := &v1.ControllerInstance{
-		ObjectMeta:     metav1.ObjectMeta{Name: c.GetControllerName()},
-		ControllerType: c.GetControllerType(),
-		ControllerKey:  c.GetControllerKey(),
-		WorkloadNum:    0,
-		IsLocked:       false,
-	}
-	return fakeControllerInstance, nil
 }
 
 func MockCreateControllerInstanceAndResetChs(stopCh chan struct{}) (*bcast.Member, *bcast.Group) {

@@ -190,7 +190,7 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 
 	cim.currentControllers[oldControllerInstance.ControllerType][oldControllerInstance.Name] = *curControllerInstance
 
-	if curControllerInstance.WorkloadNum != oldControllerInstance.WorkloadNum || curControllerInstance.IsLocked != oldControllerInstance.IsLocked ||
+	if curControllerInstance.WorkloadNum != oldControllerInstance.WorkloadNum ||
 		curControllerInstance.ControllerKey != oldControllerInstance.ControllerKey {
 		klog.V(4).Infof("Notify controller instance %v was updated. CIM %v", curControllerInstance.Name, cim.instanceId)
 		cim.notifyHandler(curControllerInstance)

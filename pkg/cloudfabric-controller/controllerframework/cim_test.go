@@ -31,10 +31,9 @@ func newControllerInstance(controllerType string, controllerKey int64, workloadN
 		ControllerType: controllerType,
 		ControllerKey:  controllerKey,
 		WorkloadNum:    workloadNum,
-		IsLocked:       isLocked,
 	}
 
-	controllerInstance.Name = generateControllerName()
+	controllerInstance.Name = generateControllerName(nil)
 
 	return controllerInstance
 }
@@ -55,7 +54,6 @@ func testAddEvent(t *testing.T, cim *ControllerInstanceManager, notifyTimes int)
 	assert.Equal(t, controllerInstance1.ControllerType, controllerInstanceRead.ControllerType)
 	assert.Equal(t, controllerInstance1.ControllerKey, controllerInstanceRead.ControllerKey)
 	assert.Equal(t, controllerInstance1.WorkloadNum, controllerInstanceRead.WorkloadNum)
-	assert.Equal(t, controllerInstance1.IsLocked, controllerInstanceRead.IsLocked)
 	assert.Equal(t, notifyTimes, notifyTimes, "Unexpected notify times")
 
 	return &controllerInstanceRead, controllerType, controllerInstanceMap
@@ -87,7 +85,6 @@ func TestControllerInstancesAddAndUpdateEventHandler(t *testing.T) {
 
 	// update event
 	controllerInstance2 := controllerInstance1.DeepCopy()
-	controllerInstance2.IsLocked = !controllerInstance1.IsLocked
 	controllerInstance2.WorkloadNum = controllerInstance1.WorkloadNum + 101
 	controllerInstance2.ControllerKey = controllerInstance1.ControllerKey - 100
 	controllerInstance2.ResourceVersion = "101"
@@ -102,7 +99,6 @@ func TestControllerInstancesAddAndUpdateEventHandler(t *testing.T) {
 	assert.NotNil(t, controllerInstanceRead2)
 	assert.Equal(t, controllerInstance1.Name, controllerInstanceRead2.Name)
 	assert.Equal(t, controllerInstance1.ControllerType, controllerInstanceRead2.ControllerType)
-	assert.NotEqual(t, controllerInstance1.IsLocked, controllerInstanceRead2.IsLocked)
 	assert.Equal(t, controllerInstance1.WorkloadNum+101, controllerInstanceRead2.WorkloadNum)
 	assert.Equal(t, controllerInstance1.ControllerKey-100, controllerInstanceRead2.ControllerKey)
 	assert.Equal(t, 2, notifyTimes, "Unexpected notify times")
@@ -205,7 +201,6 @@ func TestUpdateHandlerWithOldEvents(t *testing.T) {
 
 	// update event
 	controllerInstance2 := controllerInstance1.DeepCopy()
-	controllerInstance2.IsLocked = !controllerInstance1.IsLocked
 	controllerInstance2.WorkloadNum = controllerInstance1.WorkloadNum + 101
 	controllerInstance2.ControllerKey = controllerInstance1.ControllerKey - 100
 	controllerInstance2.ResourceVersion = "99"
@@ -221,7 +216,6 @@ func TestUpdateHandlerWithOldEvents(t *testing.T) {
 
 	assert.Equal(t, controllerInstance1.Name, controllerInstanceRead2.Name)
 	assert.Equal(t, controllerInstance1.ResourceVersion, controllerInstanceRead2.ResourceVersion)
-	assert.Equal(t, controllerInstance1.IsLocked, controllerInstanceRead2.IsLocked)
 	assert.Equal(t, controllerInstance1.WorkloadNum, controllerInstanceRead2.WorkloadNum)
 	assert.Equal(t, controllerInstance1.ControllerKey, controllerInstanceRead2.ControllerKey)
 }

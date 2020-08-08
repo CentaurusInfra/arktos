@@ -277,12 +277,6 @@ func testScale(t *testing.T, tenant string) {
 		},
 	}
 
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
-
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
@@ -344,9 +338,12 @@ func testScale(t *testing.T, tenant string) {
 			}
 			// Get all the UPDATE actions and update nameToSize with all the updated sizes.
 			for _, action := range fake.Actions() {
-				rs := action.(testclient.UpdateAction).GetObject().(*apps.ReplicaSet)
-				if !test.wasntUpdated[rs.Name] {
-					nameToSize[rs.Name] = *(rs.Spec.Replicas)
+				switch action.(testclient.UpdateAction).GetObject().(type) {
+				case *apps.ReplicaSet:
+					rs := action.(testclient.UpdateAction).GetObject().(*apps.ReplicaSet)
+					if !test.wasntUpdated[rs.Name] {
+						nameToSize[rs.Name] = *(rs.Spec.Replicas)
+					}
 				}
 			}
 
@@ -443,12 +440,6 @@ func testDeploymentController_cleanupDeployment(t *testing.T, tenant string) {
 			expectedDeletions:    0,
 		},
 	}
-
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)

@@ -476,16 +476,6 @@ func (dc *DeploymentController) worker() {
 }
 
 func (dc *DeploymentController) processNextWorkItem() bool {
-	if !dc.IsControllerActive() {
-		isDone, countOfProcessingWorkItem := dc.IsDoneProcessingCurrentWorkloads()
-		if !isDone {
-			klog.Infof("Controller is not active, worker idle .... count of work items = %d", countOfProcessingWorkItem)
-			// TODO : compare key version and controller locked status version
-			time.Sleep(1 * time.Second)
-			return true
-		}
-	}
-
 	key, quit := dc.queue.Get()
 	if quit {
 		return false

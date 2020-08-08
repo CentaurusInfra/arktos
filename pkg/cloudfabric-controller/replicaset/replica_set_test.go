@@ -327,12 +327,6 @@ func TestSyncReplicaSetDormancyWithMultiTenancy(t *testing.T) {
 }
 
 func testSyncReplicaSetDormancy(t *testing.T, tenant string) {
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
-
 	// Setup a test server so we can lie about the current state of pods
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:    200,
