@@ -427,6 +427,11 @@ func isPodUpdated(oldPod, newPod *v1.Pod) bool {
 // become schedulable and adds the updated one to the active queue.
 // If pod is not present in any of the queues, it is added to the active queue.
 func (p *PriorityQueue) Update(oldPod, newPod *v1.Pod) error {
+	// Disable scheduling queue update when newPod.Status.Phase is Running
+	if newPod.Status.Phase == v1.PodRunning {
+		return nil
+	}
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 

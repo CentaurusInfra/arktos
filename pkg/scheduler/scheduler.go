@@ -56,7 +56,7 @@ const (
 	// SchedulerError is the reason recorded for events when an error occurs during scheduling a pod.
 	SchedulerError = "SchedulerError"
 	// ErrorRescheduleTimesLimits is the maximum global scheduler retry times
-	ErrorRescheduleTimesLimits = 2
+	ErrorRescheduleTimesLimits = 3
 )
 
 // Global token map storing token which avoid generating token every time
@@ -627,35 +627,38 @@ func tokenExpired(host string, authToken string) bool {
 	return false
 }
 
+func (sched *Scheduler) reschedule(pod *v1.Pod, rescheduleReason string) {
+	errorRescheduleTimes[pod.Name]++
+	// This action will enqueue the pod to scheduling queue,
+	// and rerun scheduleOne() function
+	sched.config.PodConditionUpdater.Update(pod, &v1.PodCondition{
+		Type:    v1.PodScheduleFailed,
+		Status:  v1.ConditionFalse,
+		Reason:  rescheduleReason,
+		Message: "Global Scheduler Retry Times: " + strconv.Itoa(errorRescheduleTimes[pod.Name]),
+	})
+}
+
 func (sched *Scheduler) scheduleInstanceStatusCheck(host string, authToken string, instanceID string, pod *v1.Pod, manifest *v1.PodSpec) {
 	instanceStatus, err := checkInstanceStatus(host, authToken, instanceID)
 	if err != nil {
 		return
 	}
 
-	// count indicate the times of BUILD status
+	// count indicate the duration time of BUILD status
 	count := 0
 	for {
 		if instanceStatus == "BUILD" {
 			klog.V(3).Infof("Instance Status: %v", instanceStatus)
 			count++
-			// Wait one minute for creating instance if instance status is BUILD
+			// Wait two minutes for creating instance if instance status is BUILD
 			if count == 60 {
 				klog.V(3).Infof("Create Instance Timeout!")
 				if err := deleteInstance(host, authToken, instanceID); err != nil {
 					klog.V(3).Infof("Instance Delete Failed!")
 				}
 				metrics.PodScheduleErrors.Inc()
-
-				errorRescheduleTimes[pod.Name]++
-				// This action will enqueue the pod to scheduling queue,
-				// and rerun scheduleOne() function
-				sched.config.PodConditionUpdater.Update(pod, &v1.PodCondition{
-					Type:    v1.PodScheduleFailed,
-					Status:  v1.ConditionFalse,
-					Reason:  "Create Instance Timeout!",
-					Message: "Global Scheduler Retry Times: " + strconv.Itoa(errorRescheduleTimes[pod.Name]),
-				})
+				sched.reschedule(pod, "Create Instance Timeout")
 				break
 			}
 			time.Sleep(2 * time.Second)
@@ -670,21 +673,12 @@ func (sched *Scheduler) scheduleInstanceStatusCheck(host string, authToken strin
 				klog.V(3).Infof("Instance Delete Failed!")
 			}
 			metrics.PodScheduleErrors.Inc()
-
-			errorRescheduleTimes[pod.Name]++
-			// This action will enqueue the pod to scheduling queue,
-			// and rerun scheduleOne() function
-			sched.config.PodConditionUpdater.Update(pod, &v1.PodCondition{
-				Type:    v1.PodScheduleFailed,
-				Status:  v1.ConditionFalse,
-				Reason:  "Global Schedule Failed",
-				Message: "Global Scheduler Retry Times: " + strconv.Itoa(errorRescheduleTimes[pod.Name]),
-			})
+			sched.reschedule(pod, "Global Schedule Failed")
 			break
 		} else if instanceStatus == "ACTIVE" {
 			klog.V(3).Infof("Instance Status: %v", instanceStatus)
-			sched.config.PodPhaseUpdater.Update(pod, v1.PodRunning)
 			metrics.PodScheduleSuccesses.Inc()
+			sched.config.PodPhaseUpdater.Update(pod, v1.PodRunning)
 			break
 		}
 	}
@@ -696,12 +690,14 @@ func (sched *Scheduler) scheduleResultDequeue(scheduleResultQueue *internalqueue
 	host := curPodWithDecision.result.SuggestedHost
 	manifest := &(curPodWithDecision.schedulePod.Spec)
 
+	// Get a OpenStack token
 	authToken, exist := tokenMap[host]
 	if !exist || tokenExpired(host, authToken) {
 		// Post Request a new token
 		newToken, err := requestToken(host)
 		if err != nil {
 			klog.V(3).Infof("Token Request Failed.")
+			sched.reschedule(curPodWithDecision.schedulePod, "Token Request Failed")
 			return
 		}
 		authToken = newToken
@@ -709,14 +705,17 @@ func (sched *Scheduler) scheduleResultDequeue(scheduleResultQueue *internalqueue
 		tokenMap[host] = authToken
 	}
 
+	// Create server in OpenStack
 	instanceID, err := serverCreate(host, authToken, manifest)
 	if err != nil {
 		klog.V(3).Infof("Server create failed")
+		sched.reschedule(curPodWithDecision.schedulePod, "Server create failed")
 		return
 	}
 	klog.V(3).Infof("Instance ID: %v", instanceID)
 
-	go sched.scheduleInstanceStatusCheck(host, authToken, instanceID, curPodWithDecision.schedulePod, manifest)
+	// Check OpenStack server status: BUILD / ERROR / ACTIVE
+	sched.scheduleInstanceStatusCheck(host, authToken, instanceID, curPodWithDecision.schedulePod, manifest)
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
@@ -725,7 +724,7 @@ func (sched *Scheduler) scheduleOne() {
 	// Get the Pod to be scheduled from the queue
 	pod := sched.config.NextPod()
 	// pod could be nil when schedulerQueue is closed
-	if pod == nil || pod.Status.Phase == v1.PodRunning {
+	if pod == nil {
 		return
 	}
 	if pod.DeletionTimestamp != nil {
@@ -734,10 +733,7 @@ func (sched *Scheduler) scheduleOne() {
 		return
 	}
 
-	if _, exist := errorRescheduleTimes[pod.Name]; !exist {
-		errorRescheduleTimes[pod.Name] = 0
-	}
-
+	// if pod.Name doesn't exist in errorRescheduleTimes, errorRescheduleTimes[pod.Name] = 0
 	if errorRescheduleTimes[pod.Name] == ErrorRescheduleTimesLimits {
 		sched.config.PodPhaseUpdater.Update(pod, v1.PodFailed)
 		return
@@ -750,6 +746,7 @@ func (sched *Scheduler) scheduleOne() {
 
 	scheduleResult, err := sched.globalSchedule(pod)
 	if err != nil {
+		// TODO: err may have various types
 		klog.Errorf("error selecting cluster for pod: %v", err)
 		metrics.PodScheduleErrors.Inc()
 		return
