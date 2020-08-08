@@ -421,22 +421,23 @@ func (c *ControllerBase) createControllerInstance(controllerInstance v1.Controll
 // Periodically update controller instance in registry for two things:
 //     1. Update workload # so that workload can be more evenly distributed
 //     2. Renew TTL for current controller instance
-func (c *ControllerBase) ReportHealth() {
+func (c *ControllerBase) ReportHealth(client clientset.Interface) {
 	oldControllerInstance := c.controllerInstanceMap[c.controllerName]
 	controllerInstance := oldControllerInstance.DeepCopy()
 	controllerInstance.WorkloadNum = c.sortedControllerInstancesLocal[c.curPos].workloadNum
 	controllerInstance.ControllerKey = c.controllerKey
 	controllerInstance.ResourceVersion = "" // remove resource version. Force report health
-	klog.V(3).Infof("Controller %s instance %s report health. Version %s", c.controllerType, c.controllerName, controllerInstance.ResourceVersion)
 
 	// Write to registry
-	newControllerInstance, err := c.client.CoreV1().ControllerInstances().Update(controllerInstance)
+	newControllerInstance, err := client.CoreV1().ControllerInstances().Update(controllerInstance)
 	if err != nil {
 		klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
 	} else {
 		c.mux.Lock()
 		c.controllerInstanceMap[c.controllerName] = *newControllerInstance
 		c.mux.Unlock()
+		klog.V(3).Infof("Controller %s instance %s report health (controller key %v). Version %s",
+			newControllerInstance.ControllerType, newControllerInstance.Name, newControllerInstance.ControllerKey, newControllerInstance.ResourceVersion)
 	}
 }
 

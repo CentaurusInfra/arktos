@@ -51,8 +51,8 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 
 	// wait for controller instance to update controller key in registry
 	time.Sleep(5 * time.Second)
-	rsc1.ReportHealth()
-	rsc2.ReportHealth()
+	rsc1.ReportHealth(client1)
+	rsc2.ReportHealth(client2)
 
 	// check replicaset controller status in controller manager 2
 	t.Logf("rm 1 instance id: %v", rsc1.GetControllerName())
@@ -87,9 +87,9 @@ func TestMultipleReplicaSetControllerLifeCycle(t *testing.T) {
 	defer close(stopCh3)
 	time.Sleep(5 * time.Second)
 	t.Logf("rm 3 instance id: %v", rsc3.GetControllerName())
-	rsc1.ReportHealth()
-	rsc2.ReportHealth()
-	rsc3.ReportHealth()
+	rsc1.ReportHealth(client1)
+	rsc2.ReportHealth(client2)
+	rsc3.ReportHealth(client3)
 
 	// check replicaset controller status in controller manager 2
 	assert.NotEqual(t, rsc1.GetControllerName(), rsc3.GetControllerName())

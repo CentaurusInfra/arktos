@@ -290,7 +290,7 @@ func TestSetWorkloadNum(t *testing.T) {
 	controllerInstanceBase.SetWorkloadNum(newWorkloadNum)
 	assert.Equal(t, int32(newWorkloadNum), controllerInstanceBase.sortedControllerInstancesLocal[0].workloadNum)
 
-	controllerInstanceBase.ReportHealth()
+	controllerInstanceBase.ReportHealth(client)
 }
 
 func getPosFromControllerInstances(targetInstance *v1.ControllerInstance, searchInstances ...*v1.ControllerInstance) int {
