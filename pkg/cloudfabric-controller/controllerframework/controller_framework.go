@@ -180,7 +180,7 @@ func (c *ControllerBase) instanceUpdateProcess(updatedType string) {
 		return
 	}
 
-	klog.V(4).Infof("Start updating controller instance %s", c.controllerType)
+	klog.V(4).Infof("Start updating controller instance type %s", c.controllerType)
 	controllerInstances, err := listControllerInstancesByType(c.controllerType)
 	if err != nil {
 		// TODO - add retry
@@ -188,7 +188,7 @@ func (c *ControllerBase) instanceUpdateProcess(updatedType string) {
 		return
 	}
 	c.updateCachedControllerInstances(controllerInstances)
-	klog.V(4).Infof("Done updating controller instance %s", c.controllerType)
+	klog.V(4).Infof("Done updating controller instance type %s", c.controllerType)
 }
 
 // This method is for integration test only.
