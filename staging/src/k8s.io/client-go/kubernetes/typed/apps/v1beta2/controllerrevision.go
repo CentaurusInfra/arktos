@@ -136,7 +136,7 @@ func (c *controllerRevisions) List(opts v1.ListOptions) (result *v1beta2.Control
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1beta2.ControllerRevision)
+		itemsMap := make(map[string]v1beta2.ControllerRevision)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -165,13 +165,13 @@ func (c *controllerRevisions) List(opts v1.ListOptions) (result *v1beta2.Control
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

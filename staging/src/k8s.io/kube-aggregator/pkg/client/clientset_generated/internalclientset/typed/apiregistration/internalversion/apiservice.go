@@ -134,7 +134,7 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*apiregistration.APIService)
+		itemsMap := make(map[string]apiregistration.APIService)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -163,13 +163,13 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

@@ -141,7 +141,7 @@ func (c *deployments) List(opts metav1.ListOptions) (result *v1.DeploymentList, 
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1.Deployment)
+		itemsMap := make(map[string]v1.Deployment)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -170,13 +170,13 @@ func (c *deployments) List(opts metav1.ListOptions) (result *v1.DeploymentList, 
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

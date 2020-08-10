@@ -130,7 +130,7 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1alpha1.PodMetricsLis
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1alpha1.PodMetrics)
+		itemsMap := make(map[string]v1alpha1.PodMetrics)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -159,13 +159,13 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1alpha1.PodMetricsLis
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

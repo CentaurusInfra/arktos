@@ -137,7 +137,7 @@ func (c *jobs) List(opts metav1.ListOptions) (result *v1.JobList, err error) {
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1.Job)
+		itemsMap := make(map[string]v1.Job)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -166,13 +166,13 @@ func (c *jobs) List(opts metav1.ListOptions) (result *v1.JobList, err error) {
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}
