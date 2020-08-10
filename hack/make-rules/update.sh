@@ -79,13 +79,3 @@ done
 ${KUBE_ROOT}/hack/arktos_copyright.sh ${KUBE_ROOT} ${KUBE_ROOT}/_output
 
 echo -e "${color_green:?}Update scripts completed successfully${color_norm}"
-
-echo "Now, let's check whether there is file updated."
-echo "We define return value as 0 if there is no file updated, and 1 if there is file updated."
-MODIFIED_FILES=$(git status | grep modified:) || true
-if [[ "${MODIFIED_FILES:-}" != "" ]]; then
-	echo "Following files are updated:"
-	echo $MODIFIED_FILES
-	exit 1
-fi
-echo "Check completed."
