@@ -637,6 +637,7 @@ func (sched *Scheduler) reschedule(pod *v1.Pod, rescheduleReason string) {
 		Reason:  rescheduleReason,
 		Message: "Global Scheduler Retry Times: " + strconv.Itoa(errorRescheduleTimes[pod.Name]),
 	})
+	sched.config.Recorder.Eventf(pod, v1.EventTypeWarning, "Rescheduled", "%s, reschedule %v/%v/%v", rescheduleReason, pod.Tenant, pod.Namespace, pod.Name)
 }
 
 func (sched *Scheduler) scheduleInstanceStatusCheck(host string, authToken string, instanceID string, pod *v1.Pod, manifest *v1.PodSpec) {
@@ -658,7 +659,7 @@ func (sched *Scheduler) scheduleInstanceStatusCheck(host string, authToken strin
 					klog.V(3).Infof("Instance Delete Failed!")
 				}
 				metrics.PodScheduleErrors.Inc()
-				sched.reschedule(pod, "Create Instance Timeout")
+				sched.reschedule(pod, "Create instance timeout")
 				break
 			}
 			time.Sleep(2 * time.Second)
@@ -673,12 +674,13 @@ func (sched *Scheduler) scheduleInstanceStatusCheck(host string, authToken strin
 				klog.V(3).Infof("Instance Delete Failed!")
 			}
 			metrics.PodScheduleErrors.Inc()
-			sched.reschedule(pod, "Global Schedule Failed")
+			sched.reschedule(pod, "Global schedule failed")
 			break
 		} else if instanceStatus == "ACTIVE" {
 			klog.V(3).Infof("Instance Status: %v", instanceStatus)
 			metrics.PodScheduleSuccesses.Inc()
 			sched.config.PodPhaseUpdater.Update(pod, v1.PodRunning)
+			sched.config.Recorder.Eventf(pod, v1.EventTypeNormal, "Scheduled", "Successfully assigned %v/%v/%v to %s", pod.Tenant, pod.Namespace, pod.Name, host)
 			break
 		}
 	}
@@ -696,8 +698,8 @@ func (sched *Scheduler) scheduleResultDequeue(scheduleResultQueue *internalqueue
 		// Post Request a new token
 		newToken, err := requestToken(host)
 		if err != nil {
-			klog.V(3).Infof("Token Request Failed.")
-			sched.reschedule(curPodWithDecision.schedulePod, "Token Request Failed")
+			klog.V(3).Infof("Token Request Failed")
+			sched.reschedule(curPodWithDecision.schedulePod, "Token request failed")
 			return
 		}
 		authToken = newToken
