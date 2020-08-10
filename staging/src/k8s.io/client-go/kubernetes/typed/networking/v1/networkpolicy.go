@@ -136,7 +136,7 @@ func (c *networkPolicies) List(opts metav1.ListOptions) (result *v1.NetworkPolic
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1.NetworkPolicy)
+		itemsMap := make(map[string]v1.NetworkPolicy)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -165,13 +165,13 @@ func (c *networkPolicies) List(opts metav1.ListOptions) (result *v1.NetworkPolic
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

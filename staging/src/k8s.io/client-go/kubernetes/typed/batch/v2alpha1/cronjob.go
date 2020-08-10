@@ -137,7 +137,7 @@ func (c *cronJobs) List(opts v1.ListOptions) (result *v2alpha1.CronJobList, err 
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v2alpha1.CronJob)
+		itemsMap := make(map[string]v2alpha1.CronJob)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -166,13 +166,13 @@ func (c *cronJobs) List(opts v1.ListOptions) (result *v2alpha1.CronJobList, err 
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}
