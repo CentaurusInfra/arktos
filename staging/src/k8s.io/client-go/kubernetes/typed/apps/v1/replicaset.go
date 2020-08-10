@@ -141,7 +141,7 @@ func (c *replicaSets) List(opts metav1.ListOptions) (result *v1.ReplicaSetList, 
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1.ReplicaSet)
+		itemsMap := make(map[string]v1.ReplicaSet)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -170,13 +170,13 @@ func (c *replicaSets) List(opts metav1.ListOptions) (result *v1.ReplicaSetList, 
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

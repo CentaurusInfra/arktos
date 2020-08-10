@@ -133,7 +133,7 @@ func (c *podSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.PodSecu
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1beta1.PodSecurityPolicy)
+		itemsMap := make(map[string]v1beta1.PodSecurityPolicy)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -162,13 +162,13 @@ func (c *podSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.PodSecu
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

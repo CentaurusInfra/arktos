@@ -123,7 +123,7 @@ func (c *storageClusters) List(opts metav1.ListOptions) (result *v1.StorageClust
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1.StorageCluster)
+		itemsMap := make(map[string]v1.StorageCluster)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -152,13 +152,13 @@ func (c *storageClusters) List(opts metav1.ListOptions) (result *v1.StorageClust
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}
