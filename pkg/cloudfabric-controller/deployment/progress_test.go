@@ -329,12 +329,6 @@ func testSyncRolloutStatus(t *testing.T, tenant string) {
 		},
 	}
 
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
-
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)

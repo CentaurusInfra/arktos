@@ -17,18 +17,13 @@ limitations under the License.
 package controllerframework
 
 import (
-	generalErrors "errors"
 	"fmt"
-	"math"
-	"strings"
 	"sync"
 
 	"github.com/grafov/bcast"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -38,32 +33,16 @@ import (
 )
 
 const (
-	ControllerStateInit   string = "init"
-	ControllerStateLocked string = "locked"
-	ControllerStateWait   string = "wait"
-	ControllerStateActive string = "active"
-	ControllerStateError  string = "error"
-
 	controllerInstanceNamePrefix string = "ci"
 )
 
 var ResetFilterHandler = resetFilter
-var CreateControllerInstanceHandler = createControllerInstance
 
 type controllerInstanceLocal struct {
 	instanceName  string
 	controllerKey int64
 	lowerboundKey int64
 	workloadNum   int32
-	isLocked      bool
-}
-
-func (c *controllerInstanceLocal) Size() int64 {
-	size := c.controllerKey - c.lowerboundKey
-	if c.lowerboundKey == 0 && c.controllerKey != math.MaxInt64 {
-		size++
-	}
-	return size
 }
 
 type ControllerBase struct {
@@ -76,17 +55,15 @@ type ControllerBase struct {
 	// use int64 as k8s base deal with int64 better
 	controllerKey int64
 
-	sortedControllerInstancesLocal []controllerInstanceLocal
-	controllerInstanceMap          map[string]v1.ControllerInstance // key: name of controller instance
+	sortedControllerInstancesLocal []controllerInstanceLocal        // locally sorted instances and keys
+	controllerInstanceMap          map[string]v1.ControllerInstance // what is in registry key: name of controller instance
 
 	curPos int
 
-	client                          clientset.Interface
-	controllerInstanceUpdateCh      *bcast.Member
-	mux                             sync.Mutex
-	unlockControllerInstanceHandler func(local controllerInstanceLocal) error
-	createControllerInstanceHandler func(v1.ControllerInstance) (*v1.ControllerInstance, error)
-	InformerResetChGrp              *bcast.Group
+	client                     clientset.Interface
+	controllerInstanceUpdateCh *bcast.Member
+	mux                        sync.Mutex
+	InformerResetChGrp         *bcast.Group
 }
 
 var (
@@ -112,35 +89,26 @@ func NewControllerBase(controllerType string, client clientset.Interface, cimUpd
 		klog.Errorf("Error getting controller instances for %s. Error %v", controllerType, err)
 	}
 
-	sortedControllerInstances := SortControllerInstancesByKeyAndConvertToLocal(controllerInstanceMap)
-
 	controller := &ControllerBase{
-		client:         client,
-		controllerType: controllerType,
-		//state:                                    ControllerStateInit,
-		controllerInstanceMap:          controllerInstanceMap,
-		sortedControllerInstancesLocal: sortedControllerInstances,
-		curPos:                         -1,
-		controllerInstanceUpdateCh:     cimUpdateCh,
-		countOfProcessingWorkItem:      0,
-		InformerResetChGrp:             informerResetChGrp,
+		client:                     client,
+		controllerType:             controllerType,
+		controllerName:             generateControllerName(controllerInstanceMap),
+		controllerInstanceMap:      controllerInstanceMap,
+		curPos:                     -1,
+		controllerInstanceUpdateCh: cimUpdateCh,
+		countOfProcessingWorkItem:  0,
+		InformerResetChGrp:         informerResetChGrp,
 	}
 
-	controllerKey, err := controller.generateKey()
-	if err != nil {
-		klog.Errorf("Error generating controllerKey for %s. Error %v", controllerType, err)
-		return nil, err
+	controllerInstanceMap[controller.controllerName] = v1.ControllerInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: controller.controllerName,
+		},
+		ControllerType: controllerType,
+		ControllerKey:  0,
+		WorkloadNum:    0,
 	}
-	controller.controllerKey = controllerKey
-	controller.controllerName = generateControllerName()
-	controller.unlockControllerInstanceHandler = controller.unlockControllerInstance
-
-	// First controller instance. No need to wait for others
-	if len(controller.sortedControllerInstancesLocal) == 0 {
-		controller.state = ControllerStateActive
-	} else {
-		controller.state = ControllerStateLocked
-	}
+	controller.updateCachedControllerInstances(controllerInstanceMap)
 
 	err = controller.registControllerInstance()
 	if err != nil {
@@ -180,11 +148,11 @@ func (c *ControllerBase) DoneProcessingWorkItem() {
 
 func (c *ControllerBase) SetWorkloadNum(workloadNum int) {
 	c.mux.Lock()
-	defer c.mux.Unlock()
-
 	_, isOK := c.controllerInstanceMap[c.controllerName]
+
 	if isOK && c.curPos >= 0 {
 		c.sortedControllerInstancesLocal[c.curPos].workloadNum = int32(workloadNum)
+		c.mux.Unlock()
 	} else {
 		klog.Fatalf("Current controller instance not in map")
 	}
@@ -201,22 +169,26 @@ func (c *ControllerBase) WatchInstanceUpdate(stopCh <-chan struct{}) {
 				klog.Error("Unexpected controller instance update message")
 				return
 			}
-			klog.Infof("Got controller instance update massage. Updated Controller Type %s, current controller instance type %s, key %d", updatedType, c.controllerType, c.controllerKey)
-			if updatedType != c.controllerType {
-				continue
-			}
-
-			klog.V(4).Infof("Start updating controller instance %s", c.controllerType)
-			controllerInstances, err := listControllerInstancesByType(c.controllerType)
-			if err != nil {
-				// TODO - add retry
-				klog.Errorf("Error getting controller instances for %s. Error %v", c.controllerType, err)
-				continue
-			}
-			c.updateCachedControllerInstances(controllerInstances)
-			klog.V(4).Infof("Done updating controller instance %s", c.controllerType)
+			c.instanceUpdateProcess(updatedType.(string))
 		}
 	}
+}
+
+func (c *ControllerBase) instanceUpdateProcess(updatedType string) {
+	klog.Infof("Got controller instance update massage. Updated Controller Type %s, current controller instance type %s, key %d", updatedType, c.controllerType, c.controllerKey)
+	if updatedType != c.controllerType {
+		return
+	}
+
+	klog.V(4).Infof("Start updating controller instance type %s", c.controllerType)
+	controllerInstances, err := listControllerInstancesByType(c.controllerType)
+	if err != nil {
+		// TODO - add retry
+		klog.Errorf("Error getting controller instances for %s. Error %v", c.controllerType, err)
+		return
+	}
+	c.updateCachedControllerInstances(controllerInstances)
+	klog.V(4).Infof("Done updating controller instance type %s", c.controllerType)
 }
 
 // This method is for integration test only.
@@ -241,11 +213,11 @@ func (c *ControllerBase) GetControllerKey() int64 {
 	return c.controllerKey
 }
 
-func (c *ControllerBase) IsControllerActive() bool {
-	return c.state == ControllerStateActive
-}
-
 func (c *ControllerBase) IsInRange(key int64) bool {
+	if c.curPos == -1 { // do not process until registration complete
+		return false
+	}
+
 	if key < 0 {
 		return false
 	}
@@ -268,10 +240,10 @@ func (c *ControllerBase) PrintRangeAndStatus() {
 	if c.curPos >= 0 && len(c.sortedControllerInstancesLocal) > 0 {
 		lowerBound := int64(0)
 		if c.curPos > 0 {
-			lowerBound = c.sortedControllerInstancesLocal[c.curPos-1].controllerKey
+			lowerBound = c.sortedControllerInstancesLocal[c.curPos].lowerboundKey
 		}
 
-		klog.V(4).Infof("Current controller %s, status %s, range [%d, %d]", c.controllerType, c.state, lowerBound, c.sortedControllerInstancesLocal[c.curPos].controllerKey)
+		klog.V(4).Infof("Current controller %s, status %s, range [%d, %d]", c.controllerType, c.state, lowerBound, c.controllerKey)
 	}
 }
 
@@ -282,54 +254,7 @@ func (c *ControllerBase) IsDoneProcessingCurrentWorkloads() (bool, int) {
 	if c.countOfProcessingWorkItem > 0 {
 		return false, c.countOfProcessingWorkItem
 	}
-	if c.state == ControllerStateWait {
-		c.state = ControllerStateActive
-	}
-
-	if c.state == ControllerStateActive {
-		c.tryUnlockControllerInstance(c.sortedControllerInstancesLocal, c.curPos)
-	}
-
 	return true, 0
-}
-
-// Generate controllerKey for new controller instance. It is to find and split a scope for new controller instance.
-// Scope Splitting Principles:
-// 1. We always find existing scope with biggest size, and split it.
-// 2. If there are more than one scope at the biggest size, we chose the one with most ongoing work load, and split it.
-// 3. If both existing scope size and ongoing work are even, we choose first scope and split it.
-func (c *ControllerBase) generateKey() (int64, error) {
-	if len(c.sortedControllerInstancesLocal) == 0 {
-		return math.MaxInt64, nil
-	}
-
-	candidate := c.sortedControllerInstancesLocal[0]
-	for i := 1; i < len(c.sortedControllerInstancesLocal); i++ {
-		instance := c.sortedControllerInstancesLocal[i]
-
-		// There are two conditions to be met then change candidate:
-		// 1. if the space is bigger
-		// 2. or the space size is same, but with more work load
-		// When splitting odd size space, the sub spaces has 1 difference in size. So ignore difference of 1 when comparing two spaces' size.
-		// Which is said, we consider it is bigger when it's bigger more than 1, and we consider both are equal even they have diff 1.
-		if instance.Size() > candidate.Size()+1 ||
-			(math.Abs(float64(instance.Size()-candidate.Size())) <= 1 && instance.workloadNum > candidate.workloadNum) {
-			candidate = instance
-		}
-	}
-
-	spaceToSplit := candidate.controllerKey - candidate.lowerboundKey
-
-	// Add one to space to guarantee the first half will have more than second half when space to split is not even.
-	// But don't apply if the scope starting from 0 because it already got extra space from number 0.
-	if spaceToSplit != math.MaxInt64 && candidate.lowerboundKey != 0 {
-		spaceToSplit++
-	}
-
-	if spaceToSplit <= 1 {
-		return -1, generalErrors.New("no enough space to split for new controller manager instance")
-	}
-	return candidate.lowerboundKey + spaceToSplit/2, nil
 }
 
 func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMap map[string]v1.ControllerInstance) {
@@ -340,57 +265,31 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 		klog.V(4).Infof("Controller %s instance %s mux released", c.controllerType, c.controllerName)
 	}()
 
-	sortedNewControllerInstancesLocal := SortControllerInstancesByKeyAndConvertToLocal(newControllerInstanceMap)
+	sortedNewControllerInstancesLocal := sortControllerInstancesByKeyAndConvertToLocal(newControllerInstanceMap)
 
 	// Compare
-	isUpdated, isSelfUpdated, newLowerBound, newUpperbound, newPos := c.tryConsolidateControllerInstancesLocal(sortedNewControllerInstancesLocal)
+	isUpdated, isSelfUpdated, newLowerBound, newUpperbound, newPos, newSortedControllerInstanceLocal :=
+		c.tryConsolidateControllerInstancesLocal(sortedNewControllerInstancesLocal)
 	if !isUpdated && !isSelfUpdated {
 		return
 	}
 
-	isSelfRangeUpdated := false
-
-	if isUpdated {
-		defer func() {
-			c.curPos = newPos
-			c.sortedControllerInstancesLocal = sortedNewControllerInstancesLocal
-			c.controllerInstanceMap = newControllerInstanceMap
-
-			if isSelfUpdated {
-				c.controllerKey = c.sortedControllerInstancesLocal[c.curPos].controllerKey
-			}
-
-			if isSelfRangeUpdated {
-				ResetFilterHandler(c, newLowerBound, newUpperbound)
-			}
-
-			c.IsDoneProcessingCurrentWorkloads()
-		}()
-	}
-
 	if isSelfUpdated {
 		var currentControllerInstance controllerInstanceLocal
-		if c.curPos < 0 {
-			currentControllerInstance = sortedNewControllerInstancesLocal[newPos]
-			isSelfRangeUpdated = true
+		if c.curPos < 0 { // new instance during registration process
+			currentControllerInstance = newSortedControllerInstanceLocal[newPos]
 		} else {
 			currentControllerInstance = c.sortedControllerInstancesLocal[c.curPos]
-
-			if currentControllerInstance.lowerboundKey != newLowerBound || currentControllerInstance.controllerKey != newUpperbound {
-				isSelfRangeUpdated = true
-			}
-		}
-
-		if isSelfRangeUpdated {
-			klog.Infof("Self range updated %d, %d", newLowerBound, newUpperbound)
 		}
 
 		message := fmt.Sprintf("Controller %s instance %s", c.controllerType, c.controllerName)
 		if currentControllerInstance.lowerboundKey != newLowerBound || currentControllerInstance.controllerKey != newUpperbound {
-			if c.sortedControllerInstancesLocal[c.curPos].lowerboundKey == 0 {
-				message += fmt.Sprintf(" old range [%d, %d]", c.sortedControllerInstancesLocal[c.curPos].lowerboundKey, c.sortedControllerInstancesLocal[c.curPos].controllerKey)
-			} else {
-				message += fmt.Sprintf(" old range (%d, %d]", c.sortedControllerInstancesLocal[c.curPos].lowerboundKey, c.sortedControllerInstancesLocal[c.curPos].controllerKey)
+			if c.curPos >= 0 {
+				if currentControllerInstance.lowerboundKey == 0 {
+					message += fmt.Sprintf(" old range [%d, %d]", c.sortedControllerInstancesLocal[c.curPos].lowerboundKey, c.sortedControllerInstancesLocal[c.curPos].controllerKey)
+				} else {
+					message += fmt.Sprintf(" old range (%d, %d]", c.sortedControllerInstancesLocal[c.curPos].lowerboundKey, c.sortedControllerInstancesLocal[c.curPos].controllerKey)
+				}
 			}
 			if newPos == 0 {
 				message += fmt.Sprintf(" assigned new range [%d, %d]", newLowerBound, newUpperbound)
@@ -405,94 +304,51 @@ func (c *ControllerBase) updateCachedControllerInstances(newControllerInstanceMa
 			}
 		}
 		klog.Info(message)
-
-		isLowerBoundExtended := false
-		isUpperBoundExtended := false
-		if newLowerBound < currentControllerInstance.lowerboundKey {
-			isLowerBoundExtended = true
-		}
-		if currentControllerInstance.controllerKey < newUpperbound {
-			isUpperBoundExtended = true
-		}
-
-		// Currently, we only extend lower bound when previous controller died, and extend upper bound when last controller died.
-		// Therefore, there is no need to wait for workload release
-
-		if (isLowerBoundExtended && newPos != 0) || (isUpperBoundExtended && newPos != len(newControllerInstanceMap)-1) {
-			klog.Infof("Controller %s instance %s range extended", c.controllerType, c.controllerName)
-			//c.state = ControllerStateLocked
-		}
-		if len(sortedNewControllerInstancesLocal) == 1 && c.state != ControllerStateActive {
-			c.state = ControllerStateActive // self unlock does not need to report immediately. It can be updated via health report
-		}
-
-		if c.state == ControllerStateLocked {
-			if !sortedNewControllerInstancesLocal[newPos].isLocked {
-				// this instance is unlocked
-				klog.Infof("Controller %s instance %s is unlocked", c.controllerType, c.controllerName)
-				c.state = ControllerStateActive
-			} else {
-				klog.Infof("Controller %s instance %s is locked, wait for unlock", c.controllerType, c.controllerName)
-				// wait for unlock
-				return
-			}
-		}
-
-		isLowerBoundIncreased := false
-		isUpperBoundLowered := false
-		if currentControllerInstance.lowerboundKey < newLowerBound {
-			isLowerBoundIncreased = true
-		}
-		if newUpperbound < currentControllerInstance.controllerKey {
-			isUpperBoundLowered = true
-		}
-
-		if isLowerBoundIncreased || isUpperBoundLowered {
-			c.state = ControllerStateWait
-			// wait for finishing current processing items that belongs to excluded range
-			klog.Infof("Controller %s instance %s status wait", c.controllerType, c.controllerName)
-			return
-		}
-
 	}
 
-	if c.state != ControllerStateActive {
-		// wait for status update
-		klog.Infof("Controller %s instance %v is currently %s. Wait for status update", c.controllerType, c.controllerName, c.state)
-		return
+	if isUpdated {
+		c.curPos = newPos
+		c.sortedControllerInstancesLocal = newSortedControllerInstanceLocal
+		c.controllerInstanceMap = newControllerInstanceMap
+
+		if isSelfUpdated {
+			c.controllerKey = newUpperbound
+			ResetFilterHandler(c, newLowerBound, newUpperbound)
+		}
 	}
-
-	// active controller instance can unlock instance 1 position ahead of it
-	c.tryUnlockControllerInstance(sortedNewControllerInstancesLocal, newPos)
-
-	return
 }
 
-func (c *ControllerBase) tryUnlockControllerInstance(sortedControllerInstances []controllerInstanceLocal, pos int) {
-	klog.V(4).Infof("entering trying unlock controller instance. pos %v. current controller %s", pos, c.controllerName)
-	if pos >= 1 && sortedControllerInstances[pos-1].isLocked {
-		klog.V(4).Infof("Trying to unlock controller %s on position %d", sortedControllerInstances[pos-1].instanceName, pos-1)
-		err := c.unlockControllerInstanceHandler(sortedControllerInstances[pos-1])
-		klog.V(4).Infof("Done unlocking controller %s on position %d. err %v", sortedControllerInstances[pos-1].instanceName, pos-1, err)
-		if err != nil {
-			// TODO - add retry logic
-			klog.Fatalf("Unable to unlock controller %s instance %s. panic for now.", c.controllerType, sortedControllerInstances[pos-1].instanceName)
+func (c *ControllerBase) needToUpdateControllerKeys(newControllerInstancesLocal []controllerInstanceLocal) (bool, []controllerInstanceLocal) {
+	newCandidates := reassignControllerKeys(newControllerInstancesLocal)
+	if len(c.sortedControllerInstancesLocal) != len(newCandidates) {
+		return true, newCandidates
+	}
+
+	for i := 0; i < len(newCandidates); i++ {
+		if c.sortedControllerInstancesLocal[i].controllerKey != newCandidates[i].controllerKey ||
+			c.sortedControllerInstancesLocal[i].instanceName != newCandidates[i].instanceName {
+			return true, newCandidates
 		}
 	}
+
+	return false, nil
 }
 
 // Assume both old & new controller instances are sorted by controller key
 // return
-// 		isUpdate: 		controller instances were changed
-//		isSelfUpdate:   is current controller instance updated (include lowerbound, upperbound, islocked)
-//		newLowerBound:  new lowerbound for current controller instance
-//		newUpperBound:  new upperbound for current controller instance
-//		newPos:			new position of current controller instance in sorted controller list (sorted by controllerKey - upperbound)
-func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerInstancesLocal []controllerInstanceLocal) (isUpdated bool, isSelfUpdated bool, newLowerbound int64, newUpperbound int64, newPos int) {
-	isUpdated = false
-	if len(c.sortedControllerInstancesLocal) != len(newControllerInstancesLocal) {
-		isUpdated = true
-	}
+// 		isUpdate: 					controller instances were changed
+//		isSelfUpdate:   			is current controller instance updated (include lowerbound, upperbound, islocked)
+//		newLowerBound:  			new lowerbound for current controller instance
+//		newUpperBound:  			new upperbound for current controller instance
+//		newPos:						new position of current controller instance in sorted controller list (sorted by controllerKey - upperbound)
+//		updatedControllerInstances: new sorted controller instances
+//
+// Note 08-06-2020: Simplify the scenario to always evenly redistribute the entire problem space first
+// Will need to revisit and design for long term solution later after release 0.3 (2020/0730 release)
+func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerInstancesLocal []controllerInstanceLocal) (isUpdated bool,
+	isSelfUpdated bool, newLowerbound int64, newUpperbound int64, newPos int, updatedControllerInstances []controllerInstanceLocal) {
+
+	isUpdated, newControllerInstancesLocal = c.needToUpdateControllerKeys(newControllerInstancesLocal)
 
 	// find position in new controller instances - assume current controller is in new controller instance list (deal with edge cases later)
 	newPos = -1
@@ -506,31 +362,16 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 	// current instance not in new controller instance map, this controller instance lost connection with registry, pause processing, force restart
 	if newPos == -1 {
 		klog.Errorf("Current instance not in registry. Controller type %s, instance id %v, key %v. Needs restart", c.controllerType, c.controllerName, c.controllerKey)
-		return false, false, 0, 0, 0
-	} else if newPos == len(newControllerInstancesLocal)-1 && c.controllerKey != math.MaxInt64 { // next to last become last
-		//c.controllerKey = math.MaxInt64
-		newControllerInstancesLocal[newPos].controllerKey = math.MaxInt64
-		/*if c.state == ControllerStateLocked {
-			c.state = ControllerStateActive
-		}*/
+		return false, false, 0, 0, 0, newControllerInstancesLocal
+	}
+	if c.controllerKey != newControllerInstancesLocal[newPos].controllerKey ||
+		c.curPos < 0 || c.sortedControllerInstancesLocal[c.curPos].lowerboundKey != newControllerInstancesLocal[newPos].lowerboundKey {
 		isSelfUpdated = true
 		isUpdated = true
-
 	}
 
 	if c.curPos == -1 { // current controller instance is joining the pool
-		return true, true, newControllerInstancesLocal[newPos].lowerboundKey, c.controllerKey, newPos
-	}
-
-	if !isSelfUpdated {
-		currentInstance := c.sortedControllerInstancesLocal[c.curPos]
-		newInstance := newControllerInstancesLocal[newPos]
-
-		if currentInstance.isLocked != newInstance.isLocked || currentInstance.lowerboundKey != newInstance.lowerboundKey ||
-			currentInstance.controllerKey != newInstance.controllerKey {
-			isSelfUpdated = true
-			isUpdated = true
-		}
+		return true, true, newControllerInstancesLocal[newPos].lowerboundKey, newControllerInstancesLocal[newPos].controllerKey, newPos, newControllerInstancesLocal
 	}
 
 	if !isUpdated {
@@ -538,41 +379,14 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 			if c.sortedControllerInstancesLocal[i].lowerboundKey != newControllerInstancesLocal[i].lowerboundKey ||
 				c.sortedControllerInstancesLocal[i].workloadNum != newControllerInstancesLocal[i].workloadNum ||
 				c.sortedControllerInstancesLocal[i].controllerKey != newControllerInstancesLocal[i].controllerKey ||
-				c.sortedControllerInstancesLocal[i].instanceName != newControllerInstancesLocal[i].instanceName ||
-				c.sortedControllerInstancesLocal[i].isLocked != newControllerInstancesLocal[i].isLocked {
+				c.sortedControllerInstancesLocal[i].instanceName != newControllerInstancesLocal[i].instanceName {
 				isUpdated = true
 				break
 			}
 		}
 	}
 
-	return isUpdated, isSelfUpdated, newControllerInstancesLocal[newPos].lowerboundKey, newControllerInstancesLocal[newPos].controllerKey, newPos
-}
-
-func (c *ControllerBase) unlockControllerInstance(controllerInstanceToUnlockLocal controllerInstanceLocal) error {
-	oldControllerInstance, isOK := c.controllerInstanceMap[controllerInstanceToUnlockLocal.instanceName]
-	if !isOK {
-		err := errors.NewBadRequest(fmt.Sprintf("Need to unlock controller %s instance %s missing in controller instance map", c.controllerType, controllerInstanceToUnlockLocal.instanceName))
-		klog.Error(err)
-		return err
-	} else if !oldControllerInstance.IsLocked {
-		err := errors.NewBadRequest(fmt.Sprintf("Controller %s instance %s is not locked in instance map", c.controllerType, controllerInstanceToUnlockLocal.instanceName))
-		klog.Error(err)
-		return err
-	}
-
-	controllerInstance := oldControllerInstance.DeepCopy()
-	controllerInstance.ResourceVersion = ""
-	controllerInstance.IsLocked = false
-
-	_, err := c.client.CoreV1().ControllerInstances().Update(controllerInstance)
-	if err == nil {
-		klog.Infof("Controller %s instance %s unlocked.", c.controllerType, controllerInstanceToUnlockLocal.instanceName)
-		return nil
-	} else {
-		klog.Errorf("Error unlock controller %s instance %s, error %v. instance [%#v]", c.controllerType, controllerInstanceToUnlockLocal.instanceName, err, controllerInstance)
-		return err
-	}
+	return isUpdated, isSelfUpdated, newControllerInstancesLocal[newPos].lowerboundKey, newControllerInstancesLocal[newPos].controllerKey, newPos, newControllerInstancesLocal
 }
 
 // register current controller instance in registry
@@ -581,64 +395,64 @@ func (c *ControllerBase) registControllerInstance() error {
 		ControllerType: c.controllerType,
 		ControllerKey:  c.controllerKey,
 		WorkloadNum:    0,
-		IsLocked:       c.state == ControllerStateLocked,
 		ObjectMeta: metav1.ObjectMeta{
 			Name: c.controllerName,
 		},
 	}
 
-	_, isExist := c.controllerInstanceMap[c.controllerName]
-	if isExist {
-		// Error
-		klog.Errorf("Trying to register new %s controller instance with id %v already existed in controller instance list", c.controllerType, c.controllerName)
-		return errors.NewBadRequest(fmt.Sprintf("Controllerinstances name %s already existed", c.controllerName))
-	} else {
-		// Write to registry
-		newControllerInstance, err := CreateControllerInstanceHandler(c, controllerInstance)
+	// Write to registry
+	newControllerInstance, err := c.createControllerInstance(controllerInstance)
 
-		if err != nil {
-			klog.Errorf("Error register controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
-			// TODO
-			return err
-		}
-
-		c.controllerInstanceMap[c.controllerName] = *newControllerInstance
-
-		// Check controllers updates
-		c.updateCachedControllerInstances(c.controllerInstanceMap)
+	if err != nil {
+		klog.Errorf("Error register controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
+		// TODO
+		return err
 	}
 
+	c.controllerInstanceMap[c.controllerName] = *newControllerInstance
+
 	return nil
+}
+
+func (c *ControllerBase) createControllerInstance(controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
+	return c.client.CoreV1().ControllerInstances().Create(&controllerInstance)
 }
 
 // Periodically update controller instance in registry for two things:
 //     1. Update workload # so that workload can be more evenly distributed
 //     2. Renew TTL for current controller instance
-func (c *ControllerBase) ReportHealth() {
+func (c *ControllerBase) ReportHealth(client clientset.Interface) {
 	oldControllerInstance := c.controllerInstanceMap[c.controllerName]
 	controllerInstance := oldControllerInstance.DeepCopy()
 	controllerInstance.WorkloadNum = c.sortedControllerInstancesLocal[c.curPos].workloadNum
-	controllerInstance.IsLocked = c.state == ControllerStateLocked
 	controllerInstance.ControllerKey = c.controllerKey
-	klog.V(3).Infof("Controller %s instance %s report health. Version %s", c.controllerType, c.controllerName, controllerInstance.ResourceVersion)
+	controllerInstance.ResourceVersion = "" // remove resource version. Force report health
 
 	// Write to registry
-	newControllerInstance, err := c.client.CoreV1().ControllerInstances().Update(controllerInstance)
+	newControllerInstance, err := client.CoreV1().ControllerInstances().Update(controllerInstance)
 	if err != nil {
-		errorMessage := err.Error()
-		if strings.Contains(errorMessage, genericregistry.OptimisticLockErrorMsg) && strings.Contains(errorMessage, "Operation cannot be fulfilled") {
-			klog.Infof("Skip reporting health this time as registry was updated. old ResourceVersion %s", controllerInstance.ResourceVersion)
-		} else {
-			klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
-		}
+		klog.Errorf("Error update controller %s instance %s, error %v", c.controllerType, c.controllerName, err)
 	} else {
+		c.mux.Lock()
 		c.controllerInstanceMap[c.controllerName] = *newControllerInstance
+		c.mux.Unlock()
+		klog.V(3).Infof("Controller %s instance %s report health (controller key %v). Version %s",
+			newControllerInstance.ControllerType, newControllerInstance.Name, newControllerInstance.ControllerKey, newControllerInstance.ResourceVersion)
 	}
 }
 
-func generateControllerName() string {
-	uid := uuid.NewUUID()
-	return fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, uid)
+func generateControllerName(existedInstanceMap map[string]v1.ControllerInstance) string {
+	for {
+		uid := uuid.NewUUID()
+		name := fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, uid)
+		_, isExist := existedInstanceMap[name]
+		if !isExist {
+			return name
+		}
+
+		// Error
+		klog.Infof("Controller name %s conflict. Get a new one ", name)
+	}
 }
 
 // Get controller instances by controller type
@@ -674,8 +488,4 @@ func resetFilter(c *ControllerBase, newLowerBound, newUpperbound int64) {
 		c.InformerResetChGrp.Send(resetMessage)
 		klog.Infof("%s: The new range %+v has been sent. resetMessage %+v", c.controllerType, []int64{newLowerBound, newUpperbound}, resetMessage)
 	}()
-}
-
-func createControllerInstance(c *ControllerBase, controllerInstance v1.ControllerInstance) (*v1.ControllerInstance, error) {
-	return c.client.CoreV1().ControllerInstances().Create(&controllerInstance)
 }

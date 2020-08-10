@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/client-go/datapartition"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/util/flowcontrol"
 	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment"
 	"net/http"
@@ -32,11 +34,11 @@ import (
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/client-go/informers"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
-
 	"k8s.io/kubernetes/cmd/workload-controller-manager/app/config"
+	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	cacheddiscovery "k8s.io/client-go/discovery/cached"
@@ -77,6 +79,9 @@ type ControllerContext struct {
 	// ControllerInstanceUpdateByControllerType is the controller type that has controller instance updates. This is to notify controller instance
 	// that it has a peer update and trigger hash ring updates if necessary.
 	ControllerInstanceUpdateChGrp *bcast.Group
+
+	// Rest client dedicated to controller heartbeat
+	HeartBeatClient clientset.Interface
 }
 
 const (
@@ -121,9 +126,16 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 
 	clientBuilder := rootClientBuilder
 
+	heartBeatClientConfigs := restclient.CopyConfigs(c.ControllerManagerConfig)
+	for _, kubeConfig := range heartBeatClientConfigs.GetAllConfigs() {
+		kubeConfig.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(kubeConfig.QPS, kubeConfig.Burst)
+	}
+
+	heartBeatClientBuilder := controller.SimpleControllerClientBuilder{ClientConfig: heartBeatClientConfigs}
+
 	ctx := context.TODO()
 
-	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, ctx.Done())
+	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, heartBeatClientBuilder, ctx.Done())
 
 	if err != nil {
 		klog.Fatalf("error building controller context: %v", err)
@@ -150,7 +162,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 }
 
 //func CreateControllerContext(s *config.CompletedConfig, rootClientBuilder, clientBuilder controller.ControllerClientBuilder, stop <-chan struct{}) (ControllerContext, error) {
-func CreateControllerContext(rootClientBuilder, clientBuilder controller.ControllerClientBuilder, stop <-chan struct{}) (ControllerContext, error) {
+func CreateControllerContext(rootClientBuilder, clientBuilder, heatBeatClientBuilder controller.ControllerClientBuilder, stop <-chan struct{}) (ControllerContext, error) {
 	versionedClient := rootClientBuilder.ClientOrDie("shared-informers")
 	sharedInformers := informers.NewSharedInformerFactory(versionedClient, resyncPeriod)
 
@@ -168,23 +180,19 @@ func CreateControllerContext(rootClientBuilder, clientBuilder controller.Control
 		restMapper.Reset()
 	}, 30*time.Second, stop)
 
+	heartBeatClient := heatBeatClientBuilder.ClientOrDie("controller-heart-beat")
+
 	availableResources, err := GetAvailableResources(rootClientBuilder)
 	if err != nil {
 		return ControllerContext{}, err
 	}
-
-	/*cloud, loopMode, err := createCloudProvider(s.ComponentConfig.KubeCloudShared.CloudProvider.Name, s.ComponentConfig.KubeCloudShared.ExternalCloudVolumePlugin,
-		s.ComponentConfig.KubeCloudShared.CloudProvider.CloudConfigFile, s.ComponentConfig.KubeCloudShared.AllowUntaggedCloud, sharedInformers)
-	if err != nil {
-		return ControllerContext{}, err
-	}
-	*/
 
 	ctx := ControllerContext{
 		ClientBuilder:                 clientBuilder,
 		InformerFactory:               sharedInformers,
 		GenericInformerFactory:        controller.NewInformerFactory(sharedInformers),
 		RESTMapper:                    restMapper,
+		HeartBeatClient:               heartBeatClient,
 		AvailableResources:            availableResources,
 		Stop:                          stop,
 		InformersStarted:              make(chan struct{}),
@@ -255,7 +263,9 @@ func startReplicaSetController(ctx ControllerContext, reportHealthIntervalInSeco
 		rsResetChGrp,
 	)
 	go controller.Run(workerNum, ctx.Stop)
-	go wait.Until(controller.ReportHealth, time.Second*time.Duration(reportHealthIntervalInSecond), ctx.Stop)
+	go wait.Until(func() {
+		controller.ReportHealth(ctx.HeartBeatClient)
+	}, time.Second*time.Duration(reportHealthIntervalInSecond), ctx.Stop)
 
 	return nil, true, nil
 }
@@ -298,7 +308,9 @@ func startDeploymentController(ctx ControllerContext, reportHealthIntervalInSeco
 		return nil, true, fmt.Errorf("error creating Deployment controller: %v", err)
 	}
 	go controller.Run(workerNum, ctx.Stop)
-	go wait.Until(controller.ReportHealth, time.Second*time.Duration(reportHealthIntervalInSecond), ctx.Stop)
+	go wait.Until(func() {
+		controller.ReportHealth(ctx.HeartBeatClient)
+	}, time.Second*time.Duration(reportHealthIntervalInSecond), ctx.Stop)
 	return nil, true, nil
 }
 

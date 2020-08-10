@@ -132,9 +132,17 @@ func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInf
 
 	manager.apiserverLister = epInformer.Lister()
 	manager.apiserverListerSynced = epInformer.Informer().HasSynced
-	err := SyncApiServerConfigHandler(manager)
-	if err != nil {
-		return nil, err
+
+	stopRetryTime := time.Now().Add(5 * time.Minute)
+	for {
+		err := SyncApiServerConfigHandler(manager)
+		if err == nil {
+			break
+		}
+		if time.Now().After(stopRetryTime) {
+			return nil, err
+		}
+		time.Sleep(10 * time.Second)
 	}
 
 	SyncApiServerConfigHandler = syncApiServerConfig

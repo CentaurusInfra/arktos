@@ -455,16 +455,6 @@ func (rsc *ReplicaSetController) worker() {
 }
 
 func (rsc *ReplicaSetController) processNextWorkItem() bool {
-	if !rsc.IsControllerActive() {
-		isDone, countOfProcessingWorkItem := rsc.IsDoneProcessingCurrentWorkloads()
-		if !isDone {
-			klog.Infof("Controller is not active, worker idle .... count of work items = %d", countOfProcessingWorkItem)
-			// TODO : compare key version and controller locked status version
-			time.Sleep(1 * time.Second)
-			return true
-		}
-	}
-
 	key, quit := rsc.queue.Get()
 	if quit {
 		return false
