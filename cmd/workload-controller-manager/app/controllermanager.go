@@ -93,8 +93,6 @@ const (
 	ownerKind_ReplicaSet = "ReplicaSet"
 )
 
-var resyncPeriod = time.Duration(60 * time.Second)
-
 func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	// Setup any healthz checks we will want to use.
 	var checks []healthz.HealthzChecker
@@ -135,7 +133,8 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 
 	ctx := context.TODO()
 
-	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, heartBeatClientBuilder, ctx.Done())
+	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, heartBeatClientBuilder,
+		c.Config.ControllerTypeConfig.GetDeafultResyncPeriod(), ctx.Done())
 
 	if err != nil {
 		klog.Fatalf("error building controller context: %v", err)
@@ -162,7 +161,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 }
 
 //func CreateControllerContext(s *config.CompletedConfig, rootClientBuilder, clientBuilder controller.ControllerClientBuilder, stop <-chan struct{}) (ControllerContext, error) {
-func CreateControllerContext(rootClientBuilder, clientBuilder, heatBeatClientBuilder controller.ControllerClientBuilder, stop <-chan struct{}) (ControllerContext, error) {
+func CreateControllerContext(rootClientBuilder, clientBuilder, heatBeatClientBuilder controller.ControllerClientBuilder, resyncPeriod time.Duration, stop <-chan struct{}) (ControllerContext, error) {
 	versionedClient := rootClientBuilder.ClientOrDie("shared-informers")
 	sharedInformers := informers.NewSharedInformerFactory(versionedClient, resyncPeriod)
 
