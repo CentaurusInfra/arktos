@@ -20,8 +20,6 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/client-go/datapartition"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/util/flowcontrol"
 	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment"
 	"net/http"
@@ -123,13 +121,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	}
 
 	clientBuilder := rootClientBuilder
-
-	heartBeatClientConfigs := restclient.CopyConfigs(c.ControllerManagerConfig)
-	for _, kubeConfig := range heartBeatClientConfigs.GetAllConfigs() {
-		kubeConfig.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(kubeConfig.QPS, kubeConfig.Burst)
-	}
-
-	heartBeatClientBuilder := controller.SimpleControllerClientBuilder{ClientConfig: heartBeatClientConfigs}
+	heartBeatClientBuilder := controller.SimpleControllerClientBuilder{ClientConfig: c.ControllerManagerConfig}
 
 	ctx := context.TODO()
 
