@@ -2895,6 +2895,59 @@ function config-partitionserver() {
 
 }
 
+
+##set apiserver datapartition config by apiserver total number
+function set-apiserver-datapartition() {
+  local service_groupid=${1:-0}
+  local total_server=$((APISERVERS_EXTRA_NUM+1))
+  local range_interval=$(( ${#APISERVER_DATAPARTITION_CONFIG}/total_server ))
+
+  if [[ "${service_groupid}" -eq "0" ]]; then
+    APISERVER_ISRANGESTART_VALID=false
+    APISERVER_ISRANGEEND_VALID=true
+    APISERVER_RANGESTART=${APISERVER_DATAPARTITION_CONFIG:0:1}
+    APISERVER_RANGEEND=${APISERVER_DATAPARTITION_CONFIG:$(( range_interval*service_groupid+range_interval-1 )):1}
+  else 
+    if [[ "${service_groupid}" -eq "${APISERVERS_EXTRA_NUM}" ]]; then
+      APISERVER_ISRANGESTART_VALID=true
+      APISERVER_ISRANGEEND_VALID=false
+      APISERVER_RANGESTART=${APISERVER_DATAPARTITION_CONFIG:$(( range_interval*service_groupid-1 )):1}
+      APISERVER_RANGEEND=${APISERVER_DATAPARTITION_CONFIG:$(( ${#APISERVER_DATAPARTITION_CONFIG}-1 )):1}
+    else
+      APISERVER_ISRANGESTART_VALID=true
+      APISERVER_ISRANGEEND_VALID=true
+      APISERVER_RANGESTART=${APISERVER_DATAPARTITION_CONFIG:$(( range_interval*service_groupid-1 )):1}
+      APISERVER_RANGEEND=${APISERVER_DATAPARTITION_CONFIG:$(( range_interval*service_groupid+range_interval-1 )):1}
+    fi
+  fi
+}
+
+function create-apiserver-datapartition-yml {
+  local service_groupid=${1:-0}
+  cat <<EOF >${KUBE_ROOT}/apiserverdatapartition/apidatapartition${service_groupid}.yaml
+apiVersion: v1
+kind: DataPartitionConfig
+serviceGroupId: "${service_groupid}"
+rangeStart: "${APISERVER_RANGESTART}"
+isRangeStartValid: ${APISERVER_ISRANGESTART_VALID}
+rangeEnd: "${APISERVER_RANGEEND}"
+isRangeEndValid: ${APISERVER_ISRANGEEND_VALID}
+metadata:
+  name: "partition-${service_groupid}"
+EOF
+}
+
+function config-apiserver-datapartition {
+  local service_groupid=${1:-0}
+  if [[ -f "${KUBE_ROOT}/apiserverdatapartition/apidatapartition${service_groupid}.yaml" ]]; then
+    sleep 5
+    ${KUBE_ROOT}/cluster/kubectl.sh apply -f "${KUBE_ROOT}/apiserverdatapartition/apidatapartition${service_groupid}.yaml"
+  else 
+    echo "failed to config apiserver datapartition, cannot find required yaml file"
+    exit 1
+  fi
+}
+
 # Adds master replica to etcd cluster.
 #
 # Assumed vars:
@@ -3965,11 +4018,10 @@ function delete-partitionserver() {
   fi
 
   echo "deleting partitionserver firewall: ${server_name}-https"
-  if gcloud compute firewall-rules describe "${server_name}-https" --network "${NETWORK}" --project "${NETWORK_PROJECT}" &>/dev/null; then
+  if gcloud compute firewall-rules describe "${server_name}-https" --project "${NETWORK_PROJECT}" &>/dev/null; then
     gcloud compute firewall-rules delete  \
       --project "${NETWORK_PROJECT}" \
       --quiet \
-      --network "${NETWORK}" \
       "${server_name}-https"
   fi
 
