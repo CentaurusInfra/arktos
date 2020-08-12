@@ -60,7 +60,7 @@ import (
 	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	taintutils "k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/kubernetes/test/integration/framework"
-	imageutils "k8s.io/kubernetes/test/utils/image"
+	// imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 type testContext struct {
@@ -469,6 +469,8 @@ type pausePodConfig struct {
 	NodeName                          string
 	SchedulerName                     string
 	Priority                          *int32
+	VirtualMachine                    *v1.VirtualMachine
+	Nics                              []v1.Nic
 }
 
 // initPausePod initializes a pod API object from the given config. It is used
@@ -484,21 +486,23 @@ func initPausePod(cs clientset.Interface, conf *pausePodConfig) *v1.Pod {
 		Spec: v1.PodSpec{
 			NodeSelector: conf.NodeSelector,
 			Affinity:     conf.Affinity,
-			Containers: []v1.Container{
-				{
-					Name:  conf.Name,
-					Image: imageutils.GetPauseImageName(),
-				},
-			},
-			Tolerations:   conf.Tolerations,
-			NodeName:      conf.NodeName,
-			SchedulerName: conf.SchedulerName,
-			Priority:      conf.Priority,
+			// Containers: []v1.Container{
+			// 	{
+			// 		Name:  conf.Name,
+			// 		Image: imageutils.GetPauseImageName(),
+			// 	},
+			// },
+			Tolerations:    conf.Tolerations,
+			NodeName:       conf.NodeName,
+			SchedulerName:  conf.SchedulerName,
+			Priority:       conf.Priority,
+			VirtualMachine: conf.VirtualMachine,
+			Nics:           conf.Nics,
 		},
 	}
-	if conf.Resources != nil {
-		pod.Spec.Containers[0].Resources = *conf.Resources
-	}
+	// if conf.Resources != nil {
+	// 	pod.Spec.Containers[0].Resources = *conf.Resources
+	// }
 	return pod
 }
 
@@ -518,6 +522,20 @@ func createPausePodWithResource(cs clientset.Interface, podName string,
 		conf = pausePodConfig{
 			Name:      podName,
 			Namespace: nsName,
+			VirtualMachine: &v1.VirtualMachine{
+				KeyPairName: "KeyMy",
+				Name:        "scheduler-integration-test",
+				Image:       "5f2327cb-ef5c-43b5-821e-2a16b7455812",
+				Scheduling: v1.GlobalScheduling{
+					SecurityGroup: []v1.OpenStackSecurityGroup{
+						{Name: "4c71dc86-511b-470e-8cae-496bca13f2bd"},
+					},
+				},
+				FlavorRef: "d1",
+			},
+			Nics: []v1.Nic{
+				{Uuid: "337f03dc-f0e0-4005-be1c-64f24bad7b2c"},
+			},
 		}
 	} else {
 		conf = pausePodConfig{
@@ -525,6 +543,20 @@ func createPausePodWithResource(cs clientset.Interface, podName string,
 			Namespace: nsName,
 			Resources: &v1.ResourceRequirements{
 				Requests: *res,
+			},
+			VirtualMachine: &v1.VirtualMachine{
+				KeyPairName: "KeyMy",
+				Name:        "scheduler-integration-test",
+				Image:       "5f2327cb-ef5c-43b5-821e-2a16b7455812",
+				Scheduling: v1.GlobalScheduling{
+					SecurityGroup: []v1.OpenStackSecurityGroup{
+						{Name: "4c71dc86-511b-470e-8cae-496bca13f2bd"},
+					},
+				},
+				FlavorRef: "d1",
+			},
+			Nics: []v1.Nic{
+				{Uuid: "337f03dc-f0e0-4005-be1c-64f24bad7b2c"},
 			},
 		}
 	}
@@ -623,9 +655,12 @@ func podScheduled(c clientset.Interface, tenant string, podNamespace, podName st
 			// This could be a connection error so we want to retry.
 			return false, nil
 		}
-		if pod.Spec.NodeName == "" {
+		if pod.Status.Phase != v1.PodRunning {
 			return false, nil
 		}
+		// if pod.Spec.NodeName == "" {
+		// 	return false, nil
+		// }
 		return true, nil
 	}
 }

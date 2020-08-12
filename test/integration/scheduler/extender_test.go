@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
+	// "net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -279,82 +279,82 @@ func machine3Prioritizer(pod *v1.Pod, nodes *v1.NodeList) (*schedulerapi.HostPri
 	return &result, nil
 }
 
-func TestSchedulerExtender(t *testing.T) {
-	context := initTestMaster(t, "scheduler-extender", nil)
-	clientSet := context.clientSet
+// func TestSchedulerExtender(t *testing.T) {
+// 	context := initTestMaster(t, "scheduler-extender", nil)
+// 	clientSet := context.clientSet
 
-	extender1 := &Extender{
-		name:         "extender1",
-		predicates:   []fitPredicate{machine1_2_3Predicate},
-		prioritizers: []priorityConfig{{machine2Prioritizer, 1}},
-	}
-	es1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		extender1.serveHTTP(t, w, req)
-	}))
-	defer es1.Close()
+// 	extender1 := &Extender{
+// 		name:         "extender1",
+// 		predicates:   []fitPredicate{machine1_2_3Predicate},
+// 		prioritizers: []priorityConfig{{machine2Prioritizer, 1}},
+// 	}
+// 	es1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+// 		extender1.serveHTTP(t, w, req)
+// 	}))
+// 	defer es1.Close()
 
-	extender2 := &Extender{
-		name:         "extender2",
-		predicates:   []fitPredicate{machine2_3_5Predicate},
-		prioritizers: []priorityConfig{{machine3Prioritizer, 1}},
-		Client:       clientSet,
-	}
-	es2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		extender2.serveHTTP(t, w, req)
-	}))
-	defer es2.Close()
+// 	extender2 := &Extender{
+// 		name:         "extender2",
+// 		predicates:   []fitPredicate{machine2_3_5Predicate},
+// 		prioritizers: []priorityConfig{{machine3Prioritizer, 1}},
+// 		Client:       clientSet,
+// 	}
+// 	es2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+// 		extender2.serveHTTP(t, w, req)
+// 	}))
+// 	defer es2.Close()
 
-	extender3 := &Extender{
-		name:             "extender3",
-		predicates:       []fitPredicate{machine1_2_3Predicate},
-		prioritizers:     []priorityConfig{{machine2Prioritizer, 5}},
-		nodeCacheCapable: true,
-	}
-	es3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		extender3.serveHTTP(t, w, req)
-	}))
-	defer es3.Close()
+// 	extender3 := &Extender{
+// 		name:             "extender3",
+// 		predicates:       []fitPredicate{machine1_2_3Predicate},
+// 		prioritizers:     []priorityConfig{{machine2Prioritizer, 5}},
+// 		nodeCacheCapable: true,
+// 	}
+// 	es3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+// 		extender3.serveHTTP(t, w, req)
+// 	}))
+// 	defer es3.Close()
 
-	policy := schedulerapi.Policy{
-		ExtenderConfigs: []schedulerapi.ExtenderConfig{
-			{
-				URLPrefix:      es1.URL,
-				FilterVerb:     filter,
-				PrioritizeVerb: prioritize,
-				Weight:         3,
-				EnableHTTPS:    false,
-			},
-			{
-				URLPrefix:      es2.URL,
-				FilterVerb:     filter,
-				PrioritizeVerb: prioritize,
-				BindVerb:       bind,
-				Weight:         4,
-				EnableHTTPS:    false,
-				ManagedResources: []schedulerapi.ExtenderManagedResource{
-					{
-						Name:               extendedResourceName,
-						IgnoredByScheduler: true,
-					},
-				},
-			},
-			{
-				URLPrefix:        es3.URL,
-				FilterVerb:       filter,
-				PrioritizeVerb:   prioritize,
-				Weight:           10,
-				EnableHTTPS:      false,
-				NodeCacheCapable: true,
-			},
-		},
-	}
-	policy.APIVersion = "v1"
+// 	policy := schedulerapi.Policy{
+// 		ExtenderConfigs: []schedulerapi.ExtenderConfig{
+// 			{
+// 				URLPrefix:      es1.URL,
+// 				FilterVerb:     filter,
+// 				PrioritizeVerb: prioritize,
+// 				Weight:         3,
+// 				EnableHTTPS:    false,
+// 			},
+// 			{
+// 				URLPrefix:      es2.URL,
+// 				FilterVerb:     filter,
+// 				PrioritizeVerb: prioritize,
+// 				BindVerb:       bind,
+// 				Weight:         4,
+// 				EnableHTTPS:    false,
+// 				ManagedResources: []schedulerapi.ExtenderManagedResource{
+// 					{
+// 						Name:               extendedResourceName,
+// 						IgnoredByScheduler: true,
+// 					},
+// 				},
+// 			},
+// 			{
+// 				URLPrefix:        es3.URL,
+// 				FilterVerb:       filter,
+// 				PrioritizeVerb:   prioritize,
+// 				Weight:           10,
+// 				EnableHTTPS:      false,
+// 				NodeCacheCapable: true,
+// 			},
+// 		},
+// 	}
+// 	policy.APIVersion = "v1"
 
-	context = initTestScheduler(t, context, false, &policy)
-	defer cleanupTest(t, context)
+// 	context = initTestScheduler(t, context, false, &policy)
+// 	defer cleanupTest(t, context)
 
-	DoTestPodScheduling(context.ns, t, clientSet)
-}
+// 	DoTestPodScheduling(context.ns, t, clientSet)
+// }
 
 func DoTestPodScheduling(ns *v1.Namespace, t *testing.T, cs clientset.Interface) {
 	// NOTE: This test cannot run in parallel, because it is creating and deleting
