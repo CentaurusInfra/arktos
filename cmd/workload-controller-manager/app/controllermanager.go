@@ -20,8 +20,6 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/client-go/datapartition"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/util/flowcontrol"
 	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/deployment"
 	"net/http"
@@ -93,8 +91,6 @@ const (
 	ownerKind_ReplicaSet = "ReplicaSet"
 )
 
-var resyncPeriod = time.Duration(60 * time.Second)
-
 func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	// Setup any healthz checks we will want to use.
 	var checks []healthz.HealthzChecker
@@ -125,17 +121,12 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 	}
 
 	clientBuilder := rootClientBuilder
-
-	heartBeatClientConfigs := restclient.CopyConfigs(c.ControllerManagerConfig)
-	for _, kubeConfig := range heartBeatClientConfigs.GetAllConfigs() {
-		kubeConfig.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(kubeConfig.QPS, kubeConfig.Burst)
-	}
-
-	heartBeatClientBuilder := controller.SimpleControllerClientBuilder{ClientConfig: heartBeatClientConfigs}
+	heartBeatClientBuilder := controller.SimpleControllerClientBuilder{ClientConfig: c.ControllerManagerConfig}
 
 	ctx := context.TODO()
 
-	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, heartBeatClientBuilder, ctx.Done())
+	controllerContext, err := CreateControllerContext(rootClientBuilder, clientBuilder, heartBeatClientBuilder,
+		c.Config.ControllerTypeConfig.GetDeafultResyncPeriod(), ctx.Done())
 
 	if err != nil {
 		klog.Fatalf("error building controller context: %v", err)
@@ -162,7 +153,7 @@ func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) e
 }
 
 //func CreateControllerContext(s *config.CompletedConfig, rootClientBuilder, clientBuilder controller.ControllerClientBuilder, stop <-chan struct{}) (ControllerContext, error) {
-func CreateControllerContext(rootClientBuilder, clientBuilder, heatBeatClientBuilder controller.ControllerClientBuilder, stop <-chan struct{}) (ControllerContext, error) {
+func CreateControllerContext(rootClientBuilder, clientBuilder, heatBeatClientBuilder controller.ControllerClientBuilder, resyncPeriod time.Duration, stop <-chan struct{}) (ControllerContext, error) {
 	versionedClient := rootClientBuilder.ClientOrDie("shared-informers")
 	sharedInformers := informers.NewSharedInformerFactory(versionedClient, resyncPeriod)
 
