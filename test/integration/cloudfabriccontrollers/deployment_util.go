@@ -164,7 +164,7 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "deployment-informers")), resyncPeriod)
 
 	// controller instance manager set up
-	cim := controller.GetControllerInstanceManager()
+	cim := controller.GetInstanceHandler()
 	if cim == nil {
 		cimUpdateChGrp := bcast.NewGroup()
 		go cimUpdateChGrp.Broadcast(0)

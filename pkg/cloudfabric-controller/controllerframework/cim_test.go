@@ -33,7 +33,7 @@ func newControllerInstance(cim *ControllerInstanceManager, controllerType string
 		WorkloadNum:    workloadNum,
 	}
 
-	GetInstanceHandler = func () *ControllerInstanceManager {
+	GetInstanceHandler = func() *ControllerInstanceManager {
 		return cim
 	}
 	controllerInstance.Name = generateControllerName(controllerType, nil)

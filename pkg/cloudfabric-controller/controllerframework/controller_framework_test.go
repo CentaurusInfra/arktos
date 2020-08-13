@@ -263,7 +263,7 @@ func TestConsolidateControllerInstances_Sort(t *testing.T) {
 	hashKey1 = int64(3074457345618258603)
 	hashKey2 := int64(6148914691236517205)
 	cim3, _ := CreateTestControllerInstanceManager(stopCh)
-	controllerInstance1_3 := newControllerInstance(cim3,"foo", int64(2000), 100)
+	controllerInstance1_3 := newControllerInstance(cim3, "foo", int64(2000), 100)
 	cim.addControllerInstance(controllerInstance1_3)
 	cim2.addControllerInstance(controllerInstance1_3)
 	cim3.addControllerInstance(controllerInstance1_3)
