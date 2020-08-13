@@ -78,7 +78,24 @@ if [[ "${ENABLE_PROXY:-}" == "true" ]]; then
   echo ""
 fi
 
-echo -e "Done, listing cluster services:\n" >&2
+if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
+  echo "... configing apiserver datapartition" >&2
+  if [[ -d "${KUBE_ROOT}/apiserverdatapartition" ]]; then
+    rm -r ${KUBE_ROOT}/apiserverdatapartition
+  fi
+  mkdir ${KUBE_ROOT}/apiserverdatapartition
+  for (( num=0; num<=${APISERVERS_EXTRA_NUM:-0}; num++ )); do
+    APISERVER_RANGESTART=${APISERVER_RANGESTART:-"${APISERVER_DATAPARTITION_CONFIG:0:1}"}
+    APISERVER_RANGEEND=${APISERVER_RANGEEND:-"${APISERVER_DATAPARTITION_CONFIG:$(( ${#APISERVER_DATAPARTITION_CONFIG}-1 )):1}"}
+    APISERVER_ISRANGESTART_VALID=${APISERVER_ISRANGESTART_VALID:-false}
+    APISERVER_ISRANGEEND_VALID=${APISERVER_ISRANGEEND_VALID:-false}
+    set-apiserver-datapartition $num
+    create-apiserver-datapartition-yml $num
+    config-apiserver-datapartition $num
+  done
+fi
+
+echo -e "\nDone, listing cluster services:\n" >&2
 "${KUBE_ROOT}/cluster/kubectl.sh" cluster-info
 echo
 
