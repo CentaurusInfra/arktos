@@ -41,13 +41,13 @@ import (
 
 const (
 	namespace                    = "monitoring"
-	coreManifests                = "$GOPATH/src/k8s.io/perf-tests/clusterloader2/pkg/prometheus/manifests/*.yaml"
-	defaultServiceMonitors       = "$GOPATH/src/k8s.io/perf-tests/clusterloader2/pkg/prometheus/manifests/default/*.yaml"
-	masterIPServiceMonitors      = "$GOPATH/src/k8s.io/perf-tests/clusterloader2/pkg/prometheus/manifests/master-ip/*.yaml"
+	coreManifests                = "$GOPATH/src/k8s.io/arktos/perf-tests/clusterloader2/pkg/prometheus/manifests/*.yaml"
+	defaultServiceMonitors       = "$GOPATH/src/k8s.io/arktos/perf-tests/clusterloader2/pkg/prometheus/manifests/default/*.yaml"
+	masterIPServiceMonitors      = "$GOPATH/src/k8s.io/arktos/perf-tests/clusterloader2/pkg/prometheus/manifests/master-ip/*.yaml"
 	checkPrometheusReadyInterval = 30 * time.Second
 	checkPrometheusReadyTimeout  = 15 * time.Minute
 	numK8sClients                = 1
-	nodeExporterPod              = "$GOPATH/src/k8s.io/perf-tests/clusterloader2/pkg/prometheus/manifests/exporters/node-exporter.yaml"
+	nodeExporterPod              = "$GOPATH/src/k8s.io/arktos/perf-tests/clusterloader2/pkg/prometheus/manifests/exporters/node-exporter.yaml"
 )
 
 // InitFlags initializes prometheus flags.

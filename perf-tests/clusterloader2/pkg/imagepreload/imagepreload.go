@@ -36,7 +36,7 @@ import (
 
 const (
 	informerTimeout = time.Minute
-	manifest        = "$GOPATH/src/k8s.io/perf-tests/clusterloader2/pkg/imagepreload/manifests/daemonset.yaml"
+	manifest        = "$GOPATH/src/k8s.io/arktos/perf-tests/clusterloader2/pkg/imagepreload/manifests/daemonset.yaml"
 	namespace       = "preload"
 	daemonsetName   = "preload"
 	pollingInterval = 5 * time.Second
