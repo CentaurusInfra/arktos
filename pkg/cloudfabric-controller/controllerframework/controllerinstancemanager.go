@@ -59,8 +59,9 @@ type ControllerInstanceManager struct {
 
 var instance *ControllerInstanceManager
 var checkInstanceHandler = checkInstanceExistence
+var GetInstanceHandler = getControllerInstanceManager
 
-func GetControllerInstanceManager() *ControllerInstanceManager {
+func getControllerInstanceManager() *ControllerInstanceManager {
 	return instance
 }
 
@@ -110,8 +111,13 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 	return instance
 }
 
-func (cim *ControllerInstanceManager) GetInstanceId() types.UID {
-	return cim.instanceId
+func GetInstanceId() types.UID {
+	cim := GetInstanceHandler()
+	if cim != nil {
+		return cim.instanceId
+	} else {
+		return ""
+	}
 }
 
 func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {

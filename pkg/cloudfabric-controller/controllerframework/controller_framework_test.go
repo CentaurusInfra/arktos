@@ -69,7 +69,7 @@ func convertControllerBaseToControllerInstance(controllerBase *ControllerBase) *
 
 func TestGetControllerInstanceManager(t *testing.T) {
 	instance = nil
-	cim := GetControllerInstanceManager()
+	cim := GetInstanceHandler()
 	assert.Nil(t, cim)
 
 	client := fake.NewSimpleClientset()
@@ -101,6 +101,67 @@ func TestCreateControllerInstanceBase(t *testing.T) {
 	assert.Equal(t, 1, len(controllerInstanceBase2.sortedControllerInstancesLocal))
 	assert.Equal(t, int64(0), controllerInstanceBase2.sortedControllerInstancesLocal[0].lowerboundKey)
 	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase2.sortedControllerInstancesLocal[0].controllerKey)
+}
+
+func TestDeleteControllerInstance(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
+	controllerType := "foo"
+	controllerInstanceBase, cim1 := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
+	controllerInstance1 := convertControllerBaseToControllerInstance(controllerInstanceBase)
+
+	// 1st controller instance for a type needs to cover all workload
+	assert.Equal(t, 0, controllerInstanceBase.curPos)
+	assert.Equal(t, 1, len(controllerInstanceBase.sortedControllerInstancesLocal))
+	assert.Equal(t, int64(0), controllerInstanceBase.sortedControllerInstancesLocal[0].lowerboundKey)
+	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
+
+	// 2nd controller instance will split workload space with 1st one
+	stopCh2 := make(chan struct{})
+	controllerInstanceBase2, cim2 := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh2)
+	controllerInstance2 := convertControllerBaseToControllerInstance(controllerInstanceBase2)
+
+	// notify controller creation events
+	cim1.addControllerInstance(controllerInstance2)
+	cim2.addControllerInstance(controllerInstance1)
+
+	controllerInstances, err := listControllerInstancesByType(controllerType)
+	assert.Nil(t, err)
+	assert.NotNil(t, controllerInstances)
+	controllerInstanceBase.updateCachedControllerInstances(controllerInstances)
+
+	expectedPos := getPosFromControllerInstances(controllerInstance1, controllerInstance1, controllerInstance2)
+	assert.Equal(t, expectedPos, controllerInstanceBase.curPos)
+
+	hashKey1 := int64(4611686018427387904) // mid point
+	assert.Equal(t, 2, len(controllerInstanceBase.sortedControllerInstancesLocal))
+	assert.Equal(t, int64(0), controllerInstanceBase.sortedControllerInstancesLocal[0].lowerboundKey)
+	assert.Equal(t, hashKey1, controllerInstanceBase.sortedControllerInstancesLocal[0].controllerKey)
+	assert.Equal(t, hashKey1, controllerInstanceBase.sortedControllerInstancesLocal[1].lowerboundKey)
+	assert.Equal(t, int64(math.MaxInt64), controllerInstanceBase.sortedControllerInstancesLocal[1].controllerKey)
+
+	// controller that takes the second half workload died, the left controller needs to take all workload
+	instanceNameToDel := controllerInstanceBase.sortedControllerInstancesLocal[1].instanceName
+	instanceBaseToCheck := controllerInstanceBase
+	if instanceNameToDel == controllerInstance1.Name {
+		cim1.deleteControllerInstance(controllerInstance1)
+		cim2.deleteControllerInstance(controllerInstance1)
+		instanceBaseToCheck = controllerInstanceBase2
+	} else {
+		cim1.deleteControllerInstance(controllerInstance2)
+		cim2.deleteControllerInstance(controllerInstance2)
+	}
+
+	controllerInstances, err = listControllerInstancesByType(controllerType)
+	assert.Nil(t, err)
+	assert.NotNil(t, controllerInstances)
+	instanceBaseToCheck.updateCachedControllerInstances(controllerInstances)
+	assert.Equal(t, 0, instanceBaseToCheck.curPos)
+	assert.Equal(t, 1, len(instanceBaseToCheck.sortedControllerInstancesLocal))
+	assert.Equal(t, int64(0), instanceBaseToCheck.sortedControllerInstancesLocal[0].lowerboundKey)
+	assert.Equal(t, int64(math.MaxInt64), instanceBaseToCheck.sortedControllerInstancesLocal[0].controllerKey)
 }
 
 func TestCreateControllerInstanceBaseInRaceCondition_2(t *testing.T) {
@@ -170,14 +231,19 @@ func TestConsolidateControllerInstances_Sort(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	// 2nd controller instance will share same workload space with 1st one
+	// Test case : 2nd controller instance will split workload space with 1st one
+	// 1. create 1st controller
 	controllerType := "foo"
 	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
 	controllerInstance1 := convertControllerBaseToControllerInstance(controllerInstanceBase)
 
+	// 2. create 2nd controller
+	cim2, _ := CreateTestControllerInstanceManager(stopCh)
 	hashKey1 := int64(4611686018427387904) // mid point
-	controllerInstance1_2 := newControllerInstance(controllerType, int64(10000), int32(100), true)
+	controllerInstance1_2 := newControllerInstance(cim2, controllerType, int64(10000), int32(100))
 	cim.addControllerInstance(controllerInstance1_2)
+	cim2.addControllerInstance(controllerInstance1_2)
+	cim2.addControllerInstance(controllerInstance1)
 
 	controllerInstances, err := listControllerInstancesByType(controllerType)
 	assert.Nil(t, err)
@@ -196,8 +262,13 @@ func TestConsolidateControllerInstances_Sort(t *testing.T) {
 	// 3nd controller instance will share same workload space with the first 2 - each take 1/3
 	hashKey1 = int64(3074457345618258603)
 	hashKey2 := int64(6148914691236517205)
-	controllerInstance1_3 := newControllerInstance("foo", int64(2000), 100, true)
+	cim3, _ := CreateTestControllerInstanceManager(stopCh)
+	controllerInstance1_3 := newControllerInstance(cim3,"foo", int64(2000), 100)
 	cim.addControllerInstance(controllerInstance1_3)
+	cim2.addControllerInstance(controllerInstance1_3)
+	cim3.addControllerInstance(controllerInstance1_3)
+	cim3.addControllerInstance(controllerInstance1)
+	cim3.addControllerInstance(controllerInstance1_2)
 	controllerInstances, err = listControllerInstancesByType(controllerType)
 	assert.Nil(t, err)
 	assert.NotNil(t, controllerInstances)
@@ -232,6 +303,7 @@ func TestIsInRange(t *testing.T) {
 
 	controllerType := "foo"
 	controllerInstanceBase, cim := createControllerInstanceBaseAndCIM(t, client, nil, controllerType, stopCh)
+	controllerInstance1 := convertControllerBaseToControllerInstance(controllerInstanceBase)
 
 	// check range
 	assert.True(t, controllerInstanceBase.IsInRange(int64(0)))
@@ -244,8 +316,11 @@ func TestIsInRange(t *testing.T) {
 	controllerInstanceBase.sortedControllerInstancesLocal[0].workloadNum = workloadNum1
 
 	hashKey1 := int64(100000)
-	controllerInstance2 := newControllerInstance(controllerType, hashKey1, workloadNum1, true)
+	cim2, _ := CreateTestControllerInstanceManager(stopCh)
+	controllerInstance2 := newControllerInstance(cim2, controllerType, hashKey1, workloadNum1)
 	cim.addControllerInstance(controllerInstance2)
+	cim2.addControllerInstance(controllerInstance2)
+	cim2.addControllerInstance(controllerInstance1)
 	controllerInstanceBase.instanceUpdateProcess(controllerType)
 
 	// check range

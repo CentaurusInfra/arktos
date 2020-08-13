@@ -96,7 +96,7 @@ func CreateTestControllerInstanceManager(stopCh chan struct{}) (*ControllerInsta
 	cim.controllerListerSynced = alwaysReady
 	cim.notifyHandler = mockNotifyHander
 	checkInstanceHandler = mockCheckInstanceHander
-	return GetControllerInstanceManager(), informers
+	return GetInstanceHandler(), informers
 }
 
 func MockCreateControllerInstanceAndResetChs(stopCh chan struct{}) (*bcast.Member, *bcast.Group) {
@@ -104,7 +104,7 @@ func MockCreateControllerInstanceAndResetChs(stopCh chan struct{}) (*bcast.Membe
 	cimUpdateCh := cimUpdateChGrp.Join()
 	informersResetChGrp := bcast.NewGroup()
 
-	cim := GetControllerInstanceManager()
+	cim := GetInstanceHandler()
 	if cim == nil {
 		cim, _ = CreateTestControllerInstanceManager(stopCh)
 		go cim.Run(stopCh)

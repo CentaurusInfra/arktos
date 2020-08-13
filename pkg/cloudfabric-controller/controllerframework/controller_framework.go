@@ -18,22 +18,18 @@ package controllerframework
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/grafov/bcast"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/uuid"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/metrics"
-)
-
-const (
-	controllerInstanceNamePrefix string = "ci"
 )
 
 var ResetFilterHandler = resetFilter
@@ -92,7 +88,7 @@ func NewControllerBase(controllerType string, client clientset.Interface, cimUpd
 	controller := &ControllerBase{
 		client:                     client,
 		controllerType:             controllerType,
-		controllerName:             generateControllerName(controllerInstanceMap),
+		controllerName:             generateControllerName(controllerType, controllerInstanceMap),
 		controllerInstanceMap:      controllerInstanceMap,
 		curPos:                     -1,
 		controllerInstanceUpdateCh: cimUpdateCh,
@@ -441,18 +437,19 @@ func (c *ControllerBase) ReportHealth(client clientset.Interface) {
 	}
 }
 
-func generateControllerName(existedInstanceMap map[string]v1.ControllerInstance) string {
-	for {
-		uid := uuid.NewUUID()
-		name := fmt.Sprintf("%s-%v", controllerInstanceNamePrefix, uid)
-		_, isExist := existedInstanceMap[name]
-		if !isExist {
-			return name
-		}
-
-		// Error
-		klog.Infof("Controller name %s conflict. Get a new one ", name)
+func generateControllerName(controllerType string, existedInstanceMap map[string]v1.ControllerInstance) string {
+	cimInstanceId := GetInstanceId()
+	if cimInstanceId == "" {
+		klog.Fatalf("Controller Instance Manager not available.")
 	}
+
+	name := fmt.Sprintf("%s-%v", strings.ToLower(controllerType), cimInstanceId)
+	_, isExist := existedInstanceMap[name]
+	if isExist {
+		klog.Fatalf("Controller instance name %s conflict. Need to restart process to get a new one ", name)
+	}
+
+	return name
 }
 
 // Get controller instances by controller type
@@ -460,7 +457,7 @@ func generateControllerName(existedInstanceMap map[string]v1.ControllerInstance)
 func listControllerInstancesByType(controllerType string) (map[string]v1.ControllerInstance, error) {
 	controllerInstanceMap := make(map[string]v1.ControllerInstance)
 
-	cim := GetControllerInstanceManager()
+	cim := GetInstanceHandler()
 	if cim == nil {
 		klog.Fatalf("Unexpected reference to uninitialized controller instance manager")
 	}
