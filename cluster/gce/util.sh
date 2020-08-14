@@ -2393,8 +2393,7 @@ function create-network() {
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
       --source-ranges "10.0.0.0/8" \
-      --allow "tcp:1-2379,tcp:2382-65535,udp:1-65535,icmp" \
-      --target-tags "${MASTER_TAG}"&
+      --allow "tcp:1-2379,tcp:2382-65535,udp:1-65535,icmp" &
   fi
 
   if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${CLUSTER_NAME}-default-internal-node" &>/dev/null; then
