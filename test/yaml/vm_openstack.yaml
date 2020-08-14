@@ -16,12 +16,12 @@ metadata:
   name: test81pod
 spec:
   nics:
-    - uuid: "337f03dc-f0e0-4005-be1c-64f24bad7b2c" # make sure it exist in openstack
+    - uuid: "4c673550-e58d-459d-9332-93a17f30bed1" # make sure it exist in openstack
   virtualMachine:
     keyPairName: "KeyMy"
     name: provider-instance-test-81
-    image: "5f2327cb-ef5c-43b5-821e-2a16b7455812" # make sure it exist openstack
+    image: "92806f76-f715-4512-9e34-5feb35186b8e" # make sure it exist openstack
     scheduling:
       securityGroup:
-        - name: "4c71dc86-511b-470e-8cae-496bca13f2bd" # make sure it exist openstack
+        - name: "a19891f1-1092-44fb-a75c-e6601ed769e4" # make sure it exist openstack
     flavorRef: "d1"

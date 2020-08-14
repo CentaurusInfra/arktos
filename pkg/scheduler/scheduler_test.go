@@ -20,6 +20,7 @@ package scheduler
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -95,15 +96,67 @@ func podWithValidSpec(id, desiredHost string) *v1.Pod {
 		},
 		Spec: v1.PodSpec{
 			Nics: []v1.Nic{
-				{Uuid: "337f03dc-f0e0-4005-be1c-64f24bad7b2c"},
+				{Uuid: "4c673550-e58d-459d-9332-93a17f30bed1"},
 			},
 			VirtualMachine: &v1.VirtualMachine{
 				KeyPairName: "KeyMy",
 				Name:        desiredHost,
-				Image:       "5f2327cb-ef5c-43b5-821e-2a16b7455812",
+				Image:       "92806f76-f715-4512-9e34-5feb35186b8e",
 				Scheduling: v1.GlobalScheduling{
 					SecurityGroup: []v1.OpenStackSecurityGroup{
-						{Name: "4c71dc86-511b-470e-8cae-496bca13f2bd"},
+						{Name: "a19891f1-1092-44fb-a75c-e6601ed769e4"},
+					},
+				},
+				FlavorRef: "d1",
+			},
+		},
+	}
+}
+
+func podWithXLargeFlavorSpec(id, desiredHost string) *v1.Pod {
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:     id,
+			UID:      types.UID(id),
+			SelfLink: fmt.Sprintf("/api/v1/%s/%s", string(v1.ResourcePods), id),
+		},
+		Spec: v1.PodSpec{
+			Nics: []v1.Nic{
+				{Uuid: "4c673550-e58d-459d-9332-93a17f30bed1"},
+			},
+			VirtualMachine: &v1.VirtualMachine{
+				KeyPairName: "KeyMy",
+				Name:        desiredHost,
+				Image:       "92806f76-f715-4512-9e34-5feb35186b8e",
+				Scheduling: v1.GlobalScheduling{
+					SecurityGroup: []v1.OpenStackSecurityGroup{
+						{Name: "a19891f1-1092-44fb-a75c-e6601ed769e4"},
+					},
+				},
+				FlavorRef: "5", // CPU = 8, RAM = 16GB, Disk = 160GB
+			},
+		},
+	}
+}
+
+func podWithInvalidSpec(id, desiredHost string) *v1.Pod {
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:     id,
+			UID:      types.UID(id),
+			SelfLink: fmt.Sprintf("/api/v1/%s/%s", string(v1.ResourcePods), id),
+		},
+		Spec: v1.PodSpec{
+			Nics: []v1.Nic{
+				{Uuid: "4c673550-e58d-459d-9332-93a17f30bed1"},
+			},
+			VirtualMachine: &v1.VirtualMachine{
+				KeyPairName: "KeyMy",
+				Name:        desiredHost,
+				Image:       "5f2327cb-ef5c--2a16b7455812", // invalid image id
+				Scheduling: v1.GlobalScheduling{
+					SecurityGroup: []v1.OpenStackSecurityGroup{
+						{Name: "a19891f1-1092-44fb-a75c-e6601ed769e4"},
 					},
 				},
 				FlavorRef: "d1",
@@ -198,6 +251,49 @@ func TestSchedulerCreation(t *testing.T) {
 	}
 }
 
+func TestSchedulerCreation_UnsupportedAlgorithmSource(t *testing.T) {
+	client := clientsetfake.NewSimpleClientset()
+	informerFactory := informers.NewSharedInformerFactory(client, 0)
+
+	testSource := "testProvider"
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(t.Logf).Stop()
+
+	defaultBindTimeout := int64(30)
+	factory.RegisterFitPredicate("PredicateOne", PredicateOne)
+	factory.RegisterPriorityFunction("PriorityOne", PriorityOne, 1)
+	factory.RegisterAlgorithmProvider(testSource, sets.NewString("PredicateOne"), sets.NewString("PriorityOne"))
+
+	algoSource := [3]kubeschedulerconfig.SchedulerAlgorithmSource{{}, {Policy: &kubeschedulerconfig.SchedulerPolicySource{}}}
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	for _, as := range algoSource {
+		_, err := New(client,
+			informerFactory.Core().V1().Nodes(),
+			factory.NewPodInformer(client, 0),
+			informerFactory.Core().V1().PersistentVolumes(),
+			informerFactory.Core().V1().PersistentVolumeClaims(),
+			informerFactory.Core().V1().ReplicationControllers(),
+			informerFactory.Apps().V1().ReplicaSets(),
+			informerFactory.Apps().V1().StatefulSets(),
+			informerFactory.Core().V1().Services(),
+			informerFactory.Policy().V1beta1().PodDisruptionBudgets(),
+			informerFactory.Storage().V1().StorageClasses(),
+			eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "scheduler"}),
+			as,
+			stopCh,
+			EmptyPluginRegistry,
+			nil,
+			EmptyPluginConfig,
+			WithBindTimeoutSeconds(defaultBindTimeout))
+
+		if err == nil {
+			t.Fatalf("Expected create scheduler failed but success")
+		}
+	}
+}
+
 func TestScheduler(t *testing.T) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(t.Logf).Stop()
@@ -214,14 +310,21 @@ func TestScheduler(t *testing.T) {
 	}{
 		{
 			name:           "pod scheduled successfully",
-			sendPod:        podWithValidSpec("test19pod", "provider-instance-test-19"),
+			sendPod:        podWithValidSpec("test4pod", "provider-instance-test-4"),
 			algo:           mockScheduler{core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 1, FeasibleNodes: 1}, nil},
 			expectPodPhase: v1.PodRunning,
 			eventReason:    "Scheduled",
 		},
 		{
 			name:                     "error pod failed scheduling with invalid host",
-			sendPod:                  podWithValidSpec("test19pod", "provider-instance-test-19"),
+			sendPod:                  podWithValidSpec("scheduler-unit-test", "scheduler-instance-unit-test"),
+			algo:                     mockScheduler{core.ScheduleResult{SuggestedHost: "172.31.5.108", EvaluatedNodes: 1, FeasibleNodes: 1}, nil},
+			expectPodConditionsTypes: v1.PodScheduleFailed,
+			eventReason:              "Rescheduled",
+		},
+		{
+			name:                     "error pod failed scheduling with invalid Podspec",
+			sendPod:                  podWithInvalidSpec("scheduler-unit-test", "scheduler-instance-unit-test"),
 			algo:                     mockScheduler{core.ScheduleResult{SuggestedHost: "172.31.5.108", EvaluatedNodes: 1, FeasibleNodes: 1}, nil},
 			expectPodConditionsTypes: v1.PodScheduleFailed,
 			eventReason:              "Rescheduled",
@@ -288,7 +391,7 @@ func TestServerCreate_SingleServerRequest(t *testing.T) {
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	token := TestToken
 
-	pod := podWithValidSpec("test19pod", "provider-instance-test-19")
+	pod := podWithValidSpec("scheduler-unit-test", "scheduler-instance-unit-test")
 	manifest := &(pod.Spec)
 	instanceID, err := serverCreate(result.SuggestedHost, token, manifest)
 
@@ -305,23 +408,22 @@ func TestServerCreate_SingleServerRequestWithInvalidHost(t *testing.T) {
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	token := TestToken
 
-	pod := podWithValidSpec("test19pod", "provider-instance-test-19")
+	pod := podWithValidSpec("scheduler-unit-test", "scheduler-instance-unit-test")
 	manifest := &(pod.Spec)
 	_, err := serverCreate(result.SuggestedHost, token, manifest)
 
 	if err == nil {
 		t.Errorf("expected instance create fail but success")
 	}
-
 }
 
-func TestServerCreate_SingleServerRequestWithInvalidToken(t *testing.T) {
+func TestServerCreate_MultipleServerRequestWithInvalidToken(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	// Invalid token array
-	token := []string{"", "ejlke-eireriu"}
+	token := []string{"", "ejlke-eireriu", "xcvdf-eweweas"}
 
-	pod := podWithValidSpec("test19pod", "provider-instance-test-19")
+	pod := podWithValidSpec("scheduler-unit-test", "scheduler-instance-unit-test")
 	manifest := &(pod.Spec)
 	for _, tk := range token {
 		_, err := serverCreate(result.SuggestedHost, tk, manifest)
@@ -377,11 +479,11 @@ func TestCheckInstanceStatus_InvalidHost(t *testing.T) {
 	}
 }
 
-func TestCheckInstanceStatus_InvalidInstanceID(t *testing.T) {
+func TestCheckInstanceStatus_MultipleInvalidInstanceID(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	// Invalid instanceID array
-	instanceID := []string{"efewer-23sdf", ""}
+	instanceID := []string{"efewer-23sdf", "", "ssopc-xiksddaz"}
 	token := TestToken
 
 	for _, id := range instanceID {
@@ -392,12 +494,12 @@ func TestCheckInstanceStatus_InvalidInstanceID(t *testing.T) {
 	}
 }
 
-func TestCheckInstanceStatus_InvalidToken(t *testing.T) {
+func TestCheckInstanceStatus_MultipleInvalidToken(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	instanceID := INSTANCEID
 	// Invalid token array
-	token := []string{"aasoijdoijw-sdofisu", ""}
+	token := []string{"aasoijdoijw-sdofisu", "", "lkodpopo-zxcxcaa"}
 
 	for _, tk := range token {
 		_, err := checkInstanceStatus(result.SuggestedHost, tk, instanceID)
@@ -421,11 +523,11 @@ func TestDeleteInstance_SingleRequestWithInvalidHost(t *testing.T) {
 	}
 }
 
-func TestDeleteInstance_SingleRequestWithInvalidToken(t *testing.T) {
+func TestDeleteInstance_MultipleRequestWithInvalidToken(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	// Invalid token array
-	token := []string{"", "sadasda-wewjkejwke"}
+	token := []string{"", "sadasda-wewjkejwke", "iroix-sdxxvv"}
 	// Make sure this instanceID exist when testing delete instance request
 	instanceID := INSTANCEID
 
@@ -437,12 +539,12 @@ func TestDeleteInstance_SingleRequestWithInvalidToken(t *testing.T) {
 	}
 }
 
-func TestDeleteInstance_SingleRequestWithInvalidInstanceID(t *testing.T) {
+func TestDeleteInstance_MultipleRequestWithInvalidInstanceID(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
 	token := TestToken
 	// Invalid instanceID array
-	instanceID := []string{"", "saksjdh-23asd"}
+	instanceID := []string{"", "saksjdh-23asd", "bxnmb-dufioewx"}
 
 	for _, instance_id := range instanceID {
 		err := deleteInstance(result.SuggestedHost, token, instance_id)
@@ -465,6 +567,28 @@ func TestDeleteInstance_SingleRequest(t *testing.T) {
 	}
 }
 
+func TestDeleteInstance_MultipleRequest(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	token := TestToken
+	// Make sure this instanceID exist when testing delete instance request
+	var instanceID [5]string
+
+	for i := 0; i < 5; i++ {
+		pod := podWithValidSpec("scheduler-unit-test-"+strconv.Itoa(i), "scheduler-instance-unit-test-"+strconv.Itoa(i))
+		manifest := &(pod.Spec)
+		id, _ := serverCreate(result.SuggestedHost, token, manifest)
+		instanceID[i] = id
+	}
+
+	for j := 0; j < len(instanceID); j++ {
+		err := deleteInstance(result.SuggestedHost, token, instanceID[j])
+		if err != nil {
+			t.Errorf("expected instance delete success but fail")
+		}
+	}
+}
+
 func TestTokenExpired_SingleRequestWithUnexpiredToken(t *testing.T) {
 	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
 	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
@@ -484,5 +608,28 @@ func TestTokenExpired_SingleRequestWithExpiredToken(t *testing.T) {
 
 	if !tokenExpired(result.SuggestedHost, token) {
 		t.Errorf("expected token expired but not expired")
+	}
+}
+
+func TestSchedulerFailedSchedulingReasons(t *testing.T) {
+	testNode := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "52.24.61.210", UID: types.UID("52.24.61.210")}}
+	result := core.ScheduleResult{SuggestedHost: testNode.Name, EvaluatedNodes: 5, FeasibleNodes: 5}
+	token := TestToken
+	// Make sure this instanceID exist when testing delete instance request
+	var instanceID [3]string
+
+	for i := 0; i < 3; i++ {
+		pod := podWithXLargeFlavorSpec("scheduler-xlarge-unit-test-"+strconv.Itoa(i), "scheduler-xlarge-instance-unit-test-"+strconv.Itoa(i))
+		manifest := &(pod.Spec)
+		id, err := serverCreate(result.SuggestedHost, token, manifest)
+		if err != nil && err.Error() == "Instance capacity has reached its limit" {
+			break
+		} else {
+			instanceID[i] = id
+		}
+	}
+
+	for j := 0; j < len(instanceID); j++ {
+		deleteInstance(result.SuggestedHost, token, instanceID[j])
 	}
 }

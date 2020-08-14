@@ -525,16 +525,16 @@ func createPausePodWithResource(cs clientset.Interface, podName string,
 			VirtualMachine: &v1.VirtualMachine{
 				KeyPairName: "KeyMy",
 				Name:        "scheduler-integration-test",
-				Image:       "5f2327cb-ef5c-43b5-821e-2a16b7455812",
+				Image:       "92806f76-f715-4512-9e34-5feb35186b8e",
 				Scheduling: v1.GlobalScheduling{
 					SecurityGroup: []v1.OpenStackSecurityGroup{
-						{Name: "4c71dc86-511b-470e-8cae-496bca13f2bd"},
+						{Name: "a19891f1-1092-44fb-a75c-e6601ed769e4"},
 					},
 				},
 				FlavorRef: "d1",
 			},
 			Nics: []v1.Nic{
-				{Uuid: "337f03dc-f0e0-4005-be1c-64f24bad7b2c"},
+				{Uuid: "4c673550-e58d-459d-9332-93a17f30bed1"},
 			},
 		}
 	} else {
@@ -547,16 +547,16 @@ func createPausePodWithResource(cs clientset.Interface, podName string,
 			VirtualMachine: &v1.VirtualMachine{
 				KeyPairName: "KeyMy",
 				Name:        "scheduler-integration-test",
-				Image:       "5f2327cb-ef5c-43b5-821e-2a16b7455812",
+				Image:       "92806f76-f715-4512-9e34-5feb35186b8e",
 				Scheduling: v1.GlobalScheduling{
 					SecurityGroup: []v1.OpenStackSecurityGroup{
-						{Name: "4c71dc86-511b-470e-8cae-496bca13f2bd"},
+						{Name: "a19891f1-1092-44fb-a75c-e6601ed769e4"},
 					},
 				},
 				FlavorRef: "d1",
 			},
 			Nics: []v1.Nic{
-				{Uuid: "337f03dc-f0e0-4005-be1c-64f24bad7b2c"},
+				{Uuid: "4c673550-e58d-459d-9332-93a17f30bed1"},
 			},
 		}
 	}
