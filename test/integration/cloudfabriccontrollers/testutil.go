@@ -98,7 +98,7 @@ func RmSetupControllerMaster(t *testing.T, s *httptest.Server) (*controller.Cont
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "rs-informers")), resyncPeriod)
 
 	// controller instance manager set up
-	cim := controller.GetControllerInstanceManager()
+	cim := controller.GetInstanceHandler()
 	if cim == nil {
 		cimUpdateChGrp := bcast.NewGroup()
 		go cimUpdateChGrp.Broadcast(0)
