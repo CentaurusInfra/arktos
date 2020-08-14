@@ -440,9 +440,21 @@ func (m *kubeGenericRuntimeManager) getPodContainerStatuses(uid kubetypes.UID, n
 	for i, c := range containers {
 		status, err := runtimeService.ContainerStatus(c.Id)
 		if err != nil {
-			// Merely log this here; GetPodStatus will actually report the error out.
-			klog.V(4).Infof("ContainerStatus for %s error: %v", c.Id, err)
-			return nil, err
+			// TODO: merely a workaround of Arktos issue 548
+			// There is very rare chance that the container can be died or other runtime bug to cause ContainerStatus
+			// to fail.
+			// Instead of return error, construct one with UNKNOW_STATE
+			klog.Errorf("ContainerStatus for %s error: %v", c.Id, err)
+
+			status = &runtimeapi.ContainerStatus{
+				Id:          c.Id,
+				Metadata:    c.Metadata,
+				State:       runtimeapi.ContainerState_CONTAINER_UNKNOWN,
+				Annotations: c.Annotations,
+				Labels:      c.Labels,
+				Image:       c.Image,
+				ImageRef:    c.ImageRef,
+			}
 		}
 		cStatus := toKubeContainerStatus(status, m.runtimeName)
 		if status.State == runtimeapi.ContainerState_CONTAINER_EXITED {

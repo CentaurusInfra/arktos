@@ -909,6 +909,10 @@ message ContainerState {
   // Details about a terminated container
   // +optional
   optional ContainerStateTerminated terminated = 3;
+
+  // Details about an unknown container
+  // +optional
+  optional ContainerStateUnknown unknown = 4;
 }
 
 // ContainerStateRunning is a running state of a container.
@@ -946,6 +950,12 @@ message ContainerStateTerminated {
   // Container's ID in the format 'docker://<container_id>'
   // +optional
   optional string containerID = 7;
+}
+
+message ContainerStateUnknown {
+  // A human-readable message indicating details about why the container is in unknown state
+  // +optional
+  optional string message = 1;
 }
 
 // ContainerStateWaiting is a waiting state of a container.

@@ -417,6 +417,7 @@ var map_ContainerState = map[string]string{
 	"waiting":    "Details about a waiting container",
 	"running":    "Details about a running container",
 	"terminated": "Details about a terminated container",
+	"unknown":    "Details about an unknown container",
 }
 
 func (ContainerState) SwaggerDoc() map[string]string {
@@ -445,6 +446,14 @@ var map_ContainerStateTerminated = map[string]string{
 
 func (ContainerStateTerminated) SwaggerDoc() map[string]string {
 	return map_ContainerStateTerminated
+}
+
+var map_ContainerStateUnknown = map[string]string{
+	"message": "A human-readable message indicating details about why the container is in unknown state",
+}
+
+func (ContainerStateUnknown) SwaggerDoc() map[string]string {
+	return map_ContainerStateUnknown
 }
 
 var map_ContainerStateWaiting = map[string]string{

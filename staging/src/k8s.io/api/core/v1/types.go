@@ -2475,6 +2475,12 @@ const (
 	ConditionUnknown ConditionStatus = "Unknown"
 )
 
+type ContainerStateUnknown struct {
+	// A human-readable message indicating details about why the container is in unknown state
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,1,opt,name=message"`
+}
+
 // ContainerStateWaiting is a waiting state of a container.
 type ContainerStateWaiting struct {
 	// (brief) reason the container is not yet running.
@@ -2529,6 +2535,9 @@ type ContainerState struct {
 	// Details about a terminated container
 	// +optional
 	Terminated *ContainerStateTerminated `json:"terminated,omitempty" protobuf:"bytes,3,opt,name=terminated"`
+	// Details about an unknown container
+	// +optional
+	Unknown *ContainerStateUnknown `json:"unknown,omitempty" protobuf:"bytes,4,opt,name=unknown"`
 }
 
 // ContainerStatus contains details for the current status of this container.

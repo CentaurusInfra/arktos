@@ -1424,7 +1424,7 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 
 	oldPodStatus, found := kl.statusManager.GetPodStatus(pod.UID)
 	if !found {
-		klog.V(6).Infof("pod not found in the status manager map")
+		klog.V(3).Infof("pod not found in the status manager map")
 		oldPodStatus = pod.Status
 	}
 
@@ -1593,6 +1593,8 @@ func (kl *Kubelet) convertToAPIContainerStatuses(pod *v1.Pod, podStatus *kubecon
 				FinishedAt:  metav1.NewTime(cs.FinishedAt),
 				ContainerID: cid,
 			}
+		case kubecontainer.ContainerStateUnknown:
+			status.State.Unknown = &v1.ContainerStateUnknown{Message: "Runtime container status unknown"}
 		default:
 			status.State.Waiting = &v1.ContainerStateWaiting{}
 		}

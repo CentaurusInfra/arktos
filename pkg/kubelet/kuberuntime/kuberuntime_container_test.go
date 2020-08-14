@@ -271,6 +271,25 @@ func TestToKubeContainerStatus(t *testing.T) {
 				},
 			},
 		},
+		"selfConstructed uknown container": {
+			input: &runtimeapi.ContainerStatus{
+				Id:          cid.ID,
+				Metadata:    meta,
+				Image:       imageSpec,
+				State:       runtimeapi.ContainerState_CONTAINER_UNKNOWN,
+				Annotations: map[string]string{"k1": "v1", "k2": "v2"},
+				Labels:      map[string]string{"k1": "v1", "k2": "v2"},
+				CreatedAt:   createdAt,
+				StartedAt:   startedAt,
+			},
+			expected: &kubecontainer.ContainerStatus{
+				ID:        *cid,
+				Image:     imageSpec.Image,
+				State:     kubecontainer.ContainerStateUnknown,
+				CreatedAt: time.Unix(0, createdAt),
+				StartedAt: time.Unix(0, startedAt),
+			},
+		},
 	} {
 		actual := toKubeContainerStatus(test.input, cid.Type)
 		assert.Equal(t, test.expected, actual, desc)

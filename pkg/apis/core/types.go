@@ -2270,6 +2270,12 @@ const (
 	ConditionUnknown ConditionStatus = "Unknown"
 )
 
+type ContainerStateUnknown struct {
+	// A human-readable message indicating details about why the container is in unknown state
+	// +optional
+	Message string
+}
+
 type ContainerStateWaiting struct {
 	// A brief CamelCase string indicating details about why the container is in waiting state.
 	// +optional
@@ -2310,6 +2316,8 @@ type ContainerState struct {
 	Running *ContainerStateRunning
 	// +optional
 	Terminated *ContainerStateTerminated
+	// +optional
+	Unknown *ContainerStateUnknown
 }
 
 type ContainerStatus struct {
