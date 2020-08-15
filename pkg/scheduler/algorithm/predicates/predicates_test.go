@@ -4442,6 +4442,74 @@ func TestPodSchedulesOnNodeWithDiskPressureCondition(t *testing.T) {
 	}
 }
 
+func TestPodSchedulesOnRuntimeNotReadyCondition(t *testing.T) {
+	notReadyNode := &v1.Node{
+		Status: v1.NodeStatus{
+			Conditions: []v1.NodeCondition{
+				{
+					Type: v1.NodeVmRuntimeReady,
+					Status: v1.ConditionFalse,
+				},
+				{
+					Type: v1.NodeContainerRuntimeReady,
+					Status: v1.ConditionFalse,
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name                   string
+		pod                    *v1.Pod
+		fits                   bool
+		expectedFailureReasons []PredicateFailureReason
+	}{
+		{
+			name: "regular pod does not fit",
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod1",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{{Image: "pod1:V1"}},
+				},
+			},
+			fits: false,
+			expectedFailureReasons: []PredicateFailureReason{ErrNodeRuntimeNotReady},
+		},
+		{
+			name: "noschedule-tolerant pod fits",
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod2",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{{Image: "pod2:V2"}},
+					Tolerations: []v1.Toleration{{Operator: "Exists", Effect: "NoSchedule"}},
+				},
+			},
+			fits: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fits, reasons, err := CheckNodeRuntimeReadinessPredicate(test.pod, GetPredicateMetadata(&v1.Pod{},nil), makeEmptyNodeInfo(notReadyNode))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if fits != test.fits {
+				t.Fatalf("unexpected fits: %t, want :%t", fits, test.fits)
+			}
+
+			if !reflect.DeepEqual(reasons, test.expectedFailureReasons) {
+				t.Fatalf("unexpected failure reasons: %v, want: %v", reasons, test.expectedFailureReasons)
+			}
+		})
+	}
+}
+
 func TestPodSchedulesOnNodeWithPIDPressureCondition(t *testing.T) {
 
 	// specify a node with no pid pressure condition on
