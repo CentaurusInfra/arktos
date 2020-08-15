@@ -179,7 +179,7 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 
 func (dc *DeploymentController) addDeployment(obj interface{}) {
 	d := obj.(*apps.Deployment)
-	klog.V(4).Infof("Adding deployment %s", d.Name)
+	klog.V(4).Infof("Adding deployment %s. hashkey %v. rv %s", d.Name, d.HashKey, d.ResourceVersion)
 	dc.enqueueDeployment(d)
 }
 
@@ -204,7 +204,7 @@ func (dc *DeploymentController) deleteDeployment(obj interface{}) {
 			return
 		}
 	}
-	klog.V(4).Infof("Deleting deployment %s", d.Name)
+	klog.V(4).Infof("Deleting deployment %s. rv %s", d.Name, d.ResourceVersion)
 	dc.enqueueDeployment(d)
 }
 
@@ -343,7 +343,7 @@ func (dc *DeploymentController) deleteReplicaSet(obj interface{}) {
 	if d == nil {
 		return
 	}
-	klog.V(4).Infof("ReplicaSet %s deleted.", rs.Name)
+	klog.V(4).Infof("ReplicaSet %s deleted. rv %s", rs.Name, rs.ResourceVersion)
 	dc.enqueueDeployment(d)
 }
 
@@ -367,7 +367,7 @@ func (dc *DeploymentController) deletePod(obj interface{}) {
 			return
 		}
 	}
-	klog.V(4).Infof("Pod %s deleted.", pod.Name)
+	klog.V(4).Infof("Pod %s deleted. rv %s", pod.Name, pod.ResourceVersion)
 	if d := dc.getDeploymentForPod(pod); d != nil && d.Spec.Strategy.Type == apps.RecreateDeploymentStrategyType {
 		// Sync if this Deployment now has no more Pods.
 		rsList, err := util.ListReplicaSets(d, util.RsListFromClient(dc.GetClient().AppsV1()))
