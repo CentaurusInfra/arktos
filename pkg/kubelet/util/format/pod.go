@@ -52,10 +52,24 @@ func PodWithDeletionTimestamp(pod *v1.Pod) string {
 	return Pod(pod) + deletionTimestamp
 }
 
+// Prints the pod with the resource version along with the deletion time
+func PodWithDeletionTimestampAndResourceVersion(pod *v1.Pod) string {
+	var podReversion string
+	if pod.ResourceVersion != "" {
+		podReversion = ":ResourceVersion=" + pod.ResourceVersion
+	}
+	return PodWithDeletionTimestamp(pod) + podReversion
+}
+
 // Pods returns a string representation a list of pods in a human
 // readable format.
 func Pods(pods []*v1.Pod) string {
 	return aggregatePods(pods, Pod)
+}
+
+// Prints pods with deletion timestamps and resource versions
+func PodsWithDeletionTimestampsAndResourceVersions(pods []*v1.Pod) string {
+	return aggregatePods(pods, PodWithDeletionTimestampAndResourceVersion)
 }
 
 // PodsWithDeletionTimestamps is the same as Pods. In addition, it prints the
