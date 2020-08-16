@@ -27,11 +27,13 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 
+	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
-	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
@@ -41,6 +43,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
+const CREATE_RETRY_INTERVAL = 500 * time.Millisecond
+
+const WATCH_TIMEOUT = 2 * 60 * time.Minute
+const MAX_RETRIES = 100
 const NUM_NAMESPACES = 10
 const NUM_PODS_PER_NS = 100
 
@@ -75,7 +81,7 @@ func makeTestPod(ns, name, podLabel string) *v1.Pod {
 	return pod
 }
 
-var _ = ginkgo.Describe("PodQuickPerf", func() {
+var _ = ginkgo.Describe("PodPerf", func() {
 	var f []*framework.Framework
 	var podClient []*framework.PodClient
 	var ns []string
@@ -107,24 +113,57 @@ var _ = ginkgo.Describe("PodQuickPerf", func() {
 		var wgStart, wgGet sync.WaitGroup
 		var podStartLatency, podGetApiLatency, podListApiLatency []float64
 		createPodAndMeasureTime := func(nsIdx, podIdx int) {
+			defer ginkgo.GinkgoRecover()
 			podName := fmt.Sprintf("testpod-%d-%d", nsIdx, podIdx)
 			podLabel := fmt.Sprintf("testpod-%d", nsIdx)
 			tPod := makeTestPod(ns[nsIdx], podName, podLabel)
 			idx := nsIdx*numPodsPerNs + podIdx
-			ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.PodStartTimeout)
+			ctx, cancel := context.WithTimeout(context.TODO(), WATCH_TIMEOUT)
 			defer cancel()
+			timeout := int64(WATCH_TIMEOUT)
+			fieldSelector := fields.OneTermEqualSelector("metadata.name", podName).String()
+			lw := &cache.ListWatch{
+				ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
+					options.FieldSelector = fieldSelector
+					options.TimeoutSeconds = &timeout
+					obj, err := f[nsIdx].ClientSet.CoreV1().Pods(ns[nsIdx]).List(options)
+					return runtime.Object(obj), err
+				},
+				WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+					options.FieldSelector = fieldSelector
+					options.TimeoutSeconds = &timeout
+					return f[nsIdx].ClientSet.CoreV1().Pods(ns[nsIdx]).Watch(options)
+				},
+			}
+			conditionFunc := func(event watch.Event) (bool, error) {
+				if p, ok := event.Object.(*v1.Pod); ok {
+					return p.Status.Phase == v1.PodRunning, nil
+				}
+				return false, fmt.Errorf("event object not of type Pod")
+			}
 
+			retries := 0
 			tStamp1 := time.Now()
-			pods[idx] = podClient[nsIdx].Create(tPod)
-			w := podClient[nsIdx].Watch(metav1.SingleObject(pods[idx].ObjectMeta))
-			framework.ExpectNoError(w.GetErrors(), "error watching a pod")
-			wr := watch.NewRecorder(w)
-			_, err := watchtools.UntilWithoutRetry(ctx, wr, conditions.PodRunning)
+			for {
+				p, err := f[nsIdx].ClientSet.CoreV1().Pods(ns[nsIdx]).Create(tPod)
+				if err == nil {
+					pods[idx] = p
+					break
+				}
+				time.Sleep(CREATE_RETRY_INTERVAL)
+				retries++
+				if retries > MAX_RETRIES {
+					framework.ExpectNoError(err, fmt.Sprintf("Failed to create pod %s after %d retries", podName, retries))
+					break
+				}
+			}
+			_, err := watchtools.UntilWithSync(ctx, lw, &v1.Pod{}, nil, conditionFunc)
+			if err != nil {
+				framework.ExpectNoError(err, fmt.Sprintf("Pod %s error waiting for PodRunning: %v", podName, err))
+			}
 			tStamp2 := time.Now()
-			gomega.Expect(err).To(gomega.BeNil())
 
 			podStartLatency[idx] = float64((tStamp2.UnixNano() - tStamp1.UnixNano())) / 1000000
-			e2elog.Logf("Pod %s - E2E Start Latency: %+v", podName, podStartLatency[idx])
 			wgStart.Done()
 		}
 
@@ -136,7 +175,6 @@ var _ = ginkgo.Describe("PodQuickPerf", func() {
 			framework.ExpectNoError(err, "failed to get pod")
 
 			podGetApiLatency[idx] = float64((tStamp2.UnixNano() - tStamp1.UnixNano())) / 1000000
-			e2elog.Logf("Pod %s - E2E Get Latency: %+v", pods[idx].Name, podGetApiLatency[idx])
 			wgGet.Done()
 		}
 
@@ -148,12 +186,16 @@ var _ = ginkgo.Describe("PodQuickPerf", func() {
 		podGetApiLatency = make([]float64, totalPods)
 		podListApiLatency = make([]float64, numNs)
 		pods = make([]*v1.Pod, totalPods)
+		tsStart := time.Now()
 		for i := 0; i < numNs; i++ {
 			for j := 0; j < numPodsPerNs; j++ {
 				go createPodAndMeasureTime(i, j)
 			}
 		}
 		wgStart.Wait()
+		tsDone := time.Now()
+		podsPerSecond := float64(numNs*numPodsPerNs) / (float64((tsDone.UnixNano() - tsStart.UnixNano())) / 1000000000)
+		e2elog.Logf("All created pods are now running. Pod start throughput for %d pods: %.2f pods per second", totalPods, podsPerSecond)
 
 		for i := 0; i < numNs; i++ {
 			for j := 0; j < numPodsPerNs; j++ {
@@ -161,6 +203,7 @@ var _ = ginkgo.Describe("PodQuickPerf", func() {
 			}
 		}
 		wgGet.Wait()
+		e2elog.Logf("Get API executed for %d pods.", totalPods)
 
 		for i := 0; i < numNs; i++ {
 			podLabel := fmt.Sprintf("testpod-%d", i)
@@ -215,6 +258,7 @@ var _ = ginkgo.Describe("PodQuickPerf", func() {
 		e2elog.Logf("P95 e2e start latency: %.2f milliseconds", podStartLatency[int(float64(totalPods-1)*95/100)])
 		e2elog.Logf("Median e2e start latency: %.2f milliseconds", medianStartLatency)
 		e2elog.Logf("Average e2e start latency for %d pods: %.2f milliseconds", totalPods, avgStartLatencyMillisec)
+		e2elog.Logf("Pod start throughput for %d pods: %.2f pods per second", totalPods, podsPerSecond)
 		e2elog.Logf("---------------")
 		e2elog.Logf("Min e2e Get API latency: %.2f milliseconds", podGetApiLatency[0])
 		e2elog.Logf("Max e2e Get API latency: %.2f milliseconds", podGetApiLatency[totalPods-1])
