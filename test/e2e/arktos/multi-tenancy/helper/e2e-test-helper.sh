@@ -30,7 +30,7 @@ timeout_error_code=124
 
 function report_error {
 	error_cause=$1
-	errors+=("${error_cause}: \"${command}\"")
+	errors+=(" : ${error_cause}: \"${command}\" in test suite ${test_file}")
 	printf "${RED}%s${NC}\n" "$1"
 }
 
@@ -115,8 +115,6 @@ function check_output_contain {
 		done
 	done
 }
-	
-
 
 function print_summary {
 	printf "${MAGENTA}\n================================ Test Result Summary ======================================${NC}"
@@ -134,6 +132,7 @@ function print_summary {
 
 function reset_test_parameter {
 	command=""
+	expect_output=""
 	retry_count=$default_retry_count
 	retry_interval=$default_retry_interval
 	timeout=$default_timeout
@@ -141,7 +140,14 @@ function reset_test_parameter {
 	retrying=$FALSE
 }
 
-function load_test_case_file_and_run {
+function run_test_if_command_not_empty {
+	if [[ "$command" != "" ]];  then
+		run_test
+		reset_test_parameter				
+	fi
+}
+
+function load_test_suite_file_and_run {
 	test_file=$1
 	if [[ -z "${test_file}" ]];  then 
 		report_error "No test file is specified!"
@@ -161,11 +167,18 @@ function load_test_case_file_and_run {
 		line_lowercase=$(echo $line |  tr '[:upper:]' '[:lower:]')
 		[[ $line =~ ^#.* || "$line" == "" ]] && continue
 
+		if [[ $line_lowercase =~ ^configtest:.* ]]; then
+			configtest=$(eval echo "${line:12}")
+			run_test_if_command_not_empty
+			print_normal "Running \"${configtest}\""
+			echo "#!/bin/bash" > /tmp/e2e_test_temp.sh
+			echo $configtest >> /tmp/e2e_test_temp.sh
+			source /tmp/e2e_test_temp.sh			
+			continue
+		fi
+
 		if [[ $line_lowercase =~ ^command:.* ]]; then
-			if [[ "$command" != "" ]];  then
-				run_test
-				reset_test_parameter				
-			fi
+			run_test_if_command_not_empty
 			command=$(eval echo "${line:9}")
 			continue
 		fi
@@ -180,13 +193,13 @@ function load_test_case_file_and_run {
 			retry_count=${line:11}
 			if [[ !($retry_count =~ ^[0-9]+*) ]]; then 
 				retry_count=$default_retry_count
-				print_warning "Retry count is not numeric in the line \"$line\". Set timeout to default value of $default_retry_count."
+				report_warning "Retry count is not numeric in the line \"$line\". Set timeout to default value of $default_retry_count."
 				continue
 			fi
 
 			if [[ $retry_count -gt $max_retry_count ]]; then 
 				retry_count=$max_retry_count
-				print_warning "The retry count in \"$line\" is too big. set the count to $max_retry_count."
+				report_warning "The retry count in \"$line\" is too big. set the count to $max_retry_count."
 				continue				
 			fi
 			continue
@@ -196,13 +209,13 @@ function load_test_case_file_and_run {
 			retry_interval=${line:15}
 			if [[ !($retry_interval =~ ^[0-9]+*) ]]; then 
 				retry_interval=$default_retry_interval
-				print_warning "Retry interval is not numeric in the line \"$line\". Set the interval to default value of $default_retry_interval."
+				report_warning "Retry interval is not numeric in the line \"$line\". Set the interval to default value of $default_retry_interval."
 				continue
 			fi
 
 			if [[ $retry_interval -gt $max_retry_interval ]]; then 
 				retry_interval=$max_retry_interval
-				print_warning "The retry interval in \"$line\" is too big. set the interval to $max_retry_interval."
+				report_warning "The retry interval in \"$line\" is too big. set the interval to $max_retry_interval."
 				continue				
 			fi
 			continue
@@ -212,22 +225,20 @@ function load_test_case_file_and_run {
 			timeout=$(echo ${line:8})
 			if [[ !($timeout =~ ^[0-9]+*) ]]; then 
 				timeout=$default_timeout
-				print_warning "Timeout is not numeric in the line \"$line\". Set timeout to default value of $default_timeout."
+				report_warning "Timeout is not numeric in the line \"$line\". Set timeout to default value of $default_timeout."
 				continue
 			fi
 
 			if [[ $timeout -gt $max_timeout ]]; then 
 				timeout=$max_timeout
-				print_warning "The timeout in \"$line\" is too big. set the interval to $max_timeout."
+				report_warning "The timeout in \"$line\" is too big. set the interval to $max_timeout."
 				continue				
 			fi
 			continue
 		fi
 			
-		print_warning "Failed to parse line \"${line}\", ignore the line."	
+		report_warning "Failed to parse line \"${line}\", ignore the line."	
 	done < "${test_file}"
 
-	if [[ "${command}" != "" ]];  then
-		run_test				
-	fi
+	run_test_if_command_not_empty
 }

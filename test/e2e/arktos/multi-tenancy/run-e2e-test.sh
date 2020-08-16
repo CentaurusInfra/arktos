@@ -40,15 +40,18 @@ source $(dirname $0)/helper/e2e-test-helper.sh
 
 verify_test_cluster_ready
 
-for test_case_file in $(echo "${test_case_files}" | tr "," "\n")
-do
-	test_case_file_path=$(readlink -f "${test_case_file_directory}/${test_case_file}")
-	printf "${MAGENTA}***************************************************************${NC}\n"
-	printf "${MAGENTA}starting tests in file ${test_case_file_path} ...${NC}\n"
+start_time=$(date)
 
-	load_test_case_file_and_run "${test_case_file_path}"
+for test_suite_file in $(echo "${test_suite_files}" | tr "," "\n")
+do
+	test_suite_file_path=$(readlink -f "${test_suite_file_directory}/${test_suite_file}")
+	printf "${MAGENTA}***************************************************************${NC}\n"
+	printf "${MAGENTA}starting tests in file ${test_suite_file_path} ...${NC}\n"
+
+	load_test_suite_file_and_run "${test_suite_file_path}"
 done
 
+printf "${MAGENTA} \n Test started at ${start_time} \n Finished at $(date)${NC}\n"
 print_summary
 
 

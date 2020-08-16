@@ -19,24 +19,22 @@ base_dir=$(cd $(dirname $0)/../../../.. ; pwd)
 # By default we use the kubectl binary built in the Arktos repository.
 kubectl=${base_dir}/_output/bin/kubectl
 
-#put the test case file names below, separated by comma. No space is accepted. The files will be tested in the order defined.
-test_case_files=basic_tests,new_tenant_tests
-test_case_file_directory=$(dirname $0)/testcase/
+#put the test suite file names below, one line one suite. The test suites will be run in the order defined.
+test_suite_files="system_tenant_basic_tests \
+                tenant_init_delete_tests \
+                regular_tenant_kubectl_tests \
+                multi_tenancy_controller_tests"
+test_suite_file_directory=$(dirname $0)/test_suites/
+test_data_file_directory=$(dirname $0)/testdata/
+setup_client_script=${base_dir}/hack/setup-multi-tenancy/setup_client.sh
 
 # The values of timeouts and retry intervals are in the unit of second
 # timeout=0 means that there is not check on whether a command exits within a give time span
-default_timeout=1
-max_timeout=120
+default_timeout=5
+max_timeout=300
 
 default_retry_count=0
 max_retry_count=30
 
 default_retry_interval=1
 max_retry_interval=30
-
-# create a test tenant name of 8 random characters
-new_tenant="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
-
-new_namespace="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
-
-
