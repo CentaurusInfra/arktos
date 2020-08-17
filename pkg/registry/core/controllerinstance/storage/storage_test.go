@@ -17,6 +17,7 @@ limitations under the License.
 package storage
 
 import (
+	"math"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,4 +118,41 @@ func TestList(t *testing.T) {
 	defer storage.Store.DestroyFunc()
 	test := genericregistrytest.New(t, storage.Store).ClusterScope()
 	test.TestList(validNewControllerInstance())
+}
+
+func TestUpdate(t *testing.T) {
+	storage, server := newStorage(t)
+	defer server.Terminate(t)
+	defer storage.DestroyFunc()
+	controllerInstance := validNewControllerInstance()
+	ctx := genericapirequest.NewContext()
+	_, err := storage.Store.Create(ctx, controllerInstance, rest.ValidateAllObjectFunc, &metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	object, err := storage.Get(ctx, "foo", &metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	actual := object.(*api.ControllerInstance)
+	actual.ControllerKey = math.MaxInt64
+
+	// Update
+	_, _, err = storage.Store.Update(ctx, "foo", rest.DefaultUpdatedObjectInfo(actual),
+		rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
+	if err != nil {
+		t.Errorf("unexpected update error: %v", err)
+	}
+
+	// read back and compare
+	newObj, err := storage.Get(ctx, "foo", &metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	newInstance := newObj.(*api.ControllerInstance)
+	if newInstance.ControllerKey != math.MaxInt64 {
+		t.Fatalf("controller key update failed")
+	}
+
 }
