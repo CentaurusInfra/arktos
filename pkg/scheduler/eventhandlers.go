@@ -199,6 +199,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}) {
 		klog.Errorf("cannot convert to *v1.Pod: %v", obj)
 		return
 	}
+	klog.V(4).Infof("Got ADD pod event. pod name %s, rv %v, status %#v", pod.Name, pod.ResourceVersion, pod.Status)
 
 	if err := sched.config.SchedulerCache.AddPod(pod); err != nil {
 		klog.Errorf("scheduler cache AddPod failed: %v", err)
