@@ -1,0 +1,152 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Tenant Initialization & Delete Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies that 
+# 1. some resources are automatically created when a tenant is created, including
+#    a: namespaces of "default", "kube-system" and "kue-public". These namespaces cannot be deleted if the tenant is active. 
+#    b: default service accounts for the above namespaces
+#    c: clusterrole of "admin-role"
+#    d: clusterrolebinding of "admin-role"
+# 2. setup_client.sh creates the tenant admin context
+# 3. namespace deleter deletes all the resoures under the namespace of this tenant
+# 4. tenant deleter deletes all the resources under the tenant
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+######################################################
+# Configure the test variables for this test suite
+######################################################
+
+ConfigTest: test_ns="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
+ConfigTest: test_tenant="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
+
+######################################################
+# check the system tenant is created automatically and cannot be deleted
+######################################################
+Command: ${kubectl} create tenant system
+ExpectFail: true
+ExpectOutput: "Error from server (AlreadyExists)"
+
+Command: ${kubectl} get tenants
+ExpectOutput: "system,Active"
+
+Command: ${kubectl} delete tenant system
+ExpectFail: true
+ExpectOutput: "Error from server (Forbidden): tenants \"system\" is forbidden: this tenant may not be deleted"
+
+######################################################
+# create the test tenant and configure the context
+######################################################
+Command: ${kubectl} create tenant ${test_tenant}
+ExpectOutput: "tenant/${test_tenant} created"
+
+Command: ${kubectl} get tenants
+ExpectOutput: "system,Active" "${test_tenant},Active"
+
+#creating admin context for tenant ${test_tenant}
+Command: ${setup_client_script} ${test_tenant} admin
+Timeout: 10
+
+# verify the tenant context is configured correctly
+Command: ${kubectl} config get-contexts ${test_tenant}-admin-context
+ExpectOutput: "${test_tenant}-admin-context,${test_tenant}-admin-cluster,${test_tenant}-admin,default,${test_tenant}"
+
+######################################################
+# check the tenant controller creates the default resources
+######################################################
+
+Command: ${kubectl} get namespaces --tenant ${test_tenant}
+ExpectOutput: "default,Active" "kube-system,Active" "kube-public,Active"
+# Allowing retries as the tenant controller might take some time to create the namespaces 
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get namespaces --context ${test_tenant}-admin-context
+ExpectOutput: "default,Active" "kube-system,Active" "kube-public,Active"
+
+Command: ${kubectl} get clusterroles --tenant ${test_tenant}
+ExpectOutput: "admin-role"
+
+Command: ${kubectl} get clusterroles --context ${test_tenant}-admin-context
+ExpectOutput: "admin-role"
+
+Command: ${kubectl} get clusterrolebindings --tenant ${test_tenant}
+ExpectOutput: "admin-role-binding"
+
+Command: ${kubectl} get clusterrolebindings --context ${test_tenant}-admin-context
+ExpectOutput: "admin-role-binding"
+
+#############################################################
+# default namespaces cannot be deleted
+#############################################################
+Command: ${kubectl} delete ns default --context ${test_tenant}-admin-context
+ExpectOutput: "Error from server (Forbidden): namespaces "${test_tenant}/default" is forbidden: this namespace may not be deleted"
+ExpectFail: true
+
+Command: ${kubectl} delete ns default --tenant ${test_tenant}
+ExpectOutput: "Error from server (Forbidden): namespaces "${test_tenant}/default" is forbidden: this namespace may not be deleted"
+ExpectFail: true
+
+Command: ${kubectl} delete ns kube-system --context ${test_tenant}-admin-context
+ExpectOutput: "Error from server (Forbidden): namespaces "${test_tenant}/kube-system" is forbidden: this namespace may not be deleted"
+ExpectFail: true
+
+Command: ${kubectl} delete ns kube-system --tenant ${test_tenant}
+ExpectOutput: "Error from server (Forbidden): namespaces "${test_tenant}/kube-system" is forbidden: this namespace may not be deleted"
+ExpectFail: true
+
+#############################################################
+# creating a namespace & and a deployment under the namespace
+#############################################################
+# Tests on namespace creation
+Command: ${kubectl} create ns ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "namespace/${test_ns} created"
+
+Command: ${kubectl} get ns ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "${test_ns},Active"
+
+# re-createing the same namespace under the tenant will result in error 
+Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant}
+ExpectFail: true
+ExpectOutput: "Error from server (AlreadyExists)"
+
+Command: ${kubectl} get ns ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "${test_ns},Active"
+
+Command: ${kubectl} run nginx --image=nginx -n ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "deployment.apps/nginx created"
+
+ConfigTest: sleep 5
+
+# retry as the pod creation may need some time.
+Command: ${kubectl} get deployments -n ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "nginx,1/1"
+RetryCount: 3
+RetryInterval: 3
+
+############################################
+# test namespace deleter
+############################################
+
+Command: ${kubectl} delete namespace ${test_ns} --context ${test_tenant}-admin-context
+Timeout: 60
+ExpectOutput: "namespace,${test_ns},deleted"
+
+Command: ${kubectl} get pods --namespace ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "No resources found."
+
+Command: ${kubectl} get deployments --namespace ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "No resources found."
+
+################################################
+# test tenant deleter
+################################################
+
+Command: ${kubectl} delete tenant ${test_tenant}
+ExpectOutput: "${test_tenant},deleted"
+Timeout: 60
+
+Command: ${kubectl} get tenant ${test_tenant}
+ExpectFail: true
+ExpectOutput: "${test_tenant},not found"
+
+# all the default namespaces should be gone
+Command: ${kubectl} get namespaces --tenant ${test_tenant}
+ExpectOutput: "No resources found."

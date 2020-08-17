@@ -1,0 +1,221 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ System Tenant Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies the fundamental components under the system tenant in Arktos
+# up and running, as if it is still a K8s Cluster
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+######################################################
+# Configure the test variables for this test suite
+######################################################
+
+ConfigTest: test_ns="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
+
+######################################################
+# check the kube-dns & virtlet are running
+######################################################
+
+Command: ${kubectl} get pods --all-namespaces
+ExpectOutput: "kube-system,kube-dns,Running" "kube-system,virtlet,Running"
+# Allowing retries as the pods may not be running when the cluster is just started
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get deployments --all-namespaces
+ExpectOutput: "kube-system,kube-dns,1/1"
+RetryCount: 3
+RetryInterval: 3
+
+######################################################
+# check namespaces default/kube-system/kube-public/kube-node-release are automatically created and undeletable
+######################################################
+Command: ${kubectl} get namespaces
+ExpectOutput: "default,Active" "kube-system,Active" "kube-public,Active" "kube-node-lease,Active" 
+
+Command: ${kubectl} delete ns default
+ExpectFail: true
+ExpectOutput: "Error from server (Forbidden)" "this namespace may not be deleted"
+
+Command: ${kubectl} delete ns kube-system
+ExpectFail: true
+ExpectOutput: "Error from server (Forbidden)" "this namespace may not be deleted"
+
+# Tests on namespace creation
+Command: ${kubectl} create ns ${test_ns}
+ExpectOutput: "namespace/${test_ns} created"
+
+# re-createing a namespace will result in error 
+Command: ${kubectl} create ns ${test_ns}
+ExpectFail: true
+ExpectOutput: "Error from server (AlreadyExists)"
+
+#################################################
+# Testing kubectl run 
+#################################################
+Command: ${kubectl} run nginx --image=nginx -n ${test_ns}
+ExpectOutput: "deployment.apps/nginx created"
+
+ConfigTest: sleep 5
+
+# retry as the pod creation may need some time.
+Command: ${kubectl} get deployments --all-namespaces
+ExpectOutput: "${test_ns},nginx,1/1"
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get pods --all-namespaces
+ExpectOutput: "${test_ns},nginx,Running"
+
+#################################################
+# Testing kubectl delete pods and deployment controller
+#################################################
+
+Command: ${kubectl} delete pods -n ${test_ns} --all
+ExpectOutput: "pod,nginx,deleted"
+TimeOut: 30
+
+# the deployment should still be active though the pod is deleted.
+Command: ${kubectl} get deployments --all-namespaces
+ExpectOutput: "${test_ns},nginx,1/1"
+RetryCount: 3
+RetryInterval: 3
+
+# A new pod should be re-created
+Command: ${kubectl} get pods --all-namespaces
+ExpectOutput: "${test_ns},nginx,Running"
+
+#################################################
+# Testing kubectl cp & kubectl exec
+#################################################
+Command: ${kubectl} create -f ${test_data_file_directory}/sample-pod.yaml -n ${test_ns}
+ExpectOutput: "pod/sample-nginx-pod created"
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get pod --all-namespaces
+ExpectOutput: "${test_ns},sample-nginx-pod,Running"
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} cp ${test_data_file_directory}/sample-deployment.yaml ${test_ns}/sample-nginx-pod:/tmp/
+
+Command: ${kubectl} exec sample-nginx-pod -n ${test_ns} -- ls /tmp
+ExpectOutput: "sample-deployment.yaml"
+
+
+############################################
+# test kubectl apply 
+############################################
+# create the deployment under a non-default namespace
+Command: ${kubectl} apply -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns}
+ExpectOutput: "sample-nginx-deployment,created"
+
+# re-applying the same yaml is OK
+Command: ${kubectl} apply -f ${test_data_file_directory}/sample-deployment.yaml  -n ${test_ns}
+ExpectOutput: "sample-nginx-deployment,unchanged"
+
+Command: ${kubectl} get deployments --all-namespaces
+ExpectOutput: "${test_ns},nginx,1/1" 
+RetryCount: 3
+RetryInterval: 3
+
+############################################
+# test kubectl label
+############################################
+Command: ${kubectl} label deployment sample-nginx-deployment ccc="ddd" -n ${test_ns}
+ExpectOutput: "sample-nginx-deployment,labeled"
+
+Command: ${kubectl} label deployment sample-nginx-deployment ccc="ddd" -n ${test_ns}
+ExpectFail: true
+ExpectOutput: "ccc,already has a value"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns}
+ExpectOutput: "ccc=ddd"
+
+# the label can be updated with option --overwrite=true
+Command: ${kubectl} label --overwrite=true deployment sample-nginx-deployment ccc="eee" -n ${test_ns}
+ExpectOutput: "sample-nginx-deployment,labeled"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns}
+ExpectOutput: "ccc=eee"
+
+# re-applying the same label does not fail, but kubectl will report "not labeled"
+Command: ${kubectl} label --overwrite=true deployment sample-nginx-deployment ccc="eee" -n ${test_ns}
+ExpectOutput: "sample-nginx-deployment,not labeled"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns}
+ExpectOutput: "ccc=eee"
+
+############################################
+# test kubectl create job
+############################################
+Command: ${kubectl} create job my-job --image=buysbox -n ${test_ns}
+ExpectOutput: "job.batch/my-job created"
+
+Command: ${kubectl} get jobs -n ${test_ns}
+ExpectOutput: "my-job"
+
+############################################
+# test kubectl patch
+############################################
+Command: ${kubectl} patch deployment sample-nginx-deployment -n ${test_ns} -p '{"spec":{"containers":[{"name":"kubernetes-serve-hostname","image":"redis"}]}}'
+ExpectOutput: "deployment.extensions/sample-nginx-deployment patched"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns} |  grep Image
+ExpectOutput: "Image,redis"
+
+############################################
+# test kubectl autoscale
+############################################
+Command: ${kubectl} get horizontalpodautoscalers -n ${test_ns}
+ExpectOutput: "No resources found"
+
+Command: ${kubectl} autoscale deployment sample-nginx-deployment --cpu-percent=50 --min=1 --max=5 -n ${test_ns}
+ExpectOutput: "horizontalpodautoscaler.autoscaling/sample-nginx-deployment autoscaled"
+
+Command: ${kubectl} get horizontalpodautoscalers --all-namespaces
+ExpectOutput: "${test_ns},sample-nginx-deployment"
+
+############################################
+# test kubectl scale & kubectl diff
+############################################
+# as there is no difference, this command is expected to return 0
+Command: ${kubectl} diff -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns}
+
+Command: ${kubectl} scale deployment sample-nginx-deployment --replicas=3 -n ${test_ns}
+ExpectOutput: "deployment.extensions/sample-nginx-deployment scaled"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns}
+ExpectOutput: "Replicas:,3 desired"
+
+# this command is expected to return 1 when there is difference
+Command: ${kubectl} diff -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns}
+ExpectOutput: "-  replicas: 3" "+  replicas: 1" "exit status 1"
+ExpectFail: true
+
+############################################
+# test kubectl cluster-info
+############################################
+Command: ${kubectl} cluster-info
+ExpectOutput: "Kubernetes master is running at" "KubeDNS is running at"
+
+############################################
+# test kubectl expose
+############################################
+Command: ${kubectl} expose deployment sample-nginx-deployment --port=80 --target-port=8080 --namespace ${test_ns}
+ExpectOutput: "service/sample-nginx-deployment exposed"
+
+Command: ${kubectl} get services --namespace ${test_ns}
+ExpectOutput: "sample-nginx-deployment" "ClusterIP" "80/TCP"
+
+############################################
+# test namespace deleter
+############################################
+
+Command: ${kubectl} delete namespace ${test_ns}
+TimeOut: 60
+ExpectOutput: "namespace,${test_ns},deleted"
+
+Command: ${kubectl} get pods --namespace ${test_ns}
+ExpectOutput: "No resources found."
+
+Command: ${kubectl} get deployments --namespace ${test_ns}
+ExpectOutput: "No resources found."

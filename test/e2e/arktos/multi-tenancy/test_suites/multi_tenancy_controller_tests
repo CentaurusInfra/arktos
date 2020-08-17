@@ -1,0 +1,273 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Regular Tenant Kubectl Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies multi-tenancy controllers are functioning as expected. 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+######################################################
+# Configure the test variables for this test suite
+######################################################
+ConfigTest: test_tenant="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
+ConfigTest: test_ns_1="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
+ConfigTest: test_ns_2="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
+ConfigTest: test_ns_3="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
+
+######################################################
+# create the tenant and configure the context
+######################################################
+Command: ${kubectl} create tenant ${test_tenant}
+ExpectOutput: "tenant/${test_tenant} created"
+
+#creating admin context for tenant ${test_tenant}
+Command: ${setup_client_script} ${test_tenant} admin
+Timeout: 10
+
+
+########################################################################################
+# Testing deployment controller & replicaset controller
+########################################################################################
+
+# ------------------------------------------------------------
+# replicasets and pods are created when a deployment is created
+# ------------------------------------------------------------
+
+Command: ${kubectl} create ns ${test_ns_1} --context ${test_tenant}-admin-context
+ExpectOutput: "namespace/${test_ns_1} created"
+
+Command: ${kubectl} get deployments --all-namespaces --tenant ${test_tenant} 
+ExpectOutput: "No resources found"
+
+# creating the deployment
+Command: ${kubectl} apply -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns_1} --tenant ${test_tenant} 
+ExpectOutput: "sample-nginx-deployment,created"
+
+ConfigTest: sleep 10
+
+Command: ${kubectl} get deployments --all-namespaces --all-tenants
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment,1/1" 
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get replicasets --all-namespaces --all-tenants
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment-" 
+
+Command: ${kubectl} get pods --all-namespaces --all-tenants 
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment-,Running,1/1"  
+
+# ------------------------------------------------------------
+# pods will be recreated if deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete pods --all -n ${test_ns_1} --tenant ${test_tenant}
+ExpectOutput: "pod,sample-nginx-deployment-,deleted"
+TimeOut: 30
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get deployments --all-namespaces --all-tenants
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment,1/1" 
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get replicasets --all-namespaces --all-tenants
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment-" 
+
+Command: ${kubectl} get pods --all-namespaces --all-tenants 
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment-,Running,1/1" 
+
+# ------------------------------------------------------------
+# replicasets will be recreated if deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete replicaset --all -n ${test_ns_1} --tenant ${test_tenant}
+ExpectOutput: "replicaset,sample-nginx-deployment-,deleted"
+TimeOut: 30
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get deployments --all-namespaces --all-tenants
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment,1/1" 
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get replicasets --all-namespaces --all-tenants
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment-" 
+
+Command: ${kubectl} get pods --all-namespaces --all-tenants 
+ExpectOutput: "${test_tenant},${test_ns_1},sample-nginx-deployment-,Running,1/1" 
+
+# ------------------------------------------------------------
+# replicasets and pods are deleted when a deployment is deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns_1} --tenant ${test_tenant} 
+ExpectOutput: "sample-nginx-deployment,deleted"
+
+ConfigTest: sleep 10
+
+Command: ${kubectl} get deployments -n ${test_ns_1} --tenant ${test_tenant}
+ExpectOutput: "No resources found" 
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get replicasets -n ${test_ns_1} --tenant ${test_tenant}
+ExpectOutput: "No resources found" 
+
+ConfigTest: sleep 10
+
+Command: ${kubectl} get pods -n ${test_ns_1} --tenant ${test_tenant}
+ExpectOutput: "No resources found" 
+
+#################################################
+# Testing serviceaccount controller & token controller
+#################################################
+
+# ------------------------------------------------------------
+# default serviceaccount and secret are created when a namespace is created
+# ------------------------------------------------------------
+
+Command: ${kubectl} create ns ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "namespace/${test_ns_2} created"
+
+Command: ${kubectl} get serviceaccounts --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default"
+
+Command: ${kubectl} get secrets --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default-token-"
+
+# ------------------------------------------------------------
+# default serviceaccount and secret will be recreated if deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete serviceaccount default -n ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "serviceaccount \"default\" deleted"
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get serviceaccounts --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default"
+
+Command: ${kubectl} get secrets --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default-token-"
+
+# ------------------------------------------------------------
+# default secret will be recreated if deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete secrets --all -n ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "secret,default-token-,deleted"
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get serviceaccounts --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default"
+
+Command: ${kubectl} get secrets --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default-token-"
+
+# ------------------------------------------------------------
+# default serviceaccount and secret are deleted when the namespace is created
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete ns ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "namespace \"${test_ns_2}\" deleted"
+Timeout: 20
+
+Command: ${kubectl} get serviceaccounts --namespace ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "No resources found"
+
+Command: ${kubectl} get secrets --namespace ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "No resources found"
+
+#################################################
+# Testing serviceaccount controller & token controller
+#################################################
+
+# ------------------------------------------------------------
+# default serviceaccount and secret are created when a namespace is created
+# ------------------------------------------------------------
+
+Command: ${kubectl} create ns ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "namespace/${test_ns_2} created"
+
+Command: ${kubectl} get serviceaccounts --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default"
+
+Command: ${kubectl} get secrets --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default-token-"
+
+# ------------------------------------------------------------
+# default serviceaccount and secret will be recreated if deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete serviceaccount default -n ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "serviceaccount \"default\" deleted"
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get serviceaccounts --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default"
+
+Command: ${kubectl} get secrets --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default-token-"
+
+# ------------------------------------------------------------
+# default secret will be recreated if deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete secrets --all -n ${test_ns_2} --tenant ${test_tenant}
+ExpectOutput: "secret,default-token-,deleted"
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get serviceaccounts --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default"
+
+Command: ${kubectl} get secrets --all-tenants --all-namespaces
+ExpectOutput: "${test_tenant},${test_ns_2},default-token-"
+
+#################################################
+# Testing endpoints controller
+#################################################
+
+# ------------------------------------------------------------
+# endpoints will be created when a service is exposed
+# ------------------------------------------------------------
+
+Command: ${kubectl} create ns ${test_ns_3} --context ${test_tenant}-admin-context
+ExpectOutput: "namespace/${test_ns_3} created"
+
+# creating the deployment
+Command: ${kubectl} apply -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns_3} --tenant ${test_tenant} 
+ExpectOutput: "sample-nginx-deployment,created"
+
+Command: ${kubectl} expose deployment sample-nginx-deployment --port=80 --target-port=8080 --namespace ${test_ns_3}  --tenant ${test_tenant}
+ExpectOutput: "service/sample-nginx-deployment exposed"
+
+Command: ${kubectl} get endpoints -n ${test_ns_3} --tenant ${test_tenant} 
+ExpectOutput: "sample-nginx-deployment"
+
+Command: ${kubectl} get services --all-namespaces --all-tenants
+ExpectOutput: "${test_tenant},${test_ns_3},sample-nginx-deployment" 
+
+# ------------------------------------------------------------
+# endpoints will be deleted when the service is deleted
+# ------------------------------------------------------------
+
+Command: ${kubectl} delete services sample-nginx-deployment  --namespace ${test_ns_3}  --tenant ${test_tenant}
+ExpectOutput: "service \"sample-nginx-deployment\" deleted"
+
+Command: ${kubectl} get services --namespace ${test_ns_3}  --tenant ${test_tenant}
+ExpectOutput: "No resources found"
+
+Command: ${kubectl} get endpoints --namespace ${test_ns_3}  --tenant ${test_tenant}
+ExpectOutput: "No resources found"
+
+################################################
+# cleanup
+################################################
+Command: ${kubectl} delete tenant ${test_tenant}
+ExpectOutput: "${test_tenant},deleted"
+Timeout: 120
+
+Command: ${kubectl} get tenant ${test_tenant}
+ExpectFail: true
+ExpectOutput: "${test_tenant},not found"

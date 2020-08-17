@@ -1,0 +1,285 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Regular Tenant Kubectl Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies the kubectl commands work under a non-system tenant
+#
+# Note: for most kubectl commands, arktos allows two 
+# 1. tenant users to use backwards-compatible command formats, with the tenant specific context specified using option "--context ###"
+# 2. the system user to operate with option "--tenant ###"
+#
+# The test cases below cover both scenarios. To avoid conflicts, the objects created are placed under different namespaces:
+# 1. the commands with "--tenant ###" option use namespace ${test_tenant}
+# 1. the commands with "--context ###" option use namespace "default"
+#
+# The commands that view the resources should be designed to check the resources created by both scenarios. 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+######################################################
+# Configure the test variables for this test suite
+######################################################
+
+ConfigTest: test_ns="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
+ConfigTest: test_tenant="$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
+
+######################################################
+# create the tenant and configure the contexts
+######################################################
+Command: ${kubectl} create tenant ${test_tenant}
+ExpectOutput: "tenant/${test_tenant} created"
+
+#creating admin context for tenant ${test_tenant}
+Command: ${setup_client_script} ${test_tenant} admin
+Timeout: 10
+
+#############################################################
+# creating a namespace
+#############################################################
+# Tests on namespace creation
+Command: ${kubectl} create ns ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "namespace/${test_ns} created"
+
+Command: ${kubectl} get ns ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "${test_ns},Active"
+
+# re-createing the same namespace under the tenant will result in error 
+Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant}
+ExpectFail: true
+ExpectOutput: "Error from server (AlreadyExists)"
+
+Command: ${kubectl} get ns ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "${test_ns},Active"
+
+#################################################
+# Testing kubectl run 
+#################################################
+Command: ${kubectl} run nginx --image=nginx --context ${test_tenant}-admin-context
+ExpectOutput: "deployment.apps/nginx created"
+
+Command: ${kubectl} run nginx --image=nginx  -n ${test_ns}  --tenant ${test_tenant}
+ExpectOutput: "deployment.apps/nginx created"
+
+ConfigTest: sleep 5
+
+# retry as the pod creation may need some time.
+Command: ${kubectl} get deployments --all-namespaces --context ${test_tenant}-admin-context
+ExpectOutput: "${test_ns},nginx,1/1" "default,nginx,1/1"
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get pods --all-namespaces --tenant ${test_tenant}
+ExpectOutput: "${test_ns},nginx,Running" "default,nginx,Running"
+
+############################################
+# test kubectl apply 
+############################################
+# create the deployment under a non-default namespace
+Command: ${kubectl} apply -f ${test_data_file_directory}/sample-deployment.yaml --context ${test_tenant}-admin-context
+ExpectOutput: "sample-nginx-deployment,created"
+
+# re-applying the same yaml is OK
+Command: ${kubectl} apply -f ${test_data_file_directory}/sample-deployment.yaml --tenant ${test_tenant} 
+ExpectOutput: "sample-nginx-deployment,unchanged"
+
+# creating the deployment under the default namespace
+Command: ${kubectl} apply -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+ExpectOutput: "sample-nginx-deployment,created"
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get deployments --all-namespaces --tenant ${test_tenant} 
+ExpectOutput: "${test_ns},nginx,1/1" "default,nginx,1/1" 
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} get deployments --all-namespaces --context ${test_tenant}-admin-context
+ExpectOutput: "${test_ns},nginx,1/1" "default,nginx,1/1" 
+
+############################################
+# test kubectl label
+############################################
+Command: ${kubectl} label deployment sample-nginx-deployment aaa="12345" --context ${test_tenant}-admin-context
+ExpectOutput: "sample-nginx-deployment,labeled"
+
+Command: ${kubectl} label deployment sample-nginx-deployment bbb="12345" -n ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "sample-nginx-deployment,labeled"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment --context ${test_tenant}-admin-context
+ExpectOutput: "aaa=12345"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns}  --tenant ${test_tenant}
+ExpectOutput: "bbb=12345"
+
+Command: ${kubectl} label deployment sample-nginx-deployment aaa="12345" --context ${test_tenant}-admin-context
+ExpectFail: true
+ExpectOutput: "aaa,already has a value"
+
+# the label can be updated with option --overwrite=true
+Command: ${kubectl} label --overwrite=true deployment sample-nginx-deployment aaa="54321" --context ${test_tenant}-admin-context
+ExpectOutput: "sample-nginx-deployment,labeled"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment --context ${test_tenant}-admin-context
+ExpectOutput: "aaa=54321"
+
+# re-applying the same label does not fail, but kubectl will report "not labeled"
+Command: ${kubectl} label --overwrite=true deployment sample-nginx-deployment bbb="12345" -n ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "sample-nginx-deployment,not labeled"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "bbb=12345"
+
+############################################
+# test kubectl create job & kubectl delete
+############################################
+Command: ${kubectl} create job my-job --image=buysbox -n ${test_ns} --tenant ${test_tenant} 
+ExpectOutput: "job.batch/my-job created"
+
+Command: ${kubectl} get jobs --all-namespaces --tenant ${test_tenant}
+ExpectOutput: "${test_ns},my-job"
+
+Command: ${kubectl} create job my-job --image=buysbox --context ${test_tenant}-admin-context
+ExpectOutput: "job.batch/my-job created"
+
+Command: ${kubectl} get jobs --all-namespaces --context ${test_tenant}-admin-context
+ExpectOutput: "${test_ns},my-job" "default,my-job"
+
+Command: ${kubectl} delete job my-job -n ${test_ns} --tenant ${test_tenant} 
+ExpectOutput: "job.batch,my-job,deleted"
+
+Command: ${kubectl} delete job my-job --context ${test_tenant}-admin-context 
+ExpectOutput: "job.batch,my-job,deleted"
+
+Command: ${kubectl} get jobs --all-namespaces --tenant ${test_tenant}
+ExpectOutput: "No resources found"
+
+Command: ${kubectl} get jobs --all-namespaces --context ${test_tenant}-admin-context
+ExpectOutput: "No resources found"
+
+############################################
+# test kubectl patch
+############################################
+Command: ${kubectl} patch deployment sample-nginx-deployment -p '{"spec":{"containers":[{"name":"kubernetes-serve-hostname","image":"redis"}]}}' -n ${test_ns} --tenant ${test_tenant} 
+ExpectOutput: "deployment.extensions/sample-nginx-deployment patched"
+
+Command: ${kubectl} patch deployment sample-nginx-deployment -p '{"spec":{"containers":[{"name":"kubernetes-serve-hostname","image":"redis"}]}}' --context ${test_tenant}-admin-context
+ExpectOutput: "deployment.extensions/sample-nginx-deployment patched"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns} --context ${test_tenant}-admin-context |  grep Image
+ExpectOutput: "Image,redis"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment --tenant ${test_tenant}  |  grep Image
+ExpectOutput: "Image,redis"
+
+############################################
+# test kubectl autoscale
+############################################
+Command: ${kubectl} get horizontalpodautoscalers -n ${test_ns} --tenant ${test_tenant} 
+ExpectOutput: "No resources found"
+
+Command: ${kubectl} get horizontalpodautoscalers --context ${test_tenant}-admin-context 
+ExpectOutput: "No resources found"
+
+Command: ${kubectl} autoscale deployment sample-nginx-deployment --cpu-percent=50 --min=1 --max=5 --context ${test_tenant}-admin-context
+ExpectOutput: "horizontalpodautoscaler.autoscaling/sample-nginx-deployment autoscaled"
+
+Command: ${kubectl} autoscale deployment sample-nginx-deployment --cpu-percent=50 --min=1 --max=5 -n ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "horizontalpodautoscaler.autoscaling/sample-nginx-deployment autoscaled"
+
+Command: ${kubectl} get horizontalpodautoscalers --all-namespaces --context ${test_tenant}-admin-context
+ExpectOutput: "default,sample-nginx-deployment" "${test_ns},sample-nginx-deployment"
+
+Command: ${kubectl} get horizontalpodautoscalers --all-namespaces --tenant ${test_tenant}
+ExpectOutput: "default,sample-nginx-deployment" "${test_ns},sample-nginx-deployment"
+
+############################################
+# test kubectl scale & kubectl diff
+############################################
+# as there is no difference, this command is expected to return 0
+Command: ${kubectl} diff -f ${test_data_file_directory}/sample-deployment.yaml --context ${test_tenant}-admin-context
+
+Command: ${kubectl} diff -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant}
+
+Command: ${kubectl} scale deployment sample-nginx-deployment --replicas=2 --context ${test_tenant}-admin-context
+ExpectOutput: "deployment.extensions/sample-nginx-deployment scaled"
+
+Command: ${kubectl} scale deployment sample-nginx-deployment --replicas=3 -n ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "deployment.extensions/sample-nginx-deployment scaled"
+
+Command: ${kubectl} describe deployment sample-nginx-deployment --context ${test_tenant}-admin-context
+ExpectOutput: "Replicas:,2 desired"
+Timeout: 10
+
+Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "Replicas:,3 desired"
+Timeout: 10
+
+# this command is expected to return 1 when there is difference
+Command: ${kubectl} diff -f ${test_data_file_directory}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "-  replicas: 3" "+  replicas: 1" "exit status 1"
+ExpectFail: true
+
+# this command is expected to return 1 when there is difference
+Command: ${kubectl} diff -f ${test_data_file_directory}/sample-deployment.yaml --context ${test_tenant}-admin-context
+ExpectOutput: "-  replicas: 2" "+  replicas: 1" "exit status 1"
+ExpectFail: true
+
+############################################
+# test kubectl cluster-info
+############################################
+Command: ${kubectl} cluster-info --context ${test_tenant}-admin-context
+ExpectOutput: "Kubernetes master is running at" 
+
+Command: ${kubectl} cluster-info --tenant ${test_tenant}
+ExpectOutput: "Kubernetes master is running at"
+
+############################################
+# test kubectl expose
+############################################
+Command: ${kubectl} expose deployment sample-nginx-deployment --port=80 --target-port=8080 --namespace ${test_ns} --context ${test_tenant}-admin-context
+ExpectOutput: "service/sample-nginx-deployment exposed"
+
+Command: ${kubectl} get services --namespace ${test_ns} --tenant ${test_tenant}
+ExpectOutput: "sample-nginx-deployment" "ClusterIP" "80/TCP"
+
+#################################################
+# Testing kubectl cp & kubectl exec
+#################################################
+Command: ${kubectl} create -f ${test_data_file_directory}/sample-pod.yaml --context ${test_tenant}-admin-context
+ExpectOutput: "pod/sample-nginx-pod created"
+
+Command: ${kubectl} create -f ${test_data_file_directory}/sample-pod.yaml -n ${test_ns}  --tenant ${test_tenant}
+ExpectOutput: "pod/sample-nginx-pod created"
+
+ConfigTest: sleep 5
+
+Command: ${kubectl} get pod --all-namespaces --tenant ${test_tenant}
+ExpectOutput: "${test_ns},sample-nginx-pod,Running" "default,sample-nginx-pod,Running"
+RetryCount: 3
+RetryInterval: 3
+
+Command: ${kubectl} cp ${test_data_file_directory}/sample-deployment.yaml --tenant ${test_tenant} ${test_ns}/sample-nginx-pod:/tmp/
+
+Command: ${kubectl} cp ${test_data_file_directory}/sample-pod.yaml --context ${test_tenant}-admin-context default/sample-nginx-pod:/tmp/
+
+Command: ${kubectl} exec sample-nginx-pod --namespace ${test_ns} --tenant ${test_tenant} -- ls /tmp
+ExpectOutput: "sample-deployment.yaml"
+
+Command: ${kubectl} exec sample-nginx-pod --context ${test_tenant}-admin-context -- ls /tmp
+ExpectOutput: "sample-pod.yaml"
+
+Command: ${kubectl} cp ${test_data_file_directory}/sample-pod.yaml ${test_tenant}/${test_ns}/sample-nginx-pod:/tmp/
+
+Command: ${kubectl} exec sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -- ls /tmp
+ExpectOutput: "sample-deployment.yaml" "sample-pod.yaml"
+
+Command: ${kubectl} exec sample-nginx-pod --tenant ${test_tenant} -- wrong_command
+ExpectOutput: "executable file not found"
+ExpectFail: true
+
+################################################
+# cleanup
+################################################
+Command: ${kubectl} delete tenant ${test_tenant}
+ExpectOutput: "${test_tenant},deleted"
+Timeout: 120
+
+Command: ${kubectl} get tenant ${test_tenant}
+ExpectFail: true
+ExpectOutput: "${test_tenant},not found"
