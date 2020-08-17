@@ -901,13 +901,15 @@ func (kl *Kubelet) IsPodDeleted(uid types.UID) bool {
 func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bool {
 	if !notRunning(status.ContainerStatuses) {
 		// We shouldnt delete pods that still have running containers
-		klog.V(3).Infof("Pod %q is terminated, but some containers are still running", format.Pod(pod))
+		klog.V(3).Infof("Pod %q is terminated, but some containers are still running",
+			format.PodWithDeletionTimestampAndResourceVersion(pod))
 		return false
 	}
 	// pod's containers should be deleted
 	runtimeStatus, err := kl.podCache.Get(pod.UID)
 	if err != nil {
-		klog.V(3).Infof("Pod %q is terminated, Error getting runtimeStatus from the podCache: %s", format.Pod(pod), err)
+		klog.V(3).Infof("Pod %q is terminated, Error getting runtimeStatus from the podCache: %s",
+			format.PodWithDeletionTimestampAndResourceVersion(pod), err)
 		return false
 	}
 	if len(runtimeStatus.ContainerStatuses) > 0 {
@@ -915,7 +917,8 @@ func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bo
 		for _, status := range runtimeStatus.ContainerStatuses {
 			statusStr += fmt.Sprintf("%+v ", *status)
 		}
-		klog.V(3).Infof("Pod %q is terminated, but some containers have not been cleaned up: %s", format.Pod(pod), statusStr)
+		klog.V(3).Infof("Pod %q is terminated, but some containers have not been cleaned up: %s",
+			format.PodWithDeletionTimestampAndResourceVersion(pod), statusStr)
 		return false
 	}
 	if kl.podVolumesExist(pod.UID) && !kl.keepTerminatedPodVolumes {
@@ -926,7 +929,8 @@ func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bo
 	if kl.kubeletConfiguration.CgroupsPerQOS {
 		pcm := kl.containerManager.NewPodContainerManager()
 		if pcm.Exists(pod) {
-			klog.V(3).Infof("Pod %q is terminated, but pod cgroup sandbox has not been cleaned up", format.Pod(pod))
+			klog.V(3).Infof("Pod %q is terminated, but pod cgroup sandbox has not been cleaned up",
+				format.PodWithDeletionTimestampAndResourceVersion(pod))
 			return false
 		}
 	}
@@ -1426,7 +1430,7 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 
 	oldPodStatus, found := kl.statusManager.GetPodStatus(pod.UID)
 	if !found {
-		klog.V(6).Infof("pod not found in the status manager map")
+		klog.V(3).Infof("pod not found in the status manager map")
 		oldPodStatus = pod.Status
 	}
 
