@@ -78,6 +78,7 @@ func (g *genClientset) GenerateType(c *generator.Context, t *types.Type, w io.Wr
 		"Config":                               c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
 		"DefaultKubernetesUserAgent":           c.Universe.Function(types.Name{Package: "k8s.io/client-go/rest", Name: "DefaultKubernetesUserAgent"}),
 		"RESTClientInterface":                  c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
+		"NewAggregatedConfig":                  c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "NewAggregatedConfig"}),
 		"DiscoveryInterface":                   c.Universe.Type(types.Name{Package: "k8s.io/client-go/discovery", Name: "DiscoveryInterface"}),
 		"DiscoveryClient":                      c.Universe.Type(types.Name{Package: "k8s.io/client-go/discovery", Name: "DiscoveryClient"}),
 		"NewDiscoveryClientForConfig":          c.Universe.Function(types.Name{Package: "k8s.io/client-go/discovery", Name: "NewDiscoveryClientForConfig"}),
@@ -136,20 +137,23 @@ func (c *Clientset) Discovery() $.DiscoveryInterface|raw$ {
 var newClientsetForConfigTemplate = `
 // NewForConfig creates a new Clientset for the given config.
 func NewForConfig(c *$.Config|raw$) (*Clientset, error) {
-	configShallowCopy := *c
-	for _, configCopy := range configShallowCopy.GetAllConfigs() {
+	configShallowCopy := $.NewAggregatedConfig|raw$()
+
+	for _, currentConfig := range c.GetAllConfigs() {
+		configCopy := *currentConfig
 		if configCopy.RateLimiter == nil && configCopy.QPS > 0 {
 			configCopy.RateLimiter = $.flowcontrolNewTokenBucketRateLimiter|raw$(configCopy.QPS, configCopy.Burst)
 		}
+		configShallowCopy.AddConfig(&configCopy)
 	}
 	var cs Clientset
 	var err error
-$range .allGroups$    cs.$.LowerCaseGroupGoName$$.Version$, err =$.PackageAlias$.NewForConfig(&configShallowCopy)
+$range .allGroups$    cs.$.LowerCaseGroupGoName$$.Version$, err =$.PackageAlias$.NewForConfig(configShallowCopy)
 	if err!=nil {
 		return nil, err
 	}
 $end$
-	cs.DiscoveryClient, err = $.NewDiscoveryClientForConfig|raw$(&configShallowCopy)
+	cs.DiscoveryClient, err = $.NewDiscoveryClientForConfig|raw$(configShallowCopy)
 	if err!=nil {
 		return nil, err
 	}

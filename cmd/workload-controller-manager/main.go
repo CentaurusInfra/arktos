@@ -92,7 +92,7 @@ func getConfig() (*controllerManagerConfig.Config, error) {
 	}
 
 	klog.Infof("Current workload controller port %d", workloadControllerPort)
-	klog.Infof("Rest client QPS %v, kubeconfig [%#v]", controllerManagerKubeConfig.GetConfig().QPS, controllerManagerKubeConfig.GetConfig())
+	klog.Infof("Rest client QPS %v", controllerManagerKubeConfig.GetConfig().QPS)
 
 	insecureServing := (&apiserveroptions.DeprecatedInsecureServingOptions{
 		BindAddress: net.ParseIP("0.0.0.0"),

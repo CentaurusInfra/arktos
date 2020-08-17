@@ -19,12 +19,10 @@ package controllerframework
 import (
 	"fmt"
 	"github.com/grafov/bcast"
-	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
-	"strconv"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/diff"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -35,6 +33,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	controller "k8s.io/kubernetes/pkg/cloudfabric-controller"
 
 	//"k8s.io/kubernetes/pkg/cloudfabric-controller"
 	"sync"
@@ -60,8 +59,9 @@ type ControllerInstanceManager struct {
 
 var instance *ControllerInstanceManager
 var checkInstanceHandler = checkInstanceExistence
+var GetInstanceHandler = getControllerInstanceManager
 
-func GetControllerInstanceManager() *ControllerInstanceManager {
+func getControllerInstanceManager() *ControllerInstanceManager {
 	return instance
 }
 
@@ -79,7 +79,7 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
-		metrics.RegisterMetricAndTrackRateLimiterUsage("job_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
+		metrics.RegisterMetricAndTrackRateLimiterUsage("controller_instance_manager", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 
 	manager := &ControllerInstanceManager{
@@ -111,8 +111,13 @@ func NewControllerInstanceManager(coInformer coreinformers.ControllerInstanceInf
 	return instance
 }
 
-func (cim *ControllerInstanceManager) GetInstanceId() types.UID {
-	return cim.instanceId
+func GetInstanceId() types.UID {
+	cim := GetInstanceHandler()
+	if cim != nil {
+		return cim.instanceId
+	} else {
+		return ""
+	}
 }
 
 func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
@@ -159,14 +164,14 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 	if curControllerInstance.ResourceVersion == oldControllerInstance.ResourceVersion {
 		return
 	} else {
-		oldRev, _ := strconv.Atoi(oldControllerInstance.ResourceVersion)
-		newRev, err := strconv.Atoi(curControllerInstance.ResourceVersion)
+		isNewer, err := diff.RevisionStrIsNewer(curControllerInstance.ResourceVersion, oldControllerInstance.ResourceVersion)
 		if err != nil {
-			klog.Errorf("Got invalid resource version %s for controller instance %v. CIM %v", curControllerInstance.ResourceVersion, curControllerInstance, cim.instanceId)
+			klog.Errorf("Update controller instance got invalid resource version. Controller Type %s; instance id %s, old rv [%s], new rv [%s]. CIM %v",
+				curControllerInstance.ControllerType, curControllerInstance.Name, oldControllerInstance.ResourceVersion, curControllerInstance.ResourceVersion, cim.instanceId)
 			return
 		}
 
-		if newRev < oldRev {
+		if !isNewer {
 			klog.V(3).Infof("Got staled controller instance %s in UpdateFunc. Existing Version %s, new instance version %s. CIM %v",
 				oldControllerInstance.Name, oldControllerInstance.ResourceVersion, curControllerInstance.ResourceVersion, cim.instanceId)
 			return
@@ -191,10 +196,13 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 
 	cim.currentControllers[oldControllerInstance.ControllerType][oldControllerInstance.Name] = *curControllerInstance
 
-	if curControllerInstance.WorkloadNum != oldControllerInstance.WorkloadNum || curControllerInstance.IsLocked != oldControllerInstance.IsLocked ||
+	if curControllerInstance.WorkloadNum != oldControllerInstance.WorkloadNum ||
 		curControllerInstance.ControllerKey != oldControllerInstance.ControllerKey {
 		klog.V(4).Infof("Notify controller instance %v was updated. CIM %v", curControllerInstance.Name, cim.instanceId)
 		cim.notifyHandler(curControllerInstance)
+	} else {
+		klog.V(4).Infof("No update for controller %s instance %v. Skip updating controller instance map. CIM %v",
+			curControllerInstance.ControllerType, curControllerInstance.Name, cim.instanceId)
 	}
 
 	cim.mux.Unlock()

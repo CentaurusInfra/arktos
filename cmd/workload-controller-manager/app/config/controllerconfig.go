@@ -21,12 +21,16 @@ import (
 	"io/ioutil"
 	"k8s.io/klog"
 	"os"
+	"time"
 )
+
+const defaultResyncPeriod = 12 * time.Hour // default resync value from kube controller manager
 
 type controllerManagerConfig struct {
 	ReportHealthIntervalInSecond int              `json:"reportHealthIntervalInSecond"`
 	QPS                          float32          `json:"qps""`
 	Types                        []controllerType `json:"controllers"`
+	ResyncPeriodStr              string           `json:"resyncPeriod"`
 }
 
 type controllerType struct {
@@ -39,6 +43,7 @@ type ControllerConfig struct {
 	typemap                      map[string]int
 	reportHealthIntervalInSecond int
 	qps                          float32
+	resyncPeriod                 time.Duration
 }
 
 // NewControllerConfig to load configuration from a local file
@@ -63,10 +68,17 @@ func NewControllerConfig(filePath string) (ControllerConfig, error) {
 	for _, controllerType := range types.Types {
 		controllerMap[controllerType.Type] = controllerType.Workers
 	}
+
+	resyncPeriod, err := time.ParseDuration(types.ResyncPeriodStr)
+	if err != nil {
+		resyncPeriod = defaultResyncPeriod
+	}
+
 	return ControllerConfig{
 		typemap:                      controllerMap,
 		reportHealthIntervalInSecond: types.ReportHealthIntervalInSecond,
 		qps:                          types.QPS,
+		resyncPeriod:                 resyncPeriod,
 	}, nil
 }
 
@@ -86,4 +98,12 @@ func (c *ControllerConfig) GetQPS() float32 {
 	}
 
 	return c.qps
+}
+
+func (c *ControllerConfig) GetDeafultResyncPeriod() time.Duration {
+	if c.resyncPeriod == 0 {
+		c.resyncPeriod = defaultResyncPeriod
+		klog.Infof("Configured resync period is 0. Force setting to %v", defaultResyncPeriod)
+	}
+	return c.resyncPeriod
 }

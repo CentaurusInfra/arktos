@@ -124,7 +124,7 @@ func (c *cSINodes) List(opts v1.ListOptions) (result *v1beta1.CSINodeList, err e
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1beta1.CSINode)
+		itemsMap := make(map[string]v1beta1.CSINode)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -153,13 +153,13 @@ func (c *cSINodes) List(opts v1.ListOptions) (result *v1beta1.CSINodeList, err e
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

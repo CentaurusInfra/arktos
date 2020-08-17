@@ -501,14 +501,15 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 
 	oldStatus := pod.Status.DeepCopy()
 	newPod, patchBytes, err := statusutil.PatchPodStatus(m.kubeClient, pod.Tenant, pod.Namespace, pod.Name, *oldStatus, mergePodStatus(*oldStatus, status.status))
-	klog.V(3).Infof("Patch status for pod %q with %q", format.Pod(pod), patchBytes)
+	klog.V(3).Infof("Patch status for pod %q with %q", format.PodWithDeletionTimestampAndResourceVersion(pod), patchBytes)
 	if err != nil {
-		klog.Warningf("Failed to update status for pod %q: %v", format.Pod(pod), err)
+		klog.Warningf("Failed to update status for pod %q: %v", format.PodWithDeletionTimestampAndResourceVersion(pod), err)
 		return
 	}
 	pod = newPod
 
-	klog.V(3).Infof("Status for pod %q updated successfully: (%d, %+v)", format.Pod(pod), status.version, status.status)
+	klog.V(3).Infof("Status for pod %q updated successfully: (%d, %+v)", format.PodWithDeletionTimestampAndResourceVersion(pod), status.version, status.status)
+
 	m.apiStatusVersions[kubetypes.MirrorPodUID(pod.UID)] = status.version
 
 	// We don't handle graceful deletion of mirror pods.

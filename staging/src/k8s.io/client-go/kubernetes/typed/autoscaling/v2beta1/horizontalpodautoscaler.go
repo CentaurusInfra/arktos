@@ -137,7 +137,7 @@ func (c *horizontalPodAutoscalers) List(opts v1.ListOptions) (result *v2beta1.Ho
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v2beta1.HorizontalPodAutoscaler)
+		itemsMap := make(map[string]v2beta1.HorizontalPodAutoscaler)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -166,13 +166,13 @@ func (c *horizontalPodAutoscalers) List(opts v1.ListOptions) (result *v2beta1.Ho
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

@@ -134,7 +134,7 @@ func (c *volumeAttachments) List(opts v1.ListOptions) (result *v1beta1.VolumeAtt
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1beta1.VolumeAttachment)
+		itemsMap := make(map[string]v1beta1.VolumeAttachment)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -163,13 +163,13 @@ func (c *volumeAttachments) List(opts v1.ListOptions) (result *v1beta1.VolumeAtt
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

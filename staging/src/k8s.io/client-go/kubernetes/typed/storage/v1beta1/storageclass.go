@@ -124,7 +124,7 @@ func (c *storageClasses) List(opts v1.ListOptions) (result *v1beta1.StorageClass
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1beta1.StorageClass)
+		itemsMap := make(map[string]v1beta1.StorageClass)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -153,13 +153,13 @@ func (c *storageClasses) List(opts v1.ListOptions) (result *v1beta1.StorageClass
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

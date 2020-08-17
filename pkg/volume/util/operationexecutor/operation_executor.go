@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -355,7 +356,7 @@ type VolumeToMount struct {
 
 // GenerateMsgDetailed returns detailed msgs for volumes to mount
 func (volume *VolumeToMount) GenerateMsgDetailed(prefixMsg, suffixMsg string) (detailedMsg string) {
-	detailedStr := fmt.Sprintf("(UniqueName: %q) pod %q (UID: %q)", volume.VolumeName, volume.Pod.Name, volume.Pod.UID)
+	detailedStr := fmt.Sprintf("(UniqueName: %q) pod %q (UID: %q) ResourceVersion: %s", volume.VolumeName, volume.Pod.Name, volume.Pod.UID, volume.Pod.ResourceVersion)
 	volumeSpecName := "nil"
 	if volume.VolumeSpec != nil {
 		volumeSpecName = volume.VolumeSpec.Name()
