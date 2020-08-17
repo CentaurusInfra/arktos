@@ -153,7 +153,7 @@ var (
 )
 
 // noScheduleToleration of pods will be respected by runtime readiness predicate
-var noScheduleToleration = v1.Toleration { Operator: "Exists", Effect: v1.TaintEffectNoSchedule}
+var noScheduleToleration = v1.Toleration{Operator: "Exists", Effect: v1.TaintEffectNoSchedule}
 
 // FitPredicate is a function that indicates if a pod fits into an existing node.
 // The failure information is given by the error.

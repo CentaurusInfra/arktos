@@ -4447,11 +4447,11 @@ func TestPodSchedulesOnRuntimeNotReadyCondition(t *testing.T) {
 		Status: v1.NodeStatus{
 			Conditions: []v1.NodeCondition{
 				{
-					Type: v1.NodeVmRuntimeReady,
+					Type:   v1.NodeVmRuntimeReady,
 					Status: v1.ConditionFalse,
 				},
 				{
-					Type: v1.NodeContainerRuntimeReady,
+					Type:   v1.NodeContainerRuntimeReady,
 					Status: v1.ConditionFalse,
 				},
 			},
@@ -4474,7 +4474,7 @@ func TestPodSchedulesOnRuntimeNotReadyCondition(t *testing.T) {
 					Containers: []v1.Container{{Image: "pod1:V1"}},
 				},
 			},
-			fits: false,
+			fits:                   false,
 			expectedFailureReasons: []PredicateFailureReason{ErrNodeRuntimeNotReady},
 		},
 		{
@@ -4484,7 +4484,7 @@ func TestPodSchedulesOnRuntimeNotReadyCondition(t *testing.T) {
 					Name: "pod2",
 				},
 				Spec: v1.PodSpec{
-					Containers: []v1.Container{{Image: "pod2:V2"}},
+					Containers:  []v1.Container{{Image: "pod2:V2"}},
 					Tolerations: []v1.Toleration{{Operator: "Exists", Effect: "NoSchedule"}},
 				},
 			},
@@ -4494,7 +4494,7 @@ func TestPodSchedulesOnRuntimeNotReadyCondition(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fits, reasons, err := CheckNodeRuntimeReadinessPredicate(test.pod, GetPredicateMetadata(&v1.Pod{},nil), makeEmptyNodeInfo(notReadyNode))
+			fits, reasons, err := CheckNodeRuntimeReadinessPredicate(test.pod, GetPredicateMetadata(&v1.Pod{}, nil), makeEmptyNodeInfo(notReadyNode))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
