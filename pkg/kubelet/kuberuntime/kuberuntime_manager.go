@@ -126,7 +126,7 @@ type kubeGenericRuntimeManager struct {
 	// key: podUid string
 	// value: runtime service API
 	podRuntimeServiceMap   map[string]internalapi.RuntimeService
-	podRuntimeServiceMapOp sync.Mutex
+	podRuntimeServiceMapOp sync.RWMutex
 
 	// The directory path for seccomp profiles.
 	seccompProfileRoot string
@@ -372,6 +372,8 @@ func (m *kubeGenericRuntimeManager) removePodRuntimeService(podId string) error 
 	return nil
 }
 func (m *kubeGenericRuntimeManager) getPodRuntimeService(podId string) internalapi.RuntimeService {
+	m.podRuntimeServiceMapOp.RLock()
+	defer m.podRuntimeServiceMapOp.RUnlock()
 	if runtimeService, found := m.podRuntimeServiceMap[podId]; found {
 		return runtimeService
 	}
