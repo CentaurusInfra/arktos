@@ -535,7 +535,7 @@ func TestPruneInitContainers(t *testing.T) {
 	}
 	fakes := makeFakeContainers(t, m, templates)
 	fakeRuntime.SetFakeContainers(fakes)
-	m.podRuntimeServiceMap[string(pod.UID)] = fakeRuntime
+	m.addPodRuntimeService(string(pod.UID), fakeRuntime)
 	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
 	assert.NoError(t, err)
 
@@ -583,7 +583,7 @@ func TestSyncPodWithInitContainers(t *testing.T) {
 
 	backOff := flowcontrol.NewBackOff(time.Second, time.Minute)
 
-	m.podRuntimeServiceMap[string(pod.UID)] = fakeRuntime
+	m.addPodRuntimeService(string(pod.UID), fakeRuntime)
 
 	// 1. should only create the init container.
 	podStatus, err := m.GetPodStatus(pod.UID, pod.Name, pod.Namespace, pod.Tenant)
