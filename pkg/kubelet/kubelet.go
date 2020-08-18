@@ -2352,6 +2352,7 @@ func (kl *Kubelet) updateRuntimeUp() {
 
 	s := toKubeRuntimeStatus(s1)
 	if err := kl.updateOneRuntimeUp(s); err != nil {
+		klog.Errorf("node updateOneRuntimeUp had error: %v", err)
 		return
 	}
 
@@ -2360,18 +2361,20 @@ func (kl *Kubelet) updateRuntimeUp() {
 }
 
 func (kl *Kubelet) updateOneRuntimeUp(s *kubecontainer.RuntimeStatus) error {
-	msg := "either runtime or network is not ready. flag caller to return"
+	msg := "runtime is not ready. flag caller to return"
 	kl.updateRuntimeMux.Lock()
 	defer kl.updateRuntimeMux.Unlock()
 
 	// TODO(random-liu): Consider to send node event when optional
 	// condition is unmet.
 	klog.V(4).Infof("Container runtime status: %v", s)
+
 	networkReady := s.GetRuntimeCondition(kubecontainer.NetworkReady)
 	if networkReady == nil || !networkReady.Status {
+		// do not return error when network is not ready yet, as it would prevent cni pod from starting,
+		// which forms a dead lock in bootstrapping. Logging is just fine.
 		klog.Errorf("Container runtime network not ready: %v", networkReady)
 		kl.runtimeState.setNetworkState(fmt.Errorf("runtime network not ready: %v", networkReady))
-		return fmt.Errorf(msg)
 	} else {
 		// Set nil if the container runtime network is ready.
 		kl.runtimeState.setNetworkState(nil)
