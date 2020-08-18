@@ -131,7 +131,8 @@ func TestUpdate(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	object, err := storage.Get(ctx, "foo", &metav1.GetOptions{})
+	keyName := "foo"
+	object, err := storage.Get(ctx, keyName, &metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -139,20 +140,19 @@ func TestUpdate(t *testing.T) {
 	actual.ControllerKey = math.MaxInt64
 
 	// Update
-	_, _, err = storage.Store.Update(ctx, "foo", rest.DefaultUpdatedObjectInfo(actual),
+	_, _, err = storage.Store.Update(ctx, keyName, rest.DefaultUpdatedObjectInfo(actual),
 		rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
 	if err != nil {
 		t.Errorf("unexpected update error: %v", err)
 	}
 
 	// read back and compare
-	newObj, err := storage.Get(ctx, "foo", &metav1.GetOptions{})
+	newObj, err := storage.Get(ctx, keyName, &metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	newInstance := newObj.(*api.ControllerInstance)
 	if newInstance.ControllerKey != math.MaxInt64 {
-		t.Fatalf("controller key update failed")
+		t.Fatalf("controller key update failed! expecting %v, got %v", math.MaxInt64, newInstance.ControllerKey)
 	}
-
 }

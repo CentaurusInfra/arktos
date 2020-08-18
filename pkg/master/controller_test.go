@@ -1391,7 +1391,10 @@ func TestMasterCountRemoveEndpoints(t *testing.T) {
 				if !reflect.DeepEqual(err, test.expectedErr) {
 					t.Errorf("case %q: expected error: %v; got error: %v", test.testName, test.expectedErr, err)
 				}
+			} else if err != nil {
+				t.Errorf("case %q: unexpected err: %v", test.testName, err)
 			}
+
 			if test.expectUpdate != nil {
 				if e, a := test.expectUpdate, actualEndpoints; !reflect.DeepEqual(e, a) {
 					t.Errorf("case %q: expected update:\n%#v\ngot:\n%#v\n", test.testName, e, a)
