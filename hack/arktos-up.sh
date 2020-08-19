@@ -59,8 +59,10 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-source ${KUBE_ROOT}/hack/arktos-cni.rc
+# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
+# If more advanced cni is desired, ilike flannel etc, it should be installed AFTER the clsuter is up;
+# in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
+[ -z "${ARKTOS_NO_CNI_PREINSTALLED}" ] && source ${KUBE_ROOT}/hack/arktos-cni.rc
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
 source "${KUBE_ROOT}/hack/lib/common.sh"
