@@ -143,15 +143,7 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 						a.closeWatcher(w, stopCh)
 						return
 					} else {
-						//klog.V(3).Infof("Get event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
-					}
-
-					select {
-					case <-stopCh.Read:
-						a.closeWatcher(w, stopCh)
-						return
-					case a.aggChan <- signal:
-						//klog.V(3).Infof("Sent event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
+						a.aggChan <- signal
 					}
 				}
 			}
