@@ -19,7 +19,9 @@ package apiserverupdate
 import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"testing"
+	"time"
 )
 
 const (
@@ -48,4 +50,46 @@ func TestSetAPIServerConfig(t *testing.T) {
 	assert.Equal(t, 1, len(ss2.Addresses))
 	assert.Equal(t, masterIP1, ss2.Addresses[0].IP)
 	assert.Equal(t, "", ss2.Addresses[0].Hostname)
+}
+
+func TestClientSetWatcherNotification(t *testing.T) {
+	for j := 0; j < 10; j++ {
+		csWatcher := &ClientSetsWatcher{}
+
+		rand.Seed(time.Now().UnixNano())
+		watcherCount := rand.IntnRange(10, 5000)
+		for i := 0; i < watcherCount; i++ {
+			WatchClientSetUpdate()
+			csWatcher.AddWatcher()
+		}
+
+		csWatcher.StartWaitingForComplete()
+		for i := 0; i < watcherCount; i++ {
+			go csWatcher.NotifyDone()
+		}
+
+		tick := time.NewTicker(1 * time.Second)
+		after := time.NewTimer(1 * time.Minute).C
+
+	waitChannel:
+		for {
+			select {
+			case <-tick.C:
+				if csWatcher.waitingCount == 0 {
+					break waitChannel
+				}
+			case <-after:
+				break waitChannel
+			}
+		}
+
+		assert.Equal(t, 0, csWatcher.waitingCount)
+		// make sure all locks are released
+		csWatcher.mux.Lock()
+		csWatcher.mux.Unlock()
+		csWatcher.muxStartWaiting.Lock()
+		csWatcher.muxStartWaiting.Unlock()
+		muxUpdateServerMap.Lock()
+		muxUpdateServerMap.Unlock()
+	}
 }

@@ -238,6 +238,7 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 	setApiServerConfigMapHandler(a, curEp)
 }
 
+// It's ok not to test here since Kubernetes endpoints should never be deleted
 func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
 	ep, ok := obj.(*v1.Endpoints)
 	if !ok {
