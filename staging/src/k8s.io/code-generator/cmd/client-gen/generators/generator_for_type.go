@@ -151,6 +151,9 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"listUnlock":               c.Universe.Type(types.Name{Package: "sync", Name: "Unlock"}),
 		"syncMutex":                c.Universe.Type(types.Name{Package: "sync", Name: "Mutex"}),
 		"syncWaitGroup":            c.Universe.Type(types.Name{Package: "sync", Name: "WaitGroup"}),
+		"RetryOnTimeout":           c.Universe.Type(types.Name{Package: "k8s.io/client-go/util/retry", Name: "RetryOnTimeout"}),
+		"RetryOnNoResponse":        c.Universe.Type(types.Name{Package: "k8s.io/client-go/util/retry", Name: "RetryOnNoResponse"}),
+		"DefaultRetry":             c.Universe.Type(types.Name{Package: "k8s.io/client-go/util/retry", Name: "DefaultRetry"}),
 		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
 		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
 		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
@@ -481,14 +484,16 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 		for i, client := range c.clients {
 			go func(c *$.type|privatePlural$, ci $.RESTClientInterface|raw$, opts $.ListOptions|raw$, lock *$.syncMutex|raw$, pos int, resultMap map[int]*$.resultType|raw$List, errMap map[int]error) {
 				r := &$.resultType|raw$List{}
-				err := ci.Get().
-					$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
-					$if .tenanted$Tenant(c.te).$end$
-					Resource("$.type|resource$").
-					VersionedParams(&opts, $.schemeParameterCodec|raw$).
-					Timeout(timeout).
-					Do().
-					Into(r)
+				err := $.RetryOnTimeout|raw$($.DefaultRetry|raw$, func() error {
+					return ci.Get().
+						$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
+						$if .tenanted$Tenant(c.te).$end$
+						Resource("$.type|resource$").
+						VersionedParams(&opts, $.schemeParameterCodec|raw$).
+						Timeout(timeout).
+						Do().
+						Into(r)
+				})
 
 				lock.Lock()
 				resultMap[pos] = r
@@ -544,14 +549,16 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 	// When resourceVersion is empty, objects are read from ETCD directly and will get full
 	// list of data if no permission issue. The list needs to done sequential to avoid increasing
 	// system load.
-	err = c.client.Get().
-		$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
-		$if .tenanted$Tenant(c.te).$end$
-		Resource("$.type|resource$").
-		VersionedParams(&opts, $.schemeParameterCodec|raw$).
-		Timeout(timeout).
-		Do().
-		Into(result)
+	err = $.RetryOnTimeout|raw$($.DefaultRetry|raw$, func() error {
+		return c.client.Get().
+			$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
+			$if .tenanted$Tenant(c.te).$end$
+			Resource("$.type|resource$").
+			VersionedParams(&opts, $.schemeParameterCodec|raw$).
+			Timeout(timeout).
+			Do().
+			Into(result)
+	})
 	if err == nil {
 		return
 	}
@@ -566,14 +573,16 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 			continue
 		}
 
-		err = client.Get().
-			$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
-			$if .tenanted$Tenant(c.te).$end$
-			Resource("$.type|resource$").
-			VersionedParams(&opts, $.schemeParameterCodec|raw$).
-			Timeout(timeout).
-			Do().
-			Into(result)
+		err = $.RetryOnTimeout|raw$($.DefaultRetry|raw$, func() error {
+			return client.Get().
+				$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
+				$if .tenanted$Tenant(c.te).$end$
+				Resource("$.type|resource$").
+				VersionedParams(&opts, $.schemeParameterCodec|raw$).
+				Timeout(timeout).
+				Do().
+				Into(result)
+		})
 
 		if err == nil {
 			c.client = client
@@ -851,14 +860,16 @@ func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatch
 	opts.Watch = true
 	aggWatch := $.aggregatedWatcher|raw$()
 	for _, client := range c.clients {
-		watcher, err := client.Get().
-			$if .namespaced$Tenant(c.te).
-			Namespace(c.ns).$end$
-			$if .tenanted$Tenant(c.te).$end$
-			Resource("$.type|resource$").
-			VersionedParams(&opts, $.schemeParameterCodec|raw$).
-			Timeout(timeout).
-			Watch()
+		watcher, err := $.RetryOnNoResponse|raw$($.DefaultRetry|raw$, func()($.watchInterface|raw$, error) {
+			return client.Get().
+				$if .namespaced$Tenant(c.te).
+				Namespace(c.ns).$end$
+				$if .tenanted$Tenant(c.te).$end$
+				Resource("$.type|resource$").
+				VersionedParams(&opts, $.schemeParameterCodec|raw$).
+				Timeout(timeout).
+				Watch()
+		})
 		if err != nil && opts.AllowPartialWatch && $.errorIsForbidden|raw$(err) {
 			// watch error was not returned properly in error message. Skip when partial watch is allowed
 			$.klogInfof|raw$(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)

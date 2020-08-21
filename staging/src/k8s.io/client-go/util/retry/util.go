@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +18,8 @@ limitations under the License.
 package retry
 
 import (
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/klog"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -76,4 +79,50 @@ func RetryOnConflict(backoff wait.Backoff, fn func() error) error {
 		err = lastConflictErr
 	}
 	return err
+}
+
+func RetryOnTimeout(backoff wait.Backoff, fn func() error) error {
+	var lastTimeoutErr error
+	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		err := fn()
+		switch {
+		case err == nil:
+			return true, nil
+		case errors.IsTimeout(err) || errors.IsServerTimeout(err) || errors.IsServiceUnavailable(err):
+			klog.Infof("Timeout. retry %v", backoff.Steps)
+			lastTimeoutErr = err
+			return false, nil
+		default:	// only retry on timeout error. So return for all other errors
+			return true, err
+		}
+	})
+	if err == wait.ErrWaitTimeout {
+		err = lastTimeoutErr
+	}
+	return err
+}
+
+func RetryOnNoResponse(backoff wait.Backoff, fn func() (watch.Interface, error)) (watch.Interface, error) {
+	var lastTimeoutErr error
+	var resultObj watch.Interface
+	resultObj = nil
+
+	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		obj, err := fn()
+		switch {
+		case err == nil:
+			resultObj = obj
+			return true, nil
+		case errors.IsInternalError(err) || errors.IsServiceUnavailable(err):
+			klog.Infof("No response. retry %v", backoff.Steps)
+			lastTimeoutErr = err
+			return false, nil
+		default:	// only retry on no response error. So return for all other errors
+			return true, err
+		}
+	})
+	if err == wait.ErrWaitTimeout {
+		err = lastTimeoutErr
+	}
+	return resultObj, err
 }
