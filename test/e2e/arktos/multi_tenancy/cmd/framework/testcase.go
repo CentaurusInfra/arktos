@@ -84,7 +84,7 @@ func (t *TestCase) Run(tc *TestConfig) []error {
 	var err error
 
 	t.Complete(tc)
-	
+
 	if t.RunBefore != "" {
 		LogWarning("Run pre-test configuration command %q", t.RunBefore)
 		exitCode, output, err = ExecCommandLine(t.RunBefore, 0)

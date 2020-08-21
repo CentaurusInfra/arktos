@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"k8s.io/klog"
-	"k8s.io/kubernetes/test/e2e/arktos/multi_tenancy/cmd/framework"	
+	"k8s.io/kubernetes/test/e2e/arktos/multi_tenancy/cmd/framework"
 )
 
 var (

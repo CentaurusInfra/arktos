@@ -52,7 +52,7 @@ func (ts *TestSuite) LoadTestSuite(filePath string, tc *TestConfig) error {
 	}
 
 	allVariables := CombineStringMaps(tc.CommonVariables, ts.Variables)
-	resolved_output, _ := ioutil.ReadFile(filePath)	
+	resolved_output, _ := ioutil.ReadFile(filePath)
 	for key, value := range allVariables {
 		// generate random strings for variables if the value is "random_[string_length]"
 		if random_generate, _ := regexp.MatchString("random_[0-9]+", value); random_generate {
