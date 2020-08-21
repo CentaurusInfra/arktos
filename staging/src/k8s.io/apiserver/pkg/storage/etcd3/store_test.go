@@ -1623,3 +1623,237 @@ func TestGetClientFromKey(t *testing.T) {
 		}
 	}
 }
+
+func createMockStore() *store {
+	return &store{
+		dataClusterClients:     make(map[uint8]*clientv3.Client),
+		dataClusterDestroyFunc: make(map[uint8]func()),
+		dataClientAddCh:        make(chan uint8),
+		dataClusterWatchers:    make(map[uint8]*watcher),
+	}
+}
+
+func TestAddDataClient(t *testing.T) {
+	s := createMockStore()
+	dataClient, err := clientv3.NewFromURL("http://localhost")
+	if err != nil {
+		t.Fatalf("Cannot create mock data client. Error %v", err)
+	}
+	readClusterId := uint8(0)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		newClusterId := <-s.dataClientAddCh
+		readClusterId = newClusterId
+		wg.Done()
+	}()
+
+	// test add non existed cluster id
+	clusterIdToSet := uint8(1)
+	err = s.AddDataClient(dataClient, clusterIdToSet, nil)
+	wg.Wait()
+	assert.Nil(t, err)
+	assert.NotNil(t, s.dataClusterClients)
+	assert.Equal(t, 1, len(s.dataClusterClients))
+	assert.Equal(t, 1, len(s.dataClusterDestroyFunc))
+	assert.Equal(t, clusterIdToSet, readClusterId)
+	dataClientRead, isOK := s.dataClusterClients[clusterIdToSet]
+	assert.True(t, isOK)
+	assert.NotNil(t, dataClientRead)
+	assert.Equal(t, dataClient.Endpoints(), dataClientRead.Endpoints())
+
+	// test add existed cluster id
+	dataClient2, err := clientv3.NewFromURL("http://127.0.0.1")
+	if err != nil {
+		t.Fatalf("Canoot create mock data client. Error %v", err)
+	}
+	err = s.AddDataClient(dataClient2, clusterIdToSet, nil)
+	assert.NotNil(t, err)
+	dataClientRead, isOK = s.dataClusterClients[clusterIdToSet]
+	assert.True(t, isOK)
+	assert.NotNil(t, dataClientRead)
+	assert.Equal(t, 1, len(s.dataClusterClients))
+	assert.Equal(t, 1, len(s.dataClusterDestroyFunc))
+	assert.Equal(t, dataClient.Endpoints(), dataClientRead.Endpoints())
+}
+
+func TestUpdateDataClient(t *testing.T) {
+	// set up
+	s := createMockStore()
+	dataClient, err := clientv3.NewFromURL("http://localhost")
+	if err != nil {
+		t.Fatalf("Cannot create mock data client. Error %v", err)
+	}
+	clusterId1 := uint8(1)
+	s.dataClusterClients[clusterId1] = dataClient
+	s.dataClusterDestroyFunc[clusterId1] = nil
+
+	// 1. test update non existing cluster
+	clusterId2 := uint8(2)
+	dataClientNotExisted, err := clientv3.NewFromURL("http://127.0.0.1")
+	if err != nil {
+		t.Fatalf("Cannot create mock data client. Error %v", err)
+	}
+
+	callMockFuncTimes := 0
+	mockDestroyFunc := func() { callMockFuncTimes++ }
+
+	readClusterId := uint8(0)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		newClusterId := <-s.dataClientAddCh
+		readClusterId = newClusterId
+		wg.Done()
+	}()
+
+	err = s.UpdateDataClient(dataClientNotExisted, clusterId2, mockDestroyFunc)
+	wg.Wait()
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(s.dataClusterClients))
+	assert.Equal(t, 2, len(s.dataClusterDestroyFunc))
+	assert.Equal(t, clusterId2, readClusterId)
+	dataClientRead, isOK := s.dataClusterClients[clusterId2]
+	assert.True(t, isOK)
+	assert.NotNil(t, dataClientRead)
+	assert.Equal(t, dataClientNotExisted.Endpoints(), dataClientRead.Endpoints())
+	// other client not affected
+	dataClientCluster1Read, isOK := s.dataClusterClients[clusterId1]
+	assert.True(t, isOK)
+	assert.NotNil(t, dataClientCluster1Read)
+	assert.Equal(t, dataClient.Endpoints(), dataClientCluster1Read.Endpoints())
+
+	// 2. test update w/o changes
+	dataClientToUpdate, err := clientv3.NewFromURL(dataClientNotExisted.Endpoints()[0])
+	if err != nil {
+		t.Fatalf("Cannot create mock data client. Error %v", err)
+	}
+	oldCallTimes := callMockFuncTimes
+	err = s.UpdateDataClient(dataClientToUpdate, clusterId2, mockDestroyFunc)
+	assert.Nil(t, err)
+	assert.Equal(t, oldCallTimes, callMockFuncTimes) // not expected to call destroyFunc
+
+	dataClientRead2, isOK := s.dataClusterClients[clusterId2]
+	assert.True(t, isOK)
+	assert.Equal(t, dataClientRead, dataClientRead2) // expected pointer is the same as first set
+	assert.NotEqual(t, dataClientRead2, dataClientToUpdate)
+	assert.Equal(t, 2, len(s.dataClusterClients))
+	assert.Equal(t, 2, len(s.dataClusterDestroyFunc))
+
+	// other client not affected
+	dataClientCluster1Read, isOK = s.dataClusterClients[clusterId1]
+	assert.True(t, isOK)
+	assert.NotNil(t, dataClientCluster1Read)
+	assert.Equal(t, dataClient.Endpoints(), dataClientCluster1Read.Endpoints())
+
+	// 3. test stop old client
+	dataClientToUpdate, err = clientv3.NewFromURL("https://1.2.3.4")
+	if err != nil {
+		t.Fatalf("Cannot create mock data client. Error %v", err)
+	}
+	oldCallTimes = callMockFuncTimes
+	err = s.UpdateDataClient(dataClientToUpdate, clusterId2, mockDestroyFunc)
+	if err != nil {
+		t.Fatalf("Cannot create mock data client. Error %v", err)
+	}
+	assert.Nil(t, err)
+	assert.Equal(t, oldCallTimes+1, callMockFuncTimes) // expected to call destroyFunc once
+
+	dataClientRead2, isOK = s.dataClusterClients[clusterId2]
+	assert.True(t, isOK)
+	assert.Equal(t, dataClientToUpdate, dataClientRead2) // expected pointer is the same as new data client
+	assert.Equal(t, 2, len(s.dataClusterClients))
+	assert.Equal(t, 2, len(s.dataClusterDestroyFunc))
+
+	// other client not affected
+	dataClientCluster1Read, isOK = s.dataClusterClients[clusterId1]
+	assert.True(t, isOK)
+	assert.NotNil(t, dataClientCluster1Read)
+	assert.Equal(t, dataClient.Endpoints(), dataClientCluster1Read.Endpoints())
+}
+
+func TestDeleteDataClient(t *testing.T) {
+	// set up
+	callMockFuncTimes := 0
+	mockDestroyFunc := func() { callMockFuncTimes++ }
+
+	s := createMockStore()
+	dataClient, err := clientv3.NewFromURL("http://localhost")
+	if err != nil {
+		t.Fatalf("Cannot create mock data client. Error %v", err)
+	}
+	clusterId1 := uint8(1)
+	s.dataClusterClients[clusterId1] = dataClient
+	s.dataClusterDestroyFunc[clusterId1] = mockDestroyFunc
+
+	// 1. test delete non existed cluster
+	clusterId2 := uint8(2)
+	oldCallTimes := callMockFuncTimes
+	s.DeleteDataClient(clusterId2)
+	assert.NotNil(t, s.dataClusterClients)
+	assert.Equal(t, 1, len(s.dataClusterClients))
+	assert.Equal(t, 1, len(s.dataClusterDestroyFunc))
+	assert.Equal(t, dataClient, s.dataClusterClients[clusterId1])
+	assert.Equal(t, oldCallTimes, callMockFuncTimes)
+
+	// 2. test delete existed cluster
+	s.DeleteDataClient(clusterId1)
+	assert.NotNil(t, s.dataClusterClients)
+	assert.Equal(t, 0, len(s.dataClusterClients))
+	assert.Equal(t, 0, len(s.dataClusterDestroyFunc))
+	assert.Equal(t, oldCallTimes+1, callMockFuncTimes)
+}
+
+func TestRaceConditionForCUDDataClients(t *testing.T) {
+	s := createMockStore()
+	callMockFuncTimes := 0
+	mockDestroyFunc := func() { callMockFuncTimes++ }
+
+	var wg sync.WaitGroup
+
+	for j := 0; j <= 1000; j++ {
+		for i := 1; i <= 63; i++ {
+			wg.Add(1)
+			go func(s *store, clusterId uint8, destroyFunc func()) {
+				// add clients
+				dataClient, err := clientv3.NewFromURL(fmt.Sprintf("127.0.0.%d", clusterId))
+				if err != nil {
+					t.Fatalf("Canoot create mock data client. Error %v", err)
+				}
+
+				var wgAddClient sync.WaitGroup
+				wgAddClient.Add(1)
+
+				go func() {
+					<-s.dataClientAddCh
+					wgAddClient.Done()
+				}()
+
+				err = s.AddDataClient(dataClient, clusterId, destroyFunc)
+				if err != nil {
+					t.Fatalf("Error adding data client %v. Error: %v", clusterId, err)
+				}
+				wgAddClient.Wait()
+
+				// update clients
+				dataClientToUpdate, err := clientv3.NewFromURL(fmt.Sprintf("192.168.0.%d", clusterId))
+				err = s.UpdateDataClient(dataClientToUpdate, clusterId, destroyFunc)
+				if err != nil {
+					t.Fatalf("Error updating data client %v. Error: %v", clusterId, err)
+				}
+
+				// delete clients
+				s.DeleteDataClient(clusterId)
+
+				wg.Done()
+			}(s, uint8(i), mockDestroyFunc)
+		}
+
+		wg.Wait()
+		assert.Equal(t, 63*2*(j+1), callMockFuncTimes)
+		assert.Equal(t, 0, len(s.dataClusterClients))
+		assert.Equal(t, 0, len(s.dataClusterDestroyFunc))
+	}
+}
