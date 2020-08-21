@@ -461,6 +461,8 @@ function kube::common::start_controller_manager {
     CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
     ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
       --v="${LOG_LEVEL}" \
+      --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+      --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
       --vmodule="${LOG_SPEC}" \
       --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
       --root-ca-file="${ROOT_CA_FILE}" \
