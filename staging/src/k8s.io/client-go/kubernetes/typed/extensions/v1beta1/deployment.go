@@ -33,6 +33,7 @@ import (
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
+	retry "k8s.io/client-go/util/retry"
 	klog "k8s.io/klog"
 )
 
@@ -122,13 +123,15 @@ func (c *deployments) List(opts v1.ListOptions) (result *v1beta1.DeploymentList,
 		for i, client := range c.clients {
 			go func(c *deployments, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1beta1.DeploymentList, errMap map[int]error) {
 				r := &v1beta1.DeploymentList{}
-				err := ci.Get().
-					Tenant(c.te).Namespace(c.ns).
-					Resource("deployments").
-					VersionedParams(&opts, scheme.ParameterCodec).
-					Timeout(timeout).
-					Do().
-					Into(r)
+				err := retry.RetryOnTimeout(retry.DefaultRetry, func() error {
+					return ci.Get().
+						Tenant(c.te).Namespace(c.ns).
+						Resource("deployments").
+						VersionedParams(&opts, scheme.ParameterCodec).
+						Timeout(timeout).
+						Do().
+						Into(r)
+				})
 
 				lock.Lock()
 				resultMap[pos] = r
@@ -184,13 +187,15 @@ func (c *deployments) List(opts v1.ListOptions) (result *v1beta1.DeploymentList,
 	// When resourceVersion is empty, objects are read from ETCD directly and will get full
 	// list of data if no permission issue. The list needs to done sequential to avoid increasing
 	// system load.
-	err = c.client.Get().
-		Tenant(c.te).Namespace(c.ns).
-		Resource("deployments").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do().
-		Into(result)
+	err = retry.RetryOnTimeout(retry.DefaultRetry, func() error {
+		return c.client.Get().
+			Tenant(c.te).Namespace(c.ns).
+			Resource("deployments").
+			VersionedParams(&opts, scheme.ParameterCodec).
+			Timeout(timeout).
+			Do().
+			Into(result)
+	})
 	if err == nil {
 		return
 	}
@@ -205,13 +210,15 @@ func (c *deployments) List(opts v1.ListOptions) (result *v1beta1.DeploymentList,
 			continue
 		}
 
-		err = client.Get().
-			Tenant(c.te).Namespace(c.ns).
-			Resource("deployments").
-			VersionedParams(&opts, scheme.ParameterCodec).
-			Timeout(timeout).
-			Do().
-			Into(result)
+		err = retry.RetryOnTimeout(retry.DefaultRetry, func() error {
+			return client.Get().
+				Tenant(c.te).Namespace(c.ns).
+				Resource("deployments").
+				VersionedParams(&opts, scheme.ParameterCodec).
+				Timeout(timeout).
+				Do().
+				Into(result)
+		})
 
 		if err == nil {
 			c.client = client
@@ -237,13 +244,15 @@ func (c *deployments) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 	opts.Watch = true
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.clients {
-		watcher, err := client.Get().
-			Tenant(c.te).
-			Namespace(c.ns).
-			Resource("deployments").
-			VersionedParams(&opts, scheme.ParameterCodec).
-			Timeout(timeout).
-			Watch()
+		watcher, err := retry.RetryOnNoResponse(retry.DefaultRetry, func() (watch.Interface, error) {
+			return client.Get().
+				Tenant(c.te).
+				Namespace(c.ns).
+				Resource("deployments").
+				VersionedParams(&opts, scheme.ParameterCodec).
+				Timeout(timeout).
+				Watch()
+		})
 		if err != nil && opts.AllowPartialWatch && errors.IsForbidden(err) {
 			// watch error was not returned properly in error message. Skip when partial watch is allowed
 			klog.V(6).Infof("Watch error for partial watch %v. options [%+v]", err, opts)

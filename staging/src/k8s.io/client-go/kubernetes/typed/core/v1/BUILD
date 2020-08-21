@@ -59,6 +59,7 @@ go_library(
         "//staging/src/k8s.io/client-go/kubernetes/scheme:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
         "//staging/src/k8s.io/client-go/tools/reference:go_default_library",
+        "//staging/src/k8s.io/client-go/util/retry:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
     ],
 )

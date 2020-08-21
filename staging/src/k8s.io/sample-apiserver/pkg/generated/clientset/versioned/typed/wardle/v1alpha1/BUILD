@@ -20,6 +20,7 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/watch:go_default_library",
         "//staging/src/k8s.io/client-go/apiserverupdate:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
+        "//staging/src/k8s.io/client-go/util/retry:go_default_library",
         "//staging/src/k8s.io/sample-apiserver/pkg/apis/wardle/v1alpha1:go_default_library",
         "//staging/src/k8s.io/sample-apiserver/pkg/generated/clientset/versioned/scheme:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",

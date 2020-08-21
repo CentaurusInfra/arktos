@@ -92,7 +92,7 @@ func RetryOnTimeout(backoff wait.Backoff, fn func() error) error {
 			klog.Infof("Timeout. retry %v", backoff.Steps)
 			lastTimeoutErr = err
 			return false, nil
-		default:	// only retry on timeout error. So return for all other errors
+		default: // only retry on timeout error. So return for all other errors
 			return true, err
 		}
 	})
@@ -117,7 +117,7 @@ func RetryOnNoResponse(backoff wait.Backoff, fn func() (watch.Interface, error))
 			klog.Infof("No response. retry %v", backoff.Steps)
 			lastTimeoutErr = err
 			return false, nil
-		default:	// only retry on no response error. So return for all other errors
+		default: // only retry on no response error. So return for all other errors
 			return true, err
 		}
 	})
