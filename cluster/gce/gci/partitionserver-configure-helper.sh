@@ -86,7 +86,7 @@ function main() {
     create-node-pki
     create-master-pki
     create-master-auth
-    ensure-master-bootstrap-kubectl-auth
+    ensure-master-bootstrap-kubectl-auth ${KUBERNETES_MASTER_INTERNAL_IP}
     create-master-kubelet-auth
     create-master-etcd-auth
     create-master-etcd-apiserver-auth
@@ -102,8 +102,8 @@ function main() {
       create-node-problem-detector-kubeconfig ${KUBERNETES_MASTER_NAME}
     fi
   fi
-  ETCD_SERVERS="${ETCD_SERVERS:-"http://${KUBERNETES_MASTER_INTERNAL_IP}:2379"}"
-  ETCD_SERVERS_OVERRIDES="${ETCD_SERVERS_OVERRIDES:-/events#http://${KUBERNETES_MASTER_INTERNAL_IP}:4002}"
+  ETCD_SERVERS="${ETCD_SERVERS:-"https://${KUBERNETES_MASTER_INTERNAL_IP}:2379"}"
+  ETCD_SERVERS_OVERRIDES="${ETCD_SERVERS_OVERRIDES:-/events#https://${KUBERNETES_MASTER_INTERNAL_IP}:4002}"
   override-kubectl
   container_runtime="${CONTAINER_RUNTIME:-docker}"
   # Run the containerized mounter once to pre-cache the container image.

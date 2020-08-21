@@ -78,12 +78,12 @@ if [[ "${ENABLE_PROXY:-}" == "true" ]]; then
   echo ""
 fi
 
+if [[ -d "${KUBE_ROOT}/partitionserver-config" ]]; then
+  rm -r ${KUBE_ROOT}/partitionserver-config
+fi
+mkdir ${KUBE_ROOT}/partitionserver-config
 if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
   echo "... configing apiserver datapartition" >&2
-  if [[ -d "${KUBE_ROOT}/apiserverdatapartition" ]]; then
-    rm -r ${KUBE_ROOT}/apiserverdatapartition
-  fi
-  mkdir ${KUBE_ROOT}/apiserverdatapartition
   for (( num=0; num<=${APISERVERS_EXTRA_NUM:-0}; num++ )); do
     APISERVER_RANGESTART=${APISERVER_RANGESTART:-"${APISERVER_DATAPARTITION_CONFIG:0:1}"}
     APISERVER_RANGEEND=${APISERVER_RANGEEND:-"${APISERVER_DATAPARTITION_CONFIG:$(( ${#APISERVER_DATAPARTITION_CONFIG}-1 )):1}"}
@@ -93,7 +93,13 @@ if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
     create-apiserver-datapartition-yml $num
     config-apiserver-datapartition $num
   done
+fi 
+
+if [[ "${ETCD_EXTRA_NUM:-0}" -gt "0" ]]; then
+  echo "... applying etcd servers storagecluster" >&2
+  config-etcd-storagecluster
 fi
+
 
 echo -e "\nDone, listing cluster services:\n" >&2
 "${KUBE_ROOT}/cluster/kubectl.sh" cluster-info
