@@ -89,10 +89,11 @@ func RetryOnTimeout(backoff wait.Backoff, fn func() error) error {
 		case err == nil:
 			return true, nil
 		case errors.IsTimeout(err) || errors.IsServerTimeout(err) || errors.IsServiceUnavailable(err):
-			klog.Infof("Timeout. retry %v", backoff.Steps)
+			klog.Errorf("Encountered error %v. retry %v", err, backoff.Steps)
 			lastTimeoutErr = err
 			return false, nil
 		default: // only retry on timeout error. So return for all other errors
+			klog.Errorf("Encountered error %v. no retry", err)
 			return true, err
 		}
 	})
@@ -114,10 +115,11 @@ func RetryOnNoResponse(backoff wait.Backoff, fn func() (watch.Interface, error))
 			resultObj = obj
 			return true, nil
 		case errors.IsInternalError(err) || errors.IsServiceUnavailable(err):
-			klog.Infof("No response. retry %v", backoff.Steps)
+			klog.Errorf("Encountered error %v. retry %v", err, backoff.Steps)
 			lastTimeoutErr = err
 			return false, nil
 		default: // only retry on no response error. So return for all other errors
+			klog.Errorf("Encountered error %v. no retry", err)
 			return true, err
 		}
 	})
