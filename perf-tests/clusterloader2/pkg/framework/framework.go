@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -320,46 +321,14 @@ func (f *Framework) isStaleAutomanagedNamespace(name string) bool {
 	return namespaceID.MatchString(name)
 }
 
-func (f *Framework) CreateAutomanagedTenants(tenantCount int) error {
-	if f.automanagedTenantCount != 0 {
-		//return fmt.Errorf("automanaged tenants already created")
+func (f *Framework) CreateAutomanagedTenants(storageClusterId int) error {
+	if storageClusterId == 0 {
+		return nil
 	}
-
-	startpos := 0
-	endpos := 0
-	if f.clusterConfig.Apiserverextranum == 0 {
-		for i := 1; i <= tenantCount; i++ {
-			name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedTenantPrefix)
-			if err := client.CreateTenant(f.clientSets.GetClient(), name); err != nil {
-				return err
-			}
-			f.automanagedNamespaceCount++
-		}
-	} else {
-		tenantinterval := 0
-		apiservernum := f.clusterConfig.Apiserverextranum + 1
-		if tenantCount%apiservernum > 0 {
-			tenantinterval = tenantCount/apiservernum + 1
-		} else {
-			tenantinterval = tenantCount / apiservernum
-		}
-		for server := 1; server <= apiservernum; server++ {
-			endpos = startpos + (26 / apiservernum)
-			for i := 1; i <= tenantinterval; i++ {
-				name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedTenantPrefix)
-				if err := client.CreateTenant(f.clientSets.GetClient(), name); err != nil {
-					return err
-				}
-				f.automanagedTenantCount++
-			}
-			if tenantCount-f.automanagedNamespaceCount < tenantinterval {
-				tenantinterval = tenantCount - f.automanagedNamespaceCount
-			}
-			startpos = endpos
-
-		}
+	name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, 0, 6), f.automanagedTenantPrefix)
+	if err := client.CreateTenant(f.clientSets.GetClient(), name, strconv.Itoa(storageClusterId)); err != nil {
+		return err
 	}
-
 	return nil
 }
 

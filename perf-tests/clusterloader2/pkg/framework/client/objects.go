@@ -335,11 +335,11 @@ func createPatch(current, modified *unstructured.Unstructured) ([]byte, error) {
 	return jsonmergepatch.CreateThreeWayJSONMergePatch(nil /* original */, modifiedJson, currentJson, preconditions...)
 }
 
-// CreateTenant creates the single tenant with a given name.
-func CreateTenant(c clientset.Interface, tenant string) error {
+// CreateTenant creates the single tenant with a given name and stroageClusterId
+func CreateTenant(c clientset.Interface, tenant string, storageClusterId string) error {
 	createFunc := func() error {
 		//StorageClusterId is set to 0 as default. Need to change for partitioned etcd tests
-		_, err := c.CoreV1().Tenants().Create(&apiv1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: tenant}, Spec: apiv1.TenantSpec{StorageClusterId: "0"}})
+		_, err := c.CoreV1().Tenants().Create(&apiv1.Tenant{ObjectMeta: metav1.ObjectMeta{Name: tenant}, Spec: apiv1.TenantSpec{StorageClusterId: storageClusterId}})
 		return err
 	}
 	return RetryWithExponentialBackOff(RetryFunction(createFunc, Allow(apierrs.IsAlreadyExists)))

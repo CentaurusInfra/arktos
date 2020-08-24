@@ -40,10 +40,23 @@ type InstancesIdentifier struct {
 // namespaceState represents state of a single namespace.
 type namespaceState map[InstancesIdentifier]*InstancesState
 
+// tenantsState represents state of all used tenants.
+type tenantsState struct {
+	lock         sync.RWMutex
+	tenantStates map[string]*namespacesState
+}
+
 // namespacesState represents state of all used namespaces.
 type namespacesState struct {
 	lock            sync.RWMutex
 	namespaceStates map[string]namespaceState
+}
+
+// newTeanantsState creates new tenants state.
+func newTenantsState() *tenantsState {
+	return &tenantsState{
+		tenantStates: make(map[string]*namespacesState),
+	}
 }
 
 // newNamespacesState creates new namespaces state.
@@ -51,6 +64,23 @@ func newNamespacesState() *namespacesState {
 	return &namespacesState{
 		namespaceStates: make(map[string]namespaceState),
 	}
+}
+
+// Get returns state of object instances -
+// number of existing replicas and its configuration.
+func (ts *tenantsState) Get(tenant string, namespace string, identifier InstancesIdentifier) (*InstancesState, bool) {
+	ts.lock.RLock()
+	defer ts.lock.RUnlock()
+	namespacesState, exists := ts.tenantStates[tenant]
+	if !exists {
+		return nil, false
+	}
+	namespaceState, exists := namespacesState.namespaceStates[namespace]
+	if !exists {
+		return nil, false
+	}
+	instances, exists := namespaceState[identifier]
+	return instances, exists
 }
 
 // Get returns state of object instances -
@@ -68,6 +98,18 @@ func (ns *namespacesState) Get(namespace string, identifier InstancesIdentifier)
 
 // Set stores information about object instances state
 // to test state.
+func (ts *tenantsState) Set(tenant string, namespace string, identifier InstancesIdentifier, instances *InstancesState) {
+	ts.lock.Lock()
+	defer ts.lock.Unlock()
+	_, exists := ts.tenantStates[tenant]
+	if !exists {
+		ts.tenantStates[tenant] = newNamespacesState()
+	}
+	ts.tenantStates[tenant].Set(namespace, identifier, instances)
+}
+
+// Set stores information about object instances state
+// to test state.
 func (ns *namespacesState) Set(namespace string, identifier InstancesIdentifier, instances *InstancesState) {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -76,6 +118,19 @@ func (ns *namespacesState) Set(namespace string, identifier InstancesIdentifier,
 		ns.namespaceStates[namespace] = make(namespaceState)
 	}
 	ns.namespaceStates[namespace][identifier] = instances
+}
+
+// Delete removes information about given instances.
+// It there is no information for given object it is assumed that
+// there are no object replicas.
+func (ts *tenantsState) Delete(tenant string, namespace string, identifier InstancesIdentifier) error {
+	ts.lock.Lock()
+	defer ts.lock.Unlock()
+	tenantStates, exists := ts.tenantStates[tenant]
+	if !exists {
+		return fmt.Errorf("tenant %v not found", tenant)
+	}
+	return tenantStates.Delete(namespace, identifier)
 }
 
 // Delete removes information about given instances.

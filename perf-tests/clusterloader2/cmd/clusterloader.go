@@ -79,6 +79,8 @@ func initClusterFlags() {
 	flags.StringEnvVar(&clusterLoaderConfig.ClusterConfig.KubemarkRootKubeConfigPath, "kubemark-root-kubeconfig", "KUBEMARK_ROOT_KUBECONFIG", "",
 		"Path the to kubemark root kubeconfig file, i.e. kubeconfig of the cluster where kubemark cluster is run. Ignored if provider != kubemark")
 	flags.BoolEnvVar(&clusterLoaderConfig.ClusterConfig.APIServerPprofByClientEnabled, "apiserver-pprof-by-client-enabled", "APISERVER_PPROF_BY_CLIENT_ENABLED", true, "Whether apiserver pprof endpoint can be accessed by Kubernetes client.")
+	flags.IntEnvVar(&clusterLoaderConfig.ClusterConfig.StorageClusterId, "storage-cluster-id", "ETCD_EXTRA_NUM", 0, "The storage cluster id that a targeted etcd instance for testing")
+
 }
 
 func validateClusterFlags() *errors.ErrorList {

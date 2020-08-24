@@ -81,12 +81,12 @@ func NewPodStore(c clientset.Interface, selector *ObjectSelector) (*PodStore, er
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().Pods(selector.Namespace).List(options)
+			return c.CoreV1().PodsWithMultiTenancy(selector.Namespace, selector.Tenant).List(options)
 		},
 		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().Pods(selector.Namespace).Watch(options)
+			return c.CoreV1().PodsWithMultiTenancy(selector.Namespace, selector.Tenant).Watch(options)
 		},
 	}
 	objectStore, err := newObjectStore(&v1.Pod{}, lw, selector)

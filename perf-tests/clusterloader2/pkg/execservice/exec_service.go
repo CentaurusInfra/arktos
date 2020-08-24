@@ -80,6 +80,7 @@ func SetUpExecService(f *framework.Framework) error {
 		close(stopCh)
 	})
 	selector := &measurementutil.ObjectSelector{
+		Tenant:        metav1.TenantAll,
 		Namespace:     execDeploymentNamespace,
 		LabelSelector: execPodSelector,
 		FieldSelector: "",

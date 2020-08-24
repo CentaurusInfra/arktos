@@ -51,6 +51,7 @@ type ClusterConfig struct {
 	// using kubernetes client. If false, clusterloader will avoid collecting kube-apiserver profiles.
 	APIServerPprofByClientEnabled bool
 	KubeletPort                   int
+	StorageClusterId              int
 }
 
 // PrometheusConfig represents all flags used by prometheus.

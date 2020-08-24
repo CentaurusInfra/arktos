@@ -99,69 +99,68 @@ func (ste *simpleTestExecutor) ExecuteTest(ctx Context, conf *api.Config) *error
 
 // ExecuteTestSteps executes all test steps provided in configuration
 func (ste *simpleTestExecutor) ExecuteTestSteps(ctx Context, conf *api.Config) *errors.ErrorList {
-	ctx.GetClusterFramework().SetAutomanagedTenantPrefix("testtenant")
-	klog.Infof("AutomanagedTenantPrefix: %s", ctx.GetClusterFramework().GetAutomanagedTenantPrefix())
-	automanagedTenantsList, staleTenants, err := ctx.GetClusterFramework().ListAutomanagedTenants()
-	if err != nil {
-		return errors.NewErrorList(fmt.Errorf("automanaged tenants listing failed: %v", err))
-	}
-	if len(automanagedTenantsList) > 0 {
-		return errors.NewErrorList(fmt.Errorf("pre-existing automanaged tenants found"))
-	}
-
-	var deleteStaleTenants = ctx.GetClusterFramework().GetClusterConfig().DeleteStaleTenants
-	if len(staleTenants) > 0 && deleteStaleTenants {
-		klog.Warning("stale automanaged tenants found")
-		if errList := ctx.GetClusterFramework().DeleteTenants(staleTenants); !errList.IsEmpty() {
-			klog.Errorf("stale automanaged tenants cleanup error: %v", errList.String())
+	tenant := metav1.TenantSystem
+	if ctx.GetClusterLoaderConfig().ClusterConfig.StorageClusterId != 0 {
+		ctx.GetClusterFramework().SetAutomanagedTenantPrefix("testtenant")
+		klog.Infof("AutomanagedTenantPrefix: %s", ctx.GetClusterFramework().GetAutomanagedTenantPrefix())
+		automanagedTenantsList, staleTenants, err := ctx.GetClusterFramework().ListAutomanagedTenants()
+		if err != nil {
+			return errors.NewErrorList(fmt.Errorf("automanaged tenants listing failed: %v", err))
+		}
+		if len(automanagedTenantsList) > 0 {
+			return errors.NewErrorList(fmt.Errorf("pre-existing automanaged tenants found"))
 		}
 
-	}
+		var deleteStaleTenants = ctx.GetClusterFramework().GetClusterConfig().DeleteStaleTenants
+		if len(staleTenants) > 0 && deleteStaleTenants {
+			klog.Warning("stale automanaged tenants found")
+			if errList := ctx.GetClusterFramework().DeleteTenants(staleTenants); !errList.IsEmpty() {
+				klog.Errorf("stale automanaged tenants cleanup error: %v", errList.String())
+			}
 
-	err = ctx.GetClusterFramework().CreateAutomanagedTenants(int(conf.AutomanagedTenants))
-	if err != nil {
-		return errors.NewErrorList(fmt.Errorf("automanaged tenants creation failed: %v", err))
+		}
+
+		err = ctx.GetClusterFramework().CreateAutomanagedTenants(ctx.GetClusterLoaderConfig().ClusterConfig.StorageClusterId)
+		if err != nil {
+			return errors.NewErrorList(fmt.Errorf("automanaged tenants creation failed: %v", err))
+		}
+		automanagedTenantsList, staleTenants, err = ctx.GetClusterFramework().ListAutomanagedTenants()
+		tenant = automanagedTenantsList[0]
 	}
-	automanagedTenantsList, staleTenants, err = ctx.GetClusterFramework().ListAutomanagedTenants()
+	fmt.Printf("The teant is %v", tenant)
 	errList := errors.NewErrorList()
-
-	for _, tenant := range automanagedTenantsList {
-		automanagedNamespacesList, staleNamespaces, err := ctx.GetClusterFramework().ListAutomanagedNamespaces(tenant)
-		if err != nil {
-			return errors.NewErrorList(fmt.Errorf("automanaged namespaces listing failed: %v", err))
+	automanagedNamespacesList, staleNamespaces, err := ctx.GetClusterFramework().ListAutomanagedNamespaces(tenant)
+	if err != nil {
+		return errors.NewErrorList(fmt.Errorf("automanaged namespaces listing failed: %v", err))
+	}
+	if len(automanagedNamespacesList) > 0 {
+		return errors.NewErrorList(fmt.Errorf("pre-existing automanaged namespaces found"))
+	}
+	var deleteStaleNS = ctx.GetClusterFramework().GetClusterConfig().DeleteStaleNamespaces
+	if len(staleNamespaces) > 0 && deleteStaleNS {
+		klog.Warning("stale automanaged namespaces found")
+		if errList := ctx.GetClusterFramework().DeleteNamespaces(tenant, staleNamespaces); !errList.IsEmpty() {
+			klog.Errorf("stale automanaged namespaces cleanup error: %v", errList.String())
 		}
-		if len(automanagedNamespacesList) > 0 {
-			return errors.NewErrorList(fmt.Errorf("pre-existing automanaged namespaces found"))
-		}
-		var deleteStaleNS = ctx.GetClusterFramework().GetClusterConfig().DeleteStaleNamespaces
-		if len(staleNamespaces) > 0 && deleteStaleNS {
-			klog.Warning("stale automanaged namespaces found")
-			if errList := ctx.GetClusterFramework().DeleteNamespaces(tenant, staleNamespaces); !errList.IsEmpty() {
-				klog.Errorf("stale automanaged namespaces cleanup error: %v", errList.String())
-			}
-		}
-
-		err = ctx.GetClusterFramework().CreateAutomanagedNamespaces(tenant, int(conf.AutomanagedNamespaces))
-		if err != nil {
-			return errors.NewErrorList(fmt.Errorf("automanaged namespaces creation failed: %v", err))
-		}
-
-		automanagedNamespacesList, _, err = ctx.GetClusterFramework().ListAutomanagedNamespaces(tenant)
-		if err != nil {
-			return errors.NewErrorList(fmt.Errorf("automanaged namespaces listing failed: %v", err))
-		}
-
-		for i := range conf.Steps {
-			if stepErrList := ste.ExecuteStep(ctx, &conf.Steps[i]); !stepErrList.IsEmpty() {
-				errList.Concat(stepErrList)
-				if isErrsCritical(stepErrList) {
-					return errList
-				}
-			}
-		}
-
 	}
 
+	err = ctx.GetClusterFramework().CreateAutomanagedNamespaces(tenant, int(conf.AutomanagedNamespaces))
+	if err != nil {
+		return errors.NewErrorList(fmt.Errorf("automanaged namespaces creation failed: %v", err))
+	}
+
+	automanagedNamespacesList, _, err = ctx.GetClusterFramework().ListAutomanagedNamespaces(tenant)
+	if err != nil {
+		return errors.NewErrorList(fmt.Errorf("automanaged namespaces listing failed: %v", err))
+	}
+	for i := range conf.Steps {
+		if stepErrList := ste.ExecuteStep(ctx, &conf.Steps[i]); !stepErrList.IsEmpty() {
+			errList.Concat(stepErrList)
+			if isErrsCritical(stepErrList) {
+				return errList
+			}
+		}
+	}
 	return errList
 }
 
@@ -220,7 +219,6 @@ func (ste *simpleTestExecutor) ExecutePhase(ctx Context, phase *api.Phase) *erro
 		if err != nil {
 			return errors.NewErrorList(fmt.Errorf("tuning set creation error: %v", err))
 		}
-
 		var actions []func()
 		for namespaceIndex := range automanagedNamespacesList {
 			nsName := automanagedNamespacesList[namespaceIndex]
