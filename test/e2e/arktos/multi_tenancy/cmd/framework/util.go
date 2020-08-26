@@ -115,15 +115,22 @@ func FileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-// Combine maps, where the later map overrides the previous if there are conflicts
-func CombineStringMaps(maps ...map[string]string) map[string]string {
-	combined := make(map[string]string)
+// Merge maps, where the later map overrides the previous if there are conflicts
+func MergeStringMaps(maps ...map[string]string) map[string]string {
+	merged := make(map[string]string)
 
 	for _, m := range maps {
 		for k, v := range m {
-			combined[k] = v
+			merged[k] = v
 		}
 	}
 
-	return combined
+	return merged
+}
+
+func SetDefaultIfNil(ptr **int, defaultPtr *int) {
+	if *ptr == nil {
+		defaultValue := *defaultPtr
+		*ptr = &defaultValue
+	}
 }

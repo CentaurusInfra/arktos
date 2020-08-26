@@ -51,7 +51,7 @@ func (ts *TestSuite) LoadTestSuite(filePath string, tc *TestConfig) error {
 		}
 	}
 
-	allVariables := CombineStringMaps(tc.CommonVariables, ts.Variables)
+	allVariables := MergeStringMaps(tc.CommonVariables, ts.Variables)
 	resolved_output, _ := ioutil.ReadFile(filePath)
 	for key, value := range allVariables {
 		// generate random strings for variables if the value is "random_[string_length]"
@@ -71,7 +71,7 @@ func (ts *TestSuite) LoadTestSuite(filePath string, tc *TestConfig) error {
 	}
 
 	for _, t := range ts.Tests {
-		if errList := t.Validate(tc); len(errList) != 0 {
+		if errList := t.Validate(tc); !errList.IsEmpty() {
 			return fmt.Errorf("error in validating yaml file %v, test case: %v, err: %v ", filePath, t, errList)
 		}
 	}
@@ -85,7 +85,7 @@ func (ts *TestSuite) Run(tc *TestConfig) {
 	for i, t := range ts.Tests {
 		fmt.Println("----------------------------------------------------------------------")
 		errList := t.Run(tc)
-		if len(errList) != 0 {
+		if !errList.IsEmpty() {
 			ts.Failures = append(ts.Failures, fmt.Sprintf("Test Command #%v: %q, Error %v", i+1, t.Command, errList))
 		}
 	}

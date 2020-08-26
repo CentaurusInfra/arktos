@@ -24,7 +24,7 @@ repo_root=$(cd $(dirname $0)/../../../.. ; pwd)
 
 #put the test suite file names below, one line one suite. The test suites will be run in the order defined.
 test_suite_files="tenant_init_delete_test.yaml"
-test_suite_file_directory=$(dirname $0)/test_suites/
+test_suite_file_directory=${repo_root}/test/e2e/arktos/multi_tenancy/test_suites/
 
 # The values of timeouts and retry intervals are in the unit of second
 # timeout=0 means that there is not check on whether a command exits within a give time span
@@ -44,7 +44,7 @@ verbose=false
 # By default we use the kubectl binary built in the Arktos repository.
 kubectl=${repo_root}/_output/bin/kubectl
 setup_client_script=${repo_root}/hack/setup-multi-tenancy/setup_client.sh
-test_data_dir=$(dirname $0)/testdata/
+test_data_dir=${repo_root}/test/e2e/arktos/multi_tenancy/testdata/
 
 cd ${script_root}/ && go build -o /tmp/testrunner './cmd/'
 
@@ -57,4 +57,4 @@ cd ${script_root}/ && go build -o /tmp/testrunner './cmd/'
 				-MaxRetryCount=${max_retry_count} \
 				-DefaultRetryInterval=${default_retry_interval} \
 				-MaxRetryInterval=${max_retry_interval} \
-				-CommonVar="kubectl:${kubectl},setup_client_script:${setup_client_script},test_data_dir:$test_data_dir}"
+				-CommonVar="kubectl:${kubectl},setup_client_script:${setup_client_script},test_data_dir:${test_data_dir}"

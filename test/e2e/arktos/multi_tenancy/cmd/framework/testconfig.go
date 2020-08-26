@@ -16,10 +16,6 @@ limitations under the License.
 
 package framework
 
-import (
-	"fmt"
-)
-
 type TestConfig struct {
 	MaxRetryCount        int
 	MaxRetryInterval     int
@@ -31,32 +27,16 @@ type TestConfig struct {
 	CommonVariables      map[string]string
 }
 
-func (tc *TestConfig) Validate() []error {
-	errors := []error{}
+func (tc *TestConfig) Validate() *ErrorList {
+	errors := NewErrorList()
 
-	if tc.MaxRetryCount < 0 {
-		errors = append(errors, fmt.Errorf("MaxRetryCount cannot be negative"))
-	}
+	errors.Add(ErrorIfNegative("MaxRetryCount", &tc.MaxRetryCount))
+	errors.Add(ErrorIfNegative("MaxRetryInterval", &tc.MaxRetryInterval))
+	errors.Add(ErrorIfNegative("MaxTimeOut", &tc.MaxTimeOut))
 
-	if tc.MaxRetryInterval < 0 {
-		errors = append(errors, fmt.Errorf("MaxRetryInterval cannot be negative"))
-	}
-
-	if tc.MaxTimeOut < 0 {
-		errors = append(errors, fmt.Errorf("MaxTimeOut cannot be negative"))
-	}
-
-	if tc.DefaultRetryCount < 0 || tc.DefaultRetryCount > tc.MaxRetryCount {
-		errors = append(errors, fmt.Errorf("Invalid DefaultRetryCount %d, should be in the range of [0, %d]", tc.DefaultRetryCount, tc.MaxRetryCount))
-	}
-
-	if tc.DefaultRetryInterval < 0 || tc.DefaultRetryInterval > tc.MaxRetryInterval {
-		errors = append(errors, fmt.Errorf("Invalid DefaultRetryInterval %d, should be in the range of [0, %d]", tc.DefaultRetryInterval, tc.MaxRetryInterval))
-	}
-
-	if tc.DefaultTimeOut < 0 || tc.DefaultTimeOut > tc.MaxTimeOut {
-		errors = append(errors, fmt.Errorf("Invalid DefaultTimeOut %d, should be in the range of [0, %d]", tc.DefaultTimeOut, tc.MaxTimeOut))
-	}
+	errors.Add(ErrorIfOutOfBounds("DefaultRetryCount", &tc.DefaultRetryCount, 0, tc.MaxRetryCount))
+	errors.Add(ErrorIfOutOfBounds("DefaultRetryInterval", &tc.DefaultRetryInterval, 0, tc.MaxRetryInterval))
+	errors.Add(ErrorIfOutOfBounds("DefaultTimeOut", &tc.DefaultTimeOut, 0, tc.MaxTimeOut))
 
 	return errors
 }

@@ -61,8 +61,8 @@ func initFlags() {
 }
 
 func validateFlags() {
-	if errs := testConfig.Validate(); len(errs) > 0 {
-		framework.LogError("\nThe test config is invalid: &v \n", errs)
+	if errs := testConfig.Validate(); !errs.IsEmpty() {
+		framework.LogError("\nThe test config is invalid: %v \n", errs)
 		os.Exit(1)
 	}
 
@@ -106,8 +106,8 @@ func verifyLocalClusterUp() {
 	test.Command = "kubectl get nodes"
 
 	errList := test.Run(&testConfig)
-	if len(errList) != 0 {
-		framework.LogError("\nArktos cluster is not up for test. Or you have don't have cluster admin privilege.\n")
+	if !errList.IsEmpty() {
+		framework.LogError("\nArktos cluster is not up for test. Or you don't have cluster admin privilege.\n")
 		os.Exit(1)
 	}
 }
@@ -143,13 +143,14 @@ func printSummary() {
 		if len(ts.Failures) == 0 {
 			framework.LogSuccess("\nTest Suite %v succeeded.\n", ts.FilePath)
 			successNum++
-		} else {
-			framework.LogError("Test Suite %v has %d failures\n", ts.FilePath, len(ts.Failures))
-			for _, failure := range ts.Failures {
-				framework.LogWarning("\t" + failure + "\n")
-			}
-			failNum++
+			continue
 		}
+
+		framework.LogError("Test Suite %v has %d failures\n", ts.FilePath, len(ts.Failures))
+		for _, failure := range ts.Failures {
+			framework.LogWarning("\t" + failure + "\n")
+		}
+		failNum++
 	}
 	framework.LogInfo("\nTotal %v test suite files, %v invalid, %d succeeded, %d contain failures.\n", len(testSuiteFiles), len(invalidTestSuites), successNum, failNum)
 }
