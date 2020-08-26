@@ -96,7 +96,7 @@ fi
 
 # To avoid failing large tests due to some flakes in starting nodes, allow
 # for a small percentage of nodes to not start during cluster startup.
-ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-$(($(get-num-nodes) / 100))}"
+ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
 
 # By default a cluster will be started with the master and nodes
 # on Container-optimized OS (cos, previously known as gci). If
