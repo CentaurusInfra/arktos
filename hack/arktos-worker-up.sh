@@ -14,15 +14,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
 die() { echo "$*" 1>&2 ; exit 1; }
 
-[ -n "${KUBELET_IP}" ] || die "KUBELET_IP env var not set"
-[ -n "${KUBELET_KUBECONFIG}" ] || die "KUBELET_KUBECONFIG env var not set"
+if [[ ! -n "${KUBELET_IP}" ]]; then
+    die "KUBELET_IP env var not set"
+fi
 
+mkdir -p /tmp/arktos
+
+SECRET_FOLDER=${SECRET_FOLDER:-"/tmp/arktos"}
+KUBELET_KUBECONFIG=${KUBELET_KUBECONFIG:-"${SECRET_FOLDER}/kubelet.kubeconfig"}
+KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${SECRET_FOLDER}/client-ca.crt"}
 HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"$(hostname)"}
 CLUSTER_DNS=${CLUSTER_DNS:-"10.0.0.10"}
 
-sudo ./hyperkube kubelet \
+if [[ ! -s "${KUBELET_KUBECONFIG}" ]]; then
+    echo "kubelet kubeconfig file not found at ${KUBELET_KUBECONFIG}."
+    echo "Please copy this file from Arktos master, e.g. in GCP run:"
+    echo "gcloud compute scp <master-vm-name>:/var/run/kubernetes/kubelet.kubeconfig /tmp/arktos/"
+    die "arktos worker node failed to start."
+fi
+
+if [[ ! -s "${KUBELET_CLIENTCA}" ]]; then
+    echo "kubelet client ca cert not found at ${KUBELET_CLIENTCA}."
+    echo "Please copy this file from Arktos master, e.g. in GCP run:"
+    echo "gcloud compute scp <master-vm-node>:/var/run/kubernetes/client-ca.crt /tmp/arktos/"
+    die "arktos worker node failed to start."
+fi
+
+make all WHAT=cmd/hyperkube
+
+sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 --v=3 \
 --container-runtime=remote \
 --hostname-override=${HOSTNAME_OVERRIDE} \
@@ -30,7 +53,7 @@ sudo ./hyperkube kubelet \
 --kubeconfig=${KUBELET_KUBECONFIG} \
 --authorization-mode=Webhook \
 --authentication-token-webhook \
---client-ca-file=./client-ca.crt \
+--client-ca-file=${KUBELET_CLIENTCA} \
 --feature-gates=AllAlpha=false \
 --cpu-cfs-quota=true \
 --enable-controller-attach-detach=true \
@@ -40,5 +63,8 @@ sudo ./hyperkube kubelet \
 --cluster-domain=cluster.local \
 --container-runtime-endpoint="containerRuntime,container,/run/containerd/containerd.sock;vmRuntime,vm,/run/virtlet.sock" \
 --runtime-request-timeout=2m \
---port=10250
+--port=10250 \
+> /tmp/kubelet.worker.log 2>&1 &
+
+echo "kubelet has been started. please check /tmp/kubelet.worker.log for its running log."
 

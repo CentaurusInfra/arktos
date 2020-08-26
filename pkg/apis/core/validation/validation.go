@@ -3847,6 +3847,9 @@ func ValidatePodUpdate(newPod, oldPod *core.Pod) field.ErrorList {
 	// munge spec.nics
 	mungedPod.Spec.Nics = oldPod.Spec.Nics
 
+	// munge spec.workloadinfo
+	mungedPod.Spec.WorkloadInfo = oldPod.Spec.WorkloadInfo
+
 	// Allow only additions to tolerations updates.
 	mungedPod.Spec.Tolerations = oldPod.Spec.Tolerations
 	allErrs = append(allErrs, validateOnlyAddedTolerations(newPod.Spec.Tolerations, oldPod.Spec.Tolerations, specPath.Child("tolerations"))...)
