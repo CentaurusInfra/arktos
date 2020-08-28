@@ -13,12 +13,14 @@ Variables:
 # test setup
 ###########################################################################################################
 Tests:
-  - Command: ${kubectl} create tenant ${test_tenant}
+  - BeforeTestMessage: Test setup ....
+    Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
     - "\ntenant/${test_tenant} created\n"
 
   - Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant} 
     OutputShouldBe: "namespace/${test_ns} created\n"
+    AfterTestMessage: End of test setup.
 
 ########################################################################################
 # Testing deployment controller & replicaset controller
@@ -27,7 +29,8 @@ Tests:
 # ------------------------------------------------------------
 # replicasets and pods are created when a deployment is created
 # ------------------------------------------------------------
-  - Command: ${kubectl} get deployments --all-namespaces --tenant ${test_tenant} 
+  - BeforeTestMessage: Verifying replicasets and pods are created when a deployment is created
+    Command: ${kubectl} get deployments --all-namespaces --tenant ${test_tenant} 
     OutputShouldBe: "No resources found.\n"
 
   # creating the deployment
@@ -57,7 +60,8 @@ Tests:
 # ------------------------------------------------------------
 # pods will be recreated if deleted
 # ------------------------------------------------------------
-  - Command: ${kubectl} delete pods --all --namespace ${test_ns} --tenant ${test_tenant}
+  - BeforeTestMessage: Verifying pods will be recreated if deleted
+    Command: ${kubectl} delete pods --all --namespace ${test_ns} --tenant ${test_tenant}
     OutputShouldContain:
     - "pod \"sample-nginx-deployment-"
     - "deleted\n"
@@ -86,7 +90,8 @@ Tests:
 # ------------------------------------------------------------
 # replicasets will be recreated if deleted
 # ------------------------------------------------------------
-  - Command: ${kubectl} delete replicasets --all --namespace ${test_ns} --tenant ${test_tenant}
+  - BeforeTestMessage: Verifying replicasets will be recreated if deleted
+    Command: ${kubectl} delete replicasets --all --namespace ${test_ns} --tenant ${test_tenant}
     OutputShouldContain:
     - "replicaset.extensions \"sample-nginx-deployment-"
     - deleted
@@ -115,7 +120,8 @@ Tests:
 # ------------------------------------------------------------
 # replicasets and pods are deleted when a deployment is deleted
 # ------------------------------------------------------------
-  - Command: ${kubectl} delete -f ${test_data_dir}/sample-deployment.yaml --namespace ${test_ns} --tenant ${test_tenant} 
+  - BeforeTestMessage: Verifying replicasets and pods are deleted when a deployment is deleted
+    Command: ${kubectl} delete -f ${test_data_dir}/sample-deployment.yaml --namespace ${test_ns} --tenant ${test_tenant} 
     OutputShouldBe: "deployment.apps \"sample-nginx-deployment\" deleted\n"
 
   - BeforeTest: sleep 5
@@ -136,6 +142,7 @@ Tests:
 ######################################################################################################
 # cleanup
 ######################################################################################################
-  - Command: ${kubectl} delete tenant ${test_tenant}
+  - BeforeTestMessage: Clean up...
+    Command: ${kubectl} delete tenant ${test_tenant}
     OutputShouldBe: "tenant \"${test_tenant}\" deleted\n"
     TimeOut: 60
