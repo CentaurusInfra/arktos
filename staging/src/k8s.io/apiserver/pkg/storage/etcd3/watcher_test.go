@@ -20,6 +20,7 @@ package etcd3
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"reflect"
 	"sync"
 	"testing"
@@ -597,6 +598,115 @@ func TestGetKeyAndOptFromPartitionConfig(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := &watcher{partitionConfig: tc.partitionedConfig}
+			keyRanges := w.getKeyAndOptFromPartitionConfig(tc.key)
+			if len(keyRanges) != len(tc.expectedKey) {
+				t.Fatalf("The actual size %d is not expected as %d", len(keyRanges), len(tc.expectedKey))
+			}
+			for idx, keyRange := range keyRanges {
+				if tc.expectedKey[idx] != keyRange.begin {
+					t.Fatalf("The key %s is not expected as %s", keyRange.begin, tc.expectedKey[idx])
+				}
+				if tc.expectedEnd[idx] != keyRange.end {
+					t.Fatalf("The end %s is not expected as %s", keyRange.end, tc.expectedEnd[idx])
+				}
+			}
+		})
+	}
+}
+
+func TestUpdatePartitionConfig(t *testing.T) {
+	for _, tc := range []struct {
+		name                 string
+		key                  string
+		partitionedConfig    map[string]storage.Interval
+		updatedPartionConfig corev1.DataPartitionConfig
+		expectedKey          []string
+		expectedEnd          []string
+	}{
+		{
+			name: "opt with interval beginning and end via key with empty update",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": {
+					Begin: "tenant1",
+					End:   "tenant2",
+				},
+				"registry/pod/": {
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			updatedPartionConfig: corev1.DataPartitionConfig{},
+			expectedKey:          []string{"registry/pods/"},
+			expectedEnd:          []string{""},
+		},
+		{
+			name: "opt with interval beginning and end via key with updated validate key and end",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": {
+					Begin: "tenant1",
+					End:   "tenant2",
+				},
+				"registry/pod/": {
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			updatedPartionConfig: corev1.DataPartitionConfig{
+				IsRangeStartValid: true,
+				RangeStart:        "tenant11",
+				IsRangeEndValid:   true,
+				RangeEnd:          "tenant22"},
+			expectedKey: []string{"registry/pods/tenant11", "registry/pods/default/"},
+			expectedEnd: []string{"registry/pods/tenant22", "registry/pods/default0"},
+		},
+		{
+			name: "opt with interval beginning and end via key with updated valid key only",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": {
+					Begin: "tenant1",
+					End:   "tenant2",
+				},
+				"registry/pod/": {
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			updatedPartionConfig: corev1.DataPartitionConfig{
+				IsRangeStartValid: true,
+				RangeStart:        "tenant11",
+				IsRangeEndValid:   false,
+				RangeEnd:          "tenant22"},
+			expectedKey: []string{"registry/pods/tenant11", "registry/pods/default/"},
+			expectedEnd: []string{"registry/pods0", "registry/pods/default0"},
+		},
+		{
+			name: "opt with interval beginning and end via key with updated valid end only",
+			key:  "registry/pods/",
+			partitionedConfig: map[string]storage.Interval{
+				"registry/pods/": {
+					Begin: "tenant1",
+					End:   "tenant2",
+				},
+				"registry/pod/": {
+					Begin: "tenant3",
+					End:   "tenant4",
+				},
+			},
+			updatedPartionConfig: corev1.DataPartitionConfig{
+				IsRangeStartValid: false,
+				RangeStart:        "tenant11",
+				IsRangeEndValid:   true,
+				RangeEnd:          "tenant22"},
+			expectedKey: []string{"registry/pods/"},
+			expectedEnd: []string{"registry/pods/tenant22"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := &watcher{partitionConfig: tc.partitionedConfig}
+			w.updatePartitionConfig(tc.updatedPartionConfig)
 			keyRanges := w.getKeyAndOptFromPartitionConfig(tc.key)
 			if len(keyRanges) != len(tc.expectedKey) {
 				t.Fatalf("The actual size %d is not expected as %d", len(keyRanges), len(tc.expectedKey))

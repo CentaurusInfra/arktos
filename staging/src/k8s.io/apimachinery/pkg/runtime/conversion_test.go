@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@ limitations under the License.
 package runtime_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -110,6 +112,74 @@ func TestStringMapConversion(t *testing.T) {
 		}
 		if !reflect.DeepEqual(out, tc.expected) {
 			t.Errorf("%s: unexpected output: %#v", k, out)
+		}
+	}
+}
+
+func TestDefaultMetaV1FieldSelectorConversion(t *testing.T) {
+	type Pair struct {
+		label, value string
+	}
+
+	tests := []struct {
+		name           string
+		input          Pair
+		expectedResult Pair
+		err            error
+	}{
+		{
+			name:           "metadata name",
+			input:          Pair{"metadata.name", "replica1"},
+			expectedResult: Pair{"metadata.name", "replica1"},
+			err:            nil,
+		},
+		{
+			name:           "metadata namespace",
+			input:          Pair{"metadata.namespace", "ns"},
+			expectedResult: Pair{"metadata.namespace", "ns"},
+			err:            nil,
+		},
+		{
+			name:           "metadata tenant",
+			input:          Pair{"metadata.tenant", "t1"},
+			expectedResult: Pair{"metadata.tenant", "t1"},
+			err:            nil,
+		},
+		{
+			name:           "metadata hashkey",
+			input:          Pair{"metadata.hashkey", "12345"},
+			expectedResult: Pair{"metadata.hashkey", "12345"},
+			err:            nil,
+		},
+		{
+			name:           "metadata references",
+			input:          Pair{"metadata.ownerReferences.hashkey.kind", "abc"},
+			expectedResult: Pair{"metadata.ownerReferences.hashkey.kind", "abc"},
+			err:            nil,
+		},
+		{
+			name:           "invalid metadata name",
+			input:          Pair{"metadata.x", "abc"},
+			expectedResult: Pair{"", ""},
+			err:            fmt.Errorf("%q is not a known field selector: only %q, %q, %q, %q, %q", "metadata.x", "metadata.name", "metadata.namespace", "metadata.tenant", "metadata.hashkey", "metadata.ownerReferences.hashkey.*"),
+		},
+		{
+			name:           "invalid metadata ownerReferences references",
+			input:          Pair{"metadata.ownerReferences.hashkey", "abc"},
+			expectedResult: Pair{"", ""},
+			err:            fmt.Errorf("%q is not a known field selector: only %q, %q, %q, %q, %q", "metadata.ownerReferences.hashkey", "metadata.name", "metadata.namespace", "metadata.tenant", "metadata.hashkey", "metadata.ownerReferences.hashkey.*"),
+		},
+	}
+	for _, test := range tests {
+		label, value, err := runtime.DefaultMetaV1FieldSelectorConversion(test.input.label, test.input.value)
+		if !reflect.DeepEqual(test.err, err) {
+			t.Errorf("Test %v failed since the error %v is not expected %v", test.name, err, test.err)
+		}
+		if test.expectedResult.label != label {
+			t.Errorf("Test %v failed since the label  %v is not expected %v", test.name, label, test.expectedResult.label)
+		}
+		if test.expectedResult.value != value {
+			t.Errorf("Test %v failed since the value %v is not expected %v", test.name, value, test.expectedResult.value)
 		}
 	}
 }
