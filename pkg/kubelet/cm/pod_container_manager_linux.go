@@ -127,6 +127,15 @@ func (m *podContainerManagerImpl) GetPodContainerName(pod *v1.Pod) (CgroupName, 
 	return cgroupName, cgroupfsName
 }
 
+func (m *podContainerManagerImpl) GetPodCgroupMemoryUsage(pod *v1.Pod) (uint64, error) {
+	podCgroupName, _ := m.GetPodContainerName(pod)
+	stats, err := m.cgroupManager.GetResourceStats(podCgroupName)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(stats.MemoryStats.Usage), nil
+}
+
 func (m *podContainerManagerImpl) GetPodCgroupMemoryConfig(pod *v1.Pod) (uint64, error) {
 	podCgroupName, _ := m.GetPodContainerName(pod)
 	return m.cgroupManager.GetCgroupMemoryConfig(podCgroupName)
@@ -344,6 +353,10 @@ func (m *podContainerManagerNoop) GetAllPodsFromCgroups() (map[types.UID]CgroupN
 
 func (m *podContainerManagerNoop) IsPodCgroup(cgroupfs string) (bool, types.UID) {
 	return false, types.UID("")
+}
+
+func (m *podContainerManagerNoop) GetPodCgroupMemoryUsage(_ *v1.Pod) (uint64, error) {
+	return 0, nil
 }
 
 func (m *podContainerManagerNoop) GetPodCgroupMemoryConfig(_ *v1.Pod) (uint64, error) {
