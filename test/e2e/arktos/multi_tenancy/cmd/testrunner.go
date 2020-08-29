@@ -29,14 +29,16 @@ import (
 )
 
 var (
-	startTime          = time.Now()
-	testConfig         framework.TestConfig
-	testSuiteFiles     []string
-	invalidTestSuites  []string
-	validTestSuites    []*framework.TestSuite
-	testSuiteDirFlag   string
-	testSuiteFileFlag  string
-	commonVariableFlag string
+	startTime           = time.Now()
+	testConfig          framework.TestConfig
+	testSuiteFiles      []string
+	invalidTestSuites   []string
+	validTestSuites     []*framework.TestSuite
+	testSuiteDirFlag    string
+	testSuiteFileFlag   string
+	commonVariableFlag  string
+	successTestSuiteNum int
+	failedTestSuiteNum  int
 )
 
 func initFlags() {
@@ -67,19 +69,27 @@ func validateFlags() {
 	}
 
 	if strings.TrimSpace(testSuiteFileFlag) == "" {
-		framework.LogError("\nNo test suite file is specified.  (%v) \n", testSuiteFileFlag)
+		framework.LogError("\nNo test suite file is specified.\n")
 		os.Exit(1)
 	}
 
-	for _, file := range strings.Fields(testSuiteFileFlag) {
-		testSuiteFiles = append(testSuiteFiles, filepath.Join(testSuiteDirFlag, strings.TrimSpace(file)))
-	}
+	for _, matchingPattern := range strings.Fields(testSuiteFileFlag) {
+		fullPattern := filepath.Join(testSuiteDirFlag, strings.TrimSpace(matchingPattern))
+		matchingFiles, err := filepath.Glob(fullPattern)
 
-	for _, tsf := range testSuiteFiles {
-		if framework.FileExists(tsf) == false {
-			framework.LogError("\nTest suite file %q is missig.\n", tsf)
+		if err != nil {
+			framework.LogError("\nFailed to get test suite file(s) %q due error: %v.\n", fullPattern, err)
 			os.Exit(1)
 		}
+
+		// A pattern that does not match any file is unacceptable.
+		// Such a pattern is usually a mistake.
+		if len(matchingFiles) == 0 {
+			framework.LogError("\nNo file(s) match %q.\n", fullPattern)
+			os.Exit(1)
+		}
+
+		testSuiteFiles = append(testSuiteFiles, matchingFiles...)
 	}
 
 	if len(commonVariableFlag) > 0 {
@@ -117,6 +127,7 @@ func validateTestSuites() {
 		var ts framework.TestSuite
 		framework.LogInfo("\nValidating Test Suite %q...", tsFile)
 		if err := ts.LoadTestSuite(tsFile, &testConfig); err != nil {
+			invalidTestSuites = append(invalidTestSuites, tsFile)
 			framework.LogError("\nWill skip Test Suite %q due to: %v\n", tsFile, err)
 		} else {
 			framework.LogSuccess("Validated")
@@ -138,11 +149,10 @@ func printSummary() {
 		}
 	}
 
-	successNum, failNum := 0, 0
 	for _, ts := range validTestSuites {
 		if len(ts.Failures) == 0 {
 			framework.LogSuccess("\nTest Suite %v succeeded.\n", ts.FilePath)
-			successNum++
+			successTestSuiteNum++
 			continue
 		}
 
@@ -150,9 +160,9 @@ func printSummary() {
 		for _, failure := range ts.Failures {
 			framework.LogWarning("\t" + failure + "\n")
 		}
-		failNum++
+		failedTestSuiteNum++
 	}
-	framework.LogInfo("\nTotal %v test suite files, %v invalid, %d succeeded, %d contain failures.\n", len(testSuiteFiles), len(invalidTestSuites), successNum, failNum)
+	framework.LogInfo("\nTotal %v test suite files, %v invalid, %d succeeded, %d failed.\n", len(testSuiteFiles), len(invalidTestSuites), successTestSuiteNum, failedTestSuiteNum)
 }
 
 func main() {
@@ -169,4 +179,11 @@ func main() {
 	}
 
 	printSummary()
+
+	exitCode := 0
+	if len(testSuiteFiles) != successTestSuiteNum {
+		exitCode = 1
+	}
+
+	os.Exit(exitCode)
 }

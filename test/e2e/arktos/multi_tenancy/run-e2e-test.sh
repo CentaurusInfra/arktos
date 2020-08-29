@@ -22,10 +22,8 @@ export GO111MODULE=on
 script_root=$(dirname "${BASH_SOURCE}")
 repo_root=$(cd $(dirname $0)/../../../.. ; pwd)
 
-#put the test suite file names below, one line one suite. The test suites will be run in the order defined.
-test_suite_files="multi_tenancy_controller/test_sa_token_controller.yaml \
-				  multi_tenancy_controller/test_endpoints_controller.yaml \
-				  multi_tenancy_controller/test_deployment_replicaset_controller.yaml \
+#put the test suite file patterns below, one line one suite. The test suites will be run in the order defined.
+test_suite_files="multi_tenancy_controller/test_*_controller.yaml \
 				  tenant_init_delete_test.yaml"
 test_suite_file_directory=${repo_root}/test/e2e/arktos/multi_tenancy/test_suites/
 
@@ -61,3 +59,6 @@ cd ${script_root}/ && go build -o /tmp/testrunner './cmd/'
 				-DefaultRetryInterval=${default_retry_interval} \
 				-MaxRetryInterval=${max_retry_interval} \
 				-CommonVar="kubectl:${kubectl},setup_client_script:${setup_client_script},test_data_dir:${test_data_dir}"
+
+returnCode=$?
+exit ${returnCode}
