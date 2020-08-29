@@ -71,6 +71,11 @@ const (
 	versionCacheTTL = 60 * time.Second
 	// How frequently to report identical errors
 	identicalErrorDelay = 1 * time.Minute
+
+	// Resources for which in-place pod vertical scaling is applicable
+	memLimit   = "memory-limit"
+	cpuLimit   = "cpu-limit"
+	cpuRequest = "cpu-request"
 )
 
 var (
@@ -790,13 +795,13 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 					keepCount--
 				} else {
 					if resizeMemLim {
-						markContainerForUpdate("memory-limit", specLim.Memory().Value(), statusLim.Memory().Value())
+						markContainerForUpdate(memLimit, specLim.Memory().Value(), statusLim.Memory().Value())
 					}
 					if resizeCPUReq {
-						markContainerForUpdate("cpu-request", specReq.Cpu().MilliValue(), statusReq.Cpu().MilliValue())
+						markContainerForUpdate(cpuRequest, specReq.Cpu().MilliValue(), statusReq.Cpu().MilliValue())
 					}
 					if resizeCPULim {
-						markContainerForUpdate("cpu-limit", specLim.Cpu().MilliValue(), statusLim.Cpu().MilliValue())
+						markContainerForUpdate(cpuLimit, specLim.Cpu().MilliValue(), statusLim.Cpu().MilliValue())
 					}
 				}
 				continue
@@ -1126,11 +1131,11 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 		setPodCgroupConfig := func(rName string) error {
 			var err error
 			switch rName {
-			case "cpu-request":
+			case cpuRequest:
 				err = pcm.SetPodCgroupCpuConfig(pod, nil, podResources.CpuPeriod, podResources.CpuShares)
-			case "cpu-limit":
+			case cpuLimit:
 				err = pcm.SetPodCgroupCpuConfig(pod, podResources.CpuQuota, podResources.CpuPeriod, nil)
-			case "memory-limit":
+			case memLimit:
 				err = pcm.SetPodCgroupMemoryConfig(pod, *podResources.Memory)
 			}
 			if err != nil {
@@ -1160,7 +1165,7 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 			}
 			return err
 		}
-		if len(podContainerChanges.ContainersToUpdate["memory-limit"]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
+		if len(podContainerChanges.ContainersToUpdate[memLimit]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
 			currentPodMemoryLimit, err := pcm.GetPodCgroupMemoryConfig(pod)
 			if err != nil {
 				klog.Errorf("GetPodCgroupMemoryConfig for pod %s failed: %v", pod.Name, err)
@@ -1172,30 +1177,30 @@ func (m *kubeGenericRuntimeManager) SyncPodContainer(pod *v1.Pod, podStatus *kub
 				return
 			}
 			if currentPodMemoryUsage >= uint64(*podResources.Memory) {
-				klog.Errorf("Aborting attempt to set pod memory limit less than current usage.", pod.Name, err)
+				klog.Errorf("Aborting attempt to set pod memory limit less than current memory usage for pod %s.", pod.Name)
 				return
 			}
-			if errResize := resizeContainers("memory-limit", int64(currentPodMemoryLimit), *podResources.Memory); errResize != nil {
+			if errResize := resizeContainers(memLimit, int64(currentPodMemoryLimit), *podResources.Memory); errResize != nil {
 				return
 			}
 		}
-		if len(podContainerChanges.ContainersToUpdate["cpu-request"]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
+		if len(podContainerChanges.ContainersToUpdate[cpuRequest]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
 			_, _, currentPodCPUShares, err := pcm.GetPodCgroupCpuConfig(pod)
 			if err != nil {
 				klog.Errorf("GetPodCgroupCpuConfig for pod %s failed: %v", pod.Name, err)
 				return
 			}
-			if errResize := resizeContainers("cpu-request", int64(currentPodCPUShares), int64(*podResources.CpuShares)); errResize != nil {
+			if errResize := resizeContainers(cpuRequest, int64(currentPodCPUShares), int64(*podResources.CpuShares)); errResize != nil {
 				return
 			}
 		}
-		if len(podContainerChanges.ContainersToUpdate["cpu-limit"]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
+		if len(podContainerChanges.ContainersToUpdate[cpuLimit]) > 0 || len(podContainerChanges.ContainersToRestart) > 0 {
 			currentPodCpuQuota, _, _, err := pcm.GetPodCgroupCpuConfig(pod)
 			if err != nil {
 				klog.Errorf("GetPodCgroupCpuConfig for pod %s failed: %v", pod.Name, err)
 				return
 			}
-			if errUpdate := resizeContainers("cpu-limit", currentPodCpuQuota, *podResources.CpuQuota); errUpdate != nil {
+			if errUpdate := resizeContainers(cpuLimit, currentPodCpuQuota, *podResources.CpuQuota); errUpdate != nil {
 				return
 			}
 		}
@@ -1242,7 +1247,7 @@ func (m *kubeGenericRuntimeManager) updatePodContainerResources(pod *v1.Pod, pod
 			statusRequests = cInfo.kubeContainerStatus.Resources.Requests
 		}
 		switch resourceName {
-		case "cpu-request":
+		case cpuRequest:
 			container.Resources.Limits = v1.ResourceList{
 				v1.ResourceCPU:    *statusLimits.Cpu(),
 				v1.ResourceMemory: *statusLimits.Memory(),
@@ -1251,7 +1256,7 @@ func (m *kubeGenericRuntimeManager) updatePodContainerResources(pod *v1.Pod, pod
 				v1.ResourceCPU:    *specAllocs.Cpu(),
 				v1.ResourceMemory: *statusRequests.Memory(),
 			}
-		case "cpu-limit":
+		case cpuLimit:
 			container.Resources.Limits = v1.ResourceList{
 				v1.ResourceCPU:    *specLimits.Cpu(),
 				v1.ResourceMemory: *statusLimits.Memory(),
@@ -1260,7 +1265,7 @@ func (m *kubeGenericRuntimeManager) updatePodContainerResources(pod *v1.Pod, pod
 				v1.ResourceCPU:    *statusRequests.Cpu(),
 				v1.ResourceMemory: *statusRequests.Memory(),
 			}
-		case "memory-limit":
+		case memLimit:
 			container.Resources.Limits = v1.ResourceList{
 				v1.ResourceCPU:    *statusLimits.Cpu(),
 				v1.ResourceMemory: *specLimits.Memory(),
