@@ -17,6 +17,7 @@ limitations under the License.
 package apiserverupdate
 
 import (
+	"github.com/grafov/bcast"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -29,6 +30,26 @@ const (
 
 	serviceGroupId1 = "1"
 )
+
+func TestGetAPIServerConfigUpdateChGrp(t *testing.T) {
+	// get existing apiServerConfigUpdateChGrp
+	apiServerConfigUpdateChGrp = bcast.NewGroup()
+	go apiServerConfigUpdateChGrp.Broadcast(0)
+	chGrp := GetAPIServerConfigUpdateChGrp()
+	assert.NotNil(t, chGrp)
+	assert.Equal(t, apiServerConfigUpdateChGrp, chGrp)
+
+	// when apiServerConfigUpdateChGrp is nil, create new one
+	apiServerConfigUpdateChGrp.Close()
+	apiServerConfigUpdateChGrp = nil
+	chGrp = GetAPIServerConfigUpdateChGrp()
+	assert.NotNil(t, chGrp)
+	assert.Equal(t, apiServerConfigUpdateChGrp, chGrp)
+
+	// tear down
+	apiServerConfigUpdateChGrp.Close()
+	apiServerConfigUpdateChGrp = nil
+}
 
 func TestSetAPIServerConfig(t *testing.T) {
 	t.Log("1. Test update argument later won't affect APIServerConfig in global")
@@ -50,6 +71,23 @@ func TestSetAPIServerConfig(t *testing.T) {
 	assert.Equal(t, 1, len(ss2.Addresses))
 	assert.Equal(t, masterIP1, ss2.Addresses[0].IP)
 	assert.Equal(t, "", ss2.Addresses[0].Hostname)
+}
+
+func TestGetClientSetsWatcher(t *testing.T) {
+	// test get existing clientSetWatcher
+	clientSetWatcher = &ClientSetsWatcher{}
+	cw := GetClientSetsWatcher()
+	assert.NotNil(t, cw)
+	assert.Equal(t, clientSetWatcher, cw)
+
+	// when clientSetWatcher is nil, create new one
+	clientSetWatcher = nil
+	cw = GetClientSetsWatcher()
+	assert.NotNil(t, cw)
+	assert.Equal(t, clientSetWatcher, cw)
+
+	// tear down
+	clientSetWatcher = nil
 }
 
 func TestClientSetWatcherNotification(t *testing.T) {
