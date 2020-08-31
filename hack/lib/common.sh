@@ -240,17 +240,8 @@ function kube::common::start_apiserver()  {
     configfilepath="${PARTITION_CONFIG_DIR}apiserver.config"
     ${CONTROLPLANE_SUDO} rm -f  $configfilepath
     ${CONTROLPLANE_SUDO} cp hack/apiserver.config $configfilepath
-    echo "Creating apiserver partition config file  $configfilepath..."
+    echo "Copied the apiserver partition config file  $configfilepath..."
 
-    previous=tenant$(($1+1))
-    if [[ $1 -eq 0 ]]; then
-      previous=
-    fi
-    partition_end=tenant$(($1+2))
-    if [[ "$(($1 + 1))" -eq "${APISERVER_NUMBER}" ]]; then
-      partition_end=
-    fi
-    ${CONTROLPLANE_SUDO}  sed -i "s/tenant_begin,tenant_end/${previous},${partition_end}/gi"  $configfilepath
     security_admission=""
     if [[ -n "${DENY_SECURITY_CONTEXT_ADMISSION}" ]]; then
       security_admission=",SecurityContextDeny"
@@ -470,6 +461,8 @@ function kube::common::start_controller_manager {
     CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
     ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
       --v="${LOG_LEVEL}" \
+      --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+      --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
       --vmodule="${LOG_SPEC}" \
       --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
       --root-ca-file="${ROOT_CA_FILE}" \

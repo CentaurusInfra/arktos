@@ -1,5 +1,7 @@
 {
     "reportHealthIntervalInSecond": 10,
+    "resyncPeriod": "12h0m0s",
+    "qps": 20,
     "controllers": [
         {
             "type":    "node",

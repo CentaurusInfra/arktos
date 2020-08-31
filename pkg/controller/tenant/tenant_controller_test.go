@@ -108,25 +108,19 @@ func TestTenantCreation(t *testing.T) {
 	}
 
 	for k, tc := range testcases {
-		client := fake.NewSimpleClientset(testcases["new-tenants"].Tenant)
+		client := fake.NewSimpleClientset(testcases[k].Tenant)
 		informers := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), controller.NoResyncPeriodFunc())
 		tnInformer := informers.Core().V1().Tenants()
+		namespaceInformer := informers.Core().V1().Namespaces()
+		clusterRoleInformer := informers.Rbac().V1().ClusterRoles()
+		clusterRoleBindingInformer := informers.Rbac().V1().ClusterRoleBindings()
 		networkClient := fakearktosv1.NewSimpleClientset(&arktosv1.Network{})
 		fakeDiscoverFn := func() ([]*metav1.APIResourceList, error) {
 			return []*metav1.APIResourceList{}, nil
 		}
 
-		controller := NewTenantController(
-			client,
-			tnInformer,
-			10*time.Minute,
-			networkClient,
-			tc.NetworkTemplatePath,
-			nil,
-			fakeDiscoverFn,
-			v1.FinalizerArktos,
-		)
-		controller.listerSynced = alwaysReady
+		controller := NewTenantController(client, tnInformer, namespaceInformer, clusterRoleInformer, clusterRoleBindingInformer, 10*time.Minute, networkClient, tc.NetworkTemplatePath, nil, fakeDiscoverFn, v1.FinalizerArktos)
+		controller.tenantListerSynced = alwaysReady
 
 		syncCalls := make(chan struct{})
 		controller.syncHandler = func(key string) error {
@@ -149,21 +143,52 @@ func TestTenantCreation(t *testing.T) {
 
 		tnStore := tnInformer.Informer().GetStore()
 		tnStore.Add(tc.Tenant)
-		controller.enqueue(tc.Tenant)
 
-		// wait to be called
-		select {
-		case <-syncCalls:
-		case <-time.After(10 * time.Second):
-			t.Errorf("%s: took too long", k)
-		}
-
-		clientActions := client.Actions()
+		clientActions := syncTenantAndCheckActionCount(t, controller, tc, syncCalls, k, client)
 		if len(clientActions) != tc.ExpectActionCount {
 			t.Errorf("unmatched action counts, expect: %d, actual %d", tc.ExpectActionCount, len(clientActions))
 		}
 
+		// add automatically provisioned namespaces, clusterrole and clusterrolebinding to informer cache for resync tests
+		nsStore := namespaceInformer.Informer().GetStore()
+		clusterRoleStore := clusterRoleInformer.Informer().GetStore()
+		clusterRoleBindingStore := clusterRoleBindingInformer.Informer().GetStore()
+		for _, ns := range tc.ExpectCreatedNamespaces {
+			testns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns, Tenant: tc.Tenant.Name}}
+			nsStore.Add(testns)
+		}
+		clusterRoleStore.Add(tc.ExpectInitialRole)
+		clusterRoleBindingStore.Add(tc.ExpectInitialRoleBinding)
+
+		// this test needs to run before the other because this does not
+		// have cache check yet.
+		t.Run("bootstrap network objects", func(t *testing.T) {
+			// verify network CR actions
+			netActions := networkClient.Actions()
+			if tc.ExpectedNetwork == nil {
+				if 0 != len(netActions) {
+					t.Errorf("%s: Should have no action; got actions: %#v", k, netActions)
+				}
+			} else {
+				if 1 != len(netActions) {
+					t.Errorf("%s: Expected to create network %#v. Actual actions were: %#v", k, tc.ExpectedNetwork.Name, netActions)
+				}
+				if !netActions[0].Matches("create", "networks") {
+					t.Errorf("%s: Unexpected action %v", k, netActions[0])
+				}
+				netObj := netActions[0].(core.CreateAction).GetObject().(*arktosv1.Network)
+				if !reflect.DeepEqual(netObj, tc.ExpectedNetwork) {
+					t.Errorf("%s: Expected network object %#v; got %#v", k, tc.ExpectedNetwork, netObj)
+				}
+			}
+		})
+
 		t.Run("bootstrap namespaces", func(t *testing.T) {
+			// sync controller again for resync tests
+			// action count should be same as before the resync because
+			// namespaces have already been created
+			clientActions := syncTenantAndCheckActionCount(t, controller, tc, syncCalls, k, client)
+
 			actualCreatedNamespaces := sets.NewString()
 			expectCreatedNamespaces := sets.NewString()
 			for _, s := range tc.ExpectCreatedNamespaces {
@@ -197,6 +222,11 @@ func TestTenantCreation(t *testing.T) {
 		})
 
 		t.Run("bootstrap cluster role and binding", func(t *testing.T) {
+			// sync controller again for resync tests
+			// action count should be same as before the resync because
+			// clusterole and clusterrolebinding have already been created
+			clientActions := syncTenantAndCheckActionCount(t, controller, tc, syncCalls, k, client)
+
 			for _, action := range clientActions {
 				if action.Matches("create", "clusterroles") {
 					createdClusterRole := action.(core.CreateAction).GetObject().(*rbacv1.ClusterRole)
@@ -215,28 +245,34 @@ func TestTenantCreation(t *testing.T) {
 				}
 			}
 		})
-
-		t.Run("bootstrap network objects", func(t *testing.T) {
-			// verify network CR actions
-			netActions := networkClient.Actions()
-			if tc.ExpectedNetwork == nil {
-				if 0 != len(netActions) {
-					t.Errorf("%s: Should have no action; got actions: %#v", k, netActions)
-				}
-			} else {
-				if 1 != len(netActions) {
-					t.Errorf("%s: Expected to create network %#v. Actual actions were: %#v", k, tc.ExpectedNetwork.Name, netActions)
-				}
-				if !netActions[0].Matches("create", "networks") {
-					t.Errorf("%s: Unexpected action %v", k, netActions[0])
-				}
-				netObj := netActions[0].(core.CreateAction).GetObject().(*arktosv1.Network)
-				if !reflect.DeepEqual(netObj, tc.ExpectedNetwork) {
-					t.Errorf("%s: Expected network object %#v; got %#v", k, tc.ExpectedNetwork, netObj)
-				}
-			}
-		})
 	}
+}
+
+func syncTenantAndCheckActionCount(t *testing.T, controller *TenantController, tc struct {
+	Tenant                   *v1.Tenant
+	ExpectCreatedNamespaces  []string
+	NetworkTemplate          string
+	NetworkTemplatePath      string
+	ExpectedNetwork          *arktosv1.Network
+	ExpectInitialRole        *rbacv1.ClusterRole
+	ExpectInitialRoleBinding *rbacv1.ClusterRoleBinding
+	ExpectActionCount        int
+}, syncCalls chan struct{}, k string, client *fake.Clientset) []core.Action {
+
+	controller.enqueue(tc.Tenant)
+
+	// wait to be called
+	select {
+	case <-syncCalls:
+	case <-time.After(10 * time.Second):
+		t.Errorf("%s: took too long", k)
+	}
+
+	clientActions := client.Actions()
+	if len(clientActions) != tc.ExpectActionCount {
+		t.Errorf("unmatched action counts, expect: %d, actual %d", tc.ExpectActionCount, len(clientActions))
+	}
+	return clientActions
 }
 
 func initialClusterRoleBinding(tenant string) *rbacv1.ClusterRoleBinding {

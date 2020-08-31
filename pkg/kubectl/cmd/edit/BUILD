@@ -27,6 +27,7 @@ go_test(
         "//pkg/kubectl/cmd/create:go_default_library",
         "//pkg/kubectl/cmd/testing:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/diff:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/sets:go_default_library",

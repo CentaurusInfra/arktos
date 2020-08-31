@@ -261,7 +261,7 @@ const (
 	MinExternalEtcdVersion = "3.2.18"
 
 	// DefaultEtcdVersion indicates the default etcd version that kubeadm uses
-	DefaultEtcdVersion = "3.4.4-0"
+	DefaultEtcdVersion = "3.4.4-arktos.1-1"
 
 	// PauseVersion indicates the default pause image version for kubeadm
 	PauseVersion = "3.1"
@@ -411,11 +411,11 @@ var (
 	CurrentKubernetesVersion = version.MustParseSemantic("v1.14.0")
 
 	// SupportedEtcdVersion lists officially supported etcd versions with corresponding Kubernetes releases
-	// Since the current arktos version is 14, therefore, we change the etcd version to 3.4.4
+	// Since the current arktos version is 14, therefore, we change the etcd version to 3.4.4-arktos.1-1
 	SupportedEtcdVersion = map[uint8]string{
 		12: "3.2.24",
 		13: "3.2.24",
-		14: "3.4.4-0",
+		14: "3.4.4-arktos.1-1",
 	}
 
 	// KubeadmCertsClusterRoleName sets the name for the ClusterRole that allows

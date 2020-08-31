@@ -23,9 +23,16 @@ https://github.com/openshift/origin/blob/bb340c5dd5ff72718be86fb194dedc0faed7f4c
 */
 
 import (
+	"context"
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apiserver/pkg/storage"
 	"net"
 	"reflect"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1176,5 +1183,102 @@ func TestLeaseRemoveEndpoints(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestListUpdateStorageLeases(t *testing.T) {
+	ttl := 10 * time.Second
+	backingStorage := &fakeStorage{}
+	leases := NewLeases(backingStorage, "/foo/", ttl)
+
+	// 1. Check list leases
+	listMap, err := leases.ListLeases()
+	assert.Nil(t, err)
+	assert.NotNil(t, listMap)
+	expectedListMap := make(map[string][]string)
+	expectedListMap["0"] = []string{"1.2.3.4"}
+	if !reflect.DeepEqual(listMap, expectedListMap) {
+		t.Errorf("expected result:\n%#v\ngot:\n%#v\n", expectedListMap, listMap)
+	}
+
+	// 2. Check update leases
+	callUpdate1 := backingStorage.callUpdate
+	err = leases.UpdateLease("1.2.3.4", "0")
+	assert.Nil(t, err)
+	assert.Equal(t, callUpdate1+1, backingStorage.callUpdate)
+
+	// 3. Check remove lease
+	callDelete1 := backingStorage.callDelete
+	err = leases.RemoveLease("127.0.0.0")
+	assert.Nil(t, err)
+	assert.Equal(t, callDelete1+1, backingStorage.callDelete)
+}
+
+type fakeStorage struct {
+	err        error
+	callUpdate int
+	callDelete int
+}
+
+func (fs *fakeStorage) Versioner() storage.Versioner { return nil }
+func (fs *fakeStorage) Create(_ context.Context, _ string, _, _ runtime.Object, _ uint64) error {
+	return fmt.Errorf("unimplemented")
+}
+func (fs *fakeStorage) Delete(_ context.Context, _ string, _ runtime.Object, _ *storage.Preconditions, _ storage.ValidateObjectFunc) error {
+	fs.callDelete++
+	return fs.err
+}
+func (fs *fakeStorage) Watch(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	w := newDummyWatch()
+	aggWatch := watch.NewAggregatedWatcher()
+	aggWatch.AddWatchInterface(w, nil)
+	return aggWatch
+}
+func (fs *fakeStorage) WatchList(c context.Context, s1 string, s2 string, p storage.SelectionPredicate) watch.AggregatedWatchInterface {
+	return fs.Watch(c, s1, s2, p)
+}
+func (fs *fakeStorage) Get(_ context.Context, _ string, _ string, _ runtime.Object, _ bool) error {
+	return fmt.Errorf("unimplemented")
+}
+func (fs *fakeStorage) GetToList(_ context.Context, _ string, _ string, _ storage.SelectionPredicate, _ runtime.Object) error {
+	return fs.err
+}
+func (fs *fakeStorage) List(_ context.Context, _ string, _ string, _ storage.SelectionPredicate, listObj runtime.Object) error {
+	epList := listObj.(*corev1.EndpointsList)
+	epList.ListMeta = metav1.ListMeta{ResourceVersion: "100"}
+	epList.Items = []corev1.Endpoints{
+		{
+			Subsets: []corev1.EndpointSubset{{
+				Addresses:      []corev1.EndpointAddress{{IP: "1.2.3.4"}},
+				Ports:          []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+				ServiceGroupId: "0",
+			}},
+		},
+	}
+	return fs.err
+}
+func (fs *fakeStorage) GuaranteedUpdate(_ context.Context, _ string, _ runtime.Object, _ bool, _ *storage.Preconditions, _ storage.UpdateFunc, _ ...runtime.Object) error {
+	fs.callUpdate++
+	return fs.err
+}
+func (fs *fakeStorage) Count(_ string) (int64, error) {
+	return 0, fmt.Errorf("unimplemented")
+}
+
+type dummyWatch struct {
+	ch chan watch.Event
+}
+
+func (w *dummyWatch) ResultChan() <-chan watch.Event {
+	return w.ch
+}
+
+func (w *dummyWatch) Stop() {
+	close(w.ch)
+}
+
+func newDummyWatch() watch.Interface {
+	return &dummyWatch{
+		ch: make(chan watch.Event),
 	}
 }

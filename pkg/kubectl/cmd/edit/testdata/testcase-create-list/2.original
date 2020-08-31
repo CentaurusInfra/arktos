@@ -9,6 +9,7 @@ metadata:
     app: svc2
   name: svc2
   namespace: edit-test
+  tenant: system
 spec:
   ports:
   - name: "80"

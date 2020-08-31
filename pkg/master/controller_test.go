@@ -18,6 +18,7 @@ limitations under the License.
 package master
 
 import (
+	"k8s.io/apimachinery/pkg/api/errors"
 	"net"
 	"reflect"
 	"testing"
@@ -1288,5 +1289,117 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 		if test.expectUpdate == nil && len(updates) > 0 {
 			t.Errorf("case %q: no update expected, yet saw: %v", test.testName, updates)
 		}
+	}
+}
+
+func TestMasterCountRemoveEndpoints(t *testing.T) {
+	ns := corev1.NamespaceDefault
+	om := func(name string) metav1.ObjectMeta {
+		return metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: ns, Name: name}
+	}
+	stopTests := []struct {
+		testName      string
+		serviceName   string
+		ip            string
+		endpointPorts []corev1.EndpointPort
+		endpointKeys  []string
+		endpoints     *corev1.EndpointsList
+		expectUpdate  *corev1.Endpoints // nil means none expected
+		expectedErr   error             // nil means non expected
+	}{
+		{
+			testName:      "successful stop reconciling",
+			serviceName:   "foo",
+			ip:            "1.2.3.4",
+			endpointPorts: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			endpointKeys:  []string{"1.2.3.4", "4.3.2.2", "4.3.2.3", "4.3.2.4"},
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses: []corev1.EndpointAddress{
+							{IP: "1.2.3.4"},
+							{IP: "4.3.2.2"},
+							{IP: "4.3.2.3"},
+							{IP: "4.3.2.4"},
+						},
+						Ports: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					}},
+				}},
+			},
+			expectUpdate: &corev1.Endpoints{
+				ObjectMeta: om("foo"),
+				Subsets: []corev1.EndpointSubset{{
+					Addresses: []corev1.EndpointAddress{
+						{IP: "4.3.2.2"},
+						{IP: "4.3.2.3"},
+						{IP: "4.3.2.4"},
+					},
+					Ports: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+				}},
+			},
+		},
+		{
+			testName:      "stop reconciling with ip not in endpoint ip list",
+			serviceName:   "foo",
+			ip:            "5.6.7.8",
+			endpointPorts: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			endpointKeys:  []string{"1.2.3.4", "4.3.2.2", "4.3.2.3", "4.3.2.4"},
+			endpoints: &corev1.EndpointsList{
+				Items: []corev1.Endpoints{{
+					ObjectMeta: om("foo"),
+					Subsets: []corev1.EndpointSubset{{
+						Addresses: []corev1.EndpointAddress{
+							{IP: "1.2.3.4"},
+							{IP: "4.3.2.2"},
+							{IP: "4.3.2.3"},
+							{IP: "4.3.2.4"},
+						},
+						Ports: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+					}},
+				}},
+			},
+		},
+		{
+			testName:      "stop reconciling when endpoints does not exist",
+			serviceName:   "foo",
+			ip:            "5.6.7.8",
+			endpointPorts: []corev1.EndpointPort{{Name: "foo", Port: 8080, Protocol: "TCP"}},
+			endpointKeys:  []string{"1.2.3.4", "4.3.2.2", "4.3.2.3", "4.3.2.4"},
+			endpoints:     &corev1.EndpointsList{},
+			expectedErr:   errors.NewNotFound(corev1.Resource("endpoints"), "foo"),
+		},
+	}
+
+	for _, test := range stopTests {
+		t.Run(test.testName, func(t *testing.T) {
+			clientset := fake.NewSimpleClientset()
+			for _, ep := range test.endpoints.Items {
+				if _, err := clientset.CoreV1().Endpoints(ep.Namespace).Create(&ep); err != nil {
+					t.Errorf("case %q: unexpected error: %v", test.testName, err)
+					continue
+				}
+			}
+
+			r := reconcilers.NewMasterCountEndpointReconciler(3, clientset.CoreV1())
+			err := r.RemoveEndpoints(test.serviceName, "", net.ParseIP(test.ip), test.endpointPorts)
+			if err != nil {
+				t.Errorf("case %q: unexpected error: %v", test.testName, err)
+			}
+			actualEndpoints, err := clientset.CoreV1().Endpoints(corev1.NamespaceDefault).Get(test.serviceName, metav1.GetOptions{})
+			if test.expectedErr != nil {
+				if !reflect.DeepEqual(err, test.expectedErr) {
+					t.Errorf("case %q: expected error: %v; got error: %v", test.testName, test.expectedErr, err)
+				}
+			} else if err != nil {
+				t.Errorf("case %q: unexpected err: %v", test.testName, err)
+			}
+
+			if test.expectUpdate != nil {
+				if e, a := test.expectUpdate, actualEndpoints; !reflect.DeepEqual(e, a) {
+					t.Errorf("case %q: expected update:\n%#v\ngot:\n%#v\n", test.testName, e, a)
+				}
+			}
+		})
 	}
 }

@@ -376,6 +376,8 @@ filegroup(
         "//vendor/golang.org/x/net/trace:all-srcs",
         "//vendor/golang.org/x/net/websocket:all-srcs",
         "//vendor/golang.org/x/oauth2:all-srcs",
+        "//vendor/golang.org/x/sync/errgroup:all-srcs",
+        "//vendor/golang.org/x/sync/semaphore:all-srcs",
         "//vendor/golang.org/x/sys/unix:all-srcs",
         "//vendor/golang.org/x/sys/windows:all-srcs",
         "//vendor/golang.org/x/text/encoding:all-srcs",

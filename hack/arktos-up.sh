@@ -59,8 +59,12 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# install cni plugin based on env var CNIPLUGIN (bridge, alktron)
-source ${KUBE_ROOT}/hack/arktos-cni.rc
+# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
+# If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
+# in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
+if [[ -z "${ARKTOS_NO_CNI_PREINSTALLED}" ]]; then
+  source ${KUBE_ROOT}/hack/arktos-cni.rc
+fi
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
 source "${KUBE_ROOT}/hack/lib/common.sh"
@@ -523,13 +527,13 @@ echo ""
 
 while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
 
-cluster/kubectl.sh label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-cluster/kubectl.sh create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
-cluster/kubectl.sh create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
-cluster/kubectl.sh get ds --namespace kube-system
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
 echo ""
 echo "Arktos Setup done."

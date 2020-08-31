@@ -27,6 +27,19 @@ var allowedNTPDiffInMilliSecond = uint64(5000)
 // For backwards compatible - can still use ETCD revision # starting from 1 and increases by 1 as backend storage
 var v2MinRevision = getRevisionNumber(time.Date(2020, 5, 10, 0, 0, 0, 0, time.UTC).UnixNano(), 0, 1)
 
+func RevisionStrIsNewer(rev1, rev2 string) (bool, error) {
+	revision1, err1 := strconv.ParseUint(rev1, 10, 64)
+	if err1 != nil {
+		return false, err1
+	}
+	revision2, err2 := strconv.ParseUint(rev2, 10, 64)
+	if err2 != nil {
+		return false, err2
+	}
+
+	return RevisionIsNewer(revision1, revision2), nil
+}
+
 // RevisionIsNewer is used in event comparison to check whether revision 1 is newer than
 // revision 2 and should be sent/accepted/processed
 func RevisionIsNewer(revision1, revision2 uint64) bool {

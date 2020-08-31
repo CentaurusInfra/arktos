@@ -29,14 +29,14 @@ steps:
   resultingOutput: 3.edited
 - type: request
   expectedMethod: PATCH
-  expectedPath: /api/v1/namespaces/myproject/configmaps/cm1
+  expectedPath: /api/v1/tenants/system/namespaces/myproject/configmaps/cm1
   expectedContentType: application/merge-patch+json
   expectedInput: 4.request
   resultingStatusCode: 200
   resultingOutput: 4.response
 - type: request
   expectedMethod: PATCH
-  expectedPath: /api/v1/namespaces/myproject/services/svc1
+  expectedPath: /api/v1/tenants/system/namespaces/myproject/services/svc1
   expectedContentType: application/merge-patch+json
   expectedInput: 5.request
   resultingStatusCode: 200

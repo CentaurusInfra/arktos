@@ -25,6 +25,8 @@ KUBE_ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 
 DEFAULT_KUBECONFIG="${HOME:-.}/.kube/config"
 
+CONTAINER_REGISTRY="${CONTAINER_REGISTRY:-gcr.io}"
+
 source "${KUBE_ROOT}/hack/lib/util.sh"
 # KUBE_RELEASE_VERSION_REGEX matches things like "v1.2.3" or "v1.2.3-alpha.4"
 #
@@ -391,7 +393,8 @@ function generate-etcd-cert() {
                 "usages": [
                     "signing",
                     "key encipherment",
-                    "server auth"
+                    "server auth",
+                    "client auth"
                 ]
             },
             "client": {
@@ -454,8 +457,9 @@ EOF
       ;;
     server)
       echo "Generate server certificates..."
-      echo '{"CN":"'${member_ip}'","hosts":[""],"key":{"algo":"ecdsa","size":256}}' \
-       | ${CFSSL_BIN} gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server -hostname="${member_ip},127.0.0.1" - \
+      san=${member_ip// /,}
+      echo '{"CN":"server","hosts":["'${member_ip}'"],"key":{"algo":"ecdsa","size":256}}' \
+       | ${CFSSL_BIN} gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server -hostname="${san},127.0.0.1" - \
        | ${CFSSLJSON_BIN} -bare "${prefix}"
       ;;
     peer)
@@ -886,6 +890,11 @@ EOF
 CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${CONTROLLER_MANAGER_TEST_LOG_LEVEL})
 EOF
     fi
+    if [ -n "${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL:-}" ]; then
+      cat >>$file <<EOF
+WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL})
+EOF
+    fi
     if [ -n "${SCHEDULER_TEST_ARGS:-}" ]; then
       cat >>$file <<EOF
 SCHEDULER_TEST_ARGS: $(yaml-quote ${SCHEDULER_TEST_ARGS})
@@ -1100,3 +1109,46 @@ function tear_down_alive_resources() {
   "${kubectl}" delete pvc --all || true
 }
 
+function registry-authentication() {
+  echo "Configuring registry authentication"
+  mkdir -p "${HOME}/.docker"
+  gcloud beta auth configure-docker -q
+}
+
+function create-and-upload-etcd-image() {
+
+  ETCD_IMAGE_REGISTRY="${ETCD_IMAGE_REGISTRY:-${CONTAINER_REGISTRY}/${PROJECT}}"
+
+  # Build+push the image through makefile.
+  MAKE_DIR="${KUBE_ROOT}/cluster/images/etcd"
+
+  local os
+  local arch
+  os=$(kube::util::host_os)
+  arch=$(kube::util::host_arch)
+  url="https://github.com/futurewei-cloud/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
+  download_file="etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
+  kube::util::download_file "${url}" "${download_file}"
+  tar xzf "${download_file}"
+  ETCD_DIR="etcd-v${ETCD_VERSION}-${os}-${arch}"
+  cp -R  "${ETCD_DIR}" "${MAKE_DIR}"
+  rm  "${download_file}"
+  rm -R "${ETCD_DIR}"
+  CURR_DIR=$(pwd)
+  cd "${MAKE_DIR}"
+  REGISTRY=${ETCD_IMAGE_REGISTRY} IMAGE_TAG=${ETCD_VERSION} make push
+  rm -R "${MAKE_DIR}/${ETCD_DIR}"
+  cd "$CURR_DIR"
+  echo "Created and uploaded the etcd image to docker registry."
+}
+
+function create-and-upload-etcd-empty-dir-cleanup-image() {
+    # Build+push the image through makefile.
+  MAKE_DIR="${KUBE_ROOT}/cluster/images/etcd-empty-dir-cleanup"
+  CURR_DIR=$(pwd)
+  cd "${MAKE_DIR}"
+  ETCD_IMAGE_REGISTRY="${ETCD_IMAGE_REGISTRY:-${CONTAINER_REGISTRY}/${PROJECT}}"
+  REGISTRY=${ETCD_IMAGE_REGISTRY} IMAGE_TAG=${ETCD_VERSION} make push
+  cd "$CURR_DIR"
+  echo "Created and uploaded the etcd-empty-dir-cleanup image to docker registry."
+}

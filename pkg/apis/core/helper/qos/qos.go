@@ -41,11 +41,12 @@ func GetPodQOS(pod *core.Pod) core.PodQOSClass {
 	zeroQuantity := resource.MustParse("0")
 	isGuaranteed := true
 
-	defer func() {
-		pod.Spec.WorkloadInfo = nil
-	}()
+	// Since pod.Spec.Workload() can potentially change the spec.WorkloadInfo slice in the pod
+	// make a local copy for calculate the QoS class for a given pod, instead lock the function
+	// for possible perf impact
+	specLocal := pod.Spec.DeepCopy()
 
-	for _, workload := range pod.Spec.Workloads() {
+	for _, workload := range specLocal.Workloads() {
 		// process requests
 		for name, quantity := range workload.Resources.Requests {
 			if !isSupportedQoSComputeResource(name) {

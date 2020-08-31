@@ -234,7 +234,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "*=thingy"},
 		},
 		{
@@ -261,7 +261,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "*=thingy"},
 		},
 		{
@@ -288,7 +288,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "*=thingy"},
 		},
 		{
@@ -315,7 +315,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", "*=thingy"},
 		},
 		{
@@ -342,7 +342,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", "*=thingy"},
 		},
 		{
@@ -369,7 +369,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
+			path:         "/tenants/system/namespaces/test/daemonsets/nginx",
 			args:         []string{"daemonset", "nginx", "*=thingy"},
 		},
 		{
@@ -396,7 +396,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "*=thingy"},
 		},
 		{
@@ -423,7 +423,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "*=thingy"},
 		},
 		{
@@ -450,7 +450,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "*=thingy"},
 		},
 		{
@@ -477,7 +477,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
+			path:         "/tenants/system/namespaces/test/deployments/nginx",
 			args:         []string{"deployment", "nginx", "*=thingy"},
 		},
 		{
@@ -504,7 +504,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", "*=thingy"},
 		},
 		{
@@ -531,7 +531,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", "*=thingy"},
 		},
 		{
@@ -558,7 +558,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
+			path:         "/tenants/system/namespaces/test/statefulsets/nginx",
 			args:         []string{"statefulset", "nginx", "*=thingy"},
 		},
 		{
@@ -585,7 +585,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: batchv1.SchemeGroupVersion,
-			path:         "/namespaces/test/jobs/nginx",
+			path:         "/tenants/system/namespaces/test/jobs/nginx",
 			args:         []string{"job", "nginx", "*=thingy"},
 		},
 		{
@@ -612,7 +612,7 @@ func TestSetImageRemote(t *testing.T) {
 				},
 			},
 			groupVersion: corev1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicationcontrollers/nginx",
+			path:         "/tenants/system/namespaces/test/replicationcontrollers/nginx",
 			args:         []string{"replicationcontroller", "nginx", "*=thingy"},
 		},
 	}
@@ -626,7 +626,7 @@ func TestSetImageRemote(t *testing.T) {
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case p == "/tenants/system"+input.path && m == http.MethodGet:
+					case p == input.path && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(input.object)}, nil
 					case p == input.path && m == http.MethodPatch:
 						stream, err := req.GetBody()
@@ -697,7 +697,7 @@ func TestSetImageRemoteWithSpecificContainers(t *testing.T) {
 				},
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "nginx=thingy"},
 		},
 		{
@@ -724,7 +724,7 @@ func TestSetImageRemoteWithSpecificContainers(t *testing.T) {
 				},
 			},
 			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
+			path:         "/tenants/system/namespaces/test/replicasets/nginx",
 			args:         []string{"replicaset", "nginx", "nginx=thingy"},
 		},
 	}
@@ -738,7 +738,7 @@ func TestSetImageRemoteWithSpecificContainers(t *testing.T) {
 				NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 					switch p, m := req.URL.Path, req.Method; {
-					case p == "/tenants/system"+input.path && m == http.MethodGet:
+					case p == input.path && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(input.object)}, nil
 					case p == input.path && m == http.MethodPatch:
 						stream, err := req.GetBody()

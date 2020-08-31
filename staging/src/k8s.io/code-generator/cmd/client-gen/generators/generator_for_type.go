@@ -143,7 +143,14 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"Version":                  namer.IC(g.version),
 		"klogInfof":                c.Universe.Type(types.Name{Package: "k8s.io/klog", Name: "V"}),
 		"errorIsForbidden":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "IsForbidden"}),
+		"errorNewInternal":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "NewInternalError"}),
+		"revisionStringCompare":    c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/diff", Name: "RevisionStrIsNewer"}),
+		"fmtErrorf":                c.Universe.Type(types.Name{Package: "fmt", Name: "Errorf"}),
 		"stringsContains":          c.Universe.Type(types.Name{Package: "strings", Name: "Contains"}),
+		"listLock":                 c.Universe.Type(types.Name{Package: "sync", Name: "Lock"}),
+		"listUnlock":               c.Universe.Type(types.Name{Package: "sync", Name: "Unlock"}),
+		"syncMutex":                c.Universe.Type(types.Name{Package: "sync", Name: "Mutex"}),
+		"syncWaitGroup":            c.Universe.Type(types.Name{Package: "sync", Name: "WaitGroup"}),
 		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
 		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
 		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
@@ -456,6 +463,87 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &$.resultType|raw$List{}
+
+	wgLen := 1
+	// When resource version is not empty, it reads from api server local cache
+	// Need to check all api server partitions
+	if opts.ResourceVersion != "" && len(c.clients) > 1 {
+		wgLen = len(c.clients)
+	}
+
+	if wgLen > 1 {
+		var listLock sync.Mutex
+
+		var wg sync.WaitGroup
+		wg.Add(wgLen)
+		results := make(map[int]*$.resultType|raw$List)
+		errs := make(map[int]error)
+		for i, client := range c.clients {
+			go func(c *$.type|privatePlural$, ci $.RESTClientInterface|raw$, opts $.ListOptions|raw$, lock *$.syncMutex|raw$, pos int, resultMap map[int]*$.resultType|raw$List, errMap map[int]error) {
+				r := &$.resultType|raw$List{}
+				err := ci.Get().
+					$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
+					$if .tenanted$Tenant(c.te).$end$
+					Resource("$.type|resource$").
+					VersionedParams(&opts, $.schemeParameterCodec|raw$).
+					Timeout(timeout).
+					Do().
+					Into(r)
+
+				lock.Lock()
+				resultMap[pos] = r
+				errMap[pos] = err
+				lock.Unlock()
+				wg.Done()
+			}(c, client, opts, &listLock, i, results, errs)
+		}
+		wg.Wait()
+
+		// consolidate list result
+		itemsMap := make(map[string]$.resultType|raw$)
+		for j:=0; j < wgLen; j++ {
+			currentErr, isOK := errs[j]
+			if isOK && currentErr != nil {
+				if !($.errorIsForbidden|raw$(currentErr) && $.stringsContains|raw$(currentErr.Error(), "no relationship found between node")) {
+					err = currentErr
+					return
+				} else {
+					continue
+				}
+			}
+
+			currentResult, _ := results[j]
+			if result.ResourceVersion == "" {
+				result.TypeMeta = currentResult.TypeMeta
+				result.ListMeta = currentResult.ListMeta
+			} else {
+				isNewer, errCompare := $.revisionStringCompare|raw$(currentResult.ResourceVersion, result.ResourceVersion)
+				if errCompare != nil {
+					err = $.errorNewInternal|raw$($.fmtErrorf|raw$("Invalid resource version [%v]", errCompare))
+					return
+				} else if isNewer {
+					// Since the lists are from different api servers with different partition. When used in list and watch,
+					// we cannot watch from the biggest resource version. Leave it to watch for adjustment.
+					result.ResourceVersion = currentResult.ResourceVersion
+				}
+			}
+			for _, item := range currentResult.Items {
+				if _, exist := itemsMap[item.ResourceVersion]; !exist {
+					itemsMap[item.ResourceVersion] = item
+				}
+			}
+		}
+
+		for _, item := range itemsMap {
+			result.Items = append(result.Items, item)
+		}
+		return
+	}
+
+	// The following is used for single api server partition and/or resourceVersion is empty
+	// When resourceVersion is empty, objects are read from ETCD directly and will get full
+	// list of data if no permission issue. The list needs to done sequential to avoid increasing
+	// system load.
 	err = c.client.Get().
 		$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
 		$if .tenanted$Tenant(c.te).$end$
