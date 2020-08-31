@@ -17,7 +17,10 @@ limitations under the License.
 package watch_test
 
 import (
+	"errors"
+	"github.com/stretchr/testify/assert"
 	"reflect"
+	"sync"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -172,4 +175,25 @@ func TestProxyWatcher(t *testing.T) {
 
 	// Test double close
 	w.Stop()
+}
+
+func TestGetErrorsConcurrency(t *testing.T) {
+	aw := NewAggregatedWatcher()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func(aggWatcher *AggregatedWatcher, i int) {
+			err := errors.New("Test error")
+			aggWatcher.AddWatchInterface(nil, err)
+			errs := aggWatcher.GetErrors()
+			assert.True(t, errs.Error() != "")
+			wg.Done()
+		}(aw, i)
+	}
+
+	wg.Wait()
+	errs := aw.GetErrors()
+	aw.Stop()
+	assert.True(t, errs.Error() != "")
 }
