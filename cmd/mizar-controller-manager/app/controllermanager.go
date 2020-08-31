@@ -61,8 +61,6 @@ import (
 	genericcontrollermanager "k8s.io/kubernetes/cmd/controller-manager/app"
 	"k8s.io/kubernetes/cmd/mizar-controller-manager/app/config"
 	"k8s.io/kubernetes/cmd/mizar-controller-manager/app/options"
-
-	//podcontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/app/pod"
 	"k8s.io/kubernetes/pkg/controller"
 	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
@@ -256,47 +254,6 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 
 	run(context.TODO())
 	panic("unreachable")
-
-	// if !c.ComponentConfig.Generic.LeaderElection.LeaderElect {
-	// 	run(context.TODO())
-	// 	panic("unreachable")
-	// }
-
-	// id, err := os.Hostname()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // add a uniquifier so that two processes on the same host don't accidentally both become active
-	// id = id + "_" + string(uuid.NewUUID())
-	// rl, err := resourcelock.New(c.ComponentConfig.Generic.LeaderElection.ResourceLock,
-	// 	"kube-system",
-	// 	"mizar-controller-manager",
-	// 	c.LeaderElectionClient.CoreV1(),
-	// 	c.LeaderElectionClient.CoordinationV1(),
-	// 	resourcelock.ResourceLockConfig{
-	// 		Identity:      id,
-	// 		EventRecorder: c.EventRecorder,
-	// 	})
-	// if err != nil {
-	// 	klog.Fatalf("error creating lock: %v", err)
-	// }
-
-	// leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
-	// 	Lock:          rl,
-	// 	LeaseDuration: c.ComponentConfig.Generic.LeaderElection.LeaseDuration.Duration,
-	// 	RenewDeadline: c.ComponentConfig.Generic.LeaderElection.RenewDeadline.Duration,
-	// 	RetryPeriod:   c.ComponentConfig.Generic.LeaderElection.RetryPeriod.Duration,
-	// 	Callbacks: leaderelection.LeaderCallbacks{
-	// 		OnStartedLeading: run,
-	// 		OnStoppedLeading: func() {
-	// 			klog.Fatalf("leaderelection lost")
-	// 		},
-	// 	},
-	// 	WatchDog: electionChecker,
-	// 	Name:     "mizar-controller-manager",
-	// })
-	// panic("unreachable")
 }
 
 // ControllerContext defines the context object for controller
@@ -385,6 +342,7 @@ const (
 func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc {
 	controllers := map[string]InitFunc{}
 	controllers["pod"] = startPodController
+	controllers["node"] = startNodeController
 
 	return controllers
 }

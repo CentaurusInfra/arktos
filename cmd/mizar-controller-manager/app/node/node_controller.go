@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pod
+package node
 
 import (
 	"fmt"
@@ -38,8 +38,8 @@ import (
 )
 
 const (
-	controllerKind = "pod"
-	controllerFor  = "mizar_pod"
+	controllerKind = "node"
+	controllerFor  = "mizar_node"
 )
 
 // ObjectController points to current controller
@@ -47,7 +47,7 @@ type ObjectController struct {
 	kubeClient clientset.Interface
 
 	// A store of objects, populated by the shared informer passed to ObjectController
-	lister corelisters.PodLister
+	lister corelisters.NodeLister
 	// listerSynced returns true if the store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
 	listerSynced cache.InformerSynced
@@ -60,7 +60,7 @@ type ObjectController struct {
 }
 
 // NewObjectController configures a new controller instance
-func NewObjectController(informer coreinformers.PodInformer, kubeClient clientset.Interface) *ObjectController {
+func NewObjectController(informer coreinformers.NodeInformer, kubeClient clientset.Interface) *ObjectController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -116,8 +116,8 @@ func (oc *ObjectController) createObj(obj interface{}) {
 
 // When an object is updated.
 func (oc *ObjectController) updateObj(old, cur interface{}) {
-	curObj := cur.(*v1.Pod)
-	oldObj := old.(*v1.Pod)
+	curObj := cur.(*v1.Node)
+	oldObj := old.(*v1.Node)
 	if curObj.ResourceVersion == oldObj.ResourceVersion {
 		// Periodic resync will send update events for all known objects.
 		// Two different versions of the same object will always have different RVs.
@@ -127,7 +127,8 @@ func (oc *ObjectController) updateObj(old, cur interface{}) {
 		// Object is being deleted. Don't handle update anymore.
 		return
 	}
-	if oldObj.Status.PodIP == "" || curObj.Status.PodIP == oldObj.Status.PodIP {
+
+	if oldObj.Status.NodeInfo.MachineID == "" || curObj.Status.NodeInfo.MachineID == oldObj.Status.NodeInfo.MachineID {
 		// For now, ignore none ip change.
 		// TODO Need to verify what's the field change that Mizar operator should listen to.
 		return
@@ -186,7 +187,7 @@ func (oc *ObjectController) handle(key string) error {
 		return err
 	}
 
-	obj, err := oc.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+	obj, err := oc.lister.Get(name)
 	if errors.IsNotFound(err) {
 		klog.V(4).Infof("%v %v cannot be found", controllerFor, key)
 		return nil

@@ -26,15 +26,28 @@ import (
 
 	"k8s.io/klog"
 
+	nodecontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/app/node"
 	podcontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/app/pod"
 )
 
 func startPodController(ctx ControllerContext) (http.Handler, bool, error) {
-	klog.V(2).Infof("Starting start %v controller", "mizar-pod-controller")
+	controllerName := "mizar-pod-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
 
 	go podcontroller.NewObjectController(
 		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ClientBuilder.ClientOrDie("mizar-pod-controller"),
+		ctx.ClientBuilder.ClientOrDie(controllerName),
+	).Run(1, ctx.Stop)
+	return nil, true, nil
+}
+
+func startNodeController(ctx ControllerContext) (http.Handler, bool, error) {
+	controllerName := "mizar-node-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	go nodecontroller.NewObjectController(
+		ctx.InformerFactory.Core().V1().Nodes(),
+		ctx.ClientBuilder.ClientOrDie(controllerName),
 	).Run(1, ctx.Stop)
 	return nil, true, nil
 }
