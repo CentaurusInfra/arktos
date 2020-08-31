@@ -48,18 +48,18 @@ var _ = SIGDescribe("VM Type", func() {
 			},
 			Spec: v1.PodSpec{
 				VirtualMachine: &v1.VirtualMachine{
-						Name:  "vm1",
-						Image: imageutils.GetDefaultVmE2EImage(),
-						Resources: v1.ResourceRequirements{
-							Limits: v1.ResourceList{
-								v1.ResourceCPU:    resource.MustParse("1"),
-								v1.ResourceMemory: resource.MustParse("500Mi"),
-							},
-							Requests: v1.ResourceList{
-								v1.ResourceCPU:    resource.MustParse("1"),
-								v1.ResourceMemory: resource.MustParse("500Mi"),
-							},
+					Name:  "vm1",
+					Image: imageutils.GetE2EImage(imageutils.Cirros),
+					Resources: v1.ResourceRequirements{
+						Limits: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("1"),
+							v1.ResourceMemory: resource.MustParse("500Mi"),
 						},
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("1"),
+							v1.ResourceMemory: resource.MustParse("500Mi"),
+						},
+					},
 				},
 			},
 		}

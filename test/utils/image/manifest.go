@@ -35,6 +35,7 @@ type RegistryList struct {
 	GoogleContainerRegistry string `yaml:"googleContainerRegistry"`
 	PrivateRegistry         string `yaml:"privateRegistry"`
 	SampleRegistry          string `yaml:"sampleRegistry"`
+	CirrosRegistry          string `yaml:"cirrosRegistry"`
 }
 
 // Config holds an images registry, name, and version
@@ -69,6 +70,7 @@ func initReg() RegistryList {
 		GoogleContainerRegistry: "gcr.io/google-containers",
 		PrivateRegistry:         "gcr.io/k8s-authenticated-test",
 		SampleRegistry:          "gcr.io/google-samples",
+		CirrosRegistry:          "download.cirros-cloud.net",
 	}
 	repoList := os.Getenv("KUBE_TEST_REPO_LIST")
 	if repoList == "" {
@@ -98,6 +100,7 @@ var (
 	// PrivateRegistry is an image repository that requires authentication
 	PrivateRegistry = registry.PrivateRegistry
 	sampleRegistry  = registry.SampleRegistry
+	cirros          = registry.CirrosRegistry
 
 	// Preconfigured image configs
 	imageConfigs = initImageConfigs()
@@ -213,6 +216,8 @@ const (
 	VolumeRBDServer
 	// WindowsNanoServer image
 	WindowsNanoServer
+	// Cirros image
+	Cirros
 )
 
 func initImageConfigs() map[int]Config {
@@ -271,6 +276,7 @@ func initImageConfigs() map[int]Config {
 	configs[VolumeGlusterServer] = Config{e2eRegistry, "volume/gluster", "1.0"}
 	configs[VolumeRBDServer] = Config{e2eRegistry, "volume/rbd", "1.0.1"}
 	configs[WindowsNanoServer] = Config{e2eRegistry, "windows-nanoserver", "v1"}
+	configs[Cirros] = Config{cirros, "cirros-0.5.1-x86_64-disk.img", "0.5.1"}
 	return configs
 }
 
@@ -300,6 +306,8 @@ func GetPauseImageName() string {
 }
 
 // Default VM test image with 0.5.1 version of cirros image
-func GetDefaultVmE2EImage() string {
-	return fmt.Sprintf("download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img")
+func (i *Config) GetDefaultVmE2EImage() string {
+	// download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img
+	return fmt.Sprintf("%s/%s/%s", i.registry, i.version, i.name)
+
 }
