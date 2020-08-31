@@ -298,3 +298,8 @@ func (i *Config) GetE2EImage() string {
 func GetPauseImageName() string {
 	return GetE2EImage(Pause)
 }
+
+// Default VM test image with 0.5.1 version of cirros image
+func GetDefaultVmE2EImage() string {
+	return fmt.Sprintf("download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img")
+}
