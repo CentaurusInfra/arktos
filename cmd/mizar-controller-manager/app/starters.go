@@ -26,10 +26,10 @@ import (
 
 	"k8s.io/klog"
 
-	endpointscontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/app/endpoints"
-	nodecontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/app/node"
-	podcontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/app/pod"
-	servicecontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/app/service"
+	endpointscontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/endpoints"
+	nodecontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/node"
+	podcontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/pod"
+	servicecontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/service"
 )
 
 func startEndpointsController(ctx ControllerContext) (http.Handler, bool, error) {

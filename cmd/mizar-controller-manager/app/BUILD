@@ -5,7 +5,7 @@ go_library(
     srcs = [
         "cloudproviders.go",
         "controllermanager.go",
-        "core.go",
+        "starters.go",
         "import_known_versions.go",
         "plugins.go",
     ],

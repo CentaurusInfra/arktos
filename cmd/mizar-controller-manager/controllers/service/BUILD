@@ -8,7 +8,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = ["service_controller.go"],
-    importpath = "k8s.io/kubernetes/cmd/mizar-controller-manager/app/service",
+    importpath = "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/service",
     deps = [
         "//pkg/controller:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
