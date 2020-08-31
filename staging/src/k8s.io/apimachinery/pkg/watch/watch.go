@@ -214,7 +214,10 @@ func (a *AggregatedWatcher) GetErrors() error {
 }
 
 func (a *AggregatedWatcher) GetWatchersCount() int {
-	return len(a.watchers)
+	a.mapLock.RLock()
+	count := len(a.watchers)
+	a.mapLock.RUnlock()
+	return count
 }
 
 // EventType defines the possible types of events.

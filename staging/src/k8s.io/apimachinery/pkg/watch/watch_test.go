@@ -14,18 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package watch_test
+package watch
 
 import (
+	"context"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	. "k8s.io/apimachinery/pkg/watch"
 )
 
 type testType string
@@ -187,6 +188,7 @@ func TestGetErrorsConcurrency(t *testing.T) {
 			err := errors.New("Test error")
 			aggWatcher.AddWatchInterface(nil, err)
 			errs := aggWatcher.GetErrors()
+			aggWatcher.GetWatchersCount()
 			assert.True(t, errs.Error() != "")
 			wg.Done()
 		}(aw, i)
@@ -196,4 +198,30 @@ func TestGetErrorsConcurrency(t *testing.T) {
 	errs := aw.GetErrors()
 	aw.Stop()
 	assert.True(t, errs.Error() != "")
+	assert.Equal(t, 1000, aw.GetWatchersCount())
+}
+
+func TestNewAggregatedWatcherWithReset(t *testing.T) {
+	ctx := context.TODO()
+	aw := NewAggregatedWatcherWithReset(ctx)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func(aggWatcher *AggregatedWatcher, i int) {
+			w := NewFake()
+			aggWatcher.AddWatchInterface(w, nil)
+			time.Sleep(10 * time.Millisecond)
+			aggWatcher.removeWatcherAndError(w)
+			wg.Done()
+		}(aw, i)
+	}
+
+	wg.Wait()
+	assert.True(t, aw.allowWatcherReset)
+	assert.Nil(t, aw.GetErrors())
+	assert.Equal(t, 0, aw.GetWatchersCount())
+	assert.False(t, aw.stopped)
+	aw.Stop()
+	assert.True(t, aw.stopped)
 }
