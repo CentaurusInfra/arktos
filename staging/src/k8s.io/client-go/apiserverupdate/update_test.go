@@ -77,7 +77,7 @@ func TestSetAPIServerConfig(t *testing.T) {
 	assert.Equal(t, "", ss2.Addresses[0].Hostname)
 }
 
-func setAndReadAPIServerConfig(wg sync.WaitGroup, epMap map[string]v1.EndpointSubset) {
+func setAndReadAPIServerConfig(wg *sync.WaitGroup, epMap map[string]v1.EndpointSubset) {
 	wg.Add(1)
 	SetAPIServerConfig(epMap)
 	readEPMap := GetAPIServerConfig()
@@ -110,8 +110,8 @@ func TestConcurrentReadWriteAPIServerConfig(t *testing.T) {
 	var wg sync.WaitGroup
 	for j := 0; j < 10; j++ {
 		for i := 0; i < 5000; i++ {
-			go setAndReadAPIServerConfig(wg, epMap1)
-			go setAndReadAPIServerConfig(wg, epMap2)
+			go setAndReadAPIServerConfig(&wg, epMap1)
+			go setAndReadAPIServerConfig(&wg, epMap2)
 		}
 		wg.Wait()
 	}
