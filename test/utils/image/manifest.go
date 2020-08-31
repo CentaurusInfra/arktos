@@ -300,14 +300,22 @@ func (i *Config) GetE2EImage() string {
 	return fmt.Sprintf("%s/%s:%s", i.registry, i.name, i.version)
 }
 
+// Cirros image url format is site/version/name
+func GetE2EVmImage(image int) string {
+	return fmt.Sprintf("%s/%s:%s", imageConfigs[image].registry, imageConfigs[image].version, imageConfigs[image].name)
+}
+
+func (i *Config) GetE2EVmImage() string {
+	return fmt.Sprintf("%s/%s:%s", i.registry, i.version, i.name)
+}
+
 // GetPauseImageName returns the pause image name with proper version
 func GetPauseImageName() string {
 	return GetE2EImage(Pause)
 }
 
 // Default VM test image with 0.5.1 version of cirros image
-func (i *Config) GetDefaultVmE2EImage() string {
-	// download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img
-	return fmt.Sprintf("%s/%s/%s", i.registry, i.version, i.name)
-
+// download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img
+func GetDefaultVmE2EImage() string {
+	return GetE2EVmImage(Cirros)
 }

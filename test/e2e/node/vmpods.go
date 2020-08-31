@@ -28,6 +28,7 @@ import (
 	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
+// smoke level e2e case
 var _ = SIGDescribe("VM Type", func() {
 	f := framework.NewDefaultFramework("podsWithVmType")
 
