@@ -42,6 +42,10 @@ DOCKERIZED_BINARIES = {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/kube-controller-manager:kube-controller-manager",
     },
+    "mizar-controller-manager": {
+        "base": "@debian-base-{ARCH}//image",
+        "target": "//cmd/mizar-controller-manager:mizar-controller-manager",
+    },
     "workload-controller-manager": {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/workload-controller-manager:kube-controller-manager",

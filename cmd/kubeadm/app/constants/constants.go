@@ -273,6 +273,9 @@ const (
 	// KubeControllerManager defines variable used internally when referring to kube-controller-manager component
 	KubeControllerManager = "kube-controller-manager"
 
+	// MizarControllerManager defines variable used internally when referring to mizar-controller-manager component
+	MizarControllerManager = "mizar-controller-manager"
+
 	// WorkloadControllerManager defines variable used internally when referring to workload-controller-manager component
 	WorkloadControllerManager = "workload-controller-manager"
 

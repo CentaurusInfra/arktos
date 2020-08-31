@@ -1,0 +1,247 @@
+/*
+Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package options provides the flags used for the controller manager.
+//
+package options
+
+import (
+	"fmt"
+	"net"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apiserveroptions "k8s.io/apiserver/pkg/server/options"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	clientset "k8s.io/client-go/kubernetes"
+	clientgokubescheme "k8s.io/client-go/kubernetes/scheme"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/record"
+	cliflag "k8s.io/component-base/cli/flag"
+	kubectrlmgrconfigv1alpha1 "k8s.io/kube-controller-manager/config/v1alpha1"
+	cmoptions "k8s.io/kubernetes/cmd/controller-manager/app/options"
+	kubecontrollerconfig "k8s.io/kubernetes/cmd/mizar-controller-manager/app/config"
+	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
+	kubectrlmgrconfigscheme "k8s.io/kubernetes/pkg/controller/apis/config/scheme"
+	"k8s.io/kubernetes/pkg/controller/garbagecollector"
+	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
+	"k8s.io/kubernetes/pkg/master/ports"
+
+	// add the kubernetes feature gates
+	_ "k8s.io/kubernetes/pkg/features"
+
+	"k8s.io/klog"
+)
+
+const (
+	// MizarControllerManagerUserAgent is the userAgent name when starting mizar-controller managers.
+	MizarControllerManagerUserAgent = "mizar-controller-manager"
+)
+
+// KubeControllerManagerOptions is the main context object for the mizar-controller manager.
+type KubeControllerManagerOptions struct {
+	Generic           *cmoptions.GenericControllerManagerConfigurationOptions
+	KubeCloudShared   *cmoptions.KubeCloudSharedOptions
+	ServiceController *cmoptions.ServiceControllerOptions
+
+	SecureServing *apiserveroptions.SecureServingOptionsWithLoopback
+	// TODO: remove insecure serving mode
+	InsecureServing *apiserveroptions.DeprecatedInsecureServingOptionsWithLoopback
+	Authentication  *apiserveroptions.DelegatingAuthenticationOptions
+	Authorization   *apiserveroptions.DelegatingAuthorizationOptions
+
+	Master     string
+	Kubeconfig string
+}
+
+// NewKubeControllerManagerOptions creates a new KubeControllerManagerOptions with a default config.
+func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
+	componentConfig, err := NewDefaultComponentConfig(ports.InsecureKubeControllerManagerPort)
+	if err != nil {
+		return nil, err
+	}
+
+	s := KubeControllerManagerOptions{
+		Generic:         cmoptions.NewGenericControllerManagerConfigurationOptions(&componentConfig.Generic),
+		KubeCloudShared: cmoptions.NewKubeCloudSharedOptions(&componentConfig.KubeCloudShared),
+		ServiceController: &cmoptions.ServiceControllerOptions{
+			ServiceControllerConfiguration: &componentConfig.ServiceController,
+		},
+
+		SecureServing: apiserveroptions.NewSecureServingOptions().WithLoopback(),
+		InsecureServing: (&apiserveroptions.DeprecatedInsecureServingOptions{
+			BindAddress: net.ParseIP(componentConfig.Generic.Address),
+			BindPort:    int(componentConfig.Generic.Port),
+			BindNetwork: "tcp",
+		}).WithLoopback(),
+		Authentication: apiserveroptions.NewDelegatingAuthenticationOptions(),
+		Authorization:  apiserveroptions.NewDelegatingAuthorizationOptions(),
+	}
+
+	s.Authentication.RemoteKubeConfigFileOptional = true
+	s.Authorization.RemoteKubeConfigFileOptional = true
+	s.Authorization.AlwaysAllowPaths = []string{"/healthz"}
+
+	// Set the PairName but leave certificate directory blank to generate in-memory by default
+	s.SecureServing.ServerCert.CertDirectory = ""
+	s.SecureServing.ServerCert.PairName = "mizar-controller-manager"
+	s.SecureServing.BindPort = ports.KubeControllerManagerPort
+
+	gcIgnoredResources := make([]garbagecollectorconfig.GroupResource, 0, len(garbagecollector.DefaultIgnoredResources()))
+	for r := range garbagecollector.DefaultIgnoredResources() {
+		gcIgnoredResources = append(gcIgnoredResources, garbagecollectorconfig.GroupResource{Group: r.Group, Resource: r.Resource})
+	}
+
+	return &s, nil
+}
+
+// NewDefaultComponentConfig returns mizar-controller manager configuration object.
+func NewDefaultComponentConfig(insecurePort int32) (kubectrlmgrconfig.KubeControllerManagerConfiguration, error) {
+	versioned := kubectrlmgrconfigv1alpha1.KubeControllerManagerConfiguration{}
+	kubectrlmgrconfigscheme.Scheme.Default(&versioned)
+
+	internal := kubectrlmgrconfig.KubeControllerManagerConfiguration{}
+	if err := kubectrlmgrconfigscheme.Scheme.Convert(&versioned, &internal, nil); err != nil {
+		return internal, err
+	}
+	internal.Generic.Port = insecurePort
+	return internal, nil
+}
+
+// Flags returns flags for a specific APIServer by section name
+func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledByDefaultControllers []string) cliflag.NamedFlagSets {
+	fss := cliflag.NamedFlagSets{}
+	s.Generic.AddFlags(&fss, allControllers, disabledByDefaultControllers)
+	s.KubeCloudShared.AddFlags(fss.FlagSet("generic"))
+	s.ServiceController.AddFlags(fss.FlagSet("service controller"))
+
+	s.SecureServing.AddFlags(fss.FlagSet("secure serving"))
+	s.InsecureServing.AddUnqualifiedFlags(fss.FlagSet("insecure serving"))
+	s.Authentication.AddFlags(fss.FlagSet("authentication"))
+	s.Authorization.AddFlags(fss.FlagSet("authorization"))
+
+	fs := fss.FlagSet("misc")
+	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
+	fs.StringVar(&s.Kubeconfig, "kubeconfig", s.Kubeconfig, "Path to kubeconfig files with authorization and master location information.")
+	utilfeature.DefaultMutableFeatureGate.AddFlag(fss.FlagSet("generic"))
+
+	return fss
+}
+
+// ApplyTo fills up controller manager config with options.
+func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) error {
+	if err := s.Generic.ApplyTo(&c.ComponentConfig.Generic); err != nil {
+		return err
+	}
+	if err := s.KubeCloudShared.ApplyTo(&c.ComponentConfig.KubeCloudShared); err != nil {
+		return err
+	}
+
+	// if err := s.InsecureServing.ApplyTo(&c.InsecureServing, &c.LoopbackClientConfig); err != nil {
+	// 	return err
+	// }
+	// if err := s.SecureServing.ApplyTo(&c.SecureServing, &c.LoopbackClientConfig); err != nil {
+	// 	return err
+	// }
+	if s.SecureServing.BindPort != 0 || s.SecureServing.Listener != nil {
+		if err := s.Authentication.ApplyTo(&c.Authentication, c.SecureServing, nil); err != nil {
+			return err
+		}
+		if err := s.Authorization.ApplyTo(&c.Authorization); err != nil {
+			return err
+		}
+	}
+
+	// sync back to component config
+	// TODO: find more elegant way than syncing back the values.
+	c.ComponentConfig.Generic.Port = int32(s.InsecureServing.BindPort)
+	c.ComponentConfig.Generic.Address = s.InsecureServing.BindAddress.String()
+
+	return nil
+}
+
+// Validate is used to validate the options and config before launching the controller manager
+func (s *KubeControllerManagerOptions) Validate(allControllers []string, disabledByDefaultControllers []string) error {
+	var errs []error
+
+	errs = append(errs, s.Generic.Validate(allControllers, disabledByDefaultControllers)...)
+	errs = append(errs, s.KubeCloudShared.Validate()...)
+	errs = append(errs, s.SecureServing.Validate()...)
+	errs = append(errs, s.InsecureServing.Validate()...)
+	errs = append(errs, s.Authentication.Validate()...)
+	errs = append(errs, s.Authorization.Validate()...)
+
+	// TODO: validate component config, master and kubeconfig
+
+	return utilerrors.NewAggregate(errs)
+}
+
+// Config return a controller manager config objective
+func (s KubeControllerManagerOptions) Config(allControllers []string, disabledByDefaultControllers []string) (*kubecontrollerconfig.Config, error) {
+	if err := s.Validate(allControllers, disabledByDefaultControllers); err != nil {
+		return nil, err
+	}
+
+	if err := s.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
+		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
+	}
+
+	kubeconfigs, err := clientcmd.BuildConfigFromFlags(s.Master, s.Kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, kubeConfig := range kubeconfigs.GetAllConfigs() {
+		kubeConfig.ContentConfig.ContentType = s.Generic.ClientConnection.ContentType
+		kubeConfig.QPS = s.Generic.ClientConnection.QPS
+		kubeConfig.Burst = int(s.Generic.ClientConnection.Burst)
+	}
+
+	client, err := clientset.NewForConfig(restclient.AddUserAgent(kubeconfigs, MizarControllerManagerUserAgent))
+	if err != nil {
+		return nil, err
+	}
+
+	// shallow copy, do not modify the kubeconfig.Timeout.
+	config := *kubeconfigs.GetConfig()
+	config.Timeout = s.Generic.LeaderElection.RenewDeadline.Duration
+	leaderElectionClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(restclient.NewAggregatedConfig(&config), "leader-election"))
+
+	eventRecorder := createRecorder(client, MizarControllerManagerUserAgent)
+
+	c := &kubecontrollerconfig.Config{
+		Client:               client,
+		Kubeconfig:           kubeconfigs,
+		EventRecorder:        eventRecorder,
+		LeaderElectionClient: leaderElectionClient,
+	}
+	if err := s.ApplyTo(c); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func createRecorder(kubeClient clientset.Interface, userAgent string) record.EventRecorder {
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(klog.Infof)
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
+	return eventBroadcaster.NewRecorder(clientgokubescheme.Scheme, v1.EventSource{Component: userAgent})
+}

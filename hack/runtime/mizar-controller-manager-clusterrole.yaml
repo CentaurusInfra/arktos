@@ -1,0 +1,9 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  namespace: kube-system
+  name: mizar-controller-manager-role
+rules:
+- apiGroups: ["", "apps", "kube-system"]
+  resources: ["controllerinstances", "events",  "replicasets", "replicasets/status", "pods", "deployments", "deployments/status"]
+  verbs: ["*"]

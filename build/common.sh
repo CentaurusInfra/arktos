@@ -98,6 +98,7 @@ kube::build::get_docker_wrapped_binaries() {
     cloud-controller-manager,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
     kube-apiserver,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
     kube-controller-manager,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
+    mizar-controller-manager,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
     workload-controller-manager,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
     kube-scheduler,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
     kube-proxy,"k8s.gcr.io/debian-iptables-${arch}:${debian_iptables_version}"

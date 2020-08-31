@@ -429,6 +429,24 @@ func ClusterRoles() []rbacv1.ClusterRole {
 			},
 		},
 		{
+			// a role to use for bootstrapping the mizar-controller-manager so it can create the shared informers
+			// service accounts, and secrets that we need to create separate identities for other controllers
+			ObjectMeta: metav1.ObjectMeta{Name: "system:mizar-controller-manager"},
+			Rules: []rbacv1.PolicyRule{
+				eventsRule(),
+				rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("endpoints", "secrets", "serviceaccounts").RuleOrDie(),
+				rbacv1helpers.NewRule("delete").Groups(legacyGroup).Resources("secrets").RuleOrDie(),
+				rbacv1helpers.NewRule("get").Groups(legacyGroup).Resources("endpoints", "namespaces", "secrets", "serviceaccounts", "configmaps").RuleOrDie(),
+				rbacv1helpers.NewRule("update").Groups(legacyGroup).Resources("endpoints", "secrets", "serviceaccounts").RuleOrDie(),
+				// Needed to check API access.  These creates are non-mutating
+				rbacv1helpers.NewRule("create").Groups(authenticationGroup).Resources("tokenreviews").RuleOrDie(),
+				rbacv1helpers.NewRule("create").Groups(authorizationGroup).Resources("subjectaccessreviews").RuleOrDie(),
+				// Needed for all shared informers
+				rbacv1helpers.NewRule("list", "watch").Groups("*").Resources("*").RuleOrDie(),
+				rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("serviceaccounts/token").RuleOrDie(),
+			},
+		},
+		{
 			// a role to use for bootstrapping the workload-controller-manager so it can create the shared informers
 			// service accounts, and secrets that we need to create separate identities for other controllers
 			ObjectMeta: metav1.ObjectMeta{Name: "system:workload-controller-manager"},

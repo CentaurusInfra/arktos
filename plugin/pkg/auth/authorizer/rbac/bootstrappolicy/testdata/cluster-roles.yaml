@@ -1248,6 +1248,30 @@ items:
     - '*'
     verbs:
     - '*'
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
+    name: system:mizar-controller-manager
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - create
+    - patch
+    - update
+  - apiGroups:
+    - '*'
+    resources:
+    - '*'
+    verbs:
+    - '*'
 - aggregationRule:
     clusterRoleSelectors:
     - matchLabels:

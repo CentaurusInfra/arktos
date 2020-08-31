@@ -67,7 +67,7 @@ profile_components=""
 output_dir="."
 tunnel_port="${tunnel_port:-1234}"
 
-args=$(getopt -o s:mho:k:c -l server:,master,heapster,output:,kubelet:,scheduler,controller-manager,workload-controller-manager,help,inuse-space,inuse-objects,alloc-space,alloc-objects,cpu,kubelet-binary:,master-binary:,scheduler-binary:,controller-manager-binary:,workload-controller-manager-binary:,scheduler-port:,controller-manager-port:,workload-controller-manager-port: -- "$@")
+args=$(getopt -o s:mho:k:c -l server:,master,heapster,output:,kubelet:,scheduler,controller-manager,mizar-controller-manager,workload-controller-manager,help,inuse-space,inuse-objects,alloc-space,alloc-objects,cpu,kubelet-binary:,master-binary:,scheduler-binary:,controller-manager-binary:,mizar-controller-manager-binary:,workload-controller-manager-binary:,scheduler-port:,controller-manager-port:,workload-controller-manager-port: -- "$@")
 if [[ $? ]]; then
   >&2 echo "Error in getopt"
   exit 1
@@ -79,6 +79,7 @@ HEAPSTER_PPROF_PATH="/api/v1/namespaces/kube-system/services/monitoring-heapster
 KUBELET_PPROF_PATH_PREFIX="/api/v1/proxy/nodes"
 SCHEDULER_PPROF_PATH_PREFIX="/api/v1/namespaces/kube-system/pods/kube-scheduler/proxy"
 CONTROLLER_MANAGER_PPROF_PATH_PREFIX="/api/v1/namespaces/kube-system/pods/kube-controller-manager/proxy"
+MIZAR_CONTROLLER_MANAGER_PPROF_PATH_PREFIX="/api/v1/namespaces/kube-system/pods/mizar-controller-manager/proxy"
 WORKLOAD_CONTROLLER_MANAGER_PPROF_PATH_PREFIX="/api/v1/namespaces/kube-system/pods/workload-controller-manager/proxy"
 
 eval set -- "${args}"
@@ -172,6 +173,19 @@ while true; do
         exit 1
       fi
       controller_manager_port=$1
+      shift
+      ;;
+    -c|--mizar-controller-manager)
+      shift
+      profile_components="mizar-controller-manager ${profile_components}"
+      ;;
+    --mizar-controller-manager-binary)
+      shift
+      if [ -z "$1" ]; then
+        >&2 echo "empty argument to --mizar-controller-manager-binary flag"
+        exit 1
+      fi
+      mizar_controller_manager_binary=$1
       shift
       ;;
     -c|--workload-controller-manager)
@@ -293,6 +307,10 @@ for component in ${profile_components}; do
     controller-manager)
       path="${CONTROLLER_MANAGER_PPROF_PATH_PREFIX}-${server_addr}:${controller_manager_port}"
       binary=${controller_manager_binary}
+      ;;
+    mizar-controller-manager)
+      path="${MIZAR_CONTROLLER_MANAGER_PPROF_PATH_PREFIX}-${server_addr}:${mizar_controller_manager_port}"
+      binary=${mizar_controller_manager_binary}
       ;;
     workload-controller-manager)
       path="${WORKLOAD_CONTROLLER_MANAGER_PPROF_PATH_PREFIX}-${server_addr}:${workload_controller_manager_port}"
