@@ -270,8 +270,6 @@ func (c *$.GroupGoName$$.Version$Client) RESTClients() []$.restRESTClientInterfa
 	if c == nil {
 		return nil
 	}
-	c.mux.RLock()
-	defer c.mux.RUnlock()
 	return c.restClients
 }
 `

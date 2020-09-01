@@ -138,8 +138,6 @@ func (c *ArktosV1Client) RESTClients() []rest.Interface {
 		return nil
 	}
 
-	c.mux.RLock()
-	defer c.mux.RUnlock()
 	return c.restClients
 }
 

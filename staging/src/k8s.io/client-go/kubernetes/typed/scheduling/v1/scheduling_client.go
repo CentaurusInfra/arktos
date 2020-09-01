@@ -134,8 +134,6 @@ func (c *SchedulingV1Client) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-	c.mux.RLock()
-	defer c.mux.RUnlock()
 	return c.restClients
 }
 
