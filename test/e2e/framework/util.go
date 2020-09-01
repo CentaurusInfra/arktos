@@ -1400,6 +1400,11 @@ func ExpectNoErrorWithRetries(fn func() error, maxRetries int, explain ...interf
 	gomega.ExpectWithOffset(1, err).NotTo(gomega.HaveOccurred(), explain...)
 }
 
+// ExpectEqual expects the specified two are the same, otherwise an exception raises
+func ExpectEqual(actual interface{}, extra interface{}, explain ...interface{}) {
+	gomega.ExpectWithOffset(1, actual).To(gomega.Equal(extra), explain...)
+}
+
 // Cleanup stops everything from filePath from namespace ns and checks if everything matching selectors from the given namespace is correctly stopped.
 func Cleanup(filePath, ns string, selectors ...string) {
 	ginkgo.By("using delete to clean up resources")
@@ -1482,6 +1487,17 @@ func LookForStringInPodExec(ns, podName string, command []string, expectedString
 	return LookForString(expectedString, timeout, func() string {
 		// use the first container
 		args := []string{"exec", podName, fmt.Sprintf("--namespace=%v", ns), "--"}
+		args = append(args, command...)
+		return RunKubectlOrDie(args...)
+	})
+}
+
+// LookForStringInPodExecToContainer looks for the given string in the output of a command
+// executed in a specific pod container.
+func LookForStringInPodExecToContainer(ns, podName, containerName string, command []string, expectedString string, timeout time.Duration) (result string, err error) {
+	return LookForString(expectedString, timeout, func() string {
+		// use the first container
+		args := []string{"exec", podName, "-c", containerName, fmt.Sprintf("--namespace=%v", ns), "--"}
 		args = append(args, command...)
 		return RunKubectlOrDie(args...)
 	})

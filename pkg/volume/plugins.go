@@ -420,7 +420,7 @@ type VolumeHost interface {
 	GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error)
 
 	// Returns a function that returns a configmap.
-	GetConfigMapFunc() func(namespace, name string) (*v1.ConfigMap, error)
+	GetConfigMapFunc() func(tenant, namespace, name string) (*v1.ConfigMap, error)
 
 	GetServiceAccountTokenFunc() func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 

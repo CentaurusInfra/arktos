@@ -26,7 +26,8 @@ type TestCase struct {
 	Command string `yaml:"Command,omitempty"`
 	TimeOut *int   `yaml:"TimeOut,omitempty"`
 
-	BeforeTest string `yaml:"BeforeTest,omitempty"`
+	BeforeTest        string `yaml:"BeforeTest,omitempty"`
+	BeforeTestMessage string `yaml:"BeforeTestMessage,omitempty"`
 
 	RetryCount    *int `yaml:"RetryCount,omitempty"`
 	RetryInterval *int `yaml:"RetryInterval,omitempty"`
@@ -38,6 +39,7 @@ type TestCase struct {
 	OutputShouldContain []string `yaml:"OutputShouldContain,omitempty"`
 
 	OutputShouldNotContain []string `yaml:"OutputShouldNotContain,omitempty"`
+	AfterTestMessage       string   `yaml:"AfterTestMessage,omitempty"`
 }
 
 func (t *TestCase) Validate(tc *TestConfig) *ErrorList {
@@ -59,6 +61,20 @@ func (t *TestCase) Complete(tc *TestConfig) {
 }
 
 func (t *TestCase) Run(tc *TestConfig) *ErrorList {
+	if t.BeforeTestMessage != "" {
+		LogInfo(t.BeforeTestMessage + "\n")
+	}
+
+	errList := t.Test(tc)
+
+	if t.AfterTestMessage != "" {
+		LogInfo(t.AfterTestMessage + "\n")
+	}
+
+	return errList
+}
+
+func (t *TestCase) Test(tc *TestConfig) *ErrorList {
 	var errList *ErrorList
 	var exitCode int
 	var output string
@@ -138,7 +154,7 @@ func (t *TestCase) CheckTestResult(exitCode int, output string) *ErrorList {
 	if len(t.OutputShouldContain) > 0 {
 		for _, expectedMatch := range t.OutputShouldContain {
 			if !strings.Contains(output, expectedMatch) {
-				errList.Add(fmt.Errorf("Did not find the match in output : %q", expectedMatch))
+				errList.Add(fmt.Errorf("Did not find the match in output: %q", expectedMatch))
 			}
 		}
 	}
@@ -146,7 +162,7 @@ func (t *TestCase) CheckTestResult(exitCode int, output string) *ErrorList {
 	if len(t.OutputShouldNotContain) > 0 {
 		for _, expectedNotMatch := range t.OutputShouldNotContain {
 			if strings.Contains(output, expectedNotMatch) {
-				errList.Add(fmt.Errorf("Find unexpected match in output : %q", expectedNotMatch))
+				errList.Add(fmt.Errorf("Find unexpected match in output: %q", expectedNotMatch))
 			}
 		}
 	}

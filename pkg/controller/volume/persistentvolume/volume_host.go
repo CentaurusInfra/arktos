@@ -99,8 +99,8 @@ func (ctrl *PersistentVolumeController) GetSecretFunc() func(tenant, namespace, 
 	}
 }
 
-func (ctrl *PersistentVolumeController) GetConfigMapFunc() func(namespace, name string) (*v1.ConfigMap, error) {
-	return func(_, _ string) (*v1.ConfigMap, error) {
+func (ctrl *PersistentVolumeController) GetConfigMapFunc() func(tenant, namespace, name string) (*v1.ConfigMap, error) {
+	return func(_, _, _ string) (*v1.ConfigMap, error) {
 		return nil, fmt.Errorf("GetConfigMap unsupported in PersistentVolumeController")
 	}
 }

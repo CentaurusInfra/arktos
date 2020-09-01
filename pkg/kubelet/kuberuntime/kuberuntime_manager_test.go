@@ -732,7 +732,7 @@ func TestComputePodActions(t *testing.T) {
 	noAction := podActions{
 		SandboxID:           baseStatus.SandboxStatuses[0].Id,
 		ContainersToStart:   []int{},
-		ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+		ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 		ContainersToRestart: []int{},
 		ContainersToKill:    map[kubecontainer.ContainerID]containerToKillInfo{},
 	}
@@ -756,7 +756,7 @@ func TestComputePodActions(t *testing.T) {
 				CreateSandbox:       true,
 				Attempt:             uint32(0),
 				ContainersToStart:   []int{0, 1, 2},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{}),
 			},
@@ -775,7 +775,7 @@ func TestComputePodActions(t *testing.T) {
 			actions: podActions{
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToStart:   []int{0, 1},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{}),
 			},
@@ -794,7 +794,7 @@ func TestComputePodActions(t *testing.T) {
 			actions: podActions{
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToStart:   []int{1},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{}),
 			},
@@ -821,7 +821,7 @@ func TestComputePodActions(t *testing.T) {
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				Attempt:             uint32(1),
 				ContainersToStart:   []int{0, 1, 2},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{}),
 			},
@@ -839,7 +839,7 @@ func TestComputePodActions(t *testing.T) {
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				Attempt:             uint32(1),
 				ContainersToStart:   []int{0, 2},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{}),
 			},
@@ -854,7 +854,7 @@ func TestComputePodActions(t *testing.T) {
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				Attempt:             uint32(1),
 				ContainersToStart:   []int{0, 1, 2},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{}),
 			},
@@ -870,7 +870,7 @@ func TestComputePodActions(t *testing.T) {
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{1}),
 				ContainersToStart:   []int{1},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 			},
 			// TODO: Add a test case for containers which failed the liveness
@@ -896,7 +896,7 @@ func TestComputePodActions(t *testing.T) {
 				CreateSandbox:       false,
 				KillPod:             true,
 				ContainersToStart:   []int{},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    map[kubecontainer.ContainerID]containerToKillInfo{},
 			},
@@ -910,7 +910,7 @@ func TestComputePodActions(t *testing.T) {
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{1}),
 				ContainersToStart:   []int{1},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 			},
 		},
@@ -970,7 +970,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 	noAction := podActions{
 		SandboxID:           baseStatus.SandboxStatuses[0].Id,
 		ContainersToStart:   []int{},
-		ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+		ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 		ContainersToRestart: []int{},
 		ContainersToKill:    map[kubecontainer.ContainerID]containerToKillInfo{},
 	}
@@ -984,7 +984,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 			actions: podActions{
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToStart:   []int{0, 1, 2},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMapWithInitContainers(basePod, baseStatus, []int{}),
 			},
@@ -1008,7 +1008,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 				Attempt:                  uint32(1),
 				NextInitContainerToStart: &basePod.Spec.InitContainers[0],
 				ContainersToStart:        []int{},
-				ContainersToUpdate:       map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:       map[string][]containerToUpdateInfo{},
 				ContainersToRestart:      []int{},
 				ContainersToKill:         getKillMapWithInitContainers(basePod, baseStatus, []int{}),
 			},
@@ -1022,7 +1022,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 				SandboxID:                baseStatus.SandboxStatuses[0].Id,
 				NextInitContainerToStart: &basePod.Spec.InitContainers[2],
 				ContainersToStart:        []int{},
-				ContainersToUpdate:       map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:       map[string][]containerToUpdateInfo{},
 				ContainersToRestart:      []int{},
 				ContainersToKill:         getKillMapWithInitContainers(basePod, baseStatus, []int{}),
 			},
@@ -1036,7 +1036,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 				SandboxID:                baseStatus.SandboxStatuses[0].Id,
 				NextInitContainerToStart: &basePod.Spec.InitContainers[2],
 				ContainersToStart:        []int{},
-				ContainersToUpdate:       map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:       map[string][]containerToUpdateInfo{},
 				ContainersToRestart:      []int{},
 				ContainersToKill:         getKillMapWithInitContainers(basePod, baseStatus, []int{}),
 			},
@@ -1050,7 +1050,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 				KillPod:             true,
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToStart:   []int{},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMapWithInitContainers(basePod, baseStatus, []int{}),
 			},
@@ -1064,7 +1064,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 				SandboxID:                baseStatus.SandboxStatuses[0].Id,
 				NextInitContainerToStart: &basePod.Spec.InitContainers[2],
 				ContainersToStart:        []int{},
-				ContainersToUpdate:       map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:       map[string][]containerToUpdateInfo{},
 				ContainersToRestart:      []int{},
 				ContainersToKill:         getKillMapWithInitContainers(basePod, baseStatus, []int{2}),
 			},
@@ -1078,7 +1078,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 				SandboxID:                baseStatus.SandboxStatuses[0].Id,
 				NextInitContainerToStart: &basePod.Spec.InitContainers[2],
 				ContainersToStart:        []int{},
-				ContainersToUpdate:       map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:       map[string][]containerToUpdateInfo{},
 				ContainersToRestart:      []int{},
 				ContainersToKill:         getKillMapWithInitContainers(basePod, baseStatus, []int{2}),
 			},
@@ -1092,7 +1092,7 @@ func TestComputePodActionsWithInitContainers(t *testing.T) {
 				KillPod:             true,
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToStart:   []int{},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    getKillMapWithInitContainers(basePod, baseStatus, []int{}),
 			},
@@ -1156,7 +1156,7 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 	noAction := podActions{
 		SandboxID:           baseStatus.SandboxStatuses[0].Id,
 		ContainersToStart:   []int{},
-		ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+		ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 		ContainersToRestart: []int{},
 		ContainersToKill:    map[kubecontainer.ContainerID]containerToKillInfo{},
 	}
@@ -1177,7 +1177,7 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 			actions: podActions{
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToStart:   []int{},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    map[kubecontainer.ContainerID]containerToKillInfo{},
 				Hotplugs:            ConfigChanges{NICsToAttach: []string{"eth1"}},
@@ -1202,7 +1202,7 @@ func TestComputePodActionsWithNICHotplug(t *testing.T) {
 			actions: podActions{
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToStart:   []int{},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 				ContainersToKill:    map[kubecontainer.ContainerID]containerToKillInfo{},
 				Hotplugs:            ConfigChanges{NICsToDetach: []string{"eth9"}},
@@ -1327,7 +1327,7 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 		actions              podActions
 		mutatePodActionsFn   func(*v1.Pod, *podActions)
 	}{
-		"Update container CPU and memory resources when state.Resources and status.Resources differ": {
+		"Update container CPU and memory resources when spec.Resources and status.Resources differ": {
 			mutatePodAndStatusFn: func(pod *v1.Pod, podStatus *kubecontainer.PodStatus) {
 				pod.Spec.Containers[1].Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M},
@@ -1340,39 +1340,45 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				SandboxID:         baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
 				ContainersToStart: []int{},
-				ContainersToUpdate: map[v1.ResourceName][]containerToUpdateInfo{
-					v1.ResourceCPU: {
+				ContainersToUpdate: map[string][]containerToUpdateInfo{
+					cpuLimit: {
 						{
-							specIndex:           1,
+							apiContainer:        &basePod.Spec.Containers[1],
 							apiContainerStatus:  &basePod.Status.ContainerStatuses[0],
 							kubeContainerStatus: baseStatus.ContainerStatuses[1],
-							restart:             new(bool),
 						},
 					},
-					v1.ResourceMemory: {
+					memLimit: {
 						{
-							specIndex:           1,
+							apiContainer:        &basePod.Spec.Containers[1],
 							apiContainerStatus:  &basePod.Status.ContainerStatuses[0],
 							kubeContainerStatus: baseStatus.ContainerStatuses[1],
-							restart:             new(bool),
 						},
 					},
 				},
 				ContainersToRestart: []int{},
 			},
 			mutatePodActionsFn: func(pod *v1.Pod, pa *podActions) {
-				pa.ContainersToUpdate[v1.ResourceCPU][0].apiContainerStatus.Resources = v1.ResourceRequirements{
+				pa.ContainersToUpdate[cpuLimit][0].apiContainer.Resources = v1.ResourceRequirements{
+					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M},
+				}
+				pa.ContainersToUpdate[cpuLimit][0].apiContainer.ResizePolicy = []v1.ResizePolicy{cpuPolicyNoRestart, memPolicyNoRestart}
+				pa.ContainersToUpdate[memLimit][0].apiContainer.Resources = v1.ResourceRequirements{
+					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M},
+				}
+				pa.ContainersToUpdate[memLimit][0].apiContainer.ResizePolicy = []v1.ResizePolicy{cpuPolicyNoRestart, memPolicyNoRestart}
+				pa.ContainersToUpdate[cpuLimit][0].apiContainerStatus.Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem100M},
 				}
-				pa.ContainersToUpdate[v1.ResourceMemory][0].apiContainerStatus.Resources = v1.ResourceRequirements{
+				pa.ContainersToUpdate[memLimit][0].apiContainerStatus.Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem100M},
 				}
 				hash := kubecontainer.HashContainer(&pod.Spec.Containers[1])
-				pa.ContainersToUpdate[v1.ResourceCPU][0].kubeContainerStatus.Hash = hash
-				pa.ContainersToUpdate[v1.ResourceMemory][0].kubeContainerStatus.Hash = hash
+				pa.ContainersToUpdate[cpuLimit][0].kubeContainerStatus.Hash = hash
+				pa.ContainersToUpdate[memLimit][0].kubeContainerStatus.Hash = hash
 			},
 		},
-		"Update container CPU resources when state.Resources and status.Resources differ in CPU": {
+		"Update container CPU resources when spec.Resources and status.Resources differ in CPU": {
 			mutatePodAndStatusFn: func(pod *v1.Pod, podStatus *kubecontainer.PodStatus) {
 				pod.Spec.Containers[1].Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M},
@@ -1385,27 +1391,30 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				SandboxID:         baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
 				ContainersToStart: []int{},
-				ContainersToUpdate: map[v1.ResourceName][]containerToUpdateInfo{
-					v1.ResourceCPU: {
+				ContainersToUpdate: map[string][]containerToUpdateInfo{
+					cpuLimit: {
 						{
-							specIndex:           1,
+							apiContainer:        &basePod.Spec.Containers[1],
 							apiContainerStatus:  &basePod.Status.ContainerStatuses[0],
 							kubeContainerStatus: baseStatus.ContainerStatuses[1],
-							restart:             new(bool),
 						},
 					},
 				},
 				ContainersToRestart: []int{},
 			},
 			mutatePodActionsFn: func(pod *v1.Pod, pa *podActions) {
-				pa.ContainersToUpdate[v1.ResourceCPU][0].apiContainerStatus.Resources = v1.ResourceRequirements{
+				pa.ContainersToUpdate[cpuLimit][0].apiContainer.Resources = v1.ResourceRequirements{
+					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M},
+				}
+				pa.ContainersToUpdate[cpuLimit][0].apiContainer.ResizePolicy = []v1.ResizePolicy{cpuPolicyNoRestart, memPolicyNoRestart}
+				pa.ContainersToUpdate[cpuLimit][0].apiContainerStatus.Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem200M},
 				}
 				hash := kubecontainer.HashContainer(&pod.Spec.Containers[1])
-				pa.ContainersToUpdate[v1.ResourceCPU][0].kubeContainerStatus.Hash = hash
+				pa.ContainersToUpdate[cpuLimit][0].kubeContainerStatus.Hash = hash
 			},
 		},
-		"Update container memory resources when state.Resources and status.Resources differ in memory": {
+		"Update container memory resources when spec.Resources and status.Resources differ in memory": {
 			mutatePodAndStatusFn: func(pod *v1.Pod, podStatus *kubecontainer.PodStatus) {
 				pod.Spec.Containers[2].Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M},
@@ -1418,27 +1427,30 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				SandboxID:         baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
 				ContainersToStart: []int{},
-				ContainersToUpdate: map[v1.ResourceName][]containerToUpdateInfo{
-					v1.ResourceMemory: {
+				ContainersToUpdate: map[string][]containerToUpdateInfo{
+					memLimit: {
 						{
-							specIndex:           2,
+							apiContainer:        &basePod.Spec.Containers[2],
 							apiContainerStatus:  &basePod.Status.ContainerStatuses[2],
 							kubeContainerStatus: baseStatus.ContainerStatuses[2],
-							restart:             new(bool),
 						},
 					},
 				},
 				ContainersToRestart: []int{},
 			},
 			mutatePodActionsFn: func(pod *v1.Pod, pa *podActions) {
-				pa.ContainersToUpdate[v1.ResourceMemory][0].apiContainerStatus.Resources = v1.ResourceRequirements{
+				pa.ContainersToUpdate[memLimit][0].apiContainer.Resources = v1.ResourceRequirements{
+					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M},
+				}
+				pa.ContainersToUpdate[memLimit][0].apiContainer.ResizePolicy = []v1.ResizePolicy{cpuPolicyNoRestart, memPolicyNoRestart}
+				pa.ContainersToUpdate[memLimit][0].apiContainerStatus.Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem100M},
 				}
 				hash := kubecontainer.HashContainer(&pod.Spec.Containers[2])
-				pa.ContainersToUpdate[v1.ResourceMemory][0].kubeContainerStatus.Hash = hash
+				pa.ContainersToUpdate[memLimit][0].kubeContainerStatus.Hash = hash
 			},
 		},
-		"Nothing when state.Resources and status.Resources are equal": {
+		"Nothing when spec.Resources and status.Resources are equal": {
 			mutatePodAndStatusFn: func(pod *v1.Pod, podStatus *kubecontainer.PodStatus) {
 				pod.Spec.Containers[1].Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m},
@@ -1451,7 +1463,7 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				SandboxID:           baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:    getKillMap(basePod, baseStatus, []int{}),
 				ContainersToStart:   []int{},
-				ContainersToUpdate:  map[v1.ResourceName][]containerToUpdateInfo{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{},
 			},
 		},
@@ -1467,31 +1479,16 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				podStatus.ContainerStatuses[2].Hash = kubecontainer.HashContainer(&pod.Spec.Containers[2])
 			},
 			actions: podActions{
-				SandboxID:         baseStatus.SandboxStatuses[0].Id,
-				ContainersToKill:  getKillMap(basePod, baseStatus, []int{2}),
-				ContainersToStart: []int{},
-				ContainersToUpdate: map[v1.ResourceName][]containerToUpdateInfo{
-					v1.ResourceMemory: {
-						{
-							specIndex:           2,
-							apiContainerStatus:  &basePod.Status.ContainerStatuses[2],
-							kubeContainerStatus: baseStatus.ContainerStatuses[2],
-							restart:             new(bool),
-						},
-					},
-				},
+				SandboxID:           baseStatus.SandboxStatuses[0].Id,
+				ContainersToKill:    getKillMap(basePod, baseStatus, []int{2}),
+				ContainersToStart:   []int{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{2},
 			},
 			mutatePodActionsFn: func(pod *v1.Pod, pa *podActions) {
 				c := pa.ContainersToKill[baseStatus.ContainerStatuses[2].ID].container
 				c.Resources = v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M}}
 				c.ResizePolicy = []v1.ResizePolicy{cpuPolicyRestart, memPolicyNoRestart}
-				ci := pa.ContainersToUpdate[v1.ResourceMemory][0]
-				ci.apiContainerStatus.Resources = v1.ResourceRequirements{
-					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem100M},
-				}
-				ci.kubeContainerStatus.Hash = kubecontainer.HashContainer(&pod.Spec.Containers[2])
-				*ci.restart = true
 			},
 		},
 		"Update container CPU and memory resources with RestartContainer policy for memory": {
@@ -1506,31 +1503,16 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				podStatus.ContainerStatuses[2].Hash = kubecontainer.HashContainer(&pod.Spec.Containers[2])
 			},
 			actions: podActions{
-				SandboxID:         baseStatus.SandboxStatuses[0].Id,
-				ContainersToKill:  getKillMap(basePod, baseStatus, []int{2}),
-				ContainersToStart: []int{},
-				ContainersToUpdate: map[v1.ResourceName][]containerToUpdateInfo{
-					v1.ResourceCPU: {
-						{
-							specIndex:           2,
-							apiContainerStatus:  &basePod.Status.ContainerStatuses[2],
-							kubeContainerStatus: baseStatus.ContainerStatuses[2],
-							restart:             new(bool),
-						},
-					},
-				},
+				SandboxID:           baseStatus.SandboxStatuses[0].Id,
+				ContainersToKill:    getKillMap(basePod, baseStatus, []int{2}),
+				ContainersToStart:   []int{},
+				ContainersToUpdate:  map[string][]containerToUpdateInfo{},
 				ContainersToRestart: []int{2},
 			},
 			mutatePodActionsFn: func(pod *v1.Pod, pa *podActions) {
 				c := pa.ContainersToKill[baseStatus.ContainerStatuses[2].ID].container
 				c.Resources = v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem200M}}
 				c.ResizePolicy = []v1.ResizePolicy{cpuPolicyNoRestart, memPolicyRestart}
-				ci := pa.ContainersToUpdate[v1.ResourceCPU][0]
-				ci.apiContainerStatus.Resources = v1.ResourceRequirements{
-					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem100M},
-				}
-				ci.kubeContainerStatus.Hash = kubecontainer.HashContainer(&pod.Spec.Containers[2])
-				*ci.restart = true
 			},
 		},
 		"Update container memory resources with RestartContainer policy for CPU": {
@@ -1548,20 +1530,23 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				SandboxID:         baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
 				ContainersToStart: []int{},
-				ContainersToUpdate: map[v1.ResourceName][]containerToUpdateInfo{
-					v1.ResourceMemory: {
+				ContainersToUpdate: map[string][]containerToUpdateInfo{
+					memLimit: {
 						{
-							specIndex:           2,
+							apiContainer:        &basePod.Spec.Containers[2],
 							apiContainerStatus:  &basePod.Status.ContainerStatuses[2],
 							kubeContainerStatus: baseStatus.ContainerStatuses[2],
-							restart:             new(bool),
 						},
 					},
 				},
 				ContainersToRestart: []int{},
 			},
 			mutatePodActionsFn: func(pod *v1.Pod, pa *podActions) {
-				ci := pa.ContainersToUpdate[v1.ResourceMemory][0]
+				ci := pa.ContainersToUpdate[memLimit][0]
+				ci.apiContainer.Resources = v1.ResourceRequirements{
+					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem200M},
+				}
+				ci.apiContainer.ResizePolicy = []v1.ResizePolicy{cpuPolicyRestart, memPolicyNoRestart}
 				ci.apiContainerStatus.Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem100M},
 				}
@@ -1583,20 +1568,23 @@ func TestComputePodActionsForPodResize(t *testing.T) {
 				SandboxID:         baseStatus.SandboxStatuses[0].Id,
 				ContainersToKill:  getKillMap(basePod, baseStatus, []int{}),
 				ContainersToStart: []int{},
-				ContainersToUpdate: map[v1.ResourceName][]containerToUpdateInfo{
-					v1.ResourceCPU: {
+				ContainersToUpdate: map[string][]containerToUpdateInfo{
+					cpuLimit: {
 						{
-							specIndex:           2,
+							apiContainer:        &basePod.Spec.Containers[2],
 							apiContainerStatus:  &basePod.Status.ContainerStatuses[2],
 							kubeContainerStatus: baseStatus.ContainerStatuses[2],
-							restart:             new(bool),
 						},
 					},
 				},
 				ContainersToRestart: []int{},
 			},
 			mutatePodActionsFn: func(pod *v1.Pod, pa *podActions) {
-				ci := pa.ContainersToUpdate[v1.ResourceCPU][0]
+				ci := pa.ContainersToUpdate[cpuLimit][0]
+				ci.apiContainer.Resources = v1.ResourceRequirements{
+					Limits: v1.ResourceList{v1.ResourceCPU: cpu200m, v1.ResourceMemory: mem100M},
+				}
+				ci.apiContainer.ResizePolicy = []v1.ResizePolicy{cpuPolicyNoRestart, memPolicyRestart}
 				ci.apiContainerStatus.Resources = v1.ResourceRequirements{
 					Limits: v1.ResourceList{v1.ResourceCPU: cpu100m, v1.ResourceMemory: mem100M},
 				}
@@ -1651,7 +1639,7 @@ func TestUpdateContainerLimits(t *testing.T) {
 	makeAndSetFakePod(t, m, fakeRuntime, pod)
 
 	for dsc, tc := range map[string]struct {
-		resourceName          v1.ResourceName
+		resourceName          string
 		apiSpecResources      []v1.ResourceRequirements
 		apiStatusResources    []v1.ResourceRequirements
 		kubeStatusResources   []v1.ResourceList
@@ -1660,7 +1648,7 @@ func TestUpdateContainerLimits(t *testing.T) {
 		expectedKubeResources []v1.ResourceList
 	}{
 		"Guaranteed QoS Pod - CPU & memory resize": {
-			resourceName: v1.ResourceCPU,
+			resourceName: cpuLimit,
 			apiSpecResources: []v1.ResourceRequirements{
 				{Limits: res150m150Mi, Requests: res150m150Mi},
 				{Limits: res250m250Mi, Requests: res250m250Mi},
@@ -1686,10 +1674,9 @@ func TestUpdateContainerLimits(t *testing.T) {
 			kubeStatus.ContainerStatuses[idx].Resources.Limits = tc.kubeStatusResources[idx]
 			kubeStatus.ContainerStatuses[idx].Hash = kubecontainer.HashContainer(&pod.Spec.Containers[idx])
 			cInfo := containerToUpdateInfo{
-				specIndex:           idx,
+				apiContainer:        &pod.Spec.Containers[idx],
 				apiContainerStatus:  &pod.Status.ContainerStatuses[idx],
 				kubeContainerStatus: kubeStatus.ContainerStatuses[idx],
-				restart:             &tc.requiresRestart[idx],
 			}
 			containersToUpdate = append(containersToUpdate, cInfo)
 
