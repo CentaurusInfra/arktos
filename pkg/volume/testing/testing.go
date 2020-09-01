@@ -208,9 +208,9 @@ func (f *fakeVolumeHost) GetExec(pluginName string) mount.Exec {
 	return f.exec
 }
 
-func (f *fakeVolumeHost) GetConfigMapFunc() func(namespace, name string) (*v1.ConfigMap, error) {
-	return func(namespace, name string) (*v1.ConfigMap, error) {
-		return f.kubeClient.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+func (f *fakeVolumeHost) GetConfigMapFunc() func(tenant, namespace, name string) (*v1.ConfigMap, error) {
+	return func(tenant, namespace, name string) (*v1.ConfigMap, error) {
+		return f.kubeClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
 }
 

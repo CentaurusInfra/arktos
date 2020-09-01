@@ -33,8 +33,6 @@ type REST struct {
 	*genericregistry.Store
 }
 
-const TTL = 300 // time-to-live in seconds
-
 // NewREST returns a RESTStorage object that will work with TenantStorage objects.
 func NewREST(optsGetter generic.RESTOptionsGetter) *REST {
 	store := &genericregistry.Store{

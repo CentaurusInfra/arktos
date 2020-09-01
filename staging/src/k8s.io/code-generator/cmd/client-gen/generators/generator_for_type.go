@@ -479,7 +479,7 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 		results := make(map[int]*$.resultType|raw$List)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *$.type|privatePlural$, ci $.RESTClientInterface|raw$, opts $.ListOptions|raw$, lock $.syncMutex|raw$, pos int, resultMap map[int]*$.resultType|raw$List, errMap map[int]error) {
+			go func(c *$.type|privatePlural$, ci $.RESTClientInterface|raw$, opts $.ListOptions|raw$, lock *$.syncMutex|raw$, pos int, resultMap map[int]*$.resultType|raw$List, errMap map[int]error) {
 				r := &$.resultType|raw$List{}
 				err := ci.Get().
 					$if .namespaced$Tenant(c.te).Namespace(c.ns).$end$
@@ -495,12 +495,12 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*$.resultType|raw$)
+		itemsMap := make(map[string]$.resultType|raw$)
 		for j:=0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -529,13 +529,13 @@ func (c *$.type|privatePlural$) List(opts $.ListOptions|raw$) (result *$.resultT
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

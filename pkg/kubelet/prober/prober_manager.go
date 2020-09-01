@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,12 +20,12 @@ package prober
 import (
 	"sync"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/component-base/metrics"
 	"k8s.io/klog"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/prober/results"
@@ -33,11 +34,12 @@ import (
 )
 
 // ProberResults stores the cumulative number of a probe by result as prometheus metrics.
-var ProberResults = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Subsystem: "prober",
-		Name:      "probe_total",
-		Help:      "Cumulative number of a liveness or readiness probe for a container by result.",
+var ProberResults = metrics.NewCounterVec(
+	&metrics.CounterOpts{
+		Subsystem:      "prober",
+		Name:           "probe_total",
+		Help:           "Cumulative number of a liveness, readiness or startup probe for a container by result.",
+		StabilityLevel: metrics.ALPHA,
 	},
 	[]string{"probe_type",
 		"result",
@@ -62,8 +64,8 @@ type Manager interface {
 	RemovePod(pod *v1.Pod)
 
 	// CleanupPods handles cleaning up pods which should no longer be running.
-	// It takes a list of "active pods" which should not be cleaned up.
-	CleanupPods(activePods []*v1.Pod)
+	// It takes a map of "desired pods" which should not be cleaned up.
+	CleanupPods(desiredPods map[types.UID]sets.Empty)
 
 	// UpdatePodStatus modifies the given PodStatus with the appropriate Ready state for each
 	// container based on container running status, cached probe results and worker states.
@@ -92,7 +94,7 @@ type manager struct {
 	prober *prober
 }
 
-// NewManager creates a new prober manager instance.
+// NewManager creates a Manager for pod probing.
 func NewManager(
 	statusManager status.Manager,
 	livenessManager results.Manager,
@@ -124,7 +126,7 @@ type probeKey struct {
 	probeType     probeType
 }
 
-// Type of probe (readiness or liveness)
+// Type of probe (liveness, readiness or startup)
 type probeType int
 
 const (
@@ -198,12 +200,7 @@ func (m *manager) RemovePod(pod *v1.Pod) {
 	}
 }
 
-func (m *manager) CleanupPods(activePods []*v1.Pod) {
-	desiredPods := make(map[types.UID]sets.Empty)
-	for _, pod := range activePods {
-		desiredPods[pod.UID] = sets.Empty{}
-	}
-
+func (m *manager) CleanupPods(desiredPods map[types.UID]sets.Empty) {
 	m.workerLock.RLock()
 	defer m.workerLock.RUnlock()
 

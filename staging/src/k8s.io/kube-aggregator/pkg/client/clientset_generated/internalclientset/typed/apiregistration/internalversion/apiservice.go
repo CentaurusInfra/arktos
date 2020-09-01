@@ -114,7 +114,7 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 		results := make(map[int]*apiregistration.APIServiceList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *aPIServices, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*apiregistration.APIServiceList, errMap map[int]error) {
+			go func(c *aPIServices, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*apiregistration.APIServiceList, errMap map[int]error) {
 				r := &apiregistration.APIServiceList{}
 				err := ci.Get().
 					Tenant(c.te).
@@ -129,12 +129,12 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*apiregistration.APIService)
+		itemsMap := make(map[string]apiregistration.APIService)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -163,13 +163,13 @@ func (c *aPIServices) List(opts v1.ListOptions) (result *apiregistration.APIServ
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

@@ -251,7 +251,8 @@ func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 // and then use the resource version to watch.
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
-	klog.V(3).Infof("ListAndWatch %v. filter bounds %+v. name %s", r.expectedType, r.filterBounds, r.name)
+	klog.V(3).Infof("ListAndWatch %v. filter bounds %+v. name %s. Watch page size %v. resync period %v",
+		r.expectedType, r.filterBounds, r.name, r.WatchListPageSize, r.resyncPeriod)
 	var resourceVersion string
 
 	// Explicitly set "0" as resource version - it's fine for the List()

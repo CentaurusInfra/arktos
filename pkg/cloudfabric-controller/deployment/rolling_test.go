@@ -18,6 +18,7 @@ package deployment
 
 import (
 	"github.com/grafov/bcast"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/cloudfabric-controller/controllerframework"
 	"testing"
 
@@ -88,12 +89,6 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 		},
 	}
 
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
-
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
@@ -123,7 +118,8 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 			continue
 		}
 		if !test.scaleExpected {
-			if scaled || len(fake.Actions()) > 0 {
+			if scaled || len(fake.Actions()) > 1 {
+				// there will be one action for rs controller
 				t.Errorf("unexpected scaling: %v", fake.Actions())
 			}
 			continue
@@ -132,11 +128,11 @@ func testDeploymentController_reconcileNewReplicaSet(t *testing.T, tenant string
 			t.Errorf("expected scaling to occur")
 			continue
 		}
-		if len(fake.Actions()) != 1 {
-			t.Errorf("expected 1 action during scale, got: %v", fake.Actions())
+		if len(fake.Actions()) != 2 {
+			t.Errorf("expected 2 action during scale, got: %v", fake.Actions())
 			continue
 		}
-		updated := fake.Actions()[0].(core.UpdateAction).GetObject().(*apps.ReplicaSet)
+		updated := fake.Actions()[1].(core.UpdateAction).GetObject().(*apps.ReplicaSet)
 		if e, a := test.expectedNewReplicas, int(*(updated.Spec.Replicas)); e != a {
 			t.Errorf("expected update to %d replicas, got %d", e, a)
 		}
@@ -212,12 +208,6 @@ func testDeploymentController_reconcileOldReplicaSets(t *testing.T, tenant strin
 			scaleExpected:      false,
 		},
 	}
-
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -312,12 +302,6 @@ func testDeploymentController_cleanupUnhealthyReplicas(t *testing.T, tenant stri
 		},
 	}
 
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
-
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
@@ -410,12 +394,6 @@ func testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing
 		},
 	}
 
-	oldHandler := controllerframework.CreateControllerInstanceHandler
-	controllerframework.CreateControllerInstanceHandler = controllerframework.MockCreateControllerInstance
-	defer func() {
-		controllerframework.CreateControllerInstanceHandler = oldHandler
-	}()
-
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	cimUpdateCh, informersResetChGrp := controllerframework.MockCreateControllerInstanceAndResetChs(stopCh)
@@ -462,10 +440,15 @@ func testDeploymentController_scaleDownOldReplicaSetsForRollingUpdate(t *testing
 		for _, action := range fakeClientset.Actions() {
 			switch a := action.(type) {
 			case core.UpdateAction:
-				if updateAction != nil {
-					t.Errorf("expected only 1 update action; had %v and found %v", updateAction, a)
-				} else {
-					updateAction = a
+				switch a.GetObject().(type) {
+				case *v1.ControllerInstance:
+					t.Logf("Got controller instance %#v", a)
+				case *apps.ReplicaSet:
+					if updateAction != nil {
+						t.Errorf("expected only 1 update action; had %v and found %v", updateAction, a)
+					} else {
+						updateAction = a
+					}
 				}
 			}
 		}

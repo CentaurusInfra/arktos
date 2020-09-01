@@ -116,7 +116,7 @@ func (c *events) List(opts metav1.ListOptions) (result *v1.EventList, err error)
 		results := make(map[int]*v1.EventList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *events, ci rest.Interface, opts metav1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1.EventList, errMap map[int]error) {
+			go func(c *events, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.EventList, errMap map[int]error) {
 				r := &v1.EventList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -131,12 +131,12 @@ func (c *events) List(opts metav1.ListOptions) (result *v1.EventList, err error)
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1.Event)
+		itemsMap := make(map[string]v1.Event)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -165,13 +165,13 @@ func (c *events) List(opts metav1.ListOptions) (result *v1.EventList, err error)
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

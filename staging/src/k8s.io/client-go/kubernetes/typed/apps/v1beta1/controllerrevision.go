@@ -116,7 +116,7 @@ func (c *controllerRevisions) List(opts v1.ListOptions) (result *v1beta1.Control
 		results := make(map[int]*v1beta1.ControllerRevisionList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *controllerRevisions, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1beta1.ControllerRevisionList, errMap map[int]error) {
+			go func(c *controllerRevisions, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1beta1.ControllerRevisionList, errMap map[int]error) {
 				r := &v1beta1.ControllerRevisionList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -131,12 +131,12 @@ func (c *controllerRevisions) List(opts v1.ListOptions) (result *v1beta1.Control
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1beta1.ControllerRevision)
+		itemsMap := make(map[string]v1beta1.ControllerRevision)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -165,13 +165,13 @@ func (c *controllerRevisions) List(opts v1.ListOptions) (result *v1beta1.Control
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

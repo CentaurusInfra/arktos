@@ -147,10 +147,13 @@ func newWatchCache(
 	getAttrsFunc func(runtime.Object) (labels.Set, fields.Set, error),
 	versioner storage.Versioner) *watchCache {
 	wc := &watchCache{
-		capacity:            capacity,
-		keyFunc:             keyFunc,
-		getAttrsFunc:        getAttrsFunc,
-		cache:               make(map[uint64]*watchCacheEvent, capacity),
+		capacity:     capacity,
+		keyFunc:      keyFunc,
+		getAttrsFunc: getAttrsFunc,
+
+		// One extra slot is needed because we delete old item after
+		// inserting new item.
+		cache:               make(map[uint64]*watchCacheEvent, capacity+1),
 		revCache:            make([]uint64, capacity),
 		startIndex:          0,
 		endIndex:            0,
@@ -274,15 +277,22 @@ func (w *watchCache) processEvent(event watch.Event, resourceVersion uint64, upd
 
 // Assumes that lock is already held for write.
 func (w *watchCache) updateCache(event *watchCacheEvent) {
+	var toRemove bool
+	var revToRemove uint64
+
 	if w.endIndex == w.startIndex+w.capacity {
 		// Cache is full - remove the oldest element.
-		revToRemove := w.revCache[w.startIndex%w.capacity]
-		delete(w.cache, revToRemove)
+		revToRemove = w.revCache[w.startIndex%w.capacity]
+		toRemove = true
 		w.startIndex++
 	}
 	w.cache[event.ResourceVersion] = event
 	w.revCache[w.endIndex%w.capacity] = event.ResourceVersion
 	w.endIndex++
+
+	if toRemove {
+		delete(w.cache, revToRemove)
+	}
 }
 
 // List returns list of pointers to <storeElement> objects.
@@ -487,7 +497,7 @@ func (w *watchCache) GetAllEventsSinceThreadUnsafe(resourceVersion uint64) ([]*w
 		rev := w.revCache[(w.startIndex+first+i)%w.capacity]
 		result, isOK := w.cache[rev]
 		if !isOK {
-			klog.Errorf("Expected event not found in cache. Rev %v", rev)
+			return nil, fmt.Errorf("Expected event not found in cache. Rev %v", rev)
 		} else {
 			results[i] = result
 		}

@@ -6,6 +6,8 @@ metadata:
   name: vmlocalpv
   annotations:
     VirtletDiskDriver: virtio
+  # use host-model or other cpul model that supports numa for memory hotplug/unplug feature in libvirt
+    VirtletCPUModel: "host-model"
 spec:
   virtualMachine:
     keyPairName: "foobar"
