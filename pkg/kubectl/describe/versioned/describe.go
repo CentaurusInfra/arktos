@@ -2779,6 +2779,7 @@ func (d *ClusterRoleDescriber) Describe(tenant, namespace, name string, describe
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", role.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", role.Tenant)
 		printLabelsMultiline(w, "Labels", role.Labels)
 		printAnnotationsMultiline(w, "Annotations", role.Annotations)
 
@@ -2857,6 +2858,7 @@ func (d *ClusterRoleBindingDescriber) Describe(tenant, namespace, name string, d
 	return tabbedString(func(out io.Writer) error {
 		w := NewPrefixWriter(out)
 		w.Write(LEVEL_0, "Name:\t%s\n", binding.Name)
+		w.Write(LEVEL_0, "Tenant:\t%s\n", binding.Tenant)
 		printLabelsMultiline(w, "Labels", binding.Labels)
 		printAnnotationsMultiline(w, "Annotations", binding.Annotations)
 
