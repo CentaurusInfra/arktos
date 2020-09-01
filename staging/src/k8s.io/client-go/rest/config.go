@@ -157,9 +157,11 @@ func (ag *Config) WatchUpdate() *bcast.Member {
 
 func (ag *Config) ToString() string {
 	text := ""
+	ag.mux.RLock()
 	for _, kubeConfig := range ag.config {
 		text += fmt.Sprintf("%#v", kubeConfig)
 	}
+	ag.mux.RUnlock()
 	return text
 }
 
