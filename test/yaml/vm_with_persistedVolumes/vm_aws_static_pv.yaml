@@ -4,6 +4,9 @@ metadata:
   tenant: default
   namespace: default
   name: vmawspv
+  # use host-model or other cpul model that supports numa for memory hotplug/unplug feature in libvirt
+  annotations:
+    VirtletCPUModel: "host-model"
 spec:
   virtualMachine:
     keyPairName: "foobar"
