@@ -3253,29 +3253,42 @@ type PodSpec struct {
 }
 
 func (ps *PodSpec) Workloads() []CommonInfo {
+	// Immutable fields, only set when the workloadInfo is nil
 	if len(ps.WorkloadInfo) == 0 {
 		if ps.VirtualMachine != nil {
 			ps.WorkloadInfo = make([]CommonInfo, 1)
 			ps.WorkloadInfo[0].Name = ps.VirtualMachine.Name
-			ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
 			ps.WorkloadInfo[0].ImagePullPolicy = ps.VirtualMachine.ImagePullPolicy
-			ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
-			ps.WorkloadInfo[0].ResourcesAllocated = ps.VirtualMachine.ResourcesAllocated
 			ps.WorkloadInfo[0].ResizePolicy = ps.VirtualMachine.ResizePolicy
 			ps.WorkloadInfo[0].VolumeMounts = ps.VirtualMachine.VolumeMounts
 		} else {
 			ps.WorkloadInfo = make([]CommonInfo, len(ps.Containers))
 			for i := range ps.Containers {
 				ps.WorkloadInfo[i].Name = ps.Containers[i].Name
-				ps.WorkloadInfo[i].Image = ps.Containers[i].Image
 				ps.WorkloadInfo[i].ImagePullPolicy = ps.Containers[i].ImagePullPolicy
-				ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
-				ps.WorkloadInfo[i].ResourcesAllocated = ps.Containers[i].ResourcesAllocated
 				ps.WorkloadInfo[i].ResizePolicy = ps.Containers[i].ResizePolicy
 				ps.WorkloadInfo[i].VolumeMounts = ps.Containers[i].VolumeMounts
 			}
 		}
 	}
+
+	// Always update mutable fields to WorkloadInfo
+	// for patching cases, update the resources
+	// 1. k8s won't allow container add/delete after pod is created so the slice length is fixed
+	// 2. golang seems thread safe for slice RW and WW. as long as no append operations
+	// 3. instead of a deepcompare for those structures, just directly assign them
+	if ps.VirtualMachine != nil {
+		ps.WorkloadInfo[0].Image = ps.VirtualMachine.Image
+		ps.WorkloadInfo[0].Resources = ps.VirtualMachine.Resources
+		ps.WorkloadInfo[0].ResourcesAllocated = ps.VirtualMachine.ResourcesAllocated
+	} else {
+		for i := range ps.Containers {
+			ps.WorkloadInfo[i].Image = ps.Containers[i].Image
+			ps.WorkloadInfo[i].Resources = ps.Containers[i].Resources
+			ps.WorkloadInfo[i].ResourcesAllocated = ps.Containers[i].ResourcesAllocated
+		}
+	}
+
 	return ps.WorkloadInfo
 }
 

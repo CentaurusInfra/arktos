@@ -32,6 +32,7 @@ go_test(
         "//staging/src/k8s.io/apimachinery/pkg/util/httpstream:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/intstr:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/watch:go_default_library",
+        "//staging/src/k8s.io/client-go/apiserverupdate:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/scheme:go_default_library",
         "//staging/src/k8s.io/client-go/rest/watch:go_default_library",
         "//staging/src/k8s.io/client-go/tools/clientcmd/api:go_default_library",

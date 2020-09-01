@@ -110,7 +110,7 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1alpha1.PodMetricsLis
 		results := make(map[int]*v1alpha1.PodMetricsList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *podMetricses, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1alpha1.PodMetricsList, errMap map[int]error) {
+			go func(c *podMetricses, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1alpha1.PodMetricsList, errMap map[int]error) {
 				r := &v1alpha1.PodMetricsList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -125,12 +125,12 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1alpha1.PodMetricsLis
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1alpha1.PodMetrics)
+		itemsMap := make(map[string]v1alpha1.PodMetrics)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -159,13 +159,13 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1alpha1.PodMetricsLis
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

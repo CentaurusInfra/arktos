@@ -585,7 +585,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 				}
 				optional := cm.Optional != nil && *cm.Optional
-				configMap, err = kl.configMapManager.GetConfigMap(pod.Namespace, name)
+				configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name)
 				if err != nil {
 					if errors.IsNotFound(err) && optional {
 						// ignore error when marked optional
@@ -693,7 +693,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					if kl.kubeClient == nil {
 						return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 					}
-					configMap, err = kl.configMapManager.GetConfigMap(pod.Namespace, name)
+					configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name)
 					if err != nil {
 						if errors.IsNotFound(err) && optional {
 							// ignore error when marked optional
@@ -708,7 +708,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					if optional {
 						continue
 					}
-					return result, fmt.Errorf("Couldn't find key %v in ConfigMap %v/%v", key, pod.Namespace, name)
+					return result, fmt.Errorf("Couldn't find key %v in ConfigMap %v/%v/%v", key, pod.Tenant, pod.Namespace, name)
 				}
 			case envVar.ValueFrom.SecretKeyRef != nil:
 				s := envVar.ValueFrom.SecretKeyRef
@@ -901,13 +901,15 @@ func (kl *Kubelet) IsPodDeleted(uid types.UID) bool {
 func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bool {
 	if !notRunning(status.ContainerStatuses) {
 		// We shouldnt delete pods that still have running containers
-		klog.V(3).Infof("Pod %q is terminated, but some containers are still running", format.Pod(pod))
+		klog.V(3).Infof("Pod %q is terminated, but some containers are still running",
+			format.PodWithDeletionTimestampAndResourceVersion(pod))
 		return false
 	}
 	// pod's containers should be deleted
 	runtimeStatus, err := kl.podCache.Get(pod.UID)
 	if err != nil {
-		klog.V(3).Infof("Pod %q is terminated, Error getting runtimeStatus from the podCache: %s", format.Pod(pod), err)
+		klog.V(3).Infof("Pod %q is terminated, Error getting runtimeStatus from the podCache: %s",
+			format.PodWithDeletionTimestampAndResourceVersion(pod), err)
 		return false
 	}
 	if len(runtimeStatus.ContainerStatuses) > 0 {
@@ -915,7 +917,8 @@ func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bo
 		for _, status := range runtimeStatus.ContainerStatuses {
 			statusStr += fmt.Sprintf("%+v ", *status)
 		}
-		klog.V(3).Infof("Pod %q is terminated, but some containers have not been cleaned up: %s", format.Pod(pod), statusStr)
+		klog.V(3).Infof("Pod %q is terminated, but some containers have not been cleaned up: %s",
+			format.PodWithDeletionTimestampAndResourceVersion(pod), statusStr)
 		return false
 	}
 	if kl.podVolumesExist(pod.UID) && !kl.keepTerminatedPodVolumes {
@@ -926,7 +929,8 @@ func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bo
 	if kl.kubeletConfiguration.CgroupsPerQOS {
 		pcm := kl.containerManager.NewPodContainerManager()
 		if pcm.Exists(pod) {
-			klog.V(3).Infof("Pod %q is terminated, but pod cgroup sandbox has not been cleaned up", format.Pod(pod))
+			klog.V(3).Infof("Pod %q is terminated, but pod cgroup sandbox has not been cleaned up",
+				format.PodWithDeletionTimestampAndResourceVersion(pod))
 			return false
 		}
 	}
@@ -1015,13 +1019,15 @@ func (kl *Kubelet) HandlePodCleanups() error {
 	activePods := kl.filterOutTerminatedPods(allPods)
 
 	desiredPods := make(map[types.UID]empty)
+	desiredActivePods := make(map[types.UID]sets.Empty)
 	for _, pod := range activePods {
 		desiredPods[pod.UID] = empty{}
+		desiredActivePods[pod.UID] = sets.Empty{}
 	}
 	// Stop the workers for no-longer existing pods.
 	// TODO: is here the best place to forget pod workers?
 	kl.podWorkers.ForgetNonExistingPodWorkers(desiredPods)
-	kl.probeManager.CleanupPods(activePods)
+	kl.probeManager.CleanupPods(desiredActivePods)
 
 	runningPods, err := kl.runtimeCache.GetPods()
 	if err != nil {
@@ -1424,7 +1430,7 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *v1.Pod, podStatus *kubecontaine
 
 	oldPodStatus, found := kl.statusManager.GetPodStatus(pod.UID)
 	if !found {
-		klog.V(6).Infof("pod not found in the status manager map")
+		klog.V(3).Infof("pod not found in the status manager map")
 		oldPodStatus = pod.Status
 	}
 

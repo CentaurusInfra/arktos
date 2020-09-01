@@ -130,8 +130,8 @@ func CreateHandlers(rootPath string, provider Provider, summaryProvider SummaryP
 			endpoint{"", h.handleStats},
 			endpoint{"/container", h.handleSystemContainer},
 			endpoint{"/{podName}/{containerName}", h.handlePodContainer},
-			endpoint{"/{tenant}/{namespace}/{podName}/{uid}/{containerName}", h.handlePodContainer},
 			endpoint{"/{namespace}/{podName}/{uid}/{containerName}", h.handlePodContainer},
+			endpoint{"/{tenant}/{namespace}/{podName}/{uid}/{containerName}", h.handlePodContainer},
 		)
 	}
 
@@ -265,6 +265,7 @@ func (h *handler) handleSystemContainer(request *restful.Request, response *rest
 // Handles kubernetes pod/container stats requests to:
 // /stats/<pod name>/<container name>
 // /stats/<namespace>/<pod name>/<uid>/<container name>
+// /stats/<tenant>/<namespace>/<pod name>/<uid>/<container name>
 func (h *handler) handlePodContainer(request *restful.Request, response *restful.Response) {
 	query, err := parseStatsRequest(request)
 	if err != nil {
@@ -289,7 +290,6 @@ func (h *handler) handlePodContainer(request *restful.Request, response *restful
 	}
 
 	pod, ok := h.provider.GetPodByName(params["tenant"], params["namespace"], params["podName"])
-
 	if !ok {
 		klog.V(4).Infof("Container not found: %v", params)
 		response.WriteError(http.StatusNotFound, kubecontainer.ErrContainerNotFound)

@@ -23,7 +23,7 @@ import (
 	"testing"
 )
 
-func newControllerInstance(controllerType string, controllerKey int64, workloadNum int32, isLocked bool) *v1.ControllerInstance {
+func newControllerInstance(cim *ControllerInstanceManager, controllerType string, controllerKey int64, workloadNum int32) *v1.ControllerInstance {
 	controllerInstance := &v1.ControllerInstance{
 		ObjectMeta: metav1.ObjectMeta{
 			ResourceVersion: "100",
@@ -31,10 +31,13 @@ func newControllerInstance(controllerType string, controllerKey int64, workloadN
 		ControllerType: controllerType,
 		ControllerKey:  controllerKey,
 		WorkloadNum:    workloadNum,
-		IsLocked:       isLocked,
 	}
 
-	controllerInstance.Name = generateControllerName()
+	GetInstanceHandler = func() *ControllerInstanceManager {
+		return cim
+	}
+	controllerInstance.Name = generateControllerName(controllerType, nil)
+	GetInstanceHandler = getControllerInstanceManager
 
 	return controllerInstance
 }
@@ -42,7 +45,7 @@ func newControllerInstance(controllerType string, controllerKey int64, workloadN
 func testAddEvent(t *testing.T, cim *ControllerInstanceManager, notifyTimes int) (*v1.ControllerInstance, string, map[string]v1.ControllerInstance) {
 	// add event
 	controllerType := "foo"
-	controllerInstance1 := newControllerInstance(controllerType, 10000, 999, false)
+	controllerInstance1 := newControllerInstance(cim, controllerType, 10000, 999)
 	cim.addControllerInstance(controllerInstance1)
 
 	controllerInstanceMap, err := cim.ListControllerInstances(controllerType)
@@ -55,7 +58,6 @@ func testAddEvent(t *testing.T, cim *ControllerInstanceManager, notifyTimes int)
 	assert.Equal(t, controllerInstance1.ControllerType, controllerInstanceRead.ControllerType)
 	assert.Equal(t, controllerInstance1.ControllerKey, controllerInstanceRead.ControllerKey)
 	assert.Equal(t, controllerInstance1.WorkloadNum, controllerInstanceRead.WorkloadNum)
-	assert.Equal(t, controllerInstance1.IsLocked, controllerInstanceRead.IsLocked)
 	assert.Equal(t, notifyTimes, notifyTimes, "Unexpected notify times")
 
 	return &controllerInstanceRead, controllerType, controllerInstanceMap
@@ -87,7 +89,6 @@ func TestControllerInstancesAddAndUpdateEventHandler(t *testing.T) {
 
 	// update event
 	controllerInstance2 := controllerInstance1.DeepCopy()
-	controllerInstance2.IsLocked = !controllerInstance1.IsLocked
 	controllerInstance2.WorkloadNum = controllerInstance1.WorkloadNum + 101
 	controllerInstance2.ControllerKey = controllerInstance1.ControllerKey - 100
 	controllerInstance2.ResourceVersion = "101"
@@ -102,7 +103,6 @@ func TestControllerInstancesAddAndUpdateEventHandler(t *testing.T) {
 	assert.NotNil(t, controllerInstanceRead2)
 	assert.Equal(t, controllerInstance1.Name, controllerInstanceRead2.Name)
 	assert.Equal(t, controllerInstance1.ControllerType, controllerInstanceRead2.ControllerType)
-	assert.NotEqual(t, controllerInstance1.IsLocked, controllerInstanceRead2.IsLocked)
 	assert.Equal(t, controllerInstance1.WorkloadNum+101, controllerInstanceRead2.WorkloadNum)
 	assert.Equal(t, controllerInstance1.ControllerKey-100, controllerInstanceRead2.ControllerKey)
 	assert.Equal(t, 2, notifyTimes, "Unexpected notify times")
@@ -157,7 +157,7 @@ func TestDeleteControllerInstanceDoesNotExist(t *testing.T) {
 	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
-	controllerInstance1 := newControllerInstance("bar", 10000, 999, false)
+	controllerInstance1 := newControllerInstance(cim, "bar", 10000, 999)
 	cim.deleteControllerInstance(controllerInstance1)
 
 	controllerInstanceMap, err := cim.ListControllerInstances(controllerInstance1.ControllerType)
@@ -170,16 +170,20 @@ func TestAddMultipleControllerInstancesForSameControllerType(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	cim, _ := CreateTestControllerInstanceManager(stopCh)
+	cim1, _ := CreateTestControllerInstanceManager(stopCh)
+	cim2, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
 	// add event
-	controllerInstance1, controllerType1, _ := testAddEvent(t, cim, 1)
-	controllerInstance2, controllerType2, _ := testAddEvent(t, cim, 2)
+	controllerInstance1, controllerType1, _ := testAddEvent(t, cim1, 1)
+	controllerInstance2, controllerType2, _ := testAddEvent(t, cim2, 2)
 	assert.Equal(t, controllerType1, controllerType2)
 	assert.NotEqual(t, controllerInstance1.Name, controllerInstance2.Name)
 
-	controllerInstanceMap, err := cim.ListControllerInstances(controllerType1)
+	// cim 1 got controller 2 creation event
+	cim1.addControllerInstance(controllerInstance2)
+
+	controllerInstanceMap, err := cim1.ListControllerInstances(controllerType1)
 	assert.Nil(t, err)
 	assert.NotNil(t, controllerInstanceMap)
 	controllerInstanceRead1, isOK1 := controllerInstanceMap[controllerInstance1.Name]
@@ -205,7 +209,6 @@ func TestUpdateHandlerWithOldEvents(t *testing.T) {
 
 	// update event
 	controllerInstance2 := controllerInstance1.DeepCopy()
-	controllerInstance2.IsLocked = !controllerInstance1.IsLocked
 	controllerInstance2.WorkloadNum = controllerInstance1.WorkloadNum + 101
 	controllerInstance2.ControllerKey = controllerInstance1.ControllerKey - 100
 	controllerInstance2.ResourceVersion = "99"
@@ -221,7 +224,6 @@ func TestUpdateHandlerWithOldEvents(t *testing.T) {
 
 	assert.Equal(t, controllerInstance1.Name, controllerInstanceRead2.Name)
 	assert.Equal(t, controllerInstance1.ResourceVersion, controllerInstanceRead2.ResourceVersion)
-	assert.Equal(t, controllerInstance1.IsLocked, controllerInstanceRead2.IsLocked)
 	assert.Equal(t, controllerInstance1.WorkloadNum, controllerInstanceRead2.WorkloadNum)
 	assert.Equal(t, controllerInstance1.ControllerKey, controllerInstanceRead2.ControllerKey)
 }
@@ -233,21 +235,27 @@ func TestErrorHandlingInListControllerInstances(t *testing.T) {
 	cim, _ := CreateTestControllerInstanceManager(stopCh)
 	notifyTimes = 0
 
-	_, controllerType, _ := testAddEvent(t, cim, 1)
+	controllerInstance1, controllerType, _ := testAddEvent(t, cim, 1)
 	testAddEvent(t, cim, 2)
 
-	controllerInstance3 := newControllerInstance("foo2", 10000, 999, false)
-	cim.addControllerInstance(controllerInstance3)
+	controllerInstance2 := newControllerInstance(cim, "foo2", 10000, 999)
+	cim.addControllerInstance(controllerInstance2)
 
 	cim.isControllerListInitialized = false
 
 	controllerInstanceMap1, err := cim.ListControllerInstances(controllerType)
 	assert.Nil(t, err)
 	assert.NotNil(t, controllerInstanceMap1)
-	assert.Equal(t, 2, len(controllerInstanceMap1))
+	assert.Equal(t, 1, len(controllerInstanceMap1))
+	instanceRead, isOK := controllerInstanceMap1[controllerInstance1.Name]
+	assert.True(t, isOK)
+	assert.Equal(t, controllerInstance1.ControllerKey, instanceRead.ControllerKey)
 
 	controllerInstanceMap2, err := cim.ListControllerInstances("foo2")
 	assert.Nil(t, err)
 	assert.NotNil(t, controllerInstanceMap2)
 	assert.Equal(t, 1, len(controllerInstanceMap2))
+	instanceRead, isOK = controllerInstanceMap2[controllerInstance2.Name]
+	assert.True(t, isOK)
+	assert.Equal(t, controllerInstance2.ControllerKey, instanceRead.ControllerKey)
 }

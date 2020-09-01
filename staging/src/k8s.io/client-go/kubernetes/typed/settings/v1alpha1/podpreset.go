@@ -116,7 +116,7 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 		results := make(map[int]*v1alpha1.PodPresetList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *podPresets, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1alpha1.PodPresetList, errMap map[int]error) {
+			go func(c *podPresets, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1alpha1.PodPresetList, errMap map[int]error) {
 				r := &v1alpha1.PodPresetList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -131,12 +131,12 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1alpha1.PodPreset)
+		itemsMap := make(map[string]v1alpha1.PodPreset)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -165,13 +165,13 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

@@ -99,6 +99,7 @@ filegroup(
         ":package-srcs",
         "//test/e2e/apimachinery:all-srcs",
         "//test/e2e/apps:all-srcs",
+        "//test/e2e/arktos/multi_tenancy/cmd:all-srcs",
         "//test/e2e/auth:all-srcs",
         "//test/e2e/autoscaling:all-srcs",
         "//test/e2e/chaosmonkey:all-srcs",

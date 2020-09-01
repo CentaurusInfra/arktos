@@ -105,7 +105,7 @@ func (c *priorityClasses) List(opts v1.ListOptions) (result *v1beta1.PriorityCla
 		results := make(map[int]*v1beta1.PriorityClassList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *priorityClasses, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1beta1.PriorityClassList, errMap map[int]error) {
+			go func(c *priorityClasses, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1beta1.PriorityClassList, errMap map[int]error) {
 				r := &v1beta1.PriorityClassList{}
 				err := ci.Get().
 					Resource("priorityclasses").
@@ -119,12 +119,12 @@ func (c *priorityClasses) List(opts v1.ListOptions) (result *v1beta1.PriorityCla
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1beta1.PriorityClass)
+		itemsMap := make(map[string]v1beta1.PriorityClass)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -153,13 +153,13 @@ func (c *priorityClasses) List(opts v1.ListOptions) (result *v1beta1.PriorityCla
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

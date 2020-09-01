@@ -141,7 +141,9 @@ Sample tenant spec
 apiVersion: v1
 kind: Tenant
 metadata:
-  name: a 
+  name: a
+spec:
+  storageClusterId: "1"
 ```
 If separate ETCD cluster is used for tenant, the following command can be used to check ETCD data:
 ```

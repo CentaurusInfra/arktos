@@ -114,7 +114,7 @@ func (c *customResourceDefinitions) List(opts v1.ListOptions) (result *apiextens
 		results := make(map[int]*apiextensions.CustomResourceDefinitionList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *customResourceDefinitions, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*apiextensions.CustomResourceDefinitionList, errMap map[int]error) {
+			go func(c *customResourceDefinitions, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*apiextensions.CustomResourceDefinitionList, errMap map[int]error) {
 				r := &apiextensions.CustomResourceDefinitionList{}
 				err := ci.Get().
 					Tenant(c.te).
@@ -129,12 +129,12 @@ func (c *customResourceDefinitions) List(opts v1.ListOptions) (result *apiextens
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*apiextensions.CustomResourceDefinition)
+		itemsMap := make(map[string]apiextensions.CustomResourceDefinition)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -163,13 +163,13 @@ func (c *customResourceDefinitions) List(opts v1.ListOptions) (result *apiextens
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

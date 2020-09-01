@@ -104,7 +104,7 @@ func (c *storageClusters) List(opts metav1.ListOptions) (result *v1.StorageClust
 		results := make(map[int]*v1.StorageClusterList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *storageClusters, ci rest.Interface, opts metav1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*v1.StorageClusterList, errMap map[int]error) {
+			go func(c *storageClusters, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.StorageClusterList, errMap map[int]error) {
 				r := &v1.StorageClusterList{}
 				err := ci.Get().
 					Resource("storageclusters").
@@ -118,12 +118,12 @@ func (c *storageClusters) List(opts metav1.ListOptions) (result *v1.StorageClust
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*v1.StorageCluster)
+		itemsMap := make(map[string]v1.StorageCluster)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -152,13 +152,13 @@ func (c *storageClusters) List(opts metav1.ListOptions) (result *v1.StorageClust
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

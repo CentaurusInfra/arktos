@@ -236,3 +236,24 @@ else
   echo "Master IP: ${MASTER_IP}"
 fi
 echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG}"
+
+sleep 5
+echo -e "\nListing kubeamrk cluster details:" >&2
+echo -e "Getting total nodes number:" >&2
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node | wc -l
+echo
+echo -e "Getting total hollow-nodes number:" >&2
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node | grep "hollow-node" | wc -l
+echo
+echo -e "Getting endpoints status:" >&2
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get endpoints -A
+echo
+echo -e "Getting workload controller co status:" >&2
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get co
+echo
+echo -e "Getting apiserver data partition status:" >&2
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get datapartition
+echo
+echo -e "Getting ETCD data partition status:" >&2
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get etcd
+echo

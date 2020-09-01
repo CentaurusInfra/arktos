@@ -117,7 +117,7 @@ func (c *testTypes) List(opts v1.ListOptions) (result *example.TestTypeList, err
 		results := make(map[int]*example.TestTypeList)
 		errs := make(map[int]error)
 		for i, client := range c.clients {
-			go func(c *testTypes, ci rest.Interface, opts v1.ListOptions, lock sync.Mutex, pos int, resultMap map[int]*example.TestTypeList, errMap map[int]error) {
+			go func(c *testTypes, ci rest.Interface, opts v1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*example.TestTypeList, errMap map[int]error) {
 				r := &example.TestTypeList{}
 				err := ci.Get().
 					Tenant(c.te).Namespace(c.ns).
@@ -132,12 +132,12 @@ func (c *testTypes) List(opts v1.ListOptions) (result *example.TestTypeList, err
 				errMap[pos] = err
 				lock.Unlock()
 				wg.Done()
-			}(c, client, opts, listLock, i, results, errs)
+			}(c, client, opts, &listLock, i, results, errs)
 		}
 		wg.Wait()
 
 		// consolidate list result
-		itemsMap := make(map[string]*example.TestType)
+		itemsMap := make(map[string]example.TestType)
 		for j := 0; j < wgLen; j++ {
 			currentErr, isOK := errs[j]
 			if isOK && currentErr != nil {
@@ -166,13 +166,13 @@ func (c *testTypes) List(opts v1.ListOptions) (result *example.TestTypeList, err
 			}
 			for _, item := range currentResult.Items {
 				if _, exist := itemsMap[item.ResourceVersion]; !exist {
-					itemsMap[item.ResourceVersion] = &item
+					itemsMap[item.ResourceVersion] = item
 				}
 			}
 		}
 
 		for _, item := range itemsMap {
-			result.Items = append(result.Items, *item)
+			result.Items = append(result.Items, item)
 		}
 		return
 	}

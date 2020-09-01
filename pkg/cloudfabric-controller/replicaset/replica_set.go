@@ -291,7 +291,7 @@ func (rsc *ReplicaSetController) addPod(obj interface{}) {
 		if err != nil {
 			return
 		}
-		klog.V(4).Infof("Pod %s created: %#v.", pod.Name, pod)
+		klog.V(4).Infof("Pod %s created: %#v. rv %v", pod.Name, pod, pod.ResourceVersion)
 		rsc.expectations.CreationObserved(rsKey)
 		rsc.enqueueReplicaSet(rs)
 		return
@@ -455,16 +455,6 @@ func (rsc *ReplicaSetController) worker() {
 }
 
 func (rsc *ReplicaSetController) processNextWorkItem() bool {
-	if !rsc.IsControllerActive() {
-		isDone, countOfProcessingWorkItem := rsc.IsDoneProcessingCurrentWorkloads()
-		if !isDone {
-			klog.Infof("Controller is not active, worker idle .... count of work items = %d", countOfProcessingWorkItem)
-			// TODO : compare key version and controller locked status version
-			time.Sleep(1 * time.Second)
-			return true
-		}
-	}
-
 	key, quit := rsc.queue.Get()
 	if quit {
 		return false
@@ -614,6 +604,7 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 		rsc.expectations.DeleteExpectations(key)
 		return nil
 	} else {
+		klog.V(4).Infof("Checking replicaset %s/%s/%s hashkey %v", tenant, namespace, rs.Name, rs.HashKey)
 		// backwards compatible: if no hashkey, calculate and filter
 		if rs.HashKey == 0 {
 			hashKey := fuzzer.GetHashOfUUID(rs.UID)
