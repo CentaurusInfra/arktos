@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ System Forced Sharing CRD Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies the system forced sharing CRD works in Arktos
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+######################################################
+# test variables
+######################################################
+Variables:
+  first_tenant: random_8
+  second_tenant: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${first_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${first_tenant} created\n"
+
+  - Command: ${setup_client_script} ${first_tenant} admin
+
+  - Command: ${kubectl} create tenant ${second_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${second_tenant} created\n"
+
+  - Command: ${setup_client_script} ${second_tenant} admin
+
+########################################################################################
+# Verifying system-share CRD is visible to all tenants
+########################################################################################
+
+  - BeforeTestMessage: Verifying system-share CRD is visible to all tenants ...
+    Command: ${kubectl} apply -f ${test_data_dir}/forced_share_crd.yaml --tenant system
+    OutputShouldContain:
+    - "customresourcedefinition.apiextensions.k8s.io/mustshareknowledges.learning.wisdom.com"
+
+  - Command: ${kubectl} get crds --context ${first_tenant}-admin-context
+    OutputShouldContain: 
+    - "mustshareknowledges.learning.wisdom.com"
+
+  - Command: ${kubectl} get crds --context ${second_tenant}-admin-context
+    OutputShouldContain:
+    - "mustshareknowledges.learning.wisdom.com"
+
+########################################################################################
+# Verifying system-share CRD cannot be overridden by regular tenants
+########################################################################################
+
+  - BeforeTestMessage: Verifying system-share CRD cannot be overridden by regular tenants ...
+    Command: ${kubectl} apply -f ${test_data_dir}/forced_share_crd.yaml --context ${first_tenant}-admin-context
+    ShouldFail: true
+    OutputShouldContain:
+    - "mustshareknowledges.learning.wisdom.com is a system CRD, you cannot overwrite it"
+
+# the following test is temporarily disabled due to bug #655
+#  - Command: ${kubectl} delete -f ${test_data_dir}/forced_share_crd.yaml --context ${first_tenant}-admin-context
+#    ShouldFail: true
+#    OutputShouldContain:
+#    - "mustshareknowledges.learning.wisdom.com is a system CRD, you cannot delete it"
+
+  - Command: "cat ${test_data_dir}/forced_share_crd.yaml | sed 's|    learning.wisdom.com/crd-sharing-policy: forced||g' |
+              ${kubectl} apply --context ${first_tenant}-admin-context -f -"
+    ShouldFail: true
+    OutputShouldContain:
+    - "mustshareknowledges.learning.wisdom.com is a system CRD, you cannot overwrite it"
+
+# the following test is temporarily disabled due to bug #655
+# - Command: "cat ${test_data_dir}/forced_share_crd.yaml | sed -e 's/    learning.wisdom.com/crd-sharing-policy: forced\n//g' |
+#              ${kubectl} delete --context ${first_tenant}-admin-context -f -"
+#    ShouldFail: true
+#    OutputShouldContain:
+#    - "mustshareknowledges.learning.wisdom.com is a system CRD, you cannot overwrite it"
+
+########################################################################################
+# Verifying regular tenants creating custom resources
+########################################################################################
+
+  - BeforeTestMessage: Verifying regular tenants creating custom resources ...
+    Command: ${kubectl} apply -f ${test_data_dir}/forced_share_crd_resource.yaml --tenant ${first_tenant}
+    OutputShouldBe: "mustshareknowledge.learning.wisdom.com/pythagorean-theorem created\n"
+
+# The following test is temporarily suspended due to bug 525
+#  - Command: ${kubectl} apply -f ${test_data_dir}/forced_share_crd_resource.yaml --context ${first_tenant}-admin-context
+#    OutputShouldBe: "mustshareknowledge.learning.wisdom.com/pythagorean-theorem created\n"
+
+  - Command: ${kubectl} get mustshareknowledges --context ${first_tenant}-admin-context
+    OutputShouldContain:
+    - "pythagorean-theorem"
+
+  - Command: "cat ${test_data_dir}/forced_share_crd_resource.yaml | sed 's|pythagorean-theorem|archimedes-principle|g' |
+              ${kubectl} create --tenant ${second_tenant} -f -"
+    OutputShouldBe: "mustshareknowledge.learning.wisdom.com/archimedes-principle created\n"
+
+# The following test is temporarily suspended due to bug 525
+#  - Command: "cat ${test_data_dir}/forced_share_crd_resource.yaml | sed 's|pythagorean-theorem|archimedes-principle|g' |
+#              ${kubectl} apply --context ${second_tenant}-admin-context -f -"
+#    OutputShouldBe: "mustshareknowledge.learning.wisdom.com/archimedes-principle created\n"
+
+  - Command: ${kubectl} get mustshareknowledges --context ${second_tenant}-admin-context
+    OutputShouldContain:
+    - "archimedes-principle"
+
+  - Command: "${kubectl} get mustshareknowledges --all-namespaces --all-tenants -o json 
+              | jq -r '.items[] | [.metadata.name, .metadata.namespace, .metadata.tenant] | @tsv'" 
+    OutputShouldContain:
+    - "pythagorean-theorem	default	${first_tenant}"
+    - "archimedes-principle	default	${second_tenant}"
+
+########################################################################################
+# Verifying tenant deleter works with system-share CRD
+########################################################################################
+
+  - BeforeTestMessage: Verifying tenant deleter works with system-share CRD ...
+    Command: ${kubectl} delete tenant ${first_tenant} 
+    TimeOut: 60
+    OutputShouldBe: "tenant \"${first_tenant}\" deleted\n"
+
+  - Command: ${kubectl} get tenant ${first_tenant} 
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): tenants \"${first_tenant}\" not found\n"
+
+  - Command: "${kubectl} get mustshareknowledges --all-namespaces --all-tenants -o json 
+              | jq -r '.items[] | [.metadata.name, .metadata.namespace, .metadata.tenant] | @tsv'" 
+    OutputShouldContain:
+    - "archimedes-principle	default	${second_tenant}"
+    OutputShouldNotContain:
+    - "pythagorean-theorem	default	${first_tenant}"
+
+########################################################################################
+# Verify deleting system-share-CRD in system spaces takes effect in all tenants' spaces
+########################################################################################
+
+  - BeforeTestMessage: Verify deleting system-share-CRD in system spaces takes effect in all tenants' spaces
+    Command: ${kubectl} delete -f ${test_data_dir}/forced_share_crd.yaml --tenant system
+    OutputShouldBe: "customresourcedefinition.apiextensions.k8s.io \"mustshareknowledges.learning.wisdom.com\" deleted\n"
+
+  - Command: ${kubectl} get mustshareknowledges --all-namespaces --all-tenants 
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): Unable to list \"learning.wisdom.com/v1, Resource=mustshareknowledges\": the server could not find the requested resource (get mustshareknowledges.learning.wisdom.com)\n"
+
+  - Command: ${kubectl} get crds --context ${second_tenant}-admin-context
+    OutputShouldBe: "No resources found.\n"
+
+  - Command: ${kubectl} get mustshareknowledges --context ${second_tenant}-admin-context
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): Unable to list \"learning.wisdom.com/v1, Resource=mustshareknowledges\": the server could not find the requested resource (get mustshareknowledges.learning.wisdom.com)\n"
+
+########################################################################################
+# TODO: add test about resouce discovery after bug 525 is fixed
+########################################################################################
+
+######################################################################################################
+# cleanup
+######################################################################################################
+
+  - BeforeTestMessage: clean up ...
+    Command: ${kubectl} delete tenant ${second_tenant} > /dev/null 2>&1 &
+
+

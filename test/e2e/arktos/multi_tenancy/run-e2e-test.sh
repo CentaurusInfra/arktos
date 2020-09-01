@@ -27,6 +27,7 @@ test_suite_files="tenant_init_delete_test.yaml
                   multi_tenancy_controller/test_*_controller.yaml \
                   admission/test_*.yaml \
                   kubectl/test_*.yaml \
+                  crd/test_*.yaml \
                   misc/test_*.yaml"
 test_suite_file_directory=${repo_root}/test/e2e/arktos/multi_tenancy/test_suites/
 
