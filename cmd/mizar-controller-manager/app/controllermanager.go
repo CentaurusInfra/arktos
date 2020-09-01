@@ -335,10 +335,7 @@ const (
 // paired to their InitFunc.  This allows for structured downstream composition and subdivision.
 func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc {
 	controllers := map[string]InitFunc{}
-	controllers["endpoints"] = startEndpointsController
-	controllers["node"] = startNodeController
 	controllers["pod"] = startPodController
-	controllers["service"] = startServiceController
 
 	return controllers
 }

@@ -26,33 +26,8 @@ import (
 
 	"k8s.io/klog"
 
-	endpointscontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/endpoints"
-	nodecontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/node"
 	podcontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/pod"
-	servicecontroller "k8s.io/kubernetes/cmd/mizar-controller-manager/controllers/service"
 )
-
-func startEndpointsController(ctx ControllerContext) (http.Handler, bool, error) {
-	controllerName := "mizar-endpoints-controller"
-	klog.V(2).Infof("Starting %v", controllerName)
-
-	go endpointscontroller.NewObjectController(
-		ctx.InformerFactory.Core().V1().Endpoints(),
-		ctx.ClientBuilder.ClientOrDie(controllerName),
-	).Run(1, ctx.Stop)
-	return nil, true, nil
-}
-
-func startNodeController(ctx ControllerContext) (http.Handler, bool, error) {
-	controllerName := "mizar-node-controller"
-	klog.V(2).Infof("Starting %v", controllerName)
-
-	go nodecontroller.NewObjectController(
-		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.ClientBuilder.ClientOrDie(controllerName),
-	).Run(1, ctx.Stop)
-	return nil, true, nil
-}
 
 func startPodController(ctx ControllerContext) (http.Handler, bool, error) {
 	controllerName := "mizar-pod-controller"
@@ -60,17 +35,6 @@ func startPodController(ctx ControllerContext) (http.Handler, bool, error) {
 
 	go podcontroller.NewObjectController(
 		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ClientBuilder.ClientOrDie(controllerName),
-	).Run(1, ctx.Stop)
-	return nil, true, nil
-}
-
-func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
-	controllerName := "mizar-service-controller"
-	klog.V(2).Infof("Starting %v", controllerName)
-
-	go servicecontroller.NewObjectController(
-		ctx.InformerFactory.Core().V1().Services(),
 		ctx.ClientBuilder.ClientOrDie(controllerName),
 	).Run(1, ctx.Stop)
 	return nil, true, nil

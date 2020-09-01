@@ -192,7 +192,6 @@ func (oc *ObjectController) handle(key string) error {
 		return nil
 	} else {
 		klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v", controllerFor, tenant, namespace, obj.Name, obj.HashKey)
-		// TODO add logic to handle create event
 	}
 
 	return err
