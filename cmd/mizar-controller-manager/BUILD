@@ -38,6 +38,7 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//cmd/mizar-controller-manager/app:all-srcs",
+        "//cmd/mizar-controller-manager/controllers/pod:all-srcs",
     ],
     tags = ["automanaged"],
 )

@@ -7,13 +7,15 @@ load(
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "options.go",
-    ],
+    srcs = ["options.go"],
     importpath = "k8s.io/kubernetes/cmd/mizar-controller-manager/app/options",
     deps = [
         "//cmd/controller-manager/app/options:go_default_library",
-        "//cmd/mizar-controller-manager/app/config:go_default_library",        
+        "//cmd/mizar-controller-manager/app/config:go_default_library",
+        "//pkg/controller/apis/config:go_default_library",
+        "//pkg/controller/apis/config/scheme:go_default_library",
+        "//pkg/controller/garbagecollector:go_default_library",
+        "//pkg/controller/garbagecollector/config:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/master/ports:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
@@ -29,7 +31,6 @@ go_library(
         "//staging/src/k8s.io/client-go/tools/record:go_default_library",
         "//staging/src/k8s.io/component-base/cli/flag:go_default_library",
         "//staging/src/k8s.io/kube-controller-manager/config/v1alpha1:go_default_library",
-        "//vendor/github.com/spf13/pflag:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
     ],
 )
