@@ -57,6 +57,7 @@ type AggregatedWatcher struct {
 
 	aggChan   chan Event
 	stopChGrp *bcast.Group
+	wg        sync.WaitGroup
 
 	stopped  bool
 	stopLock sync.RWMutex
@@ -130,6 +131,7 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 
 	if watcher != nil {
 		stopCh := a.stopChGrp.Join()
+		a.wg.Add(1)
 
 		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
 			for {
@@ -161,13 +163,16 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 
 func (a *AggregatedWatcher) closeWatcher(watcher Interface, stopCh *bcast.Member) {
 	watcher.Stop()
+	a.wg.Done()
 	a.stopChGrp.Leave(stopCh)
 	a.removeWatcherAndError(watcher)
 
 	if !a.allowWatcherReset && a.stopChGrp.MemberCount() == 0 {
-		//klog.Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
+		//klog.V(4).Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
 		a.stopChGrp.Close()
+		a.wg.Wait()
 		close(a.aggChan)
+		//klog.V(2).Infof("Aggregated watcher %v closed", a.aggChan)
 	}
 }
 
