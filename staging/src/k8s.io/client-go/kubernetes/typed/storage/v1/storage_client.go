@@ -21,6 +21,7 @@ package v1
 
 import (
 	rand "math/rand"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/storage/v1"
@@ -41,6 +42,7 @@ type StorageV1Interface interface {
 type StorageV1Client struct {
 	restClients []rest.Interface
 	configs     *rest.Config
+	mux         sync.RWMutex
 }
 
 func (c *StorageV1Client) StorageClasses() StorageClassInterface {
@@ -120,6 +122,8 @@ func (c *StorageV1Client) RESTClient() rest.Interface {
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -139,7 +143,6 @@ func (c *StorageV1Client) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 
@@ -161,7 +164,10 @@ func (c *StorageV1Client) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			klog.Infof("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)

@@ -21,6 +21,7 @@ package v1
 
 import (
 	rand "math/rand"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/authentication/v1"
@@ -40,6 +41,7 @@ type AuthenticationV1Interface interface {
 type AuthenticationV1Client struct {
 	restClients []rest.Interface
 	configs     *rest.Config
+	mux         sync.RWMutex
 }
 
 func (c *AuthenticationV1Client) TokenReviews() TokenReviewInterface {
@@ -115,6 +117,8 @@ func (c *AuthenticationV1Client) RESTClient() rest.Interface {
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -134,7 +138,6 @@ func (c *AuthenticationV1Client) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 
@@ -156,7 +159,10 @@ func (c *AuthenticationV1Client) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			klog.Infof("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)
