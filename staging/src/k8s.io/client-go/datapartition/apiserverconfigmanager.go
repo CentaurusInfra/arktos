@@ -305,8 +305,8 @@ func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 				}
 			}
 
-			sendUpdateMessageHandler(a)
 			startWaitForCompleteHandler()
+			sendUpdateMessageHandler(a)
 		}(a)
 	}
 }

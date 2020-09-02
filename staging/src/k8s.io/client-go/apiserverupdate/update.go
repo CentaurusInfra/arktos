@@ -144,7 +144,7 @@ func (w *ClientSetsWatcher) AddWatcher() {
 
 func (w *ClientSetsWatcher) StartWaitingForComplete() {
 	w.muxStartWaiting.Lock()
-	muxUpdateServerMap.Lock()
+	muxUpdateServerMap.RLock()
 	klog.Infof("ClientSetsWatcher: Started waiting for clientset update complete. current watcher %d. muxStartWaiting and muxUpdateServerMap are locked", w.watcherCount)
 	w.waitingCount = w.watcherCount
 }
@@ -155,7 +155,7 @@ func (w *ClientSetsWatcher) NotifyDone() {
 	if w.waitingCount == 1 {
 		w.waitingCount--
 		// waiting done
-		muxUpdateServerMap.Unlock()
+		muxUpdateServerMap.RUnlock()
 		w.muxStartWaiting.Unlock()
 		clientsetUpdateChGrp.Send("all clientset update done")
 		klog.V(3).Info("ClientSetsWatcher: Sent complete message after all clientset update was done. muxStartWaiting and muxUpdateServerMap are unlocked")
