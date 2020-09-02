@@ -29,8 +29,8 @@ import (
 )
 
 // smoke level e2e case
-var _ = SIGDescribe("VM Type", func() {
-	f := framework.NewDefaultFramework("podsWithVmType")
+var _ = SIGDescribe("Basic VM Type test", func() {
+	f := framework.NewDefaultFramework("podswithvmtype")
 
 	framework.KubeDescribe("Pods with vm type", func() {
 		var podClient *framework.PodClient
@@ -38,39 +38,42 @@ var _ = SIGDescribe("VM Type", func() {
 			podClient = f.PodClient()
 		})
 
-		ginkgo.By("creating the pod")
-		name := "pod-vmtype-qos-guaranteed-" + string(uuid.NewUUID())
-		pod := &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: name,
-				Labels: map[string]string{
-					"name": name,
+		framework.ConformanceIt("should be submitted and removed [Arktos-CI]", func() {
+			ginkgo.By("creating the pod")
+			name := "pod-" + string(uuid.NewUUID())
+			pod := &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name,
+					Labels: map[string]string{
+						"name": name,
+					},
 				},
-			},
-			Spec: v1.PodSpec{
-				VirtualMachine: &v1.VirtualMachine{
-					Name:  "vm1",
-					Image: imageutils.GetE2EImage(imageutils.Cirros),
-					Resources: v1.ResourceRequirements{
-						Limits: v1.ResourceList{
-							v1.ResourceCPU:    resource.MustParse("1"),
-							v1.ResourceMemory: resource.MustParse("500Mi"),
-						},
-						Requests: v1.ResourceList{
-							v1.ResourceCPU:    resource.MustParse("1"),
-							v1.ResourceMemory: resource.MustParse("500Mi"),
+				Spec: v1.PodSpec{
+					VirtualMachine: &v1.VirtualMachine{
+						KeyPairName: "foobar",
+						Name:        "vm1",
+						Image:       imageutils.GetE2EImage(imageutils.Cirros),
+						Resources: v1.ResourceRequirements{
+							Limits: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("1"),
+								v1.ResourceMemory: resource.MustParse("500Mi"),
+							},
+							Requests: v1.ResourceList{
+								v1.ResourceCPU:    resource.MustParse("1"),
+								v1.ResourceMemory: resource.MustParse("500Mi"),
+							},
 						},
 					},
 				},
-			},
-		}
+			}
 
-		ginkgo.By("submitting the pod to kubernetes")
-		podClient.Create(pod)
+			ginkgo.By("submitting the pod to kubernetes")
+			podClient.Create(pod)
 
-		ginkgo.By("verifying QOS class is set on the pod")
-		pod, err := podClient.Get(name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to query for pod")
-		gomega.Expect(pod.Status.QOSClass == v1.PodQOSGuaranteed)
+			ginkgo.By("verifying QOS class is set on the pod")
+			pod, err := podClient.Get(name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to query pod")
+			gomega.Expect(pod.Status.QOSClass == v1.PodQOSGuaranteed)
+		})
 	})
 })
