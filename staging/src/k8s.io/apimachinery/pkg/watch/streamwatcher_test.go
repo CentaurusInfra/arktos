@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package watch_test
+package watch
 
 import (
 	"fmt"
@@ -23,7 +24,6 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	. "k8s.io/apimachinery/pkg/watch"
 )
 
 type fakeDecoder struct {
