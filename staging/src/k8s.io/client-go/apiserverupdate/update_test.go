@@ -154,7 +154,10 @@ func TestClientSetWatcherNotification(t *testing.T) {
 
 		csWatcher.StartWaitingForComplete()
 		for i := 0; i < watcherCount; i++ {
-			go csWatcher.NotifyDone()
+			go func() {
+				GetAPIServerConfig()
+				csWatcher.NotifyDone()
+			}()
 		}
 
 		tick := time.NewTicker(1 * time.Second)
