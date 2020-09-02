@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,6 +64,7 @@ type CreateClusterRoleOptions struct {
 	*CreateRoleOptions
 	NonResourceURLs []string
 	AggregationRule map[string]string
+	Tenant          string
 }
 
 // NewCmdCreateClusterRole initializes and returns new ClusterRoles command
@@ -108,6 +110,12 @@ func (c *CreateClusterRoleOptions) Complete(f cmdutil.Factory, cmd *cobra.Comman
 		}
 	}
 	c.NonResourceURLs = nonResourceURLs
+
+	var err error
+	c.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 
 	return c.CreateRoleOptions.Complete(f, cmd, args)
 }
@@ -200,7 +208,7 @@ func (c *CreateClusterRoleOptions) RunCreateRole() error {
 
 	// Create ClusterRole.
 	if !c.DryRun {
-		clusterRole, err = c.Client.ClusterRoles().Create(clusterRole)
+		clusterRole, err = c.Client.ClusterRolesWithMultiTenancy(c.Tenant).Create(clusterRole)
 		if err != nil {
 			return err
 		}

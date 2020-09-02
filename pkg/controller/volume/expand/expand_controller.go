@@ -396,8 +396,8 @@ func (expc *expandController) GetSecretFunc() func(tenant, namespace, name strin
 	}
 }
 
-func (expc *expandController) GetConfigMapFunc() func(namespace, name string) (*v1.ConfigMap, error) {
-	return func(_, _ string) (*v1.ConfigMap, error) {
+func (expc *expandController) GetConfigMapFunc() func(tenant, namespace, name string) (*v1.ConfigMap, error) {
+	return func(_, _, _ string) (*v1.ConfigMap, error) {
 		return nil, fmt.Errorf("GetConfigMap unsupported in expandController")
 	}
 }
