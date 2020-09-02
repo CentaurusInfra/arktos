@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -124,6 +125,7 @@ type CreateRoleOptions struct {
 	DryRun       bool
 	OutputFormat string
 	Namespace    string
+	Tenant       string
 	Client       clientgorbacv1.RbacV1Interface
 	Mapper       meta.RESTMapper
 	PrintObj     func(obj runtime.Object) error
@@ -250,6 +252,11 @@ func (o *CreateRoleOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args
 		return err
 	}
 
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
+
 	clientset, err := f.KubernetesClientSet()
 	if err != nil {
 		return err
@@ -337,7 +344,7 @@ func (o *CreateRoleOptions) RunCreateRole() error {
 
 	// Create role.
 	if !o.DryRun {
-		role, err = o.Client.Roles(o.Namespace).Create(role)
+		role, err = o.Client.RolesWithMultiTenancy(o.Namespace, o.Tenant).Create(role)
 		if err != nil {
 			return err
 		}
