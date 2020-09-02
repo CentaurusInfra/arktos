@@ -134,6 +134,7 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 		a.wg.Add(1)
 
 		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
+			defer a.wg.Done()
 			for {
 				select {
 				case <-stopCh.Read:
@@ -163,15 +164,16 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 
 func (a *AggregatedWatcher) closeWatcher(watcher Interface, stopCh *bcast.Member) {
 	watcher.Stop()
-	a.wg.Done()
 	a.stopChGrp.Leave(stopCh)
 	a.removeWatcherAndError(watcher)
 
 	if !a.allowWatcherReset && a.stopChGrp.MemberCount() == 0 {
 		//klog.V(4).Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
 		a.stopChGrp.Close()
-		a.wg.Wait()
-		close(a.aggChan)
+		go func() {
+			a.wg.Wait()
+			close(a.aggChan)
+		}()
 		//klog.V(2).Infof("Aggregated watcher %v closed", a.aggChan)
 	}
 }
