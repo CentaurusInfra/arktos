@@ -21,6 +21,7 @@ package v1
 
 import (
 	rand "math/rand"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/rbac/v1"
@@ -43,6 +44,7 @@ type RbacV1Interface interface {
 type RbacV1Client struct {
 	restClients []rest.Interface
 	configs     *rest.Config
+	mux         sync.RWMutex
 }
 
 func (c *RbacV1Client) ClusterRoles() ClusterRoleInterface {
@@ -142,6 +144,8 @@ func (c *RbacV1Client) RESTClient() rest.Interface {
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -161,7 +165,6 @@ func (c *RbacV1Client) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 
@@ -183,7 +186,10 @@ func (c *RbacV1Client) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			klog.Infof("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)

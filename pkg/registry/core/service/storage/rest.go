@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	extensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -67,9 +66,10 @@ type REST struct {
 	serviceNodePorts portallocator.Interface
 	proxyTransport   http.RoundTripper
 	pods             rest.Getter
-	done             uint32
-	m                sync.Mutex
-	networks         rest.Getter
+
+	// fnGetNetwork is the method to get network object by name per tenant;
+	// its main purpose is for unit testing.
+	fnGetNetwork func(ctx context.Context, tenant, name string) (runtime.Object, error)
 
 	// per-network service IP allocators
 	networkServiceIPs sync.Map
@@ -124,6 +124,7 @@ func NewREST(
 		serviceNodePorts: serviceNodePorts,
 		proxyTransport:   proxyTransport,
 		pods:             pods,
+		fnGetNetwork:     getNetwork,
 	}
 
 	return rest, &registry.ProxyREST{Redirector: rest, ProxyTransport: proxyTransport}
@@ -164,54 +165,21 @@ func (rs *REST) Categories() []string {
 	return []string{"all"}
 }
 
-func (rs *REST) getNetworkStorage(tenant string) (rest.Getter, error) {
+func getNetwork(ctx context.Context, tenant, name string) (runtime.Object, error) {
 	const networkResourceName = "networks.arktos.futurewei.com"
 	const networkResourceVersion = "v1"
 
-	if atomic.LoadUint32(&rs.done) == 1 {
-		if rs.networks == nil {
-			return nil, fmt.Errorf("service storage failed to identify proper network getter")
-		}
-		return rs.networks, nil
+	crStorageGetter := extensionsapiserver.GetCustomResourceStoragesGetter()
+	if crStorageGetter == nil {
+		return nil, fmt.Errorf("failed to get Custom Resource Storages Getter: api extension server not initialized properly")
 	}
 
-	// Slow-path.
-	rs.m.Lock()
-	defer rs.m.Unlock()
-	if rs.done == 0 {
-		if rs.networks != nil {
-			defer atomic.StoreUint32(&rs.done, 1)
-			return rs.networks, nil
-		}
-
-		crStorageGetter := extensionsapiserver.GetCustomResourceStoragesGetter()
-		if crStorageGetter == nil {
-			defer atomic.StoreUint32(&rs.done, 1)
-			return nil, fmt.Errorf("failed to get Custom Resource Storages Getter: api extension server not initialized properly")
-		}
-
-		if storage, err := crStorageGetter.GetCustomResourceStorage(tenant, networkResourceName, networkResourceVersion); err == nil {
-			defer atomic.StoreUint32(&rs.done, 1)
-			rs.networks = storage.CustomResource
-			return rs.networks, nil
-		} else {
-			return nil, fmt.Errorf("custom resource storage not set up yet")
-		}
-	}
-
-	if rs.networks == nil {
-		return nil, fmt.Errorf("service storage failed to identify proper network getter")
-	}
-	return rs.networks, nil
-}
-
-func (rs *REST) getNetwork(ctx context.Context, tenant, name string) (runtime.Object, error) {
-	networkGetter, err := rs.getNetworkStorage(tenant)
+	storage, err := crStorageGetter.GetCustomResourceStorage(tenant, networkResourceName, networkResourceVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("custom resource storage for %s, %s in tenant %s not set up yet", networkResourceName, networkResourceVersion, tenant)
 	}
 
-	return networkGetter.Get(ctx, name, &metav1.GetOptions{})
+	return storage.CustomResource.Get(ctx, name, &metav1.GetOptions{})
 }
 
 func (rs *REST) NamespaceScoped() bool {
@@ -253,8 +221,7 @@ func (rs *REST) isExternalIPAM(ctx context.Context, service *api.Service) (bool,
 		netName = arktosv1.NetworkDefault
 	}
 
-	// todo: consider having a sub context of the ctx param
-	network, err := rs.getNetwork(genericapirequest.NewContext(), service.Tenant, netName)
+	network, err := rs.fnGetNetwork(ctx, service.Tenant, netName)
 	if err != nil {
 		// for now, temporarily ignore the default network not found error
 		// todo: remove below line after tenant controller enables automatic default network creation on new tenants
@@ -898,7 +865,9 @@ func (rs *REST) getNetworkServiceIPAlloc(service *api.Service) (ipallocator.Inte
 		netName = arktosv1.NetworkDefault
 	}
 
-	network, err := rs.getNetwork(genericapirequest.NewContext(), service.Tenant, netName)
+	ctx := genericapirequest.NewContext()
+	ctx = genericapirequest.WithTenant(ctx, service.Tenant)
+	network, err := rs.fnGetNetwork(ctx, service.Tenant, netName)
 	if err != nil {
 		// todo: remove the temporary measure when we have all the multi-tenant networking components in place
 		// as temporary measure, ignore the error of default network not found

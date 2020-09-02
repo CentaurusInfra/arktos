@@ -21,6 +21,7 @@ package internalversion
 
 import (
 	rand "math/rand"
+	"sync"
 	"time"
 
 	apiserverupdate "k8s.io/client-go/apiserverupdate"
@@ -39,6 +40,7 @@ type ApiregistrationInterface interface {
 type ApiregistrationClient struct {
 	restClients []rest.Interface
 	configs     *rest.Config
+	mux         sync.RWMutex
 }
 
 func (c *ApiregistrationClient) APIServices() APIServiceInterface {
@@ -121,6 +123,8 @@ func (c *ApiregistrationClient) RESTClient() rest.Interface {
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -140,7 +144,6 @@ func (c *ApiregistrationClient) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 
@@ -162,7 +165,10 @@ func (c *ApiregistrationClient) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			klog.Infof("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)
