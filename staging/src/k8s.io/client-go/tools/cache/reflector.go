@@ -414,6 +414,8 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			if urlError, ok := err.(*url.Error); ok {
 				if opError, ok := urlError.Err.(*net.OpError); ok {
 					if errno, ok := opError.Err.(syscall.Errno); ok && errno == syscall.ECONNREFUSED {
+						klog.Infof("Retry on connection refused error [%v]", err)
+						aggregatedWatcher.Stop()
 						time.Sleep(time.Second)
 						continue
 					}
