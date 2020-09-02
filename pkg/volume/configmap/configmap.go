@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +43,7 @@ const (
 // configMapPlugin implements the VolumePlugin interface.
 type configMapPlugin struct {
 	host         volume.VolumeHost
-	getConfigMap func(namespace, name string) (*v1.ConfigMap, error)
+	getConfigMap func(tenant, namespace, name string) (*v1.ConfigMap, error)
 }
 
 var _ volume.VolumePlugin = &configMapPlugin{}
@@ -153,7 +154,7 @@ type configMapVolumeMounter struct {
 	source       v1.ConfigMapVolumeSource
 	pod          v1.Pod
 	opts         *volume.VolumeOptions
-	getConfigMap func(namespace, name string) (*v1.ConfigMap, error)
+	getConfigMap func(tenant, namespace, name string) (*v1.ConfigMap, error)
 }
 
 var _ volume.Mounter = &configMapVolumeMounter{}
@@ -197,14 +198,15 @@ func (b *configMapVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterA
 	}
 
 	optional := b.source.Optional != nil && *b.source.Optional
-	configMap, err := b.getConfigMap(b.pod.Namespace, b.source.Name)
+	configMap, err := b.getConfigMap(b.pod.Tenant, b.pod.Namespace, b.source.Name)
 	if err != nil {
 		if !(errors.IsNotFound(err) && optional) {
-			klog.Errorf("Couldn't get configMap %v/%v: %v", b.pod.Namespace, b.source.Name, err)
+			klog.Errorf("Couldn't get configMap %v/%v/%v: %v", b.pod.Tenant, b.pod.Namespace, b.source.Name, err)
 			return err
 		}
 		configMap = &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:    b.pod.Tenant,
 				Namespace: b.pod.Namespace,
 				Name:      b.source.Name,
 			},
@@ -212,7 +214,8 @@ func (b *configMapVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterA
 	}
 
 	totalBytes := totalBytes(configMap)
-	klog.V(3).Infof("Received configMap %v/%v containing (%v) pieces of data, %v total bytes",
+	klog.V(3).Infof("Received configMap %v/%v/%v containing (%v) pieces of data, %v total bytes",
+		b.pod.Tenant,
 		b.pod.Namespace,
 		b.source.Name,
 		len(configMap.Data)+len(configMap.BinaryData),
@@ -246,7 +249,7 @@ func (b *configMapVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterA
 		}
 	}()
 
-	writerContext := fmt.Sprintf("pod %v/%v volume %v", b.pod.Namespace, b.pod.Name, b.volName)
+	writerContext := fmt.Sprintf("pod %v/%v/%v volume %v", b.pod.Tenant, b.pod.Namespace, b.pod.Name, b.volName)
 	writer, err := volumeutil.NewAtomicWriter(dir, writerContext)
 	if err != nil {
 		klog.Errorf("Error creating atomic writer: %v", err)

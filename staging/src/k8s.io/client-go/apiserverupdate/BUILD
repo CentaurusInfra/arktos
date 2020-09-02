@@ -34,6 +34,8 @@ go_test(
     deps = [
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/rand:go_default_library",
+        "//vendor/github.com/grafov/bcast:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
     ],
 )

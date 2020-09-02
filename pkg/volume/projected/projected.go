@@ -49,7 +49,7 @@ const (
 type projectedPlugin struct {
 	host                      volume.VolumeHost
 	getSecret                 func(tenant, namespace, name string) (*v1.Secret, error)
-	getConfigMap              func(namespace, name string) (*v1.ConfigMap, error)
+	getConfigMap              func(tenant, namespace, name string) (*v1.ConfigMap, error)
 	getServiceAccountToken    func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	deleteServiceAccountToken func(podUID types.UID)
 }
@@ -203,7 +203,7 @@ func (s *projectedVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterA
 
 	data, err := s.collectData()
 	if err != nil {
-		klog.Errorf("Error preparing data for projected volume %v for pod %v/%v: %s", s.volName, s.pod.Namespace, s.pod.Name, err.Error())
+		klog.Errorf("Error preparing data for projected volume %v for pod %v/%v/%v: %s", s.volName, s.pod.Tenant, s.pod.Namespace, s.pod.Name, err.Error())
 		return err
 	}
 
@@ -231,7 +231,7 @@ func (s *projectedVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterA
 		}
 	}()
 
-	writerContext := fmt.Sprintf("pod %v/%v volume %v", s.pod.Namespace, s.pod.Name, s.volName)
+	writerContext := fmt.Sprintf("pod %v/%v/%v volume %v", s.pod.Tenant, s.pod.Namespace, s.pod.Name, s.volName)
 	writer, err := volumeutil.NewAtomicWriter(dir, writerContext)
 	if err != nil {
 		klog.Errorf("Error creating atomic writer: %v", err)
@@ -286,7 +286,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 			}
 			secretPayload, err := secret.MakePayload(source.Secret.Items, secretapi, s.source.DefaultMode, optional)
 			if err != nil {
-				klog.Errorf("Couldn't get secret payload %v/%v: %v", s.pod.Namespace, source.Secret.Name, err)
+				klog.Errorf("Couldn't get secret payload %v/%v/%v: %v", s.pod.Tenant, s.pod.Namespace, source.Secret.Name, err)
 				errlist = append(errlist, err)
 				continue
 			}
@@ -295,15 +295,16 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 			}
 		case source.ConfigMap != nil:
 			optional := source.ConfigMap.Optional != nil && *source.ConfigMap.Optional
-			configMap, err := s.plugin.getConfigMap(s.pod.Namespace, source.ConfigMap.Name)
+			configMap, err := s.plugin.getConfigMap(s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name)
 			if err != nil {
 				if !(errors.IsNotFound(err) && optional) {
-					klog.Errorf("Couldn't get configMap %v/%v: %v", s.pod.Namespace, source.ConfigMap.Name, err)
+					klog.Errorf("Couldn't get configMap %v/%v/%v: %v", s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name, err)
 					errlist = append(errlist, err)
 					continue
 				}
 				configMap = &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
+						Tenant:    s.pod.Tenant,
 						Namespace: s.pod.Namespace,
 						Name:      source.ConfigMap.Name,
 					},
@@ -311,7 +312,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 			}
 			configMapPayload, err := configmap.MakePayload(source.ConfigMap.Items, configMap, s.source.DefaultMode, optional)
 			if err != nil {
-				klog.Errorf("Couldn't get configMap payload %v/%v: %v", s.pod.Namespace, source.ConfigMap.Name, err)
+				klog.Errorf("Couldn't get configMap payload %v/%v/%v: %v", s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name, err)
 				errlist = append(errlist, err)
 				continue
 			}

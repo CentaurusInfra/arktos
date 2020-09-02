@@ -55,6 +55,10 @@ func (m *podContainerManagerStub) IsPodCgroup(cgroupfs string) (bool, types.UID)
 	return false, types.UID("")
 }
 
+func (m *podContainerManagerStub) GetPodCgroupMemoryUsage(_ *v1.Pod) (uint64, error) {
+	return 0, nil
+}
+
 func (m *podContainerManagerStub) GetPodCgroupMemoryConfig(_ *v1.Pod) (uint64, error) {
 	return 0, nil
 }

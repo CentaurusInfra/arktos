@@ -21,6 +21,7 @@ package v1beta1
 
 import (
 	rand "math/rand"
+	"sync"
 	"time"
 
 	v1beta1 "k8s.io/api/scheduling/v1beta1"
@@ -40,6 +41,7 @@ type SchedulingV1beta1Interface interface {
 type SchedulingV1beta1Client struct {
 	restClients []rest.Interface
 	configs     *rest.Config
+	mux         sync.RWMutex
 }
 
 func (c *SchedulingV1beta1Client) PriorityClasses() PriorityClassInterface {
@@ -111,6 +113,8 @@ func (c *SchedulingV1beta1Client) RESTClient() rest.Interface {
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -130,7 +134,6 @@ func (c *SchedulingV1beta1Client) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 
@@ -152,7 +155,10 @@ func (c *SchedulingV1beta1Client) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			klog.Infof("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)

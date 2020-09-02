@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,6 +62,7 @@ type CreateCronJobOptions struct {
 	Restart  string
 
 	Namespace string
+	Tenant    string
 	Client    batchv1beta1client.BatchV1beta1Interface
 	DryRun    bool
 	Builder   *resource.Builder
@@ -130,6 +132,10 @@ func (o *CreateCronJobOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, a
 	if err != nil {
 		return err
 	}
+	o.Tenant, _, err = f.ToRawKubeConfigLoader().Tenant()
+	if err != nil {
+		return err
+	}
 	o.Builder = f.NewBuilder()
 	o.Cmd = cmd
 
@@ -164,7 +170,7 @@ func (o *CreateCronJobOptions) Run() error {
 
 	if !o.DryRun {
 		var err error
-		cronjob, err = o.Client.CronJobs(o.Namespace).Create(cronjob)
+		cronjob, err = o.Client.CronJobsWithMultiTenancy(o.Namespace, o.Tenant).Create(cronjob)
 		if err != nil {
 			return fmt.Errorf("failed to create cronjob: %v", err)
 		}

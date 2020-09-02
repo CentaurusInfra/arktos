@@ -40,7 +40,8 @@ func (ts *TestSuite) LoadTestSuite(filePath string, tc *TestConfig) error {
 		return fmt.Errorf("error in reading file %v, err: %v ", filePath, err)
 	}
 
-	err = yaml.Unmarshal(testSuiteFile, ts)
+	var tempTestSuite TestSuite
+	err = yaml.UnmarshalStrict(testSuiteFile, &tempTestSuite)
 	if err != nil {
 		// ignore the yaml.TypeError in the first round of unmarshing as it is most likely due to that
 		// the variable resolution is not done
@@ -51,7 +52,7 @@ func (ts *TestSuite) LoadTestSuite(filePath string, tc *TestConfig) error {
 		}
 	}
 
-	allVariables := MergeStringMaps(tc.CommonVariables, ts.Variables)
+	allVariables := MergeStringMaps(tc.CommonVariables, tempTestSuite.Variables)
 	resolved_output, _ := ioutil.ReadFile(filePath)
 	for key, value := range allVariables {
 		// generate random strings for variables if the value is "random_[string_length]"
@@ -66,7 +67,7 @@ func (ts *TestSuite) LoadTestSuite(filePath string, tc *TestConfig) error {
 		resolved_output = bytes.ReplaceAll(resolved_output, []byte("${"+key+"}"), []byte(value))
 	}
 
-	if err = yaml.Unmarshal(resolved_output, ts); err != nil {
+	if err = yaml.UnmarshalStrict(resolved_output, ts); err != nil {
 		return fmt.Errorf("error in unmarshling resolved yaml file %v, err: %v ", filePath, err)
 	}
 
