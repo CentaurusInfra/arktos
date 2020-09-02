@@ -95,8 +95,8 @@ type Reflector struct {
 	// filterBounds are a list of list/watch filtering bounds
 	filterBounds []filterBound
 
-	// aggChan is the aggregate channel of reset channels
-	aggChan chan interface{}
+	// aggResetCh is the aggregate channel of reset channels
+	aggResetCh chan interface{}
 
 	// clientSetUpdateChan is the channel to get client set updates
 	clientSetUpdateChan *bcast.Member
@@ -159,7 +159,7 @@ func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, 
 		resyncPeriod:            resyncPeriod,
 		clock:                   &clock.RealClock{},
 		filterBounds:            make([]filterBound, 0),
-		aggChan:                 make(chan interface{}),
+		aggResetCh:              make(chan interface{}),
 		clientSetUpdateChan:     apiserverupdate.WatchClientSetUpdate(),
 		listFromResourceVersion: "0",
 		allowPartialWatch:       allowPartialWatch,
@@ -195,7 +195,7 @@ func (r *Reflector) Run(stopCh <-chan struct{}) {
 								klog.V(4).Infof("Got reset channel message. expectedType %v, new bound [%+v]", r.expectedType, signal)
 							}
 
-							r.aggChan <- signal
+							r.aggResetCh <- signal
 						}
 					}
 				}(i, fb)
@@ -481,7 +481,7 @@ loop:
 				return errorClientSetResetRequested
 			case <-stopCh:
 				return errorStopRequested
-			case signal, ok := <-r.aggChan:
+			case signal, ok := <-r.aggResetCh:
 				if !ok {
 					klog.Error("resetCh channel closed")
 					return errors.New("Reset channel closed")
@@ -636,7 +636,7 @@ func (r *Reflector) hasInitBounds() bool {
 func (r *Reflector) waitForBoundInit(stopCh <-chan struct{}) bool {
 	for {
 		select {
-		case msg, ok := <-r.aggChan:
+		case msg, ok := <-r.aggResetCh:
 			if !ok {
 				klog.Errorf("Cannot read from closed channel. expectedType %v", r.expectedType)
 				return false
