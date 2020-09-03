@@ -25,15 +25,16 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/client-go/datapartition"
 	"math/rand"
 	"net/http"
 	"os"
 	"time"
 
+	"k8s.io/client-go/datapartition"
+
 	"github.com/spf13/cobra"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -420,6 +421,8 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["ttl-after-finished"] = startTTLAfterFinishedController
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
 	controllers["network"] = startNetworkController
+
+	controllers["mizar-pod"] = startMizarPodController
 
 	return controllers
 }
