@@ -1387,6 +1387,8 @@ function prepare-etcd-manifest {
   local etcd_apiserver_creds="${ETCD_APISERVER_CREDS:-}"
   local etcd_extra_args="${ETCD_EXTRA_ARGS:-}"
 
+  local etcd_cluster_id="${ETCD_CLUSTERID:-0}"
+  echo "ETCD_CLUSTERID: ${etcd_cluster_id:-0}"
   if [[ -n "${INITIAL_ETCD_CLUSTER_STATE:-}" ]]; then
     cluster_state="${INITIAL_ETCD_CLUSTER_STATE}"
   fi
@@ -1409,11 +1411,13 @@ function prepare-etcd-manifest {
 
   local -r temp_file="/tmp/$5"
   cp "${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd.manifest" "${temp_file}"
+  sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${temp_file}"
   sed -i -e "s@{{ *suffix *}}@$1@g" "${temp_file}"
   sed -i -e "s@{{ *port *}}@$2@g" "${temp_file}"
   sed -i -e "s@{{ *server_port *}}@$3@g" "${temp_file}"
   sed -i -e "s@{{ *cpulimit *}}@\"$4\"@g" "${temp_file}"
   sed -i -e "s@{{ *hostname *}}@$host_name@g" "${temp_file}"
+  sed -i -e "s@{{ *etcd_cluster_id *}}@$etcd_cluster_id@g" "${temp_file}"
   sed -i -e "s@{{ *host_ip *}}@$host_ip@g" "${temp_file}"
   sed -i -e "s@{{ *etcd_cluster *}}@$etcd_cluster@g" "${temp_file}"
   sed -i -e "s@{{ *liveness_probe_initial_delay *}}@${ETCD_LIVENESS_PROBE_INITIAL_DELAY_SEC:-15}@g" "${temp_file}"
@@ -1459,6 +1463,7 @@ function prepare-etcd-manifest {
 
 function start-etcd-empty-dir-cleanup-pod {
   local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd-empty-dir-cleanup.yaml"
+  sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${src_file}"
   cp "${src_file}" "/etc/kubernetes/manifests"
 }
 
@@ -2039,6 +2044,10 @@ function start-kube-controller-manager {
   params+=" --use-service-account-credentials"
   params+=" --cloud-provider=gce"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
+  ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
+  if [[ "${ENABLE_KCM_LEADER_ELECT:-true}" == "false" ]]; then
+    params+=" --leader-elect=false"
+  fi
   params+=" --root-ca-file=${CA_CERT_BUNDLE_PATH}"
   params+=" --service-account-private-key-file=${SERVICEACCOUNT_KEY_PATH}"
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
@@ -2068,7 +2077,7 @@ function start-kube-controller-manager {
   if [[ -n "${TERMINATED_POD_GC_THRESHOLD:-}" ]]; then
     params+=" --terminated-pod-gc-threshold=${TERMINATED_POD_GC_THRESHOLD}"
   fi
-  if [[ "${ENABLE_IP_ALIASES:-}" == 'true' ]]; then
+  if [[ "${ENABLE_IP_ALIASES:-}" == "true" ]]; then
     params+=" --cidr-allocator-type=${NODE_IPAM_MODE}"
     params+=" --configure-cloud-routes=false"
   fi
@@ -2953,8 +2962,9 @@ function wait-till-apiserver-ready() {
 function ensure-master-bootstrap-kubectl-auth {
   # By default, `kubectl` uses http://localhost:8080
   # If the insecure port is disabled, kubectl will need to use an admin-authenticated kubeconfig.
+  local master_ip=${1:-localhost}
   if [[ -n "${KUBE_BOOTSTRAP_TOKEN:-}" ]]; then
-    create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}"
+    create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}" "${master_ip}"
     export KUBECONFIG=/etc/srv/kubernetes/kube-bootstrap/kubeconfig
   fi
 }

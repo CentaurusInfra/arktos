@@ -152,6 +152,9 @@ var (
 		CheckNodeMemoryPressurePred, CheckNodePIDPressurePred, CheckNodeDiskPressurePred, MatchInterPodAffinityPred}
 )
 
+// noScheduleToleration of pods will be respected by runtime readiness predicate
+var noScheduleToleration = v1.Toleration{Operator: "Exists", Effect: v1.TaintEffectNoSchedule}
+
 // FitPredicate is a function that indicates if a pod fits into an existing node.
 // The failure information is given by the error.
 type FitPredicate func(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error)
@@ -1609,12 +1612,19 @@ func CheckNodePIDPressurePredicate(pod *v1.Pod, meta PredicateMetadata, nodeInfo
 }
 
 // CheckNodeRuntimeReadiness checks if the desired runtime service is ready on a node
-// Return ture IIF the desired node condition exists, AND the condition is TRUE
+// Return true IIF the desired node condition exists, AND the condition is TRUE (except the pod tolerates NoSchedule)
 func CheckNodeRuntimeReadinessPredicate(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
 	if nodeInfo == nil || nodeInfo.Node() == nil {
 		return false, []PredicateFailureReason{ErrNodeUnknownCondition}, nil
 	}
 	node := nodeInfo.Node()
+
+	// any pod having toleration of Exists NoSchedule bypass the runtime readiness check
+	for _, tolaration := range pod.Spec.Tolerations {
+		if tolaration == noScheduleToleration {
+			return true, nil, nil
+		}
+	}
 
 	var podRequestedRuntimeReady v1.NodeConditionType
 

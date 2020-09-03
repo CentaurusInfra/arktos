@@ -127,6 +127,9 @@ get_added_files_list() {
     local HEAD_COMMIT=`git rev-list HEAD | head -n 1`
     git diff --name-only --diff-filter=A $DAY0_COMMIT $HEAD_COMMIT | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
+        egrep -v "perf-tests\/clusterloader2\/" | \
+        egrep -v "staging\/src\/k8s.io\/component-base\/metrics\/" | \
+        egrep -v "staging\/src\/k8s.io\/component-base\/version" | \
         egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS|arktos_copyright" > $LOGDIR/added_files_git
     git diff --cached --name-only --diff-filter=A | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
@@ -142,6 +145,9 @@ get_modified_files_list() {
     local HEAD_COMMIT=`git rev-list HEAD | head -n 1`
     git diff --name-only --diff-filter=M $DAY0_COMMIT $HEAD_COMMIT | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \
+        egrep -v "perf-tests\/clusterloader2\/" | \
+        egrep -v "staging\/src\/k8s.io\/component-base\/metrics\/" | \
+        egrep -v "staging\/src\/k8s.io\/component-base\/version" | \
         egrep -v "\.mod|\.sum|\.png|\.PNG|OWNERS" > $LOGDIR/changed_files
     git diff --cached --name-only --diff-filter=M | \
         egrep -v "\.git|\.md|\.bazelrc|\.json|\.pb|\.yaml|BUILD|boilerplate|vendor\/" | \

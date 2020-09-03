@@ -22,8 +22,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
-	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"math"
 	"net"
 	"net/http"
@@ -49,6 +47,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -94,6 +94,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/prober"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	"k8s.io/kubernetes/pkg/kubelet/runtimeclass"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/server"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
@@ -256,6 +257,7 @@ type Dependencies struct {
 	HeartbeatClient         clientset.Interface
 	OnHeartbeatFailure      []func()
 	KubeClient              clientset.Interface
+	ArktosExtClient         arktos.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
 	OSInterface             kubecontainer.OSInterface
@@ -495,7 +497,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		registerNode:                            registerNode,
 		registerWithTaints:                      registerWithTaints,
 		registerSchedulable:                     registerSchedulable,
-		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig),
+		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig, kubeDeps.ArktosExtClient.ArktosV1()),
 		serviceLister:                           serviceLister,
 		nodeInfo:                                nodeInfo,
 		masterServiceNamespace:                  masterServiceNamespace,
@@ -1999,16 +2001,16 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 			// once we have checkpointing.
 			handler.HandlePodAdditions(u.Pods)
 		case kubetypes.UPDATE:
-			klog.V(2).Infof("SyncLoop (UPDATE, %q): %q", u.Source, format.PodsWithDeletionTimestamps(u.Pods))
+			klog.V(2).Infof("SyncLoop (UPDATE, %q): %q", u.Source, format.PodsWithDeletionTimestampsAndResourceVersions(u.Pods))
 			handler.HandlePodUpdates(u.Pods)
 		case kubetypes.REMOVE:
-			klog.V(2).Infof("SyncLoop (REMOVE, %q): %q", u.Source, format.Pods(u.Pods))
+			klog.V(2).Infof("SyncLoop (REMOVE, %q): %q", u.Source, format.PodsWithDeletionTimestampsAndResourceVersions(u.Pods))
 			handler.HandlePodRemoves(u.Pods)
 		case kubetypes.RECONCILE:
 			klog.V(4).Infof("SyncLoop (RECONCILE, %q): %q", u.Source, format.Pods(u.Pods))
 			handler.HandlePodReconcile(u.Pods)
 		case kubetypes.DELETE:
-			klog.V(2).Infof("SyncLoop (DELETE, %q): %q", u.Source, format.Pods(u.Pods))
+			klog.V(2).Infof("SyncLoop (DELETE, %q): %q", u.Source, format.PodsWithDeletionTimestampsAndResourceVersions(u.Pods))
 			// DELETE is treated as a UPDATE because of graceful deletion.
 			handler.HandlePodUpdates(u.Pods)
 		case kubetypes.RESTORE:
@@ -2040,7 +2042,7 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 		if isSyncPodWorthy(e) {
 			// PLEG event for a pod; sync it.
 			if pod, ok := kl.podManager.GetPodByUID(e.ID); ok {
-				klog.V(2).Infof("SyncLoop (PLEG): %q, event: %#v", format.Pod(pod), e)
+				klog.V(2).Infof("SyncLoop (PLEG): %q, event: %#v", format.PodWithDeletionTimestampAndResourceVersion(pod), e)
 				handler.HandlePodSyncs([]*v1.Pod{pod})
 			} else {
 				// If the pod no longer exists, ignore the event.
@@ -2059,7 +2061,7 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 		if len(podsToSync) == 0 {
 			break
 		}
-		klog.V(4).Infof("SyncLoop (SYNC): %d pods; %s", len(podsToSync), format.Pods(podsToSync))
+		klog.V(4).Infof("SyncLoop (SYNC): %d pods; %s", len(podsToSync), format.PodsWithDeletionTimestampsAndResourceVersions(podsToSync))
 		handler.HandlePodSyncs(podsToSync)
 	case update := <-kl.livenessManager.Updates():
 		if update.Result == proberesults.Failure {
@@ -2073,7 +2075,7 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 				klog.V(4).Infof("SyncLoop (container unhealthy): ignore irrelevant update: %#v", update)
 				break
 			}
-			klog.V(1).Infof("SyncLoop (container unhealthy): %q", format.Pod(pod))
+			klog.V(1).Infof("SyncLoop (container unhealthy): %q", format.PodWithDeletionTimestampAndResourceVersion(pod))
 			handler.HandlePodSyncs([]*v1.Pod{pod})
 		}
 	case <-housekeepingCh:
@@ -2352,6 +2354,7 @@ func (kl *Kubelet) updateRuntimeUp() {
 
 	s := toKubeRuntimeStatus(s1)
 	if err := kl.updateOneRuntimeUp(s); err != nil {
+		klog.Errorf("node updateOneRuntimeUp had error: %v", err)
 		return
 	}
 
@@ -2360,18 +2363,20 @@ func (kl *Kubelet) updateRuntimeUp() {
 }
 
 func (kl *Kubelet) updateOneRuntimeUp(s *kubecontainer.RuntimeStatus) error {
-	msg := "either runtime or network is not ready. flag caller to return"
+	msg := "runtime is not ready. flag caller to return"
 	kl.updateRuntimeMux.Lock()
 	defer kl.updateRuntimeMux.Unlock()
 
 	// TODO(random-liu): Consider to send node event when optional
 	// condition is unmet.
 	klog.V(4).Infof("Container runtime status: %v", s)
+
 	networkReady := s.GetRuntimeCondition(kubecontainer.NetworkReady)
 	if networkReady == nil || !networkReady.Status {
+		// do not return error when network is not ready yet, as it would prevent cni pod from starting,
+		// which forms a dead lock in bootstrapping. Logging is just fine.
 		klog.Errorf("Container runtime network not ready: %v", networkReady)
 		kl.runtimeState.setNetworkState(fmt.Errorf("runtime network not ready: %v", networkReady))
-		return fmt.Errorf(msg)
 	} else {
 		// Set nil if the container runtime network is ready.
 		kl.runtimeState.setNetworkState(nil)

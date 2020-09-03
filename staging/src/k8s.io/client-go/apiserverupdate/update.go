@@ -46,7 +46,7 @@ var apiServerConfigUpdateChGrp *bcast.Group
 var muxCreateApiServerConfigUpdateChGrp sync.Mutex
 
 var apiServerMap map[string]v1.EndpointSubset
-var muxUpdateServerMap sync.Mutex
+var muxUpdateServerMap sync.RWMutex
 
 func GetAPIServerConfigUpdateChGrp() *bcast.Group {
 	if apiServerConfigUpdateChGrp != nil {
@@ -66,11 +66,18 @@ func GetAPIServerConfigUpdateChGrp() *bcast.Group {
 }
 
 func GetAPIServerConfig() map[string]v1.EndpointSubset {
-	return apiServerMap
+	muxUpdateServerMap.RLock()
+	copyApiServerMap := make(map[string]v1.EndpointSubset, len(apiServerMap))
+	for k, v := range apiServerMap {
+		copyApiServerMap[k] = *v.DeepCopy()
+	}
+
+	muxUpdateServerMap.RUnlock()
+	return copyApiServerMap
 }
 
 func SetAPIServerConfig(c map[string]v1.EndpointSubset) {
-	klog.V(3).Infof("Update APIServer Config from [%+v] to [%+v]", apiServerMap, c)
+	klog.V(2).Infof("Update APIServer Config from [%+v] to [%+v]", apiServerMap, c)
 	muxUpdateServerMap.Lock()
 	// map is passing as reference. Needs to copy manually
 	apiServerMap = make(map[string]v1.EndpointSubset)

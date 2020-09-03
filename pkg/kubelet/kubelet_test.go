@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
+	"net"
 	"os"
 	"sort"
 	"testing"
@@ -38,6 +39,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -463,6 +466,24 @@ func checkPodStatus(t *testing.T, kl *Kubelet, pod *v1.Pod, phase v1.PodPhase) {
 	require.Equal(t, phase, status.Phase)
 }
 
+const dnsVIPOfTestNetwork = "1.2.3.4"
+
+func newTestConfigurer(recorder *record.FakeRecorder, nodeRef *v1.ObjectReference, clusterDNS []net.IP, testClusterDNSDomain, resolverConfig string) *dns.Configurer {
+	networkClient := fakearktosv1.NewSimpleClientset(&arktosv1.Network{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "default",
+			Tenant: "system",
+		},
+		Spec: arktosv1.NetworkSpec{
+			Type: "test-type",
+		},
+		Status: arktosv1.NetworkStatus{
+			DNSServiceIP: dnsVIPOfTestNetwork,
+		},
+	})
+	return dns.NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
+}
+
 // Tests that we handle port conflicts correctly by setting the failed status in status map.
 func TestHandlePortConflicts(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
@@ -488,7 +509,7 @@ func TestHandlePortConflicts(t *testing.T) {
 		Namespace: "",
 	}
 	testClusterDNSDomain := "TEST"
-	kl.dnsConfigurer = dns.NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
+	kl.dnsConfigurer = newTestConfigurer(recorder, nodeRef, nil, testClusterDNSDomain, "")
 
 	spec := v1.PodSpec{NodeName: string(kl.nodeName), Containers: []v1.Container{{Ports: []v1.ContainerPort{{HostPort: 80}}}}}
 	pods := []*v1.Pod{
@@ -534,7 +555,7 @@ func TestHandleHostNameConflicts(t *testing.T) {
 		Namespace: "",
 	}
 	testClusterDNSDomain := "TEST"
-	kl.dnsConfigurer = dns.NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
+	kl.dnsConfigurer = newTestConfigurer(recorder, nodeRef, nil, testClusterDNSDomain, "")
 
 	// default NodeName in test is 127.0.0.1
 	pods := []*v1.Pod{
@@ -577,7 +598,7 @@ func TestHandleNodeSelector(t *testing.T) {
 		Namespace: "",
 	}
 	testClusterDNSDomain := "TEST"
-	kl.dnsConfigurer = dns.NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
+	kl.dnsConfigurer = newTestConfigurer(recorder, nodeRef, nil, testClusterDNSDomain, "")
 
 	pods := []*v1.Pod{
 		podWithUIDNameNsSpec("123456789", "podA", "foo", v1.PodSpec{NodeSelector: map[string]string{"key": "A"}}),
@@ -617,7 +638,7 @@ func TestHandleMemExceeded(t *testing.T) {
 		Namespace: "",
 	}
 	testClusterDNSDomain := "TEST"
-	kl.dnsConfigurer = dns.NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
+	kl.dnsConfigurer = newTestConfigurer(recorder, nodeRef, nil, testClusterDNSDomain, "")
 
 	spec := v1.PodSpec{NodeName: string(kl.nodeName),
 		Containers: []v1.Container{{Resources: v1.ResourceRequirements{
@@ -712,7 +733,7 @@ func TestHandlePluginResources(t *testing.T) {
 		Namespace: "",
 	}
 	testClusterDNSDomain := "TEST"
-	kl.dnsConfigurer = dns.NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
+	kl.dnsConfigurer = newTestConfigurer(recorder, nodeRef, nil, testClusterDNSDomain, "")
 
 	// pod requiring adjustedResource can be successfully allocated because updatePluginResourcesFunc
 	// adjusts node.allocatableResource for this resource to a sufficient value.

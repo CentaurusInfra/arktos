@@ -201,18 +201,23 @@ func (a *AggregatedWatcher) ResultChan() <-chan Event {
 }
 
 func (a *AggregatedWatcher) GetErrors() error {
-	aggErr := []error{}
+	a.mapLock.RLock()
+	aggErr := make([]error, 0, len(a.errs))
 	for _, err := range a.errs {
 		if err != nil {
 			aggErr = append(aggErr, err)
 		}
 	}
 
+	a.mapLock.RUnlock()
 	return utilerrors.NewAggregate(aggErr)
 }
 
 func (a *AggregatedWatcher) GetWatchersCount() int {
-	return len(a.watchers)
+	a.mapLock.RLock()
+	count := len(a.watchers)
+	a.mapLock.RUnlock()
+	return count
 }
 
 // EventType defines the possible types of events.

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,10 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -37,7 +39,7 @@ func init() {
 	runtime.ReallyCrash = true
 }
 
-var defaultProbe *v1.Probe = &v1.Probe{
+var defaultProbe = &v1.Probe{
 	Handler: v1.Handler{
 		Exec: &v1.ExecAction{},
 	},
@@ -57,6 +59,8 @@ func TestAddRemovePods(t *testing.T) {
 				Name: "no_probe1",
 			}, {
 				Name: "no_probe2",
+			}, {
+				Name: "no_probe3",
 			}},
 		},
 	}
@@ -67,15 +71,17 @@ func TestAddRemovePods(t *testing.T) {
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{
-				Name: "no_probe1",
+				Name: "probe1",
 			}, {
 				Name:           "readiness",
 				ReadinessProbe: defaultProbe,
 			}, {
-				Name: "no_probe2",
+				Name: "probe2",
 			}, {
 				Name:          "liveness",
 				LivenessProbe: defaultProbe,
+			}, {
+				Name: "probe3",
 			}},
 		},
 	}
@@ -158,7 +164,9 @@ func TestCleanupPods(t *testing.T) {
 	m.AddPod(&podToCleanup)
 	m.AddPod(&podToKeep)
 
-	m.CleanupPods([]*v1.Pod{&podToKeep})
+	desiredPods := map[types.UID]sets.Empty{}
+	desiredPods[podToKeep.UID] = sets.Empty{}
+	m.CleanupPods(desiredPods)
 
 	removedProbes := []probeKey{
 		{"pod_cleanup", "prober1", readiness},
@@ -197,7 +205,7 @@ func TestCleanupRepeated(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		m.CleanupPods([]*v1.Pod{})
+		m.CleanupPods(map[types.UID]sets.Empty{})
 	}
 }
 

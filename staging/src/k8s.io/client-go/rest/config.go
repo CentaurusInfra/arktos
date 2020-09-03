@@ -191,10 +191,10 @@ func (ag *Config) updateConfig() {
 
 	// assign new hosts
 	i := 0
-	klog.V(6).Infof("Len of new server %d; len of new config %d", numOfServers, len(ag.config))
+	klog.V(4).Infof("Len of new server %d; len of new config %d", numOfServers, len(ag.config))
 	for _, ss := range newApiServers {
 		ag.config[i].Host = fmt.Sprintf("%s://%s:%d/", ss.Ports[0].Name, ss.Addresses[0].IP, ss.Ports[0].Port)
-		klog.V(6).Infof("New host %s, service group id %s", ag.config[i].Host, ss.ServiceGroupId)
+		klog.V(4).Infof("New host %s, service group id %s", ag.config[i].Host, ss.ServiceGroupId)
 		i++
 	}
 }

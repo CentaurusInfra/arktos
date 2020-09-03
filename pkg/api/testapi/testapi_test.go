@@ -35,9 +35,9 @@ func TestResourcePathWithPrefix(t *testing.T) {
 		expected  string
 	}{
 		{"prefix", "resource", "mynamespace", "myresource", "/api/" + Default.GroupVersion().Version + "/prefix/tenants/system/namespaces/mynamespace/resource/myresource"},
-		{"prefix", "resource", "", "myresource", "/api/" + Default.GroupVersion().Version + "/prefix/tenants/system/resource/myresource"},
+		{"prefix", "resource", "", "myresource", "/api/" + Default.GroupVersion().Version + "/prefix/resource/myresource"},
 		{"prefix", "resource", "mynamespace", "", "/api/" + Default.GroupVersion().Version + "/prefix/tenants/system/namespaces/mynamespace/resource"},
-		{"prefix", "resource", "", "", "/api/" + Default.GroupVersion().Version + "/prefix/tenants/system/resource"},
+		{"prefix", "resource", "", "", "/api/" + Default.GroupVersion().Version + "/prefix/resource"},
 		{"", "resource", "mynamespace", "myresource", "/api/" + Default.GroupVersion().Version + "/tenants/system/namespaces/mynamespace/resource/myresource"},
 	}
 	for _, item := range testCases {
@@ -54,9 +54,9 @@ func TestResourcePathWithPrefix(t *testing.T) {
 		expected  string
 	}{
 		{"prefix", "resource", "mynamespace", "myresource", "/apis/" + Admission.GroupVersion().Group + "/" + Admission.GroupVersion().Version + "/prefix/tenants/system/namespaces/mynamespace/resource/myresource"},
-		{"prefix", "resource", "", "myresource", "/apis/" + Admission.GroupVersion().Group + "/" + Admission.GroupVersion().Version + "/prefix/tenants/system/resource/myresource"},
+		{"prefix", "resource", "", "myresource", "/apis/" + Admission.GroupVersion().Group + "/" + Admission.GroupVersion().Version + "/prefix/resource/myresource"},
 		{"prefix", "resource", "mynamespace", "", "/apis/" + Admission.GroupVersion().Group + "/" + Admission.GroupVersion().Version + "/prefix/tenants/system/namespaces/mynamespace/resource"},
-		{"prefix", "resource", "", "", "/apis/" + Admission.GroupVersion().Group + "/" + Admission.GroupVersion().Version + "/prefix/tenants/system/resource"},
+		{"prefix", "resource", "", "", "/apis/" + Admission.GroupVersion().Group + "/" + Admission.GroupVersion().Version + "/prefix/resource"},
 		{"", "resource", "mynamespace", "myresource", "/apis/" + Admission.GroupVersion().Group + "/" + Admission.GroupVersion().Version + "/tenants/system/namespaces/mynamespace/resource/myresource"},
 	}
 	for _, item := range testGroupCases {
@@ -74,9 +74,9 @@ func TestResourcePath(t *testing.T) {
 		expected  string
 	}{
 		{"resource", "mynamespace", "myresource", "/api/" + Default.GroupVersion().Version + "/tenants/system/namespaces/mynamespace/resource/myresource"},
-		{"resource", "", "myresource", "/api/" + Default.GroupVersion().Version + "/tenants/system/resource/myresource"},
+		{"resource", "", "myresource", "/api/" + Default.GroupVersion().Version + "/resource/myresource"},
 		{"resource", "mynamespace", "", "/api/" + Default.GroupVersion().Version + "/tenants/system/namespaces/mynamespace/resource"},
-		{"resource", "", "", "/api/" + Default.GroupVersion().Version + "/tenants/system/resource"},
+		{"resource", "", "", "/api/" + Default.GroupVersion().Version + "/resource"},
 	}
 	for _, item := range testCases {
 		if actual := Default.ResourcePath(item.resource, item.namespace, item.name); actual != item.expected {
@@ -94,9 +94,9 @@ func TestSubResourcePath(t *testing.T) {
 		expected  string
 	}{
 		{"resource", "mynamespace", "myresource", "mysub", "/api/" + Default.GroupVersion().Version + "/tenants/system/namespaces/mynamespace/resource/myresource/mysub"},
-		{"resource", "", "myresource", "mysub", "/api/" + Default.GroupVersion().Version + "/tenants/system/resource/myresource/mysub"},
+		{"resource", "", "myresource", "mysub", "/api/" + Default.GroupVersion().Version + "/resource/myresource/mysub"},
 		{"resource", "mynamespace", "", "mysub", "/api/" + Default.GroupVersion().Version + "/tenants/system/namespaces/mynamespace/resource/mysub"},
-		{"resource", "", "", "mysub", "/api/" + Default.GroupVersion().Version + "/tenants/system/resource/mysub"},
+		{"resource", "", "", "mysub", "/api/" + Default.GroupVersion().Version + "/resource/mysub"},
 	}
 	for _, item := range testCases {
 		if actual := Default.SubResourcePath(item.resource, item.namespace, item.name, item.sub); actual != item.expected {

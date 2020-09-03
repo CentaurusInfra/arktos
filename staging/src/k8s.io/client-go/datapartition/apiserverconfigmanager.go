@@ -132,9 +132,17 @@ func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInf
 
 	manager.apiserverLister = epInformer.Lister()
 	manager.apiserverListerSynced = epInformer.Informer().HasSynced
-	err := SyncApiServerConfigHandler(manager)
-	if err != nil {
-		return nil, err
+
+	stopRetryTime := time.Now().Add(5 * time.Minute)
+	for {
+		err := SyncApiServerConfigHandler(manager)
+		if err == nil {
+			break
+		}
+		if time.Now().After(stopRetryTime) {
+			return nil, err
+		}
+		time.Sleep(10 * time.Second)
 	}
 
 	SyncApiServerConfigHandler = syncApiServerConfig
@@ -230,6 +238,7 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 	setApiServerConfigMapHandler(a, curEp)
 }
 
+// It's ok not to test here since Kubernetes endpoints should never be deleted
 func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
 	ep, ok := obj.(*v1.Endpoints)
 	if !ok {

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,19 +18,30 @@ limitations under the License.
 package testing
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+// FakeManager simulates a prober.Manager for testing.
 type FakeManager struct{}
 
-// Unused methods.
-func (_ FakeManager) AddPod(_ *v1.Pod)        {}
-func (_ FakeManager) RemovePod(_ *v1.Pod)     {}
-func (_ FakeManager) CleanupPods(_ []*v1.Pod) {}
-func (_ FakeManager) Start()                  {}
+// Unused methods below.
 
-func (_ FakeManager) UpdatePodStatus(_ types.UID, podStatus *v1.PodStatus) {
+// AddPod simulates adding a Pod.
+func (FakeManager) AddPod(_ *v1.Pod) {}
+
+// RemovePod simulates removing a Pod.
+func (FakeManager) RemovePod(_ *v1.Pod) {}
+
+// CleanupPods simulates cleaning up Pods.
+func (FakeManager) CleanupPods(_ map[types.UID]sets.Empty) {}
+
+// Start simulates start syncing the probe status
+func (FakeManager) Start() {}
+
+// UpdatePodStatus simulates updating the Pod Status.
+func (FakeManager) UpdatePodStatus(_ types.UID, podStatus *v1.PodStatus) {
 	for i := range podStatus.ContainerStatuses {
 		podStatus.ContainerStatuses[i].Ready = true
 	}

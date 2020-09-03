@@ -300,7 +300,7 @@ func (s *Server) InstallDefaultHandlers(enableCAdvisorJSONEndpoints bool) {
 	s.restfulCont.Handle(metricsPath, prometheus.Handler())
 
 	// cAdvisor metrics are exposed under the secured handler as well
-	r := prometheus.NewRegistry()
+	r := compbasemetrics.NewKubeRegistry()
 
 	includedMetrics := cadvisormetrics.MetricSet{
 		cadvisormetrics.CpuUsageMetrics:         struct{}{},
@@ -313,20 +313,20 @@ func (s *Server) InstallDefaultHandlers(enableCAdvisorJSONEndpoints bool) {
 		cadvisormetrics.AppMetrics:              struct{}{},
 		cadvisormetrics.ProcessMetrics:          struct{}{},
 	}
-	r.MustRegister(metrics.NewPrometheusCollector(prometheusHostAdapter{s.host}, containerPrometheusLabelsFunc(s.host), includedMetrics))
+	r.RawMustRegister(metrics.NewPrometheusCollector(prometheusHostAdapter{s.host}, containerPrometheusLabelsFunc(s.host), includedMetrics))
 	s.restfulCont.Handle(cadvisorMetricsPath,
 		promhttp.HandlerFor(r, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError}),
 	)
 
-	v1alpha1ResourceRegistry := prometheus.NewRegistry()
-	v1alpha1ResourceRegistry.MustRegister(stats.NewPrometheusResourceMetricCollector(s.resourceAnalyzer, v1alpha1.Config()))
+	v1alpha1ResourceRegistry := compbasemetrics.NewKubeRegistry()
+	v1alpha1ResourceRegistry.CustomMustRegister(stats.NewPrometheusResourceMetricCollector(s.resourceAnalyzer, stats.Config()))
 	s.restfulCont.Handle(path.Join(resourceMetricsPathPrefix, v1alpha1.Version),
 		promhttp.HandlerFor(v1alpha1ResourceRegistry, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError}),
 	)
 
 	// prober metrics are exposed under a different endpoint
-	p := prometheus.NewRegistry()
-	compbasemetrics.RegisterProcessStartTime(p)
+	p := compbasemetrics.NewKubeRegistry()
+	compbasemetrics.RegisterProcessStartTime(p.Register)
 	p.MustRegister(prober.ProberResults)
 	s.restfulCont.Handle(proberMetricsPath,
 		promhttp.HandlerFor(p, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError}),
