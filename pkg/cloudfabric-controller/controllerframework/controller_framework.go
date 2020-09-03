@@ -345,6 +345,9 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 	isSelfUpdated bool, newLowerbound int64, newUpperbound int64, newPos int, updatedControllerInstances []controllerInstanceLocal) {
 
 	isUpdated, newControllerInstancesLocal = c.needToUpdateControllerKeys(newControllerInstancesLocal)
+	if !isUpdated {
+		return false, false, 0, 0, 0, nil
+	}
 
 	// find position in new controller instances - assume current controller is in new controller instance list (deal with edge cases later)
 	newPos = -1
@@ -358,7 +361,7 @@ func (c *ControllerBase) tryConsolidateControllerInstancesLocal(newControllerIns
 	// current instance not in new controller instance map, this controller instance lost connection with registry, pause processing, force restart
 	if newPos == -1 {
 		klog.Errorf("Current instance not in registry. Controller type %s, instance id %v, key %v. Needs restart", c.controllerType, c.controllerName, c.controllerKey)
-		return false, false, 0, 0, 0, newControllerInstancesLocal
+		return false, false, 0, 0, 0, nil
 	}
 	if c.controllerKey != newControllerInstancesLocal[newPos].controllerKey ||
 		c.curPos < 0 || c.sortedControllerInstancesLocal[c.curPos].lowerboundKey != newControllerInstancesLocal[newPos].lowerboundKey {
