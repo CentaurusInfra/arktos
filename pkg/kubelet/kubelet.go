@@ -22,8 +22,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
-	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"math"
 	"net"
 	"net/http"
@@ -49,6 +47,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -94,6 +94,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/prober"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	"k8s.io/kubernetes/pkg/kubelet/runtimeclass"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/server"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
@@ -256,6 +257,7 @@ type Dependencies struct {
 	HeartbeatClient         clientset.Interface
 	OnHeartbeatFailure      []func()
 	KubeClient              clientset.Interface
+	ArktosExtClient         arktos.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
 	OSInterface             kubecontainer.OSInterface
@@ -495,7 +497,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		registerNode:                            registerNode,
 		registerWithTaints:                      registerWithTaints,
 		registerSchedulable:                     registerSchedulable,
-		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig),
+		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig, kubeDeps.ArktosExtClient.ArktosV1()),
 		serviceLister:                           serviceLister,
 		nodeInfo:                                nodeInfo,
 		masterServiceNamespace:                  masterServiceNamespace,
