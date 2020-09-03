@@ -23,9 +23,10 @@ script_root=$(dirname "${BASH_SOURCE}")
 repo_root=$(cd $(dirname $0)/../../../.. ; pwd)
 
 #put the test suite file patterns below, one line one suite. The test suites will be run in the order defined.
-test_suite_files="multi_tenancy_controller/test_*_controller.yaml \
-				  tenant_init_delete_test.yaml \
-				  misc/test_*.yaml"
+test_suite_files="tenant_init_delete_test.yaml
+                  multi_tenancy_controller/test_*_controller.yaml \
+                  admission/test_*.yaml \
+                  misc/test_*.yaml"
 test_suite_file_directory=${repo_root}/test/e2e/arktos/multi_tenancy/test_suites/
 
 # The values of timeouts and retry intervals are in the unit of second
