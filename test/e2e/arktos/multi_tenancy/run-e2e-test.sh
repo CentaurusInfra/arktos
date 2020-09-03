@@ -26,6 +26,7 @@ repo_root=$(cd $(dirname $0)/../../../.. ; pwd)
 test_suite_files="tenant_init_delete_test.yaml
                   multi_tenancy_controller/test_*_controller.yaml \
                   admission/test_*.yaml \
+                  kubectl/test_*.yaml \
                   misc/test_*.yaml"
 test_suite_file_directory=${repo_root}/test/e2e/arktos/multi_tenancy/test_suites/
 
@@ -48,6 +49,7 @@ verbose=false
 kubectl=${repo_root}/_output/bin/kubectl
 setup_client_script=${repo_root}/hack/setup-multi-tenancy/setup_client.sh
 test_data_dir=${repo_root}/test/e2e/arktos/multi_tenancy/testdata/
+master_node=$(hostname| tr '[:upper:]' '[:lower:]')
 
 cd ${script_root}/ && go build -o /tmp/testrunner './cmd/'
 
@@ -60,7 +62,8 @@ cd ${script_root}/ && go build -o /tmp/testrunner './cmd/'
 				-MaxRetryCount=${max_retry_count} \
 				-DefaultRetryInterval=${default_retry_interval} \
 				-MaxRetryInterval=${max_retry_interval} \
-				-CommonVar="kubectl:${kubectl},setup_client_script:${setup_client_script},test_data_dir:${test_data_dir}"
+				-CommonVar="kubectl:${kubectl},setup_client_script:${setup_client_script}, \
+							test_data_dir:${test_data_dir},master_node:${master_node}"
 
 returnCode=$?
 exit ${returnCode}
