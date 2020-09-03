@@ -32,8 +32,7 @@ Tests:
 
   - BeforeTestMessage: Verifying system-share CRD is visible to all tenants ...
     Command: ${kubectl} apply -f ${test_data_dir}/forced_share_crd.yaml --tenant system
-    OutputShouldContain:
-    - "customresourcedefinition.apiextensions.k8s.io/mustshareknowledges.learning.wisdom.com"
+    OutputShouldBe: "customresourcedefinition.apiextensions.k8s.io/mustshareknowledges.learning.wisdom.com created\n"
 
   - Command: ${kubectl} get crds --context ${first_tenant}-admin-context
     OutputShouldContain: 
@@ -146,15 +145,16 @@ Tests:
     ShouldFail: true
     OutputShouldBe: "Error from server (NotFound): Unable to list \"learning.wisdom.com/v1, Resource=mustshareknowledges\": the server could not find the requested resource (get mustshareknowledges.learning.wisdom.com)\n"
 
-########################################################################################
-# TODO: add test about resouce discovery after bug 525 is fixed
-########################################################################################
-
 ######################################################################################################
 # cleanup
 ######################################################################################################
 
+# only need to delete ${second_tenant} as ${first_tenant} is already deleted
   - BeforeTestMessage: clean up ...
     Command: ${kubectl} delete tenant ${second_tenant} > /dev/null 2>&1 &
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${first_tenant} admin
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${second_tenant} admin
 
 

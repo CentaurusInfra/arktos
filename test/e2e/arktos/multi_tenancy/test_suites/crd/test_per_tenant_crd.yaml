@@ -93,17 +93,41 @@ Tests:
 
 
 ######################################################################################################
+# Verifying different tenants can create their custom resources independently...
+######################################################################################################
+
+  - BeforeTestMessage: Verifying different tenants can create their custom resources  independently...
+    Command: ${kubectl} apply -f ${test_data_dir}/regular_crd_resource.yaml --context ${first_tenant}-admin-context
+    OutputShouldBe: "neversharingsweetdream.fantasy.wonderland.com/wild-wild-west created\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${first_tenant}-admin-context -o json | jq -r '.items[] | .metadata.name '
+    OutputShouldBe: "wild-wild-west\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context
+    OutputShouldBe: "No resources found.\n"
+
+  - Command: "cat ${test_data_dir}/regular_crd_resource.yaml | sed 's/wild-wild-west/alice-in-wonderland/g' |
+              ${kubectl} apply --context ${second_tenant}-admin-context -f -"
+    OutputShouldBe: "neversharingsweetdream.fantasy.wonderland.com/alice-in-wonderland created\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams wild-wild-west --context ${first_tenant}-admin-context -o json | jq -r .metadata.name
+    OutputShouldBe: "wild-wild-west\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams alice-in-wonderland --context ${second_tenant}-admin-context -o json | jq -r .metadata.name
+    OutputShouldBe: "alice-in-wonderland\n"
+
+######################################################################################################
 # Verifying different tenants can delete their custom resources independently...
 ######################################################################################################
 
   - BeforeTestMessage: Verifying different tenants can delete their custom resources  independently...
-    Command: ${kubectl} apply -f ${test_data_dir}/regular_crd_resource.yaml --context ${first_tenant}-admin-context
-    OutputShouldBe: "neversharingsweetdream.fantasy.wonderland.com/wild-wild-west created\n"
+    Command: ${kubectl} delete -f ${test_data_dir}/regular_crd_resource.yaml --context ${first_tenant}-admin-context
+    OutputShouldBe: "neversharingsweetdream.fantasy.wonderland.com \"wild-wild-west\" deleted\n"
 
-  - Command: ${kubectl} get neversharingsweetdreams wild-wild-west --context ${first_tenant}-admin-context -o json | jq .metadata.name
-    OutputShouldBe: "\"wild-wild-west\"\n"
+  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context -o json | jq -r '.items[] | .metadata.name '
+    OutputShouldBe: "alice-in-wonderland\n"
 
-  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context
+  - Command: ${kubectl} get neversharingsweetdreams --context ${first_tenant}-admin-context
     OutputShouldBe: "No resources found.\n"
 
 ######################################################################################################
@@ -124,8 +148,8 @@ Tests:
     OutputShouldContain:
     - "neversharingsweetdreams.fantasy.wonderland.com"
 
-  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context
-    OutputShouldBe: "No resources found.\n"
+  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context -o json | jq -r '.items[] | .metadata.name'
+    OutputShouldBe: "alice-in-wonderland\n"
 
 ######################################################################################################
 # cleanup
@@ -135,4 +159,7 @@ Tests:
 
   - Command: ${kubectl} delete tenant ${second_tenant} > /dev/null 2>&1 &
 
+  - Command: REMOVE=TRUE ${setup_client_script} ${first_tenant} admin
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${second_tenant} admin
 
