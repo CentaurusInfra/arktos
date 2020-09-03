@@ -62,7 +62,7 @@ func newTestConfigurer(recorder *record.FakeRecorder, nodeRef *v1.ObjectReferenc
 		},
 		Status: arktosv1.NetworkStatus{
 			DNSServiceIP: dnsVIPOfTestNetwork,
-			Phase: "Ready",
+			Phase:        "Ready",
 		},
 	})
 	return NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
@@ -504,15 +504,15 @@ func TestGetPodDNS(t *testing.T) {
 func TestGetPodDNSWithNotReadyNetwork(t *testing.T) {
 	recorder := record.NewFakeRecorder(20)
 	nodeRed := &v1.ObjectReference{
-		Kind:            "Node",
-		Name:            string("testNode"),
-		UID:             types.UID("testNode"),
+		Kind: "Node",
+		Name: string("testNode"),
+		UID:  types.UID("testNode"),
 	}
 	configurer := newTestConfigurerWithNotReadyNetwork(recorder, nodeRed, nil, "test.domain", "")
 
 	pods := newTestPods(1)
 	pods[0].Spec.DNSPolicy = v1.DNSClusterFirst
-	pods[0].Spec.HostNetwork  =false
+	pods[0].Spec.HostNetwork = false
 
 	_, err := configurer.GetPodDNS(pods[0])
 
