@@ -69,8 +69,9 @@ func mockSetApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 	callNum_SetApiServerConfigMap++
 }
 
-func mockExternalSetAPIServerConfig(c map[string]v1.EndpointSubset) {
+func mockExternalSetAPIServerConfig(c map[string]v1.EndpointSubset) bool {
 	callNum_ExternalSetAPIServerConfig++
+	return true
 }
 
 func mockStartWaitForComplete() {
@@ -141,6 +142,13 @@ func TestUpdateEvent(t *testing.T) {
 	curEp = newEndpoint(KubernetesServiceName, "4", masterIP2, serviceGroupId1)
 	apiServerConfigManager.updateApiServer(oldEp, curEp)
 	assert.Equal(t, 1, callNum_SetApiServerConfigMap)
+
+	t.Logf("5. Check same endpoints update times won't be picked up")
+	curEp = newEndpoint(KubernetesServiceName, "4", masterIP2, serviceGroupId1)
+	oldEp = curEp
+	callNum_SetApiServerConfigMap = 0
+	apiServerConfigManager.updateApiServer(oldEp, curEp)
+	assert.Equal(t, 0, callNum_SetApiServerConfigMap)
 }
 
 func TestSetApiServerConfigMap(t *testing.T) {

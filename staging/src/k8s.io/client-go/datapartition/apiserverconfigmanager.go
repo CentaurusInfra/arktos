@@ -175,13 +175,6 @@ func (a *APIServerConfigManager) GetAPIServerConfig() map[string]v1.EndpointSubs
 }
 
 func syncApiServerConfig(a *APIServerConfigManager) error {
-	a.mux.Lock()
-	klog.V(4).Info("mux acquired syncApiServerConfig.")
-	defer func() {
-		a.mux.Unlock()
-		klog.V(4).Info("mux released syncApiServerConfig.")
-	}()
-
 	apiEndpoints, err := a.kubeClient.CoreV1().Endpoints(Namespace_System).Get(KubernetesServiceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Error in getting api server endpoints list: %v", err)
@@ -208,6 +201,7 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 		return
 	}
 
+	// compare objs received in events
 	if curEp.ResourceVersion == oldEp.ResourceVersion {
 		return
 	} else {
@@ -227,13 +221,6 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 	if reflect.DeepEqual(oldEp.Subsets, curEp.Subsets) {
 		return
 	}
-
-	a.mux.Lock()
-	klog.V(4).Infof("mux acquired updateApiServer")
-	defer func() {
-		a.mux.Unlock()
-		klog.V(4).Infof("mux released updateApiServer")
-	}()
 
 	setApiServerConfigMapHandler(a, curEp)
 }
@@ -262,6 +249,13 @@ func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
 }
 
 func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
+	a.mux.Lock()
+	klog.V(4).Info("mux acquired setApiServerConfigMap.")
+	defer func() {
+		a.mux.Unlock()
+		klog.V(4).Info("mux released setApiServerConfigMap.")
+	}()
+
 	hasUpdate := false
 
 	existingServiceGroupIds := make(map[string]bool)
@@ -294,7 +288,10 @@ func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 				time.Sleep(a.firstUpdateTime.Sub(now))
 			}
 
-			setAPIServerConfigHandler(a.APIServerMap)
+			isUpdated := setAPIServerConfigHandler(a.APIServerMap)
+			if !isUpdated {
+				return
+			}
 
 			// No need to reset config if there is only one server as it is already connected
 			if !a.isApiServerConfigInitialized {
@@ -305,8 +302,8 @@ func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 				}
 			}
 
-			sendUpdateMessageHandler(a)
 			startWaitForCompleteHandler()
+			sendUpdateMessageHandler(a)
 		}(a)
 	}
 }
