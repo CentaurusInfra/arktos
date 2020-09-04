@@ -111,7 +111,7 @@ func TestDeployDNSForNetwork(t *testing.T) {
 			if len(tc.expectedTestTag) > 0 {
 				val := sa.Annotations[testTagKey]
 				if val != tc.expectedTestTag {
-					t.Errorf("expected the existent object; got %v", sa)
+					t.Errorf("expected %q; got %q", tc.expectedTestTag, val)
 				}
 			}
 
@@ -122,7 +122,7 @@ func TestDeployDNSForNetwork(t *testing.T) {
 			if len(tc.expectedTestTag) > 0 {
 				val := clusterRole.Annotations[testTagKey]
 				if val != tc.expectedTestTag {
-					t.Errorf("expected the existent object; got %v", sa)
+					t.Errorf("expected %q; got %q", tc.expectedTestTag, val)
 				}
 			}
 
@@ -133,7 +133,7 @@ func TestDeployDNSForNetwork(t *testing.T) {
 			if len(tc.expectedTestTag) > 0 {
 				val := clusterRoleBinding.Annotations[testTagKey]
 				if val != tc.expectedTestTag {
-					t.Errorf("expected the existent object; got %v", sa)
+					t.Errorf("expected %q; got %q", tc.expectedTestTag, val)
 				}
 			}
 

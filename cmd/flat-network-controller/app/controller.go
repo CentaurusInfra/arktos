@@ -167,7 +167,7 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 
 	svc, err := createOrGetDNSService(net, svcClient)
 	if err != nil {
-		return fmt.Errorf("failed to get or create per-network DNS service: %v", err)
+		return fmt.Errorf("failed to get or create per-network DNS service in tenant %s for network %s: %v", net.Tenant, net.Name, err)
 	}
 
 	if toDeployDNS {

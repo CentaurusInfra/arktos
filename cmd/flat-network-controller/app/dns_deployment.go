@@ -197,14 +197,14 @@ func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface) erro
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						"k8s-app": label,
+						clusterAddonLabelKey: label,
 					},
 				},
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
-							"k8s-app":                      label,
-							"arktos.futurewei.com/network": net.Name,
+							clusterAddonLabelKey: label,
+							v1.NetworkLabel:      net.Name,
 						},
 					},
 					Spec: corev1.PodSpec{
@@ -228,7 +228,7 @@ func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface) erro
 											LabelSelector: &metav1.LabelSelector{
 												MatchExpressions: []metav1.LabelSelectorRequirement{
 													{
-														Key:      "k8s-app",
+														Key:      clusterAddonLabelKey,
 														Operator: "In",
 														Values:   []string{label},
 													},
@@ -362,7 +362,7 @@ func generateCorefile(network, domainName string) (string, error) {
     }
 `
 
-	tmpl := template.Must(template.New("codefile").Parse(corefileTeml))
+	tmpl := template.Must(template.New("corefile").Parse(corefileTeml))
 	var output bytes.Buffer
 	object := struct {
 		Network string
