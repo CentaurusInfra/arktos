@@ -8,13 +8,13 @@ import (
 )
 
 var SchemeGroupVersion = schema.GroupVersion{
-	Group:   cloudgateway.GroupName,
-	Version: cloudgateway.Version,
+	Group:		cloudgateway.GroupName,
+	Version:	cloudgateway.Version,
 }
 
 var (
-	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-	AddToScheme   = SchemeBuilder.AddToScheme
+	SchemeBuilder	= runtime.NewSchemeBuilder(addKnownTypes)
+	AddToScheme		= SchemeBuilder.AddToScheme
 )
 
 func Resource(resource string) schema.GroupResource {
@@ -42,9 +42,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&EPolicyList{},
 		&ServiceExpose{},
 		&ServiceExposeList{},
-	)
+		)
 
 	// register the type in the scheme
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
+
