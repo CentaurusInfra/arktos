@@ -38,6 +38,7 @@ Tests:
     - "Error from server (Forbidden): namespaces is forbidden"
     - "cannot list resource \"namespaces\" in API group \"\" in the tenant \"${second_tenant}\"\n"
 
+# This test makes sure bug 393 is fixed
   - Command: ${kubectl} get ns --tenant system --context ${first_tenant}-admin-context
     ShouldFail: true
     OutputShouldContain: 
@@ -45,9 +46,9 @@ Tests:
     - "cannot list resource \"namespaces\" in API group \"\" in the tenant \"system\"\n"
 
 ###########################################################################################################
-# Verifying ystem Tenant can visit resources of any tenant
+# Verifying system Tenant can visit resources of any tenant
 ###########################################################################################################
-  - BeforeTestMessage: Verifying ystem Tenant can visit resources of any tenant ...
+  - BeforeTestMessage: Verifying system Tenant can visit resources of any tenant ...
     Command: "${kubectl} get ns --tenant ${second_tenant} --context system-admin-context -o json 
              | jq -r '.items[] | [.metadata.name] | @tsv'"
     OutputShouldContain: 
