@@ -203,12 +203,13 @@ func TestUpdateConfig(t *testing.T) {
 		cfg := aggConfig.GetConfigInPlace(i)
 		assert.NotNil(t, cfg)
 	}
-	assert.Equal(t, expectedHost, aggConfig.GetConfigInPlace(0).Host)
 	expectedHost2 := fmt.Sprintf("%s://%s:%d/",
 		apiServerMap[serviceGroupId2].Ports[0].Name,
 		apiServerMap[serviceGroupId2].Addresses[0].IP,
 		apiServerMap[serviceGroupId2].Ports[0].Port)
-	assert.Equal(t, expectedHost2, aggConfig.GetConfigInPlace(1).Host)
+
+	assert.True(t, expectedHost == aggConfig.GetConfigInPlace(0).Host && expectedHost2 == aggConfig.GetConfigInPlace(1).Host ||
+		expectedHost == aggConfig.GetConfigInPlace(1).Host && expectedHost2 == aggConfig.GetConfigInPlace(0).Host)
 
 	// 3. remove api server group
 	delete(apiServerMap, serviceGroupId1)
