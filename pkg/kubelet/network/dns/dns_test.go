@@ -1,6 +1,5 @@
 /*
 Copyright 2017 The Kubernetes Authors.
-Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,8 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
-	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/tools/record"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
@@ -48,24 +45,6 @@ var (
 		}
 	}
 )
-
-const dnsVIPOfTestNetwork = "1.2.3.4"
-
-func newTestConfigurer(recorder *record.FakeRecorder, nodeRef *v1.ObjectReference, clusterDNS []net.IP, testClusterDNSDomain, resolverConfig string) *Configurer {
-	networkClient := fakearktosv1.NewSimpleClientset(&arktosv1.Network{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "default",
-			Tenant: "system",
-		},
-		Spec: arktosv1.NetworkSpec{
-			Type: "test-type",
-		},
-		Status: arktosv1.NetworkStatus{
-			DNSServiceIP: dnsVIPOfTestNetwork,
-		},
-	})
-	return NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
-}
 
 func TestParseResolvConf(t *testing.T) {
 	testCases := []struct {
@@ -128,7 +107,7 @@ func TestFormDNSSearchFitsLimits(t *testing.T) {
 	}
 	testClusterDNSDomain := "TEST"
 
-	configurer := newTestConfigurer(recorder, nodeRef, nil, testClusterDNSDomain, "")
+	configurer := NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
 
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -190,7 +169,7 @@ func TestFormDNSNameserversFitsLimits(t *testing.T) {
 	}
 	testClusterDNSDomain := "TEST"
 
-	configurer := newTestConfigurer(recorder, nodeRef, nil, testClusterDNSDomain, "")
+	configurer := NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
 
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -297,7 +276,7 @@ func TestGetPodDNSType(t *testing.T) {
 	clusterNS := "203.0.113.1"
 	testClusterDNS := []net.IP{net.ParseIP(clusterNS)}
 
-	configurer := newTestConfigurer(recorder, nodeRef, testClusterDNS, testClusterDNSDomain, "")
+	configurer := NewConfigurer(recorder, nodeRef, nil, nil, testClusterDNSDomain, "")
 
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -401,7 +380,7 @@ func TestGetPodDNS(t *testing.T) {
 	testClusterDNSDomain := "kubernetes.io"
 	testClusterDNS := []net.IP{net.ParseIP(clusterNS)}
 
-	configurer := newTestConfigurer(recorder, nodeRef, testClusterDNS, testClusterDNSDomain, "")
+	configurer := NewConfigurer(recorder, nodeRef, nil, testClusterDNS, testClusterDNSDomain, "")
 
 	pods := newTestPods(4)
 	pods[0].Spec.DNSPolicy = v1.DNSClusterFirstWithHostNet
@@ -422,8 +401,8 @@ func TestGetPodDNS(t *testing.T) {
 		}
 		options[i].DNS, options[i].DNSSearch = dnsConfig.Servers, dnsConfig.Searches
 	}
-	if len(options[0].DNS) != 1 || options[0].DNS[0] != dnsVIPOfTestNetwork {
-		t.Errorf("expected nameserver %s, got %+v", dnsVIPOfTestNetwork, options[0].DNS)
+	if len(options[0].DNS) != 1 || options[0].DNS[0] != clusterNS {
+		t.Errorf("expected nameserver %s, got %+v", clusterNS, options[0].DNS)
 	}
 	if len(options[0].DNSSearch) == 0 || options[0].DNSSearch[0] != ".svc."+configurer.ClusterDomain {
 		t.Errorf("expected search %s, got %+v", ".svc."+configurer.ClusterDomain, options[0].DNSSearch)
@@ -434,8 +413,8 @@ func TestGetPodDNS(t *testing.T) {
 	if len(options[1].DNSSearch) != 1 || options[1].DNSSearch[0] != "." {
 		t.Errorf("expected search \".\", got %+v", options[1].DNSSearch)
 	}
-	if len(options[2].DNS) != 1 || options[2].DNS[0] != dnsVIPOfTestNetwork {
-		t.Errorf("expected nameserver %s, got %+v", dnsVIPOfTestNetwork, options[2].DNS)
+	if len(options[2].DNS) != 1 || options[2].DNS[0] != clusterNS {
+		t.Errorf("expected nameserver %s, got %+v", clusterNS, options[2].DNS)
 	}
 	if len(options[2].DNSSearch) == 0 || options[2].DNSSearch[0] != ".svc."+configurer.ClusterDomain {
 		t.Errorf("expected search %s, got %+v", ".svc."+configurer.ClusterDomain, options[2].DNSSearch)
@@ -448,7 +427,7 @@ func TestGetPodDNS(t *testing.T) {
 	}
 
 	testResolverConfig := "/etc/resolv.conf"
-	configurer = newTestConfigurer(recorder, nodeRef, testClusterDNS, testClusterDNSDomain, testResolverConfig)
+	configurer = NewConfigurer(recorder, nodeRef, nil, testClusterDNS, testClusterDNSDomain, testResolverConfig)
 	for i, pod := range pods {
 		var err error
 		dnsConfig, err := configurer.GetPodDNS(pod)
@@ -460,8 +439,8 @@ func TestGetPodDNS(t *testing.T) {
 	t.Logf("nameservers %+v", options[1].DNS)
 	if len(options[0].DNS) != 1 {
 		t.Errorf("expected cluster nameserver only, got %+v", options[0].DNS)
-	} else if options[0].DNS[0] != dnsVIPOfTestNetwork {
-		t.Errorf("expected nameserver %s, got %v", dnsVIPOfTestNetwork, options[0].DNS[0])
+	} else if options[0].DNS[0] != clusterNS {
+		t.Errorf("expected nameserver %s, got %v", clusterNS, options[0].DNS[0])
 	}
 	expLength := len(options[1].DNSSearch) + 3
 	if expLength > 6 {
@@ -474,8 +453,8 @@ func TestGetPodDNS(t *testing.T) {
 	}
 	if len(options[2].DNS) != 1 {
 		t.Errorf("expected cluster nameserver only, got %+v", options[2].DNS)
-	} else if options[2].DNS[0] != dnsVIPOfTestNetwork {
-		t.Errorf("expected nameserver %s, got %v", dnsVIPOfTestNetwork, options[2].DNS[0])
+	} else if options[2].DNS[0] != clusterNS {
+		t.Errorf("expected nameserver %s, got %v", clusterNS, options[2].DNS[0])
 	}
 	if len(options[2].DNSSearch) != expLength {
 		t.Errorf("expected prepend of cluster domain, got %+v", options[2].DNSSearch)
@@ -522,7 +501,7 @@ func TestGetPodDNSCustom(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	configurer := newTestConfigurer(recorder, nodeRef, []net.IP{net.ParseIP(testClusterNameserver)}, testClusterDNSDomain, tmpfile.Name())
+	configurer := NewConfigurer(recorder, nodeRef, nil, []net.IP{net.ParseIP(testClusterNameserver)}, testClusterDNSDomain, tmpfile.Name())
 
 	testCases := []struct {
 		desc              string
@@ -565,7 +544,7 @@ func TestGetPodDNSCustom(t *testing.T) {
 				},
 			},
 			expectedDNSConfig: &runtimeapi.DNSConfig{
-				Servers:  []string{dnsVIPOfTestNetwork, "10.0.0.11"},
+				Servers:  []string{testClusterNameserver, "10.0.0.11"},
 				Searches: []string{testNsSvcDomain, testSvcDomain, testClusterDNSDomain, testHostDomain, "my.domain"},
 				Options:  []string{"ndots:3", "debug"},
 			},
@@ -583,7 +562,7 @@ func TestGetPodDNSCustom(t *testing.T) {
 				},
 			},
 			expectedDNSConfig: &runtimeapi.DNSConfig{
-				Servers:  []string{dnsVIPOfTestNetwork, "10.0.0.11"},
+				Servers:  []string{testClusterNameserver, "10.0.0.11"},
 				Searches: []string{testNsSvcDomain, testSvcDomain, testClusterDNSDomain, testHostDomain, "my.domain"},
 				Options:  []string{"ndots:3", "debug"},
 			},
