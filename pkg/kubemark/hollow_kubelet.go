@@ -58,8 +58,6 @@ func NewHollowKubelet(
 	cadvisorInterface cadvisor.Interface,
 	dockerClientConfig *dockershim.ClientConfig,
 	containerManager cm.ContainerManager) *HollowKubelet {
-
-
 	// -----------------
 	// Injected objects
 	// -----------------
