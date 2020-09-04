@@ -22,7 +22,9 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	arktosCientset "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 	kubeletapp "k8s.io/kubernetes/cmd/kubelet/app"
 	"k8s.io/kubernetes/cmd/kubelet/app/options"
 	"k8s.io/kubernetes/pkg/kubelet"
@@ -39,8 +41,6 @@ import (
 	"k8s.io/kubernetes/pkg/volume/secret"
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
 	"k8s.io/kubernetes/test/utils"
-
-	"k8s.io/klog"
 )
 
 type HollowKubelet struct {
@@ -53,10 +53,13 @@ func NewHollowKubelet(
 	flags *options.KubeletFlags,
 	config *kubeletconfig.KubeletConfiguration,
 	client *clientset.Clientset,
+	arktosClient arktosCientset.Interface,
 	heartbeatClient *clientset.Clientset,
 	cadvisorInterface cadvisor.Interface,
 	dockerClientConfig *dockershim.ClientConfig,
 	containerManager cm.ContainerManager) *HollowKubelet {
+
+
 	// -----------------
 	// Injected objects
 	// -----------------
@@ -65,6 +68,7 @@ func NewHollowKubelet(
 	volumePlugins = append(volumePlugins, projected.ProbeVolumePlugins()...)
 	d := &kubelet.Dependencies{
 		KubeClient:         client,
+		ArktosExtClient:    arktosClient,
 		HeartbeatClient:    heartbeatClient,
 		DockerClientConfig: dockerClientConfig,
 		CAdvisorInterface:  cadvisorInterface,
