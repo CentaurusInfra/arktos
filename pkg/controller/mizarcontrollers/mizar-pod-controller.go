@@ -18,7 +18,6 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -29,21 +28,19 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/controller"
-
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/controller"
 )
 
 const (
-	controllerKind = "pod"
-	controllerFor  = "mizar_pod"
+	controllerFor = "mizar_pod"
 )
 
-// PodController points to current controller
-type PodController struct {
+// MizarPodController points to current controller
+type MizarPodController struct {
 	kubeClient clientset.Interface
 
-	// A store of objects, populated by the shared informer passed to PodController
+	// A store of objects, populated by the shared informer passed to MizarPodController
 	lister corelisters.PodLister
 	// listerSynced returns true if the store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
@@ -56,13 +53,13 @@ type PodController struct {
 	queue workqueue.RateLimitingInterface
 }
 
-// NewPodController configures a new controller instance
-func NewPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface) *PodController {
+// NewMizarPodController creates and configures a new controller instance
+func NewMizarPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface) *MizarPodController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
-	oc := &PodController{
+	c := &MizarPodController{
 		kubeClient:   kubeClient,
 		lister:       informer.Lister(),
 		listerSynced: informer.Informer().HasSynced,
@@ -70,44 +67,44 @@ func NewPodController(informer coreinformers.PodInformer, kubeClient clientset.I
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    oc.createObj,
-		UpdateFunc: oc.updateObj,
-		DeleteFunc: oc.deleteObj,
+		AddFunc:    c.createObj,
+		UpdateFunc: c.updateObj,
+		DeleteFunc: c.deleteObj,
 	})
-	oc.lister = informer.Lister()
-	oc.listerSynced = informer.Informer().HasSynced
+	c.lister = informer.Lister()
+	c.listerSynced = informer.Informer().HasSynced
 
-	oc.handler = oc.handle
+	c.handler = c.handle
 
-	return oc
+	return c
 }
 
 // Run begins watching and handling.
-func (oc *PodController) Run(workers int, stopCh <-chan struct{}) {
+func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer oc.queue.ShutDown()
+	defer c.queue.ShutDown()
 
 	klog.Infof("Starting %v controller", controllerFor)
 	defer klog.Infof("Shutting down %v controller", controllerFor)
 
-	if !controller.WaitForCacheSync(controllerKind, stopCh, oc.listerSynced) {
+	if !controller.WaitForCacheSync("pod", stopCh, c.listerSynced) {
 		return
 	}
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(oc.worker, time.Second, stopCh)
+		go wait.Until(c.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
-func (oc *PodController) createObj(obj interface{}) {
+func (c *MizarPodController) createObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
-	oc.queue.Add(KeyWithEventType{Key: key, EventType: "create"})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: "create"})
 }
 
 // When an object is updated.
-func (oc *PodController) updateObj(old, cur interface{}) {
+func (c *MizarPodController) updateObj(old, cur interface{}) {
 	curObj := cur.(*v1.Pod)
 	oldObj := old.(*v1.Pod)
 	if curObj.ResourceVersion == oldObj.ResourceVersion {
@@ -121,24 +118,24 @@ func (oc *PodController) updateObj(old, cur interface{}) {
 	}
 
 	key, _ := controller.KeyFunc(curObj)
-	oc.queue.Add(KeyWithEventType{Key: key, EventType: "update"})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: "update"})
 }
 
-func (oc *PodController) deleteObj(obj interface{}) {
+func (c *MizarPodController) deleteObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
 	klog.Infof("%v deleted. key %s.", controllerFor, key)
-	oc.queue.Add(KeyWithEventType{Key: key, EventType: "delete"})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: "delete"})
 }
 
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
 // It enforces that the handler is never invoked concurrently with the same key.
-func (oc *PodController) worker() {
-	for oc.processNextWorkItem() {
+func (c *MizarPodController) worker() {
+	for c.processNextWorkItem() {
 	}
 }
 
-func (oc *PodController) processNextWorkItem() bool {
-	workItem, quit := oc.queue.Get()
+func (c *MizarPodController) processNextWorkItem() bool {
+	workItem, quit := c.queue.Get()
 
 	if quit {
 		return false
@@ -147,21 +144,21 @@ func (oc *PodController) processNextWorkItem() bool {
 	keyWithEventType := workItem.(KeyWithEventType)
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
-	defer oc.queue.Done(key)
+	defer c.queue.Done(key)
 
-	err := oc.handler(key, eventType)
+	err := c.handler(key, eventType)
 	if err == nil {
-		oc.queue.Forget(key)
+		c.queue.Forget(key)
 		return true
 	}
 
 	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", controllerFor, key, err))
-	oc.queue.AddRateLimited(keyWithEventType)
+	c.queue.AddRateLimited(keyWithEventType)
 
 	return true
 }
 
-func (oc *PodController) handle(key string, eventType string) error {
+func (c *MizarPodController) handle(key string, eventType string) error {
 	klog.Infof("Entering handling for %v. key %s", controllerFor, key)
 
 	startTime := time.Now()
@@ -174,21 +171,30 @@ func (oc *PodController) handle(key string, eventType string) error {
 		return err
 	}
 
-	obj, err := oc.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
-	if errors.IsNotFound(err) {
-		klog.V(4).Infof("%v %v cannot be found", controllerFor, key)
-		return nil
-	} else {
-		klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerFor, tenant, namespace, obj.Name, obj.HashKey, eventType)
-
-		if eventType == "create" {
-			// TODO: invoke grpc create
-			print("create ok")
-		} else if eventType == "update" {
-			// TODO: invoke grpc update
-			print("update ok")
-		}
+	obj, err := c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+	if err != nil {
+		return err
 	}
 
-	return err
+	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerFor, tenant, namespace, obj.Name, obj.HashKey, eventType)
+
+	if eventType == "create" {
+
+	} else if eventType == "update" {
+		// TODO: invoke grpc update
+		print("update ok")
+	}
+
+	switch eventType {
+	case "create":
+		// TODO: invoke grpc create
+		print("create ok")
+	case "update":
+		// TODO: invoke grpc update
+		print("update ok")
+	default:
+		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
+	}
+
+	return nil
 }

@@ -23,17 +23,13 @@ import (
 	controllers "k8s.io/kubernetes/pkg/controller/mizarcontrollers"
 )
 
-const (
-	workers = 4
-)
-
 func startMizarPodController(ctx ControllerContext) (http.Handler, bool, error) {
 	controllerName := "mizar-pod-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
-	go controllers.NewPodController(
+	go controllers.NewMizarPodController(
 		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.ClientBuilder.ClientOrDie(controllerName),
-	).Run(workers, ctx.Stop)
+	).Run(4, ctx.Stop)
 	return nil, true, nil
 }
