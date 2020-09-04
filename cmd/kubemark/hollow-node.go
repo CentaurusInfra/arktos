@@ -34,6 +34,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -54,7 +55,6 @@ import (
 	_ "k8s.io/kubernetes/pkg/version/prometheus" // for version metric registration
 	"k8s.io/kubernetes/pkg/version/verflag"
 	fakeexec "k8s.io/utils/exec/testing"
-	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 )
 
 type hollowNodeConfig struct {
