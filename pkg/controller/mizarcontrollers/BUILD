@@ -9,6 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "mizar-pod-controller.go",
+        "builtins.pb.go",
         "util.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/controller/mizarcontrollers",
