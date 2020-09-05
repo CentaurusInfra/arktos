@@ -1,10 +1,10 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl autoscale Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl autoscale Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # This test suite verifies command "kubectl autoscale".
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-######################################################
+###########################################################################################################
 # test variables
-######################################################
+###########################################################################################################
 Variables:
   test_tenant: random_8
   test_ns: random_8
@@ -24,9 +24,9 @@ Tests:
   - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
     OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
 
-############################################
+###########################################################################################################
 # test "kubectl autoscale"
-############################################
+###########################################################################################################
   - BeforeTestMessage: "Verifying \"kubectl autoscale\" ..."
     Command: ${kubectl} get horizontalpodautoscalers -n ${test_ns} --tenant ${test_tenant} 
     OutputShouldBe: "No resources found.\n"
@@ -38,9 +38,9 @@ Tests:
               | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .spec.maxReplicas, .spec.minReplicas, .spec.targetCPUUtilizationPercentage] | @tsv'"
     OutputShouldBe: "sample-nginx-deployment	${test_ns}	${test_tenant}	5	1	50\n"
 
-######################################################################################################
+###########################################################################################################
 # cleanup
-######################################################################################################
+###########################################################################################################
 
-  - BeforeTestMessage: clean up ...
+  - BeforeTestMessage: Clean up ...
     Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &
