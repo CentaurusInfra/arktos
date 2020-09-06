@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	controllerFor = "mizar_pod"
+	controllerForMizarPod = "mizar_pod"
 )
 
 // MizarPodController points to current controller
@@ -47,14 +47,16 @@ type MizarPodController struct {
 	listerSynced cache.InformerSynced
 
 	// To allow injection for testing.
-	handler func(key string, eventType string) error
+	handler func(keyWithEventType KeyWithEventType) error
 
 	// Queue that used to hold thing to be handled.
 	queue workqueue.RateLimitingInterface
+
+	grpcHost string
 }
 
 // NewMizarPodController creates and configures a new controller instance
-func NewMizarPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface) *MizarPodController {
+func NewMizarPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface, grpcHost string) *MizarPodController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -63,7 +65,8 @@ func NewMizarPodController(informer coreinformers.PodInformer, kubeClient client
 		kubeClient:   kubeClient,
 		lister:       informer.Lister(),
 		listerSynced: informer.Informer().HasSynced,
-		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerFor),
+		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarPod),
+		grpcHost:     grpcHost,
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -84,10 +87,10 @@ func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	klog.Infof("Starting %v controller", controllerFor)
-	defer klog.Infof("Shutting down %v controller", controllerFor)
+	klog.Infof("Starting %v controller", controllerForMizarPod)
+	defer klog.Infof("Shutting down %v controller", controllerForMizarPod)
 
-	if !controller.WaitForCacheSync("pod", stopCh, c.listerSynced) {
+	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced) {
 		return
 	}
 
@@ -123,7 +126,7 @@ func (c *MizarPodController) updateObj(old, cur interface{}) {
 
 func (c *MizarPodController) deleteObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
-	klog.Infof("%v deleted. key %s.", controllerFor, key)
+	klog.Infof("%v deleted. key %s.", controllerForMizarPod, key)
 	c.queue.Add(KeyWithEventType{Key: key, EventType: "delete"})
 }
 
@@ -143,27 +146,28 @@ func (c *MizarPodController) processNextWorkItem() bool {
 
 	keyWithEventType := workItem.(KeyWithEventType)
 	key := keyWithEventType.Key
-	eventType := keyWithEventType.EventType
 	defer c.queue.Done(key)
 
-	err := c.handler(key, eventType)
+	err := c.handler(keyWithEventType)
 	if err == nil {
 		c.queue.Forget(key)
 		return true
 	}
 
-	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", controllerFor, key, err))
+	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", controllerForMizarPod, key, err))
 	c.queue.AddRateLimited(keyWithEventType)
 
 	return true
 }
 
-func (c *MizarPodController) handle(key string, eventType string) error {
-	klog.Infof("Entering handling for %v. key %s", controllerFor, key)
+func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
+	key := keyWithEventType.Key
+	eventType := keyWithEventType.EventType
+	klog.Infof("Entering handling for %v. key %s", controllerForMizarPod, key)
 
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished handling %v %q (%v)", controllerFor, key, time.Since(startTime))
+		klog.V(4).Infof("Finished handling %v %q (%v)", controllerForMizarPod, key, time.Since(startTime))
 	}()
 
 	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
@@ -176,25 +180,31 @@ func (c *MizarPodController) handle(key string, eventType string) error {
 		return err
 	}
 
-	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerFor, tenant, namespace, obj.Name, obj.HashKey, eventType)
-
-	if eventType == "create" {
-
-	} else if eventType == "update" {
-		// TODO: invoke grpc update
-		print("update ok")
-	}
+	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarPod, tenant, namespace, obj.Name, obj.HashKey, eventType)
 
 	switch eventType {
 	case "create":
-		// TODO: invoke grpc create
-		print("create ok")
+		processGrpcReturnCode(c, GrpcCreatePod(c.grpcHost, obj), keyWithEventType)
 	case "update":
 		// TODO: invoke grpc update
 		print("update ok")
+	case "delete":
+		// TODO: invoke grpc delete
+		print("delete ok")
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}
 
 	return nil
+}
+
+func processGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, keyWithEventType KeyWithEventType) {
+	key := keyWithEventType.Key
+	switch returnCode.Code {
+	case CodeType_OK:
+		klog.Infof("Mizar handled request successfully for %v. key %s", controllerForMizarPod, key)
+	case CodeType_TEMP_ERROR:
+		klog.Infof("Mizar hit temporary error for %v. key %s. %s", controllerForMizarPod, key, returnCode.Message)
+		c.queue.AddRateLimited(keyWithEventType)
+	}
 }

@@ -13,7 +13,22 @@ limitations under the License.
 
 package mizarcontrollers
 
+import v1 "k8s.io/api/core/v1"
+
 type KeyWithEventType struct {
 	EventType string
 	Key       string
+}
+
+type StartHandler func(interface{}, string)
+
+func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
+	return &BuiltinsPodMessage{
+		Name:      pod.Name,
+		HostIp:    pod.Status.HostIP,
+		Namespace: pod.Namespace,
+		Tenant:    pod.Tenant,
+		Vpc:       pod.Spec.VPC,
+		Phase:     string(pod.Status.Phase),
+	}
 }

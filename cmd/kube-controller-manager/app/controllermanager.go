@@ -422,7 +422,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
 	controllers["network"] = startNetworkController
 
-	controllers["mizar-pod"] = startMizarPodController
+	controllers["mizar-controllers"] = startMizarStarterController
 
 	return controllers
 }
