@@ -174,7 +174,8 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 		}
 	}
 
-	if len(svc.Spec.ClusterIP) > 0 {
+	// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
+	if len(net.Status.DNSServiceIP) == 0 && len(svc.Spec.ClusterIP) > 0 {
 		// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
 		netReady := net.DeepCopy()
 		netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
