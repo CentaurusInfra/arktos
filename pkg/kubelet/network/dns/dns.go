@@ -88,7 +88,7 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 	// todo: consider using exported const of default network name from arktos package
 	const defaultNetwork = "default"
-	networkName, ok := pod.Labels["arktos.futurewei.com/network"]
+	networkName, ok := pod.Labels[arktosv1.NetworkLabel]
 	if !ok {
 		networkName = defaultNetwork
 	}
