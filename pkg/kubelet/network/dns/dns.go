@@ -379,7 +379,7 @@ func (c *Configurer) GetPodDNS(pod *v1.Pod) (*runtimeapi.DNSConfig, error) {
 	case podDNSCluster:
 		var clusterDNS []net.IP
 		if clusterDNS, err = c.getClusterDNS(pod); err != nil {
-			return nil, fmt.Errorf("failed to get DNS IP add: %v", err)
+			return nil, fmt.Errorf("failed to get DNS IP address: %v", err)
 		}
 
 		if len(clusterDNS) != 0 {
