@@ -147,7 +147,7 @@ func TestManageFlatNetwork(t *testing.T) {
 				return true, tc.svcResp, tc.svcRespError
 			})
 
-			err := manageFlatNetwork(tc.input, netClient, kubeClient)
+			err := manageFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
 
 			if !tc.expectingError && err != nil {
 				t.Errorf("got unexpected error: %v", err)
