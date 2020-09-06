@@ -12,6 +12,7 @@ go_library(
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/errors:go_default_library",
+        "//staging/src/k8s.io/arktos-ext/pkg/apis/arktosextensions/v1:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/generated/clientset/versioned/typed/arktosextensions/v1:go_default_library",
         "//staging/src/k8s.io/client-go/tools/record:go_default_library",
         "//staging/src/k8s.io/cri-api/pkg/apis/runtime/v1alpha2:go_default_library",
