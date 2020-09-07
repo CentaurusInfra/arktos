@@ -26,9 +26,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/klog"
@@ -80,16 +78,10 @@ func edgeGatewayClientCert(w http.ResponseWriter, r *http.Request) {
 			klog.Errorf("failed to sign the certificate for edge site: %s, failed to verify the certificate", r.Header.Get(NodeName))
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(err.Error()))
-		} else {
-			signEdgeCert(w, r)
+			return
 		}
-		return
 	}
-	if verifyAuthorization(w, r) {
-		signEdgeCert(w, r)
-	} else {
-		klog.Errorf("failed to sign the certificate for edge site: %s, invalid token", r.Header.Get(NodeName))
-	}
+	signEdgeCert(w, r)
 }
 
 // verifyCert verifies the edge certificate by CA certificate when edge certificates rotate.
@@ -107,45 +99,6 @@ func verifyCert(cert *x509.Certificate) error {
 		return fmt.Errorf("failed to verify edge certificate: %v", err)
 	}
 	return nil
-}
-
-// verifyAuthorization verifies the token from EdgeGateway CSR
-func verifyAuthorization(w http.ResponseWriter, r *http.Request) bool {
-	authorizationHeader := r.Header.Get("authorization")
-	if authorizationHeader == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Invalid authorization token"))
-		return false
-	}
-	bearerToken := strings.Split(authorizationHeader, " ")
-	if len(bearerToken) != 2 {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Invalid authorization token"))
-		return false
-	}
-	token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("there was an error")
-		}
-		caKey := hubconfig.Config.CaKey
-		return caKey, nil
-	})
-	if err != nil {
-		if err == jwt.ErrSignatureInvalid {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Invalid authorization token"))
-			return false
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid authorization token"))
-		return false
-	}
-	if !token.Valid {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Invalid authorization token"))
-		return false
-	}
-	return true
 }
 
 // signEdgeCert signs the CSR from EdgeGateway
