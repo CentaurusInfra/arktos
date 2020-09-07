@@ -2,8 +2,11 @@ package options
 
 import (
 	"fmt"
-	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 	"path"
+
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 )
 
 // Validate checks Config and return a slice of found errs
@@ -22,7 +25,37 @@ func ValidateModuleCloudHub(config *v1.CloudHub) []error {
 		return errs
 	}
 
-	// TODO(liuzongbao): add cloudhub config validate
+	validHTTPSPort := utilvalidation.IsValidPortNum(int(config.HTTPS.Port))
+	validWPort := utilvalidation.IsValidPortNum(int(config.WebSocket.Port))
+	validAddress := utilvalidation.IsValidIP(config.WebSocket.Address)
+	validQPort := utilvalidation.IsValidPortNum(int(config.Quic.Port))
+	validQAddress := utilvalidation.IsValidIP(config.Quic.Address)
+
+	if len(validHTTPSPort) > 0 {
+		for _, m := range validHTTPSPort {
+			errs = append(errs, field.Invalid(field.NewPath("port"), config.HTTPS.Port, m))
+		}
+	}
+	if len(validWPort) > 0 {
+		for _, m := range validWPort {
+			errs = append(errs, field.Invalid(field.NewPath("port"), config.WebSocket.Port, m))
+		}
+	}
+	if len(validAddress) > 0 {
+		for _, m := range validAddress {
+			errs = append(errs, field.Invalid(field.NewPath("Address"), config.WebSocket.Address, m))
+		}
+	}
+	if len(validQPort) > 0 {
+		for _, m := range validQPort {
+			errs = append(errs, field.Invalid(field.NewPath("port"), config.Quic.Port, m))
+		}
+	}
+	if len(validQAddress) > 0 {
+		for _, m := range validQAddress {
+			errs = append(errs, field.Invalid(field.NewPath("Address"), config.Quic.Address, m))
+		}
+	}
 	return errs
 }
 
