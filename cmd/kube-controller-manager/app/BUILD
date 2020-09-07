@@ -55,7 +55,7 @@ go_library(
         "//pkg/controller/endpoint:go_default_library",
         "//pkg/controller/garbagecollector:go_default_library",
         "//pkg/controller/job:go_default_library",
-        "//pkg/controller/mizarcontrollers:go_default_library",
+        "//pkg/controller/mizar:go_default_library",
         "//pkg/controller/namespace:go_default_library",
         "//pkg/controller/network:go_default_library",
         "//pkg/controller/nodeipam:go_default_library",

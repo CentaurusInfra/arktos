@@ -20,7 +20,7 @@ import (
 	"net/http"
 
 	"k8s.io/klog"
-	controllers "k8s.io/kubernetes/pkg/controller/mizarcontrollers"
+	controllers "k8s.io/kubernetes/pkg/controller/mizar"
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {

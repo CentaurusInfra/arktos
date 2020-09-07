@@ -14,7 +14,7 @@ go_library(
         "mizar-starter-controller.go",   
         "util.go",             
     ],
-    importpath = "k8s.io/kubernetes/pkg/controller/mizarcontrollers",
+    importpath = "k8s.io/kubernetes/pkg/controller/mizar",
     deps = [
         "//pkg/controller:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",

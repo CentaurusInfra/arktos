@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mizarcontrollers
+package mizar
 
 import (
 	"context"
@@ -29,10 +29,12 @@ const (
 
 // GrpcCreatePod is to invoking grpc func of CreatePod
 func GrpcCreatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
-	client, ctx, err := getGrpcClient(grpcHost)
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
+	defer conn.Close()
+	defer cancel()
 	returnCode, err := client.CreatePod(ctx, ConvertToPodContract(pod))
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -43,20 +45,18 @@ func GrpcCreatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 func getReturnCodeFromError(err *error) *ReturnCode {
 	return &ReturnCode{
 		Code:    CodeType_TEMP_ERROR,
-		Message: fmt.Sprintf("Hit grpc error: %v", err),
+		Message: fmt.Sprintf("Grpc call failed: %s", (*err).Error()),
 	}
 }
 
-func getGrpcClient(grpcHost string) (BuiltinsServiceClient, context.Context, error) {
+func getGrpcClient(grpcHost string) (BuiltinsServiceClient, context.Context, *grpc.ClientConn, context.CancelFunc, error) {
 	address := fmt.Sprintf("%s:%s", grpcHost, port)
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, conn, nil, err
 	}
-	defer conn.Close()
 
 	client := NewBuiltinsServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	return client, ctx, nil
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	return client, ctx, conn, cancel, nil
 }

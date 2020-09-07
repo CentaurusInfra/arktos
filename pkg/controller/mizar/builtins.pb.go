@@ -18,7 +18,7 @@ limitations under the License.
 // source: builtins.proto
 
 /*
-Package mizarcontrollers is a generated protocol buffer package.
+Package mizar is a generated protocol buffer package.
 
 It is generated from these files:
         builtins.proto
@@ -33,7 +33,7 @@ It has these top-level messages:
         InterfacesMessage
         ReturnCode
 */
-package mizarcontrollers
+package mizar
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
@@ -338,7 +338,7 @@ func (m *InterfacesMessage) GetSubnet() string {
 }
 
 type ReturnCode struct {
-	Code    CodeType `protobuf:"varint,1,opt,name=code,proto3,enum=mizarcontrollers.CodeType" json:"code,omitempty"`
+	Code    CodeType `protobuf:"varint,1,opt,name=code,proto3,enum=mizar.CodeType" json:"code,omitempty"`
 	Message string   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 }
 
@@ -362,15 +362,15 @@ func (m *ReturnCode) GetMessage() string {
 }
 
 func init() {
-	proto.RegisterType((*BuiltinsNodeMessage)(nil), "mizarcontrollers.BuiltinsNodeMessage")
-	proto.RegisterType((*BuiltinsPodMessage)(nil), "mizarcontrollers.BuiltinsPodMessage")
-	proto.RegisterType((*BuiltinsServiceMessage)(nil), "mizarcontrollers.BuiltinsServiceMessage")
-	proto.RegisterType((*BuiltinsServiceEndpointMessage)(nil), "mizarcontrollers.BuiltinsServiceEndpointMessage")
-	proto.RegisterType((*BuiltinsArktosMessage)(nil), "mizarcontrollers.BuiltinsArktosMessage")
-	proto.RegisterType((*PortsMessage)(nil), "mizarcontrollers.PortsMessage")
-	proto.RegisterType((*InterfacesMessage)(nil), "mizarcontrollers.InterfacesMessage")
-	proto.RegisterType((*ReturnCode)(nil), "mizarcontrollers.ReturnCode")
-	proto.RegisterEnum("mizarcontrollers.CodeType", CodeType_name, CodeType_value)
+	proto.RegisterType((*BuiltinsNodeMessage)(nil), "mizar.BuiltinsNodeMessage")
+	proto.RegisterType((*BuiltinsPodMessage)(nil), "mizar.BuiltinsPodMessage")
+	proto.RegisterType((*BuiltinsServiceMessage)(nil), "mizar.BuiltinsServiceMessage")
+	proto.RegisterType((*BuiltinsServiceEndpointMessage)(nil), "mizar.BuiltinsServiceEndpointMessage")
+	proto.RegisterType((*BuiltinsArktosMessage)(nil), "mizar.BuiltinsArktosMessage")
+	proto.RegisterType((*PortsMessage)(nil), "mizar.PortsMessage")
+	proto.RegisterType((*InterfacesMessage)(nil), "mizar.InterfacesMessage")
+	proto.RegisterType((*ReturnCode)(nil), "mizar.ReturnCode")
+	proto.RegisterEnum("mizar.CodeType", CodeType_name, CodeType_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -416,7 +416,7 @@ func NewBuiltinsServiceClient(cc *grpc.ClientConn) BuiltinsServiceClient {
 
 func (c *builtinsServiceClient) CreateService(ctx context.Context, in *BuiltinsServiceMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/CreateService", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/CreateService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +425,7 @@ func (c *builtinsServiceClient) CreateService(ctx context.Context, in *BuiltinsS
 
 func (c *builtinsServiceClient) UpdateService(ctx context.Context, in *BuiltinsServiceMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/UpdateService", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/UpdateService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -434,7 +434,7 @@ func (c *builtinsServiceClient) UpdateService(ctx context.Context, in *BuiltinsS
 
 func (c *builtinsServiceClient) ResumeService(ctx context.Context, in *BuiltinsServiceMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/ResumeService", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/ResumeService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func (c *builtinsServiceClient) ResumeService(ctx context.Context, in *BuiltinsS
 
 func (c *builtinsServiceClient) DeleteService(ctx context.Context, in *BuiltinsServiceMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/DeleteService", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/DeleteService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -452,7 +452,7 @@ func (c *builtinsServiceClient) DeleteService(ctx context.Context, in *BuiltinsS
 
 func (c *builtinsServiceClient) UpdateServiceEndpoint(ctx context.Context, in *BuiltinsServiceEndpointMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/UpdateServiceEndpoint", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/UpdateServiceEndpoint", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +461,7 @@ func (c *builtinsServiceClient) UpdateServiceEndpoint(ctx context.Context, in *B
 
 func (c *builtinsServiceClient) ResumeServiceEndpoint(ctx context.Context, in *BuiltinsServiceEndpointMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/ResumeServiceEndpoint", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/ResumeServiceEndpoint", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +470,7 @@ func (c *builtinsServiceClient) ResumeServiceEndpoint(ctx context.Context, in *B
 
 func (c *builtinsServiceClient) CreateServiceEndpoint(ctx context.Context, in *BuiltinsServiceEndpointMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/CreateServiceEndpoint", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/CreateServiceEndpoint", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +479,7 @@ func (c *builtinsServiceClient) CreateServiceEndpoint(ctx context.Context, in *B
 
 func (c *builtinsServiceClient) ResumePod(ctx context.Context, in *BuiltinsPodMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/ResumePod", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/ResumePod", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +488,7 @@ func (c *builtinsServiceClient) ResumePod(ctx context.Context, in *BuiltinsPodMe
 
 func (c *builtinsServiceClient) UpdatePod(ctx context.Context, in *BuiltinsPodMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/UpdatePod", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/UpdatePod", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +497,7 @@ func (c *builtinsServiceClient) UpdatePod(ctx context.Context, in *BuiltinsPodMe
 
 func (c *builtinsServiceClient) CreatePod(ctx context.Context, in *BuiltinsPodMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/CreatePod", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/CreatePod", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +506,7 @@ func (c *builtinsServiceClient) CreatePod(ctx context.Context, in *BuiltinsPodMe
 
 func (c *builtinsServiceClient) DeletePod(ctx context.Context, in *BuiltinsPodMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/DeletePod", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/DeletePod", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -515,7 +515,7 @@ func (c *builtinsServiceClient) DeletePod(ctx context.Context, in *BuiltinsPodMe
 
 func (c *builtinsServiceClient) CreateNode(ctx context.Context, in *BuiltinsNodeMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/CreateNode", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/CreateNode", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +524,7 @@ func (c *builtinsServiceClient) CreateNode(ctx context.Context, in *BuiltinsNode
 
 func (c *builtinsServiceClient) ResumeNode(ctx context.Context, in *BuiltinsNodeMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/ResumeNode", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/ResumeNode", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +533,7 @@ func (c *builtinsServiceClient) ResumeNode(ctx context.Context, in *BuiltinsNode
 
 func (c *builtinsServiceClient) UpdateNode(ctx context.Context, in *BuiltinsNodeMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/UpdateNode", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/UpdateNode", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +542,7 @@ func (c *builtinsServiceClient) UpdateNode(ctx context.Context, in *BuiltinsNode
 
 func (c *builtinsServiceClient) DeleteNode(ctx context.Context, in *BuiltinsNodeMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/DeleteNode", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/DeleteNode", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +551,7 @@ func (c *builtinsServiceClient) DeleteNode(ctx context.Context, in *BuiltinsNode
 
 func (c *builtinsServiceClient) CreateArktosNetwork(ctx context.Context, in *BuiltinsArktosMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/CreateArktosNetwork", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/CreateArktosNetwork", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +560,7 @@ func (c *builtinsServiceClient) CreateArktosNetwork(ctx context.Context, in *Bui
 
 func (c *builtinsServiceClient) ResumeArktosNetwork(ctx context.Context, in *BuiltinsArktosMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/ResumeArktosNetwork", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/ResumeArktosNetwork", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +569,7 @@ func (c *builtinsServiceClient) ResumeArktosNetwork(ctx context.Context, in *Bui
 
 func (c *builtinsServiceClient) UpdateArktosNetwork(ctx context.Context, in *BuiltinsArktosMessage, opts ...grpc.CallOption) (*ReturnCode, error) {
 	out := new(ReturnCode)
-	err := grpc.Invoke(ctx, "/mizarcontrollers.BuiltinsService/UpdateArktosNetwork", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/mizar.BuiltinsService/UpdateArktosNetwork", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -615,7 +615,7 @@ func _BuiltinsService_CreateService_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/CreateService",
+		FullMethod: "/mizar.BuiltinsService/CreateService",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).CreateService(ctx, req.(*BuiltinsServiceMessage))
@@ -633,7 +633,7 @@ func _BuiltinsService_UpdateService_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/UpdateService",
+		FullMethod: "/mizar.BuiltinsService/UpdateService",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).UpdateService(ctx, req.(*BuiltinsServiceMessage))
@@ -651,7 +651,7 @@ func _BuiltinsService_ResumeService_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/ResumeService",
+		FullMethod: "/mizar.BuiltinsService/ResumeService",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).ResumeService(ctx, req.(*BuiltinsServiceMessage))
@@ -669,7 +669,7 @@ func _BuiltinsService_DeleteService_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/DeleteService",
+		FullMethod: "/mizar.BuiltinsService/DeleteService",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).DeleteService(ctx, req.(*BuiltinsServiceMessage))
@@ -687,7 +687,7 @@ func _BuiltinsService_UpdateServiceEndpoint_Handler(srv interface{}, ctx context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/UpdateServiceEndpoint",
+		FullMethod: "/mizar.BuiltinsService/UpdateServiceEndpoint",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).UpdateServiceEndpoint(ctx, req.(*BuiltinsServiceEndpointMessage))
@@ -705,7 +705,7 @@ func _BuiltinsService_ResumeServiceEndpoint_Handler(srv interface{}, ctx context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/ResumeServiceEndpoint",
+		FullMethod: "/mizar.BuiltinsService/ResumeServiceEndpoint",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).ResumeServiceEndpoint(ctx, req.(*BuiltinsServiceEndpointMessage))
@@ -723,7 +723,7 @@ func _BuiltinsService_CreateServiceEndpoint_Handler(srv interface{}, ctx context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/CreateServiceEndpoint",
+		FullMethod: "/mizar.BuiltinsService/CreateServiceEndpoint",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).CreateServiceEndpoint(ctx, req.(*BuiltinsServiceEndpointMessage))
@@ -741,7 +741,7 @@ func _BuiltinsService_ResumePod_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/ResumePod",
+		FullMethod: "/mizar.BuiltinsService/ResumePod",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).ResumePod(ctx, req.(*BuiltinsPodMessage))
@@ -759,7 +759,7 @@ func _BuiltinsService_UpdatePod_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/UpdatePod",
+		FullMethod: "/mizar.BuiltinsService/UpdatePod",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).UpdatePod(ctx, req.(*BuiltinsPodMessage))
@@ -777,7 +777,7 @@ func _BuiltinsService_CreatePod_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/CreatePod",
+		FullMethod: "/mizar.BuiltinsService/CreatePod",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).CreatePod(ctx, req.(*BuiltinsPodMessage))
@@ -795,7 +795,7 @@ func _BuiltinsService_DeletePod_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/DeletePod",
+		FullMethod: "/mizar.BuiltinsService/DeletePod",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).DeletePod(ctx, req.(*BuiltinsPodMessage))
@@ -813,7 +813,7 @@ func _BuiltinsService_CreateNode_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/CreateNode",
+		FullMethod: "/mizar.BuiltinsService/CreateNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).CreateNode(ctx, req.(*BuiltinsNodeMessage))
@@ -831,7 +831,7 @@ func _BuiltinsService_ResumeNode_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/ResumeNode",
+		FullMethod: "/mizar.BuiltinsService/ResumeNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).ResumeNode(ctx, req.(*BuiltinsNodeMessage))
@@ -849,7 +849,7 @@ func _BuiltinsService_UpdateNode_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/UpdateNode",
+		FullMethod: "/mizar.BuiltinsService/UpdateNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).UpdateNode(ctx, req.(*BuiltinsNodeMessage))
@@ -867,7 +867,7 @@ func _BuiltinsService_DeleteNode_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/DeleteNode",
+		FullMethod: "/mizar.BuiltinsService/DeleteNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).DeleteNode(ctx, req.(*BuiltinsNodeMessage))
@@ -885,7 +885,7 @@ func _BuiltinsService_CreateArktosNetwork_Handler(srv interface{}, ctx context.C
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/CreateArktosNetwork",
+		FullMethod: "/mizar.BuiltinsService/CreateArktosNetwork",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).CreateArktosNetwork(ctx, req.(*BuiltinsArktosMessage))
@@ -903,7 +903,7 @@ func _BuiltinsService_ResumeArktosNetwork_Handler(srv interface{}, ctx context.C
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/ResumeArktosNetwork",
+		FullMethod: "/mizar.BuiltinsService/ResumeArktosNetwork",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).ResumeArktosNetwork(ctx, req.(*BuiltinsArktosMessage))
@@ -921,7 +921,7 @@ func _BuiltinsService_UpdateArktosNetwork_Handler(srv interface{}, ctx context.C
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/mizarcontrollers.BuiltinsService/UpdateArktosNetwork",
+		FullMethod: "/mizar.BuiltinsService/UpdateArktosNetwork",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BuiltinsServiceServer).UpdateArktosNetwork(ctx, req.(*BuiltinsArktosMessage))
@@ -930,7 +930,7 @@ func _BuiltinsService_UpdateArktosNetwork_Handler(srv interface{}, ctx context.C
 }
 
 var _BuiltinsService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "mizarcontrollers.BuiltinsService",
+	ServiceName: "mizar.BuiltinsService",
 	HandlerType: (*BuiltinsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

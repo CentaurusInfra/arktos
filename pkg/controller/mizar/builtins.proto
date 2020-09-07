@@ -1,5 +1,5 @@
 syntax = "proto3";
-package mizarcontrollers;
+package mizar;
 
 // May need to return a code in the event of a temporary failure for retry.
 service BuiltinsService {
