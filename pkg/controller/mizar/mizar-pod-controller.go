@@ -186,11 +186,9 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	case "create":
 		processGrpcReturnCode(c, GrpcCreatePod(c.grpcHost, obj), keyWithEventType)
 	case "update":
-		// TODO: invoke grpc update
-		print("update ok")
+		processGrpcReturnCode(c, GrpcUpdatePod(c.grpcHost, obj), keyWithEventType)
 	case "delete":
-		// TODO: invoke grpc delete
-		print("delete ok")
+		processGrpcReturnCode(c, GrpcDeletePod(c.grpcHost, obj), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}

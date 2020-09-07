@@ -22,6 +22,24 @@ type KeyWithEventType struct {
 
 type StartHandler func(interface{}, string)
 
+func ConvertToServiceContract(service *v1.Service) *BuiltinsServiceMessage {
+	return &BuiltinsServiceMessage{
+		Name:          service.Name,
+		ArktosNetwork: "TBD",
+		Namespace:     service.Namespace,
+		Tenant:        service.Tenant,
+		Ip:            "TBD",
+	}
+}
+
+func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceEndpointMessage {
+	return &BuiltinsServiceEndpointMessage{
+		Name:       endpoints.Name,
+		BackendIps: []string{"TBD"},
+		Ports:      []*PortsMessage{},
+	}
+}
+
 func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 	return &BuiltinsPodMessage{
 		Name:      pod.Name,
@@ -30,5 +48,12 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		Tenant:    pod.Tenant,
 		Vpc:       pod.Spec.VPC,
 		Phase:     string(pod.Status.Phase),
+	}
+}
+
+func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
+	return &BuiltinsNodeMessage{
+		Name: node.Name,
+		Ip:   "TBD",
 	}
 }
