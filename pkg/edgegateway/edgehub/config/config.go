@@ -13,15 +13,13 @@ var once sync.Once
 type Configure struct {
 	v1.EdgeHub
 	WebSocketURL string
-	NodeName     string
 }
 
-func InitConfigure(eh *v1.EdgeHub, nodeName string) {
+func InitConfigure(eh *v1.EdgeHub) {
 	once.Do(func() {
 		Config = Configure{
 			EdgeHub:      *eh,
-			WebSocketURL: strings.Join([]string{"wss:/", eh.WebSocket.Server, eh.ProjectID, nodeName, "events"}, "/"),
-			NodeName:     nodeName,
+			WebSocketURL: strings.Join([]string{"wss:/", eh.WebSocket.Server, eh.ProjectID, eh.Hostname, "events"}, "/"),
 		}
 	})
 }

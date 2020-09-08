@@ -38,9 +38,9 @@ type EdgeHub struct {
 	// TLSPrivateKeyFile indicates the file containing x509 private key matching tlsCertFile
 	// default "/etc/edgegateway/certs/edge.key"
 	TLSPrivateKeyFile string `json:"tlsPrivateKeyFile,omitempty"`
-	// HostnameOverride indicates hostname
+	// Hostname indicates hostname
 	// default os.Hostname()
-	HostnameOverride string `json:"hostnameOverride,omitempty"`
+	Hostname string `json:"hostname,omitempty"`
 	// Quic indicates quic config for EdgeHub module
 	// Optional if websocket is configured
 	Quic *EdgeHubQUIC `json:"quic,omitempty"`
