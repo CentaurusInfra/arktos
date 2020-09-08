@@ -1,0 +1,63 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl Label Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl label".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+###########################################################################################################
+# test "kubectl label"
+###########################################################################################################
+
+  - BeforeTestMessage: "Verifying \"kubectl label\" ..."
+    Command: ${kubectl} label deployment sample-nginx-deployment bbb="12345" -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment labeled\n"
+
+  - Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq .metadata.labels.bbb"
+    OutputShouldBe: "\"12345\"\n"
+
+# updating an existing label without option --overwrite=true leads to error
+  - Command: ${kubectl} label deployment sample-nginx-deployment bbb="54321" -n ${test_ns} --tenant ${test_tenant}
+    ShouldFail: true
+    OutputShouldBe: "error: 'bbb' already has a value (12345), and --overwrite is false\n"
+
+# the label can be updated with option --overwrite=true
+  - Command: ${kubectl} label --overwrite=true deployment sample-nginx-deployment bbb="54321" -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment labeled\n"
+
+
+# re-applying the same label does not fail, but kubectl will report "not labeled"
+  - Command: ${kubectl} label --overwrite=true deployment sample-nginx-deployment bbb="54321" -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment not labeled\n"
+
+  - Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq .metadata.labels.bbb"
+    OutputShouldBe: "\"54321\"\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

@@ -1,0 +1,80 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl describe Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl describe".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+###########################################################################################################
+# test "kubectl describe"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl describe\" ..."
+    Command:  ${kubectl} describe tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:${test_tenant}\n"
+
+  - Command:  ${kubectl} describe namespace ${test_ns} --tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:${test_ns}\n"
+    - "Tenant:${test_tenant}\n"
+
+  - Command: ${kubectl} describe deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:sample-nginx-deployment\n"
+    - "Namespace:${test_ns}\n"
+    - "Tenant:${test_tenant}\n"
+
+  - Command:  ${kubectl} describe replicasets -n ${test_ns} --tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:sample-nginx-deployment-"
+    - "Namespace:${test_ns}\n"
+    - "Tenant:${test_tenant}\n"
+
+  - Command:  ${kubectl} describe pods -n ${test_ns} --tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:sample-nginx-deployment-"
+    - "Namespace:${test_ns}\n"
+    - "Tenant:${test_tenant}\n"
+
+  - Command:  ${kubectl} describe clusterrole admin-role --tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:admin-role\n"
+    - "Tenant:${test_tenant}\n"
+
+  - Command:  ${kubectl} describe clusterrolebinding admin-role-binding --tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:admin-role-binding\n"
+    - "Tenant:${test_tenant}\n"
+
+  - Command:  ${kubectl} describe serviceaccount default -n ${test_ns} --tenant ${test_tenant} | grep -E 'Name:|Namespace:|Tenant:' | tr -d ' '
+    OutputShouldContain: 
+    - "Name:default\n"
+    - "Namespace:${test_ns}\n"
+    - "Tenant:${test_tenant}\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

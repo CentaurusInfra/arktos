@@ -1,0 +1,51 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl Run Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl run".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+###########################################################################################################
+# test "kubectl run"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl run\" ..."
+    Command: ${kubectl} run nginx --image=nginx  -n ${test_ns}  --tenant ${test_tenant}
+    OutputShouldContain:
+    - "\ndeployment.apps/nginx created"
+
+# retry as the pod creation may need some time.
+  - BeforeTest: sleep 5
+    Command: "${kubectl} get deployment nginx -n ${test_ns}  --tenant ${test_tenant} -o json
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldBe: "nginx	${test_ns}	${test_tenant}	1	1\n"
+    RetryCount: 3
+    RetryInterval: 5
+
+  - Command: "${kubectl} get pods -n ${test_ns} --tenant ${test_tenant} -o json
+              | jq -r '.items[] | [.metadata.name[0:6], .metadata.namespace, .metadata.tenant, .status.phase] | @tsv'"
+    OutputShouldContain:
+    - "nginx-	${test_ns}	${test_tenant}	Running\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

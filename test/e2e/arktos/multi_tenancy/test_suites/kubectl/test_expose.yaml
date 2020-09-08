@@ -1,0 +1,48 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl expose Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl expose".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+###########################################################################################################
+# test "kubectl expose"
+###########################################################################################################
+
+  - BeforeTestMessage: "Verifying \"kubectl expose\" ..."
+    Command: ${kubectl} get service --namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "No resources found.\n"
+    
+  - Command: ${kubectl} expose deployment sample-nginx-deployment --port=80 --target-port=8080 --namespace ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "service/sample-nginx-deployment exposed\n"
+
+  - Command: "${kubectl} get service sample-nginx-deployment --namespace ${test_ns} --tenant ${test_tenant} -o json 
+              | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .spec.type, .spec.ports[0].port, .spec.ports[0].targetPort] | @tsv'"
+    OutputShouldBe: "sample-nginx-deployment	${test_ns}	${test_tenant}	ClusterIP	80	8080\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

@@ -1,44 +1,49 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pod With Configmap Creation Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# It prevents regression of bug https://github.com/futurewei-cloud/arktos/issues/526
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl api-resource Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl api-resource".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ###########################################################################################################
 # test variables
 ###########################################################################################################
 Variables:
   test_tenant: random_8
+  test_ns: random_8
 
 ###########################################################################################################
 # test setup
 ###########################################################################################################
 Tests:
-  - BeforeTestMessage: Test setup ....
+  - BeforeTestMessage: Starting test setup ...
     Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
     - "\ntenant/${test_tenant} created\n"
 
-###########################################################################################################
-# Testing 
-###########################################################################################################
-  - BeforeTestMessage: Start testing ...
-    Command: ${kubectl} create configmap --tenant ${test_tenant} literal-config-1 --from-literal=city=seattle 
-    OutputShouldBe: "configmap/literal-config-1 created\n"
+  - Command:  ${setup_client_script} ${test_tenant} admin
 
-  - Command: ${kubectl} apply -f ${test_data_dir}/config-map-pod.yaml --tenant ${test_tenant} 
-    OutputShouldBe: "pod/configmap-pod-1 created\n"
+###########################################################################################################
+# test "kubectl api-resources"
+###########################################################################################################
 
-  - BeforeTest: sleep 5
-    Command: ${kubectl} get pod configmap-pod-1 --tenant ${test_tenant}
-    OutputShouldContain: 
-    - Completed
-    OutputShouldNotContain: 
-    - CreateContainerConfigError
-    RetryCount: 3
-    RetryInterval: 10
+  - BeforeTestMessage: "Verifying \"kubectl api-resources\" ..."
+    Command: ${kubectl} api-resources --context ${test_tenant}-admin-context
+    OutputShouldContain:
+    - persistentvolumeclaims
+    - namespaces
+    OutputShouldNotContain:
+    - nodes
+    - tenants
+
+  - Command: ${kubectl} api-resources
+    OutputShouldContain:
+    - persistentvolumeclaims
+    - namespaces
+    - nodes
+    - tenants
 
 ###########################################################################################################
 # cleanup
 ###########################################################################################################
-  - BeforeTestMessage: Clean up...
-    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${test_tenant} admin
