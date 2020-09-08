@@ -18,6 +18,7 @@ go_library(
         "security_context.go",
         "ssh.go",
         "ttlafterfinished.go",
+        "vmpods.go",
     ],
     importpath = "k8s.io/kubernetes/test/e2e/node",
     visibility = ["//visibility:public"],
