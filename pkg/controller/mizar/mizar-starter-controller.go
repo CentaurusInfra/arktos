@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -96,6 +97,15 @@ func (c *MizarStarterController) Run(workers int, stopCh <-chan struct{}) {
 		return
 	}
 
+	c.kubeClient.CoreV1().ConfigMaps("default").Create(&v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mizar-grpc-client",
+		},
+		Data: map[string]string{
+			"state": "Started",
+		},
+	})
+
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.worker, time.Second, stopCh)
 	}
@@ -161,6 +171,5 @@ func (c *MizarStarterController) handle(key string) error {
 		grpcHost := obj.Data["host"]
 		c.startHandler(c.controllerContext, grpcHost)
 	}
-
 	return nil
 }

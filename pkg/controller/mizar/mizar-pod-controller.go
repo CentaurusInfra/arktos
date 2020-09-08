@@ -163,7 +163,7 @@ func (c *MizarPodController) processNextWorkItem() bool {
 func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
-	klog.Infof("Entering handling for %v. key %s", controllerForMizarPod, key)
+	klog.Infof("Entering handling for %v. key %s, eventType %s", controllerForMizarPod, key, eventType)
 
 	startTime := time.Now()
 	defer func() {
@@ -200,9 +200,9 @@ func processGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, keyWit
 	key := keyWithEventType.Key
 	switch returnCode.Code {
 	case CodeType_OK:
-		klog.Infof("Mizar handled request successfully for %v. key %s", controllerForMizarPod, key)
+		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %s", controllerForMizarPod, key, keyWithEventType.EventType)
 	case CodeType_TEMP_ERROR:
-		klog.Infof("Mizar hit temporary error for %v. key %s. %s", controllerForMizarPod, key, returnCode.Message)
+		klog.Infof("Mizar hit temporary error for %v. key %s. %s, eventType %s", controllerForMizarPod, key, returnCode.Message, keyWithEventType.EventType)
 		c.queue.AddRateLimited(keyWithEventType)
 	}
 }
