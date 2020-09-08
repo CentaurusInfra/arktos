@@ -56,9 +56,9 @@ func (o *Options) Config() (*v1.EdgeGatewayConfig, error) {
 
 // NewEdgeGatewayConfig returns a full EdgeGatewayConfig object
 func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
-	hostnameOverride, err := os.Hostname()
+	hostname, err := os.Hostname()
 	if err != nil {
-		hostnameOverride = constants.DefaultHostnameOverride
+		hostname = constants.DefaultHostnameOverride
 	}
 	localIP := constants.LocalIP
 
@@ -75,7 +75,7 @@ func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
 				TLSCAFile:         constants.DefaultCAFile,
 				TLSCertFile:       constants.DefaultCertFile,
 				TLSPrivateKeyFile: constants.DefaultKeyFile,
-				HostnameOverride:  hostnameOverride,
+				Hostname:          hostname,
 				Quic: &v1.EdgeHubQUIC{
 					Enable:           false,
 					HandshakeTimeout: 30,

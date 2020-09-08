@@ -55,5 +55,5 @@ communication and access capabilities for services and components of the cloud a
 
 // registerModules register all the modules started in edgeGateway
 func registerModules(c *v1.EdgeGatewayConfig) {
-	edgehub.Register(c.Modules.EdgeHub, c.Modules.EdgeHub.HostnameOverride)
+	edgehub.Register(c.Modules.EdgeHub)
 }
