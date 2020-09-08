@@ -140,15 +140,15 @@ func (c *Controller) process(item interface{}) {
 		return
 	}
 
-	if net.Spec.Type != flatNetworkType {
-		klog.V(5).Infof("network %s/%s is of type %q; ignored", net.Tenant, net.Name, net.Spec.Type)
-		c.queue.Forget(item)
-		return
-	}
-
 	klog.V(5).Infof("processing network %s/%s", net.Tenant, net.Name)
 
-	if err := manageFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName); err != nil {
+	if net.Spec.Type == flatNetworkType {
+		err = manageFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName)
+	} else {
+		err = manageNonFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName)
+	}
+
+	if err != nil {
 		c.queue.AddRateLimited(key)
 		c.recorder.Eventf(net, corev1.EventTypeWarning, "FailedProvision", "failed to provision network %s/%s: %v", net.Tenant, net.Name, err)
 		return
@@ -156,6 +156,34 @@ func (c *Controller) process(item interface{}) {
 
 	c.recorder.Eventf(net, corev1.EventTypeNormal, "SuccessfulProvision", "successfully provision network %s/%s", net.Tenant, net.Name)
 	c.queue.Forget(item)
+}
+
+// manageNonFlatNetwork is the core logic to manage a non-flat typed network object
+func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
+	var svc *corev1.Service
+	var err error
+	if len(net.Status.DNSServiceIP) == 0 {
+		if svc, err = createOrGetDNSService(net, svcClient); err != nil {
+			return fmt.Errorf("failed to get or create per-network DNS service: %v", err)
+		}
+	}
+
+	if toDeployDNS {
+		if err = deployDNSForNetwork(net, svcClient, domainName); err != nil {
+			return fmt.Errorf("failed to deploy per-network DNS: %v", err)
+		}
+	}
+
+	// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
+	if len(net.Status.DNSServiceIP) == 0 && len(svc.Spec.ClusterIP) > 0 {
+		// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
+		netReady := net.DeepCopy()
+		netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
+		netReady.Status.Message = "DNS service IP allocated"
+		_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+	}
+
+	return err
 }
 
 // manageFlatNetwork is the core logic to manage a flat typed network object

@@ -163,3 +163,89 @@ func TestManageFlatNetwork(t *testing.T) {
 		})
 	}
 }
+
+func TestManageNonFlatNetwork(t *testing.T) {
+	tcs := []struct {
+		desc           string
+		input          *v1.Network
+		svcResp        *corev1.Service
+		svcRespError   error
+		netRespError   error
+		expectingError bool
+	}{
+		{
+			desc: "external IPAM happy path",
+			input: &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "test-ne",
+					Tenant: "test-te",
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "mizar",
+					VPCID: "mizar-12345",
+					Service: v1.NetworkService{
+						IPAM: "External",
+					},
+				},
+				Status: v1.NetworkStatus{},
+			},
+			svcResp: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "",
+					Type:      "ClusterIP",
+				},
+				Status: corev1.ServiceStatus{},
+			},
+			expectingError: false,
+		},
+		{
+			desc: "internal IPAM happy path",
+			input: &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "test-ne",
+					Tenant: "test-te",
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "foo",
+					VPCID: "bar",
+					Service: v1.NetworkService{
+						IPAM: "Arktos",
+					},
+				},
+				Status: v1.NetworkStatus{},
+			},
+			svcResp: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "6.7.8.9",
+					Type:      "ClusterIP",
+				},
+				Status: corev1.ServiceStatus{},
+			},
+			expectingError: false,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			netClient := fakearktosv1.NewSimpleClientset(tc.input)
+			netClient.PrependReactor("update", "networks", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
+				if action.GetSubresource() != "status" {
+					t.Fatalf("unexpected update")
+				}
+				return true, nil, tc.netRespError
+			})
+			kubeClient := fake.NewSimpleClientset(tc.svcResp)
+			kubeClient.PrependReactor("create", "services", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
+				return true, tc.svcResp, tc.svcRespError
+			})
+
+			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
+
+			if !tc.expectingError && err != nil {
+				t.Errorf("got unexpected error: %v", err)
+			}
+		})
+	}
+}

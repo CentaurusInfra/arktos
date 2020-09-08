@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// The external network controller is responsible for running controller loops for the flat network providers.
-// Most of canonical CNI plugins can be used on so-called flat networks.
+// This controller implementation is based on design doc docs/design-proposals/multi-tenancy/multi-tenancy-network.md
 
 package main
 
@@ -29,7 +28,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/cmd/flat-network-controller/app"
+	"k8s.io/kubernetes/cmd/arktos-network-controller/app"
 )
 
 const defaultWorkers = 4
@@ -80,7 +79,7 @@ func main() {
 	informerFactory.Start(stopCh)
 	controller.Run(workers, stopCh)
 
-	klog.Infof("flat network controller exited")
+	klog.Infof("arktos network controller exited")
 }
 
 func init() {

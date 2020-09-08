@@ -11,10 +11,10 @@ filegroup(
     name = "all-srcs",
     srcs = [
         ":package-srcs",
+        "//cmd/arktos-network-controller:all-srcs",
         "//cmd/clicheck:all-srcs",
         "//cmd/cloud-controller-manager:all-srcs",
         "//cmd/controller-manager/app:all-srcs",
-        "//cmd/flat-network-controller:all-srcs",
         "//cmd/gendocs:all-srcs",
         "//cmd/genkubedocs:all-srcs",
         "//cmd/genman:all-srcs",
