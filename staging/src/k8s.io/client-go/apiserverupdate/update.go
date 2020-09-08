@@ -78,9 +78,9 @@ func GetAPIServerConfig() map[string]v1.EndpointSubset {
 }
 
 func SetAPIServerConfig(c map[string]v1.EndpointSubset) bool {
+	muxUpdateServerMap.RLock()
 	klog.V(2).Infof("Update APIServer Config from [%+v] to [%+v]", apiServerMap, c)
 
-	muxUpdateServerMap.RLock()
 	if reflect.DeepEqual(apiServerMap, c) {
 		klog.V(2).Infof("Skip updating API server config as it is the same")
 		muxUpdateServerMap.RUnlock()
