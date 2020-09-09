@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"k8s.io/klog"
 	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 	clientset "k8s.io/kubernetes/pkg/client/clientset/versioned"
@@ -22,7 +21,6 @@ type ServiceExposeHandler struct {
 type ServiceExposeObj struct {
 	serviceExpose   v1.ServiceExpose
 	service         v1.EService
-	allowedSites    []v1.ESite
 	allowedPolicies []PolicyObj
 }
 
@@ -47,11 +45,6 @@ func NewServiceExposeHandler(sl listers.EServiceLister, siteLister listers.ESite
 	return se
 }
 
-func (h *ServiceExposeHandler) Init() error {
-	klog.V(4).Info("ServiceExposeHandler.Init")
-	return nil
-}
-
 // Handle the service expose request
 // 1. Generate traffic flows from the request
 //    traffic flows contains the site and flows basic info
@@ -68,8 +61,39 @@ func (h *ServiceExposeHandler) ObjectCreated(tenant string, namespace string, ob
 	seObj, err := h.getServiceExposeObj(tenant, namespace, se)
 	if err != nil {
 		// Update service expose to wrong status and return
-		// TODO(nkwangjun): update status here
+		// TODO(nkwangjun): update record to detail message
+		nerr := h.updateServiceExposeStatus(seObj, v1.ServiceExposeError, namespace, tenant)
+		if nerr != nil {
+			klog.Error("UpdateServiceExpose to error failed, %v, err:%v", se, nerr)
+		}
 		return
+	}
+
+	// If service VirtualPresenceIp is not assigned, return error
+	if seObj.service.VirtualPresenceIp == "" {
+		klog.Errorf("Serviceexpose error, service not ready, there is no virtual presence ip, service:%v",
+			seObj.service)
+		// TODO(nkwangjun): update record to detail message
+		nerr := h.updateServiceExposeStatus(seObj, v1.ServiceExposeError, namespace, tenant)
+		if nerr != nil {
+			klog.Error("UpdateServiceExpose to error failed, %v, err:%v", se, nerr)
+		}
+		return
+	}
+
+	for _, policy := range seObj.allowedPolicies {
+		for _, server := range policy.allowedServers {
+			if server.VirtualPresenceIp == "" {
+				klog.Errorf("Serviceexpose error, service not ready, there is no virtual presence ip, "+
+					"server:%v", server)
+				// TODO(nkwangjun):  update record to detail message
+				nerr := h.updateServiceExposeStatus(seObj, v1.ServiceExposeError, namespace, tenant)
+				if nerr != nil {
+					klog.Error("UpdateServiceExpose to error failed, %v, err:%v", se, nerr)
+				}
+				return
+			}
+		}
 	}
 
 	// Send traffic flow required info
@@ -81,8 +105,19 @@ func (h *ServiceExposeHandler) ObjectCreated(tenant string, namespace string, ob
 	h.syncServiceExpose(seObj)
 }
 
-func (h *ServiceExposeHandler) syncServiceExpose(seObj *ServiceExposeObj) {
+func (h *ServiceExposeHandler) updateServiceExposeStatus(seObj *ServiceExposeObj,
+	phase v1.ServiceExposePhase, namespace string, tenant string) error {
+	// NEVER modify objects from the store. It's a read-only, local cache.
+	// We can use DeepCopy() to make a deep copy of original object and modify this copy
+	// Or create a copy manually for better performance
+	se := seObj.serviceExpose.DeepCopy()
+	se.Status = v1.ServiceExposeStatus{Phase: phase}
+	_, err := h.gatewayClient.CloudgatewayV1().ServiceExposesWithMultiTenancy(namespace, tenant).Update(se)
+	return err
+}
 
+func (h *ServiceExposeHandler) syncServiceExpose(seObj *ServiceExposeObj) {
+	klog.V(4).Infof("Sync service expose:%v", seObj)
 }
 
 func (h *ServiceExposeHandler) getServiceExposeObj(tenant string, namespace string, expose *v1.ServiceExpose) (
@@ -95,34 +130,13 @@ func (h *ServiceExposeHandler) getServiceExposeObj(tenant string, namespace stri
 	serviceName := expose.EServiceName
 	service, err := h.serviceLister.EServicesWithMultiTenancy(namespace, tenant).Get(serviceName)
 	if err != nil {
-		klog.Errorf("Get service in service expose error, serviceexpose:%v, service name:%s", expose, serviceName)
-		return nil, err
-	}
-
-	// If VirtualPresenceIp is not assigned, return error
-	if service.VirtualPresenceIp == "" {
-		klog.Errorf("Serviceexpose error, service not ready, there is no virtual presence ip, service:%v",
-			service)
+		klog.Errorf("Get service in service expose error, serviceexpose:%v, service name:%s", expose,
+			serviceName)
 		return nil, err
 	}
 
 	seObj.service = *service
-
-	// Check exposed site
-	siteNames := expose.ESites
-	allowedSites := []v1.ESite{}
-	seObj.allowedSites = allowedSites
-	for _, siteName := range siteNames {
-		site, err := h.siteLister.ESitesWithMultiTenancy(namespace, tenant).Get(siteName)
-		if err != nil {
-			klog.Errorf("Get site in service expose to error, serviceexpose:%v, site name:%s", expose, siteName)
-			return nil, err
-		}
-
-		allowedSites = append(allowedSites, *site)
-	}
-
-	policyNameList := expose.EPolicys
+	policyNameList := expose.EPolicies
 	allowedPolicies := []PolicyObj{}
 	seObj.allowedPolicies = allowedPolicies
 	for _, policyName := range policyNameList {
@@ -147,13 +161,6 @@ func (h *ServiceExposeHandler) getServiceExposeObj(tenant string, namespace stri
 				return nil, err
 			}
 
-			// If VirtualPresenceIp is not assigned, return error
-			if server.VirtualPresenceIp == "" {
-				klog.Errorf("Serviceexpose error, service not ready, there is no virtual presence ip, server:%v",
-					server)
-				return nil, fmt.Errorf("Server virtual presence ip is invalid, %v", server)
-			}
-
 			policyObj.allowedServers = append(policyObj.allowedServers, *server)
 		}
 
@@ -163,22 +170,27 @@ func (h *ServiceExposeHandler) getServiceExposeObj(tenant string, namespace stri
 	return seObj, nil
 }
 
-func (h *ServiceExposeHandler) updateServiceVP(service *v1.EService, vpIp string, namespace string, tenant string) error {
-	// NEVER modify objects from the store. It's a read-only, local cache.
-	// We can use DeepCopy() to make a deep copy of original object and modify this copy
-	// Or create a copy manually for better performance
-	serviceCopy := service.DeepCopy()
-	serviceCopy.VirtualPresenceIp = vpIp
-	// We use Update func to update the virtual presence ip
-	_, err := h.gatewayClient.CloudgatewayV1().EServicesWithMultiTenancy(namespace, tenant).Update(serviceCopy)
-	return err
-}
-
-func (h *ServiceExposeHandler) ObjectUpdated(tenant string, namespace string, obj interface{}) {
-	klog.V(4).Info("ServiceExposeHandler.ObjectUpdated")
-}
-
 func (h *ServiceExposeHandler) ObjectDeleted(tenant string, namespace string, obj interface{}) {
-	klog.V(4).Info("ServiceExposeHandler.ObjectDeleted")
+	se := obj.(*v1.ServiceExpose)
+	klog.V(4).Info("ServiceExposeHandler.ObjectDeleted: %v", se)
+
+	// Transform the service expose to obj
+	seObj, err := h.getServiceExposeObj(tenant, namespace, se)
+	if err != nil {
+		// Update service expose to wrong status and return
+		klog.Errorf("Get service expose error:%v", err)
+	}
+
+	if seObj == nil {
+		return
+	}
+
+	// Release policy
+	h.releaseServiceExpose(seObj)
 }
 
+func (h *ServiceExposeHandler) releaseServiceExpose(seObj *ServiceExposeObj) {
+	klog.V(4).Infof("Release service expose:%v", seObj)
+
+	// TODO(nkwangjun): release the policy rules
+}

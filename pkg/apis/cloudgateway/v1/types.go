@@ -237,6 +237,28 @@ type EService struct {
 
 	// Ip address of the virtual presence
 	VirtualPresenceIp string
+
+	// Status for service
+	Status ServiceStatus
+}
+
+type ServicePhase string
+
+// These are the valid statuses of Service.
+const (
+	// ServicePending means the Service has been created/added by the system, but not configured.
+	ServicePending ServicePhase = "Pending"
+	// ServiceSyncing means the Service has been created/added by the system, virtual presence ip is allocated
+	// Wait for sync to the associated site.
+	ServiceSyncing ServicePhase = "Syncing"
+	// ServiceSynced means the Service has been configured and has Arktos components running.
+	ServiceSynced ServicePhase = "Synced"
+	// ServiceError means the Service is in error status, no valid vp, synced failed, detail must see the reason
+	ServiceError  ServicePhase = "Error"
+)
+
+type ServiceStatus struct {
+	Phase ServicePhase
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -247,6 +269,25 @@ type EServiceList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []EService `json:"items"`
+}
+
+type ServerPhase string
+
+// These are the valid statuses of Server.
+const (
+	// ServerPending means the Server has been created/added by the system, but not configured.
+	ServerPending ServerPhase = "Pending"
+	// ServerSyncing means the Server has been created/added by the system, virtual presence ip is allocated
+	// Wait for sync to the associated site.
+	ServerSyncing ServerPhase = "Syncing"
+	// ServerSynced means the Server has been configured and has Arktos components running.
+	ServerSynced ServerPhase = "Synced"
+	// ServerError means the Server is in error status, no valid vp, synced failed, detail must see the reason
+	ServerError  ServerPhase = "Error"
+)
+
+type ServerStatus struct {
+	Phase ServerPhase
 }
 
 // +genclient
@@ -266,6 +307,9 @@ type EServer struct {
 
 	// Ip address of the virtual presence
 	VirtualPresenceIp string
+
+	// Status for server
+	Status ServerStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -307,12 +351,15 @@ type ServiceExposePhase string
 const (
 	// ServiceExposePending means the ServiceExpose has been created/added by the system, but not configured.
 	ServiceExposePending ServiceExposePhase = "Pending"
-	// ServiceExposeActive means the ServiceExpose has been configured and has Arktos components running.
-	ServiceExposeActive ServiceExposePhase = "Active"
+	// ServiceExposeSynced means the ServiceExpose has been configured and has Arktos components running.
+	ServiceExposeSynced ServiceExposePhase = "Synced"
+	// ServiceExposeError means the ServiceExpose is in error status, wrong service, synced failed,
+	// Detail must see the reason
+	ServiceExposeError ServiceExposePhase = "Error"
 )
 
 type ServiceExposeStatus struct {
-	phase ServiceExposePhase
+	Phase ServiceExposePhase
 }
 
 // +genclient
@@ -329,11 +376,8 @@ type ServiceExpose struct {
 	// Dns Name of the service will be exposed
 	DnsName string
 
-	// ESite name list
-	ESites []string
-
-	// EPolicys name list of the service will be allowed to access
-	EPolicys []string
+	// EPolicies name list of the service will be allowed to access
+	EPolicies []string
 
 	// ServiceExposeStatus describes the current status of a ServiceExpose
 	// +optional

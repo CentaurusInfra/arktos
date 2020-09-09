@@ -1,6 +1,7 @@
 package handler
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 	clientset "k8s.io/kubernetes/pkg/client/clientset/versioned"
@@ -25,14 +26,9 @@ func NewEServiceHandler(serviceLister listers.EServiceLister, siteLister listers
 	return h
 }
 
-func (h *EServiceHandler) Init() error {
-	klog.V(4).Info("EServiceHandler.Init")
-	return nil
-}
-
 func (h *EServiceHandler) ObjectCreated(tenant string, namespace string, obj interface{}) {
 	service := obj.(*v1.EService)
-	klog.V(4).Info("ServiceHandler.ObjectCreated: %v", service)
+	klog.V(4).Info("EServiceHandler.ObjectUpdated")
 
 	// Service check
 	serviceSite, err := h.siteLister.ESitesWithMultiTenancy(namespace, tenant).Get(service.ESiteName)
@@ -42,34 +38,50 @@ func (h *EServiceHandler) ObjectCreated(tenant string, namespace string, obj int
 		return
 	}
 
-	// Request virtual presence
-	vp, err := RequestVirtualPresence(*serviceSite)
-	if err != nil {
-		klog.Errorf("Request virtual presence for service error:%v, service:%v", err, serviceSite)
-		// TODO(nkwangjun): Record event
-		return
-	}
-
-	// Update virtual presence for service
-	err = h.updateServiceVP(service, vp.VirtualPresenceIp, namespace, tenant)
-	if err != nil {
-		klog.Errorf("Update service vp error, service:%v", service)
-		nerr := ReleaseVirtualPresence(*vp)
-		if nerr != nil {
-			klog.Fatalf("Release virtual presence ip error:%v, %v", nerr, vp)
+	// Check if need to request virtual presence
+	if service.VirtualPresenceIp == "" {
+		// Request virtual presence
+		vp, err := RequestVirtualPresence(*serviceSite)
+		if err != nil {
+			klog.Errorf("Request virtual presence for service error:%v, service:%v", err, serviceSite)
+			// TODO(nkwangjun): Record event
+			nerr := h.updateServiceStatus(service, v1.ServiceError, namespace, tenant)
+			if nerr != nil {
+				klog.Error("UpdateService to error failed, %v, err:%v", service, nerr)
+			}
+			return
 		}
-		return
+
+		// Update virtual presence for service
+		err = h.updateServiceVP(service, vp.VirtualPresenceIp, namespace, tenant)
+		if err != nil {
+			klog.Errorf("Update service vp error, service:%v", service)
+			nerr := ReleaseVirtualPresence(*vp)
+			if nerr != nil {
+				klog.Fatalf("Release virtual presence ip error:%v, %v", nerr, vp)
+			}
+			return
+		}
 	}
 
 	// TODO(nkwangjun): Sync transfer traffic, update status
 }
 
-func (h *EServiceHandler) ObjectUpdated(tenant string, namespace string, obj interface{}) {
-	klog.V(4).Info("EServiceHandler.ObjectUpdated")
-}
-
 func (h *EServiceHandler) ObjectDeleted(tenant string, namespace string, obj interface{}) {
+	service := obj.(*v1.EService)
 	klog.V(4).Info("EServiceHandler.ObjectDeleted")
+
+	// TODO(nkwangjun): Sync transfer traffic, update status
+
+	// Release virtual presence
+	if service.VirtualPresenceIp != "" {
+		// Get the virtual presence
+		err := h.gatewayClient.CloudgatewayV1().VirtualPresencesWithMultiTenancy(namespace,
+			tenant).Delete(service.VirtualPresenceIp, &metav1.DeleteOptions{})
+		if err != nil {
+			klog.Errorf("Delete virtual presence error, %s", service.VirtualPresenceIp)
+		}
+	}
 }
 
 func (h *EServiceHandler) updateServiceVP(service *v1.EService, vpIp string, namespace string, tenant string) error {
@@ -79,6 +91,17 @@ func (h *EServiceHandler) updateServiceVP(service *v1.EService, vpIp string, nam
 	serviceCopy := service.DeepCopy()
 	serviceCopy.VirtualPresenceIp = vpIp
 	// We use Update func to update the virtual presence ip
+	_, err := h.gatewayClient.CloudgatewayV1().EServicesWithMultiTenancy(namespace, tenant).Update(serviceCopy)
+	return err
+}
+
+func (h *EServiceHandler) updateServiceStatus(service *v1.EService, phase v1.ServicePhase, namespace string,
+	tenant string) error {
+	// NEVER modify objects from the store. It's a read-only, local cache.
+	// We can use DeepCopy() to make a deep copy of original object and modify this copy
+	// Or create a copy manually for better performance
+	serviceCopy := service.DeepCopy()
+	serviceCopy.Status = v1.ServiceStatus{Phase: phase}
 	_, err := h.gatewayClient.CloudgatewayV1().EServicesWithMultiTenancy(namespace, tenant).Update(serviceCopy)
 	return err
 }
