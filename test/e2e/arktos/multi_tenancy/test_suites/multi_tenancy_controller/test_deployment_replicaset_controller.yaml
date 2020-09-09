@@ -144,6 +144,4 @@ Tests:
 # cleanup
 ###########################################################################################################
   - BeforeTestMessage: Clean up...
-    Command: ${kubectl} delete tenant ${test_tenant}
-    OutputShouldBe: "tenant \"${test_tenant}\" deleted\n"
-    TimeOut: 60
+    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &
