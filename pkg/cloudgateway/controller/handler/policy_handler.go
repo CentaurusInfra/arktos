@@ -10,14 +10,14 @@ func (t *EPolicyHandler) Init() error{
 	return nil
 }
 
-func (t *EPolicyHandler) ObjectCreated(obj interface{}) {
+func (t *EPolicyHandler) ObjectCreated(tenant string, namespace string, obj interface{}) {
 	klog.V(4).Info("EPolicyHandler.ObjectCreated")
 }
 
-func (t *EPolicyHandler) ObjectUpdated(obj interface{}) {
+func (t *EPolicyHandler) ObjectUpdated(tenant string, namespace string, obj interface{}) {
 	klog.V(4).Info("EPolicyHandler.ObjectUpdated")
 }
 
-func (t *EPolicyHandler) ObjectDeleted(obj interface{}) {
+func (t *EPolicyHandler) ObjectDeleted(tenant string, namespace string, obj interface{}) {
 	klog.V(4).Info("EPolicyHandler.ObjectDeleted")
 }

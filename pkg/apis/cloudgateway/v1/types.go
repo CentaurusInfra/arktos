@@ -32,6 +32,12 @@ type EGatewayStatus struct {
 type ESite struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	EGatewayName string
+
+	// Virtual presence ip address cidr of this site
+	// +optional
+	VirtualPresenceIPCidr string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -192,7 +198,7 @@ type VirtualPresence struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Ip address of the virtual presence
-	VirtualIp string
+	VirtualPresenceIp string
 
 	// Associated service name
 	EServiceName string
@@ -228,6 +234,9 @@ type EService struct {
 
 	// Associated site name
 	ESiteName string
+
+	// Ip address of the virtual presence
+	VirtualPresenceIp string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -249,14 +258,14 @@ type EServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// EServerName of the server
-	EServerName string
-
 	// Ip of the server
 	Ip string
 
 	// Associated site name
 	ESiteName string
+
+	// Ip address of the virtual presence
+	VirtualPresenceIp string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
