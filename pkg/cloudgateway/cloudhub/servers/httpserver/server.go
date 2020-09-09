@@ -1,19 +1,3 @@
-/*
-Copyright 2020 The KubeEdge Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package httpserver
 
 import (
@@ -71,38 +55,8 @@ func getCA(w http.ResponseWriter, r *http.Request) {
 	w.Write(caCertDER)
 }
 
-// edgeGatewayClientCert will verify the certificate of EdgeGateway or token then create EdgeGatewayCert and return it
+// edgeGatewayClientCert will create EdgeGatewayCert and return it
 func edgeGatewayClientCert(w http.ResponseWriter, r *http.Request) {
-	if cert := r.TLS.PeerCertificates; len(cert) > 0 {
-		if err := verifyCert(cert[0]); err != nil {
-			klog.Errorf("failed to sign the certificate for edge site: %s, failed to verify the certificate", r.Header.Get(NodeName))
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(err.Error()))
-			return
-		}
-	}
-	signEdgeCert(w, r)
-}
-
-// verifyCert verifies the edge certificate by CA certificate when edge certificates rotate.
-func verifyCert(cert *x509.Certificate) error {
-	roots := x509.NewCertPool()
-	ok := roots.AppendCertsFromPEM(pem.EncodeToMemory(&pem.Block{Type: certificateBlockType, Bytes: hubconfig.Config.Ca}))
-	if !ok {
-		return fmt.Errorf("failed to parse root certificate")
-	}
-	opts := x509.VerifyOptions{
-		Roots:     roots,
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-	if _, err := cert.Verify(opts); err != nil {
-		return fmt.Errorf("failed to verify edge certificate: %v", err)
-	}
-	return nil
-}
-
-// signEdgeCert signs the CSR from EdgeGateway
-func signEdgeCert(w http.ResponseWriter, r *http.Request) {
 	csrContent, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		klog.Errorf("fail to read file when signing the cert for edge site:%s! error:%v", r.Header.Get(NodeName), err)

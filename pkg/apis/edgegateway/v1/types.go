@@ -49,9 +49,6 @@ type EdgeHub struct {
 	WebSocket *EdgeHubWebSocket `json:"websocket,omitempty"`
 	// HTTPServer indicates the server for edge to apply for the certificate.
 	HTTPServer string `json:"httpServer,omitempty"`
-	// RotateCertificates indicates whether edge certificate can be rotated
-	// default true
-	RotateCertificates bool `json:"rotateCertificates,omitempty"`
 }
 
 // EdgeHubQUIC indicates the quic client config
