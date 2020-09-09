@@ -20,6 +20,7 @@ package watch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"sync"
@@ -337,4 +338,47 @@ func TestAggregatedWatchOnError(t *testing.T) {
 	assert.True(t, w1.stopped)
 	assert.True(t, w2.stopped)
 	assert.True(t, w3.stopped)
+}
+
+func TestAggregatedWatcherClose(t *testing.T) {
+
+	timer := time.NewTimer( time.Millisecond)
+	defer timer.Stop()
+
+	ticker := time.NewTicker(time.Microsecond)
+
+	defer ticker.Stop()
+
+	agg := NewAggregatedWatcher()
+
+	ch1 := make(chan Event)
+
+	w1 := NewProxyWatcher(ch1)
+
+	agg.AddWatchInterface(w1, nil)
+	defer agg.Stop()
+
+	condition := func() Event {  return  Event{Added, testType("foo")} }
+	for {
+		select {
+		case <-timer.C:
+			fmt.Printf("timer \n")
+			return
+		case v := <-agg.aggChan:
+
+			if v.Type == Added {
+				return
+			}
+		case <-ticker.C:
+			go func() {  if !agg.stopped {agg.aggChan <-condition()
+			} }()
+		}
+	}
+	time.Sleep(time.Second)
+}
+
+func TestAggregatedWatchersClose(t *testing.T) {
+	for i:= 0; i < 2; i++ {
+		TestAggregatedWatcherClose(t)
+	}
 }
