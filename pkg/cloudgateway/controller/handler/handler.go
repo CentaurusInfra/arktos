@@ -4,10 +4,8 @@ import v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 
 // Handler interface contains the methods that are required
 type Handler interface{
-	Init() error
 	ObjectCreated(tenant string, namespace string, obj interface{})
 	ObjectDeleted(tenant string, namespace string, obj interface{})
-	ObjectUpdated(tenant string, namespace string, obj interface{})
 }
 
 // Generate a no used virtual presence ip from site
