@@ -16,7 +16,7 @@
 # Build the etcd image
 #
 # Usage:
-# 	[BUNDLED_ETCD_VERSIONS=3.4.4-arktos.1] [REGISTRY=k8s.gcr.io] [ARCH=amd64] [BASEIMAGE=busybox] make (build|push)
+# 	[BUNDLED_ETCD_VERSIONS=3.4.3.0] [REGISTRY=k8s.gcr.io] [ARCH=amd64] [BASEIMAGE=busybox] make (build|push)
 #
 # The image contains different etcd versions to simplify
 # upgrades. Thus be careful when removing any versions from here.
@@ -27,10 +27,10 @@
 # Except from etcd-$(version) and etcdctl-$(version) binaries, we also
 # need etcd and etcdctl binaries for backward compatibility reasons.
 # That binary will be set to the last version from $(BUNDLED_ETCD_VERSIONS).
-BUNDLED_ETCD_VERSIONS?=3.4.4-arktos.1
+BUNDLED_ETCD_VERSIONS?=3.4.3
 
 # LATEST_ETCD_VERSION identifies the most recent etcd version available.
-LATEST_ETCD_VERSION?=3.4.4-arktos.1
+LATEST_ETCD_VERSION?=3.4.3
 
 # ETCD branch to build etcd binaries
 ETCD_BRANCH?=release-3.4-ETCDPartition-RevGeneration
@@ -41,7 +41,7 @@ ETCD_BRANCH?=release-3.4-ETCDPartition-RevGeneration
 REVISION?=1
 
 # IMAGE_TAG Uniquely identifies k8s.gcr.io/etcd docker image with a tag of the form "<etcd-version>-<revision>".
-IMAGE_TAG=$(LATEST_ETCD_VERSION)-$(REVISION)
+IMAGE_TAG=$(LATEST_ETCD_VERSION).0
 
 ARCH?=amd64
 ALL_ARCH = amd64 arm arm64 ppc64le s390x

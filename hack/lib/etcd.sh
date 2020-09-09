@@ -17,7 +17,7 @@
 
 # A set of helpers for starting/running etcd for tests
 # etcd version pattern  is d.d.d-arktos.d
-ETCD_VERSION=${ETCD_VERSION:-3.4.4-arktos.1}
+ETCD_VERSION=${ETCD_VERSION:-3.4.3.0.1}
 INT_NAME=$(ip route | awk '/default/ { print $5 }')
 ETCD_LOCAL_HOST=${ETCD_LOCAL_HOST:-127.0.0.1}
 ETCD_HOST=$(ip addr show $INT_NAME | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
@@ -78,7 +78,7 @@ kube::etcd::need_update() {
 }
 
 kube::etcd::version() {
-  # convert arktos customized version, such as 3.4.4-arktos.1
+  # convert arktos customized version, such as 3.4.3.0.1
   semver=$(echo "$1" | awk -F'-arktos.' '{print $1}')
   cusver=$(echo "$1" | awk -F'-arktos.' '{print $2}')
 
@@ -100,8 +100,8 @@ kube::etcd::start() {
   else
     ETCD_LOGFILE=${ETCD_LOGFILE:-"/dev/null"}
   fi
-  kube::log::info "etcd --name ${ETCD_NAME} --cluster-id ${ETCD_CLUSTER_ID} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT}   --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls ${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT} --debug > \"${ETCD_LOGFILE}\" 2>/dev/null"
-  etcd --name ${ETCD_NAME} --cluster-id ${ETCD_CLUSTER_ID} --listen-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}" --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT}" --initial-advertise-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-token "etcd-cluster-1" --initial-cluster "${ETCD_NAME}=http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-state "new"  --debug 2> "${ETCD_LOGFILE}" >/dev/null &
+  kube::log::info "etcd --name ${ETCD_NAME} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT}   --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls ${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT} --listen-peer-urls http://${ETCD_HOST}:${ETCD_PEER_PORT} --debug > \"${ETCD_LOGFILE}\" 2>/dev/null"
+  etcd --name ${ETCD_NAME} --listen-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}" --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL},http://${ETCD_LOCAL_HOST}:${ETCD_PORT}" --initial-advertise-peer-urls "http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-token "etcd-cluster-1" --initial-cluster "${ETCD_NAME}=http://${ETCD_HOST}:${ETCD_PEER_PORT}" --initial-cluster-state "new"  --debug 2> "${ETCD_LOGFILE}" >/dev/null &
   ETCD_PID=$!
 
   echo "Waiting for etcd to come up."
