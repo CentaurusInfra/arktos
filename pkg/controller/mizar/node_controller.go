@@ -302,6 +302,6 @@ func (c *NodeController) gRPCRequest(command string, ip string) {
 	if err != nil {
 		klog.Fatalf(logInfoMessage("gRPC error ")+"%v", err)
 	}*/
-	klog.Infoln(logInfoMessage("gRPC request is sent"))
+	klog.Infoln(c.logInfoMessage("gRPC request is sent"))
 }
 
