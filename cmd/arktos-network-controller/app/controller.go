@@ -158,9 +158,7 @@ func (c *Controller) process(item interface{}) {
 // manageNonFlatNetwork is the core logic to manage a non-flat typed network object
 func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
 	if net.DeletionTimestamp != nil {
-		// graceful termination; for now does nothing
-		// todo: manage resource cleanup properly
-		return nil
+		return ensureTerminatingPhase(net, netClient)
 	}
 
 	var svc *corev1.Service
@@ -208,12 +206,23 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 	return err
 }
 
+func ensureTerminatingPhase(net *v1.Network, netClient arktos.Interface) error {
+	// todo: manage resource cleanup properly
+	if net.Status.Phase == v1.NetworkTerminating {
+		return nil
+	}
+
+	netReady := net.DeepCopy()
+	netReady.Status.Phase = v1.NetworkTerminating
+	netReady.Status.Message = "waiting for resource cleanup"
+	_, err := netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+	return err
+}
+
 // manageFlatNetwork is the core logic to manage a flat typed network object
 func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
 	if net.DeletionTimestamp != nil {
-		// graceful termination; for now does nothing
-		// todo: manage resource cleanup properly
-		return nil
+		return ensureTerminatingPhase(net,netClient)
 	}
 
 	if len(net.Status.DNSServiceIP) != 0 {

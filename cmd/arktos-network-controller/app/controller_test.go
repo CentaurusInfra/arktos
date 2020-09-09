@@ -18,8 +18,6 @@ package app
 
 import (
 	"fmt"
-	"testing"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	coremock "k8s.io/client-go/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	"testing"
 )
 
 func TestManageFlatNetwork(t *testing.T) {
@@ -263,6 +262,8 @@ func TestManageNonFlatNetwork(t *testing.T) {
 }
 
 func TestNetworkPhaseShift(t *testing.T) {
+	now := metav1.Now()
+
 	tcs := []struct {
 		desc             string
 		input            *v1.Network
@@ -308,6 +309,28 @@ func TestNetworkPhaseShift(t *testing.T) {
 					DNSServiceIP: "1.2.3.4",
 				},
 			},
+		},
+		{
+			desc:             "graceful deleted network",
+			input:            &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "test-ne3",
+					DeletionTimestamp: &now,
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "mizar",
+					VPCID: "mizar-12345",
+					Service: v1.NetworkService{
+						IPAM: "External",
+					},
+				},
+				Status: v1.NetworkStatus{
+					Phase:        "Ready",
+					DNSServiceIP: "1.2.3.4",
+				},
+			},
+			toUpdatePhase: true,
+			expectedNetPhase: "Terminating",
 		},
 	}
 
