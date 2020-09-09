@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// The external network controller is responsible for running controller loops for the flat network providers.
-// Most of canonical CNI plugins can be used on so-called flat networks.
-
 package app
 
 import (
@@ -175,11 +172,22 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 	}
 
 	// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
-	if len(net.Status.DNSServiceIP) == 0 && len(svc.Spec.ClusterIP) > 0 {
-		// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
+	if len(net.Status.DNSServiceIP) == 0 {
+		if len(svc.Spec.ClusterIP) == 0 && net.Status.Phase == v1.NetworkPending {
+			// network status is already pending
+			return nil
+		}
+
 		netReady := net.DeepCopy()
-		netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
-		netReady.Status.Message = "DNS service IP allocated"
+		if len(svc.Spec.ClusterIP) > 0 {
+			// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
+			netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
+			netReady.Status.Message = "DNS service IP allocated"
+			netReady.Status.Phase = v1.NetworkReady
+		} else {
+			netReady.Status.Phase = v1.NetworkPending
+			netReady.Status.Message = "waiting for DNS service IP assigned"
+		}
 		_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
 	}
 

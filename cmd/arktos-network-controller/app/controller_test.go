@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// The external network controller is responsible for running controller loops for the flat network providers.
-// Most of canonical CNI plugins can be used on so-called flat networks.
-
 package app
 
 import (
@@ -166,12 +163,13 @@ func TestManageFlatNetwork(t *testing.T) {
 
 func TestManageNonFlatNetwork(t *testing.T) {
 	tcs := []struct {
-		desc           string
-		input          *v1.Network
-		svcResp        *corev1.Service
-		svcRespError   error
-		netRespError   error
-		expectingError bool
+		desc             string
+		input            *v1.Network
+		svcResp          *corev1.Service
+		svcRespError     error
+		netRespError     error
+		expectingError   bool
+		expectedNetPhase string
 	}{
 		{
 			desc: "external IPAM happy path",
@@ -197,7 +195,8 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				},
 				Status: corev1.ServiceStatus{},
 			},
-			expectingError: false,
+			expectingError:   false,
+			expectedNetPhase: "Pending",
 		},
 		{
 			desc: "internal IPAM happy path",
@@ -223,17 +222,24 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				},
 				Status: corev1.ServiceStatus{},
 			},
-			expectingError: false,
+			expectingError:   false,
+			expectedNetPhase: "Ready",
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.desc, func(t *testing.T) {
 			netClient := fakearktosv1.NewSimpleClientset(tc.input)
+			var networkPhaseToUpdate string
 			netClient.PrependReactor("update", "networks", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
 				if action.GetSubresource() != "status" {
 					t.Fatalf("unexpected update")
 				}
+
+				updateAction := action.(coremock.UpdateAction)
+				objToUpdate := updateAction.GetObject()
+				networkToUpdate := objToUpdate.(*v1.Network)
+				networkPhaseToUpdate = string(networkToUpdate.Status.Phase)
 				return true, nil, tc.netRespError
 			})
 			kubeClient := fake.NewSimpleClientset(tc.svcResp)
@@ -245,6 +251,12 @@ func TestManageNonFlatNetwork(t *testing.T) {
 
 			if !tc.expectingError && err != nil {
 				t.Errorf("got unexpected error: %v", err)
+			}
+
+			if err == nil {
+				if tc.expectedNetPhase != networkPhaseToUpdate {
+					t.Fatalf("expected to update network phase to %q, actually did %q", tc.expectedNetPhase, networkPhaseToUpdate)
+				}
 			}
 		})
 	}
