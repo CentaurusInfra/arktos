@@ -20,7 +20,6 @@ package watch
 import (
 	"context"
 	"fmt"
-	"github.com/grafov/bcast"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
 	"sync"
@@ -53,10 +52,11 @@ type AggregatedWatcher struct {
 	mapLock      sync.RWMutex
 	watchers     map[int]Interface
 	errs         map[int]error
+	stopChs      map[int]chan int
 	watcherIndex int
 
-	aggChan   chan Event
-	stopChGrp *bcast.Group
+	aggChan chan Event
+	wg      sync.WaitGroup
 
 	stopped  bool
 	stopLock sync.RWMutex
@@ -70,13 +70,12 @@ func NewAggregatedWatcher() *AggregatedWatcher {
 	a := &AggregatedWatcher{
 		watchers:          make(map[int]Interface),
 		errs:              make(map[int]error),
+		stopChs:           make(map[int]chan int),
 		watcherIndex:      0,
 		aggChan:           make(chan Event),
 		stopped:           false,
 		allowWatcherReset: false,
-		stopChGrp:         bcast.NewGroup(),
 	}
-	go a.stopChGrp.Broadcast(0)
 
 	return a
 }
@@ -104,51 +103,38 @@ func NewAggregatedWatcherWithOneWatch(watcher Interface, err error) *AggregatedW
 	return a
 }
 
-func (a *AggregatedWatcher) addWatcherAndError(watcher Interface, err error) {
+func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
+	stopCh := make(chan int)
+
 	a.mapLock.Lock()
 	a.watchers[a.watcherIndex] = watcher
 	a.errs[a.watcherIndex] = err
+	a.stopChs[a.watcherIndex] = stopCh
 	a.watcherIndex++
 	a.mapLock.Unlock()
-}
-
-func (a *AggregatedWatcher) removeWatcherAndError(watcher Interface) {
-	a.mapLock.Lock()
-	for k, v := range a.watchers {
-		if v == watcher {
-			delete(a.watchers, k)
-			delete(a.errs, k)
-			break
-		}
-	}
-	a.mapLock.Unlock()
-}
-
-func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
-	a.addWatcherAndError(watcher, err)
 	//klog.Infof("Added watch channel %v into aggregated chan %#v.", watcher, a.aggChan)
 
 	if watcher != nil {
-		stopCh := a.stopChGrp.Join()
+		a.wg.Add(1)
 
-		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
+		go func(w Interface, a *AggregatedWatcher, stop chan int) {
 			for {
 				select {
-				case <-stopCh.Read:
-					a.closeWatcher(w, stopCh)
+				case <-stop:
+					a.closeWatcher(w)
 					return
 				case signal, ok := <-w.ResultChan():
 					if !ok {
 						//klog.Infof("watch channel %v closed for aggregated chan %#v.", w, a.aggChan)
-						a.closeWatcher(w, stopCh)
+						a.closeWatcher(w)
 						return
 					} else {
 						//klog.V(3).Infof("Get event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
 					}
 
 					select {
-					case <-stopCh.Read:
-						a.closeWatcher(w, stopCh)
+					case <-stop:
+						a.closeWatcher(w)
 						return
 					case a.aggChan <- signal:
 						//klog.V(3).Infof("Sent event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
@@ -159,16 +145,29 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 	}
 }
 
-func (a *AggregatedWatcher) closeWatcher(watcher Interface, stopCh *bcast.Member) {
+func (a *AggregatedWatcher) closeWatcher(watcher Interface) {
+	a.mapLock.Lock()
 	watcher.Stop()
-	a.stopChGrp.Leave(stopCh)
-	a.removeWatcherAndError(watcher)
-
-	if !a.allowWatcherReset && a.stopChGrp.MemberCount() == 0 {
-		//klog.Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
-		a.stopChGrp.Close()
-		close(a.aggChan)
+	if watcher != nil {
+		a.wg.Done()
 	}
+
+	for k, v := range a.watchers {
+		if v == watcher {
+			delete(a.watchers, k)
+			delete(a.errs, k)
+			delete(a.stopChs, k)
+			break
+		}
+	}
+
+	if !a.allowWatcherReset && len(a.watchers) == 0 {
+		//klog.V(4).Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
+		a.wg.Wait()
+		close(a.aggChan)
+		//klog.V(2).Infof("Aggregated watcher %v closed", a.aggChan)
+	}
+	a.mapLock.Unlock()
 }
 
 func PrintEvent(signal Event) string {
@@ -190,9 +189,12 @@ func (a *AggregatedWatcher) Stop() {
 		a.stopped = true
 		a.allowWatcherReset = false
 		go func() {
-			a.stopChGrp.Send("Stop all watch channels")
+			for i := len(a.watchers) - 1; i >= 0; i-- {
+				a.stopChs[i] <- 1
+			}
 		}()
 	}
+	a.wg.Wait()
 	a.stopLock.Unlock()
 }
 
