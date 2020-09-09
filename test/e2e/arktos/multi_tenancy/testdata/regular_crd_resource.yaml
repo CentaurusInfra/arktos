@@ -1,0 +1,4 @@
+apiVersion: fantasy.wonderland.com/v1
+kind: NeverSharingSweetDream
+metadata:
+  name: wild-wild-west

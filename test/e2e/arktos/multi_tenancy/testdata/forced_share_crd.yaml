@@ -1,0 +1,13 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: mustshareknowledges.learning.wisdom.com
+  labels:
+    arktos.futurewei.com/crd-sharing-policy: forced
+spec:
+  group: learning.wisdom.com
+  version: v1
+  names:
+    kind: MustShareKnowledge
+    plural: mustshareknowledges
+  scope: Namespaced
