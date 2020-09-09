@@ -19,7 +19,7 @@
 # This script performs etcd upgrade based on the following environmental
 # variables:
 # TARGET_STORAGE - API of etcd to be used (supported: 'etcd3')
-# TARGET_VERSION - etcd release to be used (supported: '3.4.4-arktos.1')
+# TARGET_VERSION - etcd release to be used (supported: '3.4.3.0')
 # DATA_DIRECTORY - directory with etcd data
 #
 # The current etcd version and storage format is detected based on the
@@ -41,7 +41,7 @@ set -o nounset
 
 # NOTE: BUNDLED_VERSION has to match release binaries present in the
 # etcd image (to make this script work correctly).
-BUNDLED_VERSIONS="3.4.4-arktos.1"
+BUNDLED_VERSIONS="3.4.3.0"
 
 ETCD_NAME="${ETCD_NAME:-etcd-$(hostname)}"
 if [ -z "${DATA_DIRECTORY:-}" ]; then
