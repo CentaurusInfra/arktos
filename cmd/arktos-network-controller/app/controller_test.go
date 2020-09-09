@@ -261,3 +261,87 @@ func TestManageNonFlatNetwork(t *testing.T) {
 		})
 	}
 }
+
+func TestNetworkPhaseShift(t *testing.T) {
+	tcs := []struct {
+		desc             string
+		input            *v1.Network
+		expectedNetPhase string
+		toUpdatePhase    bool
+	}{
+		{
+			desc:             "pending network got dns service IP",
+			input:            &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "test-ne1",
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "mizar",
+					VPCID: "mizar-12345",
+					Service: v1.NetworkService{
+						IPAM: "External",
+					},
+				},
+				Status: v1.NetworkStatus{
+					Phase:        "Pending",
+					DNSServiceIP: "1.2.3.4",
+				},
+			},
+			toUpdatePhase: true,
+			expectedNetPhase: "Ready",
+		},
+		{
+			desc:             "ready network already",
+			input:            &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "test-ne2",
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "mizar",
+					VPCID: "mizar-12345",
+					Service: v1.NetworkService{
+						IPAM: "External",
+					},
+				},
+				Status: v1.NetworkStatus{
+					Phase:        "Ready",
+					DNSServiceIP: "1.2.3.4",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			netClient := fakearktosv1.NewSimpleClientset()
+			var networkPhaseToUpdate string
+			phaseStatusUpdated := false
+			netClient.PrependReactor("update", "networks", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
+				if action.GetSubresource() != "status" {
+					t.Fatalf("unexpected update")
+				}
+
+				phaseStatusUpdated = true
+				updateAction := action.(coremock.UpdateAction)
+				objToUpdate := updateAction.GetObject()
+				networkToUpdate := objToUpdate.(*v1.Network)
+				networkPhaseToUpdate = string(networkToUpdate.Status.Phase)
+				return true, nil, nil
+			})
+			kubeClient := fake.NewSimpleClientset()
+
+			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if tc.toUpdatePhase != phaseStatusUpdated {
+				t.Fatalf("expected to update phase %t, actually %t", tc.toUpdatePhase, phaseStatusUpdated)
+			}
+
+			if tc.toUpdatePhase && (tc.expectedNetPhase != networkPhaseToUpdate) {
+				t.Fatalf("expected to update network phase to %q, actually did %q", tc.expectedNetPhase, networkPhaseToUpdate)
+			}
+		})
+	}
+}
