@@ -23,6 +23,11 @@ import (
 	controllers "k8s.io/kubernetes/pkg/controller/mizar"
 )
 
+const (
+	mizarStarterControllerWorkerCount = 2
+	mizarPodControllerWorkerCount     = 4
+)
+
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
 	controllerName := "mizar-starter-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
@@ -32,16 +37,16 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 		ctx.ClientBuilder.ClientOrDie(controllerName),
 		ctx,
 		startHandler,
-	).Run(2, ctx.Stop)
+	).Run(mizarStarterControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
 
 func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
-	startMizarPodController(ctx, grpcHost)
+	startMizarPodController(&ctx, grpcHost)
 }
 
-func startMizarPodController(ctx ControllerContext, grpcHost string) (http.Handler, bool, error) {
+func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 	controllerName := "mizar-pod-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
@@ -49,6 +54,6 @@ func startMizarPodController(ctx ControllerContext, grpcHost string) (http.Handl
 		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.ClientBuilder.ClientOrDie(controllerName),
 		grpcHost,
-	).Run(4, ctx.Stop)
+	).Run(mizarPodControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }

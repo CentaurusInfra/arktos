@@ -15,11 +15,10 @@ package mizar
 
 import (
 	"context"
-	fmt "fmt"
+	"fmt"
 	"time"
 
 	"google.golang.org/grpc"
-
 	v1 "k8s.io/api/core/v1"
 )
 

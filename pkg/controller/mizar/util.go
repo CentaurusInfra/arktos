@@ -15,8 +15,16 @@ package mizar
 
 import v1 "k8s.io/api/core/v1"
 
+type EventType int
+
+const (
+	EventType_Create EventType = 0
+	EventType_Update EventType = 1
+	EventType_Delete EventType = 2
+)
+
 type KeyWithEventType struct {
-	EventType string
+	EventType EventType
 	Key       string
 }
 

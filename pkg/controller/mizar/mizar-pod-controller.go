@@ -103,7 +103,7 @@ func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 
 func (c *MizarPodController) createObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
-	c.queue.Add(KeyWithEventType{Key: key, EventType: "create"})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
 }
 
 // When an object is updated.
@@ -121,13 +121,13 @@ func (c *MizarPodController) updateObj(old, cur interface{}) {
 	}
 
 	key, _ := controller.KeyFunc(curObj)
-	c.queue.Add(KeyWithEventType{Key: key, EventType: "update"})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update})
 }
 
 func (c *MizarPodController) deleteObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
 	klog.Infof("%v deleted. key %s.", controllerForMizarPod, key)
-	c.queue.Add(KeyWithEventType{Key: key, EventType: "delete"})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Delete})
 }
 
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
@@ -183,11 +183,11 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarPod, tenant, namespace, obj.Name, obj.HashKey, eventType)
 
 	switch eventType {
-	case "create":
+	case EventType_Create:
 		processGrpcReturnCode(c, GrpcCreatePod(c.grpcHost, obj), keyWithEventType)
-	case "update":
+	case EventType_Update:
 		processGrpcReturnCode(c, GrpcUpdatePod(c.grpcHost, obj), keyWithEventType)
-	case "delete":
+	case EventType_Delete:
 		processGrpcReturnCode(c, GrpcDeletePod(c.grpcHost, obj), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))

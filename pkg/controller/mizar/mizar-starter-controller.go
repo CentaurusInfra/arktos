@@ -157,7 +157,7 @@ func (c *MizarStarterController) handle(key string) error {
 
 	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v", controllerForMizarStarter, tenant, namespace, obj.Name, obj.HashKey)
 
-	if key == "default/mizar-grpc-service" {
+	if namespace == "default" && name == "mizar-grpc-service" {
 		grpcHost := obj.Data["host"]
 		c.startHandler(c.controllerContext, grpcHost)
 	}
