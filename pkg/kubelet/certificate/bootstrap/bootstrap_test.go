@@ -173,7 +173,6 @@ func (c *fakeClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterfa
 
 	aggWatcher.AddWatchInterface(watcher, nil)
 	c.watch = aggWatcher
-	c.watch.Stop()
 	return c.watch
 }
 

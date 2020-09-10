@@ -162,10 +162,7 @@ func (a *AggregatedWatcher) closeWatcher(watcher Interface) {
 	}
 
 	if !a.allowWatcherReset && len(a.watchers) == 0 {
-		//klog.V(4).Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
-		a.wg.Wait()
-		close(a.aggChan)
-		//klog.V(2).Infof("Aggregated watcher %v closed", a.aggChan)
+		a.Stop()
 	}
 	a.mapLock.Unlock()
 }
@@ -186,15 +183,16 @@ func (a *AggregatedWatcher) Stop() {
 	}
 
 	if !a.stopped {
-		a.stopped = true
 		a.allowWatcherReset = false
 		go func() {
 			for i := len(a.watchers) - 1; i >= 0; i-- {
 				a.stopChs[i] <- 1
 			}
 		}()
+		a.wg.Wait()
+		a.stopped = true
+		close(a.aggChan)
 	}
-	a.wg.Wait()
 	a.stopLock.Unlock()
 }
 
