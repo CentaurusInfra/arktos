@@ -1,0 +1,115 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl set Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl set".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+  sa_name: e2etest
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+###########################################################################################################
+# test "kubectl set image"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl set image\" ..."
+    Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq .spec.template.spec.containers[0].image "
+    OutputShouldBe: "\"nginx:1.7.9\"\n"
+
+  - Command: ${kubectl} set image deployment/sample-nginx-deployment nginx=nginx:1.16.1 -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment image updated\n"
+
+  - Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq .spec.template.spec.containers[0].image "
+    OutputShouldBe: "\"nginx:1.16.1\"\n"
+
+###########################################################################################################
+# test "kubectl set env"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl set env\" ..."
+    Command: ${kubectl} set env deployment/sample-nginx-deployment STORAGE_DIR=/local -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment env updated\n"
+
+  - Command: ${kubectl} set env deployment/sample-nginx-deployment --list -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldContain:
+    - "STORAGE_DIR=/local\n"
+
+  - Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq -r '[.spec.template.spec.containers[0].env[0] | .name, .value] | @tsv'"
+    OutputShouldBe: "STORAGE_DIR	/local\n"
+
+###########################################################################################################
+# test "kubectl set resources"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl set resources\" ..."
+    Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq  .spec.template.spec.containers[0].env[0].resources.limits.cpu"
+    OutputShouldBe: "null\n"
+
+  - Command: ${kubectl} set resources deployment/sample-nginx-deployment --limits=cpu=100m -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment resource requirements updated\n"
+
+  - Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq  .spec.template.spec.containers[0].resources.limits.cpu"
+    OutputShouldBe: "\"100m\"\n"
+
+###########################################################################################################
+# test "kubectl set serviceaccount"
+###########################################################################################################
+
+  - BeforeTestMessage: "Verifying \"kubectl set serviceaccount\" ..."
+    Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq .spec.template.spec.serviceAccount"
+    OutputShouldBe: "null\n"
+
+  - Command: ${kubectl} create serviceaccount ${sa_name} -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "serviceaccount/${sa_name} created\n"
+
+  - Command: ${kubectl} set serviceaccount deployment sample-nginx-deployment ${sa_name}  -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment serviceaccount updated\n"
+
+  - Command: "${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+            | jq .spec.template.spec.serviceAccount"
+    OutputShouldBe: "\"${sa_name}\"\n"
+
+###########################################################################################################
+# test "kubectl set subject"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl set subject\" ..."
+    Command: ${kubectl} get clusterrolebinding admin-role-binding --tenant ${test_tenant} -o json | jq '.subjects|length'
+    OutputShouldBe: "1\n"
+
+  - Command: ${kubectl} set subject clusterrolebinding admin-role-binding --serviceaccount=${test_ns}:${sa_name} -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "clusterrolebinding.rbac.authorization.k8s.io/admin-role-binding subjects updated\n"
+
+  - Command: ${kubectl} get clusterrolebinding admin-role-binding --tenant ${test_tenant} -o json | jq '.subjects|length'
+    OutputShouldBe: "2\n"
+
+  - Command: "${kubectl} get clusterrolebinding admin-role-binding --tenant ${test_tenant} -o json 
+            | jq -r '.subjects[1]| [.kind, .name, .namespace] | @tsv'"
+    OutputShouldBe: "ServiceAccount	${sa_name}	${test_ns}\n"
+    
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

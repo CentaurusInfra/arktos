@@ -1,5 +1,5 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pod With Configmap Creation Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# It prevents regression of bug https://github.com/futurewei-cloud/arktos/issues/526
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl logs Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl logs".
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -8,37 +8,40 @@
 ###########################################################################################################
 Variables:
   test_tenant: random_8
+  test_ns: random_8
 
 ###########################################################################################################
 # test setup
 ###########################################################################################################
 Tests:
-  - BeforeTestMessage: Test setup ....
+  - BeforeTestMessage: Starting test setup ...
     Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
     - "\ntenant/${test_tenant} created\n"
 
-###########################################################################################################
-# Testing 
-###########################################################################################################
-  - BeforeTestMessage: Start testing ...
-    Command: ${kubectl} create configmap --tenant ${test_tenant} literal-config-1 --from-literal=city=seattle 
-    OutputShouldBe: "configmap/literal-config-1 created\n"
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
 
-  - Command: ${kubectl} apply -f ${test_data_dir}/config-map-pod.yaml --tenant ${test_tenant} 
-    OutputShouldBe: "pod/configmap-pod-1 created\n"
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
 
-  - BeforeTest: sleep 5
-    Command: ${kubectl} get pod configmap-pod-1 --tenant ${test_tenant}
-    OutputShouldContain: 
-    - Completed
+###########################################################################################################
+# test "kubectl logs"
+###########################################################################################################
+
+# need to wait the pod to be ready
+  - BeforeTestMessage: "Verifying \"kubectl label\" ..."
+    BeforeTest: sleep 5
+    Command: ${kubectl} logs sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} 
     OutputShouldNotContain: 
-    - CreateContainerConfigError
+    - Error
+    - not found
+    RetryInterval: 5
     RetryCount: 3
-    RetryInterval: 10
 
 ###########################################################################################################
 # cleanup
 ###########################################################################################################
-  - BeforeTestMessage: Clean up...
-    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

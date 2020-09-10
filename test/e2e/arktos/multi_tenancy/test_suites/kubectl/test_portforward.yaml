@@ -1,0 +1,57 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl port-forward Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl port-forward".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+###########################################################################################################
+# test "kubectl port-forward"
+###########################################################################################################
+
+# As the command "kubectl port-forward" does not return, we force it to return by prepending "timeout 2". 
+# As a result, we will have a non-zero exit code.
+# However, we can verify by checking the command output.
+
+# need to wait the pod to be ready
+  - BeforeTestMessage: "Verifying \"kubectl port-forward\" ..."
+    BeforeTest: sleep 5
+    Command: timeout 2 ${kubectl} port-forward pod/sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} 3333
+    # Set the timeout=0 so the testrunner tool will not prepend "timeout #" to the command in test
+    TimeOut: 0
+    ShouldFail: true
+    OutputShouldContain:
+    - Forwarding from 127.0.0.1:3333 -> 3333
+    - Forwarding from [::1]:3333 -> 3333
+    OutputShouldNotContain: 
+    - Error
+    - not found
+    
+    
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

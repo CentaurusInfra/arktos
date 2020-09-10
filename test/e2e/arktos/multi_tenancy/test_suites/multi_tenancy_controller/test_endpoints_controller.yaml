@@ -1,10 +1,10 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Endpoints Controller Tests ~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Endpoints Controller Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # This test suite verifies the multi-tenancy endpoints controller. 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-######################################################
+###########################################################################################################
 # test variables
-######################################################
+###########################################################################################################
 Variables:
   test_ns: random_8
   test_tenant: random_8
@@ -13,20 +13,22 @@ Variables:
 # test setup
 ###########################################################################################################
 Tests:
-  - Command: ${kubectl} create tenant ${test_tenant}
+  - BeforeTestMessage: Test setup ....
+    Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
     - "\ntenant/${test_tenant} created\n"
 
   - Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant} 
     OutputShouldBe: "namespace/${test_ns} created\n"
 
-########################################################################################
+###########################################################################################################
 # Testing endpoints controller
-########################################################################################
+###########################################################################################################
 # ------------------------------------------------------------
 # endpoints will be created when a service is exposed
 # ------------------------------------------------------------
-  - Command: ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml --namespace ${test_ns} --tenant ${test_tenant} 
+  - BeforeTestMessage: Verifying endpoints will be created when a service is exposed ...
+    Command: ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml --namespace ${test_ns} --tenant ${test_tenant} 
     OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
 
   - Command: ${kubectl} expose deployment sample-nginx-deployment --port=80 --target-port=8080 --namespace ${test_ns}  --tenant ${test_tenant}
@@ -43,7 +45,8 @@ Tests:
 # ------------------------------------------------------------
 # endpoints will be deleted when the service is deleted
 # ------------------------------------------------------------
-  - Command: ${kubectl} delete service sample-nginx-deployment  --namespace ${test_ns}  --tenant ${test_tenant}
+  - BeforeTestMessage: Verifying endpoints will be deleted when the service is deleted ...
+    Command: ${kubectl} delete service sample-nginx-deployment  --namespace ${test_ns}  --tenant ${test_tenant}
     OutputShouldBe: "service \"sample-nginx-deployment\" deleted\n"
 
   - Command: ${kubectl} get service sample-nginx-deployment  --namespace ${test_ns}  --tenant ${test_tenant}
@@ -54,9 +57,8 @@ Tests:
     ShouldFail: true
     OutputShouldBe: "Error from server (NotFound): endpoints \"sample-nginx-deployment\" not found\n"
 
-######################################################################################################
+###########################################################################################################
 # cleanup
 ######################################################################################################
-  - Command: ${kubectl} delete tenant ${test_tenant}
-    OutputShouldBe: "tenant \"${test_tenant}\" deleted\n"
-    TimeOut: 60
+  - BeforeTestMessage: Clean up...
+    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &

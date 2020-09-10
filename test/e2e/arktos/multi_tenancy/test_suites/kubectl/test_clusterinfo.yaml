@@ -1,5 +1,5 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pod With Configmap Creation Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# It prevents regression of bug https://github.com/futurewei-cloud/arktos/issues/526
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl cluster-info Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl cluster-info".
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -8,37 +8,30 @@
 ###########################################################################################################
 Variables:
   test_tenant: random_8
+  test_ns: random_8
 
 ###########################################################################################################
 # test setup
 ###########################################################################################################
 Tests:
-  - BeforeTestMessage: Test setup ....
+  - BeforeTestMessage: Starting test setup ...
     Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
     - "\ntenant/${test_tenant} created\n"
 
 ###########################################################################################################
-# Testing 
+# test "kubectl cluster-info"
 ###########################################################################################################
-  - BeforeTestMessage: Start testing ...
-    Command: ${kubectl} create configmap --tenant ${test_tenant} literal-config-1 --from-literal=city=seattle 
-    OutputShouldBe: "configmap/literal-config-1 created\n"
-
-  - Command: ${kubectl} apply -f ${test_data_dir}/config-map-pod.yaml --tenant ${test_tenant} 
-    OutputShouldBe: "pod/configmap-pod-1 created\n"
-
-  - BeforeTest: sleep 5
-    Command: ${kubectl} get pod configmap-pod-1 --tenant ${test_tenant}
+# more test content to add after multi-tenancy networking is done
+  - BeforeTestMessage: "Verifying \"kubectl cluster-info\" ..."
+    Command: ${kubectl} cluster-info --tenant ${test_tenant}
     OutputShouldContain: 
-    - Completed
-    OutputShouldNotContain: 
-    - CreateContainerConfigError
-    RetryCount: 3
-    RetryInterval: 10
-
+    - "Kubernetes master"
+    - "is running at "
+    
 ###########################################################################################################
 # cleanup
 ###########################################################################################################
-  - BeforeTestMessage: Clean up...
-    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

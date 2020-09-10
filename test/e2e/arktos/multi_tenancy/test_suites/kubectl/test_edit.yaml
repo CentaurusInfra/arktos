@@ -1,5 +1,5 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pod With Configmap Creation Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# It prevents regression of bug https://github.com/futurewei-cloud/arktos/issues/526
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl edit Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl edit".
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -8,37 +8,41 @@
 ###########################################################################################################
 Variables:
   test_tenant: random_8
+  test_ns: random_8
 
 ###########################################################################################################
 # test setup
 ###########################################################################################################
 Tests:
-  - BeforeTestMessage: Test setup ....
+  - BeforeTestMessage: Starting test setup ...
     Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
     - "\ntenant/${test_tenant} created\n"
 
-###########################################################################################################
-# Testing 
-###########################################################################################################
-  - BeforeTestMessage: Start testing ...
-    Command: ${kubectl} create configmap --tenant ${test_tenant} literal-config-1 --from-literal=city=seattle 
-    OutputShouldBe: "configmap/literal-config-1 created\n"
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
 
-  - Command: ${kubectl} apply -f ${test_data_dir}/config-map-pod.yaml --tenant ${test_tenant} 
-    OutputShouldBe: "pod/configmap-pod-1 created\n"
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+###########################################################################################################
+# test "kubectl edit"
+###########################################################################################################
 
-  - BeforeTest: sleep 5
-    Command: ${kubectl} get pod configmap-pod-1 --tenant ${test_tenant}
+# "kubectl edit" does not return, instead it opens the vi editor after locating the target resource.
+# so this test sends "ESC" and ":q!" to the vi editor
+  - BeforeTestMessage: "Verifying \"kubectl edit\" ..."
+    BeforeTest: sleep 5
+    Command: echo  -e '\033:q!' |  ${kubectl} edit deployment/sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} 
     OutputShouldContain: 
-    - Completed
+    - "Edit cancelled, no changes made.\n"
     OutputShouldNotContain: 
-    - CreateContainerConfigError
-    RetryCount: 3
-    RetryInterval: 10
+    - Error
+    - NotFound
+    - not found
 
 ###########################################################################################################
 # cleanup
 ###########################################################################################################
-  - BeforeTestMessage: Clean up...
-    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &
