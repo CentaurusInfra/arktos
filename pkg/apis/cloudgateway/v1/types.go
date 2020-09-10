@@ -128,18 +128,6 @@ type CloudHub struct {
 	// NodeLimit indicates node limit
 	// default 1000
 	NodeLimit int32 `json:"nodeLimit,omitempty"`
-	// TLSCAFile indicates ca file path
-	// default "/etc/kubeedge/ca/rootCA.crt"
-	TLSCAFile string `json:"tlsCAFile,omitempty"`
-	// TLSCAKeyFile indicates caKey file path
-	// default "/etc/kubeedge/ca/rootCA.key"
-	TLSCAKeyFile string `json:"tlsCAKeyFile,omitempty"`
-	// TLSPrivateKeyFile indicates key file path
-	// default "/etc/kubeedge/certs/server.crt"
-	TLSCertFile string `json:"tlsCertFile,omitempty"`
-	// TLSPrivateKeyFile indicates key file path
-	// default "/etc/kubeedge/certs/server.key"
-	TLSPrivateKeyFile string `json:"tlsPrivateKeyFile,omitempty"`
 	// WriteTimeout indicates write time (second)
 	// default 30
 	WriteTimeout int32 `json:"writeTimeout,omitempty"`
