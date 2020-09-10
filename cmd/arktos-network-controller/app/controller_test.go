@@ -271,10 +271,10 @@ func TestNetworkPhaseShift(t *testing.T) {
 		toUpdatePhase    bool
 	}{
 		{
-			desc:             "pending network got dns service IP",
-			input:            &v1.Network{
+			desc: "pending network got dns service IP",
+			input: &v1.Network{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne1",
+					Name: "test-ne1",
 				},
 				Spec: v1.NetworkSpec{
 					Type:  "mizar",
@@ -288,14 +288,14 @@ func TestNetworkPhaseShift(t *testing.T) {
 					DNSServiceIP: "1.2.3.4",
 				},
 			},
-			toUpdatePhase: true,
+			toUpdatePhase:    true,
 			expectedNetPhase: "Ready",
 		},
 		{
-			desc:             "ready network already",
-			input:            &v1.Network{
+			desc: "ready network already",
+			input: &v1.Network{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne2",
+					Name: "test-ne2",
 				},
 				Spec: v1.NetworkSpec{
 					Type:  "mizar",
@@ -311,10 +311,10 @@ func TestNetworkPhaseShift(t *testing.T) {
 			},
 		},
 		{
-			desc:             "graceful deleted network",
-			input:            &v1.Network{
+			desc: "graceful deleted network",
+			input: &v1.Network{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne3",
+					Name:              "test-ne3",
 					DeletionTimestamp: &now,
 				},
 				Spec: v1.NetworkSpec{
@@ -329,7 +329,7 @@ func TestNetworkPhaseShift(t *testing.T) {
 					DNSServiceIP: "1.2.3.4",
 				},
 			},
-			toUpdatePhase: true,
+			toUpdatePhase:    true,
 			expectedNetPhase: "Terminating",
 		},
 	}

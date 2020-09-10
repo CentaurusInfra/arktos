@@ -222,7 +222,7 @@ func ensureTerminatingPhase(net *v1.Network, netClient arktos.Interface) error {
 // manageFlatNetwork is the core logic to manage a flat typed network object
 func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
 	if net.DeletionTimestamp != nil {
-		return ensureTerminatingPhase(net,netClient)
+		return ensureTerminatingPhase(net, netClient)
 	}
 
 	if len(net.Status.DNSServiceIP) != 0 {
