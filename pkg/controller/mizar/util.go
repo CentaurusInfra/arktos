@@ -30,16 +30,6 @@ type KeyWithEventType struct {
 
 type StartHandler func(interface{}, string)
 
-func ConvertToServiceContract(service *v1.Service) *BuiltinsServiceMessage {
-	return &BuiltinsServiceMessage{
-		Name:          service.Name,
-		ArktosNetwork: "TBD",
-		Namespace:     service.Namespace,
-		Tenant:        service.Tenant,
-		Ip:            "TBD",
-	}
-}
-
 func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceEndpointMessage {
 	return &BuiltinsServiceEndpointMessage{
 		Name:       endpoints.Name,
