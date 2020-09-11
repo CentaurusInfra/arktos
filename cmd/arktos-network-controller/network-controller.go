@@ -72,7 +72,10 @@ func main() {
 	controller := app.New(domainName, netClient, kubeClient, netInformer)
 	netInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.Enqueue(obj)
+			controller.Add(obj)
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			controller.Update(oldObj, newObj)
 		},
 	})
 
