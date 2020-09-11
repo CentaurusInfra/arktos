@@ -537,6 +537,8 @@ ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-s
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
 
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+
 echo ""
 echo "Arktos Setup done."
 echo "*******************************************"
