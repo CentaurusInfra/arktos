@@ -34,12 +34,9 @@ type CloudgatewayV1Interface interface {
 	RESTClient() rest.Interface
 	RESTClients() []rest.Interface
 	EGatewaysGetter
-	EPoliciesGetter
-	EServersGetter
 	EServicesGetter
 	ESitesGetter
 	ServiceExposesGetter
-	VirtualPresencesGetter
 }
 
 // CloudgatewayV1Client is used to interact with features provided by the cloudgateway.arktos.io group.
@@ -55,22 +52,6 @@ func (c *CloudgatewayV1Client) EGateways(namespace string) EGatewayInterface {
 
 func (c *CloudgatewayV1Client) EGatewaysWithMultiTenancy(namespace string, tenant string) EGatewayInterface {
 	return newEGatewaysWithMultiTenancy(c, namespace, tenant)
-}
-
-func (c *CloudgatewayV1Client) EPolicies(namespace string) EPolicyInterface {
-	return newEPoliciesWithMultiTenancy(c, namespace, "system")
-}
-
-func (c *CloudgatewayV1Client) EPoliciesWithMultiTenancy(namespace string, tenant string) EPolicyInterface {
-	return newEPoliciesWithMultiTenancy(c, namespace, tenant)
-}
-
-func (c *CloudgatewayV1Client) EServers(namespace string) EServerInterface {
-	return newEServersWithMultiTenancy(c, namespace, "system")
-}
-
-func (c *CloudgatewayV1Client) EServersWithMultiTenancy(namespace string, tenant string) EServerInterface {
-	return newEServersWithMultiTenancy(c, namespace, tenant)
 }
 
 func (c *CloudgatewayV1Client) EServices(namespace string) EServiceInterface {
@@ -95,14 +76,6 @@ func (c *CloudgatewayV1Client) ServiceExposes(namespace string) ServiceExposeInt
 
 func (c *CloudgatewayV1Client) ServiceExposesWithMultiTenancy(namespace string, tenant string) ServiceExposeInterface {
 	return newServiceExposesWithMultiTenancy(c, namespace, tenant)
-}
-
-func (c *CloudgatewayV1Client) VirtualPresences(namespace string) VirtualPresenceInterface {
-	return newVirtualPresencesWithMultiTenancy(c, namespace, "system")
-}
-
-func (c *CloudgatewayV1Client) VirtualPresencesWithMultiTenancy(namespace string, tenant string) VirtualPresenceInterface {
-	return newVirtualPresencesWithMultiTenancy(c, namespace, tenant)
 }
 
 // NewForConfig creates a new CloudgatewayV1Client for the given config.

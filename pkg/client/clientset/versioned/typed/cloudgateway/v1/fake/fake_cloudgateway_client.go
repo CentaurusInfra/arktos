@@ -36,22 +36,6 @@ func (c *FakeCloudgatewayV1) EGatewaysWithMultiTenancy(namespace string, tenant 
 	return &FakeEGateways{c, namespace, tenant}
 }
 
-func (c *FakeCloudgatewayV1) EPolicies(namespace string) v1.EPolicyInterface {
-	return &FakeEPolicies{c, namespace, "system"}
-}
-
-func (c *FakeCloudgatewayV1) EPoliciesWithMultiTenancy(namespace string, tenant string) v1.EPolicyInterface {
-	return &FakeEPolicies{c, namespace, tenant}
-}
-
-func (c *FakeCloudgatewayV1) EServers(namespace string) v1.EServerInterface {
-	return &FakeEServers{c, namespace, "system"}
-}
-
-func (c *FakeCloudgatewayV1) EServersWithMultiTenancy(namespace string, tenant string) v1.EServerInterface {
-	return &FakeEServers{c, namespace, tenant}
-}
-
 func (c *FakeCloudgatewayV1) EServices(namespace string) v1.EServiceInterface {
 	return &FakeEServices{c, namespace, "system"}
 }
@@ -74,14 +58,6 @@ func (c *FakeCloudgatewayV1) ServiceExposes(namespace string) v1.ServiceExposeIn
 
 func (c *FakeCloudgatewayV1) ServiceExposesWithMultiTenancy(namespace string, tenant string) v1.ServiceExposeInterface {
 	return &FakeServiceExposes{c, namespace, tenant}
-}
-
-func (c *FakeCloudgatewayV1) VirtualPresences(namespace string) v1.VirtualPresenceInterface {
-	return &FakeVirtualPresences{c, namespace, "system"}
-}
-
-func (c *FakeCloudgatewayV1) VirtualPresencesWithMultiTenancy(namespace string, tenant string) v1.VirtualPresenceInterface {
-	return &FakeVirtualPresences{c, namespace, tenant}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
