@@ -21,6 +21,7 @@ const (
 	EventType_Create EventType = 0
 	EventType_Update EventType = 1
 	EventType_Delete EventType = 2
+	EventType_Resume EventType = 3
 )
 
 type KeyWithEventType struct {

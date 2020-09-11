@@ -18,14 +18,21 @@ package app
 
 import (
 	"net/http"
+	"time"
 
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
+	informers "k8s.io/client-go/informers"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	controllers "k8s.io/kubernetes/pkg/controller/mizar"
 )
 
 const (
-	mizarStarterControllerWorkerCount = 2
-	mizarPodControllerWorkerCount     = 4
+	mizarStarterControllerWorkerCount   = 2
+	mizarPodControllerWorkerCount       = 4
+	mizarNodeControllerWorkerCount      = 4
+	mizarEndpointsControllerWorkerCount = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -44,6 +51,8 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
 	startMizarPodController(&ctx, grpcHost)
+	startMizarNodeController(&ctx, grpcHost)
+	startMizarEndpointsController(&ctx, grpcHost)
 }
 
 func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
@@ -57,3 +66,46 @@ func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Hand
 	).Run(mizarPodControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
+
+informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Minute*1)
+	//create controllers
+	nodeInformer := informerFactory.Core().V1().Nodes()
+	nodeController, err := mizarcontroller.NewNodeController(kubeClient, nodeInformer)
+	if err != nil {
+		klog.Fatalf("error building Kubernetes client: %s", err.Error())
+	}
+
+func startMizarNodeController(ctx *ControllerContext, grpcHost string) (err error) {
+	controllerName := "mizar-node-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	nodeKubeClient := clientset.NewForConfigOrDie(nodeKubeconfigs)
+	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 10*time.Minute)
+	nodeInformer := informerFactory.Core().V1().Nodes()
+	nodeController, err := mizarcontroller.NewNodeController(kubeClient, nodeInformer, grpcHost )
+	if err != nil {
+		klog.Fatalf("Error in building mizar node controller: %v", err.Error())
+	}
+	go nodeController.Run(mizarNodeControllerWorkerCount, ctx.Stop)
+	return err
+}
+
+func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) ( err error) {
+	controllerName := "mizar-endpoints-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	epKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	epKubeClient := clientset.NewForConfigOrDie(epKubeconfigs)
+	informerFactory := informers.NewSharedInformerFactory(epKubeClient, 10*time.Minute)
+	epInformer := informerFactory.Core().V1().Endpoints()
+	epController, err := mizarcontroller.NewEndpointsController(kubeClient, epInformer, grpcHost )
+	if err != nil {
+		klog.Fatalf("Error in building mizar node controller: %v", err.Error())
+	}
+	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
+	return err
+}
+
+
+
