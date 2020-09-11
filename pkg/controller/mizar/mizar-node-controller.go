@@ -151,7 +151,7 @@ func (c *MizarNodeController) process(item interface{}) {
 		c.queue.Forget(item)
 		return
 	}
-	//command, key, err := c.parseCommandKey(commandKey)
+
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
 	nodeKind, nodeTenant, nodeName, nodeStatusType, nodeStatus, nodeAddressType, nodeAddress, err := c.parseKey(key)
@@ -161,8 +161,14 @@ func (c *MizarNodeController) process(item interface{}) {
 		return
 	}
 	klog.Infof(c.logInfoMessage("Processing a node: ")+"%s/%s/%s/%s/%s/%s/%s", nodeKind, nodeTenant, nodeName, nodeStatusType, nodeStatus, nodeAddressType, nodeAddress)
-	c.gRPCRequest(eventType, nodeName, nodeAddress)
-	c.queue.Forget(item)
+	result, err := c.gRPCRequest(eventType, nodeName, nodeAddress)
+	if !result {
+		klog.Errorf(c.logMessage("Failed a node processing: ", key))
+		c.queue.Add(item)
+	} else {
+		klog.Infof(c.logMessage(" Processed a node: ", key))
+		c.queue.Forget(item)
+	}
 }
 
 // Generate a node key
@@ -240,11 +246,11 @@ func (c *MizarNodeController) logMessage(msg string, detail interface{}) string 
 }
 
 //gRPC request message, Integration is needed
-func (c *MizarNodeController) gRPCRequest(event EventType, nodeName, nodeAddress string) {
+func (c *MizarNodeController) gRPCRequest(event EventType, nodeName, nodeAddress string) (response bool, err error) {
 	client, ctx, conn, cancel, err := getGrpcClient(c.grpcHost)
 	if err != nil {
 		klog.Errorf(c.logMessage("gRPC connection failed ", err))
-		return
+		return false, err
 	}
 	defer conn.Close()
 	defer cancel()
@@ -258,11 +264,13 @@ func (c *MizarNodeController) gRPCRequest(event EventType, nodeName, nodeAddress
 		returnCode, err := client.CreateNode(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
 			klog.Errorf(c.logMessage("Node creation failed on Mizar side ", err))
+			return false, err
 		}
 	case EventType_Update:
 		returnCode, err := client.UpdateNode(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
 			klog.Errorf(c.logMessage("Node creation failed on Mizar side ", err))
+			return false, err
 		}
 	case EventType_Delete:
 		returnCode, err := client.DeleteNode(ctx, &resource)
@@ -273,9 +281,13 @@ func (c *MizarNodeController) gRPCRequest(event EventType, nodeName, nodeAddress
 		returnCode, err := client.ResumeNode(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
 			klog.Errorf(c.logMessage("Node creation failed on Mizar side ", err))
+			return false, err
 		}
 	default:
 		klog.Errorf(c.logMessage("gRPC event is not correct", event))
+		err = fmt.Errorf(c.logMessage("gRPC event is not correct", event))
+		return false, err
 	}
 	klog.Infof(c.logInfoMessage("gRPC request is sent"))
+	return true, nil
 }
