@@ -103,7 +103,7 @@ func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 
 func (c *MizarPodController) createObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
-	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create, EventTime: time.Now().Format(time.RFC3339Nano)})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create, ResourceVersion: getResourceVersion(obj)})
 }
 
 // When an object is updated.
@@ -121,13 +121,18 @@ func (c *MizarPodController) updateObj(old, cur interface{}) {
 	}
 
 	key, _ := controller.KeyFunc(curObj)
-	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, EventTime: time.Now().Format(time.RFC3339Nano)})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, ResourceVersion: curObj.ResourceVersion})
 }
 
 func (c *MizarPodController) deleteObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
 	klog.Infof("%v deleted. key %s.", controllerForMizarPod, key)
-	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Delete, EventTime: time.Now().Format(time.RFC3339Nano)})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Delete, ResourceVersion: getResourceVersion(obj)})
+}
+
+func getResourceVersion(obj interface{}) string {
+	pod := obj.(*v1.Pod)
+	return pod.ResourceVersion
 }
 
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
