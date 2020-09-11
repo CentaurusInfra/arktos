@@ -63,7 +63,7 @@ type EGateway struct {
 
 	// Virtual presence ip address cidr of this gateway
 	// +optional
-	VirtualPresenceIPcidr string
+	VirtualPresenceIPCidr string
 
 	// ESiteName associated to the gateway
 	ESiteName string
@@ -192,32 +192,6 @@ type CloudHubHTTPS struct {
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// VirtualPresence describe the Virtual Presence of the service
-type VirtualPresence struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// Ip address of the virtual presence
-	VirtualPresenceIp string
-
-	// Associated service name
-	EServiceName string
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// list type
-type VirtualPresenceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []VirtualPresence `json:"items"`
-}
-
-// +genclient
-// +genclient:noStatus
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // EService describe the Service exposed in the site
 type EService struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -234,31 +208,6 @@ type EService struct {
 
 	// Associated site name
 	ESiteName string
-
-	// Ip address of the virtual presence
-	VirtualPresenceIp string
-
-	// Status for service
-	Status ServiceStatus
-}
-
-type ServicePhase string
-
-// These are the valid statuses of Service.
-const (
-	// ServicePending means the Service has been created/added by the system, but not configured.
-	ServicePending ServicePhase = "Pending"
-	// ServiceSyncing means the Service has been created/added by the system, virtual presence ip is allocated
-	// Wait for sync to the associated site.
-	ServiceSyncing ServicePhase = "Syncing"
-	// ServiceSynced means the Service has been configured and has Arktos components running.
-	ServiceSynced ServicePhase = "Synced"
-	// ServiceError means the Service is in error status, no valid vp, synced failed, detail must see the reason
-	ServiceError  ServicePhase = "Error"
-)
-
-type ServiceStatus struct {
-	Phase ServicePhase
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -271,78 +220,13 @@ type EServiceList struct {
 	Items []EService `json:"items"`
 }
 
-type ServerPhase string
-
-// These are the valid statuses of Server.
-const (
-	// ServerPending means the Server has been created/added by the system, but not configured.
-	ServerPending ServerPhase = "Pending"
-	// ServerSyncing means the Server has been created/added by the system, virtual presence ip is allocated
-	// Wait for sync to the associated site.
-	ServerSyncing ServerPhase = "Syncing"
-	// ServerSynced means the Server has been configured and has Arktos components running.
-	ServerSynced ServerPhase = "Synced"
-	// ServerError means the Server is in error status, no valid vp, synced failed, detail must see the reason
-	ServerError  ServerPhase = "Error"
-)
-
-type ServerStatus struct {
-	Phase ServerPhase
-}
-
-// +genclient
-// +genclient:noStatus
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// EServer describe the server in the site
-type EServer struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// Ip of the server
+// EClient struct
+type EClient struct {
+	// Ip of the client
 	Ip string
-
-	// Associated site name
-	ESiteName string
 
 	// Ip address of the virtual presence
 	VirtualPresenceIp string
-
-	// Status for server
-	Status ServerStatus
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// list type
-type EServerList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []EServer `json:"items"`
-}
-
-// +genclient
-// +genclient:noStatus
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// EPolicy describe the access policy of the service
-type EPolicy struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// Allowed server names of this policy
-	AllowedServers []string
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// list type
-type EPolicyList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []EPolicy `json:"items"`
 }
 
 type ServiceExposePhase string
@@ -376,8 +260,14 @@ type ServiceExpose struct {
 	// Dns Name of the service will be exposed
 	DnsName string
 
-	// EPolicies name list of the service will be allowed to access
-	EPolicies []string
+	// Virtual Presence IP of the service
+	VirtualPresenceIp string
+
+	// Site Name of the service exposed to
+	ESiteName string
+
+	// Exposed to the client
+	AllowedClients []EClient
 
 	// ServiceExposeStatus describes the current status of a ServiceExpose
 	// +optional
