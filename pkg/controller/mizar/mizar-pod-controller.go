@@ -175,7 +175,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		return err
 	}
 
-	obj, err := c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+	obj, err := getPodWithHostIP(c, tenant, namespace, name)
 	if err != nil {
 		return err
 	}
@@ -194,6 +194,26 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	}
 
 	return nil
+}
+
+// When pod is just created, the HostIP value hasn't been fill into the object.
+// Wait for at most 2 seconds to get the pod with HostIP value.
+func getPodWithHostIP(c *MizarPodController, tenant, namespace, name string) (*v1.Pod, error) {
+	timeOut := time.Second * 2
+	startTime := time.Now()
+	for {
+		pod, err := c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+		if time.Since(startTime) > timeOut {
+			return pod, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		if pod.Status.HostIP != "" {
+			return pod, nil
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
 func processGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, keyWithEventType KeyWithEventType) {
