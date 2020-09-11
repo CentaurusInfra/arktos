@@ -26,9 +26,9 @@ const (
 )
 
 type KeyWithEventType struct {
-	EventType       EventType
-	Key             string
-	ResourceVersion string
+	EventType EventType
+	Key       string
+	EventTime string
 }
 
 type StartHandler func(interface{}, string)
