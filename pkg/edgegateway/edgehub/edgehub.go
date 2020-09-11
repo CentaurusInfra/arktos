@@ -9,12 +9,14 @@ import (
 	"k8s.io/klog"
 	v1 "k8s.io/kubernetes/pkg/apis/edgegateway/v1"
 	"k8s.io/kubernetes/pkg/edgegateway/common/modules"
+	"k8s.io/kubernetes/pkg/edgegateway/edgehub/certificate"
 	"k8s.io/kubernetes/pkg/edgegateway/edgehub/clients"
 	"k8s.io/kubernetes/pkg/edgegateway/edgehub/config"
 )
 
 // EdgeHub defines edgehub object structure
 type EdgeHub struct {
+	certManager   certificate.CertManager
 	chClient      clients.Adapter
 	reconnectChan chan struct{}
 	keeperLock    sync.RWMutex
@@ -51,6 +53,10 @@ func (eh *EdgeHub) Enable() bool {
 
 // Start sets context and starts the controller
 func (eh *EdgeHub) Start() {
+	// manage certificate of edgeGateway
+	eh.certManager = certificate.NewCertManager(config.Config.EdgeHub)
+	eh.certManager.Start()
+
 	for {
 		select {
 		case <-beehiveContext.Done():

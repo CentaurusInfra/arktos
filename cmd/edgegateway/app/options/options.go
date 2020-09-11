@@ -94,7 +94,6 @@ func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
 					Scheme: "https",
 					Host:   net.JoinHostPort(localIP, "10002"),
 				}).String(),
-				RotateCertificates: true,
 			},
 		},
 	}

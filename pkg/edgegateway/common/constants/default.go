@@ -7,6 +7,9 @@ const (
 	DefaultCertFile   = "/etc/edgegateway/certs/server.crt"
 	DefaultKeyFile    = "/etc/edgegateway/certs/server.key"
 
+	DefaultCAURL   = "/ca.crt"
+	DefaultCertURL = "/edge.crt"
+
 	DefaultHostnameOverride = "default-edge-site"
 	LocalIP                 = "127.0.0.1"
 )
