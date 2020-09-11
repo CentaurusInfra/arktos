@@ -55,18 +55,12 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=cloudgateway.arktos.io, Version=v1
 	case v1.SchemeGroupVersion.WithResource("egateways"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cloudgateway().V1().EGateways().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("epolicies"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Cloudgateway().V1().EPolicies().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("eservers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Cloudgateway().V1().EServers().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("eservices"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cloudgateway().V1().EServices().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("esites"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cloudgateway().V1().ESites().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("serviceexposes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cloudgateway().V1().ServiceExposes().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("virtualpresences"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Cloudgateway().V1().VirtualPresences().Informer()}, nil
 
 	}
 

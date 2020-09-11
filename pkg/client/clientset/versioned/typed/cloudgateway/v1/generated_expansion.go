@@ -20,14 +20,8 @@ package v1
 
 type EGatewayExpansion interface{}
 
-type EPolicyExpansion interface{}
-
-type EServerExpansion interface{}
-
 type EServiceExpansion interface{}
 
 type ESiteExpansion interface{}
 
 type ServiceExposeExpansion interface{}
-
-type VirtualPresenceExpansion interface{}
