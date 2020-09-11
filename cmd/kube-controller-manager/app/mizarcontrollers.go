@@ -20,8 +20,6 @@ import (
 	"net/http"
 	"time"
 
-	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
-	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
 	informers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
@@ -67,14 +65,6 @@ func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Hand
 	return nil, true, nil
 }
 
-informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Minute*1)
-	//create controllers
-	nodeInformer := informerFactory.Core().V1().Nodes()
-	nodeController, err := mizarcontroller.NewNodeController(kubeClient, nodeInformer)
-	if err != nil {
-		klog.Fatalf("error building Kubernetes client: %s", err.Error())
-	}
-
 func startMizarNodeController(ctx *ControllerContext, grpcHost string) (err error) {
 	controllerName := "mizar-node-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
@@ -83,29 +73,10 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string) (err erro
 	nodeKubeClient := clientset.NewForConfigOrDie(nodeKubeconfigs)
 	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 10*time.Minute)
 	nodeInformer := informerFactory.Core().V1().Nodes()
-	nodeController, err := mizarcontroller.NewNodeController(kubeClient, nodeInformer, grpcHost )
+	nodeController, err := controllers.NewMizarNodeController(nodeKubeClient, nodeInformer, grpcHost)
 	if err != nil {
 		klog.Fatalf("Error in building mizar node controller: %v", err.Error())
 	}
 	go nodeController.Run(mizarNodeControllerWorkerCount, ctx.Stop)
 	return err
 }
-
-func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) ( err error) {
-	controllerName := "mizar-endpoints-controller"
-	klog.V(2).Infof("Starting %v", controllerName)
-
-	epKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	epKubeClient := clientset.NewForConfigOrDie(epKubeconfigs)
-	informerFactory := informers.NewSharedInformerFactory(epKubeClient, 10*time.Minute)
-	epInformer := informerFactory.Core().V1().Endpoints()
-	epController, err := mizarcontroller.NewEndpointsController(kubeClient, epInformer, grpcHost )
-	if err != nil {
-		klog.Fatalf("Error in building mizar node controller: %v", err.Error())
-	}
-	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
-	return err
-}
-
-
-
