@@ -182,16 +182,16 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarPod, tenant, namespace, obj.Name, obj.HashKey, eventType)
 
-	switch eventType {
-	case EventType_Create:
-		processGrpcReturnCode(c, GrpcCreatePod(c.grpcHost, obj), keyWithEventType)
-	case EventType_Update:
-		processGrpcReturnCode(c, GrpcUpdatePod(c.grpcHost, obj), keyWithEventType)
-	case EventType_Delete:
-		processGrpcReturnCode(c, GrpcDeletePod(c.grpcHost, obj), keyWithEventType)
-	default:
-		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
-	}
+	//switch eventType {
+	//case EventType_Create:
+	//	processGrpcReturnCode(c, GrpcCreatePod(c.grpcHost, obj), keyWithEventType)
+	//case EventType_Update:
+//		processGrpcReturnCode(c, GrpcUpdatePod(c.grpcHost, obj), keyWithEventType)
+//	case EventType_Delete:
+//		processGrpcReturnCode(c, GrpcDeletePod(c.grpcHost, obj), keyWithEventType)
+//	default:
+//		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
+//	}
 
 	return nil
 }
