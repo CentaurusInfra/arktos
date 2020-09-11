@@ -147,7 +147,7 @@ If these settings are set on a pod attached to a flat network, the settings will
 (**TBD: do we plan to support multiple network providers? How would it impact the type definition?**)
 
 #### Network Status
-The network resource could have status.phase explicitly indicating its current phase in the whole life cycle. Arktos network controller is responsible to update such field, based on appropriate conditions.
+The network resource could have status.phase explicitly indicating its current phase in the whole life cycle. Arktos network controller is responsible to update this field, based on appropriate conditions.
 
 |status.phase|explanation|
 |---:|:---|
