@@ -22,9 +22,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
@@ -161,10 +159,10 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 		return ensureTerminatingPhase(net, netClient)
 	}
 
-	var svc *corev1.Service
+	var dnsSvc *corev1.Service
 	var err error
 	if len(net.Status.DNSServiceIP) == 0 {
-		if svc, err = createOrGetDNSService(net, svcClient); err != nil {
+		if dnsSvc, err = createOrGetDNSService(net, svcClient); err != nil {
 			return fmt.Errorf("failed to get or create per-network DNS service: %v", err)
 		}
 	}
@@ -175,17 +173,21 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 		}
 	}
 
+	if _, err = createOrGetKubernetesService(net, svcClient); err != nil {
+		return fmt.Errorf("failed to get or create per-network Kubernetes service: %v", err)
+	}
+
 	if len(net.Status.DNSServiceIP) == 0 {
 		// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
-		if len(svc.Spec.ClusterIP) == 0 && net.Status.Phase == v1.NetworkPending {
+		if len(dnsSvc.Spec.ClusterIP) == 0 && net.Status.Phase == v1.NetworkPending {
 			// network status is already pending
 			return nil
 		}
 
 		netReady := net.DeepCopy()
-		if len(svc.Spec.ClusterIP) > 0 {
+		if len(dnsSvc.Spec.ClusterIP) > 0 {
 			// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
-			netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
+			netReady.Status.DNSServiceIP = dnsSvc.Spec.ClusterIP
 			netReady.Status.Message = "DNS service IP allocated"
 			netReady.Status.Phase = v1.NetworkReady
 		} else {
@@ -230,7 +232,7 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 		return nil
 	}
 
-	svc, err := createOrGetDNSService(net, svcClient)
+	dnsSvc, err := createOrGetDNSService(net, svcClient)
 	if err != nil {
 		return fmt.Errorf("failed to get or create per-network DNS service in tenant %s for network %s: %v", net.Tenant, net.Name, err)
 	}
@@ -241,70 +243,17 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 		}
 	}
 
+	if _, err := createOrGetKubernetesService(net, svcClient); err != nil {
+		return fmt.Errorf("failed to get or create per-network Kubernetes service: %v", err)
+	}
+
 	// since dns service is in place, flat type network is Ready now
 	netReady := net.DeepCopy()
 	netReady.Status.Phase = v1.NetworkReady
-	netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
+	netReady.Status.DNSServiceIP = dnsSvc.Spec.ClusterIP
 	netReady.Status.Message = "DNS service ready; network ready"
 	_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
 	return err
-}
-
-func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*corev1.Service, error) {
-	nsDNS := metav1.NamespaceSystem
-	nameDNS := dnsServiceDefaultName + "-" + net.Name
-	dns := corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      nameDNS,
-			Tenant:    net.Tenant,
-			Namespace: nsDNS,
-			Labels: map[string]string{
-				v1.NetworkLabel:      net.Name,
-				clusterAddonLabelKey: nameDNS,
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "dns",
-					Protocol:   "UDP",
-					Port:       53,
-					TargetPort: intstr.FromInt(53),
-				},
-				{
-					Name:       "dns-tcp",
-					Protocol:   "TCP",
-					Port:       53,
-					TargetPort: intstr.FromInt(53),
-				},
-				{
-					Name:       "metrics",
-					Protocol:   "TCP",
-					Port:       9153,
-					TargetPort: intstr.FromInt(9153),
-				},
-			},
-			Selector: map[string]string{
-				clusterAddonLabelKey: nameDNS,
-			},
-			Type: corev1.ServiceTypeClusterIP,
-		},
-	}
-	svc, err := svcClient.CoreV1().ServicesWithMultiTenancy(nsDNS, net.Tenant).Create(&dns)
-	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			// todo: consider differing temporary errors from permanent errors
-			// todo: to fail the network provision in case of permanent errors
-			return nil, err
-		} else {
-			svc, err = svcClient.CoreV1().ServicesWithMultiTenancy(nsDNS, net.Tenant).Get(nameDNS, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return svc, nil
 }
 
 // Add puts key of the network object in the work queue
