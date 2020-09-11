@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "controller.go",
         "dns_deployment.go",
+        "wellknown_service.go",
     ],
     importpath = "k8s.io/kubernetes/cmd/arktos-network-controller/app",
     visibility = ["//visibility:public"],
@@ -14,6 +15,7 @@ go_library(
         "//staging/src/k8s.io/api/rbac/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/intstr:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
@@ -46,6 +48,7 @@ go_test(
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/apis/arktosextensions/v1:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/fake:go_default_library",

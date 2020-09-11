@@ -18,112 +18,122 @@ package app
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/kubernetes/fake"
 	coremock "k8s.io/client-go/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	"testing"
+)
+
+const (
+	testNetworkName = "test-network"
+	testTenant      = "test-te"
+	dnsSvcName      = dnsServiceDefaultName + "-" + testNetworkName
+	k8sSvcName      = types.KubernetesServiceName + "-" + testNetworkName
+)
+
+var (
+	testNetwork = v1.Network{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   testNetworkName,
+			Tenant: testTenant,
+		},
+		Spec: v1.NetworkSpec{
+			Type: flatNetworkType,
+		},
+		Status: v1.NetworkStatus{},
+	}
+
+	testDnsService = corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    testTenant,
+			Namespace: metav1.NamespaceSystem,
+			Name:      dnsSvcName,
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: "11.22.33.44",
+			Type:      corev1.ServiceTypeClusterIP,
+		},
+		Status: corev1.ServiceStatus{},
+	}
+
+	testkubernetesService = corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    testTenant,
+			Namespace: metav1.NamespaceDefault,
+			Name:      k8sSvcName,
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: "11.22.33.55",
+			Type:      corev1.ServiceTypeClusterIP,
+		},
+		Status: corev1.ServiceStatus{},
+	}
 )
 
 func TestManageFlatNetwork(t *testing.T) {
 	tcs := []struct {
-		desc           string
-		input          *v1.Network
-		svcResp        *corev1.Service
-		svcRespError   error
-		netRespError   error
-		expectingError bool
+		desc            string
+		input           *v1.Network
+		dnsSvcResp      *corev1.Service
+		dnsSvcRespError error
+		k8sSvcResp      *corev1.Service
+		k8sSvcRespError error
+		netRespError    error
+		expectingError  bool
 	}{
 		{
-			desc: "happy path",
-			input: &v1.Network{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne",
-					Tenant: "test-te",
-				},
-				Spec: v1.NetworkSpec{
-					Type: "flat",
-				},
-				Status: v1.NetworkStatus{},
-			},
-			svcResp: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{},
-				Spec: corev1.ServiceSpec{
-					ClusterIP: "11.22.33.44",
-					Type:      "ClusterIP",
-				},
-				Status: corev1.ServiceStatus{},
-			},
+			desc:           "happy path",
+			input:          &testNetwork,
+			dnsSvcResp:     &testDnsService,
+			k8sSvcResp:     &testkubernetesService,
 			expectingError: false,
 		},
 		{
-			desc: "dns service unable to create",
-			input: &v1.Network{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne",
-					Tenant: "test-te",
-				},
-				Spec: v1.NetworkSpec{
-					Type: "flat",
-				},
-				Status: v1.NetworkStatus{},
-			},
-			svcResp:        &corev1.Service{},
-			svcRespError:   fmt.Errorf("fake test error: failed to create DNS service"),
-			expectingError: true,
+			desc:            "dns service unable to create",
+			input:           &testNetwork,
+			dnsSvcResp:      &corev1.Service{},
+			dnsSvcRespError: fmt.Errorf("fake test error: failed to create DNS service"),
+			k8sSvcResp:      &testkubernetesService,
+			expectingError:  true,
 		},
 		{
-			desc: "dns service already exists",
-			input: &v1.Network{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne",
-					Tenant: "test-te",
-				},
-				Spec: v1.NetworkSpec{
-					Type: "flat",
-				},
-				Status: v1.NetworkStatus{},
-			},
-			svcResp: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Tenant:    "test-te",
-					Namespace: "kube-system",
-					Name:      "kube-dns-test-ne",
-				},
-				Spec: corev1.ServiceSpec{
-					ClusterIP: "11.22.33.44",
-					Type:      "ClusterIP",
-				},
-				Status: corev1.ServiceStatus{},
-			},
-			svcRespError:   errors.NewAlreadyExists(api.Resource("service"), "kube-dns-test-ne"),
-			expectingError: false,
+			desc:            "dns service already exists",
+			input:           &testNetwork,
+			dnsSvcResp:      &testDnsService,
+			k8sSvcResp:      &testkubernetesService,
+			dnsSvcRespError: errors.NewAlreadyExists(api.Resource("service"), dnsSvcName),
+			expectingError:  false,
 		},
 		{
-			desc: "network status update failed",
-			input: &v1.Network{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne",
-					Tenant: "test-te",
-				},
-				Spec: v1.NetworkSpec{
-					Type: "flat",
-				},
-				Status: v1.NetworkStatus{},
-			},
-			svcResp: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{},
-				Spec: corev1.ServiceSpec{
-					ClusterIP: "11.22.33.44",
-					Type:      "ClusterIP",
-				},
-				Status: corev1.ServiceStatus{},
-			},
+			desc:            "kubernetes service unable to create",
+			input:           &testNetwork,
+			k8sSvcResp:      &corev1.Service{},
+			k8sSvcRespError: fmt.Errorf("fake test error: failed to create Kubernetes service"),
+			dnsSvcResp:      &testkubernetesService,
+			expectingError:  true,
+		},
+		{
+			desc:            "kubernetes service already exists",
+			input:           &testNetwork,
+			dnsSvcResp:      &testDnsService,
+			k8sSvcResp:      &testkubernetesService,
+			k8sSvcRespError: errors.NewAlreadyExists(api.Resource("service"), k8sSvcName),
+			expectingError:  false,
+		},
+		{
+			desc:           "network status update failed",
+			input:          &testNetwork,
+			dnsSvcResp:     &testDnsService,
+			k8sSvcResp:     &testkubernetesService,
 			netRespError:   fmt.Errorf("fake test error: failed to  update network status"),
 			expectingError: true,
 		},
@@ -138,9 +148,18 @@ func TestManageFlatNetwork(t *testing.T) {
 				}
 				return true, nil, tc.netRespError
 			})
-			kubeClient := fake.NewSimpleClientset(tc.svcResp)
+			kubeClient := fake.NewSimpleClientset(tc.dnsSvcResp, tc.k8sSvcResp)
 			kubeClient.PrependReactor("create", "services", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
-				return true, tc.svcResp, tc.svcRespError
+				svc := action.(coremock.CreateActionImpl).Object.(*corev1.Service)
+				if strings.HasPrefix(svc.Name, dnsServiceDefaultName) {
+					return true, tc.dnsSvcResp, tc.dnsSvcRespError
+				}
+
+				if strings.HasPrefix(svc.Name, types.KubernetesServiceName) {
+					return true, tc.k8sSvcResp, tc.k8sSvcRespError
+				}
+
+				return true, svc, nil
 			})
 
 			err := manageFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
@@ -164,8 +183,10 @@ func TestManageNonFlatNetwork(t *testing.T) {
 	tcs := []struct {
 		desc             string
 		input            *v1.Network
-		svcResp          *corev1.Service
-		svcRespError     error
+		dnsSvcResp       *corev1.Service
+		dnsSvcRespError  error
+		k8sSvcResp       *corev1.Service
+		k8sSvcRespError  error
 		netRespError     error
 		expectingError   bool
 		expectedNetPhase string
@@ -174,8 +195,8 @@ func TestManageNonFlatNetwork(t *testing.T) {
 			desc: "external IPAM happy path",
 			input: &v1.Network{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne",
-					Tenant: "test-te",
+					Name:   testNetworkName,
+					Tenant: testTenant,
 				},
 				Spec: v1.NetworkSpec{
 					Type:  "mizar",
@@ -186,11 +207,27 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				},
 				Status: v1.NetworkStatus{},
 			},
-			svcResp: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{},
+			dnsSvcResp: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    testTenant,
+					Namespace: metav1.NamespaceSystem,
+					Name:      dnsSvcName,
+				},
 				Spec: corev1.ServiceSpec{
 					ClusterIP: "",
-					Type:      "ClusterIP",
+					Type:      corev1.ServiceTypeClusterIP,
+				},
+				Status: corev1.ServiceStatus{},
+			},
+			k8sSvcResp: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    testTenant,
+					Namespace: metav1.NamespaceDefault,
+					Name:      k8sSvcName,
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "",
+					Type:      corev1.ServiceTypeClusterIP,
 				},
 				Status: corev1.ServiceStatus{},
 			},
@@ -201,8 +238,8 @@ func TestManageNonFlatNetwork(t *testing.T) {
 			desc: "internal IPAM happy path",
 			input: &v1.Network{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   "test-ne",
-					Tenant: "test-te",
+					Name:   testNetworkName,
+					Tenant: testTenant,
 				},
 				Spec: v1.NetworkSpec{
 					Type:  "foo",
@@ -213,11 +250,27 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				},
 				Status: v1.NetworkStatus{},
 			},
-			svcResp: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{},
+			dnsSvcResp: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    testTenant,
+					Namespace: metav1.NamespaceSystem,
+					Name:      dnsSvcName,
+				},
 				Spec: corev1.ServiceSpec{
 					ClusterIP: "6.7.8.9",
-					Type:      "ClusterIP",
+					Type:      corev1.ServiceTypeClusterIP,
+				},
+				Status: corev1.ServiceStatus{},
+			},
+			k8sSvcResp: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Tenant:    testTenant,
+					Namespace: metav1.NamespaceDefault,
+					Name:      k8sSvcName,
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "6.7.8.10",
+					Type:      corev1.ServiceTypeClusterIP,
 				},
 				Status: corev1.ServiceStatus{},
 			},
@@ -241,9 +294,19 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				networkPhaseToUpdate = string(networkToUpdate.Status.Phase)
 				return true, nil, tc.netRespError
 			})
-			kubeClient := fake.NewSimpleClientset(tc.svcResp)
+
+			kubeClient := fake.NewSimpleClientset(tc.dnsSvcResp, tc.k8sSvcResp)
 			kubeClient.PrependReactor("create", "services", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
-				return true, tc.svcResp, tc.svcRespError
+				svc := action.(coremock.CreateActionImpl).Object.(*corev1.Service)
+				if strings.HasPrefix(svc.Name, dnsServiceDefaultName) {
+					return true, tc.dnsSvcResp, tc.dnsSvcRespError
+				}
+
+				if strings.HasPrefix(svc.Name, types.KubernetesServiceName) {
+					return true, tc.k8sSvcResp, tc.k8sSvcRespError
+				}
+
+				return true, svc, nil
 			})
 
 			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
