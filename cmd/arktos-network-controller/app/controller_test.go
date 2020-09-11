@@ -14,15 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// The external network controller is responsible for running controller loops for the flat network providers.
-// Most of canonical CNI plugins can be used on so-called flat networks.
-
 package app
 
 import (
 	"fmt"
-	"testing"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	coremock "k8s.io/client-go/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	"testing"
 )
 
 func TestManageFlatNetwork(t *testing.T) {
@@ -166,12 +162,13 @@ func TestManageFlatNetwork(t *testing.T) {
 
 func TestManageNonFlatNetwork(t *testing.T) {
 	tcs := []struct {
-		desc           string
-		input          *v1.Network
-		svcResp        *corev1.Service
-		svcRespError   error
-		netRespError   error
-		expectingError bool
+		desc             string
+		input            *v1.Network
+		svcResp          *corev1.Service
+		svcRespError     error
+		netRespError     error
+		expectingError   bool
+		expectedNetPhase string
 	}{
 		{
 			desc: "external IPAM happy path",
@@ -197,7 +194,8 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				},
 				Status: corev1.ServiceStatus{},
 			},
-			expectingError: false,
+			expectingError:   false,
+			expectedNetPhase: "Pending",
 		},
 		{
 			desc: "internal IPAM happy path",
@@ -223,17 +221,24 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				},
 				Status: corev1.ServiceStatus{},
 			},
-			expectingError: false,
+			expectingError:   false,
+			expectedNetPhase: "Ready",
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.desc, func(t *testing.T) {
 			netClient := fakearktosv1.NewSimpleClientset(tc.input)
+			var networkPhaseToUpdate string
 			netClient.PrependReactor("update", "networks", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
 				if action.GetSubresource() != "status" {
 					t.Fatalf("unexpected update")
 				}
+
+				updateAction := action.(coremock.UpdateAction)
+				objToUpdate := updateAction.GetObject()
+				networkToUpdate := objToUpdate.(*v1.Network)
+				networkPhaseToUpdate = string(networkToUpdate.Status.Phase)
 				return true, nil, tc.netRespError
 			})
 			kubeClient := fake.NewSimpleClientset(tc.svcResp)
@@ -245,6 +250,120 @@ func TestManageNonFlatNetwork(t *testing.T) {
 
 			if !tc.expectingError && err != nil {
 				t.Errorf("got unexpected error: %v", err)
+			}
+
+			if err == nil {
+				if tc.expectedNetPhase != networkPhaseToUpdate {
+					t.Fatalf("expected to update network phase to %q, actually did %q", tc.expectedNetPhase, networkPhaseToUpdate)
+				}
+			}
+		})
+	}
+}
+
+func TestNetworkPhaseShift(t *testing.T) {
+	now := metav1.Now()
+
+	tcs := []struct {
+		desc             string
+		input            *v1.Network
+		expectedNetPhase string
+		toUpdatePhase    bool
+	}{
+		{
+			desc: "pending network got dns service IP",
+			input: &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-ne1",
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "mizar",
+					VPCID: "mizar-12345",
+					Service: v1.NetworkService{
+						IPAM: "External",
+					},
+				},
+				Status: v1.NetworkStatus{
+					Phase:        "Pending",
+					DNSServiceIP: "1.2.3.4",
+				},
+			},
+			toUpdatePhase:    true,
+			expectedNetPhase: "Ready",
+		},
+		{
+			desc: "ready network already",
+			input: &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-ne2",
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "mizar",
+					VPCID: "mizar-12345",
+					Service: v1.NetworkService{
+						IPAM: "External",
+					},
+				},
+				Status: v1.NetworkStatus{
+					Phase:        "Ready",
+					DNSServiceIP: "1.2.3.4",
+				},
+			},
+		},
+		{
+			desc: "graceful deleted network",
+			input: &v1.Network{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "test-ne3",
+					DeletionTimestamp: &now,
+				},
+				Spec: v1.NetworkSpec{
+					Type:  "mizar",
+					VPCID: "mizar-12345",
+					Service: v1.NetworkService{
+						IPAM: "External",
+					},
+				},
+				Status: v1.NetworkStatus{
+					Phase:        "Ready",
+					DNSServiceIP: "1.2.3.4",
+				},
+			},
+			toUpdatePhase:    true,
+			expectedNetPhase: "Terminating",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			netClient := fakearktosv1.NewSimpleClientset()
+			var networkPhaseToUpdate string
+			phaseStatusUpdated := false
+			netClient.PrependReactor("update", "networks", func(action coremock.Action) (handled bool, ret runtime.Object, err error) {
+				if action.GetSubresource() != "status" {
+					t.Fatalf("unexpected update")
+				}
+
+				phaseStatusUpdated = true
+				updateAction := action.(coremock.UpdateAction)
+				objToUpdate := updateAction.GetObject()
+				networkToUpdate := objToUpdate.(*v1.Network)
+				networkPhaseToUpdate = string(networkToUpdate.Status.Phase)
+				return true, nil, nil
+			})
+			kubeClient := fake.NewSimpleClientset()
+
+			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if tc.toUpdatePhase != phaseStatusUpdated {
+				t.Fatalf("expected to update phase %t, actually %t", tc.toUpdatePhase, phaseStatusUpdated)
+			}
+
+			if tc.toUpdatePhase && (tc.expectedNetPhase != networkPhaseToUpdate) {
+				t.Fatalf("expected to update network phase to %q, actually did %q", tc.expectedNetPhase, networkPhaseToUpdate)
 			}
 		})
 	}

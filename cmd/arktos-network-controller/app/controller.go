@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// The external network controller is responsible for running controller loops for the flat network providers.
-// Most of canonical CNI plugins can be used on so-called flat networks.
-
 package app
 
 import (
@@ -160,6 +157,10 @@ func (c *Controller) process(item interface{}) {
 
 // manageNonFlatNetwork is the core logic to manage a non-flat typed network object
 func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
+	if net.DeletionTimestamp != nil {
+		return ensureTerminatingPhase(net, netClient)
+	}
+
 	var svc *corev1.Service
 	var err error
 	if len(net.Status.DNSServiceIP) == 0 {
@@ -174,20 +175,56 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 		}
 	}
 
-	// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
-	if len(net.Status.DNSServiceIP) == 0 && len(svc.Spec.ClusterIP) > 0 {
-		// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
+	if len(net.Status.DNSServiceIP) == 0 {
+		// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
+		if len(svc.Spec.ClusterIP) == 0 && net.Status.Phase == v1.NetworkPending {
+			// network status is already pending
+			return nil
+		}
+
 		netReady := net.DeepCopy()
-		netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
-		netReady.Status.Message = "DNS service IP allocated"
+		if len(svc.Spec.ClusterIP) > 0 {
+			// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
+			netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
+			netReady.Status.Message = "DNS service IP allocated"
+			netReady.Status.Phase = v1.NetworkReady
+		} else {
+			netReady.Status.Phase = v1.NetworkPending
+			netReady.Status.Message = "waiting for DNS service IP assigned"
+		}
 		_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+	} else {
+		// got dns service IP assigned; make request to ready phase if applicable
+		if len(net.Status.Phase) == 0 || net.Status.Phase == v1.NetworkPending {
+			netReady := net.DeepCopy()
+			netReady.Status.Phase = v1.NetworkReady
+			netReady.Status.Message = "DNS service IP allocated"
+			_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+		}
 	}
 
 	return err
 }
 
+func ensureTerminatingPhase(net *v1.Network, netClient arktos.Interface) error {
+	// todo: manage resource cleanup properly
+	if net.Status.Phase == v1.NetworkTerminating {
+		return nil
+	}
+
+	netReady := net.DeepCopy()
+	netReady.Status.Phase = v1.NetworkTerminating
+	netReady.Status.Message = "waiting for resource cleanup"
+	_, err := netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+	return err
+}
+
 // manageFlatNetwork is the core logic to manage a flat typed network object
 func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
+	if net.DeletionTimestamp != nil {
+		return ensureTerminatingPhase(net, netClient)
+	}
+
 	if len(net.Status.DNSServiceIP) != 0 {
 		klog.V(5).Infof("network %s/%s/%s already have DNS service IP %s; skipped", net.Tenant, net.Namespace, net.Name, net.Status.DNSServiceIP)
 		return nil
@@ -270,14 +307,23 @@ func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*co
 	return svc, nil
 }
 
-// Enqueue puts key of the network object in the work queue
-func (c *Controller) Enqueue(obj interface{}) {
+// Add puts key of the network object in the work queue
+func (c *Controller) Add(obj interface{}) {
 	net, ok := obj.(*v1.Network)
 	if !ok {
 		klog.Fatalf("got non-network object %v", obj)
 	}
 
 	c.queue.Add(genKey(net))
+}
+
+func (c *Controller) Update(_, newObj interface{}) {
+	newNetwork, ok := newObj.(*v1.Network)
+	if !ok {
+		klog.Fatalf("got non-network new object %v", newObj)
+	}
+
+	c.queue.Add(genKey(newNetwork))
 }
 
 func genKey(net *v1.Network) string {
