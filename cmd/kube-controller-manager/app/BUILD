@@ -12,6 +12,7 @@ go_library(
         "controllermanager.go",
         "core.go",
         "import_known_versions.go",
+        "mizarcontrollers.go",
         "plugins.go",
         "policy.go",
         "rbac.go",
