@@ -135,11 +135,11 @@ func (c *MizarEndpointsController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 	klog.Infof(c.logInfoMessage("Starting endpoint controller"))
-	klog.Infoln(c.logInfoMessage("Waiting cache to be synced"))
+	klog.Infof(c.logInfoMessage("Waiting cache to be synced"))
 	if ok := cache.WaitForCacheSync(stopCh, c.informerSynced); !ok {
-		klog.Fatalf(c.logInfoMessage("Timeout expired during waiting for caches to sync."))
+		klog.Infof(c.logInfoMessage("Timeout expired during waiting for caches to sync."))
 	}
-	klog.Infoln(c.logInfoMessage("Starting workers..."))
+	klog.Infof(c.logInfoMessage("Starting workers..."))
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}

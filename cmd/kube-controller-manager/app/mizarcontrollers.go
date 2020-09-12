@@ -62,7 +62,7 @@ func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err
 	serviceInformer := informerFactory.Core().V1().Services()
 	epController, err := controllers.NewMizarEndpointsController(epKubeClient, epInformer, serviceInformer, grpcHost)
 	if err != nil {
-		klog.Fatalf("Error in building mizar node controller: %v", err.Error())
+		klog.Infof("Error in building mizar node controller: %v", err.Error())
 	}
 	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
 	return err
