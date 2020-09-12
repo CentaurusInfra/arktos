@@ -40,7 +40,7 @@ message BuiltinsPodMessage {
   string host_ip = 2;
   string namespace = 3;
   string tenant = 4;
-  string vpc = 5;
+  string arktos_network = 5;
   string phase = 6;
   repeated InterfacesMessage interfaces = 7;
 }
