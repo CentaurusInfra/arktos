@@ -22,7 +22,6 @@ package mizar
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -37,12 +36,20 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/controller"
 )
 
 const (
 	NodeKind          string = "Node"
-	NodeReady         string = "True"
+	NodeStatusType    string = "NodeReady"
+	NodeReadyTrue     string = "True"
+	NodeReadyFalse    string = "False"
+	NodeReadyUnknown  string = "Unknown"
+	NodeInternalIP    string = "InternalIP"
 	NodeStatusMessage string = "HANDLED"
+	NodeNoChange      int    = 1
+	NodeUpdate        int    = 2
+	NodeResume        int    = 3
 )
 
 // Node Controller Struct
@@ -73,36 +80,63 @@ func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer co
 		queue:          queue,
 		grpcHost:       grpcHost,
 	}
-	klog.Infof(c.logInfoMessage("Sending events to api server"))
+	klog.Infof("Sending events to api server")
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(object interface{}) {
-			resource := object.(*v1.Node)
-			key := c.genKey(resource)
+			key, err := controller.KeyFunc(object)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+				return
+			}
 			c.Enqueue(key, EventType_Create)
-			klog.Infof(c.logMessage("Create Node: ", key))
+			klog.Infof("Create Node -%v ", key)
 		},
 		UpdateFunc: func(oldObject, newObject interface{}) {
+			key1, err1 := controller.KeyFunc(oldObject)
+			key2, err2 := controller.KeyFunc(newObject)
+			if key1 == "" || key2 == "" || err1 != nil || err2 != nil {
+				klog.Errorf("Unexpected string in queue; discarding - %v", key2)
+				return
+			}
 			oldResource := oldObject.(*v1.Node)
 			newResource := newObject.(*v1.Node)
-			oldKey := c.genKey(oldResource)
-			newKey := c.genKey(newResource)
-			if oldKey == newKey {
-				klog.Infof(c.logMessage("No actual change in nodes, discarding: ", newKey))
-			} else {
-				eventType, err := c.determineEventType(oldKey, newKey)
-				if err != nil {
-					klog.Errorf(c.logMessage("Unexpected string in queue; discarding: ", newKey))
-				} else {
-					c.Enqueue(newKey, eventType)
+			eventType, err := c.determineEventType(oldResource, newResource)
+			if err != nil {
+				klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
+				return
+			}
+			switch eventType {
+			case NodeNoChange:
+				{
+					klog.Infof("No actual change in nodes, discarding -%v ", newResource.Name)
+					break
 				}
-				klog.Infof(c.logMessage("Update Node: ", newKey))
+			case NodeUpdate:
+				{
+					c.Enqueue(key2, EventType_Update)
+					klog.Infof("Update Node - %v", key2)
+					break
+				}
+			case NodeResume:
+				{
+					c.Enqueue(key2, EventType_Resume)
+					klog.Infof("Resume Node - %v", key2)
+				}
+			default:
+				{
+					klog.Errorf("Unexpected node event; discarding - %v", key2)
+					return
+				}
 			}
 		},
 		DeleteFunc: func(object interface{}) {
-			resource := object.(*v1.Node)
-			key := c.genKey(resource)
+			key, err := controller.KeyFunc(object)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+				return
+			}
 			c.Enqueue(key, EventType_Delete)
-			klog.Infof(c.logMessage("Delete Node: ", key))
+			klog.Infof("Delete Node - %v", key)
 		},
 	})
 	return c, nil
@@ -112,17 +146,17 @@ func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer co
 func (c *MizarNodeController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
-	klog.Infof(c.logInfoMessage("Starting node controller"))
-	klog.Infof(c.logInfoMessage("Waiting cache to be synced"))
+	klog.Infof("Starting node controller")
+	klog.Infof("Waiting cache to be synced")
 	if ok := cache.WaitForCacheSync(stopCh, c.informerSynced); !ok {
-		klog.Fatalf(c.logInfoMessage("Timeout expired during waiting for caches to sync."))
+		klog.Infof("Timeout expired during waiting for caches to sync.")
 	}
-	klog.Infof(c.logInfoMessage("Starting workers..."))
+	klog.Infof("Starting workers...")
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 	<-stopCh
-	klog.Infof(c.logInfoMessage("Shutting down node controller"))
+	klog.Infof("Shutting down node controller")
 }
 
 // Enqueue puts key of the node object in the work queue
@@ -147,109 +181,97 @@ func (c *MizarNodeController) process(item interface{}) {
 	defer c.queue.Done(item)
 	keyWithEventType, ok := item.(KeyWithEventType)
 	if !ok {
-		klog.Errorf(c.logMessage("Unexpected item in queue: ", keyWithEventType))
+		klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
 		c.queue.Forget(item)
 		return
 	}
-
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
-	nodeKind, nodeTenant, nodeName, nodeStatusType, nodeStatus, nodeAddressType, nodeAddress, err := c.parseKey(key)
-	if err != nil || nodeKind != NodeKind {
-		klog.Errorf(c.logMessage("Unexpected string in queue; discarding: ", key))
-		c.queue.Forget(item)
+	_, _, nodeName, err := cache.SplitMetaTenantNamespaceKey(key)
+	node, err := c.lister.Get(nodeName)
+	if err != nil || node == nil {
+		klog.Errorf("Failed to retrieve node in local cache by node name - %s", nodeName)
+		c.queue.AddRateLimited(item)
 		return
 	}
-	klog.Infof(c.logInfoMessage("Processing a node: ")+"%s/%s/%s/%s/%s/%s/%s", nodeKind, nodeTenant, nodeName, nodeStatusType, nodeStatus, nodeAddressType, nodeAddress)
+	_, _, _, nodeAddress, err := c.getNodeInfo(node)
+	if err != nil {
+		klog.Errorf("Failed to retrieve node address in local cache by node name %v", nodeName)
+		c.queue.AddRateLimited(item)
+		return
+	}
 	result, err := c.gRPCRequest(eventType, nodeName, nodeAddress)
 	if !result {
-		klog.Errorf(c.logMessage("Failed a node processing: ", key))
-		c.queue.Add(item)
+		klog.Errorf("Failed a node processing - %v", key)
+		c.queue.AddRateLimited(item)
 	} else {
-		klog.Infof(c.logMessage(" Processed a node: ", key))
+		klog.Infof(" Processed a node - %v", key)
 		c.queue.Forget(item)
 	}
 }
 
-// Generate a node key
-func (c *MizarNodeController) genKey(resource *v1.Node) string {
-	nodeKind := resource.GetObjectKind().GroupVersionKind().Kind
-	if nodeKind == "" {
-		nodeKind = NodeKind
+// Retrieve node info
+func (c *MizarNodeController) getNodeInfo(node *v1.Node) (nodeTenant, nodeName, nodeStatus, nodeAddress string, err error) {
+	if node == nil {
+		err = fmt.Errorf("node is null")
+		return
 	}
-	nodeTenant := resource.GetTenant()
-	nodeName := resource.GetName()
+	nodeTenant = node.GetTenant()
+	nodeName = node.GetName()
 	if nodeName == "" {
-		klog.Fatalln(c.logMessage("Node name should not be null", nodeName))
-	}
-	var nodeStatusType, nodeStatus string
-	conditions := resource.Status.Conditions
-	if len(conditions) < 6 {
-		klog.Fatalln(c.logInfoMessage("Node status information is needed"))
-	} else {
-		nodeStatusType = fmt.Sprintf("%s", resource.Status.Conditions[5].Type)
-		nodeStatus = fmt.Sprintf("%s", resource.Status.Conditions[5].Status)
-	}
-	var nodeAddressType, nodeAddress string
-	addresses := resource.Status.Addresses
-	if len(addresses) < 1 {
-		klog.Fatalln(c.logInfoMessage("Node ip address is needed"))
-	} else {
-		nodeAddressType = fmt.Sprintf("%s", resource.Status.Addresses[0].Type)
-		nodeAddress = fmt.Sprintf("%s", resource.Status.Addresses[0].Address)
-	}
-	key := fmt.Sprintf("%s/%s/%s/%s/%s/%s/%s", nodeKind, nodeTenant, nodeName, nodeStatusType, nodeStatus, nodeAddressType, nodeAddress)
-	return key
-}
-
-// Parse a key and get node information
-func (c *MizarNodeController) parseKey(key string) (nodeKind, nodeTenant, nodeName, nodeStatusType, nodeStatus, nodeAddressType, nodeAddress string, err error) {
-	segs := strings.Split(key, "/")
-	nodeKind = segs[0]
-	nodeTenant = segs[1]
-	nodeName = segs[2]
-	nodeStatusType = segs[3]
-	nodeStatus = segs[4]
-	nodeAddressType = segs[5]
-	nodeAddress = segs[6]
-	if len(segs) < 7 || nodeName == "" {
-		err = fmt.Errorf("Invalid key format - key=%s", key)
+		err = fmt.Errorf("Node name is not valid - %s", nodeName)
 		return
+	}
+	conditions := node.Status.Conditions
+	if conditions == nil {
+		err = fmt.Errorf("Node status information is not available - %s", nodeName)
+		return
+	}
+	var nodeStatusType string
+	for i := 0; i < len(conditions); i++ {
+		nodeStatusType = fmt.Sprintf("%v", conditions[i].Type)
+		nodeStatus = fmt.Sprintf("%v", conditions[i].Status)
+		if nodeStatusType == NodeStatusType {
+			break
+		}
+	}
+	addresses := node.Status.Addresses
+	if addresses == nil {
+		err = fmt.Errorf("Node address information is not available - %v", nodeName)
+		return
+	}
+	var nodeAddressType string
+	for i := 0; i < len(addresses); i++ {
+		nodeAddressType = fmt.Sprintf("%s", addresses[i].Type)
+		nodeAddress = fmt.Sprintf("%s", addresses[i].Address)
+		if nodeAddressType == NodeInternalIP {
+			break
+		}
 	}
 	return
 }
 
-func (c *MizarNodeController) determineEventType(key1, key2 string) (eventType EventType, err error) {
-	segs1 := strings.Split(key1, "/")
-	segs2 := strings.Split(key2, "/")
-	if len(segs1) < 7 || len(segs2) < 7 {
-		err = fmt.Errorf("Invalid key format - key1=%s, key2=%s", key1, key2)
+func (c *MizarNodeController) determineEventType(node1, node2 *v1.Node) (event int, err error) {
+	nodeTenant1, nodeName1, nodeStatus1, nodeAddress1, err1 := c.getNodeInfo(node1)
+	nodeTenant2, nodeName2, nodeStatus2, nodeAddress2, err2 := c.getNodeInfo(node1)
+	if node1 == nil || node2 == nil || err1 != nil || err2 != nil {
+		err = fmt.Errorf("It cannot determine null nodes event type - node1: %v, node2:%v", node1, node2)
 		return
 	}
-	status1 := segs1[4]
-	status2 := segs2[4]
-	eventType = EventType_Update
-	if status1 != status2 && status2 == NodeReady {
-		eventType = EventType_Resume
+	event = NodeUpdate
+	if nodeTenant1 == nodeTenant2 && nodeName1 == nodeName2 && nodeAddress1 == nodeAddress2 && nodeStatus1 == nodeStatus2 {
+		event = NodeNoChange
+	} else if nodeStatus1 != nodeStatus2 && nodeStatus2 == NodeReadyTrue {
+		event = NodeResume
 	}
 	return
-}
-
-func (c *MizarNodeController) logInfoMessage(info string) string {
-	message := fmt.Sprintf("[NodeController][%s]", info)
-	return message
-}
-
-func (c *MizarNodeController) logMessage(msg string, detail interface{}) string {
-	message := fmt.Sprintf("[NodeController][%s][Node Info]:%v", msg, detail)
-	return message
 }
 
 //gRPC request message, Integration is needed
 func (c *MizarNodeController) gRPCRequest(event EventType, nodeName, nodeAddress string) (response bool, err error) {
 	client, ctx, conn, cancel, err := getGrpcClient(c.grpcHost)
 	if err != nil {
-		klog.Errorf(c.logMessage("gRPC connection failed ", err))
+		klog.Errorf("gRPC connection failed - %v", err)
 		return false, err
 	}
 	defer conn.Close()
@@ -263,31 +285,31 @@ func (c *MizarNodeController) gRPCRequest(event EventType, nodeName, nodeAddress
 	case EventType_Create:
 		returnCode, err := client.CreateNode(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf(c.logMessage("Node creation failed on Mizar side ", err))
+			klog.Errorf("Node creation failed on Mizar side - %v", err)
 			return false, err
 		}
 	case EventType_Update:
 		returnCode, err := client.UpdateNode(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf(c.logMessage("Node creation failed on Mizar side ", err))
+			klog.Errorf("Node creation failed on Mizar side - %v", err)
 			return false, err
 		}
 	case EventType_Delete:
 		returnCode, err := client.DeleteNode(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf(c.logMessage("Node creation failed on Mizar side ", err))
+			klog.Errorf("Node creation failed on Mizar side - %v", err)
 		}
 	case EventType_Resume:
 		returnCode, err := client.ResumeNode(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf(c.logMessage("Node creation failed on Mizar side ", err))
+			klog.Errorf("Node creation failed on Mizar side - %v", err)
 			return false, err
 		}
 	default:
-		klog.Errorf(c.logMessage("gRPC event is not correct", event))
-		err = fmt.Errorf(c.logMessage("gRPC event is not correct", event))
+		klog.Errorf("gRPC event is not correct - %v", event)
+		err = fmt.Errorf("gRPC event is not correct - %v", event)
 		return false, err
 	}
-	klog.Infof(c.logInfoMessage("gRPC request is sent"))
+	klog.Infof("gRPC request is sent")
 	return true, nil
 }
