@@ -55,7 +55,6 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		HostIp:    pod.Status.HostIP,
 		Namespace: pod.Namespace,
 		Tenant:    pod.Tenant,
-		Vpc:       pod.Spec.VPC,
 		Phase:     string(pod.Status.Phase),
 	}
 }

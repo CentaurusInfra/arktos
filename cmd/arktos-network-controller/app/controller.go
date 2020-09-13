@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// The external network controller is responsible for running controller loops for the flat network providers.
-// Most of canonical CNI plugins can be used on so-called flat networks.
-
 package app
 
 import (
@@ -25,9 +22,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
@@ -160,10 +155,14 @@ func (c *Controller) process(item interface{}) {
 
 // manageNonFlatNetwork is the core logic to manage a non-flat typed network object
 func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
-	var svc *corev1.Service
+	if net.DeletionTimestamp != nil {
+		return ensureTerminatingPhase(net, netClient)
+	}
+
+	var dnsSvc *corev1.Service
 	var err error
 	if len(net.Status.DNSServiceIP) == 0 {
-		if svc, err = createOrGetDNSService(net, svcClient); err != nil {
+		if dnsSvc, err = createOrGetDNSService(net, svcClient); err != nil {
 			return fmt.Errorf("failed to get or create per-network DNS service: %v", err)
 		}
 	}
@@ -174,26 +173,66 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 		}
 	}
 
-	// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
-	if len(net.Status.DNSServiceIP) == 0 && len(svc.Spec.ClusterIP) > 0 {
-		// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
+	if _, err = createOrGetKubernetesService(net, svcClient); err != nil {
+		return fmt.Errorf("failed to get or create per-network Kubernetes service: %v", err)
+	}
+
+	if len(net.Status.DNSServiceIP) == 0 {
+		// dns service IP might be empty if it is of external IPAM and the external provider has not assign one yet
+		if len(dnsSvc.Spec.ClusterIP) == 0 && net.Status.Phase == v1.NetworkPending {
+			// network status is already pending
+			return nil
+		}
+
 		netReady := net.DeepCopy()
-		netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
-		netReady.Status.Message = "DNS service IP allocated"
+		if len(dnsSvc.Spec.ClusterIP) > 0 {
+			// since dns service gets IP addr allocated, we need to update network object with the DNS service IP
+			netReady.Status.DNSServiceIP = dnsSvc.Spec.ClusterIP
+			netReady.Status.Message = "DNS service IP allocated"
+			netReady.Status.Phase = v1.NetworkReady
+		} else {
+			netReady.Status.Phase = v1.NetworkPending
+			netReady.Status.Message = "waiting for DNS service IP assigned"
+		}
 		_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+	} else {
+		// got dns service IP assigned; make request to ready phase if applicable
+		if len(net.Status.Phase) == 0 || net.Status.Phase == v1.NetworkPending {
+			netReady := net.DeepCopy()
+			netReady.Status.Phase = v1.NetworkReady
+			netReady.Status.Message = "DNS service IP allocated"
+			_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+		}
 	}
 
 	return err
 }
 
+func ensureTerminatingPhase(net *v1.Network, netClient arktos.Interface) error {
+	// todo: manage resource cleanup properly
+	if net.Status.Phase == v1.NetworkTerminating {
+		return nil
+	}
+
+	netReady := net.DeepCopy()
+	netReady.Status.Phase = v1.NetworkTerminating
+	netReady.Status.Message = "waiting for resource cleanup"
+	_, err := netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
+	return err
+}
+
 // manageFlatNetwork is the core logic to manage a flat typed network object
 func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
+	if net.DeletionTimestamp != nil {
+		return ensureTerminatingPhase(net, netClient)
+	}
+
 	if len(net.Status.DNSServiceIP) != 0 {
 		klog.V(5).Infof("network %s/%s/%s already have DNS service IP %s; skipped", net.Tenant, net.Namespace, net.Name, net.Status.DNSServiceIP)
 		return nil
 	}
 
-	svc, err := createOrGetDNSService(net, svcClient)
+	dnsSvc, err := createOrGetDNSService(net, svcClient)
 	if err != nil {
 		return fmt.Errorf("failed to get or create per-network DNS service in tenant %s for network %s: %v", net.Tenant, net.Name, err)
 	}
@@ -204,80 +243,36 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 		}
 	}
 
+	if _, err := createOrGetKubernetesService(net, svcClient); err != nil {
+		return fmt.Errorf("failed to get or create per-network Kubernetes service: %v", err)
+	}
+
 	// since dns service is in place, flat type network is Ready now
 	netReady := net.DeepCopy()
 	netReady.Status.Phase = v1.NetworkReady
-	netReady.Status.DNSServiceIP = svc.Spec.ClusterIP
+	netReady.Status.DNSServiceIP = dnsSvc.Spec.ClusterIP
 	netReady.Status.Message = "DNS service ready; network ready"
 	_, err = netClient.ArktosV1().NetworksWithMultiTenancy(netReady.Tenant).UpdateStatus(netReady)
 	return err
 }
 
-func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*corev1.Service, error) {
-	nsDNS := metav1.NamespaceSystem
-	nameDNS := dnsServiceDefaultName + "-" + net.Name
-	dns := corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      nameDNS,
-			Tenant:    net.Tenant,
-			Namespace: nsDNS,
-			Labels: map[string]string{
-				v1.NetworkLabel:      net.Name,
-				clusterAddonLabelKey: nameDNS,
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "dns",
-					Protocol:   "UDP",
-					Port:       53,
-					TargetPort: intstr.FromInt(53),
-				},
-				{
-					Name:       "dns-tcp",
-					Protocol:   "TCP",
-					Port:       53,
-					TargetPort: intstr.FromInt(53),
-				},
-				{
-					Name:       "metrics",
-					Protocol:   "TCP",
-					Port:       9153,
-					TargetPort: intstr.FromInt(9153),
-				},
-			},
-			Selector: map[string]string{
-				clusterAddonLabelKey: nameDNS,
-			},
-			Type: corev1.ServiceTypeClusterIP,
-		},
-	}
-	svc, err := svcClient.CoreV1().ServicesWithMultiTenancy(nsDNS, net.Tenant).Create(&dns)
-	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			// todo: consider differing temporary errors from permanent errors
-			// todo: to fail the network provision in case of permanent errors
-			return nil, err
-		} else {
-			svc, err = svcClient.CoreV1().ServicesWithMultiTenancy(nsDNS, net.Tenant).Get(nameDNS, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return svc, nil
-}
-
-// Enqueue puts key of the network object in the work queue
-func (c *Controller) Enqueue(obj interface{}) {
+// Add puts key of the network object in the work queue
+func (c *Controller) Add(obj interface{}) {
 	net, ok := obj.(*v1.Network)
 	if !ok {
 		klog.Fatalf("got non-network object %v", obj)
 	}
 
 	c.queue.Add(genKey(net))
+}
+
+func (c *Controller) Update(_, newObj interface{}) {
+	newNetwork, ok := newObj.(*v1.Network)
+	if !ok {
+		klog.Fatalf("got non-network new object %v", newObj)
+	}
+
+	c.queue.Add(genKey(newNetwork))
 }
 
 func genKey(net *v1.Network) string {

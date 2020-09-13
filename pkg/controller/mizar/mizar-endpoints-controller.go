@@ -14,15 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Reference:
-(1) https://github.com/h-w-chen/arktos.git, arktos/cmd/arktos-network-controller
-(2) https://github.com/futurewei-cloud/arktos.git, arktos/pkg/controller/endpoints_controller
+(1) https://github.com/futurewei-cloud/arktos.git, arktos/pkg/controller/endpoints_controller
 */
 
 package mizar
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -38,16 +36,22 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/controller"
 )
 
 const (
 	EndpointsKind          string = "Endpoints"
 	Endpoints_Ready        string = "True"
 	EndpointsStatusMessage string = "HANDLED"
+	EndpointsNoChange      int    = 1
+	EndpointsUpdate        int    = 2
+	EndpointsResume        int    = 3
 )
 
 type ServiceEndpoint struct {
 	name      string
+	namespace string
+	tenant    string
 	addresses []string
 	ports     []Ports
 }
@@ -91,40 +95,62 @@ func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointIn
 		queue:               queue,
 		grpcHost:            grpcHost,
 	}
-	klog.Infof(c.logInfoMessage("Sending events to api server"))
+	klog.Infof("Sending events to api server")
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(object interface{}) {
-			resource := object.(*v1.Endpoints)
-			key := c.genKey(resource)
+			key, err := controller.KeyFunc(object)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+				return
+			}
 			c.Enqueue(key, EventType_Create)
-			klog.Infof(c.logMessage("Create Endpoint: ", key))
+			klog.Infof("Create Endpoint - %v", key)
 		},
 		UpdateFunc: func(oldObject, newObject interface{}) {
+			key1, err1 := controller.KeyFunc(oldObject)
+			key2, err2 := controller.KeyFunc(newObject)
+			if key1 == "" || key2 == "" || err1 != nil || err2 != nil {
+				klog.Errorf("Unexpected string in queue; discarding - %v", key2)
+				return
+			}
 			oldResource := oldObject.(*v1.Endpoints)
 			newResource := newObject.(*v1.Endpoints)
-			oldKey := c.genKey(oldResource)
-			newKey := c.genKey(newResource)
-			oldEpSubsets := oldResource.Subsets
-			newEpSubsets := newResource.Subsets
-			oldSubsets := fmt.Sprintf("%v", oldEpSubsets)
-			newSubsets := fmt.Sprintf("%v", newEpSubsets)
-			if oldKey == newKey && oldSubsets == newSubsets {
-				klog.Infof(c.logMessage("No actual change in endpoints, discarding: ", newKey))
-			} else {
-				eventType, err := c.determineEventType(oldResource, newResource)
-				if err != nil {
-					klog.Errorf(c.logMessage("Unexpected string in queue; discarding: ", newKey))
-				} else {
-					c.Enqueue(newKey, eventType)
+			eventType, err := c.determineEventType(oldResource, newResource)
+			if err != nil {
+				klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
+				return
+			}
+			switch eventType {
+			case EndpointsNoChange:
+				{
+					klog.Infof("No actual change in endpoints, discarding -%v ", key2)
+					break
 				}
-				klog.Infof(c.logMessage("Update Endpoints: ", newKey))
+			case EndpointsUpdate:
+				{
+					c.Enqueue(key2, EventType_Update)
+					klog.Infof("Update Endpoints - %v", key2)
+					break
+				}
+			case EndpointsResume:
+				{
+					c.Enqueue(key2, EventType_Resume)
+					klog.Infof("Resume Endpoints - %v", key2)
+				}
+			default:
+				{
+					klog.Errorf("Unexpected Endpoints event; discarding - %v", key2)
+					return
+				}
 			}
 		},
 		DeleteFunc: func(object interface{}) {
-			resource := object.(*v1.Endpoints)
-			key := c.genKey(resource)
+			key, err := controller.KeyFunc(object)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+				return
+			}
 			c.Enqueue(key, EventType_Delete)
-			klog.Infof(c.logMessage("Delete Endpoints: ", key))
 		},
 	})
 	return c, nil
@@ -134,17 +160,17 @@ func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointIn
 func (c *MizarEndpointsController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
-	klog.Infof(c.logInfoMessage("Starting endpoint controller"))
-	klog.Infof(c.logInfoMessage("Waiting cache to be synced"))
+	klog.Infof("Starting endpoint controller")
+	klog.Infof("Waiting cache to be synced")
 	if ok := cache.WaitForCacheSync(stopCh, c.informerSynced); !ok {
-		klog.Infof(c.logInfoMessage("Timeout expired during waiting for caches to sync."))
+		klog.Infof("Timeout expired during waiting for caches to sync.")
 	}
-	klog.Infof(c.logInfoMessage("Starting workers..."))
+	klog.Infof("Starting workers...")
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 	<-stopCh
-	klog.Info(c.logInfoMessage("Shutting down endpoint controller"))
+	klog.Info("Shutting down endpoint controller")
 }
 
 // Enqueue puts key of the endpoints object in the work queue
@@ -169,27 +195,27 @@ func (c *MizarEndpointsController) process(item interface{}) {
 	defer c.queue.Done(item)
 	keyWithEventType, ok := item.(KeyWithEventType)
 	if !ok {
-		klog.Errorf(c.logMessage("Unexpected item in queue: ", keyWithEventType))
+		klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
 		c.queue.Forget(item)
 		return
 	}
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
-	epKind, epNamespace, epTenant, epName, err := c.parseKey(key)
+	tenant, namespace, epName, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
-		klog.Errorf(c.logMessage("Unexpected string in queue; discarding: ", key))
+		klog.Errorf("Unexpected string in queue; discarding: ", key)
 		c.queue.Forget(item)
 		return
 	}
-	ep, err := c.lister.EndpointsWithMultiTenancy(epNamespace, epTenant).Get(epName)
+	ep, err := c.lister.EndpointsWithMultiTenancy(namespace, tenant).Get(epName)
 	if err != nil {
-		klog.Errorf(c.logMessage("Failed to retrieve endpoint in local cache by tenant, name: ", epTenant+", "+epName))
+		klog.Errorf("Failed to retrieve endpoint in local cache by namespace, tenant, name - %v, %v, %v", namespace, tenant, epName)
 		c.queue.Forget(item)
 		return
 	}
 	subsets := ep.Subsets
 	if subsets == nil {
-		klog.Warningf(c.logMessage("Failed to retrieve endpoints subsets in local cache by tenant, name: ", epTenant+", "+epName))
+		klog.Warningf("Failed to retrieve endpoints subsets in local cache by tenant, name - %v, %v, %v", namespace, tenant, epName)
 		c.queue.Forget(item)
 		return
 	}
@@ -205,54 +231,34 @@ func (c *MizarEndpointsController) process(item interface{}) {
 			}
 			for j := 0; j < len(ports); j++ {
 				epPort := ports[j].Port
-				serviceEndPoint.ports[j] = c.getPorts(epNamespace, epTenant, epName, epPort)
+				serviceEndPoint.ports[j] = c.getPorts(namespace, tenant, epName, epPort)
 			}
 		}
 	}
-	klog.V(5).Infof(c.logInfoMessage("Processing an endpoint: ")+"%s/%s/%s/%s/%s/%s", epKind, epTenant, epNamespace, epName)
 	result, err := c.gRPCRequest(eventType, serviceEndPoint)
 	if !result {
-		klog.Errorf(c.logMessage("Failed endpoints processing: ", key))
-		c.queue.Add(item)
+		klog.Errorf("Failed endpoints processing -%v ", key)
+		c.queue.AddRateLimited(item)
 	} else {
-		klog.Infof(c.logMessage(" Processed endpoints: ", key))
+		klog.Infof(" Processed endpoints - %v", key)
 		c.queue.Forget(item)
 	}
 }
 
-func (c *MizarEndpointsController) genKey(resource *v1.Endpoints) string {
-	epKind := resource.GetObjectKind().GroupVersionKind().Kind
-	if epKind == "" {
-		epKind = EndpointsKind
-	}
-	epNamespace := resource.GetNamespace()
-	epTenant := resource.GetTenant()
-	epName := resource.GetName()
-	if epName == "" {
-		klog.Errorf(c.logInfoMessage("Endpoint name should not be null"))
-	}
-	key := fmt.Sprintf("%s/%s/%s/%s/%s/%s", epKind, epNamespace, epTenant, epName)
-	return key
-}
-
-// Parse a key and get endpoint information
-func (c *MizarEndpointsController) parseKey(key string) (epKind, epNamespace, epTenant, epName string, err error) {
-	segs := strings.Split(key, "/")
-	epKind = segs[0]
-	epNamespace = segs[1]
-	epTenant = segs[2]
-	epName = segs[3]
-	if len(segs) < 4 || epName == "" {
-		err = fmt.Errorf(c.logMessage("Invalid key format: ", key))
+//Determine an event is NoChange, Update or Resume
+func (c *MizarEndpointsController) determineEventType(resource1 *v1.Endpoints, resource2 *v1.Endpoints) (eventType int, err error) {
+	if resource1 == nil || resource2 == nil {
+		err = fmt.Errorf("It cannot determine null endpoints event type - endpoints1: %v, endpoints2:%v", resource1, resource2)
 		return
 	}
-	return
-}
-
-//Determine an event is Update or Resume
-func (c *MizarEndpointsController) determineEventType(resource1 *v1.Endpoints, resource2 *v1.Endpoints) (eventType EventType, err error) {
 	epSubsets1 := resource1.Subsets
 	epSubsets2 := resource2.Subsets
+	subset1 := fmt.Sprintf("%v", epSubsets1)
+	subset2 := fmt.Sprintf("%v", epSubsets2)
+	if subset1 == subset2 {
+		eventType = EndpointsNoChange
+		return
+	}
 	var notReadyAddressSet sets.String
 	var readyAddressSet sets.String
 	for i := 0; i < len(epSubsets1); i++ {
@@ -269,37 +275,27 @@ func (c *MizarEndpointsController) determineEventType(resource1 *v1.Endpoints, r
 			readyAddressSet.Insert(readyAddress)
 		}
 	}
-	newAddresses := readyAddressSet.Intersection(notReadyAddressSet)
-	eventType = EventType_Update
-	if newAddresses != nil {
-		eventType = EventType_Resume
+	newReadyAddresses := readyAddressSet.Intersection(notReadyAddressSet)
+	eventType = EndpointsUpdate
+	if newReadyAddresses != nil {
+		eventType = EndpointsResume
 	}
 	return
-}
-
-func (c *MizarEndpointsController) logInfoMessage(info string) string {
-	message := fmt.Sprintf("[MizarEndpointController][%s]", info)
-	return message
-}
-
-func (c *MizarEndpointsController) logMessage(msg string, detail interface{}) string {
-	message := fmt.Sprintf("[MizarEndpointController][%s][Endpoint Info]:%v", msg, detail)
-	return message
 }
 
 //This function returns front port, backend port, and protocol
 //ServicePort: protocol, port (=service port = front port), targetPort (endpoint port = backend port)
 //(e.g) ports: {protocol: TCP, port: 80,  targetPort: 9376 }
-func (c *MizarEndpointsController) getPorts(epNamespace, epTenant, epName string, epPort int32) Ports {
+func (c *MizarEndpointsController) getPorts(namespace, tenant, epName string, epPort int32) Ports {
 	var ports Ports
-	service, err := c.serviceLister.ServicesWithMultiTenancy(epNamespace, epTenant).Get(epName)
+	service, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(epName)
 	if err != nil {
-		klog.Errorf(c.logInfoMessage("Service not found: ") + epName)
+		klog.Errorf("Service not found - %s", epName)
 		return ports
 	}
 	serviceports := service.Spec.Ports
 	if serviceports == nil {
-		klog.Errorf(c.logInfoMessage("Service ports are not found: ") + epName)
+		klog.Errorf("Service ports are not found - %s", epName)
 		return ports
 	}
 	for i := 0; i < len(serviceports); i++ {
@@ -319,7 +315,7 @@ func (c *MizarEndpointsController) getPorts(epNamespace, epTenant, epName string
 func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoint) (response bool, err error) {
 	client, ctx, conn, cancel, err := getGrpcClient(c.grpcHost)
 	if err != nil {
-		klog.Errorf(c.logMessage("gRPC connection failed ", err))
+		klog.Errorf("gRPC connection failed ", err)
 		return false, err
 	}
 	defer conn.Close()
@@ -335,6 +331,8 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 	}
 	resource = BuiltinsServiceEndpointMessage{
 		Name:       ep.name,
+		Namespace:  ep.namespace,
+		Tenant:     ep.tenant,
 		BackendIps: ep.addresses,
 		Ports:      ports,
 	}
@@ -342,26 +340,26 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 	case EventType_Create:
 		returnCode, err := client.CreateServiceEndpoint(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf(c.logMessage("Endpoint creation failed on Mizar side ", err))
+			klog.Errorf("Endpoint creation failed on Mizar side - %v", err)
 			return false, err
 		}
 	case EventType_Update:
 		returnCode, err := client.UpdateServiceEndpoint(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf(c.logMessage("Endpoint update failed on Mizar side ", err))
+			klog.Errorf("Endpoint update failed on Mizar side - %v", err)
 			return false, err
 		}
 	case EventType_Resume:
 		returnCode, err := client.ResumeServiceEndpoint(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf(c.logMessage("Endpoint resume failed on Mizar side ", err))
+			klog.Errorf("Endpoint resume failed on Mizar side - %v", err)
 			return false, err
 		}
 	default:
-		klog.Errorf(c.logMessage("gRPC event is not correct", event))
-		err = fmt.Errorf(c.logMessage("gRPC event is not correct", event))
+		klog.Errorf("gRPC event is not correct", event)
+		err = fmt.Errorf("gRPC event is not correct - %v", event)
 		return false, err
 	}
-	klog.Infof(c.logInfoMessage("gRPC request is sent"))
+	klog.Infof("gRPC request is sent")
 	return true, nil
 }
