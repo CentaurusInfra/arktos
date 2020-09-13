@@ -115,6 +115,9 @@ func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointIn
 			}
 			oldResource := oldObject.(*v1.Endpoints)
 			newResource := newObject.(*v1.Endpoints)
+			name := newResource.GetName()
+			if(name == "kube-controller-manager" || name == "kube-scheduler" )
+				return
 			eventType, err := c.determineEventType(oldResource, newResource)
 			if err != nil {
 				klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
