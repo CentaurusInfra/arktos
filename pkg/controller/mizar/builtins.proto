@@ -55,8 +55,10 @@ message BuiltinsServiceMessage {
 
 message BuiltinsServiceEndpointMessage {
   string name = 1;
-  repeated string backend_ips = 2;
-  repeated PortsMessage ports = 3;
+  string namespace = 2;
+  string tenant = 3;
+  repeated string backend_ips = 4;
+  repeated PortsMessage ports = 5;
 }
 
 message BuiltinsArktosMessage {
