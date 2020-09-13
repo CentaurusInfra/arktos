@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+=======
+syntax = "proto3";
+package mizar;
+
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd
 // May need to return a code in the event of a temporary failure for retry.
 service BuiltinsService {
 
@@ -37,7 +43,11 @@ message BuiltinsPodMessage {
   string host_ip = 2;
   string namespace = 3;
   string tenant = 4;
+<<<<<<< HEAD
   string arktos_network = 5;
+=======
+  string vpc = 5;
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd
   string phase = 6;
   repeated InterfacesMessage interfaces = 7;
 }
@@ -52,10 +62,15 @@ message BuiltinsServiceMessage {
 
 message BuiltinsServiceEndpointMessage {
   string name = 1;
+<<<<<<< HEAD
   string namespace = 2;
   string tenant = 3;
   repeated string backend_ips = 4;
   repeated PortsMessage ports = 5;
+=======
+  repeated string backend_ips = 2;
+  repeated PortsMessage ports = 3;
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd
 }
 
 message BuiltinsArktosMessage {

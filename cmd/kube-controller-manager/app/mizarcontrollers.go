@@ -18,18 +18,27 @@ package app
 
 import (
 	"net/http"
+<<<<<<< HEAD
 	"time"
 
 	informers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
+=======
+
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd
 	"k8s.io/klog"
 	controllers "k8s.io/kubernetes/pkg/controller/mizar"
 )
 
 const (
+<<<<<<< HEAD
 	mizarStarterControllerWorkerCount   = 2
 	mizarEndpointsControllerWorkerCount = 4
 	mizarPodControllerWorkerCount       = 4
+=======
+	mizarStarterControllerWorkerCount = 2
+	mizarPodControllerWorkerCount     = 4
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -48,8 +57,11 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
 	startMizarPodController(&ctx, grpcHost)
+<<<<<<< HEAD
 	startMizarEndpointsController(&ctx, grpcHost)
 	startMizarEndpointsController(&ctx, grpcHost)
+=======
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd
 }
 
 func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
@@ -63,6 +75,7 @@ func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Hand
 	).Run(mizarPodControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
+<<<<<<< HEAD
 
 func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err error) {
 	controllerName := "mizar-endpoints-controller"
@@ -80,3 +93,5 @@ func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err
 	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
 	return err
 }
+=======
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd

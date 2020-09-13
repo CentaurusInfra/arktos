@@ -11,7 +11,10 @@ go_library(
         "builtins.pb.go",
         "grpc-adaptor.go",
         "mizar-pod-controller.go",
+<<<<<<< HEAD
         "mizar-endpoints-controller.go",
+=======
+>>>>>>> 70f10144a36d9de4e9f45373f5d4ffb2d36743fd
         "mizar-starter-controller.go",
         "util.go",
     ],
