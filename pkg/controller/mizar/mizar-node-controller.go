@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Reference:
-(1) https://github.com/h-w-chen/arktos.git, arktos/cmd/arktos-network-controller
-(2) https://github.com/futurewei-cloud/arktos.git, arktos/pkg/controller/nodelifecycle/node_lifecycle_controller
+(1) https://github.com/futurewei-cloud/arktos.git, arktos/pkg/controller/nodelifecycle/node_lifecycle_controller
 */
 
 package mizar
