@@ -32,7 +32,7 @@ const (
 
 // MizarServiceController manages service on mizar side and update cluster IP on arktos side
 type MizarServiceController struct {
-	netClientset        *arktos.Clientset
+	netClient           arktos.Interface
 	kubeClientset       *kubernetes.Clientset
 	serviceLister       corelisters.ServiceLister
 	netLister           arktosextv1.NetworkLister
@@ -44,14 +44,14 @@ type MizarServiceController struct {
 }
 
 // NewMizarServiceController starts mizar service controller
-func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClientset *arktos.Clientset, serviceInformer coreinformers.ServiceInformer, arktosInformer arktosinformer.NetworkInformer, grpcHost string) *MizarServiceController {
+func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient arktos.Interface, serviceInformer coreinformers.ServiceInformer, arktosInformer arktosinformer.NetworkInformer, grpcHost string) *MizarServiceController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarServiceController{
 		kubeClientset:       kubeClientset,
-		netClientset:        netClientset,
+		netClient:           netClient,
 		serviceLister:       serviceInformer.Lister(),
 		netLister:           arktosInformer.Lister(),
 		serviceListerSynced: serviceInformer.Informer().HasSynced,
@@ -110,7 +110,6 @@ func (c *MizarServiceController) processNextWorkItem() bool {
 		c.queue.Forget(key)
 		return true
 	}
-
 	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", "serivce", key, err))
 	c.queue.AddRateLimited(eventKey)
 
@@ -148,7 +147,7 @@ func (c *MizarServiceController) deleteService(obj interface{}) {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for service %#v: %v", obj, err))
 		return
 	}
-	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Delete})
 }
 
 func (c *MizarServiceController) syncService(eventKey KeyWithEventType) error {
@@ -170,7 +169,7 @@ func (c *MizarServiceController) syncService(eventKey KeyWithEventType) error {
 		return err
 	}
 
-	klog.Infof("Mizar-Service-controller - get network: %#v.", svc)
+	klog.Infof("Mizar-Service-controller - get service: %#v.", svc)
 
 	switch event {
 	case EventType_Create:
@@ -190,79 +189,80 @@ func (c *MizarServiceController) syncService(eventKey KeyWithEventType) error {
 }
 
 func (c *MizarServiceController) processServiceCreation(service *v1.Service, key string) error {
-	netName := strings.Split(service.Name, dnsServiceDefaultName+"-")[0]
-	fmt.Println("processServiceDeletion network name is %v", netName)
+	name := service.Name
+	prefix := dnsServiceDefaultName + "-"
+	netName := ""
+	index := strings.Index(name, prefix)
+	if index == 0 {
+		pos := len(prefix)
+		netName = name[pos:]
+	}
+	fmt.Println("processServiceCreation network name is %v", netName)
+	fmt.Println("processServiceCreation service is %v", service)
 
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
 		ArktosNetwork: netName,
 		Namespace:     service.Namespace,
 		Tenant:        service.Tenant,
-		Ip:            "",
+		Ip:            service.Spec.ClusterIP,
 	}
 
 	response := GrpcCreateService(c.grpcHost, msg)
 	code := response.Code
-	//To Add: context := response.Message and then convert to json to get ip address
+	ip := response.Message
+	fmt.Println("processServiceCreation ip is %v", ip)
+
 	if code != CodeType_OK {
 		return errors.New("Service creation failed on Mizar side")
 	}
 
-	svcName := "context.name"
-	namespace := "context.namespace"
-	tenant := "context.tenant"
-	ip := "context.ip"
-
-	svc, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(svcName)
-	if err != nil {
-		return err
-	}
-
-	if _, hasDNSServiceLabel := svc.Labels[labelDNSService]; hasDNSServiceLabel {
-		net, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(netName)
+	if _, hasDNSServiceLabel := service.Labels[labelDNSService]; hasDNSServiceLabel && len(netName) != 0 {
+		fmt.Println("Network update starts ...")
+		net, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(service.Tenant).Get(netName, metav1.GetOptions{})
 		if err != nil {
+			fmt.Println("Network is %v, error message is: %v", err, net)
 			return err
 		}
-
+		fmt.Println("Updating network: %v", net)
 		if len(net.Status.DNSServiceIP) == 0 {
 			netReady := net.DeepCopy()
 			netReady.Status.DNSServiceIP = ip
-			_, err = c.netClientset.ArktosV1().NetworksWithMultiTenancy(tenant).UpdateStatus(netReady)
+			_, err = c.netClient.ArktosV1().NetworksWithMultiTenancy(net.Tenant).UpdateStatus(netReady)
 			if err != nil {
+				klog.Infof("The following network failed to update: %v", netReady)
 				return err
 			}
 		}
 	}
 
-	svcToUpdate := svc.DeepCopy()
-	svcToUpdate.Spec.ClusterIP = ip
-	svcUpdated, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(namespace, tenant).Update(svcToUpdate)
-	if err != nil {
-		klog.Infof("The following service failed to update: %v", svcUpdated)
-		return err
+	if len(service.Spec.ClusterIP) == 0 {
+		svcToUpdate := service.DeepCopy()
+		svcToUpdate.Spec.ClusterIP = ip
+		svcUpdated, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(service.Namespace, service.Tenant).Update(svcToUpdate)
+		fmt.Println("svcToUpdate is %v", svcToUpdate)
+		if err != nil {
+			klog.Infof("The following service failed to update: %v", svcUpdated)
+			return err
+		}
 	}
-
 	return nil
 }
 
 func (c *MizarServiceController) processServiceUpdate(service *v1.Service, key string) error {
-	netName := strings.Split(service.Name, dnsServiceDefaultName+"-")[0]
-	fmt.Println("processServiceDeletion network name is %v", netName)
-
+	fmt.Println("processServiceUpdate network name is %v", service.Name)
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
-		ArktosNetwork: netName,
+		ArktosNetwork: "",
 		Namespace:     service.Namespace,
 		Tenant:        service.Tenant,
-		Ip:            "",
+		Ip:            service.Spec.ClusterIP,
 	}
 	response := GrpcUpdateService(c.grpcHost, msg)
 	code := response.Code
-	//To Add: context := response.Message and then convert to json to get ip address
 	if code != CodeType_OK {
 		return errors.New("Service update failed on Mizar side")
 	}
-
 	return nil
 }
 
@@ -271,7 +271,6 @@ func (c *MizarServiceController) processServiceDeletion(key string) error {
 	if err != nil {
 		return err
 	}
-
 	netName := strings.Split(name, dnsServiceDefaultName+"-")[0]
 
 	msg := &BuiltinsServiceMessage{
