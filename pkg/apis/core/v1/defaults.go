@@ -23,6 +23,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/parsers"
 	utilpointer "k8s.io/utils/pointer"
 )
@@ -203,8 +205,10 @@ func SetDefaults_PodSpec(obj *v1.PodSpec) {
 	if obj.SchedulerName == "" {
 		obj.SchedulerName = v1.DefaultSchedulerName
 	}
-	if len(obj.WorkloadInfo) == 0 {
-		_ = obj.Workloads()
+	if utilfeature.DefaultFeatureGate.Enabled(features.WorkloadInfoDefaulting) {
+		if len(obj.WorkloadInfo) == 0 {
+			_ = obj.Workloads()
+		}
 	}
 }
 func SetDefaults_Probe(obj *v1.Probe) {
