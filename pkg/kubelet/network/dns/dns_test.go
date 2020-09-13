@@ -25,17 +25,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/tools/record"
+	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"k8s.io/kubernetes/pkg/features"
 )
 
 var (
@@ -81,6 +83,11 @@ func newTestConfigurerWithNotReadyNetwork(recorder *record.FakeRecorder, nodeRef
 			Phase: "Unknown",
 		},
 	})
+	return NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
+}
+
+func newTestConfigurerWithEmptyNetwork(recorder *record.FakeRecorder, nodeRef *v1.ObjectReference, clusterDNS []net.IP, testClusterDNSDomain, resolverConfig string) *Configurer {
+	networkClient := fakearktosv1.NewSimpleClientset()
 	return NewConfigurer(recorder, nodeRef, nil, clusterDNS, testClusterDNSDomain, resolverConfig, networkClient.ArktosV1())
 }
 
@@ -522,6 +529,33 @@ func TestGetPodDNSWithNotReadyNetwork(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "not ready") {
 		t.Fatalf("expected phase not ready error, got %v", err)
+	}
+}
+
+func TestGetPodDNSWithNotFoundNetworkWhileMandatoryNetworkGateIsOn(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MandatoryArktosNetwork, true)()
+
+	recorder := record.NewFakeRecorder(20)
+	nodeRed := &v1.ObjectReference{
+		Kind: "Node",
+		Name: string("testNode"),
+		UID:  types.UID("testNode"),
+	}
+	configurer := newTestConfigurerWithEmptyNetwork(recorder, nodeRed, nil, "test.domain", "")
+
+	pods := newTestPods(1)
+	pods[0].ObjectMeta.Tenant = "te-foo"
+	pods[0].Spec.DNSPolicy = v1.DNSClusterFirst
+	pods[0].Spec.HostNetwork = false
+
+	_, err := configurer.GetPodDNS(pods[0])
+
+	if err == nil {
+		t.Fatalf("expected error; got nil")
+	}
+
+	if !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("expected network ... not found error, got %v", err)
 	}
 }
 

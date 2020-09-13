@@ -29,15 +29,16 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	arktosextensions "k8s.io/arktos-ext/pkg/generated/clientset/versioned/typed/arktosextensions/v1"
 	"k8s.io/client-go/tools/record"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
+	"k8s.io/kubernetes/pkg/features"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
-
-	"k8s.io/klog"
 )
 
 var (
@@ -86,11 +87,9 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 }
 
 func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
-	// todo: consider using exported const of default network name from arktos package
-	const defaultNetwork = "default"
 	networkName, ok := pod.Labels[arktosv1.NetworkLabel]
 	if !ok {
-		networkName = defaultNetwork
+		networkName = arktosv1.NetworkDefault
 	}
 
 	if network, err := c.arktosV1Client.NetworksWithMultiTenancy(pod.Tenant).Get(networkName, metav1.GetOptions{}); err == nil {
@@ -106,14 +105,15 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 		klog.Errorf("failed to get network %s/%s: %v", pod.Tenant, networkName, err)
 	}
 
-	// for now, fallback to default cluster DNS for pod that has no explicit network and no valid dns service ip of the default network not set yet.
-	// This is temporary measure to keep system unbroken before all multi-tenant network dependencies are in place.
-	// todo: disable the fallback when every multi-tenant networking components are in place.
-	if networkName == defaultNetwork {
+	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
+		return nil, fmt.Errorf("network %s/%s not found", pod.Tenant, networkName)
+	}
+
+	// fallback to default cluster DNS for pods on the default network
+	if networkName == arktosv1.NetworkDefault {
 		return c.clusterDNS, nil
 	}
 
-	// todo: consider returning an error here
 	return nil, nil
 }
 
