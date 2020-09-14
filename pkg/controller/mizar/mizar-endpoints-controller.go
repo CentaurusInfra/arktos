@@ -335,7 +335,7 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 			// portMessage.FrontendPort = ep.ports[i].frontPort
 			// portMessage.BackendPort = ep.ports[i].backendPort
 			// portMessage.Protocol = ep.ports[i].protocol
-			portMessage := PortsMessage{FrontendPort: ep.ports[i].frontPort, BackendPort: ep.ports[i].backendPort, Protocol: ep.ports[i].protocol}
+			portMessage := PortsMessage{ep.ports[i].frontPort, ep.ports[i].backendPort, ep.ports[i].protocol}
 			ports = append(ports, &portMessage)
 			// ports[i].FrontendPort = ep.ports[i].frontPort
 			// ports[i].BackendPort = ep.ports[i].backendPort
