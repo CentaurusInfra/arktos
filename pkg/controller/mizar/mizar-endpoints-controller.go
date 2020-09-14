@@ -331,11 +331,11 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 	var resource BuiltinsServiceEndpointMessage
 	if (ep.ports) != nil {
 		for i := 0; i < len(ep.ports); i++ {
-			portMessage := PortsMessage{}
+			portMessage := *PortsMessage{}
 			portMessage.FrontendPort = ep.ports[i].frontPort
 			portMessage.BackendPort = ep.ports[i].backendPort
 			portMessage.Protocol = ep.ports[i].protocol
-			ports = append(ports, &portMessage)
+			ports = append(ports, portMessage)
 			// ports[i].FrontendPort = ep.ports[i].frontPort
 			// ports[i].BackendPort = ep.ports[i].backendPort
 			// ports[i].Protocol = ep.ports[i].protocol
