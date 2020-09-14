@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 	clientset "k8s.io/kubernetes/pkg/client/clientset/versioned"
@@ -37,9 +38,9 @@ type ServiceExposeObj struct {
 func NewServiceExposeHandler(serviceLister listers.EServiceLister, siteLister listers.ESiteLister,
 	gatewayClient clientset.Interface) *ServiceExposeHandler {
 	se := &ServiceExposeHandler{
-		serviceLister: serviceLister,
-		siteLister:    siteLister,
-		gatewayClient: gatewayClient,
+		serviceLister:      serviceLister,
+		siteLister:         siteLister,
+		gatewayClient:      gatewayClient,
 		virtualPresenceMap: map[string]*VirtualPresenceInfo{},
 	}
 
@@ -60,7 +61,7 @@ func (h *ServiceExposeHandler) RequestVirtualPresence(site *v1.ESite, serviceExp
 
 		// siteName is not in the virtualPresenceMap, init one
 		value = &VirtualPresenceInfo{
-			cidr: site.VirtualPresenceIPCidr,
+			cidr:         site.VirtualPresenceIPCidr,
 			allocatedIps: ips,
 		}
 
@@ -93,7 +94,7 @@ func GenerateAllIps(cidr string) ([]string, error) {
 	}
 
 	if ips != nil && len(ips) > 1 {
-		return ips[1:len(ips)-1], nil
+		return ips[1 : len(ips)-1], nil
 	}
 
 	return ips, fmt.Errorf("Invalid cidr ips:%v", ips)
@@ -113,8 +114,35 @@ func (h *ServiceExposeHandler) ReleaseVirtualPresence(site *v1.ESite, serviceExp
 	virtualPresenceIp string) {
 	klog.V(4).Infof("Release virtual presence ip for serviceExpose:%v, vpip:%s", serviceExpose,
 		virtualPresenceIp)
-	h.virtualPresenceMap[site.Name].allocatedIps = append(h.virtualPresenceMap[site.Name].allocatedIps,
-		virtualPresenceIp)
+	if _, ok := h.virtualPresenceMap[site.Name]; ok {
+		h.virtualPresenceMap[site.Name].allocatedIps = append(h.virtualPresenceMap[site.Name].allocatedIps,
+			virtualPresenceIp)
+	}
+}
+
+func (h *ServiceExposeHandler) ObjectSync(tenant string, namespace string, obj interface{}) {
+	se := obj.(*v1.ServiceExpose)
+	klog.V(4).Info("ServiceExposeHandler.ObjectSync: %v", se)
+
+	// Add finalizer for service expose
+	if len(se.ObjectMeta.Finalizers) < 1 && se.DeletionTimestamp == nil {
+		tmpCopy := se.DeepCopy()
+		tmpCopy.ObjectMeta.Finalizers = append(tmpCopy.ObjectMeta.Finalizers, "arktos")
+		se, err := h.gatewayClient.CloudgatewayV1().ServiceExposesWithMultiTenancy(namespace, tenant).Update(tmpCopy)
+		if err != nil {
+			klog.Error("Update service expose with finalizers error, service expose:%v, err:%v", se, err)
+			return
+		}
+	}
+
+	// Delete case
+	if se.DeletionTimestamp != nil && !se.DeletionTimestamp.IsZero() && len(se.ObjectMeta.Finalizers) > 0 {
+		h.ObjectDeleted(tenant, namespace, obj)
+		return
+	}
+
+	// Create and update case
+	h.ObjectCreated(tenant, namespace, se)
 }
 
 // Handle the service expose request
@@ -303,6 +331,13 @@ func (h *ServiceExposeHandler) ObjectDeleted(tenant string, namespace string, ob
 			h.ReleaseVirtualPresence(&seObj.clientSite, &seObj.serviceExpose, eClient.VirtualPresenceIp)
 		}
 	}
+
+	tmpCopy := se.DeepCopy()
+	tmpCopy.ObjectMeta.Finalizers = []string{}
+	h.gatewayClient.CloudgatewayV1().ServiceExposesWithMultiTenancy(namespace, tenant).Update(tmpCopy)
+
+	// Delete service expose
+	h.gatewayClient.CloudgatewayV1().ServiceExposesWithMultiTenancy(namespace, tenant).Delete(se.Name, &metav1.DeleteOptions{})
 }
 
 func (h *ServiceExposeHandler) releaseServiceExpose(seObj *ServiceExposeObj) {
