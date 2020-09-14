@@ -52,8 +52,8 @@ func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
 	//startMizarPodController(&ctx, grpcHost)
 
-	startMizarEndpointsController(&ctx, grpcHost)
-	startMizarNodeController(&ctx, grpcHost)
+	go startMizarEndpointsController(&ctx, grpcHost)
+	go startMizarNodeController(&ctx, grpcHost)
 }
 
 /*func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
