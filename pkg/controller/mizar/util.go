@@ -13,7 +13,9 @@ limitations under the License.
 
 package mizar
 
-import v1 "k8s.io/api/core/v1"
+import (
+	v1 "k8s.io/api/core/v1"
+)
 
 type EventType string
 
@@ -50,13 +52,20 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceE
 }
 
 func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
+	var network string
+	if value, exists := pod.Labels["arktos.futurewei.com/network"]; exists {
+		network = value
+	} else {
+		network = ""
+	}
+
 	return &BuiltinsPodMessage{
-		Name:      pod.Name,
-		HostIp:    pod.Status.HostIP,
-		Namespace: pod.Namespace,
-		Tenant:    pod.Tenant,
-		Vpc:       pod.Spec.VPC,
-		Phase:     string(pod.Status.Phase),
+		Name:          pod.Name,
+		HostIp:        pod.Status.HostIP,
+		Namespace:     pod.Namespace,
+		Tenant:        pod.Tenant,
+		ArktosNetwork: network,
+		Phase:         string(pod.Status.Phase),
 	}
 }
 
