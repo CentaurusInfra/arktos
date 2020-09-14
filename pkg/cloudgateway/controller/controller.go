@@ -50,22 +50,11 @@ type Controller struct {
 	clientset                   clientset.Interface
 	informerFactory             informers.SharedInformerFactory
 	serviceExposeInformerLister listers.ServiceExposeLister
-	policyInformerLister        listers.EPolicyLister
 	// service lister can list/get service from the shared informer's store
 	serviceLister               listers.EServiceLister
-	serverLister                listers.EServerLister
 	serviceExposeInformerSynced cache.InformerSynced
-	policyInformerSynced        cache.InformerSynced
-	serviceInformerSynced       cache.InformerSynced
-	serverInformerSynced        cache.InformerSynced
 	serviceExposeQueue          workqueue.RateLimitingInterface
-	policyQueue                 workqueue.RateLimitingInterface
-	serviceQueue                workqueue.RateLimitingInterface
-	serverQueue                 workqueue.RateLimitingInterface
 	serviceExposeHandler        handler.Handler
-	policyHandler               handler.Handler
-	serviceHandler              handler.Handler
-	serverHandler               handler.Handler
 }
 
 func newController(enable bool, kc *v1.KubeAPIConfig) *Controller {
