@@ -109,7 +109,7 @@ func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (htt
 	if err != nil {
 		klog.Infof("Error in building mizar node controller: %v", err.Error())
 	}
-	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
+	epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
 	fmt.Scanln()
 	klog.Infof("mizar endpoints controller exited")
 	return nil, true, nil
