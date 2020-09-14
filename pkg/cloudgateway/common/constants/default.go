@@ -9,4 +9,7 @@ const (
 
 	// KubeAPIConfig
 	DefaultKubeConfig	= "/root/.kube/config"
+
+	// response message type
+	ResponseType = "response/default"
 )

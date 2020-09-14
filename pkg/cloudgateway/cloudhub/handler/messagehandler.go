@@ -2,10 +2,12 @@ package handler
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
+	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	beehiveModel "github.com/kubeedge/beehive/pkg/core/model"
 	"github.com/kubeedge/viaduct/pkg/conn"
 	"github.com/kubeedge/viaduct/pkg/mux"
@@ -14,12 +16,16 @@ import (
 	hubio "k8s.io/kubernetes/pkg/cloudgateway/cloudhub/common/io"
 	"k8s.io/kubernetes/pkg/cloudgateway/cloudhub/common/model"
 	hubconfig "k8s.io/kubernetes/pkg/cloudgateway/cloudhub/config"
+	"k8s.io/kubernetes/pkg/cloudgateway/common/constants"
 )
 
 // ExitCode exit code
 type ExitCode int
 
 const nodeStop ExitCode = iota
+const ResponsePattern = constants.ResponseType + `/\w[-\w.+]*`
+
+var ResponseRegExp = regexp.MustCompile(ResponsePattern)
 
 // MessageHandle processes messages between cloud and edge
 type MessageHandle struct {
@@ -85,6 +91,12 @@ func (mh *MessageHandle) HandleServer(container *mux.MessageContainer, writer mu
 			return
 		}
 		nodeKeepalive.(chan struct{}) <- struct{}{}
+		return
+	}
+
+	// handle response message
+	if ResponseRegExp.MatchString(container.Message.GetResource()) {
+		beehiveContext.SendResp(*container.Message)
 		return
 	}
 
