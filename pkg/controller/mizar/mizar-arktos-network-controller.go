@@ -149,7 +149,7 @@ func (c *MizarArktosNetworkController) syncNetwork(eventKey KeyWithEventType) er
 		klog.V(4).Infof("Finished syncing service %q (%v)", key, time.Since(startTime))
 	}()
 
-	tenant, _, name, err := cache.SplitMetaTenantKey(key)
+	tenant, name, err := cache.SplitMetaTenantKey(key)
 	if err != nil {
 		return err
 	}
