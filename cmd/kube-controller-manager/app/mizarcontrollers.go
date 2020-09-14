@@ -17,6 +17,7 @@ limitations under the License.
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -27,8 +28,8 @@ import (
 )
 
 const (
-	mizarStarterControllerWorkerCount   = 2
-	mizarPodControllerWorkerCount       = 4
+	mizarStarterControllerWorkerCount = 2
+	//mizarPodControllerWorkerCount     = 4
 	mizarNodeControllerWorkerCount      = 4
 	mizarEndpointsControllerWorkerCount = 4
 )
@@ -49,7 +50,9 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
 	startMizarPodController(&ctx, grpcHost)
-	startMizarNodeController(&ctx, grpcHost)
+
+	go startMizarEndpointsController(&ctx, grpcHost)
+	go startMizarNodeController(&ctx, grpcHost)
 }
 
 func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
@@ -64,18 +67,22 @@ func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Hand
 	return nil, true, nil
 }
 
-func startMizarNodeController(ctx *ControllerContext, grpcHost string) (err error) {
+func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 	controllerName := "mizar-node-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
-
 	nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	nodeKubeClient := clientset.NewForConfigOrDie(nodeKubeconfigs)
-	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 10*time.Minute)
+	nodeKubeClient, err := clientset.NewForConfig(nodeKubeconfigs)
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 3*time.Minute)
 	nodeInformer := informerFactory.Core().V1().Nodes()
 	nodeController, err := controllers.NewMizarNodeController(nodeKubeClient, nodeInformer, grpcHost)
 	if err != nil {
-		klog.Fatalf("Error in building mizar node controller: %v", err.Error())
+		klog.Infof("Error in building mizar node controller: %v", err)
 	}
-	go nodeController.Run(mizarNodeControllerWorkerCount, ctx.Stop)
-	return err
+	informerFactory.Start(stopCh)
+	nodeController.Run(mizarNodeControllerWorkerCount, ctx.Stop)
+	fmt.Scanln()
+	klog.Infof("mizar node controller exited")
+	return nil, true, nil
 }

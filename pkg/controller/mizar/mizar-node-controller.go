@@ -24,6 +24,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -56,6 +57,7 @@ type MizarNodeController struct {
 	kubeclientset  *kubernetes.Clientset
 	informer       coreinformers.NodeInformer
 	informerSynced cache.InformerSynced
+	syncHandler    func(eventKey KeyWithEventType) error
 	lister         corelisters.NodeLister
 	recorder       record.EventRecorder
 	queue          workqueue.RateLimitingInterface
@@ -68,7 +70,7 @@ func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer co
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-node-controller"})
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(
-		&v1core.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
+		&v1core.EventSinkImpl{Interface: kubeclientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	c := &MizarNodeController{
 		kubeclientset:  kubeclientset,
@@ -138,6 +140,8 @@ func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer co
 			klog.Infof("Delete Node - %v", key)
 		},
 	})
+
+	c.syncHandler = c.syncNode
 	return c, nil
 }
 
@@ -147,12 +151,16 @@ func (c *MizarNodeController) Run(workers int, stopCh <-chan struct{}) {
 	defer c.queue.ShutDown()
 	klog.Infof("Starting node controller")
 	klog.Infof("Waiting cache to be synced")
-	if ok := cache.WaitForCacheSync(stopCh, c.informerSynced); !ok {
+
+	ok := cache.WaitForCacheSync(stopCh, c.informerSynced)
+	klog.Infof("111 - sync done")
+	if !ok {
 		klog.Infof("Timeout expired during waiting for caches to sync.")
 	}
 	klog.Infof("Starting workers...")
 	for i := 0; i < workers; i++ {
-		go wait.Until(c.runWorker, time.Second, stopCh)
+		go wait.Until(c.worker, time.Second, stopCh)
+		//go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 	<-stopCh
 	klog.Infof("Shutting down node controller")
@@ -164,49 +172,63 @@ func (c *MizarNodeController) Enqueue(key string, eventType EventType) {
 	c.queue.Add(KeyWithEventType{Key: key, EventType: eventType})
 }
 
-// Dequeue an item and process it
-func (c *MizarNodeController) runWorker() {
-	for {
-		item, queueIsEmpty := c.queue.Get()
-		if queueIsEmpty {
-			break
-		}
-		c.process(item)
+func (c *MizarNodeController) worker() {
+	for c.processNextWorkItem() {
 	}
 }
 
-// Parsing a item key and call gRPC request
-func (c *MizarNodeController) process(item interface{}) {
-	defer c.queue.Done(item)
-	keyWithEventType, ok := item.(KeyWithEventType)
-	if !ok {
-		klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
-		c.queue.Forget(item)
-		return
+func (c *MizarNodeController) processNextWorkItem() bool {
+	workItem, quit := c.queue.Get()
+	if quit {
+		return false
 	}
+
+	eventKey := workItem.(KeyWithEventType)
+	key := eventKey.Key
+	defer c.queue.Done(key)
+
+	err := c.syncHandler(eventKey)
+	if err == nil {
+		c.queue.Forget(key)
+		return true
+	}
+
+	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", "serivce", key, err))
+	c.queue.AddRateLimited(eventKey)
+
+	return true
+}
+
+func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error {
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
+
+	startTime := time.Now()
+	defer func() {
+		klog.V(4).Infof("Finished syncing service %q (%v)", key, time.Since(startTime))
+	}()
 	_, _, nodeName, err := cache.SplitMetaTenantNamespaceKey(key)
 	node, err := c.lister.Get(nodeName)
 	if err != nil || node == nil {
 		klog.Errorf("Failed to retrieve node in local cache by node name - %s", nodeName)
-		c.queue.AddRateLimited(item)
-		return
+		c.queue.AddRateLimited(keyWithEventType)
+		return err
 	}
 	_, _, _, nodeAddress, err := c.getNodeInfo(node)
 	if err != nil {
 		klog.Errorf("Failed to retrieve node address in local cache by node name %v", nodeName)
-		c.queue.AddRateLimited(item)
-		return
+		c.queue.AddRateLimited(keyWithEventType)
+		return err
 	}
 	result, err := c.gRPCRequest(eventType, nodeName, nodeAddress)
 	if !result {
 		klog.Errorf("Failed a node processing - %v", key)
-		c.queue.AddRateLimited(item)
+		c.queue.AddRateLimited(keyWithEventType)
 	} else {
 		klog.Infof(" Processed a node - %v", key)
-		c.queue.Forget(item)
+		c.queue.Forget(key)
 	}
+	return nil
 }
 
 // Retrieve node info
