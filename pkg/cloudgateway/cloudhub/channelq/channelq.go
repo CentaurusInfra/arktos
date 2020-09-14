@@ -2,14 +2,14 @@ package channelq
 
 import (
 	"fmt"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
 	"strings"
 	"sync"
 
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	beehiveModel "github.com/kubeedge/beehive/pkg/core/model"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/cloudgateway/cloudhub/common/model"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/modules"
 )
