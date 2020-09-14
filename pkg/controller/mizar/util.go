@@ -70,8 +70,15 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 }
 
 func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
+	ip := ""
+	for _, item := range node.Status.Addresses {
+		if item.Type == "InternalIP" {
+			ip = item.Address
+			break
+		}
+	}
 	return &BuiltinsNodeMessage{
 		Name: node.Name,
-		Ip:   "TBD",
+		Ip:   ip,
 	}
 }
