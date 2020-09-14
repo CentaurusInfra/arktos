@@ -97,6 +97,8 @@ func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err
 
 	epKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
 	epKubeClient := clientset.NewForConfigOrDie(epKubeconfigs)
+	stopCh := make(chan struct{})
+	defer close(stopCh)
 	informerFactory := informers.NewSharedInformerFactory(epKubeClient, 10*time.Minute)
 	epInformer := informerFactory.Core().V1().Endpoints()
 	serviceInformer := informerFactory.Core().V1().Services()
