@@ -24,6 +24,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -82,7 +83,7 @@ func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointIn
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-endpoints-controller"})
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(
-		&v1core.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
+		&v1core.EventSinkImpl{Interface: kubeclientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	c := &MizarEndpointsController{
 		kubeclientset:       kubeclientset,
@@ -116,8 +117,9 @@ func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointIn
 			oldResource := oldObject.(*v1.Endpoints)
 			newResource := newObject.(*v1.Endpoints)
 			name := newResource.GetName()
-			if(name == "kube-controller-manager" || name == "kube-scheduler" )
+			if name == "kube-controller-manager" || name == "kube-scheduler" {
 				return
+			}
 			eventType, err := c.determineEventType(oldResource, newResource)
 			if err != nil {
 				klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
@@ -187,7 +189,7 @@ func (c *MizarEndpointsController) runWorker() {
 	for {
 		item, queueIsEmpty := c.queue.Get()
 		if queueIsEmpty {
-			break
+			return
 		}
 		c.process(item)
 	}
@@ -230,11 +232,11 @@ func (c *MizarEndpointsController) process(item interface{}) {
 		ports := subset.Ports
 		if addresses != nil && ports != nil {
 			for j := 0; j < len(addresses); j++ {
-				serviceEndPoint.addresses[j] = addresses[j].IP
+				serviceEndPoint.addresses = append(serviceEndPoint.addresses, addresses[j].IP)
 			}
 			for j := 0; j < len(ports); j++ {
 				epPort := ports[j].Port
-				serviceEndPoint.ports[j] = c.getPorts(namespace, tenant, epName, epPort)
+				serviceEndPoint.ports = append(serviceEndPoint.ports, c.getPorts(namespace, tenant, epName, epPort))
 			}
 		}
 	}
@@ -262,8 +264,8 @@ func (c *MizarEndpointsController) determineEventType(resource1 *v1.Endpoints, r
 		eventType = EndpointsNoChange
 		return
 	}
-	var notReadyAddressSet sets.String
-	var readyAddressSet sets.String
+	notReadyAddressSet := sets.String{}
+	readyAddressSet := sets.String{}
 	for i := 0; i < len(epSubsets1); i++ {
 		notReadyAddresses := epSubsets1[i].NotReadyAddresses
 		for j := 0; j < len(notReadyAddresses); j++ {
@@ -327,9 +329,8 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 	var resource BuiltinsServiceEndpointMessage
 	if (ep.ports) != nil {
 		for i := 0; i < len(ep.ports); i++ {
-			ports[i].FrontendPort = ep.ports[i].frontPort
-			ports[i].BackendPort = ep.ports[i].backendPort
-			ports[i].Protocol = ep.ports[i].protocol
+			portMessage := PortsMessage{ep.ports[i].frontPort, ep.ports[i].backendPort, ep.ports[i].protocol}
+			ports = append(ports, &portMessage)
 		}
 	}
 	resource = BuiltinsServiceEndpointMessage{
