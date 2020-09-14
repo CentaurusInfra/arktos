@@ -28,11 +28,13 @@ import (
 )
 
 const (
+	mizarStarterControllerWorkerCount   = 2
 	mizarPodControllerWorkerCount       = 4
 	mizarEndpointsControllerWorkerCount = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
+	controllerName := "mizar-starter-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
 	go controllers.NewMizarStarterController(
