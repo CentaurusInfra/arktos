@@ -266,7 +266,9 @@ func (c *MizarEndpointsController) determineEventType(resource1 *v1.Endpoints, r
 		return
 	}
 	var notReadyAddressSet sets.String
-	var readyAddressSet sets.String
+	//var readyAddressSet sets.String
+	notReadyAddressSet := sets.String{}
+	readyAddressSet := sets.String{}
 	for i := 0; i < len(epSubsets1); i++ {
 		notReadyAddresses := epSubsets1[i].NotReadyAddresses
 		for j := 0; j < len(notReadyAddresses); j++ {
