@@ -17,6 +17,7 @@ limitations under the License.
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -27,9 +28,10 @@ import (
 )
 
 const (
-	mizarPodControllerWorkerCount     = 4
-	mizarEndpointsControllerWorkerCount     = 4
-	
+	mizarPodControllerWorkerCount       = 4
+	mizarEndpointsControllerWorkerCount = 4
+)
+
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
 	klog.V(2).Infof("Starting %v", controllerName)
 
