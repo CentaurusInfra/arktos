@@ -189,7 +189,8 @@ func (c *MizarEndpointsController) runWorker() {
 	for {
 		item, queueIsEmpty := c.queue.Get()
 		if queueIsEmpty {
-			break
+			return
+			//break
 		}
 		c.process(item)
 	}
@@ -232,11 +233,11 @@ func (c *MizarEndpointsController) process(item interface{}) {
 		ports := subset.Ports
 		if addresses != nil && ports != nil {
 			for j := 0; j < len(addresses); j++ {
-				serviceEndPoint.addresses[j] = addresses[j].IP
+				serviceEndPoint.addresses = append(serviceEndPoint.addresses, addresses[j].IP)
 			}
 			for j := 0; j < len(ports); j++ {
 				epPort := ports[j].Port
-				serviceEndPoint.ports[j] = c.getPorts(namespace, tenant, epName, epPort)
+				serviceEndPoint.ports = append(serviceEndPoint.ports, c.getPorts(namespace, tenant, epName, epPort))
 			}
 		}
 	}
