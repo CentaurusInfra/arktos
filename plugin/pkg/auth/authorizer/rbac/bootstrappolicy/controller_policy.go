@@ -394,6 +394,25 @@ func buildControllerRoles() ([]rbacv1.ClusterRole, []rbacv1.ClusterRoleBinding) 
 		},
 	})
 
+	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "mizar-node-controller"},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1helpers.NewRule("get", "list", "watch").Groups(legacyGroup).Resources("nodes").RuleOrDie(),
+			rbacv1helpers.NewRule("get", "list", "create", "update", "delete").Groups(legacyGroup).Resources("nodes").RuleOrDie(),
+			rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("nodes/restricted").RuleOrDie(),
+			eventsRule(),
+		},
+	})
+
+	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "mizar-endpoints-controller"},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1helpers.NewRule("get", "list", "watch").Groups(legacyGroup).Resources("endpoints", "services").RuleOrDie(),
+			rbacv1helpers.NewRule("get", "list", "create", "update", "delete").Groups(legacyGroup).Resources("endpoints", "services").RuleOrDie(),
+			rbacv1helpers.NewRule("create").Groups(legacyGroup).Resources("endpoints/restricted").RuleOrDie(),
+			eventsRule(),
+		},
+	})
 	return controllerRoles, controllerRoleBindings
 }
 
