@@ -12,6 +12,15 @@ type ServiceExposeHandler struct {
 	serviceLister listers.EServiceLister
 	siteLister    listers.ESiteLister
 	gatewayClient clientset.Interface
+
+	// Map edge site name to the allocated virtual presence info
+	virtualPresenceMap map[string]VirtualPresenceInfo
+}
+
+// Allocated VirtualPresence info
+type VirtualPresenceInfo struct {
+	cidr         string
+	allocatedIps []string
 }
 
 // ServiceExposeObj
@@ -29,11 +38,16 @@ func NewServiceExposeHandler(serviceLister listers.EServiceLister, siteLister li
 		serviceLister: serviceLister,
 		siteLister:    siteLister,
 		gatewayClient: gatewayClient,
+		virtualPresenceMap: map[string]VirtualPresenceInfo{},
 	}
+
+	// Init map here
 	return se
 }
 
+// Request a un used virtual presence ip in the network of the site
 func (h *ServiceExposeHandler) RequestVirtualPresence(site *v1.ESite, serviceExpose *v1.ServiceExpose) (string, error) {
+
 	return "", nil
 }
 
