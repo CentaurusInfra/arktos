@@ -265,7 +265,7 @@ func (c *MizarEndpointsController) determineEventType(resource1 *v1.Endpoints, r
 		eventType = EndpointsNoChange
 		return
 	}
-	var notReadyAddressSet sets.String
+	//var notReadyAddressSet sets.String
 	//var readyAddressSet sets.String
 	notReadyAddressSet := sets.String{}
 	readyAddressSet := sets.String{}
