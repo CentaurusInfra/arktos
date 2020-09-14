@@ -219,6 +219,15 @@ func buildControllerRoles() ([]rbacv1.ClusterRole, []rbacv1.ClusterRoleBinding) 
 		},
 	})
 	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "mizar-service-controller"},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1helpers.NewRule("create", "get", "list", "update", "delete", "patch").Groups("arktos.futurewei.com").Resources("networks").RuleOrDie(),
+			rbacv1helpers.NewRule("create", "get", "list", "update", "delete", "patch").Groups(legacyGroup).Resources("services").RuleOrDie(),
+			rbacv1helpers.NewRule("patch", "update").Groups(legacyGroup).Resources("services/status").RuleOrDie(),
+			eventsRule(),
+		},
+	})
+	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "node-controller"},
 		Rules: []rbacv1.PolicyRule{
 			rbacv1helpers.NewRule("get", "list", "update", "delete", "patch").Groups(legacyGroup).Resources("nodes").RuleOrDie(),
