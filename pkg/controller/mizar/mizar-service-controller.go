@@ -221,13 +221,13 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, key
 		if len(net.Status.DNSServiceIP) == 0 {
 			netReady := net.DeepCopy()
 			netReady.Status.DNSServiceIP = ip
-			netNew, err = c.netClient.ArktosV1().NetworksWithMultiTenancy(net.Tenant).UpdateStatus(netReady)
+			netNew, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(net.Tenant).UpdateStatus(netReady)
 			if err != nil {
 				klog.Errorf("The following network failed to update: %v", netReady)
 				return err
 			}
+			klog.Info("Updated network: %v", netNew)
 		}
-		klog.Info("Updated network: %v", netNew)
 	}
 
 	if len(service.Spec.ClusterIP) == 0 {
