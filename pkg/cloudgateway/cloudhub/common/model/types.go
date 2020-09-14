@@ -5,6 +5,11 @@ import (
 	_ "encoding/json"
 )
 
+const (
+	OpKeepalive = "keepalive"
+	ResNode     = "node"
+)
+
 // HubInfo saves identifier information for edge hub
 type HubInfo struct {
 	ProjectID string

@@ -44,7 +44,7 @@ func (eh *EdgeHub) keepalive() {
 		default:
 		}
 		msg := model.NewMessage("")
-		msg.BuildRouter(modules.EdgeHubModuleName, "", "", "").FillBody("")
+		msg.BuildRouter(modules.EdgeHubModuleName, "", "", "keepalive").FillBody("")
 		msg.FillBody("")
 
 		// send message to cloudhub
