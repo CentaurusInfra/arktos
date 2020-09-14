@@ -322,6 +322,7 @@ func (c *MizarEndpointsController) getPorts(namespace, tenant, epName string, ep
 //gRPC request message, Integration is needed
 func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoint) (response bool, err error) {
 	client, ctx, conn, cancel, err := getGrpcClient(c.grpcHost)
+	klog.Errorf("Endpoint gRPC Request - event:%v, endpoints: %v", event, ep)
 	if err != nil {
 		klog.Errorf("gRPC connection failed ", err)
 		return false, err
@@ -347,7 +348,7 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 	case EventType_Create:
 		returnCode, err := client.CreateServiceEndpoint(ctx, &resource)
 		if returnCode.Code != CodeType_OK {
-			klog.Errorf("Endpoint creation failed on Mizar side - %v", err)
+			klog.Errorf("Endpoint creation failed on Mizar side - %v, %v", returnCode.Code, err)
 			return false, err
 		}
 	case EventType_Update:
