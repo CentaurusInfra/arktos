@@ -326,7 +326,6 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 	}
 	defer conn.Close()
 	defer cancel()
-	var portMessage PortsMessage
 	var ports []*PortsMessage
 	var resource BuiltinsServiceEndpointMessage
 	if (ep.ports) != nil {
