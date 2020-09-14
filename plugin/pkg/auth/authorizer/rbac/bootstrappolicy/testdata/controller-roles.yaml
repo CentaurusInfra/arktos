@@ -660,22 +660,42 @@ items:
   rules:
   - apiGroups:
     - 'arktos.futurewei.com'
+    resources:
+    - 'networks'
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - update
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - services
+    verbs:
+    - create
+    - update
+    - get
+    - delete
+  - apiGroups:
+    - 'arktos.futurewei.com'
+    resources:
+    - networks/status
+    verbs:
+    - create
+    - update
+    - get
+    - delete
+  - apiGroups:
     - '*'
     resources:
     - '*'
     verbs:
     - delete
+    - update
     - get
     - list
-    - watch
-  - apiGroups:
-    - ""
-    resources:
-    - events
-    verbs:
-    - create
-    - patch
-    - update
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRole
   metadata:
