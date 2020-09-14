@@ -80,7 +80,7 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Han
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	//nodeKubeClient := ctx.ClientBuilder.ClientOrDie(controllerName)
-	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 1*time.Minute)
+	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 3*time.Minute)
 	nodeInformer := informerFactory.Core().V1().Nodes()
 	nodeController, err := controllers.NewMizarNodeController(nodeKubeClient, nodeInformer, grpcHost)
 	if err != nil {
@@ -93,7 +93,29 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Han
 	return nil, true, nil
 }
 
-func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err error) {
+func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	controllerName := "mizar-endpoints-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	epKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	epKubeClient := clientset.NewForConfigOrDie(epKubeconfigs)
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	informerFactory := informers.NewSharedInformerFactory(epKubeClient, 3*time.Minute)
+	epInformer := informerFactory.Core().V1().Endpoints()
+	serviceInformer := informerFactory.Core().V1().Services()
+	epController, err := controllers.NewMizarEndpointsController(epKubeClient, epInformer, serviceInformer, grpcHost)
+	informerFactory.Start(stopCh)
+	if err != nil {
+		klog.Infof("Error in building mizar node controller: %v", err.Error())
+	}
+	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
+	fmt.Scanln()
+	klog.Infof("mizar endpoints controller exited")
+	return nil, true, nil
+}
+
+/*func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err error) {
 	controllerName := "mizar-endpoints-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
@@ -111,7 +133,7 @@ func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err
 	}
 	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
 	return err
-}
+}*/
 
 /*func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 
