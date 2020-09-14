@@ -21,13 +21,12 @@ import (
 	"context"
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type testType string
@@ -212,8 +211,8 @@ func TestNewAggregatedWatcherWithReset(t *testing.T) {
 		go func(aggWatcher *AggregatedWatcher, i int) {
 			w := NewFake()
 			aggWatcher.AddWatchInterface(w, nil)
-			time.Sleep(10 * time.Millisecond)
-			aggWatcher.removeWatcherAndError(w)
+			w.Stop()
+			time.Sleep(3 * time.Millisecond)
 			wg.Done()
 		}(aw, i)
 	}
@@ -221,8 +220,126 @@ func TestNewAggregatedWatcherWithReset(t *testing.T) {
 	wg.Wait()
 	assert.True(t, aw.allowWatcherReset)
 	assert.Nil(t, aw.GetErrors())
-	assert.Equal(t, 0, aw.GetWatchersCount())
 	assert.False(t, aw.stopped)
 	aw.Stop()
+	assert.Equal(t, 0, aw.GetWatchersCount())
 	assert.True(t, aw.stopped)
+}
+
+func TestProxyWatcherInAggegatedWatch(t *testing.T) {
+	events := []Event{
+		{Added, testType("foo")},
+		{Modified, testType("qux")},
+		{Modified, testType("bar")},
+		{Deleted, testType("bar")},
+		{Error, testType("error: blah")},
+	}
+
+	ch := make(chan Event, len(events))
+	w := NewProxyWatcher(ch)
+	aw := NewAggregatedWatcherWithOneWatch(w, nil)
+
+	var wg sync.WaitGroup
+	wg.Add(len(events))
+	go func() {
+		for _, e := range events {
+			ch <- e
+		}
+	}()
+
+	go func() {
+		for _, e := range events {
+			g := <-aw.ResultChan()
+			if !reflect.DeepEqual(e, g) {
+				t.Errorf("Expected %#v, got %#v", e, g)
+				continue
+			}
+			wg.Done()
+		}
+	}()
+
+	wg.Wait()
+	aw.Stop()
+	time.Sleep(time.Millisecond)
+	assert.False(t, aw.allowWatcherReset)
+	assert.Equal(t, 0, aw.stopChGrp.MemberCount())
+	assert.True(t, aw.stopped)
+	assert.True(t, w.stopped)
+
+	// Test double close
+	aw.Stop()
+}
+
+// This is for the aggregated watch panic on timeout issue
+// 3 watch channels - two send events consistently, one send error after some events
+func TestAggregatedWatchOnError(t *testing.T) {
+	for m := 0; m < 100; m++ {
+		agg := NewAggregatedWatcher()
+
+		ch1 := make(chan Event)
+		ch2 := make(chan Event)
+		ch3 := make(chan Event)
+		w1 := NewProxyWatcher(ch1)
+		w2 := NewProxyWatcher(ch2)
+		w3 := NewProxyWatcher(ch3)
+
+		agg.AddWatchInterface(w1, nil)
+		agg.AddWatchInterface(w2, nil)
+		agg.AddWatchInterface(w3, nil)
+
+		var received bool
+		received = false
+		go func(rev *bool) {
+			for range agg.ResultChan() {
+				*rev = true
+			}
+		}(&received)
+
+		var wg sync.WaitGroup
+		var ch1Sent int
+		var ch2Sent int
+		var ch3Sent int
+		ch1Sent = 0
+		ch2Sent = 0
+		ch3Sent = 0
+		go func(sent *int) {
+			for i := 0; i < 1000; i++ {
+				ch1 <- Event{Added, testType("foo")}
+				*sent = *sent + 1
+			}
+		}(&ch1Sent)
+
+		go func(sent *int) {
+			for i := 0; i < 1000; i++ {
+				ch2 <- Event{Modified, testType("bar")}
+				*sent = *sent + 1
+			}
+		}(&ch2Sent)
+
+		wg.Add(1)
+		go func(sent *int) {
+			for i := 0; i < 10; i++ {
+				ch3 <- Event{Deleted, testType("qux")}
+				*sent = *sent + 1
+			}
+			wg.Done()
+		}(&ch3Sent)
+
+		wg.Wait()
+		agg.Stop()
+		time.Sleep(time.Millisecond)
+		t.Logf("Channel 1 scheduled to sent 1000 but sent %d", ch1Sent)
+		t.Logf("Channel 2 scheduled to sent 1000 but sent %d", ch2Sent)
+		assert.True(t, 1000 > ch1Sent)
+		assert.True(t, 1000 > ch2Sent)
+		assert.Equal(t, 10, ch3Sent)
+
+		assert.True(t, received)
+		assert.True(t, agg.stopped)
+		assert.False(t, agg.allowWatcherReset)
+		assert.Equal(t, 0, agg.stopChGrp.MemberCount())
+		assert.True(t, w1.stopped)
+		assert.True(t, w2.stopped)
+		assert.True(t, w3.stopped)
+	}
 }
