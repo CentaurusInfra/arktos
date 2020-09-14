@@ -29,9 +29,9 @@ import (
 
 const (
 	mizarStarterControllerWorkerCount = 2
-	//mizarPodControllerWorkerCount     = 4
-	mizarNodeControllerWorkerCount      = 4
-	mizarEndpointsControllerWorkerCount = 4
+	mizarPodControllerWorkerCount     = 4
+	mizarNodeControllerWorkerCount    = 4
+	//mizarEndpointsControllerWorkerCount = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -51,7 +51,7 @@ func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
 	startMizarPodController(&ctx, grpcHost)
 
-	go startMizarEndpointsController(&ctx, grpcHost)
+	//go startMizarEndpointsController(&ctx, grpcHost)
 	go startMizarNodeController(&ctx, grpcHost)
 }
 
