@@ -12,4 +12,7 @@ const (
 
 	DefaultHostnameOverride = "default-edge-site"
 	LocalIP                 = "127.0.0.1"
+
+	// response message type
+	ResponseType = "response/default"
 )

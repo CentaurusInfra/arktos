@@ -14,7 +14,7 @@ import (
 	"k8s.io/kubernetes/pkg/edgegateway/edgehub/config"
 )
 
-// EdgeHub defines edgehub object structure
+// EdgeHub defines edgeHub object structure
 type EdgeHub struct {
 	certManager   certificate.CertManager
 	chClient      clients.Adapter
@@ -30,7 +30,7 @@ func newEdgeHub(enable bool) *EdgeHub {
 	}
 }
 
-// Register register edgehub
+// Register register edgeHub
 func Register(eh *v1.EdgeHub) {
 	config.InitConfigure(eh)
 	core.Register(newEdgeHub(eh.Enable))
@@ -75,9 +75,11 @@ func (eh *EdgeHub) Start() {
 			time.Sleep(time.Minute)
 			continue
 		}
-
 		// send heartbeat to cloudhub
 		go eh.keepalive()
+
+		go eh.routeToEdge()
+		go eh.routeToCloud()
 
 		// stop websocket connection
 		<-eh.reconnectChan
