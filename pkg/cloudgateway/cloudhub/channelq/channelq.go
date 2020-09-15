@@ -27,7 +27,7 @@ func NewChannelMessageQueue() *ChannelMessageQueue {
 }
 
 // DispatchMessage gets the message from the cloud, extracts the
-// node id from it, gets the message associated with the node
+// site id from it, gets the message associated with the site
 // and pushes the message to the queue
 func (q *ChannelMessageQueue) DispatchMessage() {
 	for {
@@ -42,23 +42,23 @@ func (q *ChannelMessageQueue) DispatchMessage() {
 			klog.Info("receive not Message format message")
 			continue
 		}
-		nodeID, err := GetNodeID(&msg)
-		if nodeID == "" || err != nil {
-			klog.Warning("node id is not found in the message, don't send this message to edge")
+		siteID, err := GetSiteID(&msg)
+		if siteID == "" || err != nil {
+			klog.Warning("site id is not found in the message, don't send this message to edge")
 			continue
 		}
 
-		q.addMessageToQueue(nodeID, &msg)
+		q.addMessageToQueue(siteID, &msg)
 	}
 }
 
-func (q *ChannelMessageQueue) addMessageToQueue(nodeId string, msg *beehiveModel.Message) {
-	nodeQueue := q.GetNodeQueue(nodeId)
-	nodeStore := q.GetNodeStore(nodeId)
+func (q *ChannelMessageQueue) addMessageToQueue(siteId string, msg *beehiveModel.Message) {
+	siteQueue := q.GetSiteQueue(siteId)
+	siteStore := q.GetSiteStore(siteId)
 
 	messageKey, _ := getMsgKey(msg)
-	nodeStore.Add(msg)
-	nodeQueue.Add(messageKey)
+	siteStore.Add(msg)
+	siteQueue.Add(messageKey)
 }
 
 func getMsgKey(obj interface{}) (string, error) {
@@ -67,24 +67,24 @@ func getMsgKey(obj interface{}) (string, error) {
 	return msg.Header.ID, nil
 }
 
-func (q *ChannelMessageQueue) GetNodeQueue(nodeID string) workqueue.RateLimitingInterface {
-	queue, ok := q.queuePool.Load(nodeID)
+func (q *ChannelMessageQueue) GetSiteQueue(siteID string) workqueue.RateLimitingInterface {
+	queue, ok := q.queuePool.Load(siteID)
 	if !ok {
-		klog.Warningf("nodeQueue for edge node %s not found and created now", nodeID)
-		nodeQueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), nodeID)
-		q.queuePool.Store(nodeID, nodeQueue)
-		return nodeQueue
+		klog.Warningf("siteQueue for edge site %s not found and created now", siteID)
+		siteQueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), siteID)
+		q.queuePool.Store(siteID, siteQueue)
+		return siteQueue
 	}
 	return queue.(workqueue.RateLimitingInterface)
 }
 
-func (q *ChannelMessageQueue) GetNodeStore(nodeID string) cache.Store {
-	store, ok := q.storePool.Load(nodeID)
+func (q *ChannelMessageQueue) GetSiteStore(siteID string) cache.Store {
+	store, ok := q.storePool.Load(siteID)
 	if !ok {
-		klog.Warningf("nodeStore for edge node %s not found and created now", nodeID)
-		nodeStore := cache.NewStore(getMsgKey)
-		q.storePool.Store(nodeID, nodeStore)
-		return nodeStore
+		klog.Warningf("siteStore for edge site %s not found and created now", siteID)
+		siteStore := cache.NewStore(getMsgKey)
+		q.storePool.Store(siteID, siteStore)
+		return siteStore
 	}
 	return store.(cache.Store)
 }
@@ -95,52 +95,52 @@ func (q *ChannelMessageQueue) Publish(msg *beehiveModel.Message) error {
 	return nil
 }
 
-// GetNodeID get nodeID from resource of message
-func GetNodeID(msg *beehiveModel.Message) (string, error) {
+// GetSiteID get siteID from resource of message
+func GetSiteID(msg *beehiveModel.Message) (string, error) {
 	resource := msg.GetResource()
 	res := strings.Split(resource, "/")
 	for index, value := range res {
-		if value == model.ResNode && index+1 < len(res) && res[index+1] != "" {
+		if value == model.ResSite && index+1 < len(res) && res[index+1] != "" {
 			return res[index+1], nil
 		}
 	}
-	return "", fmt.Errorf("no nodeID in Message.Router.Resource: %s", resource)
+	return "", fmt.Errorf("no siteID in Message.Router.Resource: %s", resource)
 }
 
-// Connect allocates the queues and stores for given node
-func (q *ChannelMessageQueue) Connect(info *model.HubInfo) {
-	_, queueExist := q.queuePool.Load(info.NodeID)
-	_, storeExit := q.storePool.Load(info.NodeID)
+// Connect allocates the queues and stores for given site
+func (q *ChannelMessageQueue) Connect(siteID string) {
+	_, queueExist := q.queuePool.Load(siteID)
+	_, storeExit := q.storePool.Load(siteID)
 
 	if queueExist && storeExit {
-		klog.Infof("Message queue and store for edge node %s are already exist", info.NodeID)
+		klog.Infof("Message queue and store for edge site %s are already exist", siteID)
 		return
 	}
 
 	if !queueExist {
-		nodeQueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), info.NodeID)
-		q.queuePool.Store(info.NodeID, nodeQueue)
+		siteQueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), siteID)
+		q.queuePool.Store(siteID, siteQueue)
 	}
 	if !storeExit {
-		nodeStore := cache.NewStore(getMsgKey)
-		q.storePool.Store(info.NodeID, nodeStore)
+		siteStore := cache.NewStore(getMsgKey)
+		q.storePool.Store(siteID, siteStore)
 	}
 }
 
-// Close closes queues and stores for given node
-func (q *ChannelMessageQueue) Close(info *model.HubInfo) {
-	_, queueExist := q.queuePool.Load(info.NodeID)
-	_, storeExist := q.storePool.Load(info.NodeID)
+// Close closes queues and stores for given site
+func (q *ChannelMessageQueue) Close(siteID string) {
+	_, queueExist := q.queuePool.Load(siteID)
+	_, storeExist := q.storePool.Load(siteID)
 
 	if !queueExist && !storeExist {
-		klog.Warningf("rChannel for edge node %s is already removed", info.NodeID)
+		klog.Warningf("rChannel for edge site %s is already removed", siteID)
 		return
 	}
 
 	if queueExist {
-		q.queuePool.Delete(info.NodeID)
+		q.queuePool.Delete(siteID)
 	}
 	if storeExist {
-		q.storePool.Delete(info.NodeID)
+		q.storePool.Delete(siteID)
 	}
 }

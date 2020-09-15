@@ -33,11 +33,12 @@ func NewHTTPClient() *http.Client {
 }
 
 // SendRequest create and send a HTTP request, and return the resp info
-func SendRequest(client *http.Client, urlStr string, body io.Reader, method string) (*http.Response, error) {
+func SendRequest(client *http.Client, urlStr string, body io.Reader, method string, siteID string) (*http.Response, error) {
 	req, err := http.NewRequest(method, urlStr, body)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Add("SiteID", siteID)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

@@ -36,8 +36,7 @@ type WebSocketConfig struct {
 	HandshakeTimeout time.Duration
 	ReadDeadline     time.Duration
 	WriteDeadline    time.Duration
-	NodeID           string
-	ProjectID        string
+	SiteID           string
 }
 
 // NewWebSocketClient initializes a new websocket client instance
@@ -47,7 +46,7 @@ func NewWebSocketClient(conf *WebSocketConfig) *WebSocketClient {
 
 // Init initializes websocket client
 func (wsc *WebSocketClient) Init() error {
-	klog.Infof("Websocket start to connect Access")
+	klog.Infof("Websocket start to connect cloudhub")
 	cert, err := tls.LoadX509KeyPair(wsc.config.CertFilePath, wsc.config.KeyFilePath)
 	if err != nil {
 		klog.Errorf("Failed to load x509 key pair: %v", err)
@@ -79,8 +78,7 @@ func (wsc *WebSocketClient) Init() error {
 		ConnUse:          api.UseTypeMessage,
 	}
 	exOpts := api.WSClientOption{Header: make(http.Header)}
-	exOpts.Header.Set("node_id", wsc.config.NodeID)
-	exOpts.Header.Set("project_id", wsc.config.ProjectID)
+	exOpts.Header.Set("siteID", wsc.config.SiteID)
 	client := &wsclient.Client{Options: option, ExOpts: exOpts}
 
 	for i := 0; i < retryCount; i++ {
@@ -89,7 +87,7 @@ func (wsc *WebSocketClient) Init() error {
 			klog.Errorf("Init websocket connection failed %s", err.Error())
 		} else {
 			wsc.connection = connection
-			klog.Infof("Websocket connect to cloud access successful")
+			klog.Infof("Websocket connect to cloudhub successful")
 			return nil
 		}
 		time.Sleep(cloudAccessSleep)

@@ -19,7 +19,8 @@ import (
 )
 
 type CertManager struct {
-	CR       *x509.CertificateRequest
+	CR     *x509.CertificateRequest
+	SiteID string
 	// the location to save certificate
 	caFile   string
 	certFile string
@@ -38,6 +39,7 @@ func NewCertManager(edgehub v1.EdgeHub) CertManager {
 	}
 	return CertManager{
 		CR:       certReq,
+		SiteID:   edgehub.SiteID,
 		caFile:   edgehub.TLSCAFile,
 		certFile: edgehub.TLSCertFile,
 		keyFile:  edgehub.TLSPrivateKeyFile,
@@ -106,7 +108,7 @@ func (cm *CertManager) getCerts() error {
 // GetCACert gets the cloudGateway CA certificate
 func GetCACert(url string) ([]byte, error) {
 	client := http.NewHTTPClient()
-	res, err := http.SendRequest(client, url, nil, "GET")
+	res, err := http.SendRequest(client, url, nil, "GET", "")
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +134,7 @@ func (cm *CertManager) GetEdgeCert(url string) (*ecdsa.PrivateKey, []byte, error
 		return nil, nil, fmt.Errorf("falied to create http client: %v", err)
 	}
 
-	res, err := http.SendRequest(client, url, bytes.NewReader(csr), "GET")
+	res, err := http.SendRequest(client, url, bytes.NewReader(csr), "GET", cm.SiteID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send http request: %v", err)
 	}

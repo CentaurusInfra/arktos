@@ -19,7 +19,7 @@ func InitConfigure(eh *v1.EdgeHub) {
 	once.Do(func() {
 		Config = Configure{
 			EdgeHub:      *eh,
-			WebSocketURL: strings.Join([]string{"wss:/", eh.WebSocket.Server, eh.ProjectID, eh.Hostname, "events"}, "/"),
+			WebSocketURL: strings.Join([]string{"wss:/", eh.WebSocket.Server, eh.SiteID, "events"}, "/"),
 		}
 	})
 }

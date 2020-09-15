@@ -21,8 +21,7 @@ func GetClient() (Adapter, error) {
 			HandshakeTimeout: time.Duration(config.WebSocket.HandshakeTimeout) * time.Second,
 			ReadDeadline:     time.Duration(config.WebSocket.ReadDeadline) * time.Second,
 			WriteDeadline:    time.Duration(config.WebSocket.WriteDeadline) * time.Second,
-			ProjectID:        config.ProjectID,
-			NodeID:           config.Hostname,
+			SiteID:           config.SiteID,
 		}
 		return wsclient.NewWebSocketClient(&websocketConf), nil
 	case config.Quic.Enable:
@@ -34,8 +33,7 @@ func GetClient() (Adapter, error) {
 			HandshakeTimeout: time.Duration(config.Quic.HandshakeTimeout) * time.Second,
 			ReadDeadline:     time.Duration(config.Quic.ReadDeadline) * time.Second,
 			WriteDeadline:    time.Duration(config.Quic.WriteDeadline) * time.Second,
-			ProjectID:        config.ProjectID,
-			NodeID:           config.Hostname,
+			SiteID:           config.SiteID,
 		}
 		return quicclient.NewQuicClient(&quicConfig), nil
 	}

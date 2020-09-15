@@ -22,7 +22,7 @@ import (
 // ExitCode exit code
 type ExitCode int
 
-const nodeStop ExitCode = iota
+const siteStop ExitCode = iota
 const ResponsePattern = constants.ResponseType + `/\w[-\w.+]*`
 
 var ResponseRegExp = regexp.MustCompile(ResponsePattern)
@@ -31,17 +31,17 @@ var ResponseRegExp = regexp.MustCompile(ResponsePattern)
 type MessageHandle struct {
 	KeepaliveInterval int
 	WriteTimeout      int
-	Nodes             sync.Map
-	nodeConns         sync.Map
-	nodeLocks         sync.Map
-	nodeRegistered    sync.Map
+	Sites             sync.Map
+	siteConns         sync.Map
+	siteLocks         sync.Map
+	siteRegistered    sync.Map
 	MessageQueue      *channelq.ChannelMessageQueue
 	Handlers          []HandleFunc
-	NodeLimit         int
+	SiteLimit         int
 	KeepaliveChannel  sync.Map
 }
 
-type HandleFunc func(info *model.HubInfo, exitServe chan ExitCode)
+type HandleFunc func(siteID string, exitServe chan ExitCode)
 
 var once sync.Once
 
@@ -55,7 +55,7 @@ func InitHandler(eventq *channelq.ChannelMessageQueue) {
 			KeepaliveInterval: int(hubconfig.Config.KeepaliveInterval),
 			WriteTimeout:      int(hubconfig.Config.WriteTimeout),
 			MessageQueue:      eventq,
-			NodeLimit:         int(hubconfig.Config.NodeLimit),
+			SiteLimit:         int(hubconfig.Config.SiteLimit),
 		}
 
 		CloudhubHandler.Handlers = []HandleFunc{
@@ -72,25 +72,25 @@ func (mh *MessageHandle) initServerEntries() {
 	mux.Entry(mux.NewPattern("*").Op("*"), mh.HandleServer)
 }
 
-// HandleServer handle all the request from node
+// HandleServer handle all the request from site
 func (mh *MessageHandle) HandleServer(container *mux.MessageContainer, writer mux.ResponseWriter) {
-	nodeID := container.Header.Get("node_id")
+	siteID := container.Header.Get("siteID")
 
-	if mh.GetNodeCount() >= mh.NodeLimit {
-		klog.Errorf("Fail to serve node %s, reach node limit", nodeID)
+	if mh.GetSiteCount() >= mh.SiteLimit {
+		klog.Errorf("Fail to serve site %s, reach site limit", siteID)
 		return
 	}
 
 	// receive heartbeat from edge
 	if container.Message.GetOperation() == model.OpKeepalive {
-		klog.Infof("Keepalive message received from node: %s", nodeID)
+		klog.Infof("Keepalive message received from site: %s", siteID)
 
-		nodeKeepalive, ok := mh.KeepaliveChannel.Load(nodeID)
+		siteKeepalive, ok := mh.KeepaliveChannel.Load(siteID)
 		if !ok {
-			klog.Errorf("Failed to load node : %s", nodeID)
+			klog.Errorf("Failed to load site : %s", siteID)
 			return
 		}
-		nodeKeepalive.(chan struct{}) <- struct{}{}
+		siteKeepalive.(chan struct{}) <- struct{}{}
 		return
 	}
 
@@ -101,128 +101,127 @@ func (mh *MessageHandle) HandleServer(container *mux.MessageContainer, writer mu
 	}
 
 	// handle message from edge
-	err := mh.PubToController(nodeID, container.Message)
+	err := mh.PubToController(siteID, container.Message)
 	if err != nil {
 		klog.Errorf("")
 	}
 }
 
-// GetNodeCount returns the number of connected Nodes
-func (mh *MessageHandle) GetNodeCount() int {
+// GetSiteCount returns the number of connected sites
+func (mh *MessageHandle) GetSiteCount() int {
 	var num int
 	iter := func(key, value interface{}) bool {
 		num++
 		return true
 	}
-	mh.Nodes.Range(iter)
+	mh.Sites.Range(iter)
 	return num
 }
 
-func (mh *MessageHandle) PubToController(nodeID string, msg *beehiveModel.Message) error {
-	msg.SetResourceOperation(fmt.Sprintf("node/%s/%s", nodeID, msg.GetResource()), msg.GetOperation())
-	klog.Infof("receive message from node %s, %s, content: %s", nodeID, dumpMessageMetadata(msg), msg.GetContent())
+func (mh *MessageHandle) PubToController(siteID string, msg *beehiveModel.Message) error {
+	msg.SetResourceOperation(fmt.Sprintf("site/%s/%s", siteID, msg.GetResource()), msg.GetOperation())
+	klog.Infof("receive message from site %s, %s, content: %s", siteID, dumpMessageMetadata(msg), msg.GetContent())
 	err := mh.MessageQueue.Publish(msg)
 	if err != nil {
-		klog.Errorf("failed to publish message for node %s, %s, reason: %s", nodeID, dumpMessageMetadata(msg), err.Error())
+		klog.Errorf("failed to publish message for site %s, %s, reason: %s", siteID, dumpMessageMetadata(msg), err.Error())
 	}
 	return nil
 }
 
-// OnRegister register node on first connection
+// OnRegister register site on first connection
 func (mh *MessageHandle) OnRegister(connection conn.Connection) {
-	nodeID := connection.ConnectionState().Headers.Get("node_id")
-	projectID := connection.ConnectionState().Headers.Get("project_id")
+	siteID := connection.ConnectionState().Headers.Get("siteID")
 
-	if _, ok := mh.KeepaliveChannel.Load(nodeID); !ok {
-		mh.KeepaliveChannel.Store(nodeID, make(chan struct{}, 1))
+	if _, ok := mh.KeepaliveChannel.Load(siteID); !ok {
+		mh.KeepaliveChannel.Store(siteID, make(chan struct{}, 1))
 	}
 
 	io := &hubio.JSONIO{Connection: connection}
 
-	if _, ok := mh.nodeRegistered.Load(nodeID); ok {
-		if conn, exist := mh.nodeConns.Load(nodeID); exist {
+	if _, ok := mh.siteRegistered.Load(siteID); ok {
+		if conn, exist := mh.siteConns.Load(siteID); exist {
 			conn.(hubio.CloudHubIO).Close()
 		}
-		mh.nodeConns.Store(nodeID, io)
+		mh.siteConns.Store(siteID, io)
 		return
 	}
-	mh.nodeConns.Store(nodeID, io)
-	go mh.ServeConn(&model.HubInfo{ProjectID: projectID, NodeID: nodeID})
+	mh.siteConns.Store(siteID, io)
+	go mh.ServeConn(siteID)
 }
 
 // ServeConn starts serving the incoming connection
-func (mh *MessageHandle) ServeConn(info *model.HubInfo) {
-	err := mh.RegisterNode(info)
+func (mh *MessageHandle) ServeConn(siteID string) {
+	err := mh.RegisterSite(siteID)
 	if err != nil {
-		klog.Errorf("fail to register node %s, reason %s", info.NodeID, err.Error())
+		klog.Errorf("fail to register site %s, reason %s", siteID, err.Error())
 		return
 	}
 
-	klog.Infof("edge node %s for project %s connected", info.NodeID, info.ProjectID)
+	klog.Infof("edge site %s connected", siteID)
 	exitServe := make(chan ExitCode, 3)
 
 	for _, handle := range mh.Handlers {
-		go handle(info, exitServe)
+		go handle(siteID, exitServe)
 	}
 
 	code := <-exitServe
-	mh.UnregisterNode(info, code)
+	mh.UnregisterSite(siteID, code)
 }
 
-// RegisterNode register node in cloudhub for the incoming connection
-func (mh *MessageHandle) RegisterNode(info *model.HubInfo) error {
-	mh.MessageQueue.Connect(info)
+// RegisterSite register site in cloudhub for the incoming connection
+func (mh *MessageHandle) RegisterSite(siteID string) error {
+	mh.MessageQueue.Connect(siteID)
 
-	mh.nodeLocks.Store(info.NodeID, &sync.Mutex{})
-	mh.Nodes.Store(info.NodeID, true)
-	mh.nodeRegistered.Store(info.NodeID, true)
+	mh.siteLocks.Store(siteID, &sync.Mutex{})
+	mh.Sites.Store(siteID, true)
+	mh.siteRegistered.Store(siteID, true)
 	return nil
 }
 
-// UnregisterNode unregister node in cloudhub
-func (mh *MessageHandle) UnregisterNode(info *model.HubInfo, code ExitCode) {
-	if conn, exist := mh.nodeConns.Load(info.NodeID); exist {
+// UnregisterSite unregister site in cloudhub
+func (mh *MessageHandle) UnregisterSite(siteID string, code ExitCode) {
+	if conn, exist := mh.siteConns.Load(siteID); exist {
 		conn.(hubio.CloudHubIO).Close()
 	}
 
-	mh.nodeLocks.Delete(info.NodeID)
-	mh.nodeConns.Delete(info.NodeID)
-	mh.nodeRegistered.Delete(info.NodeID)
-	nodeKeepalive, ok := mh.KeepaliveChannel.Load(info.NodeID)
+	mh.siteLocks.Delete(siteID)
+	mh.siteConns.Delete(siteID)
+	mh.siteRegistered.Delete(siteID)
+	siteKeepalive, ok := mh.KeepaliveChannel.Load(siteID)
 	if !ok {
-		klog.Errorf("fail to load node %s", info.NodeID)
+		klog.Errorf("fail to load site %s", siteID)
 	} else {
-		close(nodeKeepalive.(chan struct{}))
-		mh.KeepaliveChannel.Delete(info.NodeID)
+		close(siteKeepalive.(chan struct{}))
+		mh.KeepaliveChannel.Delete(siteID)
 	}
 
-	mh.Nodes.Delete(info.NodeID)
+	mh.Sites.Delete(siteID)
 
-	// delete the nodeQueue and nodeStore when node stopped
-	if code == nodeStop {
-		mh.MessageQueue.Close(info)
+	// delete the siteQueue and siteStore when site stopped
+	if code == siteStop {
+		mh.MessageQueue.Close(siteID)
 	}
 }
 
-// KeepaliveCheckLoop checks whether the edge node is still alive
-func (mh *MessageHandle) KeepaliveCheckLoop(info *model.HubInfo, stopServe chan ExitCode) {
+// KeepaliveCheckLoop checks whether the edge site is still alive
+func (mh *MessageHandle) KeepaliveCheckLoop(siteID string, stopServe chan ExitCode) {
 	keepaliveTicker := time.NewTimer(time.Duration(mh.KeepaliveInterval) * time.Second)
-	nodeKeepaliveChannel, _ := mh.KeepaliveChannel.Load(info.NodeID)
+	siteKeepaliveChannel, _ := mh.KeepaliveChannel.Load(siteID)
 
 	for {
 		select {
-		case _, ok := <-nodeKeepaliveChannel.(chan struct{}):
+		case _, ok := <-siteKeepaliveChannel.(chan struct{}):
 			if !ok {
-				klog.Warningf("Stop keepalive check for node: %s", info.NodeID)
+				klog.Warningf("Stop keepalive check for site: %s", siteID)
 				return
 			}
-			klog.Infof("Node %s is still alive", info.NodeID)
+			klog.Infof("site %s is still alive", siteID)
 			keepaliveTicker.Reset(time.Duration(mh.KeepaliveInterval) * time.Second)
 		case <-keepaliveTicker.C:
-			if conn, ok := mh.nodeConns.Load(info.NodeID); ok {
-				klog.Warningf("Timeout to receive heart beat from edge node %s", info.NodeID)
+			if conn, ok := mh.siteConns.Load(siteID); ok {
+				klog.Warningf("Timeout to receive heart beat from edge site %s", siteID)
 				conn.(hubio.CloudHubIO).Close()
-				mh.nodeConns.Delete(info.NodeID)
+				mh.siteConns.Delete(siteID)
 			}
 		}
 	}
@@ -234,51 +233,51 @@ func dumpMessageMetadata(msg *beehiveModel.Message) string {
 }
 
 // MessageWriteLoop processes all write request, send message to edge from cloud
-func (mh *MessageHandle) MessageWriteLoop(info *model.HubInfo, stopServe chan ExitCode) {
-	nodeQueue := mh.MessageQueue.GetNodeQueue(info.NodeID)
-	nodeStore := mh.MessageQueue.GetNodeStore(info.NodeID)
+func (mh *MessageHandle) MessageWriteLoop(siteID string, stopServe chan ExitCode) {
+	siteQueue := mh.MessageQueue.GetSiteQueue(siteID)
+	siteStore := mh.MessageQueue.GetSiteStore(siteID)
 
 	for {
-		key, quit := nodeQueue.Get()
+		key, quit := siteQueue.Get()
 		if quit {
-			klog.Errorf("nodeQueue for node %s has shutdown", info.NodeID)
+			klog.Errorf("siteQueue for site %s has shutdown", siteID)
 			return
 		}
-		obj, exist, _ := nodeStore.GetByKey(key.(string))
+		obj, exist, _ := siteStore.GetByKey(key.(string))
 		if !exist {
-			klog.Errorf("nodeStore for node %s doesn't exist", info.NodeID)
+			klog.Errorf("siteStore for site %s doesn't exist", siteID)
 			continue
 		}
 		msg := obj.(*beehiveModel.Message)
-		klog.V(4).Infof("event to send for node %s, %s, content %s", info.NodeID, dumpMessageMetadata(msg), msg.Content)
+		klog.V(4).Infof("event to send for site %s, %s, content %s", siteID, dumpMessageMetadata(msg), msg.Content)
 
-		// remove node/nodeID from resource of message, then send to edge
+		// remove site/siteID from resource of message, then send to edge
 		trimMessage(msg)
-		conn, ok := mh.nodeConns.Load(info.NodeID)
+		conn, ok := mh.siteConns.Load(siteID)
 		if !ok {
 			continue
 		}
-		mh.send(conn.(hubio.CloudHubIO), info.NodeID, msg)
+		mh.send(conn.(hubio.CloudHubIO), siteID, msg)
 
 		// delete successfully sent events from the queue/store
-		nodeStore.Delete(msg)
-		nodeQueue.Forget(key.(string))
-		nodeQueue.Done(key)
+		siteStore.Delete(msg)
+		siteQueue.Forget(key.(string))
+		siteQueue.Done(key)
 	}
 }
 
-func (mh *MessageHandle) send(hi hubio.CloudHubIO, nodeID string, msg *beehiveModel.Message) error {
-	err := mh.hubIoWrite(hi, nodeID, msg)
+func (mh *MessageHandle) send(hi hubio.CloudHubIO, siteID string, msg *beehiveModel.Message) error {
+	err := mh.hubIoWrite(hi, siteID, msg)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (mh *MessageHandle) hubIoWrite(hi hubio.CloudHubIO, nodeID string, msg *beehiveModel.Message) error {
-	value, ok := mh.nodeLocks.Load(nodeID)
+func (mh *MessageHandle) hubIoWrite(hi hubio.CloudHubIO, siteID string, msg *beehiveModel.Message) error {
+	value, ok := mh.siteLocks.Load(siteID)
 	if !ok {
-		return fmt.Errorf("node disconnected")
+		return fmt.Errorf("site disconnected")
 	}
 	mutex := value.(*sync.Mutex)
 	mutex.Lock()
@@ -289,10 +288,10 @@ func (mh *MessageHandle) hubIoWrite(hi hubio.CloudHubIO, nodeID string, msg *bee
 
 func trimMessage(msg *beehiveModel.Message) {
 	resource := msg.GetResource()
-	if strings.HasPrefix(resource, model.ResNode) {
+	if strings.HasPrefix(resource, model.ResSite) {
 		tokens := strings.Split(resource, "/")
 		if len(tokens) < 3 {
-			klog.Warningf("event resource %s starts with node but length less than 3", resource)
+			klog.Warningf("event resource %s starts with site but length less than 3", resource)
 		} else {
 			msg.SetResourceOperation(strings.Join(tokens[2:], "/"), msg.GetOperation())
 		}

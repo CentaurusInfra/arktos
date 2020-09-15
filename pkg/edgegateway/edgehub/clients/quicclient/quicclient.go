@@ -31,8 +31,7 @@ type QuicConfig struct {
 	HandshakeTimeout time.Duration
 	ReadDeadline     time.Duration
 	WriteDeadline    time.Duration
-	NodeID           string
-	ProjectID        string
+	SiteID           string
 }
 
 // NewQuicClient initializes a new quic client instance
@@ -42,7 +41,7 @@ func NewQuicClient(conf *QuicConfig) *QuicClient {
 
 // Init initializes quic client
 func (qcc *QuicClient) Init() error {
-	klog.Infof("Quic start to connect Access")
+	klog.Infof("Quic start to connect cloudhub")
 	cert, err := tls.LoadX509KeyPair(qcc.config.CertFilePath, qcc.config.KeyFilePath)
 	if err != nil {
 		klog.Errorf("Failed to load x509 key pair: %v", err)
@@ -69,8 +68,7 @@ func (qcc *QuicClient) Init() error {
 		Addr:             qcc.config.Addr,
 	}
 	exOpts := api.QuicClientOption{Header: make(http.Header)}
-	exOpts.Header.Set("node_id", qcc.config.NodeID)
-	exOpts.Header.Set("project_id", qcc.config.ProjectID)
+	exOpts.Header.Set("siteID", qcc.config.SiteID)
 	client := qclient.NewQuicClient(option, exOpts)
 	connection, err := client.Connect()
 	if err != nil {
@@ -78,7 +76,7 @@ func (qcc *QuicClient) Init() error {
 		return err
 	}
 	qcc.client = connection
-	klog.Infof("Quic connect to cloud access successful")
+	klog.Infof("Quic connect to cloudhub successful")
 
 	return nil
 }
