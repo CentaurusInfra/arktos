@@ -204,16 +204,15 @@ func (c *MizarEndpointsController) handle(keyWithEventType KeyWithEventType) err
 		return err
 	}
 
-	print(service.Name)
-
 	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarEndpoints, tenant, namespace, endpoints.Name, endpoints.HashKey, eventType)
+
+	msg := ConvertToServiceEndpointContract(endpoints, service)
 
 	switch eventType {
 	case EventType_Create:
-		processEndpointsGrpcReturnCode(c, GrpcCreateServiceEndpoint(c.grpcHost, endpoints), keyWithEventType)
+		processEndpointsGrpcReturnCode(c, GrpcCreateServiceEndpoint(c.grpcHost, msg), keyWithEventType)
 	case EventType_Update:
-		returnCode := GrpcUpdateServiceEndpoint(c.grpcHost, endpoints)
-		processEndpointsGrpcReturnCode(c, returnCode, keyWithEventType)
+		processEndpointsGrpcReturnCode(c, GrpcUpdateServiceEndpoint(c.grpcHost, msg), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}

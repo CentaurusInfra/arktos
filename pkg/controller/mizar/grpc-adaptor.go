@@ -87,14 +87,14 @@ func GrpcDeleteService(grpcHost string, service *v1.Service) *ReturnCode {
 }
 
 // GrpcUpdateServiceEndpoint is to invoking grpc func of UpdateServiceEndpoint
-func GrpcUpdateServiceEndpoint(grpcHost string, endpoints *v1.Endpoints) *ReturnCode {
+func GrpcUpdateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
 	defer conn.Close()
 	defer cancel()
-	returnCode, err := client.UpdateServiceEndpoint(ctx, ConvertToServiceEndpointContract(endpoints))
+	returnCode, err := client.UpdateServiceEndpoint(ctx, msg)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
@@ -102,14 +102,14 @@ func GrpcUpdateServiceEndpoint(grpcHost string, endpoints *v1.Endpoints) *Return
 }
 
 // GrpcResumeServiceEndpoint is to invoking grpc func of ResumeServiceEndpoint
-func GrpcResumeServiceEndpoint(grpcHost string, endpoints *v1.Endpoints) *ReturnCode {
+func GrpcResumeServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
 	defer conn.Close()
 	defer cancel()
-	returnCode, err := client.ResumeServiceEndpoint(ctx, ConvertToServiceEndpointContract(endpoints))
+	returnCode, err := client.ResumeServiceEndpoint(ctx, msg)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
@@ -117,14 +117,14 @@ func GrpcResumeServiceEndpoint(grpcHost string, endpoints *v1.Endpoints) *Return
 }
 
 // GrpcCreateServiceEndpoint is to invoking grpc func of CreateServiceEndpoint
-func GrpcCreateServiceEndpoint(grpcHost string, endpoints *v1.Endpoints) *ReturnCode {
+func GrpcCreateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
 	defer conn.Close()
 	defer cancel()
-	returnCode, err := client.CreateServiceEndpoint(ctx, ConvertToServiceEndpointContract(endpoints))
+	returnCode, err := client.CreateServiceEndpoint(ctx, msg)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}

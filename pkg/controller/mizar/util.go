@@ -14,6 +14,8 @@ limitations under the License.
 package mizar
 
 import (
+	"strconv"
+
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -43,11 +45,30 @@ func ConvertToServiceContract(service *v1.Service) *BuiltinsServiceMessage {
 	}
 }
 
-func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceEndpointMessage {
+func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
+	backendIps := []string{}
+	for _, subset := range endpoints.Subsets {
+		for _, address := range subset.Addresses {
+			backendIps = append(backendIps, address.IP)
+		}
+	}
+
+	ports := []*PortsMessage{}
+	for _, port := range service.Spec.Ports {
+		portsMessage := &PortsMessage{
+			FrontendPort: strconv.Itoa(int(port.Port)),
+			BackendPort:  strconv.Itoa(int(port.TargetPort.IntVal)),
+			Protocol:     string(port.Protocol),
+		}
+		ports = append(ports, portsMessage)
+	}
+
 	return &BuiltinsServiceEndpointMessage{
 		Name:       endpoints.Name,
-		BackendIps: []string{}, // TODO PARSE Ips
-		Ports:      []*PortsMessage{},
+		Namespace:  endpoints.Namespace,
+		Tenant:     endpoints.Tenant,
+		BackendIps: backendIps,
+		Ports:      ports,
 	}
 }
 
