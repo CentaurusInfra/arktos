@@ -199,29 +199,7 @@ func (c *MizarNodeController) processNextWorkItem() bool {
 	return true
 }
 
-// Dequeue an item and process it
-/*func (c *MizarNodeController) runWorker() {
-	for {
-		item, queueIsEmpty := c.queue.Get()
-		if queueIsEmpty {
-			return
-		}
-		if (item != nil){
-			c.process(item)
-		}
-		//c.process(item)
-	}
-}
-*/
-
 func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error {
-	//defer c.queue.Done(item)
-	// keyWithEventType, ok := item.(KeyWithEventType)
-	// if !ok {
-	// 	klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
-	// 	c.queue.Forget(item)
-	// 	return
-	// }
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
 
