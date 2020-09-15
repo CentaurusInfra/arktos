@@ -14,6 +14,7 @@ limitations under the License.
 package mizar
 
 import (
+	"encoding/json"
 	"strconv"
 
 	v1 "k8s.io/api/core/v1"
@@ -52,6 +53,7 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Servi
 			backendIps = append(backendIps, address.IP)
 		}
 	}
+	backendIpsJson, _ := json.Marshal(backendIps)
 
 	ports := []*PortsMessage{}
 	for _, port := range service.Spec.Ports {
@@ -62,13 +64,16 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Servi
 		}
 		ports = append(ports, portsMessage)
 	}
+	portsJson, _ := json.Marshal(ports)
 
 	return &BuiltinsServiceEndpointMessage{
-		Name:       endpoints.Name,
-		Namespace:  endpoints.Namespace,
-		Tenant:     endpoints.Tenant,
-		BackendIps: backendIps,
-		Ports:      ports,
+		Name:           endpoints.Name,
+		Namespace:      endpoints.Namespace,
+		Tenant:         endpoints.Tenant,
+		BackendIps:     []string{},
+		Ports:          []*PortsMessage{},
+		BackendIpsJson: string(backendIpsJson),
+		PortsJson:      string(portsJson),
 	}
 }
 
