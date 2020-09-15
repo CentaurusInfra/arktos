@@ -6,11 +6,9 @@ The steps might change with the progress of development.
 
 If you would like to try with Flannel cni plugin, please ensure read [multi-node setup guide](multi-node-dev-cluster.md).
 
-1. Prepare lab machines. Particularly, build arktos-network-controller (as it is not part of arktos-up.sh yet), and disable the local DNS cache:
+1. Prepare lab machines. Particularly, build arktos-network-controller (as it is not part of arktos-up.sh yet)
 ```bash
 make all WHAT=cmd/arktos-network-controller
-sudo rm -f /etc/resolv.conf
-sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 ```
 
 If mizar cni plugin is to be used, please replace containerd following the instruction of [multi-tansnt aware containerd](https://github.com/futurewei-cloud/containerd/releases/tag/tenant-cni-args).
@@ -45,6 +43,12 @@ After the cluster is up, there will be the first network, "default", in system t
 NAME      TYPE   VPC   PHASE   DNS
 default   flat
 ```
+Due to a coreDNS issue carshing with DNS loopback lookup, please apply below temporary measure to workaround (this is not longterm solution yet) disabling the local DNS cache:
+```bash
+sudo rm -f /etc/resolv.conf
+sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
+```
+
 
 5. Start the arktos-network-controller
 ```bash
