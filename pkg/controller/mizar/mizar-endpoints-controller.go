@@ -190,7 +190,6 @@ func (c *MizarEndpointsController) runWorker() {
 		item, queueIsEmpty := c.queue.Get()
 		if queueIsEmpty {
 			return
-			//break
 		}
 		c.process(item)
 	}
