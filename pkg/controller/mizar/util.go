@@ -46,7 +46,7 @@ func ConvertToServiceContract(service *v1.Service) *BuiltinsServiceMessage {
 func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceEndpointMessage {
 	return &BuiltinsServiceEndpointMessage{
 		Name:       endpoints.Name,
-		BackendIps: []string{"TBD"},
+		BackendIps: []string{}, // TODO PARSE Ips
 		Ports:      []*PortsMessage{},
 	}
 }

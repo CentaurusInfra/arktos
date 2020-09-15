@@ -204,5 +204,7 @@ func processNodeGrpcReturnCode(c *MizarNodeController, returnCode *ReturnCode, k
 	case CodeType_TEMP_ERROR:
 		klog.Infof("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarNode, key, returnCode.Message, keyWithEventType.EventType)
 		c.queue.AddRateLimited(keyWithEventType)
+	case CodeType_PERM_ERROR:
+		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarNode, key, returnCode.Message, keyWithEventType.EventType)
 	}
 }

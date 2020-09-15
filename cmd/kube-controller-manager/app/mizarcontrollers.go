@@ -24,9 +24,10 @@ import (
 )
 
 const (
-	mizarStarterControllerWorkerCount = 2
-	mizarPodControllerWorkerCount     = 4
-	mizarNodeControllerWorkerCount    = 2
+	mizarStarterControllerWorkerCount   = 2
+	mizarEndpointsControllerWorkerCount = 4
+	mizarNodeControllerWorkerCount      = 2
+	mizarPodControllerWorkerCount       = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -44,19 +45,21 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 
 func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
-	startMizarPodController(&ctx, grpcHost)
+	startMizarEndpointsController(&ctx, grpcHost)
 	startMizarNodeController(&ctx, grpcHost)
+	startMizarPodController(&ctx, grpcHost)
 }
 
-func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
-	controllerName := "mizar-pod-controller"
+func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	controllerName := "mizar-endpoints-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
-	go controllers.NewMizarPodController(
-		ctx.InformerFactory.Core().V1().Pods(),
+	go controllers.NewMizarEndpointsController(
+		ctx.InformerFactory.Core().V1().Endpoints(),
+		ctx.InformerFactory.Core().V1().Services(),
 		ctx.ClientBuilder.ClientOrDie(controllerName),
 		grpcHost,
-	).Run(mizarPodControllerWorkerCount, ctx.Stop)
+	).Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
 
@@ -69,5 +72,17 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Han
 		ctx.ClientBuilder.ClientOrDie(controllerName),
 		grpcHost,
 	).Run(mizarNodeControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
+}
+
+func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	controllerName := "mizar-pod-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	go controllers.NewMizarPodController(
+		ctx.InformerFactory.Core().V1().Pods(),
+		ctx.ClientBuilder.ClientOrDie(controllerName),
+		grpcHost,
+	).Run(mizarPodControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
