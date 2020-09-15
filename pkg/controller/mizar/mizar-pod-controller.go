@@ -121,7 +121,7 @@ func (c *MizarPodController) updateObj(old, cur interface{}) {
 	}
 
 	key, _ := controller.KeyFunc(curObj)
-	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update})
+	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, ResourceVersion: curObj.ResourceVersion})
 }
 
 func (c *MizarPodController) deleteObj(obj interface{}) {
@@ -200,9 +200,9 @@ func processGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, keyWit
 	key := keyWithEventType.Key
 	switch returnCode.Code {
 	case CodeType_OK:
-		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %s", controllerForMizarPod, key, keyWithEventType.EventType)
+		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %v", controllerForMizarPod, key, keyWithEventType.EventType)
 	case CodeType_TEMP_ERROR:
-		klog.Infof("Mizar hit temporary error for %v. key %s. %s, eventType %s", controllerForMizarPod, key, returnCode.Message, keyWithEventType.EventType)
+		klog.Infof("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, keyWithEventType.EventType)
 		c.queue.AddRateLimited(keyWithEventType)
 	}
 }
