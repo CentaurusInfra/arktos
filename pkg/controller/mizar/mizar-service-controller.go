@@ -10,10 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	arktosapisv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
-	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
-	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
-	arktosextv1 "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -32,10 +28,8 @@ const (
 
 // MizarServiceController manages service on mizar side and update cluster IP on arktos side
 type MizarServiceController struct {
-	netClient           arktos.Interface
 	kubeClientset       *kubernetes.Clientset
 	serviceLister       corelisters.ServiceLister
-	netLister           arktosextv1.NetworkLister
 	serviceListerSynced cache.InformerSynced
 	syncHandler         func(eventKey KeyWithEventType) error
 	queue               workqueue.RateLimitingInterface
@@ -44,16 +38,14 @@ type MizarServiceController struct {
 }
 
 // NewMizarServiceController starts mizar service controller
-func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient arktos.Interface, serviceInformer coreinformers.ServiceInformer, arktosInformer arktosinformer.NetworkInformer, grpcHost string) *MizarServiceController {
+func NewMizarServiceController(kubeClientset *kubernetes.Clientset, serviceInformer coreinformers.ServiceInformer, grpcHost string) *MizarServiceController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarServiceController{
 		kubeClientset:       kubeClientset,
-		netClient:           netClient,
 		serviceLister:       serviceInformer.Lister(),
-		netLister:           arktosInformer.Lister(),
 		serviceListerSynced: serviceInformer.Informer().HasSynced,
 		queue:               workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		recorder:            eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-service-controller"}),
@@ -209,25 +201,6 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, key
 	if code != CodeType_OK {
 		klog.Errorf("Return Code: %v", code)
 		return errors.New("Service creation failed on Mizar side")
-	}
-
-	if _, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]; hasDNSServiceLabel && len(netName) != 0 {
-		klog.Info("[Mizar network controller] Arktos Network update starts ...")
-		net, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(service.Tenant).Get(netName, metav1.GetOptions{})
-		if err != nil {
-			klog.Errorf("The following network failed to get: %v", net)
-			return err
-		}
-		if len(net.Status.DNSServiceIP) == 0 {
-			netReady := net.DeepCopy()
-			netReady.Status.DNSServiceIP = ip
-			netNew, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(net.Tenant).UpdateStatus(netReady)
-			if err != nil {
-				klog.Errorf("The following network failed to update: %v", netReady)
-				return err
-			}
-			klog.Info("Updated network: %v", netNew)
-		}
 	}
 
 	if len(service.Spec.ClusterIP) == 0 {
