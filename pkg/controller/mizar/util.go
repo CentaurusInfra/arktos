@@ -27,6 +27,20 @@ const (
 type KeyWithEventType struct {
 	EventType EventType
 	Key       string
+)
+
+type EventType string
+
+const (
+	EventType_Create EventType = "Create"
+	EventType_Update EventType = "Update"
+	EventType_Delete EventType = "Delete"
+)
+
+type KeyWithEventType struct {
+	EventType       EventType
+	Key             string
+	ResourceVersion string
 }
 
 type StartHandler func(interface{}, string)
@@ -56,12 +70,26 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		Namespace: pod.Namespace,
 		Tenant:    pod.Tenant,
 		Phase:     string(pod.Status.Phase),
+	var network string
+	if value, exists := pod.Labels["arktos.futurewei.com/network"]; exists {
+		network = value
+	} else {
+		network = ""
+	}
+
+	return &BuiltinsPodMessage{
+		Name:          pod.Name,
+		HostIp:        pod.Status.HostIP,
+		Namespace:     pod.Namespace,
+		Tenant:        pod.Tenant,
+		ArktosNetwork: network,
+		Phase:         string(pod.Status.Phase),
 	}
 }
 
 func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 	return &BuiltinsNodeMessage{
 		Name: node.Name,
-		Ip:   "TBD",
+		Ip:   string(node.Status.Addresses[0].Address),
 	}
 }

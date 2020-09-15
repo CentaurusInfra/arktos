@@ -421,9 +421,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["ttl-after-finished"] = startTTLAfterFinishedController
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
 	controllers["network"] = startNetworkController
-
-	controllers["mizar-controllers"] = startMizarStarterController
-
 	return controllers
 }
 

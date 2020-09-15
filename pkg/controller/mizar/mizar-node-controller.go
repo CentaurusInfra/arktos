@@ -215,13 +215,6 @@ func (c *MizarNodeController) processNextWorkItem() bool {
 */
 
 func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error {
-	//defer c.queue.Done(item)
-	// keyWithEventType, ok := item.(KeyWithEventType)
-	// if !ok {
-	// 	klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
-	// 	c.queue.Forget(item)
-	// 	return
-	// }
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
 
@@ -252,40 +245,6 @@ func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error 
 	}
 	return nil
 }
-
-// Parsing a item key and call gRPC request
-// func (c *MizarNodeController) process(item interface{}) {
-// 	defer c.queue.Done(item)
-// 	keyWithEventType, ok := item.(KeyWithEventType)
-// 	if !ok {
-// 		klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
-// 		c.queue.Forget(item)
-// 		return
-// 	}
-// 	key := keyWithEventType.Key
-// 	eventType := keyWithEventType.EventType
-// 	_, _, nodeName, err := cache.SplitMetaTenantNamespaceKey(key)
-// 	node, err := c.lister.Get(nodeName)
-// 	if err != nil || node == nil {
-// 		klog.Errorf("Failed to retrieve node in local cache by node name - %s", nodeName)
-// 		c.queue.AddRateLimited(item)
-// 		return
-// 	}
-// 	_, _, _, nodeAddress, err := c.getNodeInfo(node)
-// 	if err != nil {
-// 		klog.Errorf("Failed to retrieve node address in local cache by node name %v", nodeName)
-// 		c.queue.AddRateLimited(item)
-// 		return
-// 	}
-// 	result, err := c.gRPCRequest(eventType, nodeName, nodeAddress)
-// 	if !result {
-// 		klog.Errorf("Failed a node processing - %v", key)
-// 		c.queue.AddRateLimited(item)
-// 	} else {
-// 		klog.Infof(" Processed a node - %v", key)
-// 		c.queue.Forget(item)
-// 	}
-// }
 
 // Retrieve node info
 func (c *MizarNodeController) getNodeInfo(node *v1.Node) (nodeTenant, nodeName, nodeStatus, nodeAddress string, err error) {

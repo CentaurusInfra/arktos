@@ -167,14 +167,14 @@ func TestSetApiServerConfigMap(t *testing.T) {
 	callNum_ExternalSetAPIServerConfig = 0
 	callNum_StartWaitForComplete = 0
 
-	t.Log("1.1 Check 1st update for single config will call set server config but not call wait for complete")
+	t.Log("1.1 Check 1st update for single config will not call set server config or wait for complete")
 	apiServerConfigManager.APIServerMap = make(map[string]v1.EndpointSubset)
 	apiServerConfigManager.isApiServerConfigInitialized = false
 	apiServerConfigManager.firstUpdateTime = time.Now()
 	ep := newEndpoint(KubernetesServiceName, "10", masterIP1, serviceGroupId1)
 	setApiServerConfigMap(apiServerConfigManager, ep)
 	time.Sleep(100 * time.Millisecond) // wait for go routine to execute
-	assert.Equal(t, 1, callNum_ExternalSetAPIServerConfig)
+	assert.Equal(t, 0, callNum_ExternalSetAPIServerConfig)
 	assert.Equal(t, 0, callNum_StartWaitForComplete)
 	assert.Equal(t, true, apiServerConfigManager.isApiServerConfigInitialized)
 	assert.Equal(t, 1, len(apiServerConfigManager.APIServerMap))

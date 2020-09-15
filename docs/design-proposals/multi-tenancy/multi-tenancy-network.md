@@ -146,6 +146,21 @@ If these settings are set on a pod attached to a flat network, the settings will
 
 (**TBD: do we plan to support multiple network providers? How would it impact the type definition?**)
 
+#### Network Status
+The network resource could have status.phase explicitly indicating its current phase in the whole life cycle. Arktos network controller is responsible to update this field, based on appropriate conditions.
+
+|status.phase|explanation|
+|---:|:---|
+|Pending|network is created; waiting for external network provider to finish provisioning|
+|Failed|network is in faulty state|
+|Unknown|network is in unknown state|
+|Ready|network is well provisioned and can be used to serve workloads. For external IPAM typed networks, it checks for presence of DNS service IP assignment (status.dnsServiceIP) as the signal of provision success|
+|Terminating|network is being decommissioned, waiting for resource cleanup|
+
+After all the associated resources have been cleaned up, the terminating network would be physically purged from API server.
+
+Arktos network controller registers the finalizer "arktos.futurewei.com/network" for ready network objects.
+
 ### Network Controller
 
 A network controller watches its interesting network objects based on network type.

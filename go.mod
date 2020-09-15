@@ -135,7 +135,7 @@ require (
 	github.com/karrick/godirwalk v1.7.5
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1
 	github.com/kr/fs v0.0.0-20131111012553-2788f0dbd169
-	github.com/kr/pretty v0.1.0
+	github.com/kr/pretty v0.2.0
 	github.com/kr/text v0.0.0-20130911015532-6807e777504f
 	github.com/libopenstorage/openstorage v1.0.0
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
@@ -259,6 +259,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/apiserver v0.0.0
+	k8s.io/arktos-ext v0.0.0
 	k8s.io/cli-runtime v0.0.0
 	k8s.io/client-go v0.0.0
 	k8s.io/cloud-provider v0.0.0
@@ -545,6 +546,7 @@ replace (
 	k8s.io/apiextensions-apiserver => ./staging/src/k8s.io/apiextensions-apiserver
 	k8s.io/apimachinery => ./staging/src/k8s.io/apimachinery
 	k8s.io/apiserver => ./staging/src/k8s.io/apiserver
+	k8s.io/arktos-ext => ./staging/src/k8s.io/arktos-ext
 	k8s.io/cli-runtime => ./staging/src/k8s.io/cli-runtime
 	k8s.io/client-go => ./staging/src/k8s.io/client-go
 	k8s.io/cloud-provider => ./staging/src/k8s.io/cloud-provider
@@ -579,5 +581,4 @@ replace (
 	sigs.k8s.io/kustomize => sigs.k8s.io/kustomize v2.0.3+incompatible
 	sigs.k8s.io/structured-merge-diff => sigs.k8s.io/structured-merge-diff v0.0.0-20190302045857-e85c7b244fd2
 	sigs.k8s.io/yaml => sigs.k8s.io/yaml v1.1.0
-	vbom.ml/util => vbom.ml/util v0.0.0-20160121211510-db5cfe13f5cc
 )

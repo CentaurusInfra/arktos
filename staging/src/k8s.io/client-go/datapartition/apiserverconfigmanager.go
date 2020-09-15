@@ -251,10 +251,6 @@ func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
 func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 	a.mux.Lock()
 	klog.V(4).Info("mux acquired setApiServerConfigMap.")
-	defer func() {
-		a.mux.Unlock()
-		klog.V(4).Info("mux released setApiServerConfigMap.")
-	}()
 
 	hasUpdate := false
 
@@ -279,6 +275,9 @@ func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 		}
 	}
 
+	a.mux.Unlock()
+	klog.V(4).Info("mux released setApiServerConfigMap.")
+
 	if hasUpdate {
 		// wait 30 (defined in startUpResetDelayInSeconds) second after start to send update message
 		//   - otherwise, update api server config during start up might cause issue
@@ -288,10 +287,12 @@ func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 				time.Sleep(a.firstUpdateTime.Sub(now))
 			}
 
-			isUpdated := setAPIServerConfigHandler(a.APIServerMap)
-			if !isUpdated {
-				return
-			}
+			a.mux.Lock()
+			klog.V(4).Info("mux acquired setApiServerConfigMap.")
+			defer func() {
+				a.mux.Unlock()
+				klog.V(4).Info("mux released setApiServerConfigMap.")
+			}()
 
 			// No need to reset config if there is only one server as it is already connected
 			if !a.isApiServerConfigInitialized {
@@ -300,6 +301,11 @@ func setApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 				if len(a.APIServerMap) == 1 {
 					return
 				}
+			}
+
+			isUpdated := setAPIServerConfigHandler(a.APIServerMap)
+			if !isUpdated {
+				return
 			}
 
 			startWaitForCompleteHandler()

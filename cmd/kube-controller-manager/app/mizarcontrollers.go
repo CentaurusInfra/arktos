@@ -17,10 +17,9 @@ limitations under the License.
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"time"
-
-	"fmt"
 
 	informers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
@@ -29,10 +28,10 @@ import (
 )
 
 const (
-	mizarStarterControllerWorkerCount = 2
-	//mizarPodControllerWorkerCount     = 4
+	mizarStarterControllerWorkerCount   = 2
 	mizarNodeControllerWorkerCount      = 4
 	mizarEndpointsControllerWorkerCount = 4
+	mizarPodControllerWorkerCount       = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -50,13 +49,16 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 
 func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
-	//startMizarPodController(&ctx, grpcHost)
-
 	go startMizarEndpointsController(&ctx, grpcHost)
 	go startMizarNodeController(&ctx, grpcHost)
+	startMizarPodController(&ctx, grpcHost)
 }
 
-/*func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	startMizarPodController(&ctx, grpcHost)
+}
+
+func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 	controllerName := "mizar-pod-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
@@ -66,20 +68,15 @@ func startHandler(controllerContext interface{}, grpcHost string) {
 		grpcHost,
 	).Run(mizarPodControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
-}*/
+}
 
 func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 	controllerName := "mizar-node-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
-	//fmt.Printf("mizar-node-controller starts...")
-	//      nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	//      nodeKubeClient := clientset.NewForConfigOrDie(nodeKubeconfigs)
-
 	nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
 	nodeKubeClient, err := clientset.NewForConfig(nodeKubeconfigs)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	//nodeKubeClient := ctx.ClientBuilder.ClientOrDie(controllerName)
 	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 3*time.Minute)
 	nodeInformer := informerFactory.Core().V1().Nodes()
 	nodeController, err := controllers.NewMizarNodeController(nodeKubeClient, nodeInformer, grpcHost)
@@ -114,50 +111,3 @@ func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (htt
 	klog.Infof("mizar endpoints controller exited")
 	return nil, true, nil
 }
-
-/*func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (err error) {
-	controllerName := "mizar-endpoints-controller"
-	klog.V(2).Infof("Starting %v", controllerName)
-
-	epKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	epKubeClient := clientset.NewForConfigOrDie(epKubeconfigs)
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	informerFactory := informers.NewSharedInformerFactory(epKubeClient, 10*time.Minute)
-	epInformer := informerFactory.Core().V1().Endpoints()
-	serviceInformer := informerFactory.Core().V1().Services()
-	epController, err := controllers.NewMizarEndpointsController(epKubeClient, epInformer, serviceInformer, grpcHost)
-	informerFactory.Start(stopCh)
-	if err != nil {
-		klog.Infof("Error in building mizar node controller: %v", err.Error())
-	}
-	go epController.Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
-	return err
-}*/
-
-/*func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
-
-	controllerName := "mizar-node-controller"
-	klog.V(2).Infof("Starting %v", controllerName)
-	//fmt.Printf("mizar-node-controller starts...")
-	//nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	//nodeKubeClient := clientset.NewForConfig(nodeKubeconfigs)
-	//nodeKubeClient := ctx.ClientBuilder.ClientOrDie(controllerName)
-	//cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-	nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	nodeKubeClient, err := kubernetes.NewForConfig(nodeKubeconfigs)
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	//informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, time.Minute*1)
-	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, time.Minute*1)
-
-	nodeInformer := informerFactory.Core().V1().Nodes()
-	nodeController, err := controllers.NewMizarNodeController(nodeKubeClient, nodeInformer, grpcHost)
-	if err != nil {
-		klog.Infof("Error in building mizar node controller: %v", err)
-	}
-	nodeController.Run(mizarNodeControllerWorkerCount, ctx.Stop)
-	fmt.Scanln()
-	klog.Infof("mizar node controller exited")
-	return nil, true, nil
-}*/
