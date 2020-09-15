@@ -13,6 +13,8 @@ sudo rm -f /etc/resolv.conf
 sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 ```
 
+If mizar cni plugin is to be used, please replace containerd following the instruction of [multi-tansnt aware containerd](https://github.com/futurewei-cloud/containerd/releases/tag/tenant-cni-args).
+
 2. Enable network related feature and change cni installation setting by
 ```bash
 export FEATURE_GATES="AllAlpha=false,MandatoryArktosNetwork=true"
