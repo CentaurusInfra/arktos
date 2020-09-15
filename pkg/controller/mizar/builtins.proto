@@ -40,7 +40,7 @@ message BuiltinsPodMessage {
   string host_ip = 2;
   string namespace = 3;
   string tenant = 4;
-  string arktos_network = 5;
+  string vpc = 5;
   string phase = 6;
   repeated InterfacesMessage interfaces = 7;
 }
@@ -59,6 +59,8 @@ message BuiltinsServiceEndpointMessage {
   string tenant = 3;
   repeated string backend_ips = 4;
   repeated PortsMessage ports = 5;
+  repeated string backend_ips = 2;
+  repeated PortsMessage ports = 3;
 }
 
 message BuiltinsArktosMessage {

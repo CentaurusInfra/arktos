@@ -1,5 +1,9 @@
 /*
 Copyright The Kubernetes Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENE-2.0
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +23,8 @@ limitations under the License.
 
 /*
 Package mizar is a generated protocol buffer package.
+It is generated from these files:
+        builtins.proto
 
 It is generated from these files:
         builtins.proto

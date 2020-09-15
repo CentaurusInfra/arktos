@@ -13,22 +13,20 @@ limitations under the License.
 
 package mizar
 
-import (
-	v1 "k8s.io/api/core/v1"
-)
+import v1 "k8s.io/api/core/v1"
 
-type EventType string
+type EventType int
 
 const (
-	EventType_Create EventType = "Create"
-	EventType_Update EventType = "Update"
-	EventType_Delete EventType = "Delete"
+	EventType_Create EventType = 0
+	EventType_Update EventType = 1
+	EventType_Delete EventType = 2
+	EventType_Resume EventType = 3
 )
 
 type KeyWithEventType struct {
-	EventType       EventType
-	Key             string
-	ResourceVersion string
+	EventType EventType
+	Key       string
 }
 
 type StartHandler func(interface{}, string)
@@ -52,20 +50,12 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceE
 }
 
 func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
-	var network string
-	if value, exists := pod.Labels["arktos.futurewei.com/network"]; exists {
-		network = value
-	} else {
-		network = ""
-	}
-
 	return &BuiltinsPodMessage{
-		Name:          pod.Name,
-		HostIp:        pod.Status.HostIP,
-		Namespace:     pod.Namespace,
-		Tenant:        pod.Tenant,
-		ArktosNetwork: network,
-		Phase:         string(pod.Status.Phase),
+		Name:      pod.Name,
+		HostIp:    pod.Status.HostIP,
+		Namespace: pod.Namespace,
+		Tenant:    pod.Tenant,
+		Phase:     string(pod.Status.Phase),
 	}
 }
 
