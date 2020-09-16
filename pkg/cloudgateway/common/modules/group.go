@@ -1,6 +1,8 @@
 package modules
 
 const (
-	HubGroup = "cloudhub"
-	ControllerGroup = "controller"
+	HubGroup          = "cloudHub"
+	ControllerGroup   = "controller"
+	CloudServiceGroup = "cloudService"
+	EdgeServiceGroup  = "edgeService"
 )

@@ -11,8 +11,7 @@ const (
 	DefaultCertURL = "/edge.crt"
 
 	DefaultSiteID = "default-edge-site"
-	LocalIP                 = "127.0.0.1"
+	LocalIP       = "127.0.0.1"
 
-	// response message type
-	ResponseType = "response/default"
+	ResponseOperation = "response"
 )

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/cloudgateway/cloudhub/channelq"
 	hubio "k8s.io/kubernetes/pkg/cloudgateway/cloudhub/common/io"
-	"k8s.io/kubernetes/pkg/cloudgateway/cloudhub/common/model"
 	hubconfig "k8s.io/kubernetes/pkg/cloudgateway/cloudhub/config"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/constants"
 )
@@ -23,9 +21,6 @@ import (
 type ExitCode int
 
 const siteStop ExitCode = iota
-const ResponsePattern = constants.ResponseType + `/\w[-\w.+]*`
-
-var ResponseRegExp = regexp.MustCompile(ResponsePattern)
 
 // MessageHandle processes messages between cloud and edge
 type MessageHandle struct {
@@ -82,7 +77,7 @@ func (mh *MessageHandle) HandleServer(container *mux.MessageContainer, writer mu
 	}
 
 	// receive heartbeat from edge
-	if container.Message.GetOperation() == model.OpKeepalive {
+	if container.Message.GetOperation() == constants.OpKeepalive {
 		klog.Infof("Keepalive message received from site: %s", siteID)
 
 		siteKeepalive, ok := mh.KeepaliveChannel.Load(siteID)
@@ -95,7 +90,7 @@ func (mh *MessageHandle) HandleServer(container *mux.MessageContainer, writer mu
 	}
 
 	// handle response message
-	if ResponseRegExp.MatchString(container.Message.GetResource()) {
+	if container.Message.GetOperation() == constants.ResponseOperation {
 		beehiveContext.SendResp(*container.Message)
 		return
 	}
@@ -288,7 +283,7 @@ func (mh *MessageHandle) hubIoWrite(hi hubio.CloudHubIO, siteID string, msg *bee
 
 func trimMessage(msg *beehiveModel.Message) {
 	resource := msg.GetResource()
-	if strings.HasPrefix(resource, model.ResSite) {
+	if strings.HasPrefix(resource, constants.ResSite) {
 		tokens := strings.Split(resource, "/")
 		if len(tokens) < 3 {
 			klog.Warningf("event resource %s starts with site but length less than 3", resource)

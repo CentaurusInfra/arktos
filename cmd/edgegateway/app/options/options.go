@@ -89,6 +89,9 @@ func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
 					Host:   net.JoinHostPort(localIP, "10002"),
 				}).String(),
 			},
+			EdgeService: &v1.EdgeService{
+				Enable: true,
+			},
 		},
 	}
 }

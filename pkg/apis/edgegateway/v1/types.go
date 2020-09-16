@@ -15,6 +15,15 @@ type Modules struct {
 	// EdgeHub indicates edgeHub module config
 	// +Required
 	EdgeHub *EdgeHub `json:"edgeHub,omitempty"`
+	// EdgeService indicates EdgeService module config
+	EdgeService *EdgeService `json:"edgeService,omitempty"`
+}
+
+// EdgeService indicates the config of EdgeService module.
+type EdgeService struct {
+	// Enable indicates whether EdgeService is enabled, if set ot false
+	// skip checking other EdgeService configs.
+	Enable bool `json:"enable,omitempty"`
 }
 
 // EdgeHub indicates the EdgeHub module config

@@ -8,8 +8,9 @@ const (
 	DefaultCertURL = "/edge.crt"
 
 	// KubeAPIConfig
-	DefaultKubeConfig	= "/root/.kube/config"
+	DefaultKubeConfig = "/root/.kube/config"
 
-	// response message type
-	ResponseType = "response/default"
+	ResponseOperation = "response"
+	OpKeepalive       = "keepalive"
+	ResSite           = "site"
 )

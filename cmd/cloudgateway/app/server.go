@@ -8,6 +8,7 @@ import (
 	"k8s.io/kubernetes/cmd/cloudgateway/app/options"
 	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 	"k8s.io/kubernetes/pkg/cloudgateway/cloudhub"
+	"k8s.io/kubernetes/pkg/cloudgateway/cloudservice"
 	"k8s.io/kubernetes/pkg/cloudgateway/controller"
 	utilflag "k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/version/verflag"
@@ -19,7 +20,7 @@ func NewCloudGatewayCommand() *cobra.Command {
 		Use: "cloudgateway",
 		Long: `As the proxy or gateway of the services or component in the edge site, cloudgateway provides secure
 communication and access capabilities for services and components of the cloud and edge sites.`,
-		RunE: func(cmd *cobra.Command, args []string) error{
+		RunE: func(cmd *cobra.Command, args []string) error {
 			utilflag.PrintFlags(cmd.Flags())
 
 			config, err := o.Config()
@@ -57,4 +58,5 @@ communication and access capabilities for services and components of the cloud a
 func registerModules(c *v1.CloudGatewayConfig) {
 	cloudhub.Register(c.Modules.CloudHub)
 	controller.Register(c.Modules.Controller, c.KubeAPIConfig)
+	cloudservice.Register(c.Modules.CloudService)
 }
