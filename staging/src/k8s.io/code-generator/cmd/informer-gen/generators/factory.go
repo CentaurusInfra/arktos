@@ -89,7 +89,7 @@ func (g *factoryGenerator) GenerateType(c *generator.Context, t *types.Type, w i
 		"schemaGroupVersionResource":     c.Universe.Type(schemaGroupVersionResource),
 		"syncMutex":                      c.Universe.Type(syncMutex),
 		"timeDuration":                   c.Universe.Type(timeDuration),
-		"tenantAll":                      c.Universe.Type(metav1TenantAll),
+		"tenantAllExplicit":              c.Universe.Type(metav1TenantAllExplicit),
 		"namespaceAll":                   c.Universe.Type(metav1NamespaceAll),
 		"object":                         c.Universe.Type(metav1Object),
 	}
@@ -171,7 +171,7 @@ func NewFilteredSharedInformerFactoryWithMultiTenancy(client {{.clientSetInterfa
 func NewSharedInformerFactoryWithOptions(client {{.clientSetInterface|raw}}, defaultResync {{.timeDuration|raw}}, options ...SharedInformerOption) SharedInformerFactory {
 	factory := &sharedInformerFactory{
 		client:           client,
-		tenant:           v1.TenantAll,
+		tenant:           v1.TenantAllExplicit,
 		namespace:        v1.NamespaceAll,
 		defaultResync:    defaultResync,
 		informers:        make(map[{{.reflectType|raw}}]{{.cacheSharedIndexInformer|raw}}),

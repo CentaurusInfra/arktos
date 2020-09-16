@@ -39,7 +39,7 @@ var (
 	syncMutex                   = types.Name{Package: "sync", Name: "Mutex"}
 	timeDuration                = types.Name{Package: "time", Name: "Duration"}
 	v1ListOptions               = types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}
-	metav1TenantAll             = types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "TenantAll"}
+	metav1TenantAllExplicit     = types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "TenantAllExplicit"}
 	metav1NamespaceAll          = types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "NamespaceAll"}
 	metav1Object                = types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "Object"}
 	watchInterface              = types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}

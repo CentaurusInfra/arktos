@@ -230,7 +230,8 @@ func (g *listerGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 		"Resource":      c.Universe.Function(types.Name{Package: t.Name.Package, Name: "Resource"}),
 		"type":          t,
 		"objectMeta":    g.objectMeta,
-		"DefaultTenant": metav1.TenantSystem,
+		"DefaultTenant": metav1.TenantNone,
+		"SystemTenant": metav1.TenantSystem,
 	}
 
 	tags, err := util.ParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
@@ -401,7 +402,7 @@ var tenantLister_Get = `
 // Get retrieves the $.type|public$ from the indexer for a given tenant and name.
 func (s $.type|private$TenantLister) Get(name string) (*$.type|raw$, error) {
 	key := s.tenant + "/" + name
-	if s.tenant == "$.DefaultTenant$" {
+	if s.tenant == "$.SystemTenant$" {
 		key = name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)
@@ -472,7 +473,7 @@ var namespaceLister_Get = `
 // Get retrieves the $.type|public$ from the indexer for a given namespace and name.
 func (s $.type|private$NamespaceLister) Get(name string) (*$.type|raw$, error) {
 	key := s.tenant + "/" +s.namespace + "/" + name
-	if s.tenant == "$.DefaultTenant$" {
+	if s.tenant == "$.SystemTenant$" {
 		key = s.namespace + "/" + name
 	}
 	obj, exists, err := s.indexer.GetByKey(key)

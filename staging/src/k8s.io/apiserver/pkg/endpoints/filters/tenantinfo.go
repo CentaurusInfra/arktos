@@ -119,7 +119,11 @@ func SetShortPathRequestTenant(req *http.Request) (*http.Request, error) {
 	}
 
 	if resourceTenant == metav1.TenantAllExplicit {
-		requestInfo.Tenant = metav1.TenantAll
+		if userTenant == metav1.TenantSystem {
+			requestInfo.Tenant = metav1.TenantAll
+		} else {
+			requestInfo.Tenant = userTenant
+		}
 	}
 
 	req = req.WithContext(request.WithRequestInfo(ctx, requestInfo))

@@ -96,7 +96,7 @@ func (g *informerGenerator) GenerateType(c *generator.Context, t *types.Type, w 
 		"interfacesSharedInformerFactory": c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "SharedInformerFactory"}),
 		"listOptions":                     c.Universe.Type(listOptions),
 		"lister":                          c.Universe.Type(types.Name{Package: listerPackage, Name: t.Name.Name + "Lister"}),
-		"tenantAll":                       c.Universe.Type(metav1TenantAll),
+		"tenantAllExplicit":               c.Universe.Type(metav1TenantAllExplicit),
 		"namespaceAll":                    c.Universe.Type(metav1NamespaceAll),
 		"namespaced":                      !tags.NonNamespaced && !tags.NonTenanted,
 		"tenanted":                        tags.NonNamespaced && !tags.NonTenanted,
@@ -109,7 +109,7 @@ func (g *informerGenerator) GenerateType(c *generator.Context, t *types.Type, w 
 		"version":                         namer.IC(g.groupVersion.Version.String()),
 		"watchInterface":                  c.Universe.Type(watchInterface),
 		"aggregatedWatchInterface":        c.Universe.Type(aggregatedWatchInterface),
-		"DefaultTenant":                   metav1.TenantSystem,
+		"DefaultTenant":                   metav1.TenantAllExplicit,
 	}
 
 	sw.Do(typeInformerInterface, m)
