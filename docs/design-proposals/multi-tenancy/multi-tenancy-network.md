@@ -287,9 +287,13 @@ They are in default namespace, named as kubernetes-{network}, for the kubernetes
 
 Query for default-ns scoped kubernetes-{network} shall get back the proper content based on the cluster kubernetes endpoints object. System does not duplicate such endpoints; instead it derives content based on the cluster kubernetes endpoints. This would incurs quite some code change to kube-apiserver.
 
+For now, get verb with this kind of EP is supported; however, list/watch verb won't include per-network kubernetes EP. For controller that needs to use these EPs, one workaround is deriving from the cluster scoped EP, besides using get verb in this special case.
+
 Updates originated from regular tenants are disallowed.
 
 Alternative is to duplicate in every network, when network is being provisioned. It is burdensome to keep all synced to the root one (which is maintained by api-server). 
+
+(**TBD: consider to implement list/watch verb with per-network kubernetes EPs**)
 
 * kube-dns related EPs
 
