@@ -41,7 +41,7 @@ default   flat
 
 4. Start the arktos-network-controller
 ```bash
-./_output/local/bin/linux/amd64/arktos-network-controller --kubeconfig /home/ubuntu/.kube/config
+./_output/local/bin/linux/amd64/arktos-network-controller --kubeconfig ~/.kube/config
 ```
 The config file has below content
 ```yaml
