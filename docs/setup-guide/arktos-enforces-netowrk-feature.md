@@ -4,53 +4,41 @@ This document captures the steps applied to an Arktos cluster lab enabling the u
 
 The steps might change with the progress of development.
 
-If you would like to try with Flannel cni plugin, please ensure read [multi-node setup guide](multi-node-dev-cluster.md).
+If you would like to try with Flannel cni plugin, please ensure to read [multi-node setup guide](multi-node-dev-cluster.md).
 
-1. Prepare lab machines. Particularly, build arktos-network-controller (as it is not part of arktos-up.sh yet)
+1. Prepare lab machines. Particularly, build arktos-network-controller (as it is not part of arktos-up.sh yet); disable local DNS cache (applicable to 127.0.0.53 name server; as it would cause coreDNS to crash with DNS loopback lookup):
 ```bash
 make all WHAT=cmd/arktos-network-controller
+sudo rm -f /etc/resolv.conf
+sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
+```
+Also, please ensure the hostname and its ip address in /etc/hosts. For instance, if the hostname is ip-172-31-41-177, ip address is 172.31.41.177:
+```text
+127.0.0.1 localhost
+172.31.41.177 ip-172-31-41-177
 ```
 
 If mizar cni plugin is to be used, please replace containerd following the instruction of [multi-tansnt aware containerd](https://github.com/futurewei-cloud/containerd/releases/tag/tenant-cni-args).
 
-2. Enable network related feature and change cni installation setting by
+2. Enable network related feature and change cni installation setting by (assuming flat typed networks here)
 ```bash
 export FEATURE_GATES="AllAlpha=false,MandatoryArktosNetwork=true"
 export ARKTOS_NO_CNI_PREINSTALLED=y
-// todo: the default-network-template-file related env set here
+export ARKTOS_NETWORK_TEMPLATE=default
 ```
 
-3. Prepare the default network template file; its content is specific to the cni/network provider you are going to use. For instance, below works for flat typed network (cni plugin is flannel):
-```json
-{
-  "metadata": {
-    "name": "default",
-    "finalizers": ["arktos.futurewei.com/network"]
-  },
-  "spec": {
-    "type": "flat"
-  }
-}
-```
-
-4. Start Arktos cluster
+3. Start Arktos cluster
 ```bash
 ./hack/arktos-up.sh
 ```
-After the cluster is up, there will be the first network, "default", in system tenant. Its state is empty at this moment.
+After the cluster is started, there will be the first network, "default", in system tenant. Its state is empty at this moment.
 ```bash
 ./cluster/kubectl.sh get net
 NAME      TYPE   VPC   PHASE   DNS
 default   flat
 ```
-Due to a coreDNS issue carshing with DNS loopback lookup, please apply below temporary measure to workaround (this is not longterm solution yet) disabling the local DNS cache:
-```bash
-sudo rm -f /etc/resolv.conf
-sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
-```
 
-
-5. Start the arktos-network-controller
+4. Start the arktos-network-controller
 ```bash
 ./_output/local/bin/linux/amd64/arktos-network-controller --kubeconfig /home/ubuntu/.kube/config
 ```
@@ -78,7 +66,7 @@ NAME      TYPE   VPC   PHASE   DNS
 default   flat         Ready   10.0.0.207
 ```
 
-6. Install CNI plugin; for flannel, we ran
+5. Install CNI plugin; below is for flannel
 ```bash
 ./cluster/kubectl.sh apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
 ```
