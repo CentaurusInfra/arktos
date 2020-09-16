@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/url"
-	"os"
 	"path"
 	"sigs.k8s.io/yaml"
 
@@ -56,10 +55,6 @@ func (o *Options) Config() (*v1.EdgeGatewayConfig, error) {
 
 // NewEdgeGatewayConfig returns a full EdgeGatewayConfig object
 func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = constants.DefaultHostnameOverride
-	}
 	localIP := constants.LocalIP
 
 	return &v1.EdgeGatewayConfig{
@@ -71,11 +66,10 @@ func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
 			EdgeHub: &v1.EdgeHub{
 				Enable:            true,
 				Heartbeat:         15,
-				ProjectID:         "e632aba927ea4ac2b575ec1603d56f10",
 				TLSCAFile:         constants.DefaultCAFile,
 				TLSCertFile:       constants.DefaultCertFile,
 				TLSPrivateKeyFile: constants.DefaultKeyFile,
-				Hostname:          hostname,
+				SiteID:            constants.DefaultSiteID,
 				Quic: &v1.EdgeHubQUIC{
 					Enable:           false,
 					HandshakeTimeout: 30,

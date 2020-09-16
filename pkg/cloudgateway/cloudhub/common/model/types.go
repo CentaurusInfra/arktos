@@ -7,11 +7,5 @@ import (
 
 const (
 	OpKeepalive = "keepalive"
-	ResNode     = "node"
+	ResSite     = "site"
 )
-
-// HubInfo saves identifier information for edge hub
-type HubInfo struct {
-	ProjectID string
-	NodeID    string
-}

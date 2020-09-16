@@ -10,7 +10,7 @@ const (
 	DefaultCAURL   = "/ca.crt"
 	DefaultCertURL = "/edge.crt"
 
-	DefaultHostnameOverride = "default-edge-site"
+	DefaultSiteID = "default-edge-site"
 	LocalIP                 = "127.0.0.1"
 
 	// response message type

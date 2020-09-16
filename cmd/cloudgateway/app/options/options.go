@@ -69,7 +69,7 @@ func NewCloudGatewayConfig() *v1.CloudGatewayConfig {
 			CloudHub: &v1.CloudHub{
 				Enable:                  true,
 				KeepaliveInterval:       30,
-				NodeLimit:               1000,
+				SiteLimit:               1000,
 				WriteTimeout:            30,
 				AdvertiseAddress:        []string{advertiseAddress.String()},
 				EdgeCertSigningDuration: 365,

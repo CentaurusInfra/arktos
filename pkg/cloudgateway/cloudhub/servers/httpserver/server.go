@@ -20,8 +20,8 @@ import (
 
 const (
 	certificateBlockType = "CERTIFICATE"
-	// NodeName is for the clearer log
-	NodeName = "NodeName"
+	// SiteID is for the clearer log
+	SiteID = "SiteID"
 )
 
 // StartHTTPServer starts the http service
@@ -59,16 +59,16 @@ func getCA(w http.ResponseWriter, r *http.Request) {
 func edgeGatewayClientCert(w http.ResponseWriter, r *http.Request) {
 	csrContent, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		klog.Errorf("fail to read file when signing the cert for edge site:%s! error:%v", r.Header.Get(NodeName), err)
+		klog.Errorf("fail to read file when signing the cert for edge site:%s! error:%v", r.Header.Get(SiteID), err)
 	}
 	csr, err := x509.ParseCertificateRequest(csrContent)
 	if err != nil {
-		klog.Errorf("fail to ParseCertificateRequest of edge site: %s! error:%v", r.Header.Get(NodeName), err)
+		klog.Errorf("fail to ParseCertificateRequest of edge site: %s! error:%v", r.Header.Get(SiteID), err)
 	}
 	subject := csr.Subject
 	clientCertDER, err := signCerts(subject, csr.PublicKey)
 	if err != nil {
-		klog.Errorf("fail to signCerts for edge site:%s! error:%v", r.Header.Get(NodeName), err)
+		klog.Errorf("fail to signCerts for edge site:%s! error:%v", r.Header.Get(SiteID), err)
 	}
 
 	w.Write(clientCertDER)

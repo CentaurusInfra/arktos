@@ -125,9 +125,9 @@ type CloudHub struct {
 	// KeepaliveInterval indicates keep-alive interval (second)
 	// default 30
 	KeepaliveInterval int32 `json:"keepaliveInterval,omitempty"`
-	// NodeLimit indicates node limit
+	// SiteLimit indicates site limit
 	// default 1000
-	NodeLimit int32 `json:"nodeLimit,omitempty"`
+	SiteLimit int32 `json:"siteLimit,omitempty"`
 	// WriteTimeout indicates write time (second)
 	// default 30
 	WriteTimeout int32 `json:"writeTimeout,omitempty"`
