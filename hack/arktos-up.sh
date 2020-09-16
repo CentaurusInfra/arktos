@@ -523,7 +523,8 @@ if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
 fi
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
-
+# refresh the resource discovery cache after the CRD is created
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
 echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
