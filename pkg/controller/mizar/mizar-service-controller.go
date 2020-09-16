@@ -40,7 +40,9 @@ import (
 )
 
 const (
-	dnsServiceDefaultName = "kube-dns"
+	dnsServiceDefaultName     = "kube-dns"
+	mizarServiceAnnotationKey = "service.beta.kubernetes.io/mizar-scaled-endpoint-type"
+	mizarServiceAnnotationVal = "scaled-endpoint"
 )
 
 // MizarServiceController manages service on mizar side and update cluster IP on arktos side
@@ -223,6 +225,10 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	switch code {
 	case CodeType_OK:
 		klog.Infof("Mizar handled service creation successfully: %s", key)
+		if service.Annotations == nil {
+			service.Annotations = make(map[string]string)
+		}
+		service.Annotations[mizarServiceAnnotationKey] = mizarServiceAnnotationVal
 	case CodeType_TEMP_ERROR:
 		klog.Infof("Mizar hit temporary error for service creation for service: %s", key)
 		c.queue.AddRateLimited(eventKey)
@@ -280,6 +286,10 @@ func (c *MizarServiceController) processServiceUpdate(service *v1.Service, event
 	switch code {
 	case CodeType_OK:
 		klog.Infof("Mizar handled service update successfully: %s", key)
+		if service.Annotations == nil {
+			service.Annotations = make(map[string]string)
+		}
+		service.Annotations[mizarServiceAnnotationKey] = mizarServiceAnnotationVal
 	case CodeType_TEMP_ERROR:
 		klog.Infof("Mizar hit temporary error for service update: %s", key)
 		c.queue.AddRateLimited(eventKey)
