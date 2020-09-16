@@ -11,6 +11,8 @@ go_library(
         "builtins.pb.go",
         "grpc-adaptor.go",
         "mizar-arktos-network-controller.go",
+        "mizar-endpoints-controller.go",
+        "mizar-node-controller.go",
         "mizar-pod-controller.go",
         "mizar-service-controller.go",
         "mizar-starter-controller.go",
