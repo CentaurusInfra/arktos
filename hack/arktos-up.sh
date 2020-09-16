@@ -34,6 +34,7 @@ fi
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
+FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true"
 
 # warn if users are running with swap allowed
 if [ "${FAIL_SWAP_ON}" == "false" ]; then
@@ -521,6 +522,9 @@ if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
   create_storage_class
 fi
 
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+# refresh the resource discovery cache after the CRD is created
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
 echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
@@ -536,8 +540,6 @@ ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLO
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
-
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
 
 echo ""
 echo "Arktos Setup done."

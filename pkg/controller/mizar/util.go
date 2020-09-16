@@ -13,32 +13,25 @@ limitations under the License.
 
 package mizar
 
-import v1 "k8s.io/api/core/v1"
+import (
+	v1 "k8s.io/api/core/v1"
+)
 
-type EventType int
+type EventType string
 
 const (
-	EventType_Create EventType = 0
-	EventType_Update EventType = 1
-	EventType_Delete EventType = 2
+	EventType_Create EventType = "Create"
+	EventType_Update EventType = "Update"
+	EventType_Delete EventType = "Delete"
 )
 
 type KeyWithEventType struct {
-	EventType EventType
-	Key       string
+	EventType       EventType
+	Key             string
+	ResourceVersion string
 }
 
 type StartHandler func(interface{}, string)
-
-func ConvertToServiceContract(service *v1.Service) *BuiltinsServiceMessage {
-	return &BuiltinsServiceMessage{
-		Name:          service.Name,
-		ArktosNetwork: "TBD",
-		Namespace:     service.Namespace,
-		Tenant:        service.Tenant,
-		Ip:            "TBD",
-	}
-}
 
 func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceEndpointMessage {
 	return &BuiltinsServiceEndpointMessage{
@@ -49,13 +42,20 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceE
 }
 
 func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
+	var network string
+	if value, exists := pod.Labels["arktos.futurewei.com/network"]; exists {
+		network = value
+	} else {
+		network = ""
+	}
+
 	return &BuiltinsPodMessage{
-		Name:      pod.Name,
-		HostIp:    pod.Status.HostIP,
-		Namespace: pod.Namespace,
-		Tenant:    pod.Tenant,
-		Vpc:       pod.Spec.VPC,
-		Phase:     string(pod.Status.Phase),
+		Name:          pod.Name,
+		HostIp:        pod.Status.HostIP,
+		Namespace:     pod.Namespace,
+		Tenant:        pod.Tenant,
+		ArktosNetwork: network,
+		Phase:         string(pod.Status.Phase),
 	}
 }
 
