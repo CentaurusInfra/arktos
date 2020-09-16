@@ -18,6 +18,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -165,11 +166,11 @@ func (c *MizarEndpointsController) processNextWorkItem() bool {
 
 	keyWithEventType := workItem.(KeyWithEventType)
 	key := keyWithEventType.Key
-	defer c.queue.Done(key)
+	defer c.queue.Done(workItem)
 
 	err := c.handler(keyWithEventType)
 	if err == nil {
-		c.queue.Forget(key)
+		c.queue.Forget(workItem)
 		return true
 	}
 
@@ -196,11 +197,22 @@ func (c *MizarEndpointsController) handle(keyWithEventType KeyWithEventType) err
 
 	endpoints, err := c.endpointsLister.EndpointsWithMultiTenancy(namespace, tenant).Get(name)
 	if err != nil {
-		return err
+		if errors.IsNotFound(err) {
+			klog.V(4).Infof("Endpoints %v %v has been deleted", namespace, name)
+			return nil
+		} else {
+			return err
+		}
 	}
 
 	service, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(4).Infof("Cannot find service %v %v", namespace, name)
+			return nil
+		} else {
+			return err
+		}
 		return err
 	}
 
@@ -222,13 +234,14 @@ func (c *MizarEndpointsController) handle(keyWithEventType KeyWithEventType) err
 
 func processEndpointsGrpcReturnCode(c *MizarEndpointsController, returnCode *ReturnCode, keyWithEventType KeyWithEventType) {
 	key := keyWithEventType.Key
+	eventType := keyWithEventType.EventType
 	switch returnCode.Code {
 	case CodeType_OK:
-		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %v", controllerForMizarEndpoints, key, keyWithEventType.EventType)
+		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %v", controllerForMizarEndpoints, key, eventType)
 	case CodeType_TEMP_ERROR:
-		klog.Warningf("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarEndpoints, key, returnCode.Message, keyWithEventType.EventType)
+		klog.Warningf("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarEndpoints, key, returnCode.Message, eventType)
 		c.queue.AddRateLimited(keyWithEventType)
 	case CodeType_PERM_ERROR:
-		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarEndpoints, key, returnCode.Message, keyWithEventType.EventType)
+		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarEndpoints, key, returnCode.Message, eventType)
 	}
 }

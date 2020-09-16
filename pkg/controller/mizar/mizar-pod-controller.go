@@ -146,11 +146,11 @@ func (c *MizarPodController) processNextWorkItem() bool {
 
 	keyWithEventType := workItem.(KeyWithEventType)
 	key := keyWithEventType.Key
-	defer c.queue.Done(key)
+	defer c.queue.Done(workItem)
 
 	err := c.handler(keyWithEventType)
 	if err == nil {
-		c.queue.Forget(key)
+		c.queue.Forget(workItem)
 		return true
 	}
 
@@ -198,13 +198,14 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 func processPodGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, keyWithEventType KeyWithEventType) {
 	key := keyWithEventType.Key
+	eventType := keyWithEventType.EventType
 	switch returnCode.Code {
 	case CodeType_OK:
-		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %v", controllerForMizarPod, key, keyWithEventType.EventType)
+		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %v", controllerForMizarPod, key, eventType)
 	case CodeType_TEMP_ERROR:
-		klog.Infof("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, keyWithEventType.EventType)
+		klog.Warningf("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, eventType)
 		c.queue.AddRateLimited(keyWithEventType)
 	case CodeType_PERM_ERROR:
-		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, keyWithEventType.EventType)
+		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, eventType)
 	}
 }
