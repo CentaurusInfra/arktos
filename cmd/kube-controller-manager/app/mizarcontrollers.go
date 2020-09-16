@@ -120,11 +120,26 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string) (http.
 	klog.V(2).Infof("Starting %v", controllerName)
 
 	svcKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	for _, svcKubeconfig := range svcKubeconfigs.GetAllConfigs() {
+		svcKubeconfig.QPS *= 20
+		svcKubeconfig.Burst *= 100
+	}
 	svcKubeClient := clientset.NewForConfigOrDie(svcKubeconfigs)
+
+	crConfigs := *svcKubeconfigs
+	for _, cfg := range crConfigs.GetAllConfigs() {
+		cfg.ContentType = "application/json"
+		cfg.AcceptContentTypes = "application/json"
+	}
+	networkClient := arktos.NewForConfigOrDie(&crConfigs)
+
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
 
 	go controllers.NewMizarServiceController(
 		svcKubeClient,
+		networkClient,
 		ctx.InformerFactory.Core().V1().Services(),
+		informerFactory.Arktos().V1().Networks(),
 		grpcHost,
 	).Run(mizarServiceControllerWorkerCount, ctx.Stop)
 	return nil, true, nil

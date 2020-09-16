@@ -163,7 +163,7 @@ func (c *MizarArktosNetworkController) syncNetwork(eventKey KeyWithEventType) er
 
 	switch event {
 	case EventType_Create:
-		err = c.processNetworkCreation(net)
+		err = c.processNetworkCreation(net, eventKey)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", event))
 	}
@@ -173,8 +173,9 @@ func (c *MizarArktosNetworkController) syncNetwork(eventKey KeyWithEventType) er
 	return nil
 }
 
-func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Network) error {
+func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Network, eventKey KeyWithEventType) error {
 	//skip update or create if type is not mizar or network status is ready
+	key := eventKey.Key
 	if network.Spec.Type != mizarNetworkType || network.Status.Phase == v1.NetworkReady {
 		c.recorder.Eventf(network, corev1.EventTypeNormal, "processNetworkCreation", "Type is not mizar, nothing to be done in mizar cluster: %v.", network)
 		return nil
@@ -190,9 +191,18 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 	code := response.Code
 	context := response.Message
 
-	if code != CodeType_OK {
-		return errors.New("Fail to update VPC with Arktos Network name on the Mizar cluster")
+	switch code {
+	case CodeType_OK:
+		klog.Infof("Mizar handled arktos network creation successfully: %s", key)
+	case CodeType_TEMP_ERROR:
+		klog.Infof("Mizar hit temporary error for arktos network creation: %s", key)
+		c.queue.AddRateLimited(eventKey)
+		return errors.New("Arktos network creation failed on mizar side, will try again.....")
+	case CodeType_PERM_ERROR:
+		klog.Errorf("Mizar hit permanent error for Arktos network creation for Arktos network: %s", key)
+		return errors.New("Arktos network creation failed permanently on mizar side")
 	}
+
 	c.recorder.Eventf(network, corev1.EventTypeNormal, "processNetworkCreation", "successfully created network from mizar cluster: %v.", context)
 	return nil
 }
