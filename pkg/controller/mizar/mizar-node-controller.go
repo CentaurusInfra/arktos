@@ -153,14 +153,13 @@ func (c *MizarNodeController) Run(workers int, stopCh <-chan struct{}) {
 	klog.Infof("Waiting cache to be synced")
 
 	ok := cache.WaitForCacheSync(stopCh, c.informerSynced)
-	klog.Infof("111 - sync done")
+	klog.Infof("sync done")
 	if !ok {
 		klog.Infof("Timeout expired during waiting for caches to sync.")
 	}
 	klog.Infof("Starting workers...")
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.worker, time.Second, stopCh)
-		//go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 	<-stopCh
 	klog.Infof("Shutting down node controller")
@@ -182,7 +181,6 @@ func (c *MizarNodeController) processNextWorkItem() bool {
 	if quit {
 		return false
 	}
-
 	eventKey := workItem.(KeyWithEventType)
 	key := eventKey.Key
 	defer c.queue.Done(key)
@@ -192,42 +190,18 @@ func (c *MizarNodeController) processNextWorkItem() bool {
 		c.queue.Forget(key)
 		return true
 	}
-
 	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", "serivce", key, err))
 	c.queue.AddRateLimited(eventKey)
-
 	return true
 }
 
-// Dequeue an item and process it
-/*func (c *MizarNodeController) runWorker() {
-	for {
-		item, queueIsEmpty := c.queue.Get()
-		if queueIsEmpty {
-			return
-		}
-		if (item != nil){
-			c.process(item)
-		}
-		//c.process(item)
-	}
-}
-*/
-
 func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error {
-	//defer c.queue.Done(item)
-	// keyWithEventType, ok := item.(KeyWithEventType)
-	// if !ok {
-	// 	klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
-	// 	c.queue.Forget(item)
-	// 	return
-	// }
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
 
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing service %q (%v)", key, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing  %q (%v)", key, time.Since(startTime))
 	}()
 	_, _, nodeName, err := cache.SplitMetaTenantNamespaceKey(key)
 	node, err := c.lister.Get(nodeName)
@@ -236,13 +210,7 @@ func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error 
 		c.queue.AddRateLimited(keyWithEventType)
 		return err
 	}
-	_, _, _, nodeAddress, err := c.getNodeInfo(node)
-	if err != nil {
-		klog.Errorf("Failed to retrieve node address in local cache by node name %v", nodeName)
-		c.queue.AddRateLimited(keyWithEventType)
-		return err
-	}
-	result, err := c.gRPCRequest(eventType, nodeName, nodeAddress)
+	result, err := c.gRPCRequest(eventType, node)
 	if !result {
 		klog.Errorf("Failed a node processing - %v", key)
 		c.queue.AddRateLimited(keyWithEventType)
@@ -252,40 +220,6 @@ func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error 
 	}
 	return nil
 }
-
-// Parsing a item key and call gRPC request
-// func (c *MizarNodeController) process(item interface{}) {
-// 	defer c.queue.Done(item)
-// 	keyWithEventType, ok := item.(KeyWithEventType)
-// 	if !ok {
-// 		klog.Errorf("Unexpected item in queue - %v", keyWithEventType)
-// 		c.queue.Forget(item)
-// 		return
-// 	}
-// 	key := keyWithEventType.Key
-// 	eventType := keyWithEventType.EventType
-// 	_, _, nodeName, err := cache.SplitMetaTenantNamespaceKey(key)
-// 	node, err := c.lister.Get(nodeName)
-// 	if err != nil || node == nil {
-// 		klog.Errorf("Failed to retrieve node in local cache by node name - %s", nodeName)
-// 		c.queue.AddRateLimited(item)
-// 		return
-// 	}
-// 	_, _, _, nodeAddress, err := c.getNodeInfo(node)
-// 	if err != nil {
-// 		klog.Errorf("Failed to retrieve node address in local cache by node name %v", nodeName)
-// 		c.queue.AddRateLimited(item)
-// 		return
-// 	}
-// 	result, err := c.gRPCRequest(eventType, nodeName, nodeAddress)
-// 	if !result {
-// 		klog.Errorf("Failed a node processing - %v", key)
-// 		c.queue.AddRateLimited(item)
-// 	} else {
-// 		klog.Infof(" Processed a node - %v", key)
-// 		c.queue.Forget(item)
-// 	}
-// }
 
 // Retrieve node info
 func (c *MizarNodeController) getNodeInfo(node *v1.Node) (nodeTenant, nodeName, nodeStatus, nodeAddress string, err error) {
@@ -345,41 +279,30 @@ func (c *MizarNodeController) determineEventType(node1, node2 *v1.Node) (event i
 }
 
 //gRPC request message, Integration is needed
-func (c *MizarNodeController) gRPCRequest(event EventType, nodeName, nodeAddress string) (response bool, err error) {
-	client, ctx, conn, cancel, err := getGrpcClient(c.grpcHost)
-	if err != nil {
-		klog.Errorf("gRPC connection failed - %v", err)
-		return false, err
-	}
-	defer conn.Close()
-	defer cancel()
-	var resource BuiltinsNodeMessage
-	resource = BuiltinsNodeMessage{
-		Name: nodeName,
-		Ip:   nodeAddress,
-	}
+func (c *MizarNodeController) gRPCRequest(event EventType, node *v1.Node) (response bool, err error) {
 	switch event {
 	case EventType_Create:
-		returnCode, err := client.CreateNode(ctx, &resource)
-		if returnCode.Code != CodeType_OK {
-			klog.Errorf("Node creation failed on Mizar side - %v", err)
+		response := GrpcCreateNode(c.grpcHost, node)
+		if response.Code != CodeType_OK {
+			klog.Errorf("Node creation failed on Mizar side")
 			return false, err
 		}
 	case EventType_Update:
-		returnCode, err := client.UpdateNode(ctx, &resource)
-		if returnCode.Code != CodeType_OK {
-			klog.Errorf("Node creation failed on Mizar side - %v", err)
+		response := GrpcUpdateNode(c.grpcHost, node)
+		if response.Code != CodeType_OK {
+			klog.Errorf("Node update failed on Mizar side")
 			return false, err
 		}
 	case EventType_Delete:
-		returnCode, err := client.DeleteNode(ctx, &resource)
-		if returnCode.Code != CodeType_OK {
-			klog.Errorf("Node creation failed on Mizar side - %v", err)
+		response := GrpcDeleteNode(c.grpcHost, node)
+		if response.Code != CodeType_OK {
+			klog.Errorf("Node deletion failed on Mizar side")
+			return false, err
 		}
 	case EventType_Resume:
-		returnCode, err := client.ResumeNode(ctx, &resource)
-		if returnCode.Code != CodeType_OK {
-			klog.Errorf("Node creation failed on Mizar side - %v", err)
+		response := GrpcResumeNode(c.grpcHost, node)
+		if response.Code != CodeType_OK {
+			klog.Errorf("Node resume failed on Mizar side")
 			return false, err
 		}
 	default:

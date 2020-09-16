@@ -14,6 +14,8 @@ limitations under the License.
 package mizar
 
 import (
+	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -61,8 +63,33 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 }
 
 func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
+	var nodeName, nodeAddress string
+	if node == nil {
+		return nil
+	}
+	nodeName = node.Name
+	if nodeName == "" {
+		return nil
+	}
+	conditions := node.Status.Conditions
+	if conditions == nil {
+		return nil
+	}
+	addresses := node.Status.Addresses
+	if addresses == nil {
+		nodeAddress = ""
+	}
+	var nodeAddr, nodeAddressType string
+	for i := 0; i < len(addresses); i++ {
+		nodeAddressType = fmt.Sprintf("%s", addresses[i].Type)
+		nodeAddress = fmt.Sprintf("%s", addresses[i].Address)
+		if nodeAddressType == NodeInternalIP {
+			nodeAddress = nodeAddr
+			break
+		}
+	}
 	return &BuiltinsNodeMessage{
-		Name: node.Name,
-		Ip:   "TBD",
+		Name: nodeName,
+		Ip:   nodeAddress,
 	}
 }
