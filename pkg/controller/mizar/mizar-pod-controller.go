@@ -207,5 +207,7 @@ func processPodGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, key
 		c.queue.AddRateLimited(keyWithEventType)
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, eventType)
+	default:
+		klog.Errorf("unimplemented for CodeType %v", returnCode.Code)
 	}
 }

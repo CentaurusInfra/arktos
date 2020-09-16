@@ -243,5 +243,7 @@ func processEndpointsGrpcReturnCode(c *MizarEndpointsController, returnCode *Ret
 		c.queue.AddRateLimited(keyWithEventType)
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarEndpoints, key, returnCode.Message, eventType)
+	default:
+		klog.Errorf("unimplemented for CodeType %v", returnCode.Code)
 	}
 }
