@@ -17,6 +17,7 @@ Also, please ensure the hostname and its ip address in /etc/hosts. For instance,
 127.0.0.1 localhost
 172.31.41.177 ip-172-31-41-177
 ```
+If this machine will be used as the master of a multi-node cluster, please set adequate permissive security groups. Fro AWS VM in this lab, we allowed inbound rule of ALL-TCP 0.0.0.0/0.
 
 If mizar cni plugin is to be used, please replace containerd following the instruction of [multi-tansnt aware containerd](https://github.com/futurewei-cloud/containerd/releases/tag/tenant-cni-args).
 
@@ -72,5 +73,6 @@ default   flat         Ready   10.0.0.207
 ```
 
 If you want to, you are able to add more worker nodes to the cluster, by following [multi-node setup guide](multi-node-dev-cluster.md).
+In AWS env, please make sure the adequate security group is set properly. In our temporary lab, we allowed inbound rule of ALL-TCP 0.0.0.0/0.
 
 From now on, you should be able to play with multi-tenant and the network features.
