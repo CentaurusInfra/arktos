@@ -231,7 +231,7 @@ func (g *listerGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 		"type":          t,
 		"objectMeta":    g.objectMeta,
 		"DefaultTenant": metav1.TenantNone,
-		"SystemTenant": metav1.TenantSystem,
+		"SystemTenant":  metav1.TenantSystem,
 	}
 
 	tags, err := util.ParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
