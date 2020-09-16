@@ -70,7 +70,7 @@ func (s *tokenReviewLister) Get(name string) (*v1.TokenReview, error) {
 
 // TokenReviews returns an object that can list and get TokenReviews.
 func (s *tokenReviewLister) TokenReviews() TokenReviewTenantLister {
-	return tokenReviewTenantLister{indexer: s.indexer, tenant: "system"}
+	return tokenReviewTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *tokenReviewLister) TokenReviewsWithMultiTenancy(tenant string) TokenReviewTenantLister {

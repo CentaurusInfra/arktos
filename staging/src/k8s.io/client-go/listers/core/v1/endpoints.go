@@ -56,7 +56,7 @@ func (s *endpointsLister) List(selector labels.Selector) (ret []*v1.Endpoints, e
 
 // Endpoints returns an object that can list and get Endpoints.
 func (s *endpointsLister) Endpoints(namespace string) EndpointsNamespaceLister {
-	return endpointsNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return endpointsNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *endpointsLister) EndpointsWithMultiTenancy(namespace string, tenant string) EndpointsNamespaceLister {

@@ -70,7 +70,7 @@ func (s *clusterRoleBindingLister) Get(name string) (*v1alpha1.ClusterRoleBindin
 
 // ClusterRoleBindings returns an object that can list and get ClusterRoleBindings.
 func (s *clusterRoleBindingLister) ClusterRoleBindings() ClusterRoleBindingTenantLister {
-	return clusterRoleBindingTenantLister{indexer: s.indexer, tenant: "system"}
+	return clusterRoleBindingTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *clusterRoleBindingLister) ClusterRoleBindingsWithMultiTenancy(tenant string) ClusterRoleBindingTenantLister {

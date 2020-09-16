@@ -104,7 +104,7 @@ func NewFilteredSharedInformerFactoryWithMultiTenancy(client versioned.Interface
 func NewSharedInformerFactoryWithOptions(client versioned.Interface, defaultResync time.Duration, options ...SharedInformerOption) SharedInformerFactory {
 	factory := &sharedInformerFactory{
 		client:           client,
-		tenant:           v1.TenantAll,
+		tenant:           v1.TenantAllExplicit,
 		namespace:        v1.NamespaceAll,
 		defaultResync:    defaultResync,
 		informers:        make(map[reflect.Type]cache.SharedIndexInformer),

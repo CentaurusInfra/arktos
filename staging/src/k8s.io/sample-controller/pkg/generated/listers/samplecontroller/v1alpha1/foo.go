@@ -56,7 +56,7 @@ func (s *fooLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err err
 
 // Foos returns an object that can list and get Foos.
 func (s *fooLister) Foos(namespace string) FooNamespaceLister {
-	return fooNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return fooNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *fooLister) FoosWithMultiTenancy(namespace string, tenant string) FooNamespaceLister {

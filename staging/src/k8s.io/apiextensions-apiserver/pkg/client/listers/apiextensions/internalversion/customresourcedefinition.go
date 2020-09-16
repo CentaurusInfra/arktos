@@ -70,7 +70,7 @@ func (s *customResourceDefinitionLister) Get(name string) (*apiextensions.Custom
 
 // CustomResourceDefinitions returns an object that can list and get CustomResourceDefinitions.
 func (s *customResourceDefinitionLister) CustomResourceDefinitions() CustomResourceDefinitionTenantLister {
-	return customResourceDefinitionTenantLister{indexer: s.indexer, tenant: "system"}
+	return customResourceDefinitionTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *customResourceDefinitionLister) CustomResourceDefinitionsWithMultiTenancy(tenant string) CustomResourceDefinitionTenantLister {

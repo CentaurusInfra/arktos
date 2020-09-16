@@ -56,7 +56,7 @@ func (s *ingressLister) List(selector labels.Selector) (ret []*v1beta1.Ingress, 
 
 // Ingresses returns an object that can list and get Ingresses.
 func (s *ingressLister) Ingresses(namespace string) IngressNamespaceLister {
-	return ingressNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return ingressNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *ingressLister) IngressesWithMultiTenancy(namespace string, tenant string) IngressNamespaceLister {

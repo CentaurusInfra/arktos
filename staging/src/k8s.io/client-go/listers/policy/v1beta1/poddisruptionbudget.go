@@ -56,7 +56,7 @@ func (s *podDisruptionBudgetLister) List(selector labels.Selector) (ret []*v1bet
 
 // PodDisruptionBudgets returns an object that can list and get PodDisruptionBudgets.
 func (s *podDisruptionBudgetLister) PodDisruptionBudgets(namespace string) PodDisruptionBudgetNamespaceLister {
-	return podDisruptionBudgetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return podDisruptionBudgetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *podDisruptionBudgetLister) PodDisruptionBudgetsWithMultiTenancy(namespace string, tenant string) PodDisruptionBudgetNamespaceLister {

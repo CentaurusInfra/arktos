@@ -56,7 +56,7 @@ func (s *secretLister) List(selector labels.Selector) (ret []*v1.Secret, err err
 
 // Secrets returns an object that can list and get Secrets.
 func (s *secretLister) Secrets(namespace string) SecretNamespaceLister {
-	return secretNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return secretNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *secretLister) SecretsWithMultiTenancy(namespace string, tenant string) SecretNamespaceLister {

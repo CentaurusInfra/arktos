@@ -56,7 +56,7 @@ func (s *serviceAccountLister) List(selector labels.Selector) (ret []*v1.Service
 
 // ServiceAccounts returns an object that can list and get ServiceAccounts.
 func (s *serviceAccountLister) ServiceAccounts(namespace string) ServiceAccountNamespaceLister {
-	return serviceAccountNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return serviceAccountNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *serviceAccountLister) ServiceAccountsWithMultiTenancy(namespace string, tenant string) ServiceAccountNamespaceLister {

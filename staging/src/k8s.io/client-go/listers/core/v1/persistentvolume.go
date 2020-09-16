@@ -70,7 +70,7 @@ func (s *persistentVolumeLister) Get(name string) (*v1.PersistentVolume, error) 
 
 // PersistentVolumes returns an object that can list and get PersistentVolumes.
 func (s *persistentVolumeLister) PersistentVolumes() PersistentVolumeTenantLister {
-	return persistentVolumeTenantLister{indexer: s.indexer, tenant: "system"}
+	return persistentVolumeTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *persistentVolumeLister) PersistentVolumesWithMultiTenancy(tenant string) PersistentVolumeTenantLister {

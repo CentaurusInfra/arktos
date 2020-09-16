@@ -56,7 +56,7 @@ func (s *controllerRevisionLister) List(selector labels.Selector) (ret []*v1.Con
 
 // ControllerRevisions returns an object that can list and get ControllerRevisions.
 func (s *controllerRevisionLister) ControllerRevisions(namespace string) ControllerRevisionNamespaceLister {
-	return controllerRevisionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return controllerRevisionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *controllerRevisionLister) ControllerRevisionsWithMultiTenancy(namespace string, tenant string) ControllerRevisionNamespaceLister {

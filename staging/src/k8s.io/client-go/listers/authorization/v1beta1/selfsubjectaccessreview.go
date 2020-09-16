@@ -70,7 +70,7 @@ func (s *selfSubjectAccessReviewLister) Get(name string) (*v1beta1.SelfSubjectAc
 
 // SelfSubjectAccessReviews returns an object that can list and get SelfSubjectAccessReviews.
 func (s *selfSubjectAccessReviewLister) SelfSubjectAccessReviews() SelfSubjectAccessReviewTenantLister {
-	return selfSubjectAccessReviewTenantLister{indexer: s.indexer, tenant: "system"}
+	return selfSubjectAccessReviewTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *selfSubjectAccessReviewLister) SelfSubjectAccessReviewsWithMultiTenancy(tenant string) SelfSubjectAccessReviewTenantLister {

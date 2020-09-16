@@ -56,7 +56,7 @@ func (s *eventLister) List(selector labels.Selector) (ret []*v1beta1.Event, err 
 
 // Events returns an object that can list and get Events.
 func (s *eventLister) Events(namespace string) EventNamespaceLister {
-	return eventNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return eventNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *eventLister) EventsWithMultiTenancy(namespace string, tenant string) EventNamespaceLister {

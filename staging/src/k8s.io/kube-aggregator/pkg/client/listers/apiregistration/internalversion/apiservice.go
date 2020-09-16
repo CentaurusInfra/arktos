@@ -70,7 +70,7 @@ func (s *aPIServiceLister) Get(name string) (*apiregistration.APIService, error)
 
 // APIServices returns an object that can list and get APIServices.
 func (s *aPIServiceLister) APIServices() APIServiceTenantLister {
-	return aPIServiceTenantLister{indexer: s.indexer, tenant: "system"}
+	return aPIServiceTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *aPIServiceLister) APIServicesWithMultiTenancy(tenant string) APIServiceTenantLister {

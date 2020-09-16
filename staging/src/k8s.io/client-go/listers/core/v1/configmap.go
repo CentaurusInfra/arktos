@@ -56,7 +56,7 @@ func (s *configMapLister) List(selector labels.Selector) (ret []*v1.ConfigMap, e
 
 // ConfigMaps returns an object that can list and get ConfigMaps.
 func (s *configMapLister) ConfigMaps(namespace string) ConfigMapNamespaceLister {
-	return configMapNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return configMapNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *configMapLister) ConfigMapsWithMultiTenancy(namespace string, tenant string) ConfigMapNamespaceLister {

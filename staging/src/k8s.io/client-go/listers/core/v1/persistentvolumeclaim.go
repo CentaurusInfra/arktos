@@ -56,7 +56,7 @@ func (s *persistentVolumeClaimLister) List(selector labels.Selector) (ret []*v1.
 
 // PersistentVolumeClaims returns an object that can list and get PersistentVolumeClaims.
 func (s *persistentVolumeClaimLister) PersistentVolumeClaims(namespace string) PersistentVolumeClaimNamespaceLister {
-	return persistentVolumeClaimNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return persistentVolumeClaimNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *persistentVolumeClaimLister) PersistentVolumeClaimsWithMultiTenancy(namespace string, tenant string) PersistentVolumeClaimNamespaceLister {

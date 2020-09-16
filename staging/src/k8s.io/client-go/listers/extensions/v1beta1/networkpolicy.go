@@ -56,7 +56,7 @@ func (s *networkPolicyLister) List(selector labels.Selector) (ret []*v1beta1.Net
 
 // NetworkPolicies returns an object that can list and get NetworkPolicies.
 func (s *networkPolicyLister) NetworkPolicies(namespace string) NetworkPolicyNamespaceLister {
-	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return networkPolicyNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *networkPolicyLister) NetworkPoliciesWithMultiTenancy(namespace string, tenant string) NetworkPolicyNamespaceLister {

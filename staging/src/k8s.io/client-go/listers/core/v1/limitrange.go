@@ -56,7 +56,7 @@ func (s *limitRangeLister) List(selector labels.Selector) (ret []*v1.LimitRange,
 
 // LimitRanges returns an object that can list and get LimitRanges.
 func (s *limitRangeLister) LimitRanges(namespace string) LimitRangeNamespaceLister {
-	return limitRangeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return limitRangeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *limitRangeLister) LimitRangesWithMultiTenancy(namespace string, tenant string) LimitRangeNamespaceLister {

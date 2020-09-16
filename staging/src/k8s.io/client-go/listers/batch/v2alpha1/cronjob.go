@@ -56,7 +56,7 @@ func (s *cronJobLister) List(selector labels.Selector) (ret []*v2alpha1.CronJob,
 
 // CronJobs returns an object that can list and get CronJobs.
 func (s *cronJobLister) CronJobs(namespace string) CronJobNamespaceLister {
-	return cronJobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return cronJobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *cronJobLister) CronJobsWithMultiTenancy(namespace string, tenant string) CronJobNamespaceLister {

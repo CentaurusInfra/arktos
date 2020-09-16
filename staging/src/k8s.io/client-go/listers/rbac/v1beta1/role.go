@@ -56,7 +56,7 @@ func (s *roleLister) List(selector labels.Selector) (ret []*v1beta1.Role, err er
 
 // Roles returns an object that can list and get Roles.
 func (s *roleLister) Roles(namespace string) RoleNamespaceLister {
-	return roleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return roleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *roleLister) RolesWithMultiTenancy(namespace string, tenant string) RoleNamespaceLister {

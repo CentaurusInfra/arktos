@@ -56,7 +56,7 @@ func (s *horizontalPodAutoscalerLister) List(selector labels.Selector) (ret []*v
 
 // HorizontalPodAutoscalers returns an object that can list and get HorizontalPodAutoscalers.
 func (s *horizontalPodAutoscalerLister) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerNamespaceLister {
-	return horizontalPodAutoscalerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return horizontalPodAutoscalerNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *horizontalPodAutoscalerLister) HorizontalPodAutoscalersWithMultiTenancy(namespace string, tenant string) HorizontalPodAutoscalerNamespaceLister {

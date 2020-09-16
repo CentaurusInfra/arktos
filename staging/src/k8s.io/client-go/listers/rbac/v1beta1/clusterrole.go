@@ -70,7 +70,7 @@ func (s *clusterRoleLister) Get(name string) (*v1beta1.ClusterRole, error) {
 
 // ClusterRoles returns an object that can list and get ClusterRoles.
 func (s *clusterRoleLister) ClusterRoles() ClusterRoleTenantLister {
-	return clusterRoleTenantLister{indexer: s.indexer, tenant: "system"}
+	return clusterRoleTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *clusterRoleLister) ClusterRolesWithMultiTenancy(tenant string) ClusterRoleTenantLister {

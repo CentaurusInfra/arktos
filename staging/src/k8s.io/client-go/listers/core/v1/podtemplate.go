@@ -56,7 +56,7 @@ func (s *podTemplateLister) List(selector labels.Selector) (ret []*v1.PodTemplat
 
 // PodTemplates returns an object that can list and get PodTemplates.
 func (s *podTemplateLister) PodTemplates(namespace string) PodTemplateNamespaceLister {
-	return podTemplateNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return podTemplateNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *podTemplateLister) PodTemplatesWithMultiTenancy(namespace string, tenant string) PodTemplateNamespaceLister {

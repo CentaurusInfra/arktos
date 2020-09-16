@@ -70,7 +70,7 @@ func (s *namespaceLister) Get(name string) (*v1.Namespace, error) {
 
 // Namespaces returns an object that can list and get Namespaces.
 func (s *namespaceLister) Namespaces() NamespaceTenantLister {
-	return namespaceTenantLister{indexer: s.indexer, tenant: "system"}
+	return namespaceTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *namespaceLister) NamespacesWithMultiTenancy(tenant string) NamespaceTenantLister {

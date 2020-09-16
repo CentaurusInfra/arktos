@@ -55,7 +55,7 @@ func (s *actionLister) List(selector labels.Selector) (ret []*v1.Action, err err
 
 // Actions returns an object that can list and get Actions.
 func (s *actionLister) Actions(namespace string) ActionNamespaceLister {
-	return actionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return actionNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *actionLister) ActionsWithMultiTenancy(namespace string, tenant string) ActionNamespaceLister {

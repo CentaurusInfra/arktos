@@ -45,7 +45,7 @@ func (c *FakeStorageV1beta1) StorageClasses() v1beta1.StorageClassInterface {
 }
 
 func (c *FakeStorageV1beta1) VolumeAttachments() v1beta1.VolumeAttachmentInterface {
-	return &FakeVolumeAttachments{c, "system"}
+	return &FakeVolumeAttachments{c, ""}
 }
 
 func (c *FakeStorageV1beta1) VolumeAttachmentsWithMultiTenancy(tenant string) v1beta1.VolumeAttachmentInterface {

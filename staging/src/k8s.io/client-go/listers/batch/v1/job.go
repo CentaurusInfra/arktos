@@ -56,7 +56,7 @@ func (s *jobLister) List(selector labels.Selector) (ret []*v1.Job, err error) {
 
 // Jobs returns an object that can list and get Jobs.
 func (s *jobLister) Jobs(namespace string) JobNamespaceLister {
-	return jobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return jobNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *jobLister) JobsWithMultiTenancy(namespace string, tenant string) JobNamespaceLister {

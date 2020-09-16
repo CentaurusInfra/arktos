@@ -56,7 +56,7 @@ func (s *testTypeLister) List(selector labels.Selector) (ret []*example2.TestTyp
 
 // TestTypes returns an object that can list and get TestTypes.
 func (s *testTypeLister) TestTypes(namespace string) TestTypeNamespaceLister {
-	return testTypeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return testTypeNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *testTypeLister) TestTypesWithMultiTenancy(namespace string, tenant string) TestTypeNamespaceLister {

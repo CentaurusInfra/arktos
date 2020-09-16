@@ -70,7 +70,7 @@ func (s *podSecurityPolicyLister) Get(name string) (*v1beta1.PodSecurityPolicy, 
 
 // PodSecurityPolicies returns an object that can list and get PodSecurityPolicies.
 func (s *podSecurityPolicyLister) PodSecurityPolicies() PodSecurityPolicyTenantLister {
-	return podSecurityPolicyTenantLister{indexer: s.indexer, tenant: "system"}
+	return podSecurityPolicyTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *podSecurityPolicyLister) PodSecurityPoliciesWithMultiTenancy(tenant string) PodSecurityPolicyTenantLister {

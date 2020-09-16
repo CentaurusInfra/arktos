@@ -56,7 +56,7 @@ func (s *resourceQuotaLister) List(selector labels.Selector) (ret []*v1.Resource
 
 // ResourceQuotas returns an object that can list and get ResourceQuotas.
 func (s *resourceQuotaLister) ResourceQuotas(namespace string) ResourceQuotaNamespaceLister {
-	return resourceQuotaNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return resourceQuotaNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *resourceQuotaLister) ResourceQuotasWithMultiTenancy(namespace string, tenant string) ResourceQuotaNamespaceLister {

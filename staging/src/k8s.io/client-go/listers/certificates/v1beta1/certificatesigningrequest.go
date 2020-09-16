@@ -70,7 +70,7 @@ func (s *certificateSigningRequestLister) Get(name string) (*v1beta1.Certificate
 
 // CertificateSigningRequests returns an object that can list and get CertificateSigningRequests.
 func (s *certificateSigningRequestLister) CertificateSigningRequests() CertificateSigningRequestTenantLister {
-	return certificateSigningRequestTenantLister{indexer: s.indexer, tenant: "system"}
+	return certificateSigningRequestTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *certificateSigningRequestLister) CertificateSigningRequestsWithMultiTenancy(tenant string) CertificateSigningRequestTenantLister {

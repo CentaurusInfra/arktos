@@ -56,7 +56,7 @@ func (s *podPresetLister) List(selector labels.Selector) (ret []*v1alpha1.PodPre
 
 // PodPresets returns an object that can list and get PodPresets.
 func (s *podPresetLister) PodPresets(namespace string) PodPresetNamespaceLister {
-	return podPresetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return podPresetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *podPresetLister) PodPresetsWithMultiTenancy(namespace string, tenant string) PodPresetNamespaceLister {

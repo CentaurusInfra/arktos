@@ -56,7 +56,7 @@ func (s *exampleLister) List(selector labels.Selector) (ret []*v1.Example, err e
 
 // Examples returns an object that can list and get Examples.
 func (s *exampleLister) Examples(namespace string) ExampleNamespaceLister {
-	return exampleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return exampleNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *exampleLister) ExamplesWithMultiTenancy(namespace string, tenant string) ExampleNamespaceLister {

@@ -56,7 +56,7 @@ func (s *deploymentLister) List(selector labels.Selector) (ret []*v1.Deployment,
 
 // Deployments returns an object that can list and get Deployments.
 func (s *deploymentLister) Deployments(namespace string) DeploymentNamespaceLister {
-	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return deploymentNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *deploymentLister) DeploymentsWithMultiTenancy(namespace string, tenant string) DeploymentNamespaceLister {

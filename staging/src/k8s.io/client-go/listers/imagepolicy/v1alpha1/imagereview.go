@@ -70,7 +70,7 @@ func (s *imageReviewLister) Get(name string) (*v1alpha1.ImageReview, error) {
 
 // ImageReviews returns an object that can list and get ImageReviews.
 func (s *imageReviewLister) ImageReviews() ImageReviewTenantLister {
-	return imageReviewTenantLister{indexer: s.indexer, tenant: "system"}
+	return imageReviewTenantLister{indexer: s.indexer, tenant: ""}
 }
 
 func (s *imageReviewLister) ImageReviewsWithMultiTenancy(tenant string) ImageReviewTenantLister {

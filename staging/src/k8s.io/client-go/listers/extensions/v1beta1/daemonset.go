@@ -56,7 +56,7 @@ func (s *daemonSetLister) List(selector labels.Selector) (ret []*v1beta1.DaemonS
 
 // DaemonSets returns an object that can list and get DaemonSets.
 func (s *daemonSetLister) DaemonSets(namespace string) DaemonSetNamespaceLister {
-	return daemonSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: "system"}
+	return daemonSetNamespaceLister{indexer: s.indexer, namespace: namespace, tenant: ""}
 }
 
 func (s *daemonSetLister) DaemonSetsWithMultiTenancy(namespace string, tenant string) DaemonSetNamespaceLister {
