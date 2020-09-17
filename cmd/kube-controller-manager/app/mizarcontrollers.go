@@ -128,28 +128,27 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string) (http.
 
 func startArktosNetworkController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 	controllerName := "mizar-arktos-network-controller"
-        klog.V(2).Infof("Starting %v", controllerName)
+	klog.V(2).Infof("Starting %v", controllerName)
 
-        netKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-        for _, netKubeconfig := range netKubeconfigs.GetAllConfigs() {
-                netKubeconfig.QPS *= 5
-                netKubeconfig.Burst *= 10
-        }
-        crConfigs := *netKubeconfigs
-        for _, cfg := range crConfigs.GetAllConfigs() {
-                cfg.ContentType = "application/json"
-                cfg.AcceptContentTypes = "application/json"
-        }
-        networkClient := arktos.NewForConfigOrDie(&crConfigs)
-        svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
-        informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
+	netKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	for _, netKubeconfig := range netKubeconfigs.GetAllConfigs() {
+		netKubeconfig.QPS *= 5
+		netKubeconfig.Burst *= 10
+	}
+	crConfigs := *netKubeconfigs
+	for _, cfg := range crConfigs.GetAllConfigs() {
+		cfg.ContentType = "application/json"
+		cfg.AcceptContentTypes = "application/json"
+	}
+	networkClient := arktos.NewForConfigOrDie(&crConfigs)
+	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
-        go controllers.NewMizarArktosNetworkController(
-                networkClient,
-                svcKubeClient,
-                informerFactory.Arktos().V1().Networks(),
-                grpcHost,
-        ).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
-        return nil, true, nil
+	go controllers.NewMizarArktosNetworkController(
+		networkClient,
+		svcKubeClient,
+		informerFactory.Arktos().V1().Networks(),
+		grpcHost,
+	).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
 }
-

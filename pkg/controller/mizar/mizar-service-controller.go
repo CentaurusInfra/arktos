@@ -341,7 +341,7 @@ func getArktosNetworkName(svcName string) string {
 	return netName
 }
 
-func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapisv1.Network)  {
+func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapisv1.Network) {
 
 	if network.Spec.Type != mizarNetworkType || network.Status.Phase == arktosapisv1.NetworkReady {
 		return
