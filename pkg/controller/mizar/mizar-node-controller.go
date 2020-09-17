@@ -83,66 +83,71 @@ func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer co
 	}
 	klog.Infof("Sending events to api server")
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(object interface{}) {
-			key, err := controller.KeyFunc(object)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
-				return
-			}
-			c.Enqueue(key, EventType_Create)
-			klog.Infof("Create Node -%v ", key)
-		},
-		UpdateFunc: func(oldObject, newObject interface{}) {
-			key1, err1 := controller.KeyFunc(oldObject)
-			key2, err2 := controller.KeyFunc(newObject)
-			if key1 == "" || key2 == "" || err1 != nil || err2 != nil {
-				klog.Errorf("Unexpected string in queue; discarding - %v", key2)
-				return
-			}
-			oldResource := oldObject.(*v1.Node)
-			newResource := newObject.(*v1.Node)
-			eventType, err := c.determineEventType(oldResource, newResource)
-			if err != nil {
-				klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
-				return
-			}
-			switch eventType {
-			case NodeNoChange:
-				{
-					klog.Infof("No actual change in nodes, discarding -%v ", newResource.Name)
-					break
-				}
-			case NodeUpdate:
-				{
-					c.Enqueue(key2, EventType_Update)
-					klog.Infof("Update Node - %v", key2)
-					break
-				}
-			case NodeResume:
-				{
-					c.Enqueue(key2, EventType_Resume)
-					klog.Infof("Resume Node - %v", key2)
-				}
-			default:
-				{
-					klog.Errorf("Unexpected node event; discarding - %v", key2)
-					return
-				}
-			}
-		},
-		DeleteFunc: func(object interface{}) {
-			key, err := controller.KeyFunc(object)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
-				return
-			}
-			c.Enqueue(key, EventType_Delete)
-			klog.Infof("Delete Node - %v", key)
-		},
+		AddFunc:    c.addNode,
+		UpdateFunc: c.updateNode,
+		DeleteFunc: c.deleteNode,
 	})
-
 	c.syncHandler = c.syncNode
 	return c
+}
+
+func (c *MizarNodeController) addNode(object interface{}) {
+	key, err := controller.KeyFunc(object)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+		return
+	}
+	c.Enqueue(key, EventType_Create)
+	klog.Infof("Create Node -%v ", key)
+}
+
+func (c *MizarNodeController) updateNode(oldObject, newObject interface{}) {
+	key1, err1 := controller.KeyFunc(oldObject)
+	key2, err2 := controller.KeyFunc(newObject)
+	if key1 == "" || key2 == "" || err1 != nil || err2 != nil {
+		klog.Errorf("Unexpected string in queue; discarding - %v", key2)
+		return
+	}
+	oldResource := oldObject.(*v1.Node)
+	newResource := newObject.(*v1.Node)
+	eventType, err := c.determineEventType(oldResource, newResource)
+	if err != nil {
+		klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
+		return
+	}
+	switch eventType {
+	case NodeNoChange:
+		{
+			klog.Infof("No actual change in nodes, discarding -%v ", newResource.Name)
+			break
+		}
+	case NodeUpdate:
+		{
+			c.Enqueue(key2, EventType_Update)
+			klog.Infof("Update Node - %v", key2)
+			break
+		}
+	case NodeResume:
+		{
+			c.Enqueue(key2, EventType_Resume)
+			klog.Infof("Resume Node - %v", key2)
+		}
+	default:
+		{
+			klog.Errorf("Unexpected node event; discarding - %v", key2)
+			return
+		}
+	}
+}
+
+func (c *MizarNodeController) deleteNode(object interface{}) {
+	key, err := controller.KeyFunc(object)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+		return
+	}
+	c.Enqueue(key, EventType_Delete)
+	klog.Infof("Delete Node - %v", key)
 }
 
 // Run starts an asynchronous loop that detects events of cluster nodes.

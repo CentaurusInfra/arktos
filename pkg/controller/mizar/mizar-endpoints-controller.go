@@ -98,67 +98,73 @@ func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointIn
 	}
 	klog.Infof("Sending events to api server")
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(object interface{}) {
-			key, err := controller.KeyFunc(object)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
-				return
-			}
-			c.Enqueue(key, EventType_Create)
-			klog.Infof("Create Endpoint - %v", key)
-		},
-		UpdateFunc: func(oldObject, newObject interface{}) {
-			key1, err1 := controller.KeyFunc(oldObject)
-			key2, err2 := controller.KeyFunc(newObject)
-			if key1 == "" || key2 == "" || err1 != nil || err2 != nil {
-				klog.Errorf("Unexpected string in queue; discarding - %v", key2)
-				return
-			}
-			oldResource := oldObject.(*v1.Endpoints)
-			newResource := newObject.(*v1.Endpoints)
-			name := newResource.GetName()
-			if name == "kube-controller-manager" || name == "kube-scheduler" {
-				return
-			}
-			eventType, err := c.determineEventType(oldResource, newResource)
-			if err != nil {
-				klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
-				return
-			}
-			switch eventType {
-			case EndpointsNoChange:
-				{
-					klog.Infof("No actual change in endpoints, discarding -%v ", key2)
-					break
-				}
-			case EndpointsUpdate:
-				{
-					c.Enqueue(key2, EventType_Update)
-					klog.Infof("Update Endpoints - %v", key2)
-					break
-				}
-			case EndpointsResume:
-				{
-					c.Enqueue(key2, EventType_Resume)
-					klog.Infof("Resume Endpoints - %v", key2)
-				}
-			default:
-				{
-					klog.Errorf("Unexpected Endpoints event; discarding - %v", key2)
-					return
-				}
-			}
-		},
-		DeleteFunc: func(object interface{}) {
-			key, err := controller.KeyFunc(object)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
-				return
-			}
-			c.Enqueue(key, EventType_Delete)
-		},
+		AddFunc:    c.addEndpoints,
+		UpdateFunc: c.updateEndpoints,
+		DeleteFunc: c.deleteEndpoints,
 	})
 	return c
+}
+
+func (c *MizarEndpointsController) addEndpoints(object interface{}) {
+	key, err := controller.KeyFunc(object)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+		return
+	}
+	c.Enqueue(key, EventType_Create)
+	klog.Infof("Create Endpoint - %v", key)
+}
+
+func (c *MizarEndpointsController) updateEndpoints(oldObject, newObject interface{}) {
+	key1, err1 := controller.KeyFunc(oldObject)
+	key2, err2 := controller.KeyFunc(newObject)
+	if key1 == "" || key2 == "" || err1 != nil || err2 != nil {
+		klog.Errorf("Unexpected string in queue; discarding - %v", key2)
+		return
+	}
+	oldResource := oldObject.(*v1.Endpoints)
+	newResource := newObject.(*v1.Endpoints)
+	name := newResource.GetName()
+	if name == "kube-controller-manager" || name == "kube-scheduler" {
+		return
+	}
+	eventType, err := c.determineEventType(oldResource, newResource)
+	if err != nil {
+		klog.Errorf("Unexpected string in queue; discarding - %v ", key2)
+		return
+	}
+	switch eventType {
+	case EndpointsNoChange:
+		{
+			klog.Infof("No actual change in endpoints, discarding -%v ", key2)
+			break
+		}
+	case EndpointsUpdate:
+		{
+			c.Enqueue(key2, EventType_Update)
+			klog.Infof("Update Endpoints - %v", key2)
+			break
+		}
+	case EndpointsResume:
+		{
+			c.Enqueue(key2, EventType_Resume)
+			klog.Infof("Resume Endpoints - %v", key2)
+		}
+	default:
+		{
+			klog.Errorf("Unexpected Endpoints event; discarding - %v", key2)
+			return
+		}
+	}
+}
+
+func (c *MizarEndpointsController) deleteEndpoints(object interface{}) {
+	key, err := controller.KeyFunc(object)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", object, err))
+		return
+	}
+	c.Enqueue(key, EventType_Delete)
 }
 
 // Run starts an asynchronous loop that detects events of cluster nodes.
@@ -332,4 +338,3 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep *v1.Endpoints
 	klog.Infof("gRPC request is sent")
 	return true, nil
 }
-
