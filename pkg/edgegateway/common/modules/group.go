@@ -1,6 +1,6 @@
 package modules
 
 const (
-	// HubGroup group
-	EdgeHubGroup = "edgehub"
+	EdgeHubGroup     = "edgeHub"
+	EdgeServiceGroup = "edgeService"
 )

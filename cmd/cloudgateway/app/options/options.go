@@ -62,8 +62,8 @@ func NewCloudGatewayConfig() *v1.CloudGatewayConfig {
 			APIVersion: path.Join(cloudgateway.GroupName, cloudgateway.Version),
 		},
 		KubeAPIConfig: &v1.KubeAPIConfig{
-			Master:		"",
-			KubeConfig:	constants.DefaultKubeConfig,
+			Master:     "",
+			KubeConfig: constants.DefaultKubeConfig,
 		},
 		Modules: &v1.Modules{
 			CloudHub: &v1.CloudHub{
@@ -89,6 +89,9 @@ func NewCloudGatewayConfig() *v1.CloudGatewayConfig {
 					Port:    10002,
 					Address: "0.0.0.0",
 				},
+			},
+			CloudService: &v1.CloudService{
+				Enable: true,
 			},
 		},
 	}

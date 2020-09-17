@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/cloudgateway/cloudhub/common/model"
+	"k8s.io/kubernetes/pkg/cloudgateway/common/constants"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/modules"
 )
 
@@ -100,7 +100,7 @@ func GetSiteID(msg *beehiveModel.Message) (string, error) {
 	resource := msg.GetResource()
 	res := strings.Split(resource, "/")
 	for index, value := range res {
-		if value == model.ResSite && index+1 < len(res) && res[index+1] != "" {
+		if value == constants.ResSite && index+1 < len(res) && res[index+1] != "" {
 			return res[index+1], nil
 		}
 	}

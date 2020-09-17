@@ -2,7 +2,6 @@ package edgehub
 
 import (
 	"fmt"
-	"regexp"
 	"time"
 
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
@@ -14,11 +13,8 @@ import (
 	"k8s.io/kubernetes/pkg/edgegateway/edgehub/config"
 )
 
-const ResponsePattern = constants.ResponseType + `/\w[-\w.+]*`
-
-var ResponseRegExp = regexp.MustCompile(ResponsePattern)
 var groupMap = map[string]string{
-	//TODO(liuzongbao): add group to receive message from cloud
+	"edgeService": modules.EdgeServiceGroup,
 }
 
 // initializes a client to connect cloudhub
@@ -70,7 +66,7 @@ func (eh *EdgeHub) keepalive() {
 
 func (eh *EdgeHub) dispatch(message model.Message) error {
 	// handle response message
-	if ResponseRegExp.MatchString(message.GetResource()) {
+	if message.GetOperation() == constants.ResponseOperation {
 		beehiveContext.SendResp(message)
 		return nil
 	}

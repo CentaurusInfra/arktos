@@ -105,6 +105,15 @@ type Modules struct {
 	CloudHub *CloudHub `json:"cloudHub,omitempty"`
 	// Controller indicates Controller module config
 	Controller *Controller `json:"controller,omitempty"`
+	// CloudService indicates CloudService module config
+	CloudService *CloudService `json:"cloudService,omitempty"`
+}
+
+// CloudService indicates the config of CloudService module.
+type CloudService struct {
+	// Enable indicates whether CloudService is enabled, if set ot false
+	// skip checking other CloudService configs.
+	Enable bool `json:"enable,omitempty"`
 }
 
 // Controller indicates the config of Controller module.

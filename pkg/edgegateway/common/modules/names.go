@@ -1,6 +1,7 @@
 package modules
 
 const (
-	// EdgeHubModuleName name
-	EdgeHubModuleName = "edgehub"
+	EdgeHubModuleName      = "edgeHub"
+	EdgeServiceModuleName  = "edgeService"
+	CloudServiceModuleName = "cloudService"
 )

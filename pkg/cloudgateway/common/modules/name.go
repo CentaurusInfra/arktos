@@ -1,6 +1,7 @@
 package modules
 
 const (
-	CloudHubModuleName = "cloudhub"
-	ControllerModuleName = "controller"
+	CloudHubModuleName     = "cloudHub"
+	ControllerModuleName   = "controller"
+	CloudServiceModuleName = "cloudService"
 )

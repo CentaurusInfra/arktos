@@ -8,6 +8,7 @@ import (
 	"k8s.io/kubernetes/cmd/edgegateway/app/options"
 	v1 "k8s.io/kubernetes/pkg/apis/edgegateway/v1"
 	"k8s.io/kubernetes/pkg/edgegateway/edgehub"
+	"k8s.io/kubernetes/pkg/edgegateway/edgeservice"
 	utilflag "k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/version/verflag"
 )
@@ -56,4 +57,5 @@ communication and access capabilities for services and components of the cloud a
 // registerModules register all the modules started in edgeGateway
 func registerModules(c *v1.EdgeGatewayConfig) {
 	edgehub.Register(c.Modules.EdgeHub)
+	edgeservice.Register(c.Modules.EdgeService)
 }
