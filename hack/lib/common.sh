@@ -107,6 +107,16 @@ else
   sudo systemctl stop apparmor
 fi
 
+ARKTOS_NETWORK_TEMPLATE=${ARKTOS_NETWORK_TEMPLATE:-}
+DEFAULT_NETWORK_TEMPLATE=${KUBE_ROOT}/hack/runtime/default_flat_network.json
+if [ "${ARKTOS_NETWORK_TEMPLATE}" == "default" ]; then 
+  ARKTOS_NETWORK_TEMPLATE=${DEFAULT_NETWORK_TEMPLATE}
+fi
+if [ -n "${ARKTOS_NETWORK_TEMPLATE}" ] && [ ! -f "${ARKTOS_NETWORK_TEMPLATE}" ]; then 
+  printf "\033[1;33m\nWarning: could not find newtork template file ${ARKTOS_NETWORK_TEMPLATE}. Setting ARKTOS_NETWORK_TEMPLATE to empty.\n\033[0m"
+  ARKTOS_NETWORK_TEMPLATE=""
+fi
+
 source "${KUBE_ROOT}/hack/lib/util.sh"
 
 function kube::common::detect_binary {
@@ -478,6 +488,7 @@ function kube::common::start_controller_manager {
       --controllers="${KUBE_CONTROLLERS}" \
       --leader-elect=false \
       --cert-dir="${CERT_DIR}" \
+      --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" \
       --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
     CTLRMGR_PID=$!
 }

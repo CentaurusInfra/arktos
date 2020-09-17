@@ -14,7 +14,8 @@ limitations under the License.
 package mizar
 
 import (
-	"fmt"	
+	"fmt"
+
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
@@ -100,7 +101,6 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 	}
 }
 
-
 //ServiceEndpoint => ServiceEndpoint gRPC interface
 func ConvertToServiceEndpointFrontContract(endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
 	if endpoints == nil || service == nil {
@@ -143,7 +143,7 @@ func ConvertToServiceEndpointFrontContract(endpoints *v1.Endpoints, service *v1.
 		BackendIps: endPoint.addresses,
 		Ports:      portsMessage,
 	}
-        klog.Infof("Mizar Endpoints controller is sending endpoints info to Mizar %v", endPointsMessage)
+	klog.Infof("Mizar Endpoints controller is sending endpoints info to Mizar %v", endPointsMessage)
 	return &endPointsMessage
 }
 
@@ -165,12 +165,11 @@ func GetFrontPorts(service *v1.Service, epPort int32) Ports {
 		serviceport := serviceports[i]
 		targetPort := serviceport.TargetPort.IntVal
 		if targetPort == epPort {
-			ports.frontPort = fmt.Sprintf("%s", serviceport.Port)
-			ports.backendPort = fmt.Sprintf("%s", serviceport.TargetPort)
-			ports.protocol = fmt.Sprintf("%s", serviceport.Protocol)
+			ports.frontPort = fmt.Sprintf("%v", serviceport.Port)
+			ports.backendPort = fmt.Sprintf("%v", serviceport.TargetPort)
+			ports.protocol = fmt.Sprintf("%v", serviceport.Protocol)
 			return ports
 		}
 	}
 	return ports
 }
-

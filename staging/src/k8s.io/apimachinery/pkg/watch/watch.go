@@ -132,6 +132,12 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 		stopCh := a.stopChGrp.Join()
 
 		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
+			defer func() {
+				if r := recover(); r != nil {
+					klog.Warningf("Recovered in AggregatedWatch. error [%v]", r)
+				}
+			}()
+
 			for {
 				select {
 				case <-stopCh.Read:
