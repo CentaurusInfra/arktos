@@ -266,7 +266,6 @@ func GrpcDeleteNode(grpcHost string, node *v1.Node) *ReturnCode {
 	return returnCode
 }
 
-
 // GrpcCreateServiceEndpointFront is to invoking grpc func of CreateServiceEndpoint
 // with Endpoints ports info + Front (=Service)ports info by Mizar's request
 func GrpcCreateServiceEndpointFront(grpcHost string, endpoints *v1.Endpoints, service *v1.Service) *ReturnCode {
@@ -282,7 +281,6 @@ func GrpcCreateServiceEndpointFront(grpcHost string, endpoints *v1.Endpoints, se
 	}
 	return returnCode
 }
-
 
 // GrpcUpdateServiceEndpointFront is to invoking grpc func of UpdateServiceEndpoint
 // with Endpoints ports info + Front (=Service)ports info by Mizar's request
@@ -334,4 +332,3 @@ func getGrpcClient(grpcHost string) (BuiltinsServiceClient, context.Context, *gr
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	return client, ctx, conn, cancel, nil
 }
-
