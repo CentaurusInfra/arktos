@@ -37,6 +37,7 @@ Please be advised that this is a temporary quirk only; after we have the full se
 
 at worker node, run following commands:
 ```bash
+export ARKTOS_NO_CNI_PREINSTALLED=y
 export KUBELET_IP=<worker-ip>
 ./hack/arktos-worker-up.sh
 ```
