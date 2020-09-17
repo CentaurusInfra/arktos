@@ -33,15 +33,15 @@ import (
 )
 
 const (
-	controllerForMizarPod = "mizar_pod"
+	controllerForMizarNode = "mizar_node"
 )
 
-// MizarPodController points to current controller
-type MizarPodController struct {
+// MizarNodeController points to current controller
+type MizarNodeController struct {
 	kubeClient clientset.Interface
 
-	// A store of objects, populated by the shared informer passed to MizarPodController
-	lister corelisters.PodLister
+	// A store of objects, populated by the shared informer passed to MizarNodeController
+	lister corelisters.NodeLister
 	// listerSynced returns true if the store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
 	listerSynced cache.InformerSynced
@@ -55,17 +55,17 @@ type MizarPodController struct {
 	grpcHost string
 }
 
-// NewMizarPodController creates and configures a new controller instance
-func NewMizarPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface, grpcHost string) *MizarPodController {
+// NewMizarNodeController creates and configures a new controller instance
+func NewMizarNodeController(informer coreinformers.NodeInformer, kubeClient clientset.Interface, grpcHost string) *MizarNodeController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
-	c := &MizarPodController{
+	c := &MizarNodeController{
 		kubeClient:   kubeClient,
 		lister:       informer.Lister(),
 		listerSynced: informer.Informer().HasSynced,
-		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarPod),
+		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
 		grpcHost:     grpcHost,
 	}
 
@@ -83,14 +83,14 @@ func NewMizarPodController(informer coreinformers.PodInformer, kubeClient client
 }
 
 // Run begins watching and handling.
-func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
+func (c *MizarNodeController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	klog.Infof("Starting %v controller", controllerForMizarPod)
-	defer klog.Infof("Shutting down %v controller", controllerForMizarPod)
+	klog.Infof("Starting %v controller", controllerForMizarNode)
+	defer klog.Infof("Shutting down %v controller", controllerForMizarNode)
 
-	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced) {
+	if !controller.WaitForCacheSync(controllerForMizarNode, stopCh, c.listerSynced) {
 		return
 	}
 
@@ -101,15 +101,15 @@ func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (c *MizarPodController) createObj(obj interface{}) {
+func (c *MizarNodeController) createObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
 }
 
 // When an object is updated.
-func (c *MizarPodController) updateObj(old, cur interface{}) {
-	curObj := cur.(*v1.Pod)
-	oldObj := old.(*v1.Pod)
+func (c *MizarNodeController) updateObj(old, cur interface{}) {
+	curObj := cur.(*v1.Node)
+	oldObj := old.(*v1.Node)
 	if curObj.ResourceVersion == oldObj.ResourceVersion {
 		// Periodic resync will send update events for all known objects.
 		// Two different versions of the same object will always have different RVs.
@@ -124,20 +124,20 @@ func (c *MizarPodController) updateObj(old, cur interface{}) {
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, ResourceVersion: curObj.ResourceVersion})
 }
 
-func (c *MizarPodController) deleteObj(obj interface{}) {
+func (c *MizarNodeController) deleteObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
-	klog.Infof("%v deleted. key %s.", controllerForMizarPod, key)
+	klog.Infof("%v deleted. key %s.", controllerForMizarNode, key)
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Delete})
 }
 
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
 // It enforces that the handler is never invoked concurrently with the same key.
-func (c *MizarPodController) worker() {
+func (c *MizarNodeController) worker() {
 	for c.processNextWorkItem() {
 	}
 }
 
-func (c *MizarPodController) processNextWorkItem() bool {
+func (c *MizarNodeController) processNextWorkItem() bool {
 	workItem, quit := c.queue.Get()
 
 	if quit {
@@ -154,20 +154,20 @@ func (c *MizarPodController) processNextWorkItem() bool {
 		return true
 	}
 
-	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", controllerForMizarPod, key, err))
+	utilruntime.HandleError(fmt.Errorf("Handle %v of key %v failed with %v", controllerForMizarNode, key, err))
 	c.queue.AddRateLimited(keyWithEventType)
 
 	return true
 }
 
-func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
+func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
-	klog.Infof("Entering handling for %v. key %s, eventType %s", controllerForMizarPod, key, eventType)
+	klog.Infof("Entering handling for %v. key %s, eventType %s", controllerForMizarNode, key, eventType)
 
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished handling %v %q (%v)", controllerForMizarPod, key, time.Since(startTime))
+		klog.V(4).Infof("Finished handling %v %q (%v)", controllerForMizarNode, key, time.Since(startTime))
 	}()
 
 	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
@@ -175,20 +175,20 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		return err
 	}
 
-	obj, err := c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+	obj, err := c.lister.Get(name)
 	if err != nil {
 		return err
 	}
 
-	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarPod, tenant, namespace, obj.Name, obj.HashKey, eventType)
+	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarNode, tenant, namespace, obj.Name, obj.HashKey, eventType)
 
 	switch eventType {
 	case EventType_Create:
-		processPodGrpcReturnCode(c, GrpcCreatePod(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, GrpcCreateNode(c.grpcHost, obj), keyWithEventType)
 	case EventType_Update:
-		processPodGrpcReturnCode(c, GrpcUpdatePod(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, GrpcUpdateNode(c.grpcHost, obj), keyWithEventType)
 	case EventType_Delete:
-		processPodGrpcReturnCode(c, GrpcDeletePod(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, GrpcDeleteNode(c.grpcHost, obj), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}
@@ -196,17 +196,17 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	return nil
 }
 
-func processPodGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, keyWithEventType KeyWithEventType) {
+func processNodeGrpcReturnCode(c *MizarNodeController, returnCode *ReturnCode, keyWithEventType KeyWithEventType) {
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
 	switch returnCode.Code {
 	case CodeType_OK:
-		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %v", controllerForMizarPod, key, eventType)
+		klog.Infof("Mizar handled request successfully for %v. key %s, eventType %v", controllerForMizarNode, key, eventType)
 	case CodeType_TEMP_ERROR:
-		klog.Warningf("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, eventType)
+		klog.Warningf("Mizar hit temporary error for %v. key %s. %s, eventType %v", controllerForMizarNode, key, returnCode.Message, eventType)
 		c.queue.AddRateLimited(keyWithEventType)
 	case CodeType_PERM_ERROR:
-		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarPod, key, returnCode.Message, eventType)
+		klog.Errorf("Mizar hit permanent error for %v. key %s. %s, eventType %v", controllerForMizarNode, key, returnCode.Message, eventType)
 	default:
 		klog.Errorf("unimplemented for CodeType %v", returnCode.Code)
 	}

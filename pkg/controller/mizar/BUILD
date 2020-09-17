@@ -11,6 +11,8 @@ go_library(
         "builtins.pb.go",
         "grpc-adaptor.go",
         "mizar-arktos-network-controller.go",
+        "mizar-endpoints-controller.go",
+        "mizar-node-controller.go",
         "mizar-pod-controller.go",
         "mizar-service-controller.go",
         "mizar-starter-controller.go",
@@ -20,6 +22,7 @@ go_library(
     deps = [
         "//pkg/controller:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
