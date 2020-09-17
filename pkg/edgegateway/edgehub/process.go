@@ -13,10 +13,6 @@ import (
 	"k8s.io/kubernetes/pkg/edgegateway/edgehub/config"
 )
 
-var groupMap = map[string]string{
-	"edgeService": modules.EdgeServiceGroup,
-}
-
 // initializes a client to connect cloudhub
 func (eh *EdgeHub) initial() (err error) {
 	cloudHubClient, err := clients.GetClient()
@@ -71,12 +67,13 @@ func (eh *EdgeHub) dispatch(message model.Message) error {
 		return nil
 	}
 
-	md, ok := groupMap[message.GetGroup()]
-	if !ok {
-		klog.Warningf("msg_group not found")
-		return fmt.Errorf("msg_group not found")
+	// distribute message from cloudhub
+	switch message.GetGroup() {
+	case modules.EdgeServiceGroup:
+		beehiveContext.SendToGroup(modules.EdgeServiceGroup, message)
+	default:
+		klog.Warningf("message %s does not belong to any group, it will be discarded", message.GetID())
 	}
-	beehiveContext.SendToGroup(md, message)
 	return nil
 }
 

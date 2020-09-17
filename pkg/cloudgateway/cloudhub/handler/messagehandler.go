@@ -96,10 +96,10 @@ func (mh *MessageHandle) HandleServer(container *mux.MessageContainer, writer mu
 	}
 
 	// handle message from edge
-	err := mh.PubToController(siteID, container.Message)
-	if err != nil {
-		klog.Errorf("")
-	}
+	msg := container.Message
+	msg.SetResourceOperation(fmt.Sprintf("site/%s/%s", siteID, msg.GetResource()), msg.GetOperation())
+	klog.Infof("receive message from site %s, %s, content: %s", siteID, dumpMessageMetadata(msg), msg.GetContent())
+	mh.MessageQueue.Publish(msg)
 }
 
 // GetSiteCount returns the number of connected sites
@@ -111,16 +111,6 @@ func (mh *MessageHandle) GetSiteCount() int {
 	}
 	mh.Sites.Range(iter)
 	return num
-}
-
-func (mh *MessageHandle) PubToController(siteID string, msg *beehiveModel.Message) error {
-	msg.SetResourceOperation(fmt.Sprintf("site/%s/%s", siteID, msg.GetResource()), msg.GetOperation())
-	klog.Infof("receive message from site %s, %s, content: %s", siteID, dumpMessageMetadata(msg), msg.GetContent())
-	err := mh.MessageQueue.Publish(msg)
-	if err != nil {
-		klog.Errorf("failed to publish message for site %s, %s, reason: %s", siteID, dumpMessageMetadata(msg), err.Error())
-	}
-	return nil
 }
 
 // OnRegister register site on first connection

@@ -6,6 +6,7 @@ import (
 	"k8s.io/klog"
 	v1 "k8s.io/kubernetes/pkg/apis/edgegateway/v1"
 	"k8s.io/kubernetes/pkg/edgegateway/common/modules"
+	"k8s.io/kubernetes/pkg/edgegateway/edgeservice/httpservice"
 )
 
 type edgeService struct {
@@ -36,10 +37,12 @@ func (s *edgeService) Enable() bool {
 
 func (s *edgeService) Start() {
 
+	go httpservice.StartHttpServer()
+
 	for {
 		select {
 		case <-beehiveContext.Done():
-			klog.Warning("cloudService stop")
+			klog.Warning("edgeService stop")
 			return
 		default:
 		}

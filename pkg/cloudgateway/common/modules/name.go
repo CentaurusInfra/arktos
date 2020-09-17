@@ -4,4 +4,5 @@ const (
 	CloudHubModuleName     = "cloudHub"
 	ControllerModuleName   = "controller"
 	CloudServiceModuleName = "cloudService"
+	EdgeServiceModuleName  = "edgeService"
 )
