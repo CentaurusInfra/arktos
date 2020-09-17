@@ -14,7 +14,8 @@ limitations under the License.
 package mizar
 
 import (
-	"fmt"
+	"fmt"	
+	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
 )
@@ -82,12 +83,17 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 	var nodeAddr, nodeAddressType string
 	for i := 0; i < len(addresses); i++ {
 		nodeAddressType = fmt.Sprintf("%s", addresses[i].Type)
-		nodeAddress = fmt.Sprintf("%s", addresses[i].Address)
+		nodeAddr = fmt.Sprintf("%s", addresses[i].Address)
 		if nodeAddressType == NodeInternalIP {
 			nodeAddress = nodeAddr
 			break
 		}
 	}
+	resource := BuiltinsNodeMessage{
+		Name: nodeName,
+		Ip:   nodeAddress,
+	}
+	klog.Infof("Node controller is sending node info to Mizar %v", resource)
 	return &BuiltinsNodeMessage{
 		Name: nodeName,
 		Ip:   nodeAddress,

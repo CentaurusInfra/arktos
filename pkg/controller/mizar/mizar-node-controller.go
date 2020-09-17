@@ -64,7 +64,7 @@ type MizarNodeController struct {
 	grpcHost       string
 }
 
-func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer coreinformers.NodeInformer, grpcHost string) (*MizarNodeController, error) {
+func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer coreinformers.NodeInformer, grpcHost string) *MizarNodeController {
 	informer := nodeInformer
 	eventBroadcaster := record.NewBroadcaster()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-node-controller"})
@@ -142,7 +142,7 @@ func NewMizarNodeController(kubeclientset *kubernetes.Clientset, nodeInformer co
 	})
 
 	c.syncHandler = c.syncNode
-	return c, nil
+	return c
 }
 
 // Run starts an asynchronous loop that detects events of cluster nodes.
@@ -212,7 +212,7 @@ func (c *MizarNodeController) syncNode(keyWithEventType KeyWithEventType) error 
 	}
 	result, err := c.gRPCRequest(eventType, node)
 	if !result {
-		klog.Errorf("Failed a node processing - %v", key)
+		klog.Errorf("Failed a node processing - event: %v, key: %v, error:", keyWithEventType, key, err)
 		c.queue.AddRateLimited(keyWithEventType)
 	} else {
 		klog.Infof(" Processed a node - %v", key)
@@ -284,25 +284,25 @@ func (c *MizarNodeController) gRPCRequest(event EventType, node *v1.Node) (respo
 	case EventType_Create:
 		response := GrpcCreateNode(c.grpcHost, node)
 		if response.Code != CodeType_OK {
-			klog.Errorf("Node creation failed on Mizar side")
+			klog.Errorf("Node creation failed on Mizar side %v", response)
 			return false, err
 		}
 	case EventType_Update:
 		response := GrpcUpdateNode(c.grpcHost, node)
 		if response.Code != CodeType_OK {
-			klog.Errorf("Node update failed on Mizar side")
+			klog.Errorf("Node update failed on Mizar side %v", response)
 			return false, err
 		}
 	case EventType_Delete:
 		response := GrpcDeleteNode(c.grpcHost, node)
 		if response.Code != CodeType_OK {
-			klog.Errorf("Node deletion failed on Mizar side")
+			klog.Errorf("Node deletion failed on Mizar side %v", response)
 			return false, err
 		}
 	case EventType_Resume:
 		response := GrpcResumeNode(c.grpcHost, node)
 		if response.Code != CodeType_OK {
-			klog.Errorf("Node resume failed on Mizar side")
+			klog.Errorf("Node resume failed on Mizar side %v", response)
 			return false, err
 		}
 	default:
