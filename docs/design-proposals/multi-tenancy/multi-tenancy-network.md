@@ -92,8 +92,6 @@ spec:
   containers:
   - name: nginx
     image: nginx
-    ports:
-      - containerPort: 443
 ```
 When a pod is attached to a certain network, it needs to set its "network" using labels:
 
@@ -108,8 +106,6 @@ spec:
   containers:
   - name: nginx
     image: nginx
-    ports:
-      - containerPort: 443
 ```
 
 
@@ -128,8 +124,6 @@ spec:
   containers:
   - name: nginx
     image: nginx
-    ports:
-      - containerPort: 443
 ```
 
 Here annotation arktos.futurewei.com/nic is for user to provide optional information about pod nic. The recognized keys of element include:
