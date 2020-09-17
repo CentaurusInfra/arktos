@@ -52,7 +52,7 @@ type MizarServiceController struct {
 	serviceLister       corelisters.ServiceLister
 	netLister           arktosextv1.NetworkLister
 	serviceListerSynced cache.InformerSynced
-	syncHandler         func(eventKey KeyWithEventType) error
+	syncHandler         func(eventKeyWithType KeyWithEventType) error
 	queue               workqueue.RateLimitingInterface
 	recorder            record.EventRecorder
 	grpcHost            string
@@ -116,17 +116,17 @@ func (c *MizarServiceController) processNextWorkItem() bool {
 		return false
 	}
 
-	eventKey := workItem.(KeyWithEventType)
-	key := eventKey.Key
-	defer c.queue.Done(eventKey)
+	eventKeyWithType := workItem.(KeyWithEventType)
+	key := eventKeyWithType.Key
+	defer c.queue.Done(workItem)
 
-	err := c.syncHandler(eventKey)
+	err := c.syncHandler(eventKeyWithType)
 	if err == nil {
-		c.queue.Forget(eventKey)
+		c.queue.Forget(workItem)
 		return true
 	}
 	utilruntime.HandleError(fmt.Errorf("Handle service of key %v failed with %v", key, err))
-	c.queue.AddRateLimited(eventKey)
+	c.queue.AddRateLimited(eventKeyWithType)
 
 	return true
 }
@@ -165,9 +165,9 @@ func (c *MizarServiceController) deleteService(obj interface{}) {
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Delete})
 }
 
-func (c *MizarServiceController) syncService(eventKey KeyWithEventType) error {
-	key := eventKey.Key
-	event := eventKey.EventType
+func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) error {
+	key := eventKeyWithType.Key
+	event := eventKeyWithType.EventType
 
 	startTime := time.Now()
 	defer func() {
@@ -188,11 +188,11 @@ func (c *MizarServiceController) syncService(eventKey KeyWithEventType) error {
 
 	switch event {
 	case EventType_Create:
-		err = c.processServiceCreation(svc, eventKey)
+		err = c.processServiceCreation(svc, eventKeyWithType)
 	case EventType_Update:
-		err = c.processServiceUpdate(svc, eventKey)
+		err = c.processServiceUpdate(svc, eventKeyWithType)
 	case EventType_Delete:
-		err = c.processServiceDeletion(eventKey)
+		err = c.processServiceDeletion(eventKeyWithType)
 	default:
 		utilruntime.HandleError(fmt.Errorf("Unable to process service %v %v", event, key))
 	}
@@ -203,8 +203,8 @@ func (c *MizarServiceController) syncService(eventKey KeyWithEventType) error {
 	return nil
 }
 
-func (c *MizarServiceController) processServiceCreation(service *v1.Service, eventKey KeyWithEventType) error {
-	key := eventKey.Key
+func (c *MizarServiceController) processServiceCreation(service *v1.Service, eventKeyWithType KeyWithEventType) error {
+	key := eventKeyWithType.Key
 	netName := getArktosNetworkName(service.Name)
 
 	klog.Info("Starting ProcessServiceCreation service: %v", service)
@@ -225,13 +225,9 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	switch code {
 	case CodeType_OK:
 		klog.Infof("Mizar handled service creation successfully: %s", key)
-		if service.Annotations == nil {
-			service.Annotations = make(map[string]string)
-		}
-		service.Annotations[mizarServiceAnnotationKey] = mizarServiceAnnotationVal
 	case CodeType_TEMP_ERROR:
-		klog.Infof("Mizar hit temporary error for service creation for service: %s", key)
-		c.queue.AddRateLimited(eventKey)
+		klog.Warningf("Mizar hit temporary error for service creation for service: %s", key)
+		c.queue.AddRateLimited(eventKeyWithType)
 		return errors.New("Service creation failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for service creation for service: %s", key)
@@ -270,8 +266,8 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	return nil
 }
 
-func (c *MizarServiceController) processServiceUpdate(service *v1.Service, eventKey KeyWithEventType) error {
-	key := eventKey.Key
+func (c *MizarServiceController) processServiceUpdate(service *v1.Service, eventKeyWithType KeyWithEventType) error {
+	key := eventKeyWithType.Key
 	fmt.Println("processServiceUpdate network name is %v", service.Name)
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
@@ -286,13 +282,9 @@ func (c *MizarServiceController) processServiceUpdate(service *v1.Service, event
 	switch code {
 	case CodeType_OK:
 		klog.Infof("Mizar handled service update successfully: %s", key)
-		if service.Annotations == nil {
-			service.Annotations = make(map[string]string)
-		}
-		service.Annotations[mizarServiceAnnotationKey] = mizarServiceAnnotationVal
 	case CodeType_TEMP_ERROR:
-		klog.Infof("Mizar hit temporary error for service update: %s", key)
-		c.queue.AddRateLimited(eventKey)
+		klog.Warningf("Mizar hit temporary error for service update: %s", key)
+		c.queue.AddRateLimited(eventKeyWithType)
 		return errors.New("Service update failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for service update: %s", key)
@@ -301,8 +293,8 @@ func (c *MizarServiceController) processServiceUpdate(service *v1.Service, event
 	return nil
 }
 
-func (c *MizarServiceController) processServiceDeletion(eventKey KeyWithEventType) error {
-	key := eventKey.Key
+func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWithEventType) error {
+	key := eventKeyWithType.Key
 	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
@@ -323,8 +315,8 @@ func (c *MizarServiceController) processServiceDeletion(eventKey KeyWithEventTyp
 	case CodeType_OK:
 		klog.Infof("Mizar handled service deletion successfully: %s", key)
 	case CodeType_TEMP_ERROR:
-		klog.Infof("Mizar hit temporary error for service deletion for service: %s", key)
-		c.queue.AddRateLimited(eventKey)
+		klog.Warningf("Mizar hit temporary error for service deletion for service: %s", key)
+		c.queue.AddRateLimited(eventKeyWithType)
 		return errors.New("Service deletion failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for service deletion for service: %s", key)
