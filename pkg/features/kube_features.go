@@ -498,6 +498,12 @@ const (
 	//
 	// Enables mandatory network required in whole Arktos cluster
 	MandatoryArktosNetwork featuregate.Feature = "MandatoryArktosNetwork"
+
+	// owner: @vinaykul
+	// alpha: v1.15
+	//
+	// Enables WorkloadInfo default values
+	WorkloadInfoDefaulting featuregate.Feature = "WorkloadInfoDefaulting"
 )
 
 func init() {
@@ -581,6 +587,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	InPlacePodVerticalScaling:                      {Default: false, PreRelease: featuregate.Alpha},
 	PerNetworkServiceIPAlloc:                       {Default: false, PreRelease: featuregate.Alpha},
 	MandatoryArktosNetwork:                         {Default: false, PreRelease: featuregate.Alpha},
+	WorkloadInfoDefaulting:                         {Default: false, PreRelease: featuregate.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:

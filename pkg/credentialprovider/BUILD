@@ -25,9 +25,9 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
-        "config_test.go",
-        "keyring_test.go",
-        "provider_test.go",
+     //   "config_test.go",
+     //   "keyring_test.go",
+     //   "provider_test.go",
     ],
     embed = [":go_default_library"],
 )

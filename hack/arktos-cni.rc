@@ -40,12 +40,7 @@ setup_cni_conf() {
     echo "copied ${conf_source_file} to ${conf_target_file}"
 }
 
-
-install_cni_bridge() {
-    echo "Ensuring firewall to allow traffic forward by default"
-    sudo iptables -S FORWARD | grep '\-P' | grep DROP && sudo iptables -P FORWARD ACCEPT
-    sudo iptables -S FORWARD | grep '\-P'
-
+ensure_cni_binaries() {
     echo "Ensuring minimum cni plugin installation..."
 
     if (test -x ${cni_bin_dir}/bridge && test -x ${cni_bin_dir}/host-local && test -x ${cni_bin_dir}/loopback); then
@@ -56,6 +51,14 @@ install_cni_bridge() {
         sudo mkdir -p ${cni_bin_dir}
         wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${cni_bin_dir} -xzv
     fi
+}
+
+install_cni_bridge() {
+    echo "Ensuring firewall to allow traffic forward by default"
+    sudo iptables -S FORWARD | grep '\-P' | grep DROP && sudo iptables -P FORWARD ACCEPT
+    sudo iptables -S FORWARD | grep '\-P'
+
+    ensure_cni_binaries
 
     local cni_conf_source=$(dirname "$BASH_SOURCE[0]}")/testdata/cni-conf/bridge.conf
     setup_cni_conf  "${cni_conf_dir}/bridge.conf" ${cni_conf_source}
@@ -160,8 +163,11 @@ CNIPLUGIN=${CNIPLUGIN:-"bridge"}
 cni_conf_dir=${CNI_CONF_DIR:-"/etc/cni/net.d"}
 cni_bin_dir=${CNI_BIN_DIR:-"/opt/cni/bin"}
 
-
-if [ "${CNIPLUGIN}" == "bridge" ]; then
+if [[ -n "${ARKTOS_NO_CNI_PREINSTALLED}" ]]; then
+    echo "CNI plugin will be installed after cluster is started"
+    echo "Right now the minimum common cni binary package is being installed only"
+    ensure_cni_binaries
+elif [ "${CNIPLUGIN}" == "bridge" ]; then
     echo "cni plugin is bridge; arktos will use bridge to provision pod network"
     install_cni_bridge
 elif [ "${CNIPLUGIN}" == "alktron" ]; then
@@ -177,4 +183,3 @@ else
     echo "if you really want to use this plugin, you need to config cni plugin by yourself."
     exit 1
 fi
-
