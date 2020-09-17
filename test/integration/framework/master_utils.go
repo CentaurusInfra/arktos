@@ -19,15 +19,16 @@ package framework
 
 import (
 	"flag"
-	"k8s.io/apiserver/pkg/storage/datapartition"
-	"k8s.io/apiserver/pkg/storage/storagecluster"
-	apiPartition "k8s.io/client-go/datapartition"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"path"
 	"strconv"
 	"time"
+
+	"k8s.io/apiserver/pkg/storage/datapartition"
+	"k8s.io/apiserver/pkg/storage/storagecluster"
+	apiPartition "k8s.io/client-go/datapartition"
 
 	"github.com/go-openapi/spec"
 	"github.com/pborman/uuid"
