@@ -99,3 +99,78 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 		Ip:   nodeAddress,
 	}
 }
+
+
+//ServiceEndpoint => ServiceEndpoint gRPC interface
+func ConvertToServiceEndpointFrontContract(endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
+	if endpoints == nil || service == nil {
+		klog.Errorf("Endpoints or Service is nil")
+		return nil
+	}
+	//Endpoints port info
+	subsets := endpoints.Subsets
+	if subsets == nil {
+		klog.Warningf("Failed to retrieve endpoints subsets in local cache by tenant, name - %v, %v, %v", endpoints.Namespace, endpoints.Tenant, endpoints.Name)
+		return nil
+	}
+	var endPoint ServiceEndpoint
+	for i := 0; i < len(subsets); i++ {
+		subset := subsets[i]
+		addresses := subset.Addresses
+		ports := subset.Ports
+		if addresses != nil && ports != nil {
+			for j := 0; j < len(addresses); j++ {
+				endPoint.addresses = append(endPoint.addresses, addresses[j].IP)
+			}
+			for j := 0; j < len(ports); j++ {
+				epPort := ports[j].Port
+				endPoint.ports = append(endPoint.ports, GetFrontPorts(service, epPort))
+			}
+		}
+	}
+	var endPointsMessage BuiltinsServiceEndpointMessage
+	var portsMessage []*PortsMessage
+	if endPoint.ports != nil {
+		for i := 0; i < len(endPoint.ports); i++ {
+			portMessage := PortsMessage{endPoint.ports[i].frontPort, endPoint.ports[i].backendPort, endPoint.ports[i].protocol}
+			portsMessage = append(portsMessage, &portMessage)
+		}
+	}
+	endPointsMessage = BuiltinsServiceEndpointMessage{
+		Name:       endpoints.Name,
+		Namespace:  endpoints.Namespace,
+		Tenant:     endpoints.Tenant,
+		BackendIps: endPoint.addresses,
+		Ports:      portsMessage,
+	}
+        klog.Infof("Mizar Endpoints controller is sending endpoints info to Mizar %v", endPointsMessage)
+	return &endPointsMessage
+}
+
+//This function returns front port, backend port, and protocol
+//ServicePort: protocol, port (=service port = front port), targetPort (endpoint port = backend port)
+//(e.g) ports: {protocol: TCP, port: 80,  targetPort: 9376 }
+func GetFrontPorts(service *v1.Service, epPort int32) Ports {
+	var ports Ports
+	if service == nil {
+		klog.Errorf("Service is nil - End point port: %v", epPort)
+		return ports
+	}
+	serviceports := service.Spec.Ports
+	if serviceports == nil {
+		klog.Errorf("Service ports are not found - service: %s", service.Name)
+		return ports
+	}
+	for i := 0; i < len(serviceports); i++ {
+		serviceport := serviceports[i]
+		targetPort := serviceport.TargetPort.IntVal
+		if targetPort == epPort {
+			ports.frontPort = fmt.Sprintf("%s", serviceport.Port)
+			ports.backendPort = fmt.Sprintf("%s", serviceport.TargetPort)
+			ports.protocol = fmt.Sprintf("%s", serviceport.Protocol)
+			return ports
+		}
+	}
+	return ports
+}
+

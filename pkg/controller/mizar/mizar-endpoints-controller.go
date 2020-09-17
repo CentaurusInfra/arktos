@@ -77,7 +77,7 @@ type MizarEndpointsController struct {
 	grpcHost            string
 }
 
-func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointInformer coreinformers.EndpointsInformer, serviceInformer coreinformers.ServiceInformer, grpcHost string) (*MizarEndpointsController, error) {
+func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointInformer coreinformers.EndpointsInformer, serviceInformer coreinformers.ServiceInformer, grpcHost string) *MizarEndpointsController {
 	informer := endpointInformer
 	eventBroadcaster := record.NewBroadcaster()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-endpoints-controller"})
@@ -158,7 +158,7 @@ func NewMizarEndpointsController(kubeclientset *kubernetes.Clientset, endpointIn
 			c.Enqueue(key, EventType_Delete)
 		},
 	})
-	return c, nil
+	return c
 }
 
 // Run starts an asynchronous loop that detects events of cluster nodes.
@@ -213,35 +213,19 @@ func (c *MizarEndpointsController) process(item interface{}) {
 		c.queue.Forget(item)
 		return
 	}
+	service, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(epName)
+	if service == nil || err != nil {
+		klog.Errorf("Endpoints' service not found - endpoint's name: %s", epName)
+		return
+	}
 	ep, err := c.lister.EndpointsWithMultiTenancy(namespace, tenant).Get(epName)
-	if err != nil {
+	if ep == nil || err != nil {
 		klog.Errorf("Failed to retrieve endpoint in local cache by namespace, tenant, name - %v, %v, %v", namespace, tenant, epName)
 		c.queue.Forget(item)
 		return
 	}
-	subsets := ep.Subsets
-	if subsets == nil {
-		klog.Warningf("Failed to retrieve endpoints subsets in local cache by tenant, name - %v, %v, %v", namespace, tenant, epName)
-		c.queue.Forget(item)
-		return
-	}
-	var serviceEndPoint ServiceEndpoint
-	serviceEndPoint.name = epName
-	for i := 0; i < len(subsets); i++ {
-		subset := subsets[i]
-		addresses := subset.Addresses
-		ports := subset.Ports
-		if addresses != nil && ports != nil {
-			for j := 0; j < len(addresses); j++ {
-				serviceEndPoint.addresses = append(serviceEndPoint.addresses, addresses[j].IP)
-			}
-			for j := 0; j < len(ports); j++ {
-				epPort := ports[j].Port
-				serviceEndPoint.ports = append(serviceEndPoint.ports, c.getPorts(namespace, tenant, epName, epPort))
-			}
-		}
-	}
-	result, err := c.gRPCRequest(eventType, serviceEndPoint)
+	klog.Errorf("Endpoints controller creates gRPC request for service: %v endpoints: %v ", service.Name, ep.Name)
+	result, err := c.gRPCRequest(eventType, ep, service)
 	if !result {
 		klog.Errorf("Failed endpoints processing -%v ", key)
 		c.queue.AddRateLimited(item)
@@ -298,21 +282,21 @@ func (c *MizarEndpointsController) getPorts(namespace, tenant, epName string, ep
 	var ports Ports
 	service, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(epName)
 	if err != nil {
-		klog.Errorf("Service not found - %s", epName)
+		klog.Errorf("Service not found - %v", epName)
 		return ports
 	}
 	serviceports := service.Spec.Ports
 	if serviceports == nil {
-		klog.Errorf("Service ports are not found - %s", epName)
+		klog.Errorf("Service ports are not found - %v", epName)
 		return ports
 	}
 	for i := 0; i < len(serviceports); i++ {
 		serviceport := serviceports[i]
 		targetPort := serviceport.TargetPort.IntVal
 		if targetPort == epPort {
-			ports.frontPort = fmt.Sprintf("%s", serviceport.Port)
-			ports.backendPort = fmt.Sprintf("%s", serviceport.TargetPort)
-			ports.protocol = fmt.Sprintf("%s", serviceport.Protocol)
+			ports.frontPort = fmt.Sprintf("%v", serviceport.Port)
+			ports.backendPort = fmt.Sprintf("%v", serviceport.TargetPort)
+			ports.protocol = fmt.Sprintf("%v", serviceport.Protocol)
 			return ports
 		}
 	}
@@ -320,46 +304,23 @@ func (c *MizarEndpointsController) getPorts(namespace, tenant, epName string, ep
 }
 
 //gRPC request message, Integration is needed
-func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoint) (response bool, err error) {
-	client, ctx, conn, cancel, err := getGrpcClient(c.grpcHost)
-	klog.Errorf("Endpoint gRPC Request - event:%v, endpoints: %v", event, ep)
-	if err != nil {
-		klog.Errorf("gRPC connection failed ", err)
-		return false, err
-	}
-	defer conn.Close()
-	defer cancel()
-	var ports []*PortsMessage
-	var resource BuiltinsServiceEndpointMessage
-	if (ep.ports) != nil {
-		for i := 0; i < len(ep.ports); i++ {
-			portMessage := PortsMessage{ep.ports[i].frontPort, ep.ports[i].backendPort, ep.ports[i].protocol}
-			ports = append(ports, &portMessage)
-		}
-	}
-	resource = BuiltinsServiceEndpointMessage{
-		Name:       ep.name,
-		Namespace:  ep.namespace,
-		Tenant:     ep.tenant,
-		BackendIps: ep.addresses,
-		Ports:      ports,
-	}
+func (c *MizarEndpointsController) gRPCRequest(event EventType, ep *v1.Endpoints, service *v1.Service) (response bool, err error) {
 	switch event {
 	case EventType_Create:
-		returnCode, err := client.CreateServiceEndpoint(ctx, &resource)
-		if returnCode.Code != CodeType_OK {
-			klog.Errorf("Endpoint creation failed on Mizar side - %v, %v", returnCode.Code, err)
+		response := GrpcCreateServiceEndpointFront(c.grpcHost, ep, service)
+		if response.Code != CodeType_OK {
+			klog.Errorf("Endpoint creation failed on Mizar side - %v, %v", response.Code, err)
 			return false, err
 		}
 	case EventType_Update:
-		returnCode, err := client.UpdateServiceEndpoint(ctx, &resource)
-		if returnCode.Code != CodeType_OK {
+		response := GrpcUpdateServiceEndpointFront(c.grpcHost, ep, service)
+		if response.Code != CodeType_OK {
 			klog.Errorf("Endpoint update failed on Mizar side - %v", err)
 			return false, err
 		}
 	case EventType_Resume:
-		returnCode, err := client.ResumeServiceEndpoint(ctx, &resource)
-		if returnCode.Code != CodeType_OK {
+		response := GrpcResumeServiceEndpointFront(c.grpcHost, ep, service)
+		if response.Code != CodeType_OK {
 			klog.Errorf("Endpoint resume failed on Mizar side - %v", err)
 			return false, err
 		}
@@ -371,3 +332,4 @@ func (c *MizarEndpointsController) gRPCRequest(event EventType, ep ServiceEndpoi
 	klog.Infof("gRPC request is sent")
 	return true, nil
 }
+
