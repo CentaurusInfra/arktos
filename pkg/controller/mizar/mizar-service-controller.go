@@ -248,6 +248,8 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	if _, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]; hasDNSServiceLabel && len(netName) != 0 {
 		klog.Info("[Mizar network controller] Arktos Network update starts ...")
 		net, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(service.Tenant).Get(netName, metav1.GetOptions{})
+		// This is a workaround, needs to be removed for next release
+		c.updateMizarVpcWithArktosName(net)
 		if err != nil {
 			klog.Errorf("The following network failed to get: %v", net)
 			return err
@@ -337,4 +339,30 @@ func getArktosNetworkName(svcName string) string {
 	}
 	fmt.Println("processServiceCreation network name is %v", netName)
 	return netName
+}
+
+func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapisv1.Network)  {
+
+	if network.Spec.Type != mizarNetworkType || network.Status.Phase == arktosapisv1.NetworkReady {
+		return
+	}
+
+	msg := &BuiltinsArktosMessage{
+		Name: network.Name,
+		Vpc:  network.Spec.VPCID,
+	}
+
+	response := GrpcCreateArktosNetwork(c.grpcHost, msg)
+
+	code := response.Code
+	context := response.Message
+	fmt.Println("Updating Arktos Network")
+	switch code {
+	case CodeType_OK:
+		klog.Infof("Mizar handled arktos network and vpc id update successfully: %s", context)
+	case CodeType_TEMP_ERROR:
+		klog.Warningf("Mizar hit temporary error for arktos network and vpc id update: %s", context)
+	case CodeType_PERM_ERROR:
+		klog.Errorf("Mizar hit permanent error for Arktos network creation for Arktos network: %s", context)
+	}
 }
