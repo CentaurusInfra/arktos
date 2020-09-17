@@ -206,12 +206,22 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 func (c *MizarServiceController) processServiceCreation(service *v1.Service, eventKeyWithType KeyWithEventType) error {
 	key := eventKeyWithType.Key
 	netName := getArktosNetworkName(service.Name)
+	networkName, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
 
+	if hasDNSServiceLabel && len(netName) != 0 {
+		klog.Info("Starting ProcessArktosNetworkCreation network: %v", netName)
+		net, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(service.Tenant).Get(netName, metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("The following network failed to get: %v", net)
+			return err
+		}
+		c.updateMizarVpcWithArktosName(net)
+	}
 	klog.Info("Starting ProcessServiceCreation service: %v", service)
 
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
-		ArktosNetwork: netName,
+		ArktosNetwork: networkName,
 		Namespace:     service.Namespace,
 		Tenant:        service.Tenant,
 		Ip:            service.Spec.ClusterIP,
@@ -245,11 +255,10 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		klog.Info("Updated service: %v", svcUpdated)
 	}
 
-	if _, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]; hasDNSServiceLabel && len(netName) != 0 {
+	if hasDNSServiceLabel && len(netName) != 0 {
 		klog.Info("[Mizar network controller] Arktos Network update starts ...")
 		net, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(service.Tenant).Get(netName, metav1.GetOptions{})
 		// This is a workaround, needs to be removed for next release
-		c.updateMizarVpcWithArktosName(net)
 		if err != nil {
 			klog.Errorf("The following network failed to get: %v", net)
 			return err
