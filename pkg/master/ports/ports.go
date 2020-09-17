@@ -31,7 +31,7 @@ const (
 	// InsecureKubeControllerManagerPort is the default port for the controller manager status server.
 	// May be overridden by a flag at startup.
 	// Deprecated: use the secure KubeControllerManagerPort instead.
-	InsecureKubeControllerManagerPort = 10252
+	InsecureKubeControllerManagerPort = 10333
 
 	// InsecureWorkloadControllerManagerPort is the default port for the workload controller manager status server.
 	// May be overridden by a flag at startup.
@@ -57,7 +57,7 @@ const (
 	ProxyHealthzPort = 10256
 	// KubeControllerManagerPort is the default port for the controller manager status server.
 	// May be overridden by a flag at startup.
-	KubeControllerManagerPort = 10257
+	KubeControllerManagerPort = 10777
 	// CloudControllerManagerPort is the default port for the cloud controller manager server.
 	// This value may be overridden by a flag at startup.
 	CloudControllerManagerPort = 10258

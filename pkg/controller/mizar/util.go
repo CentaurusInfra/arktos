@@ -13,33 +13,29 @@ limitations under the License.
 
 package mizar
 
-import v1 "k8s.io/api/core/v1"
+import (
+	"fmt"	
+	"k8s.io/klog"
 
-type EventType int
+	v1 "k8s.io/api/core/v1"
+)
+
+type EventType string
 
 const (
-	EventType_Create EventType = 0
-	EventType_Update EventType = 1
-	EventType_Delete EventType = 2
-	EventType_Resume EventType = 3
+	EventType_Create EventType = "Create"
+	EventType_Update EventType = "Update"
+	EventType_Delete EventType = "Delete"
+	EventType_Resume EventType = "Resume"
 )
 
 type KeyWithEventType struct {
-	EventType EventType
-	Key       string
+	EventType       EventType
+	Key             string
+	ResourceVersion string
 }
 
 type StartHandler func(interface{}, string)
-
-func ConvertToServiceContract(service *v1.Service) *BuiltinsServiceMessage {
-	return &BuiltinsServiceMessage{
-		Name:          service.Name,
-		ArktosNetwork: "TBD",
-		Namespace:     service.Namespace,
-		Tenant:        service.Tenant,
-		Ip:            "TBD",
-	}
-}
 
 func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceEndpointMessage {
 	return &BuiltinsServiceEndpointMessage{
@@ -50,19 +46,131 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints) *BuiltinsServiceE
 }
 
 func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
+	var network string
+	if value, exists := pod.Labels["arktos.futurewei.com/network"]; exists {
+		network = value
+	} else {
+		network = ""
+	}
+
 	return &BuiltinsPodMessage{
-		Name:      pod.Name,
-		HostIp:    pod.Status.HostIP,
-		Namespace: pod.Namespace,
-		Tenant:    pod.Tenant,
-		Vpc:       pod.Spec.VPC,
-		Phase:     string(pod.Status.Phase),
+		Name:          pod.Name,
+		HostIp:        pod.Status.HostIP,
+		Namespace:     pod.Namespace,
+		Tenant:        pod.Tenant,
+		ArktosNetwork: network,
+		Phase:         string(pod.Status.Phase),
 	}
 }
 
 func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
+	var nodeName, nodeAddress string
+	if node == nil {
+		return nil
+	}
+	nodeName = node.Name
+	if nodeName == "" {
+		return nil
+	}
+	conditions := node.Status.Conditions
+	if conditions == nil {
+		return nil
+	}
+	addresses := node.Status.Addresses
+	if addresses == nil {
+		nodeAddress = ""
+	}
+	var nodeAddr, nodeAddressType string
+	for i := 0; i < len(addresses); i++ {
+		nodeAddressType = fmt.Sprintf("%s", addresses[i].Type)
+		nodeAddr = fmt.Sprintf("%s", addresses[i].Address)
+		if nodeAddressType == NodeInternalIP {
+			nodeAddress = nodeAddr
+			break
+		}
+	}
+	resource := BuiltinsNodeMessage{
+		Name: nodeName,
+		Ip:   nodeAddress,
+	}
+	klog.Infof("Node controller is sending node info to Mizar %v", resource)
 	return &BuiltinsNodeMessage{
-		Name: node.Name,
-		Ip:   "TBD",
+		Name: nodeName,
+		Ip:   nodeAddress,
 	}
 }
+
+
+//ServiceEndpoint => ServiceEndpoint gRPC interface
+func ConvertToServiceEndpointFrontContract(endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
+	if endpoints == nil || service == nil {
+		klog.Errorf("Endpoints or Service is nil")
+		return nil
+	}
+	//Endpoints port info
+	subsets := endpoints.Subsets
+	if subsets == nil {
+		klog.Warningf("Failed to retrieve endpoints subsets in local cache by tenant, name - %v, %v, %v", endpoints.Namespace, endpoints.Tenant, endpoints.Name)
+		return nil
+	}
+	var endPoint ServiceEndpoint
+	for i := 0; i < len(subsets); i++ {
+		subset := subsets[i]
+		addresses := subset.Addresses
+		ports := subset.Ports
+		if addresses != nil && ports != nil {
+			for j := 0; j < len(addresses); j++ {
+				endPoint.addresses = append(endPoint.addresses, addresses[j].IP)
+			}
+			for j := 0; j < len(ports); j++ {
+				epPort := ports[j].Port
+				endPoint.ports = append(endPoint.ports, GetFrontPorts(service, epPort))
+			}
+		}
+	}
+	var endPointsMessage BuiltinsServiceEndpointMessage
+	var portsMessage []*PortsMessage
+	if endPoint.ports != nil {
+		for i := 0; i < len(endPoint.ports); i++ {
+			portMessage := PortsMessage{endPoint.ports[i].frontPort, endPoint.ports[i].backendPort, endPoint.ports[i].protocol}
+			portsMessage = append(portsMessage, &portMessage)
+		}
+	}
+	endPointsMessage = BuiltinsServiceEndpointMessage{
+		Name:       endpoints.Name,
+		Namespace:  endpoints.Namespace,
+		Tenant:     endpoints.Tenant,
+		BackendIps: endPoint.addresses,
+		Ports:      portsMessage,
+	}
+        klog.Infof("Mizar Endpoints controller is sending endpoints info to Mizar %v", endPointsMessage)
+	return &endPointsMessage
+}
+
+//This function returns front port, backend port, and protocol
+//ServicePort: protocol, port (=service port = front port), targetPort (endpoint port = backend port)
+//(e.g) ports: {protocol: TCP, port: 80,  targetPort: 9376 }
+func GetFrontPorts(service *v1.Service, epPort int32) Ports {
+	var ports Ports
+	if service == nil {
+		klog.Errorf("Service is nil - End point port: %v", epPort)
+		return ports
+	}
+	serviceports := service.Spec.Ports
+	if serviceports == nil {
+		klog.Errorf("Service ports are not found - service: %s", service.Name)
+		return ports
+	}
+	for i := 0; i < len(serviceports); i++ {
+		serviceport := serviceports[i]
+		targetPort := serviceport.TargetPort.IntVal
+		if targetPort == epPort {
+			ports.frontPort = fmt.Sprintf("%s", serviceport.Port)
+			ports.backendPort = fmt.Sprintf("%s", serviceport.TargetPort)
+			ports.protocol = fmt.Sprintf("%s", serviceport.Protocol)
+			return ports
+		}
+	}
+	return ports
+}
+

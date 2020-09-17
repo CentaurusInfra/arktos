@@ -14,24 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Mizar is a server-less platform for network functions.
+// You can read more about it at: https://mizar.readthedocs.io/en/latest/
 package app
 
 import (
-	"fmt"
 	"net/http"
-	"time"
+        "time"
 
-	informers "k8s.io/client-go/informers"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	controllers "k8s.io/kubernetes/pkg/controller/mizar"
 )
 
 const (
-	mizarStarterControllerWorkerCount = 2
-	mizarPodControllerWorkerCount     = 4
-	mizarNodeControllerWorkerCount    = 4
-	//mizarEndpointsControllerWorkerCount = 4
+	mizarStarterControllerWorkerCount       = 2
+	mizarPodControllerWorkerCount           = 4
+	mizarServiceControllerWorkerCount       = 4
+	mizarArktosNetworkControllerWorkerCount = 4
+	mizarNodeControllerWorkerCount          = 4
+	mizarEndpointsControllerWorkerCount     = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -49,10 +53,12 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 
 func startHandler(controllerContext interface{}, grpcHost string) {
 	ctx := controllerContext.(ControllerContext)
+	startMizarEndpointsController(&ctx, grpcHost)
+	startMizarNodeController(&ctx, grpcHost)
 	startMizarPodController(&ctx, grpcHost)
+	startMizarServiceController(&ctx, grpcHost)
+	startArktosNetworkController(&ctx, grpcHost)
 
-	//go startMizarEndpointsController(&ctx, grpcHost)
-	go startMizarNodeController(&ctx, grpcHost)
 }
 
 func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
@@ -67,22 +73,63 @@ func startMizarPodController(ctx *ControllerContext, grpcHost string) (http.Hand
 	return nil, true, nil
 }
 
+func startMizarServiceController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	controllerName := "mizar-service-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	svcKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	svcKubeClient := clientset.NewForConfigOrDie(svcKubeconfigs)
+
+	go controllers.NewMizarServiceController(
+		svcKubeClient,
+		ctx.InformerFactory.Core().V1().Services(),
+		grpcHost,
+	).Run(mizarServiceControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
+}
+
+func startArktosNetworkController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	controllerName := "mizar-arktos-network-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	netKubeConfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	svcKubeClient := clientset.NewForConfigOrDie(netKubeConfigs)
+	networkClient := arktos.NewForConfigOrDie(netKubeConfigs)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
+
+	go controllers.NewMizarArktosNetworkController(
+		networkClient,
+		svcKubeClient,
+		informerFactory.Arktos().V1().Networks(),
+		grpcHost,
+	).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
+}
+
 func startMizarNodeController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 	controllerName := "mizar-node-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 	nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	nodeKubeClient, err := clientset.NewForConfig(nodeKubeconfigs)
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	informerFactory := informers.NewSharedInformerFactory(nodeKubeClient, 3*time.Minute)
-	nodeInformer := informerFactory.Core().V1().Nodes()
-	nodeController, err := controllers.NewMizarNodeController(nodeKubeClient, nodeInformer, grpcHost)
-	if err != nil {
-		klog.Infof("Error in building mizar node controller: %v", err)
-	}
-	informerFactory.Start(stopCh)
-	nodeController.Run(mizarNodeControllerWorkerCount, ctx.Stop)
-	fmt.Scanln()
-	klog.Infof("mizar node controller exited")
+	nodeKubeClient := clientset.NewForConfigOrDie(nodeKubeconfigs)
+	go controllers.NewMizarNodeController(
+		nodeKubeClient,
+		ctx.InformerFactory.Core().V1().Nodes(),
+		grpcHost,
+	).Run(mizarNodeControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
+}
+
+func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	controllerName := "mizar-endpoints-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	nodeKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	nodeKubeClient := clientset.NewForConfigOrDie(nodeKubeconfigs)
+	go controllers.NewMizarEndpointsController(
+		nodeKubeClient,
+		ctx.InformerFactory.Core().V1().Endpoints(),
+		ctx.InformerFactory.Core().V1().Services(),
+		grpcHost,
+	).Run(mizarEndpointsControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }

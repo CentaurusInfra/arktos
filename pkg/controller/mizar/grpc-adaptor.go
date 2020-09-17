@@ -26,15 +26,30 @@ const (
 	port = "50052"
 )
 
-// GrpcCreateService is to invoking grpc func of CreateService
-func GrpcCreateService(grpcHost string, service *v1.Service) *ReturnCode {
+// GrpcCreateArktosNetwork is to invoking grpc func of CreateArktosNetwork
+func GrpcCreateArktosNetwork(grpcHost string, msg *BuiltinsArktosMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
 	defer conn.Close()
 	defer cancel()
-	returnCode, err := client.CreateService(ctx, ConvertToServiceContract(service))
+	returnCode, err := client.CreateArktosNetwork(ctx, msg)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// GrpcCreateService is to invoking grpc func of CreateService
+func GrpcCreateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.CreateService(ctx, msg)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
@@ -42,14 +57,14 @@ func GrpcCreateService(grpcHost string, service *v1.Service) *ReturnCode {
 }
 
 // GrpcUpdateService is to invoking grpc func of UpdateService
-func GrpcUpdateService(grpcHost string, service *v1.Service) *ReturnCode {
+func GrpcUpdateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
 	defer conn.Close()
 	defer cancel()
-	returnCode, err := client.UpdateService(ctx, ConvertToServiceContract(service))
+	returnCode, err := client.UpdateService(ctx, msg)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
@@ -57,14 +72,14 @@ func GrpcUpdateService(grpcHost string, service *v1.Service) *ReturnCode {
 }
 
 // GrpcResumeService is to invoking grpc func of ResumeService
-func GrpcResumeService(grpcHost string, service *v1.Service) *ReturnCode {
+func GrpcResumeService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
 	defer conn.Close()
 	defer cancel()
-	returnCode, err := client.ResumeService(ctx, ConvertToServiceContract(service))
+	returnCode, err := client.ResumeService(ctx, msg)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
@@ -72,14 +87,14 @@ func GrpcResumeService(grpcHost string, service *v1.Service) *ReturnCode {
 }
 
 // GrpcDeleteService is to invoking grpc func of DeleteService
-func GrpcDeleteService(grpcHost string, service *v1.Service) *ReturnCode {
+func GrpcDeleteService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
 	defer conn.Close()
 	defer cancel()
-	returnCode, err := client.DeleteService(ctx, ConvertToServiceContract(service))
+	returnCode, err := client.DeleteService(ctx, msg)
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
@@ -251,6 +266,56 @@ func GrpcDeleteNode(grpcHost string, node *v1.Node) *ReturnCode {
 	return returnCode
 }
 
+
+// GrpcCreateServiceEndpointFront is to invoking grpc func of CreateServiceEndpoint
+// with Endpoints ports info + Front (=Service)ports info by Mizar's request
+func GrpcCreateServiceEndpointFront(grpcHost string, endpoints *v1.Endpoints, service *v1.Service) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.CreateServiceEndpoint(ctx, ConvertToServiceEndpointFrontContract(endpoints, service))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+
+// GrpcUpdateServiceEndpointFront is to invoking grpc func of UpdateServiceEndpoint
+// with Endpoints ports info + Front (=Service)ports info by Mizar's request
+func GrpcUpdateServiceEndpointFront(grpcHost string, endpoints *v1.Endpoints, service *v1.Service) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.UpdateServiceEndpoint(ctx, ConvertToServiceEndpointFrontContract(endpoints, service))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// GrpcResumeServiceEndpointFront is to invoking grpc func of ResumeServiceEndpoint
+// with Endpoints ports info + Front (=Service)ports info by Mizar's request
+func GrpcResumeServiceEndpointFront(grpcHost string, endpoints *v1.Endpoints, service *v1.Service) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.ResumeServiceEndpoint(ctx, ConvertToServiceEndpointFrontContract(endpoints, service))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
 func getReturnCodeFromError(err *error) *ReturnCode {
 	return &ReturnCode{
 		Code:    CodeType_TEMP_ERROR,
@@ -269,3 +334,4 @@ func getGrpcClient(grpcHost string) (BuiltinsServiceClient, context.Context, *gr
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	return client, ctx, conn, cancel, nil
 }
+
