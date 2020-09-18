@@ -162,7 +162,7 @@ func TestManageFlatNetwork(t *testing.T) {
 				return true, svc, nil
 			})
 
-			err := manageFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
+			err := manageFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local", "192.168.0.3")
 
 			if !tc.expectingError && err != nil {
 				t.Errorf("got unexpected error: %v", err)
@@ -309,7 +309,7 @@ func TestManageNonFlatNetwork(t *testing.T) {
 				return true, svc, nil
 			})
 
-			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
+			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local", "192.168.0.3")
 
 			if !tc.expectingError && err != nil {
 				t.Errorf("got unexpected error: %v", err)
@@ -416,7 +416,7 @@ func TestNetworkPhaseShift(t *testing.T) {
 			})
 			kubeClient := fake.NewSimpleClientset()
 
-			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local")
+			err := manageNonFlatNetwork(tc.input, netClient, kubeClient, false, "cluster.local", "192.168.0.3")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
