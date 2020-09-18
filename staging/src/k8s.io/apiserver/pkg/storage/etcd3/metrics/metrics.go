@@ -17,6 +17,7 @@ limitations under the License.
 package metrics
 
 import (
+	"k8s.io/klog"
 	"sync"
 	"time"
 
@@ -133,6 +134,7 @@ func UpdateObjectCount(resourcePrefix string, count int64) {
 }
 
 func RecordEtcdRequestLatency(verb, resource string, startTime time.Time) {
+	klog.Warningf("ETCD request %s, resource %s, duration %v microSec", verb, resource, sinceInMicroseconds(startTime))
 	etcdRequestLatency.WithLabelValues(verb, resource).Observe(sinceInSeconds(startTime))
 	deprecatedEtcdRequestLatenciesSummary.WithLabelValues(verb, resource).Observe(sinceInMicroseconds(startTime))
 }
