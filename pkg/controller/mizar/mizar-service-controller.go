@@ -108,11 +108,11 @@ func (c *MizarServiceController) processNextWorkItem() bool {
 
 	eventKey := workItem.(KeyWithEventType)
 	key := eventKey.Key
-	defer c.queue.Done(key)
+	defer c.queue.Done(eventKey)
 
 	err := c.syncHandler(eventKey)
 	if err == nil {
-		c.queue.Forget(key)
+		c.queue.Forget(eventKey)
 		return true
 	}
 	utilruntime.HandleError(fmt.Errorf("Handle service of key %v failed with %v", key, err))

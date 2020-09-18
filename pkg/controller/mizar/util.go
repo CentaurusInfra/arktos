@@ -15,6 +15,7 @@ package mizar
 
 import (
 	"fmt"
+
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
@@ -164,9 +165,9 @@ func GetFrontPorts(service *v1.Service, epPort int32) Ports {
 		serviceport := serviceports[i]
 		targetPort := serviceport.TargetPort.IntVal
 		if targetPort == epPort {
-			ports.frontPort = fmt.Sprintf("%s", serviceport.Port)
-			ports.backendPort = fmt.Sprintf("%s", serviceport.TargetPort)
-			ports.protocol = fmt.Sprintf("%s", serviceport.Protocol)
+			ports.frontPort = fmt.Sprintf("%v", serviceport.Port)
+			ports.backendPort = fmt.Sprintf("%v", serviceport.TargetPort)
+			ports.protocol = fmt.Sprintf("%v", serviceport.Protocol)
 			return ports
 		}
 	}
