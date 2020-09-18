@@ -20,6 +20,7 @@ package main
 
 import (
 	"flag"
+	"net"
 	"time"
 
 	arktosext "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
@@ -31,14 +32,18 @@ import (
 	"k8s.io/kubernetes/cmd/arktos-network-controller/app"
 )
 
-const defaultWorkers = 4
+const (
+	defaultWorkers           = 4
+	defaultKubeAPIServerPort = 6443
+)
 
 var (
-	masterURL       string
-	kubeconfig      string
-	domainName      string
-	workers         int
-	kubeAPIServerIP string
+	masterURL         string
+	kubeconfig        string
+	domainName        string
+	workers           int
+	kubeAPIServerIP   string
+	kubeAPIServerPort int
 )
 
 func main() {
@@ -50,6 +55,10 @@ func main() {
 
 	if len(kubeAPIServerIP) == 0 {
 		klog.Fatalf("--kube-apiserver-ip arg must be specified in this version.")
+	}
+
+	if net.ParseIP(kubeAPIServerIP) == nil {
+		klog.Fatalf("--kube-apiserver-ip must be the valid ip address of kube-apiserver.")
 	}
 
 	defer klog.Flush()
@@ -74,7 +83,7 @@ func main() {
 	defer close(stopCh)
 
 	netInformer := informerFactory.Arktos().V1().Networks()
-	controller := app.New(domainName, kubeAPIServerIP, netClient, kubeClient, netInformer)
+	controller := app.New(domainName, kubeAPIServerIP, kubeAPIServerPort, netClient, kubeClient, netInformer)
 	netInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			controller.Add(obj)
@@ -95,5 +104,6 @@ func init() {
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.IntVar(&workers, "concurrent-workers", defaultWorkers, "The number of workers that are allowed to process concurrently.")
 	flag.StringVar(&domainName, "cluster-domain", "cluster.local", "the cluster-internal domain name for Services.")
-	flag.StringVar(&kubeAPIServerIP, "kube-apiserver-ip", "", "the ip address kube-apiserver is listening with port 6443 on.")
+	flag.StringVar(&kubeAPIServerIP, "kube-apiserver-ip", "", "the ip address kube-apiserver is listening at.")
+	flag.IntVar(&kubeAPIServerPort, "kube-apiserver-port", defaultKubeAPIServerPort, "the port number kube-apiserver is listening on.")
 }
