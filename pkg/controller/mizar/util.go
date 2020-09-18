@@ -15,8 +15,8 @@ package mizar
 
 import (
 	"encoding/json"
-	v1 "k8s.io/api/core/v1"
 	"strconv"
+	v1 "k8s.io/api/core/v1"	
 )
 
 type EventType string
