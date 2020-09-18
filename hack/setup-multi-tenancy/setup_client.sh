@@ -71,6 +71,11 @@ setup_client() {
 }
 
 unset_client() {
+        if [ "$(kubectl config current-context)" == "${context_name}" ]
+        then
+                run_command kubectl config unset current-context
+        fi
+
         echo "removing client key and cert files of ${tenant}/${person} ..."
         files_to_rm=`kubectl config view -o json | jq -r --arg name "${tenant_person}" '.users[] | select(.name==$name).user | [ .["client-key"], .["client-certificate"]] | @tsv' `
         rm $files_to_rm > /dev/null 2>&1
