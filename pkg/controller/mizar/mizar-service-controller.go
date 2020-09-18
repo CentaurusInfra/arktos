@@ -14,8 +14,10 @@ limitations under the License.
 package mizar
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,6 +43,7 @@ import (
 
 const (
 	dnsServiceDefaultName     = "kube-dns"
+	kubernetesSvcDefaultName  = "kubernetes"
 	mizarServiceAnnotationKey = "service.beta.kubernetes.io/mizar-scaled-endpoint-type"
 	mizarServiceAnnotationVal = "scaled-endpoint"
 )
@@ -235,6 +238,25 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	switch code {
 	case CodeType_OK:
 		klog.Infof("Mizar handled service creation successfully: %s", key)
+		if beginsWithKubernetes(service.Name) {
+			endpoint, err := c.kubeClientset.CoreV1().EndpointsWithMultiTenancy("default", "system").Get(kubernetesSvcDefaultName, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("The get endpoint failed to get: %v", endpoint)
+				return err
+			}
+			message := convertToServiceEndpointMessage(service.Name, service.Namespace, service.Tenant, endpoint, service)
+			resp := GrpcCreateServiceEndpoint(c.grpcHost, message)
+			returnCode := resp.Code
+			context := resp.Message
+			switch returnCode {
+			case CodeType_OK:
+				klog.Infof("Mizar handled kubernetes network service endpoint successfully: %s", context)
+			case CodeType_TEMP_ERROR:
+				klog.Warningf("Mizar hit temporary error for kubernetes network service endpoint: %s", context)
+			case CodeType_PERM_ERROR:
+				klog.Errorf("Mizar hit permanent error for kubernetes network service endpoint %s", context)
+			}
+		}
 	case CodeType_TEMP_ERROR:
 		klog.Warningf("Mizar hit temporary error for service creation for service: %s", key)
 		c.queue.AddRateLimited(eventKeyWithType)
@@ -346,8 +368,19 @@ func getArktosNetworkName(svcName string) string {
 		pos := len(prefix)
 		netName = name[pos:]
 	}
-	fmt.Println("processServiceCreation network name is %v", netName)
+	klog.Infof("processServiceCreation network name is %v", netName)
 	return netName
+}
+
+func beginsWithKubernetes(svcName string) bool {
+	name := svcName
+	prefix := kubernetesSvcDefaultName + "-"
+	index := strings.Index(name, prefix)
+	if index == 0 {
+		return true
+	}
+	klog.Infof("process kubernetes network services")
+	return false
 }
 
 func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapisv1.Network) {
@@ -365,7 +398,7 @@ func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapi
 
 	code := response.Code
 	context := response.Message
-	fmt.Println("Updating Arktos Network")
+	klog.Infof("Updating Arktos Network")
 	switch code {
 	case CodeType_OK:
 		klog.Infof("Mizar handled arktos network and vpc id update successfully: %s", context)
@@ -373,5 +406,36 @@ func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapi
 		klog.Warningf("Mizar hit temporary error for arktos network and vpc id update: %s", context)
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for Arktos network creation for Arktos network: %s", context)
+	}
+}
+
+func convertToServiceEndpointMessage(name string, namespace string, tenant string, endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
+	backendIps := []string{}
+	for _, subset := range endpoints.Subsets {
+		for _, address := range subset.Addresses {
+			backendIps = append(backendIps, address.IP)
+		}
+	}
+	backendIpsJson, _ := json.Marshal(backendIps)
+
+	ports := []*PortsMessage{}
+	for _, port := range service.Spec.Ports {
+		portsMessage := &PortsMessage{
+			FrontendPort: strconv.Itoa(int(port.Port)),
+			BackendPort:  strconv.Itoa(int(port.TargetPort.IntVal)),
+			Protocol:     string(port.Protocol),
+		}
+		ports = append(ports, portsMessage)
+	}
+	portsJson, _ := json.Marshal(ports)
+
+	return &BuiltinsServiceEndpointMessage{
+		Name:           name,
+		Namespace:      namespace,
+		Tenant:         tenant,
+		BackendIps:     []string{},
+		Ports:          []*PortsMessage{},
+		BackendIpsJson: string(backendIpsJson),
+		PortsJson:      string(portsJson),
 	}
 }
