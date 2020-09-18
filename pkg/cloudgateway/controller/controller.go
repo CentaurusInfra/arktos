@@ -3,7 +3,6 @@ package controller
 import (
 	"fmt"
 	"github.com/kubeedge/beehive/pkg/core"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -237,17 +236,13 @@ func (c *Controller) syncHandlerForServiceExpose(key string) error {
 	}
 
 	se, err := c.serviceExposeInformerLister.ServiceExposesWithMultiTenancy(namespace, tenant).Get(name)
-	if errors.IsNotFound(err) {
-		klog.V(4).Infof("%v has been deleted", key)
-		c.serviceExposeHandler.ObjectDeleted(tenant, namespace, se)
-		return nil
-	} else if err != nil {
+	if err != nil {
 		runtime.HandleError(fmt.Errorf("failed to list service expose by: %s/%s/%s", tenant, namespace, name))
 		return err
 	}
 
-	// Add or update cases
+	// Add/update or delete cases
 	klog.V(4).Infof("%v has been added/updated", key)
-	c.serviceExposeHandler.ObjectCreated(tenant, namespace, se)
+	c.serviceExposeHandler.ObjectSync(tenant, namespace, se)
 	return nil
 }
