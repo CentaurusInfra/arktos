@@ -171,17 +171,6 @@ func TestWithInvalidCaCertPath(t *testing.T) {
 
 func TestInvalidCaCert(t *testing.T) {
 	t.Fatalf("[CHW] fake test failure")
-	connection := &vclib.VSphereConnection{
-		Hostname: "should-not-matter",
-		Port:     "should-not-matter",
-		CACert:   fixtures.InvalidCertPath,
-	}
-
-	_, err := connection.NewClient(context.Background())
-
-	if msg := err.Error(); !strings.Contains(msg, "invalid certificate") {
-		t.Fatalf("Expected invalid certificate error, got '%s'", msg)
-	}
 }
 
 func verifyWrappedX509UnkownAuthorityErr(t *testing.T, err error) {
