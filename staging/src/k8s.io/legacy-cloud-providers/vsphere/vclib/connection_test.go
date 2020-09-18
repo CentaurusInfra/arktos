@@ -170,6 +170,7 @@ func TestWithInvalidCaCertPath(t *testing.T) {
 }
 
 func TestInvalidCaCert(t *testing.T) {
+	t.Fatalf("[CHW] fake test failure")
 	connection := &vclib.VSphereConnection{
 		Hostname: "should-not-matter",
 		Port:     "should-not-matter",
