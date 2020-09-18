@@ -49,7 +49,7 @@ func main() {
 	}
 
 	if len(kubeAPIServerIP) == 0 {
-		klog.Fatalf("--kube-apiserver arg must be specified in this version.")
+		klog.Fatalf("--kube-apiserver-ip arg must be specified in this version.")
 	}
 
 	defer klog.Flush()

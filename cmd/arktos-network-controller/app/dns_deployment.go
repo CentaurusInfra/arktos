@@ -267,7 +267,7 @@ func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface, kube
 								},
 								Env: []corev1.EnvVar{
 									{Name: "KUBERNETES_SERVICE_HOST", Value: kubeAPIServerIP},
-									{Name: "KUBERNETES_SERVICE_PORT", Value:"6443"},
+									{Name: "KUBERNETES_SERVICE_PORT", Value: "6443"},
 								},
 								VolumeMounts: []corev1.VolumeMount{
 									{
