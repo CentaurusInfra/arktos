@@ -18,6 +18,7 @@ package app
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,30 +51,34 @@ const (
 
 // Controller represents the flat network controller
 type Controller struct {
-	domainName   string
-	cacheSynced  cache.InformerSynced
-	store        arktosv1.NetworkLister
-	queue        workqueue.RateLimitingInterface
-	netClientset *arktos.Clientset
-	svcClientset *kubernetes.Clientset
-	recorder     record.EventRecorder
+	domainName        string
+	kubeAPIServerIP   string
+	kubeAPIServerPort string
+	cacheSynced       cache.InformerSynced
+	store             arktosv1.NetworkLister
+	queue             workqueue.RateLimitingInterface
+	netClientset      *arktos.Clientset
+	svcClientset      *kubernetes.Clientset
+	recorder          record.EventRecorder
 }
 
 // New creates the controller object
-func New(domainName string, netClientset *arktos.Clientset, svcClientset *kubernetes.Clientset, informer arktosinformer.NetworkInformer) *Controller {
+func New(domainName, kubeAPIServerIP string, kubeAPIServerPort int, netClientset *arktos.Clientset, svcClientset *kubernetes.Clientset, informer arktosinformer.NetworkInformer) *Controller {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: svcClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	return &Controller{
-		domainName:   domainName,
-		store:        informer.Lister(),
-		queue:        workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		cacheSynced:  informer.Informer().HasSynced,
-		netClientset: netClientset,
-		svcClientset: svcClientset,
-		recorder:     eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "flat-network-controller"}),
+		domainName:        domainName,
+		kubeAPIServerIP:   kubeAPIServerIP,
+		kubeAPIServerPort: strconv.Itoa(kubeAPIServerPort),
+		store:             informer.Lister(),
+		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		cacheSynced:       informer.Informer().HasSynced,
+		netClientset:      netClientset,
+		svcClientset:      svcClientset,
+		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "flat-network-controller"}),
 	}
 }
 
@@ -138,9 +143,9 @@ func (c *Controller) process(item interface{}) {
 	klog.V(5).Infof("processing network %s/%s", net.Tenant, net.Name)
 
 	if net.Spec.Type == flatNetworkType {
-		err = manageFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName)
+		err = manageFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName, c.kubeAPIServerIP, c.kubeAPIServerPort)
 	} else {
-		err = manageNonFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName)
+		err = manageNonFlatNetwork(net, c.netClientset, c.svcClientset, true, c.domainName, c.kubeAPIServerIP, c.kubeAPIServerPort)
 	}
 
 	if err != nil {
@@ -154,7 +159,7 @@ func (c *Controller) process(item interface{}) {
 }
 
 // manageNonFlatNetwork is the core logic to manage a non-flat typed network object
-func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
+func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName, kubeAPIServerIP, kubeAPIServerPort string) error {
 	if net.DeletionTimestamp != nil {
 		return ensureTerminatingPhase(net, netClient)
 	}
@@ -168,7 +173,7 @@ func manageNonFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient
 	}
 
 	if toDeployDNS {
-		if err = deployDNSForNetwork(net, svcClient, domainName); err != nil {
+		if err = deployDNSForNetwork(net, svcClient, domainName, kubeAPIServerIP, kubeAPIServerPort); err != nil {
 			return fmt.Errorf("failed to deploy per-network DNS: %v", err)
 		}
 	}
@@ -222,7 +227,7 @@ func ensureTerminatingPhase(net *v1.Network, netClient arktos.Interface) error {
 }
 
 // manageFlatNetwork is the core logic to manage a flat typed network object
-func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName string) error {
+func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient kubernetes.Interface, toDeployDNS bool, domainName, kubeAPIServerIP, kubeAPIServerPort string) error {
 	if net.DeletionTimestamp != nil {
 		return ensureTerminatingPhase(net, netClient)
 	}
@@ -238,7 +243,7 @@ func manageFlatNetwork(net *v1.Network, netClient arktos.Interface, svcClient ku
 	}
 
 	if toDeployDNS {
-		if err = deployDNSForNetwork(net, svcClient, domainName); err != nil {
+		if err = deployDNSForNetwork(net, svcClient, domainName, kubeAPIServerIP, kubeAPIServerPort); err != nil {
 			return fmt.Errorf("failed to deploy per-network DNS: %v", err)
 		}
 	}
