@@ -20,6 +20,7 @@ package app
 
 import (
 	"net/http"
+	"time"
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
@@ -114,7 +115,7 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string) (http.
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
 
 	go controllers.NewMizarServiceController(
 		svcKubeClient,
@@ -142,7 +143,7 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string) (http
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
 
 	go controllers.NewMizarArktosNetworkController(
 		networkClient,
