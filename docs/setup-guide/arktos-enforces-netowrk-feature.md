@@ -43,7 +43,7 @@ default   flat
 
 The current version has a limitation which requires cluster admin to specify the IP address of kube-apiserver that this controller connects to. We are working on the improvement that gets rid of this inconvenience. At this monent, please provide the ip address of the master node. Below is assuming 172.31.41.177:
 ```bash
-./_output/local/bin/linux/amd64/arktos-network-controller --kubeconfig ~/.kube/config --kube-apiserver-ip=172.31.41.177
+./_output/local/bin/linux/amd64/arktos-network-controller --kubeconfig=~/.kube/config --kube-apiserver-ip=172.31.41.177
 ```
 The config file has below content
 ```yaml
