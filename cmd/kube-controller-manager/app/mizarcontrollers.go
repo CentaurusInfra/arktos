@@ -20,7 +20,7 @@ package app
 
 import (
 	"net/http"
-        "time"
+	"time"
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"

@@ -26,15 +26,15 @@ go_library(
     ],
 )
 
-//go_test(
-//    name = "go_default_test",
-//    srcs = ["azure_credentials_test.go"],
-//    embed = [":go_default_library"],
-//    deps = [
-//        "//vendor/github.com/Azure/azure-sdk-for-go/services/containerregistry/mgmt/2017-10-01/containerregistry:go_default_library",
-//        "//vendor/github.com/Azure/go-autorest/autorest/to:go_default_library",
-//    ],
-//)
+go_test(
+    name = "go_default_test",
+    srcs = ["azure_credentials_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//vendor/github.com/Azure/azure-sdk-for-go/services/containerregistry/mgmt/2017-10-01/containerregistry:go_default_library",
+        "//vendor/github.com/Azure/go-autorest/autorest/to:go_default_library",
+    ],
+)
 
 filegroup(
     name = "package-srcs",
