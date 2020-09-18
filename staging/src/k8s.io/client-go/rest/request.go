@@ -806,16 +806,11 @@ func (r *Request) request(fn func(*http.Request, *http.Response)) error {
 			// This request should also be throttled with the client-internal throttler.
 			r.tryThrottle()
 		}
-		record_start := time.Now()
 		resp, err := client.Do(req)
-		record_duration := time.Since(record_start)
-
 		updateURLMetrics(r, resp, err)
 		if err != nil {
-			klog.V(2).Infof("%s: url %s. completed in %v, err %v", r.verb, r.URL().Path, record_duration, err)
 			r.backoffMgr.UpdateBackoff(r.URL(), err, 0)
 		} else {
-			klog.V(2).Infof("%s: url %s. completed in %v, status code %d", r.verb, r.URL().Path, record_duration, resp.StatusCode)
 			r.backoffMgr.UpdateBackoff(r.URL(), err, resp.StatusCode)
 		}
 		if err != nil {
