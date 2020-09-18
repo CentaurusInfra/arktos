@@ -90,9 +90,14 @@ func (q *ChannelMessageQueue) GetSiteStore(siteID string) cache.Store {
 }
 
 // Publish sends edge message to Controllers
-func (q *ChannelMessageQueue) Publish(msg *beehiveModel.Message) error {
-	// TODO(liuzongbao): send edge message to controllers
-	return nil
+func (q *ChannelMessageQueue) Publish(msg *beehiveModel.Message) {
+	switch msg.GetGroup() {
+	case modules.CloudServiceGroup:
+		beehiveContext.SendToGroup(modules.CloudServiceGroup, *msg)
+	default:
+		klog.Warningf("message %s does not belong to any group, it will be discarded", msg.GetID())
+	}
+	return
 }
 
 // GetSiteID get siteID from resource of message
