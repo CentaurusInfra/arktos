@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func deployDNSForNetwork(net *v1.Network, client kubernetes.Interface, domainName string) error {
+func deployDNSForNetwork(net *v1.Network, client kubernetes.Interface, domainName, kubeAPIServerIP, kubeAPIServerPort string) error {
 	if err := ensureToCreateServiceAccount(net, client); err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func deployDNSForNetwork(net *v1.Network, client kubernetes.Interface, domainNam
 		return err
 	}
 
-	if err := ensureToCreateDeployment(net, client); err != nil {
+	if err := ensureToCreateDeployment(net, client, kubeAPIServerIP, kubeAPIServerPort); err != nil {
 		return err
 	}
 
@@ -174,7 +174,7 @@ func ensureToCreateConfigMap(net *v1.Network, client kubernetes.Interface, domai
 	return nil
 }
 
-func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface) error {
+func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface, kubeAPIServerIP, kubeAPIServerPort string) error {
 	name := dnsBaseName + "-" + net.Name
 	label := dnsServiceDefaultName + "-" + net.Name
 	configmap := dnsBaseName + "-" + net.Name
@@ -264,6 +264,10 @@ func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface) erro
 								Args: []string{
 									"-conf",
 									"/etc/coredns/Corefile",
+								},
+								Env: []corev1.EnvVar{
+									{Name: "KUBERNETES_SERVICE_HOST", Value: kubeAPIServerIP},
+									{Name: "KUBERNETES_SERVICE_PORT", Value: kubeAPIServerPort},
 								},
 								VolumeMounts: []corev1.VolumeMount{
 									{

@@ -95,7 +95,7 @@ func TestDeployDNSForNetwork(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			namePerNetwork := "coredns-" + tc.input.Name
 			kubeClient := fake.NewSimpleClientset(tc.objects...)
-			err := deployDNSForNetwork(tc.input, kubeClient, "cluster.local")
+			err := deployDNSForNetwork(tc.input, kubeClient, "cluster.local", "192.168.0.3", "6443")
 
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

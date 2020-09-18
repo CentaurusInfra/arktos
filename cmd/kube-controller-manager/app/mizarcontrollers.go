@@ -60,24 +60,6 @@ func startHandler(controllerContext interface{}, grpcHost string) {
 	startArktosNetworkController(&ctx, grpcHost)
 }
 
-func startArktosNetworkController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
-	controllerName := "mizar-arktos-network-controller"
-	klog.V(2).Infof("Starting %v", controllerName)
-
-	netKubeConfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
-	svcKubeClient := clientset.NewForConfigOrDie(netKubeConfigs)
-	networkClient := arktos.NewForConfigOrDie(netKubeConfigs)
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
-
-	go controllers.NewMizarArktosNetworkController(
-		networkClient,
-		svcKubeClient,
-		informerFactory.Arktos().V1().Networks(),
-		grpcHost,
-	).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
-	return nil, true, nil
-}
-
 func startMizarEndpointsController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
 	controllerName := "mizar-endpoints-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
@@ -120,12 +102,54 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string) (http.
 	klog.V(2).Infof("Starting %v", controllerName)
 
 	svcKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	for _, svcKubeconfig := range svcKubeconfigs.GetAllConfigs() {
+		svcKubeconfig.QPS *= 5
+		svcKubeconfig.Burst *= 10
+	}
 	svcKubeClient := clientset.NewForConfigOrDie(svcKubeconfigs)
+
+	crConfigs := *svcKubeconfigs
+	for _, cfg := range crConfigs.GetAllConfigs() {
+		cfg.ContentType = "application/json"
+		cfg.AcceptContentTypes = "application/json"
+	}
+	networkClient := arktos.NewForConfigOrDie(&crConfigs)
+
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
 
 	go controllers.NewMizarServiceController(
 		svcKubeClient,
+		networkClient,
 		ctx.InformerFactory.Core().V1().Services(),
+		informerFactory.Arktos().V1().Networks(),
 		grpcHost,
 	).Run(mizarServiceControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
+}
+
+func startArktosNetworkController(ctx *ControllerContext, grpcHost string) (http.Handler, bool, error) {
+	controllerName := "mizar-arktos-network-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	netKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	for _, netKubeconfig := range netKubeconfigs.GetAllConfigs() {
+		netKubeconfig.QPS *= 5
+		netKubeconfig.Burst *= 10
+	}
+	crConfigs := *netKubeconfigs
+	for _, cfg := range crConfigs.GetAllConfigs() {
+		cfg.ContentType = "application/json"
+		cfg.AcceptContentTypes = "application/json"
+	}
+	networkClient := arktos.NewForConfigOrDie(&crConfigs)
+	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
+
+	go controllers.NewMizarArktosNetworkController(
+		networkClient,
+		svcKubeClient,
+		informerFactory.Arktos().V1().Networks(),
+		grpcHost,
+	).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
