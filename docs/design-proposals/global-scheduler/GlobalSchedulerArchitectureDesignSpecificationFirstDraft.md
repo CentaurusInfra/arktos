@@ -23,19 +23,34 @@
     - [2.5.4 Conflict-Aware VM/Container Request Distribution and Scheduling Mechanism](#254-conflict-aware-vmcontainer-request-distribution-and-scheduling-mechanism)
     - [2.5.5 Smart Conflict Avoidance Approach](#255-smart-conflict-avoidance-approach)
     - [2.5.6 Scheduling Failure](#256-scheduling-failure)
-    - [2.5.7 Scheduling of Scale Set](#257-scheduling-of-scale-set)
-    - [2.5.8 Priority Scheduling and Fair Scheduling to Avoid Security Attack](#258-priority-scheduling-and-fair-scheduling-to-avoid-security-attack)
+    - [2.5.7 Priority Scheduling and Fair Scheduling to Avoid Security Attack](#257-priority-scheduling-and-fair-scheduling-to-avoid-security-attack)
 - [3. System Flow and Interface Design](#3-system-flow-and-interface-design)
+  - [3.1 VM/Container Request Distribution and Scheduling Flow](#31-vmcontainer-request-distribution-and-scheduling-flow)
+    - [3.1.1 Schedulers Run as Separate Threads in the Same Process](#311-schedulers-run-as-separate-threads-in-the-same-process)
+    - [3.1.2 Schedulers Run as Separate Processes](#312-schedulers-run-as-separate-processes)
+  - [3.2 Scheduling Result Dispatching Flow](#32-scheduling-result-dispatching-flow)
+  - [3.3 Scheduling Status Processing Flow](#33-scheduling-status-processing-flow)
+    - [3.3.1 Push Model ](#331-push-model)
+    - [3.3.2 Pull Model ](#332-pull-model)
+  - [3.4 Cluster Resource Collection Flow](#34-cluster-resource-collection-flow)
+    - [3.4.1 Push Model ](#341-push-model)
+    - [3.4.2 Pull Model ](#342-pull-model)
+  - [3.5 Batch and Replica Set Scheduling Flow](#35-batch-and-replica-set-scheduling-flow)
+    - [3.5.1 “Batch” Scheduling Flow](#351-batch-scheduling-flow)
+    - [3.5.2 “Replica Set of Batch” Scheduling Flow](#352-replica-set-of-batch-scheduling-flow)
+- [4. Global Scheduler Deployment Model](#4-global-scheduler-deployment-model)
+  - [4.1 Deployed as an Independent Self-Contained Platform](#41-deployed-as-an-independent-self-contained-platform)
+  - [4.2 Deployed as an App Flexibly Plugged into a K8S-Like Platform](#41-deployed-as-an-app-flexibly-plugged-into-a-k8s-like-platform)
 
 **Revision Records**
 
-|    Date    | Revision Version |              Change Description              |      Author      |
-|:----------:|:----------------:|:--------------------------------------------:|:----------------:|
-| 2020-08-25 |        1.0       | First version of Global Scheduler Design Doc | Cathy Hong Zhang |
-| 2020-09-03 |        1.0       | Add Key System Flow Design Sections          | Cathy Hong Zhang |
-|            |                  |                                              |                  |
-|            |                  |                                              |                  |
-|            |                  |                                              |                  |
+|    Date    | Revision Version |              Change Description                         |      Author      |
+|:----------:|:----------------:|:-------------------------------------------------------:|:----------------:|
+| 2020-08-25 |        1.0       | First version of Global Scheduler Design Doc            | Cathy Hong Zhang |
+| 2020-09-03 |        1.1       | Add Key System Flow Design Sections                     | Cathy Hong Zhang |
+| 2020-09-16 |        1.2       | Incorporate comments and open source meeting consensus  | Cathy Hong Zhang |
+|            |                  |                                                         |                  |
+|            |                  |                                                         |                  |
 
 # 1. Introduction
 
@@ -128,13 +143,31 @@ These goals usually conflict with each other. As analyzed in the previous sessio
 
 ## 2.1 Key Requirement Analysis
 
+### 2.1.1 Scalability
+
 Scalability is a key requirement in the current scheduling architecture design. Since a large amount of resource scheduling requests come through the Global Scheduler, the Global Scheduler is at risk of becoming a scalability bottleneck. A single monolithic Global Scheduler architecture cannot meet the scalability requirement. The architecture must have multiple Schedulers running in concurrency with incoming VM/Container requests load balanced to them. But concurrent execution introduces potential scheduling conflicts. Section 2.5.3, 2.5.4, and 2.5.5 will describe the mechanisms to mitigate and eliminate the conflicts.
+
+### 2.1.2 High Resource Utilization
 
 High resource utilization is always a key requirement. Global resource allocation/scheduling is a feasible way to achieve high resource utilization. To support global optimal scheduling, resource sharing is the way to go. Section 2.4.1 will describe how a resource is shared by all schedulers.
 
+### 2.1.3 Low Latency
+
 Low latency is another key requirement in Edge Cloud. We need to support a scheduling placement that is near the end user's geolocation. We also need to minimize the scheduling latency. If we go for one-level architecture and the scheduling work across all public cloud DCs and Edge Sites is centralized to a few Schedulers, the Schedulers' shared database will be over-bloated with a huge number of nodes' information structures. We would also need many Schedulers running concurrently. All these running Schedulers will go through every node's allocable capacity information structure in the shared DB simultaneously. The DB's atomicity and consistency operation will make it hard to meet the low latency requirement. Besides, many DCs or Edge Site clusters already implemented their sophisticated cluster level VM/Container scheduling. Eradicating all those cluster-level scheduling and moving the functionality to the global level scheduler would require expensive refactoring.  So, in our design, we divide the scheduling into two levels. The first level Scheduler selects the best cluster for the VM/Container request. We then leverage the existing cluster level scheduler to select the best node that will host and run the VM/Container. Since node level scheduling is offloaded to the second level cluster scheduler and those cluster schedulers run in parallel with access to their independent resource DB, scheduling latency is greatly reduced.
 
+### 2.1.4 Integration with A Mix of Kubernetes-Like and OpenStack-Like Clusters
+
 In addition to the above requirements, the global scheduling architecture must be able to integrate with any type of clusters on the southbound, such as Kubernetes Clusters, Arktos Clusters, Openstack Clusters, etc.. Priority Scheduling and Fair Scheduling should also be considered in the design.
+
+### 2.1.5 Flexibly Changed Scheduling Policies
+
+The Global Scheduler Platform should also support multiple scheduling policies and the priority of each policy is configurable in each deployment of the Global Scheduler Platform. The scheduling policies include the following and can be extended in the future:
+
+- Cost Based Policy: The VM/Container should be scheduled to a cluster whose server cost is the lowest 
+- Resource Equivalence Policy: The VM/Container should be scheduled to a cluster so that all clusters’ CPU, memory, disk etc, resource utilization ratio is well balanced. This avoids exhausting  one type of resource (e.g. CPU) while leaving a big unused capacity of other types of resources (e.g. memory) 
+- Resource Spread Policy: The VM/Container should be scheduled to a cluster so that all clusters’ resource utilization ratio is even
+- Resource Binpack Policy: The VM/Container should be tightly packed/scheduled to a cluster so as to fully use all the CPU and memory resources of a cluster. This will minimize the number of clusters in use and those unused or lightly used clusters can be saved for hosting large workloads when needed or be powered off to save energy cost
+- VM/Container Application’s Traffic Source Location Policy:  The VM/Container should be scheduled/migrated to a cluster that is closer to the geo-location of its traffic flow source.  
 
 ## 2.2 Key Points of this New Scheduler Architecture Design
 
@@ -145,6 +178,8 @@ Our solution is a new two-level concurrent scheduler architecture built around a
 - dynamic geolocation and resource profile-based partition scheme
 - conflict aware VM/Container request distribution and scheduling mechanism
 - smart conflict avoidance approach
+
+The Global Scheduler will support VM/Container creation API for now. If needed, support for the VM/Container update and deletion can be added in the future.
 
 ## 2.3 High-Level Architecture Design
 
@@ -416,21 +451,21 @@ In this section, we will describe the key system flows to further understand the
 
 This refers to the flow from API Server -> Request Distributor->Multiple Schedulers. Each Scheduler’s internal flow consists of Scheduling Event Handler->Scheduling Work Queue->Scheduling Algorithm Executor->Scheduling Decision Queue. As described in section 2.5.4, there are multiple schedulers running concurrently and the Request Distributor must select a Home Scheduler for each VM/Container request and send the VM/Container request to its Home Scheduler. There are two ways to design and implement the event distribution and scheduling flow as described in the following two sections.
 
-### 3.1.1 Schedulers Run as Separate Threads in the Same Process (preferred way)
+### 3.1.1 Schedulers Run as Separate Threads in the Same Process
 ![image.png](/images/3.1.1.png)
 
 In this design, all the Schedulers run in the same Scheduling Process but each Scheduler is a separate thread with its own independent work queue and cache. The Distributor is part of the Scheduling Process and runs as another thread inside the Scheduling Process and list&watch the VM/Container requests with API server through a Kubernetes-like "Reflector-Informer" mechanism. 
 At initialization stage, the Distributor will read the geolocation and resource profile information of each Scheduler from a config file and save the information into the Static Cluster Geolocation and Resource Profile DB. The Distributor will create a Local Distributor Cache and this Local Cache will be populated with the geolocation and resource profile information of each Scheduler. When the Distributor gets a VM/Container request notification from the API Server, it will derive the geolocation and resource profile information from the request and match it against each Cluster’s geolocation and resource profile information in the Distributor Local Cache and assign a Home Scheduler to the VM/Container request. It then sends the VM/Container request to the selected Home Scheduler via a channel. 
 The Scheduling Event Handler running inside the selected Home Scheduler thread will do two things. It generates a key for this VM/Container request object and puts this object key into the work queue. It also saves the VM/Container request object into the Home Scheduler’s own Local Cache. The Scheduling Executor of this thread will then dequeue the object key, retrieve the object from the cache, and run the scheduling algorithm to select the best cluster. After that, the Scheduling Executor will put the VM/Container’s scheduling decision into the Scheduler’s Scheduling Decision Queue and then goes back to process the next VM/Container request in the Work Queue.
 
-### 3.1.2 Schedulers Run as Separate Processes
+### 3.1.2 Schedulers Run as Separate Processes (Preferred Way)
 ![image.png](/images/3.1.2.png)
 
 In this design, each Scheduler is a separate process. Since the Distributor may send a VM/Container request to any one of the Schedulers, the Distributor must run in another process. As shown in Figure.9, the Distributor interfaces with the API Server to get the VM/Container requests. The Distributor will list&watch the VM/Container requests with the API server through a Kubernetes-like "Reflector-Informer" mechanism. 
 At initialization stage, the Distributor will read the geolocation and resource profile information of each Scheduler from a config file and save the information into the Static Cluster Geolocation and Resource Profile DB. The Distributor will create a Local Distributor Cache and this Local Cache will be populated with the geolocation and resource profile information of each Scheduler. When the Distributor gets a VM/Container request notification, it will derive the geolocation and resource profile information from the request and match it against each Cluster’s geolocation and resource profile information in its Local Cache and assign a Home Scheduler to the VM/Container request. 
 The Distributor then sends the VM/Container request to the selected Home Scheduler via gRPC. The gRPC client running inside the selected Home Scheduler process will place the VM/Container request into its Work Queue. 
 The Scheduling Event Handler running inside this Home Scheduler process will do two things. It generates a key for this VM/Container request object and puts this object key into the work queue. It also saves the VM/Container request object into the Home Scheduler’s own Local Cache. The Scheduling Executor of this process will then dequeue the object key, retrieve the object from the cache, and run the scheduling algorithm to select the best cluster. After that, the Scheduling Executor will put the VM/Container’s scheduling decision into the Scheduler’s Scheduling Decision Queue and then goes back to process the next VM/Container request in the Work Queue. 
-Alternatively the Distributor can pass the VM/Container request to the selected Home Scheduler through Kubernetes object watching mechanism, i.e. the Distributor will save the object back into the VM/Container Info DB, which will trigger a notification to the API Server. The API server will then pass this object tagged with the selected Home Scheduler to the Home Scheduler process which has registered a watch through the “Reflector-Informer” mechanism. 
+Alternatively the Distributor can pass the VM/Container request to the selected Home Scheduler through Kubernetes object watching mechanism, i.e. the Distributor will save “VM/Container to Home Scheduler binding” information into the VM/Container Info DB, which will trigger a notification to the API Server. The API server will then pass this VM/Container tagged with the selected Home Scheduler to the Home Scheduler process which has registered a watch through the “Reflector-Informer” mechanism. The Home Scheduler process will then place the VM/Container request into its Work Queue
 No matter which mechanism is used, it introduces extra latency and implementation is much more complicated than the “thread” way.
 
 ## 3.2 Scheduling Result Dispatching Flow
@@ -438,7 +473,7 @@ No matter which mechanism is used, it introduces extra latency and implementatio
 
 This refers to the flow from Scheduling Decision Queue->VM/Container Request Dispatcher->Cluster. To ensure that the Scheduling Executor can process the VM/Container request in a timely manner, our design decouples the operation of the Dispatcher from the operation of the Scheduling Executor, i.e., the Dispatcher and the Scheduling Executor will run in separate threads. The Scheduling Executor puts the scheduling decision for a VM/Container into the Scheduling Decision Queue and immediately goes back to handle the next VM/Container scheduling. The Dispatcher will dequeue each VM/Container’s decision from this Scheduling Decision Queue and send the VM/Container request to the selected cluster. 
 All the security authentication/authorization as well as network error and retry during the communication with an external cluster, which may have varied latency, will be handled by the Dispatcher. If after a pre-defined number of retries, the Dispatcher still fails to send the VM/Container request to the selected cluster, the Dispatcher will put this VM/Container request back to the head of the Scheduling Work Queue and remove this cluster from the candidate list. 
-The Dispatcher will send the VM/Container request to the cluster via the VM/Container creation/deletion API over gRPC or HTTP2.   
+The API Adaptor in the Dispatcher will send the VM/Container request to the cluster via the cluster’s public VM/Container creation API.   
 
 ## 3.3 Scheduling Status Processing Flow
 This refers to the flow from Cluster->VM/Container Status Watcher->API Server->VM/Container Info DB. There are two ways to design and implement the scheduling status processing flow as described in the following two sections.
@@ -451,7 +486,7 @@ Each Scheduler in the global scheduling framework has its own VM/Container Statu
 The Scheduling Event Handler will notify the VM/Container Status Watcher when it retrieves a VM/Container scheduling request. The VM/Container Status Watcher will start a timer for this VM/Container scheduling. If within this timer period, it does not receive a “success” status notification from the selected cluster, it will treat this as a scheduling failure. 
 When the VM/Container Status Watcher receives a “scheduling failure”, either from the cluster’s Status Agent or from the timeout routine, it will send a “delete” message to the VM/Container’s previously selected cluster by queueing a “delete” event to the Scheduling Work Queue. Then it will put the VM/Container back to the head of the Scheduling Work Queue for rescheduling. To prevent a second-time failure, the previously selected cluster will be assigned a very low score in the scheduler’s ranking phase or even be removed from this VM/Container’s candidate list if the candidate list has other clusters
 
-### 3.3.2 Pull Model
+### 3.3.2 Pull Model 
 This model does not require a VM/Container Status Agent to be placed into each cluster. The VM/Container Status Watcher will start a query timer and query/pull each cluster for the VM’s scheduling status information every timer interval. 
 The interface and transport protocol between the VM/Container Status Watcher and the cluster depends on the type of API each cluster supports. 
 This model will introduce a lot of unnecessary traffic into the control plane’s network if the pulling interval is too small. If the pulling interval is too large, the end-to-end scheduling latency will be high. It is a dilemma to choose a proper pulling interval. The VM/Container Status Watcher actually runs in a kind of “blindly” pull mode.   
@@ -460,16 +495,22 @@ This model will introduce a lot of unnecessary traffic into the control plane’
 This refers to the flow from Cluster->Cluster Resource Collector->API Server->Dynamic Resource Infor Cache DB. Similar to what is described in section 3.3, there are two ways to design and implement the resource collection flow as described in the following two sections. 
 
 ### 3.4.1 Push Model (Preferred Model)
-This model requires the cluster to proactively send its resource information to the global scheduling framework’s Cluster Resource Collector. The cluster will only send its resource information when there is a resource change. If network traffic is a concern, “batch operation” can be used, i.e. resource update will be accumulated for a pre-defined interval and then sent to the global scheduling framework. This prevents injecting a burst of “update” traffic into the control plane’s network when the resource change frequency is very high at some time period. This interval value should be defined to keep a good balance between “accurate in-sync of global scheduling framework’s Dynamic Resource Info Cache with each cluster’s actual resource info DB” and “low network traffic and database/cache access traffic”
-To support this model, a Cluster Resource Agent would need to be put into each cluster. The Cluster Resource Agent can hook up to the cluster’s data store that keeps track of each node’s available capacity. It may also hoop up to the cluster’s monitoring modules. The Cluster Resource Agent should only send resource information that the global scheduling algorithm needs, such as largest available nodes’ resources, average per node allocable capacity, etc. 
-The interface and transport protocol between each cluster’s Cluster Resource Agent and the global scheduling framework’s Cluster Resource Collector can be either gRPC or HTTP2 (server push mode). 
-The global scheduling framework has one single Cluster Resource Collector which is responsible for collecting the resource information from all clusters. This Cluster Resource Collector either runs as a separate process or thread depending on whether the schedulers run as separate processes or threads. When the Cluster Resource collector receives the resource information update from the cluster resource agent, it will update the Dynamic Resource Info Cache via the API Server. 
-The Cluster Resource Collector will also receive notification update from the VM/Container Status Watcher after it successfully sends the scheduling decision for a VM/Container to its selected cluster. The Cluster Resource Collector will substract the new VM/Container’s resource from the its selected cluster’s allocable resource capacity saved in the global scheduling framework’s Dynamic Resource Info Cache. This “in-time resource update” helps ensure the accuracy of the cluster’s allocable resource capacity info saved in the global scheduling framework’s Dynamic Resource Info Cache.
+This model requires the cluster to proactively send its resource information to the Dynamic Resource Information Cache DB. In this model, the Cluster Resource Collector resides outside the Global Scheduling Framework. The Cluster Resource Collector will only send the cluster resource information when there is a resource change. If network traffic is a concern, “batch operation” can be used, i.e. resource update will be accumulated for a pre-defined interval and then sent to the Dynamic Resource Information Cache DB. This prevents injecting a burst of “update” traffic into the DB and its network when the resource change frequency is very high at some time period. This interval value should be defined to keep a good balance between “accurate in-sync of global scheduler’s Dynamic Resource Info Cache with each cluster’s actual resource info DB” and “low network traffic and database/cache access traffic”
+
+The Cluster Resource Collector can hook up to the cluster’s data store that keeps track of each node’s available capacity. It may also hoop up to the cluster’s monitoring modules. The Cluster Resource Collector should only send resource information that the global scheduling algorithm needs, such as largest available nodes’ resources, average per node allocable capacity, cluster health caliber value, etc. 
+
+The Cluster Resource Collector will interface directly with the API server and communicate with the API server in a way similar to how Kubelet communicate with the API server.  
 
 ### 3.4.2 Pull Model
-This model does not require a Cluster Resource Agent to be placed into each cluster. The global scheduling framework’s Cluster Resource Collector will start a timer and query/pull each cluster for its resource information, such as largest available nodes’ resources, average per node allocable capacity, every timer interval. If a cluster can not directly provide the resource information needed by the global scheduling algorithm, the Resource Collector has to query the available resource information of each node in the cluster and translate/consolidate the node information into information needed by the Scheduler and save the consolidated resource information in the global scheduling framework’s Dynamic Info Cache. 
+In this model, the Cluster Resource Collector is placed inside the global scheduling framework. The Cluster Resource Collector will start a timer and query/pull each cluster for its resource information, such as largest available nodes’ resources and average per node allocable capacity, every timer interval. If a cluster can not directly provide the resource information needed by the global scheduling algorithm, the Resource Collector has to query the available resource information of each node in the cluster and translate/consolidate the node information into information needed by the Scheduling algorithm and save the consolidated resource information in the Global Scheduler’s Dynamic Resource Info Cache. 
+
+The global scheduling framework has one single Cluster Resource Collector which is responsible for collecting the resource information from all clusters. This Cluster Resource Collector either runs as a separate process or thread depending on whether the schedulers run as separate processes or threads. After the Cluster Resource collector receives the resource information, it will update the Dynamic Resource Info Cache via the API Server. 
+
+The Cluster Resource Collector will also receive notification update from the VM/Container Status Watcher after the Scheduler successfully sends the scheduling decision for a VM/Container to its selected cluster. The Cluster Resource Collector will substract the new VM/Container’s resource from the its selected cluster’s allocable resource capacity saved in the Global Scheduler’s Dynamic Resource Info Cache. This “in-time resource update” helps ensure the accuracy of the cluster’s allocable resource capacity information that is saved in the Global Scheduler’s Dynamic Resource Info Cache.
+
 The interface and transport protocol between the scheduling framework’s Cluster Resource Collector and each cluster depends on the type of API each cluster supports. 
-This model will incur a lot of traffic into the control plane’s network. In this mode, even there is no resource change in a cluster, the resource collector will blindly pull resource information from the cluster, performance will not be good. The “cluster resource information accuracy” will not be good in this “blindly pull” model
+
+This model will incur a lot of traffic into the control plane’s network. In this mode, even there is no resource change in a cluster, the resource collector will blindly pull resource information from the cluster, performance will not be good. The “cluster resource information accuracy” will not be good in this “blindly pull” model. 
 
 ## 3.5 Batch and Replica Set Scheduling Flow
 Our design will support batch scheduling. A batch scheduling request refers to scheduling of a group of VMs/Containers that need to be scheduled in an atomic way, that is, either all succeed or all fail. VMs/Containers in the batch request may have different profiles. There is affinity requirement for this batch, i.e., the group of VMs/Containers must run in the same cluster. 
@@ -483,4 +524,16 @@ The “success/failure” status of each VM/Container in the batch may come back
 This batch scheduling is opaque to the cluster scheduler and does not need new functionality or support from the cluster scheduler. From the cluster scheduler’s point of view, they are just individual VM/Container requests.
 
 ### 3.5.2 “Replica Set of Batch” Scheduling Flow
-Is there a requirement for the replica set to be scheduled in an atomic way? 
+Replica Set of Batch does not need to be scheduled in an atomic way and does not need to be scheduled on the same cluster. To support the replica set scheduling, the set will be divided into individual batch and each batch will be scheduled according to the flow described in section 3.5.1. 
+
+# 4. Global Scheduler Deployment Model
+
+## 4.1 Deployed as an Independent Self-Contained Platform 
+
+In this model, the global scheduler runs as an independent self-contained platform. It is a stripped-down version of Kubernetes-like platform in which the Kubernetes scheduler is replaced by a new “cluster profile partition” based scheduling framework and the scheduling algorithm is replaced by a new global scheduling algorithm. The global scheduler platform consists of API server, information DB and Cache, and global scheduling framework.  The green box in figure 11 illustrates the global scheduler platform. Since it is an independent platform, an installation script needs to be provided for the user to install it.  
+![image.png](/images/4.1.png)
+
+## 4.1 Deployed as an App Flexibly Plugged into a K8S-Like Platform
+
+In this mode, the global scheduler is an application that runs in a Kubernetes-like platform. The global scheduler application does not have its own API server and DB. It leverages Kubernetes platform’s API server and DB. The global scheduler consists of components in the global scheduling framework as shown in Figure 12. The Kubernetes platform provides the API server, information DB/cache as well as controller-manager, controllers, kube-scheduler, and kubelet. Since the global scheduler runs as an application on top of the Kubernetes platform, each component of the global scheduler will run as a CRD controller and will be installed/created using Kubernetes POD script. 
+![image.png](/images/4.2.png)
