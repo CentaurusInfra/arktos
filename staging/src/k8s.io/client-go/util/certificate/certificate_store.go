@@ -199,7 +199,7 @@ func (s *fileStore) Update(certData, keyData []byte) (*tls.Certificate, error) {
 	defer f.Close()
 	certBlock, _ := pem.Decode(certData)
 	if certBlock == nil {
-		return nil, fmt.Errorf("invalid certificate data")
+		return nil, fmt.Errorf("invalid BAZ certificate data")
 	}
 	pem.Encode(f, certBlock)
 	keyBlock, _ := pem.Decode(keyData)
