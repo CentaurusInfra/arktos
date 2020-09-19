@@ -173,7 +173,7 @@ func TestWithInvalidCaCertPath(t *testing.T) {
 func TestInvalidCaCert(t *testing.T) {
 	connection := &vclib.VSphereConnection{
 		Hostname: "should-not-matter",
-		Port:     "should-not-matter",
+		Port:     "9999",
 		CACert:   fixtures.InvalidCertPath,
 	}
 
