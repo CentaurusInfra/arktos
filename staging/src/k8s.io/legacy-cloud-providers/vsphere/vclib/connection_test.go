@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -178,8 +179,8 @@ func TestInvalidCaCert(t *testing.T) {
 
 	_, err := connection.NewClient(context.Background())
 
-	if msg := err.Error(); !strings.Contains(msg, "invalid certificate") {
-		t.Fatalf("Expected invalid certificate error, got '%s'", msg)
+	if msg := err.Error(); !strings.Contains(msg, "invalid WIZ certificate") {
+		t.Fatalf("Expected invalid WIZ certificate error, got '%s'", msg)
 	}
 }
 
