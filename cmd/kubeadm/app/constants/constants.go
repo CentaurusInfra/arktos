@@ -261,7 +261,7 @@ const (
 	MinExternalEtcdVersion = "3.2.18"
 
 	// DefaultEtcdVersion indicates the default etcd version that kubeadm uses
-	DefaultEtcdVersion = "3.4.4-arktos.1-1"
+	DefaultEtcdVersion = "3.4.5"
 
 	// PauseVersion indicates the default pause image version for kubeadm
 	PauseVersion = "3.1"
@@ -415,7 +415,7 @@ var (
 	SupportedEtcdVersion = map[uint8]string{
 		12: "3.2.24",
 		13: "3.2.24",
-		14: "3.4.4-arktos.1-1",
+		14: "3.4.5",
 	}
 
 	// KubeadmCertsClusterRoleName sets the name for the ClusterRole that allows

@@ -18,7 +18,7 @@
 # A set of helpers for starting/running etcd for tests
 # etcd version pattern  is d.d.d-arktos.d
 #ETCD_VERSION=${ETCD_VERSION:-3.4.4-arktos.1}
-ETCD_VERSION=${ETCD_VERSION:-3.4.4}
+ETCD_VERSION=${ETCD_VERSION:-3.4.5}
 INT_NAME=$(ip route | awk '/default/ { print $5 }')
 ETCD_LOCAL_HOST=${ETCD_LOCAL_HOST:-127.0.0.1}
 ETCD_HOST=$(ip addr show $INT_NAME | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
