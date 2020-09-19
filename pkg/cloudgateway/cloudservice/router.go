@@ -11,6 +11,7 @@ import (
 	"github.com/kubeedge/beehive/pkg/core/model"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/cloudgateway/cloudservice/httpservice"
+	"k8s.io/kubernetes/pkg/cloudgateway/cloudservice/utils"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/constants"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/modules"
 )
@@ -51,7 +52,12 @@ func messageRouter(message model.Message) {
 	}
 
 	operation := message.GetOperation()
-	targetURL := "http://" + res[2]
+	serviceURL, err := utils.GetServiceURL(resource)
+	if err != nil {
+		klog.Errorf("target service cannot reach: %v", err)
+		return
+	}
+	targetURL := "http://" + serviceURL
 	resp, err := httpservice.SendWithHTTP(operation, targetURL, httpRequest.Body)
 	if err != nil {
 		m := "error to call service"

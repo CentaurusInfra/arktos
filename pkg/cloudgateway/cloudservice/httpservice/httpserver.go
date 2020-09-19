@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	beehiveModel "github.com/kubeedge/beehive/pkg/core/model"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/cloudgateway/cloudservice/utils"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/modules"
 )
 
@@ -42,9 +44,14 @@ func RequestFunc(w http.ResponseWriter, r *http.Request) {
 	httpRequest.Body = data
 	message := beehiveModel.NewMessage("")
 	message.Content = httpRequest
-	// TODO(liuzongbao): get siteID
-	siteID := "arktos"
-	resource := fmt.Sprintf("site/%s/%s", siteID, r.Host)
+	host := strings.Split(r.Host, ":")
+	resource, err := utils.GenerateResource(host[0])
+	if err != nil {
+		klog.Errorf("target service cannot reach: %v", err)
+		s := "target service cannot reach: " + err.Error() + "\n"
+		w.Write([]byte(s))
+		return
+	}
 	message.BuildRouter(modules.CloudServiceModuleName, modules.EdgeServiceGroup, resource, r.Method)
 
 	// send message to cloudhub

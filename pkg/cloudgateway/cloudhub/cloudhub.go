@@ -21,8 +21,8 @@ func newCloudHub(enable bool) *cloudHub {
 	}
 }
 
-func Register(hub *v1.CloudHub) {
-	hubconfig.InitConfigure(hub)
+func Register(hub *v1.CloudHub, kc *v1.KubeAPIConfig) {
+	hubconfig.InitConfigure(hub, kc)
 	core.Register(newCloudHub(hub.Enable))
 }
 

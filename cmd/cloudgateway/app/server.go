@@ -56,7 +56,7 @@ communication and access capabilities for services and components of the cloud a
 
 // registerModules register all the modules started in cloudGateway
 func registerModules(c *v1.CloudGatewayConfig) {
-	cloudhub.Register(c.Modules.CloudHub)
+	cloudhub.Register(c.Modules.CloudHub, c.KubeAPIConfig)
 	controller.Register(c.Modules.Controller, c.KubeAPIConfig)
 	cloudservice.Register(c.Modules.CloudService)
 }
