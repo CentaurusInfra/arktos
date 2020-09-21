@@ -27,10 +27,10 @@
 # Except from etcd-$(version) and etcdctl-$(version) binaries, we also
 # need etcd and etcdctl binaries for backward compatibility reasons.
 # That binary will be set to the last version from $(BUNDLED_ETCD_VERSIONS).
-BUNDLED_ETCD_VERSIONS?=3.4.5
+BUNDLED_ETCD_VERSIONS?=3.4.5.1
 
 # LATEST_ETCD_VERSION identifies the most recent etcd version available.
-LATEST_ETCD_VERSION?=3.4.5
+LATEST_ETCD_VERSION?=3.4.5.1
 
 # ETCD branch to build etcd binaries
 ETCD_BRANCH?=release-3.4-ETCDPartition-RevGeneration

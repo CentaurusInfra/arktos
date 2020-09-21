@@ -15,13 +15,13 @@
 
 .PHONY:	build push
 
-ETCD_VERSION = 3.4.5
+ETCD_VERSION = 3.4.5.1
 # Image should be pulled from k8s.gcr.io, which will auto-detect
 # region (us, eu, asia, ...) and pull from the closest.
 REGISTRY? = gcr.io
 # Images should be pushed to staging-k8s.gcr.io.
 PUSH_REGISTRY? = gcr.io
-TAG = 3.4.5
+TAG = 3.4.5.1
 
 clean:
 	rm -rf etcdctl etcd-v$(ETCD_VERSION)-linux-amd64 etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
