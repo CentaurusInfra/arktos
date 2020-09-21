@@ -17,6 +17,7 @@ go_library(
         "mizar-service-controller.go",
         "mizar-starter-controller.go",
         "util.go",
+        "util_test.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/controller/mizar",
     deps = [
