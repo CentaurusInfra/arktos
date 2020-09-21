@@ -104,11 +104,12 @@ func signCerts(subInfo pkix.Name, pbKey crypto.PublicKey) ([]byte, error) {
 	return certDER, err
 }
 
-// PrepareAllCerts check whether the certificates exist in the local directory, generate if they don't exist
+// PrepareAllCerts check whether the certificates exist in secret, generate if they don't exist
 func PrepareAllCerts() error {
-	// Check whether the ca exists in the local directory
-	if hubconfig.Config.Ca == nil && hubconfig.Config.CaKey == nil {
-		klog.Info("Ca and CaKey don't exist in local directory, and will be created by CloudGateway")
+	// Check whether the ca exists in secret
+	caSecret, err := GetSecret(CaSecretName, NamespaceGateway)
+	if err != nil {
+		klog.Info("Ca and CaKey don't exist in secret, and will be created by CloudGateway")
 		caDER, caKey, err := NewCertificateAuthorityDer()
 		if err != nil {
 			klog.Errorf("failed to create Certificate Authority, error: %v", err)
@@ -121,17 +122,40 @@ func PrepareAllCerts() error {
 			return err
 		}
 
+		err = CreateCaSecret(caDER, caKeyDER)
+		if err != nil {
+			klog.Errorf("failed to save ca to secret, err: %v", err)
+			return err
+		}
+
+		UpdateConfig(caDER, caKeyDER, nil, nil)
+	} else {
+		caDER := caSecret.Data[CaDataName]
+		caKeyDER := caSecret.Data[CaKeyDataName]
+
 		UpdateConfig(caDER, caKeyDER, nil, nil)
 	}
 
-	// Check whether the CloudGateway certificates exist in the local directory
-	if hubconfig.Config.Key == nil && hubconfig.Config.Cert == nil {
-		klog.Infof("CloudGatewayCert and key don't exist in local directory, and will be signed by CA")
+	// Check whether the CloudGateway certificates exist in secret
+	certSecret, err := GetSecret(CloudGatewaySecretName, NamespaceGateway)
+	if err != nil {
+		klog.Infof("CloudGatewayCert and key don't exist in secret, and will be signed by CA")
 		certDER, keyDER, err := SignCerts()
 		if err != nil {
 			klog.Errorf("failed to sign a certificate, error: %v", err)
 			return err
 		}
+
+		err = CreateCloudGatewaySecret(certDER, keyDER)
+		if err != nil {
+			klog.Errorf("failed to save CloudGateway cert to secret, err: %v", err)
+			return err
+		}
+
+		UpdateConfig(nil, nil, certDER, keyDER)
+	} else {
+		certDER := certSecret.Data[CloudGatewayCertName]
+		keyDER := certSecret.Data[CloudGatewayKeyDataName]
 
 		UpdateConfig(nil, nil, certDER, keyDER)
 	}

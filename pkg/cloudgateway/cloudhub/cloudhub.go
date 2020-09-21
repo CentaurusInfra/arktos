@@ -46,7 +46,7 @@ func (a *cloudHub) Start() {
 	// start dispatch message from the cloud to edge site
 	go messageq.DispatchMessage()
 
-	// check whether the certificates exist in the local directory, generate if they don't exist
+	// check whether the certificates exist in secret, generate if they don't exist
 	if err := httpserver.PrepareAllCerts(); err != nil {
 		klog.Fatal(err)
 	}
