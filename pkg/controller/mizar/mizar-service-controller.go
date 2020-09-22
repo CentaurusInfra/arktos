@@ -210,7 +210,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	networkName, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
 
 	if hasDNSServiceLabel && len(netName) != 0 {
-		klog.Info("Starting ProcessArktosNetworkCreation network: %v", netName)
+		klog.Infof("Starting ProcessArktosNetworkCreation network: %v", netName)
 		net, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(service.Tenant).Get(netName, metav1.GetOptions{})
 		if err != nil {
 			klog.Errorf("The following network failed to get: %v", net)
@@ -218,7 +218,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		}
 		c.updateMizarVpcWithArktosName(net)
 	}
-	klog.Info("Starting ProcessServiceCreation service: %v", service)
+	klog.Infof("Starting ProcessServiceCreation service: %v", service)
 
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
@@ -231,7 +231,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	response := GrpcCreateService(c.grpcHost, msg)
 	code := response.Code
 	ip := response.Message
-	klog.Info("Assigned ip by mizar is %v", ip)
+	klog.Infof("Assigned ip by mizar is %v", ip)
 
 	switch code {
 	case CodeType_OK:
@@ -272,7 +272,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 			klog.Errorf("The following service failed to update: %v", svcUpdated)
 			return err
 		}
-		klog.Info("Updated service: %v", svcUpdated)
+		klog.Infof("Updated service: %v", svcUpdated)
 	}
 
 	if hasDNSServiceLabel && len(netName) != 0 {
@@ -290,7 +290,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 				klog.Errorf("The following network failed to update: %v", netReady)
 				return err
 			}
-			klog.Info("Updated network: %v", netNew)
+			klog.Infof("Updated network: %v", netNew)
 		}
 	}
 	return nil
@@ -298,7 +298,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 
 func (c *MizarServiceController) processServiceUpdate(service *v1.Service, eventKeyWithType KeyWithEventType) error {
 	key := eventKeyWithType.Key
-	fmt.Println("processServiceUpdate network name is %v", service.Name)
+	klog.Infof("processServiceUpdate network name is %v", service.Name)
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
 		ArktosNetwork: "",
