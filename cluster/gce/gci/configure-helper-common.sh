@@ -2194,6 +2194,10 @@ function start-kube-scheduler {
   # Calculate variables and set them in the manifest.
   params="${SCHEDULER_TEST_LOG_LEVEL:-"--v=4"} ${SCHEDULER_TEST_ARGS:-}"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-scheduler/kubeconfig"
+  ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
+  if [[ "${ENABLE_SCHEDULER_LEADER_ELECT:-true}" == "false" ]]; then
+    params+=" --leader-elect=false"
+  fi
   if [[ -n "${FEATURE_GATES:-}" ]]; then
     params+=" --feature-gates=${FEATURE_GATES}"
   fi
