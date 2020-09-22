@@ -20,13 +20,14 @@ package watch
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type testType string
@@ -222,6 +223,7 @@ func TestNewAggregatedWatcherWithReset(t *testing.T) {
 	assert.Nil(t, aw.GetErrors())
 	assert.False(t, aw.stopped)
 	aw.Stop()
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 0, aw.GetWatchersCount())
 	assert.True(t, aw.stopped)
 }
