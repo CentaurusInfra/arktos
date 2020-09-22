@@ -17,26 +17,186 @@ limitations under the License.
 package mizar
 
 import (
+	"strconv"
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func TestConvertToPodContract_Without_Network(t *testing.T) {
-	pod := &v1.Pod{
+const (
+	testAddress           = "test-address"
+	testHostIP            = "test-hostip"
+	testIP                = "test-ip"
+	testLabelNetworkValue = "test-network"
+	testName              = "test-name"
+	testNamespace         = "test-namespace"
+	testPhase             = "test-phase"
+	testProtocal          = "test-protocal"
+	testTenant            = "test-tenant"
+
+	testPort1 = 123
+	testPort2 = 4567
+)
+
+func TestConvertToServiceEndpointContract(t *testing.T) {
+	// Arrange - no backendIps nor ports
+	endpoints := &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-			Tenant:    "tenant",
+			Name:      testName,
+			Namespace: testNamespace,
+			Tenant:    testTenant,
 		},
-		Status: v1.PodStatus{
-			HostIP: "hostIP",
-			Phase:  "phase",
+	}
+	service := &v1.Service{}
+	backendIps := []string{}
+	ports := []*PortsMessage{}
+	expected := &BuiltinsServiceEndpointMessage{
+		Name:           testName,
+		Namespace:      testNamespace,
+		Tenant:         testTenant,
+		BackendIpsJson: JsonMarshal(backendIps),
+		PortsJson:      JsonMarshal(ports),
+	}
+
+	// Act
+	actual := ConvertToServiceEndpointContract(endpoints, service)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
+
+	// Arrange - with backendIps
+	endpoints.Subsets = []v1.EndpointSubset{
+		{
+			Addresses: []v1.EndpointAddress{
+				{
+					IP: testIP,
+				},
+			},
+		},
+	}
+	backendIps = append(backendIps, testIP)
+	expected.BackendIpsJson = JsonMarshal(backendIps)
+
+	// Act
+	actual = ConvertToServiceEndpointContract(endpoints, service)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
+
+	// Arrange - with ports
+	service.Spec = v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				Port: testPort1,
+				TargetPort: intstr.IntOrString{
+					IntVal: testPort2,
+				},
+				Protocol: testProtocal,
+			},
 		},
 	}
 
-	msg := ConvertToPodContract(pod)
+	ports = append(ports, &PortsMessage{
+		FrontendPort: strconv.Itoa(testPort1),
+		BackendPort:  strconv.Itoa(testPort2),
+		Protocol:     testProtocal,
+	})
+	expected.PortsJson = JsonMarshal(ports)
 
-	print(msg.Name)
+	// Act
+	actual = ConvertToServiceEndpointContract(endpoints, service)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
+}
+
+func TestConvertToPodContract(t *testing.T) {
+	// Arrange - no network defined
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testName,
+			Namespace: testNamespace,
+			Tenant:    testTenant,
+		},
+		Status: v1.PodStatus{
+			HostIP: testHostIP,
+			Phase:  testPhase,
+		},
+	}
+	expected := &BuiltinsPodMessage{
+		Name:          testName,
+		HostIp:        testHostIP,
+		Namespace:     testNamespace,
+		Tenant:        testTenant,
+		ArktosNetwork: "",
+		Phase:         testPhase,
+	}
+
+	// Act
+	actual := ConvertToPodContract(pod)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
+
+	// Arrange - with network defined
+	pod.Labels = map[string]string{
+		Arktos_Network_Name: testLabelNetworkValue,
+	}
+	expected.ArktosNetwork = testLabelNetworkValue
+
+	// Act
+	actual = ConvertToPodContract(pod)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
+}
+
+func TestConvertToNodeContract(t *testing.T) {
+	// Arrange - No IP
+	node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testName,
+		},
+	}
+	expected := &BuiltinsNodeMessage{
+		Name: testName,
+	}
+
+	// Act
+	actual := ConvertToNodeContract(node)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
+
+	// Arrange - with non InternalIP
+	node.Status = v1.NodeStatus{
+		Addresses: []v1.NodeAddress{
+			{
+				Type:    ExternalIP,
+				Address: testAddress,
+			},
+		},
+	}
+
+	// Act
+	actual = ConvertToNodeContract(node)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
+
+	// Arrange - with InternalIP
+	internalAddress := v1.NodeAddress{
+		Type:    InternalIP,
+		Address: testAddress,
+	}
+	node.Status.Addresses = append(node.Status.Addresses, internalAddress)
+	expected.Ip = testAddress
+
+	// Act
+	actual = ConvertToNodeContract(node)
+
+	// Assert
+	TestCheckEqual(t, expected, actual)
 }

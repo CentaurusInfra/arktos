@@ -16,6 +16,7 @@ go_library(
         "mizar-pod-controller.go",
         "mizar-service-controller.go",
         "mizar-starter-controller.go",
+        "testutil.go",
         "util.go",
         "util_test.go",
     ],

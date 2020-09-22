@@ -26,6 +26,11 @@ const (
 	EventType_Create EventType = "Create"
 	EventType_Update EventType = "Update"
 	EventType_Delete EventType = "Delete"
+
+	InternalIP v1.NodeAddressType = "InternalIP"
+	ExternalIP v1.NodeAddressType = "ExternalIP"
+
+	Arktos_Network_Name string = "arktos.futurewei.com/network"
 )
 
 type KeyWithEventType struct {
@@ -69,7 +74,7 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Servi
 
 func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 	var network string
-	if value, exists := pod.Labels["arktos.futurewei.com/network"]; exists {
+	if value, exists := pod.Labels[Arktos_Network_Name]; exists {
 		network = value
 	} else {
 		network = ""
@@ -88,7 +93,7 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 	ip := ""
 	for _, item := range node.Status.Addresses {
-		if item.Type == "InternalIP" {
+		if item.Type == InternalIP {
 			ip = item.Address
 			break
 		}
