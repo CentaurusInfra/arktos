@@ -1,5 +1,6 @@
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +30,9 @@ import (
 type StorageClassLister interface {
 	// List lists all StorageClasses in the indexer.
 	List(selector labels.Selector) (ret []*v1.StorageClass, err error)
+	// StorageClasses returns an object that can list and get StorageClasses.
+	StorageClasses() StorageClassTenantLister
+	StorageClassesWithMultiTenancy(tenant string) StorageClassTenantLister
 	// Get retrieves the StorageClass from the index for a given name.
 	Get(name string) (*v1.StorageClass, error)
 	StorageClassListerExpansion
@@ -55,6 +59,55 @@ func (s *storageClassLister) List(selector labels.Selector) (ret []*v1.StorageCl
 // Get retrieves the StorageClass from the index for a given name.
 func (s *storageClassLister) Get(name string) (*v1.StorageClass, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(v1.Resource("storageclass"), name)
+	}
+	return obj.(*v1.StorageClass), nil
+}
+
+// StorageClasses returns an object that can list and get StorageClasses.
+func (s *storageClassLister) StorageClasses() StorageClassTenantLister {
+	return storageClassTenantLister{indexer: s.indexer, tenant: "system"}
+}
+
+func (s *storageClassLister) StorageClassesWithMultiTenancy(tenant string) StorageClassTenantLister {
+	return storageClassTenantLister{indexer: s.indexer, tenant: tenant}
+}
+
+// StorageClassTenantLister helps list and get StorageClasses.
+type StorageClassTenantLister interface {
+	// List lists all StorageClasses in the indexer for a given tenant/tenant.
+	List(selector labels.Selector) (ret []*v1.StorageClass, err error)
+	// Get retrieves the StorageClass from the indexer for a given tenant/tenant and name.
+	Get(name string) (*v1.StorageClass, error)
+	StorageClassTenantListerExpansion
+}
+
+// storageClassTenantLister implements the StorageClassTenantLister
+// interface.
+type storageClassTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+}
+
+// List lists all StorageClasses in the indexer for a given tenant.
+func (s storageClassTenantLister) List(selector labels.Selector) (ret []*v1.StorageClass, err error) {
+	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.StorageClass))
+	})
+	return ret, err
+}
+
+// Get retrieves the StorageClass from the indexer for a given tenant and name.
+func (s storageClassTenantLister) Get(name string) (*v1.StorageClass, error) {
+	key := s.tenant + "/" + name
+	if s.tenant == "system" {
+		key = name
+	}
+	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}
