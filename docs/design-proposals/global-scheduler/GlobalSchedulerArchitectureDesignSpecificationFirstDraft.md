@@ -44,8 +44,7 @@
 | 2020-08-25 |        1.0       | First version of Global Scheduler Design Doc                      | Cathy Hong Zhang |
 | 2020-09-03 |        1.1       | Add Key System Flow Design Sections                               | Cathy Hong Zhang |
 | 2020-09-16 |        1.2       | Incorporate comments and open source meeting consensus            | Cathy Hong Zhang |
-| 2020-0923  |        1.3       | Remove some design options and only keep the design options       | Cathy Hong Zhang |
-|            |                  | the team selects and will implement in the open source repository |                  |
+| 2020-0923  |        1.3       | CLean up unused design options and update some design diagrams    | Cathy Hong Zhang |
 
 # 1. Introduction
 
@@ -431,7 +430,7 @@ In our architecture design, we have a cluster Resource Collector which collects 
 
 To mitigate the scheduling latency due to scheduling failure, our Global Scheduling Framework will insert a failed VM/Container scheduling request to the start of its scheduling queue. Furthermore, this failed cluster will be removed from the VM/Container's cluster candidate list.
 
-For now, we will only implement the "resource placement" functionality of the global scheduler, thus the global scheduler will respond to the request once it selects a cluster for hosting the VM/Container request and send the request to the selected cluster.
+For now, we will only implement the "resource placement" functionality of the global scheduler, thus the global scheduler will respond to the request once it selects a cluster for hosting the VM/Container request and sends the request to the selected cluster.
 That is, it will leave the handling of scheduling failure to the cluster level scheduler and will not collect information about the eventual scheduling status of the VM/Container on the selected cluster. 
 
 ### 2.5.7 Priority Scheduling and Fair Scheduling to Avoid Security Attack
@@ -472,12 +471,12 @@ This refers to the flow from Cluster->Cluster Resource Collector->API Server->Dy
 ### 3.3.1 Push Model (Preferred Model)
 This model requires the cluster to proactively send its resource information to the Dynamic Resource Information Cache DB. In this model, the Cluster Resource Collector resides outside the Global Scheduling Framework. The Cluster Resource Collector will only send the cluster resource information when there is a resource change. If network traffic is a concern, “batch operation” can be used, i.e. resource update will be accumulated for a pre-defined interval and then sent to the Dynamic Resource Information Cache DB. This prevents injecting a burst of “update” traffic into the DB and its network when the resource change frequency is very high at some time period. This interval value should be defined to keep a good balance between “accurate in-sync of global scheduler’s Dynamic Resource Info Cache with each cluster’s actual resource info DB” and “low network traffic and database/cache access traffic”
 
-The Cluster Resource Collector can hook up to the cluster’s data store that keeps track of each node’s available capacity. It may also hoop up to the cluster’s monitoring modules. The Cluster Resource Collector should only send resource information that the global scheduling algorithm needs, such as largest available nodes’ resources, average per node allocable capacity, cluster health caliber value, etc. 
+The Cluster Resource Collector can hook up to the cluster’s data store that keeps track of each node’s available capacity. It may also hoop up to the cluster’s monitoring modules. The Cluster Resource Collector should only send resource information that the global scheduling algorithm needs, such as largest available nodes’ resources, average per node allocable capacity, cluster health caliber value, etc.
 
 The Cluster Resource Collector will interface directly with the API server and communicate with the API server in a way similar to how Kubelet communicate with the API server.  
 
 ### 3.3.2 Pull Model
-In this model, the Cluster Resource Collector is placed inside the global scheduling framework. The Cluster Resource Collector will start a timer and query/pull each cluster for its resource information, such as largest available nodes’ resources and average per node allocable capacity, every timer interval. If a cluster can not directly provide the resource information needed by the global scheduling algorithm, the Resource Collector has to query the available resource information of each node in the cluster and translate/consolidate the node information into information needed by the Scheduling algorithm and save the consolidated resource information in the Global Scheduler’s Dynamic Resource Info Cache. 
+In this model, the Cluster Resource Collector is placed inside the global scheduling framework. The Cluster Resource Collector will start a timer and query/pull each cluster for its resource information, such as largest available nodes’ resources and average per node allocable capacity, every timer interval. If a cluster can not directly provide the resource information needed by the global scheduling algorithm, the Resource Collector has to query the available resource information of each node in the cluster and translate/consolidate the node information into information needed by the Scheduling algorithm and save the consolidated resource information in the Global Scheduler’s Dynamic Resource Info Cache.
 
 The global scheduling framework has one single Cluster Resource Collector which is responsible for collecting the resource information from all clusters. This Cluster Resource Collector either runs as a separate process or thread depending on whether the schedulers run as separate processes or threads. After the Cluster Resource collector receives the resource information, it will update the Dynamic Resource Info Cache via the API Server. 
 
@@ -503,7 +502,7 @@ Replica Set of Batch does not need to be scheduled in an atomic way and does not
 # 4. Global Scheduler Deployment Model
 
 The global scheduler will be deployed as an independent self-contained platform. 
-It is a stripped-down version of Kubernetes-like platform in which the Kubernetes scheduler is replaced by a new “cluster profile partition” based global shceduler system composed of modules inside the yellow box
-and the scheduling algorithm is replaced by a new global scheduling algorithm. The global scheduler platform consists of the API server, information DB and Cache (ETCD or ignite), and the global scheduler system. 
+It is a stripped-down version of Kubernetes-like platform in which the Kubernetes scheduler is replaced by a new “cluster profile partition” based global shceduling system composed of modules inside the yellow box
+and the Kubernetes scheduling algorithm is replaced by a new global scheduling algorithm. The global scheduler platform consists of the API server, information DB and Cache (ETCD or ignite), and the global scheduling system. 
 The green box in figure 11 illustrates the global scheduler platform. Since it is an independent platform, an installation script needs to be provided for the user to install it.  
 ![image.png](/images/4.1.png)
