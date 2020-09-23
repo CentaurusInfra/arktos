@@ -56,7 +56,7 @@ func TestValidateStorageClass(t *testing.T) {
 	successCases := []storage.StorageClass{
 		{
 			// empty parameters
-			ObjectMeta:        metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:        metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner:       "kubernetes.io/foo-provisioner",
 			Parameters:        map[string]string{},
 			ReclaimPolicy:     &deleteReclaimPolicy,
@@ -64,14 +64,14 @@ func TestValidateStorageClass(t *testing.T) {
 		},
 		{
 			// nil parameters
-			ObjectMeta:        metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:        metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner:       "kubernetes.io/foo-provisioner",
 			ReclaimPolicy:     &deleteReclaimPolicy,
 			VolumeBindingMode: &immediateMode1,
 		},
 		{
 			// some parameters
-			ObjectMeta:  metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:  metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner: "kubernetes.io/foo-provisioner",
 			Parameters: map[string]string{
 				"kubernetes.io/foo-parameter": "free/form/string",
@@ -83,7 +83,7 @@ func TestValidateStorageClass(t *testing.T) {
 		},
 		{
 			// retain reclaimPolicy
-			ObjectMeta:        metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:        metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner:       "kubernetes.io/foo-provisioner",
 			ReclaimPolicy:     &retainReclaimPolicy,
 			VolumeBindingMode: &immediateMode1,
@@ -108,23 +108,23 @@ func TestValidateStorageClass(t *testing.T) {
 	}
 
 	errorCases := map[string]storage.StorageClass{
-		"tenant is present": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Tenant: "bar"},
+		"tenant is missing": {
+			ObjectMeta:    metav1.ObjectMeta{Name: "foo"},
 			Provisioner:   "kubernetes.io/foo-provisioner",
 			ReclaimPolicy: &deleteReclaimPolicy,
 		},
 		"namespace is present": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: testTenant},
 			Provisioner:   "kubernetes.io/foo-provisioner",
 			ReclaimPolicy: &deleteReclaimPolicy,
 		},
 		"invalid provisioner": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner:   "kubernetes.io/invalid/provisioner",
 			ReclaimPolicy: &deleteReclaimPolicy,
 		},
 		"invalid empty parameter name": {
-			ObjectMeta:  metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:  metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner: "kubernetes.io/foo",
 			Parameters: map[string]string{
 				"": "value",
@@ -132,18 +132,18 @@ func TestValidateStorageClass(t *testing.T) {
 			ReclaimPolicy: &deleteReclaimPolicy,
 		},
 		"provisioner: Required value": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner:   "",
 			ReclaimPolicy: &deleteReclaimPolicy,
 		},
 		"too long parameters": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner:   "kubernetes.io/foo",
 			Parameters:    longParameters,
 			ReclaimPolicy: &deleteReclaimPolicy,
 		},
 		"invalid reclaimpolicy": {
-			ObjectMeta:    metav1.ObjectMeta{Name: "foo"},
+			ObjectMeta:    metav1.ObjectMeta{Name: "foo", Tenant: testTenant},
 			Provisioner:   "kubernetes.io/foo",
 			ReclaimPolicy: &recycleReclaimPolicy,
 		},
@@ -637,7 +637,7 @@ func TestVolumeAttachmentValidationV1(t *testing.T) {
 
 func makeClass(mode *storage.VolumeBindingMode, topologies []api.TopologySelectorTerm) *storage.StorageClass {
 	return &storage.StorageClass{
-		ObjectMeta:        metav1.ObjectMeta{Name: "foo", ResourceVersion: "foo"},
+		ObjectMeta:        metav1.ObjectMeta{Name: "foo", Tenant: testTenant, ResourceVersion: "foo"},
 		Provisioner:       "kubernetes.io/foo-provisioner",
 		ReclaimPolicy:     &deleteReclaimPolicy,
 		VolumeBindingMode: mode,
