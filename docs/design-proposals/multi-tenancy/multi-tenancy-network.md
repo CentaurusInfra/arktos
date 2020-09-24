@@ -259,7 +259,7 @@ Network object specifies service IPAM as *external*:
     spec:
       type: flat
       service:
-        ipam: external
+        ipam: External
 
 (**TBD: consider support for user can provide hints about service IP address**)
 
