@@ -65,8 +65,8 @@ default   flat
 
 The output will be as follows if you set ARKTOS_NETWORK_TEMPLATE=mizar.
 ```bash
-NAME      TYPE   VPC                      PHASE   DNS
-default   vpc    system-default-network           
+NAME      TYPE    VPC                      PHASE   DNS
+default   mizar   system-default-network    
 ```
 
 6. Start the arktos-network-controller

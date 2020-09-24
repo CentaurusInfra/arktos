@@ -4,7 +4,7 @@
         "finalizers": ["arktos.futurewei.com/network"]
     },
     "spec": {
-        "type": "vpc",
+        "type": "mizar",
         "vpcID": "{{.}}-default-network"
     }
 }
