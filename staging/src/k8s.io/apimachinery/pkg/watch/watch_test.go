@@ -329,7 +329,7 @@ func TestAggregatedWatchOnError(t *testing.T) {
 
 		wg.Wait()
 		agg.Stop()
-		time.Sleep(time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 		t.Logf("Channel 1 scheduled to sent 1000 but sent %d", ch1Sent)
 		t.Logf("Channel 2 scheduled to sent 1000 but sent %d", ch2Sent)
 		assert.True(t, 1000 > ch1Sent)
