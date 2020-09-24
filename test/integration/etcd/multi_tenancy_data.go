@@ -353,7 +353,7 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 		// k8s.io/kubernetes/pkg/apis/storage/v1beta1
 		gvr("storage.k8s.io", "v1beta1", "storageclasses"): {
 			Stub:             `{"metadata": {"name": "sc1"}, "provisioner": "aws"}`,
-			ExpectedEtcdPath: "/registry/storageclasses/sc1",
+			ExpectedEtcdPath: "/registry/storageclasses/" + tenant + "/sc1",
 			ExpectedGVK:      gvkP("storage.k8s.io", "v1", "StorageClass"),
 		},
 		// --
@@ -361,7 +361,7 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 		// k8s.io/kubernetes/pkg/apis/storage/v1
 		gvr("storage.k8s.io", "v1", "storageclasses"): {
 			Stub:             `{"metadata": {"name": "sc2"}, "provisioner": "aws"}`,
-			ExpectedEtcdPath: "/registry/storageclasses/sc2",
+			ExpectedEtcdPath: "/registry/storageclasses/" + tenant + "/sc2",
 		},
 		// --
 

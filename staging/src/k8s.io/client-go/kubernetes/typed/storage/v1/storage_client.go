@@ -46,7 +46,11 @@ type StorageV1Client struct {
 }
 
 func (c *StorageV1Client) StorageClasses() StorageClassInterface {
-	return newStorageClasses(c)
+	return newStorageClassesWithMultiTenancy(c, "system")
+}
+
+func (c *StorageV1Client) StorageClassesWithMultiTenancy(tenant string) StorageClassInterface {
+	return newStorageClassesWithMultiTenancy(c, tenant)
 }
 
 func (c *StorageV1Client) VolumeAttachments() VolumeAttachmentInterface {

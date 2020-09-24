@@ -56,7 +56,11 @@ func (c *StorageV1beta1Client) CSINodes() CSINodeInterface {
 }
 
 func (c *StorageV1beta1Client) StorageClasses() StorageClassInterface {
-	return newStorageClasses(c)
+	return newStorageClassesWithMultiTenancy(c, "system")
+}
+
+func (c *StorageV1beta1Client) StorageClassesWithMultiTenancy(tenant string) StorageClassInterface {
+	return newStorageClassesWithMultiTenancy(c, tenant)
 }
 
 func (c *StorageV1beta1Client) VolumeAttachments() VolumeAttachmentInterface {

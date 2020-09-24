@@ -32,6 +32,7 @@ import (
 // FakeStorageClasses implements StorageClassInterface
 type FakeStorageClasses struct {
 	Fake *FakeStorageV1
+	te   string
 }
 
 var storageclassesResource = schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "storageclasses"}
@@ -41,7 +42,8 @@ var storageclassesKind = schema.GroupVersionKind{Group: "storage.k8s.io", Versio
 // Get takes name of the storageClass, and returns the corresponding storageClass object, and an error if there is any.
 func (c *FakeStorageClasses) Get(name string, options v1.GetOptions) (result *storagev1.StorageClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(storageclassesResource, name), &storagev1.StorageClass{})
+		Invokes(testing.NewTenantGetAction(storageclassesResource, name, c.te), &storagev1.StorageClass{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -52,7 +54,8 @@ func (c *FakeStorageClasses) Get(name string, options v1.GetOptions) (result *st
 // List takes label and field selectors, and returns the list of StorageClasses that match those selectors.
 func (c *FakeStorageClasses) List(opts v1.ListOptions) (result *storagev1.StorageClassList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(storageclassesResource, storageclassesKind, opts), &storagev1.StorageClassList{})
+		Invokes(testing.NewTenantListAction(storageclassesResource, storageclassesKind, opts, c.te), &storagev1.StorageClassList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -74,7 +77,8 @@ func (c *FakeStorageClasses) List(opts v1.ListOptions) (result *storagev1.Storag
 func (c *FakeStorageClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 	aggWatch := watch.NewAggregatedWatcher()
 	watcher, err := c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(storageclassesResource, opts))
+		InvokesWatch(testing.NewTenantWatchAction(storageclassesResource, opts, c.te))
+
 	aggWatch.AddWatchInterface(watcher, err)
 	return aggWatch
 }
@@ -82,7 +86,8 @@ func (c *FakeStorageClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInt
 // Create takes the representation of a storageClass and creates it.  Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *FakeStorageClasses) Create(storageClass *storagev1.StorageClass) (result *storagev1.StorageClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(storageclassesResource, storageClass), &storagev1.StorageClass{})
+		Invokes(testing.NewTenantCreateAction(storageclassesResource, storageClass, c.te), &storagev1.StorageClass{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -93,7 +98,8 @@ func (c *FakeStorageClasses) Create(storageClass *storagev1.StorageClass) (resul
 // Update takes the representation of a storageClass and updates it. Returns the server's representation of the storageClass, and an error, if there is any.
 func (c *FakeStorageClasses) Update(storageClass *storagev1.StorageClass) (result *storagev1.StorageClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(storageclassesResource, storageClass), &storagev1.StorageClass{})
+		Invokes(testing.NewTenantUpdateAction(storageclassesResource, storageClass, c.te), &storagev1.StorageClass{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -104,14 +110,16 @@ func (c *FakeStorageClasses) Update(storageClass *storagev1.StorageClass) (resul
 // Delete takes name of the storageClass and deletes it. Returns an error if one occurs.
 func (c *FakeStorageClasses) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(storageclassesResource, name), &storagev1.StorageClass{})
+		Invokes(testing.NewTenantDeleteAction(storageclassesResource, name, c.te), &storagev1.StorageClass{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeStorageClasses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 
-	action := testing.NewRootDeleteCollectionAction(storageclassesResource, listOptions)
+	action := testing.NewTenantDeleteCollectionAction(storageclassesResource, listOptions, c.te)
+
 	_, err := c.Fake.Invokes(action, &storagev1.StorageClassList{})
 	return err
 }
@@ -119,7 +127,8 @@ func (c *FakeStorageClasses) DeleteCollection(options *v1.DeleteOptions, listOpt
 // Patch applies the patch and returns the patched storageClass.
 func (c *FakeStorageClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *storagev1.StorageClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(storageclassesResource, name, pt, data, subresources...), &storagev1.StorageClass{})
+		Invokes(testing.NewTenantPatchSubresourceAction(storageclassesResource, c.te, name, pt, data, subresources...), &storagev1.StorageClass{})
+
 	if obj == nil {
 		return nil, err
 	}

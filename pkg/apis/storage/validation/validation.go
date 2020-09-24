@@ -48,7 +48,7 @@ const (
 
 // ValidateStorageClass validates a StorageClass.
 func ValidateStorageClass(storageClass *storage.StorageClass) field.ErrorList {
-	allErrs := apivalidation.ValidateObjectMeta(&storageClass.ObjectMeta, false, false, apivalidation.ValidateClassName, field.NewPath("metadata"))
+	allErrs := apivalidation.ValidateObjectMeta(&storageClass.ObjectMeta, true, false, apivalidation.ValidateClassName, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateProvisioner(storageClass.Provisioner, field.NewPath("provisioner"))...)
 	allErrs = append(allErrs, validateParameters(storageClass.Parameters, field.NewPath("parameters"))...)
 	allErrs = append(allErrs, validateReclaimPolicy(storageClass.ReclaimPolicy, field.NewPath("reclaimPolicy"))...)
