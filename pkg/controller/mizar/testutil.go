@@ -18,15 +18,17 @@ import (
 	"testing"
 )
 
-func TestCheckEqual(t *testing.T, expected interface{}, actual interface{}) {
-	expectedJson := JsonMarshal(expected)
-	actualJson := JsonMarshal(actual)
+func testCheckEqual(t *testing.T, expected interface{}, actual interface{}) {
+	expectedJson := jsonMarshal(expected)
+	actualJson := jsonMarshal(actual)
 	if actualJson != expectedJson {
 		t.Fatalf("actual is not same as expected. actual: %s, expected: %s", actualJson, expectedJson)
 	}
 }
 
-func JsonMarshal(v interface{}) string {
+func jsonMarshal(v interface{}) string {
 	encoded, _ := json.Marshal(v)
 	return string(encoded)
 }
+
+func alwaysReady() bool { return true }

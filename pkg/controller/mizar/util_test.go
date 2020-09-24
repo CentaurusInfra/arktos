@@ -56,15 +56,15 @@ func TestConvertToServiceEndpointContract(t *testing.T) {
 		Name:           testName,
 		Namespace:      testNamespace,
 		Tenant:         testTenant,
-		BackendIpsJson: JsonMarshal(backendIps),
-		PortsJson:      JsonMarshal(ports),
+		BackendIpsJson: jsonMarshal(backendIps),
+		PortsJson:      jsonMarshal(ports),
 	}
 
 	// Act
 	actual := ConvertToServiceEndpointContract(endpoints, service)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 
 	// Arrange - with backendIps
 	endpoints.Subsets = []v1.EndpointSubset{
@@ -77,13 +77,13 @@ func TestConvertToServiceEndpointContract(t *testing.T) {
 		},
 	}
 	backendIps = append(backendIps, testIP)
-	expected.BackendIpsJson = JsonMarshal(backendIps)
+	expected.BackendIpsJson = jsonMarshal(backendIps)
 
 	// Act
 	actual = ConvertToServiceEndpointContract(endpoints, service)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 
 	// Arrange - with ports
 	service.Spec = v1.ServiceSpec{
@@ -103,13 +103,13 @@ func TestConvertToServiceEndpointContract(t *testing.T) {
 		BackendPort:  strconv.Itoa(testPort2),
 		Protocol:     testProtocal,
 	})
-	expected.PortsJson = JsonMarshal(ports)
+	expected.PortsJson = jsonMarshal(ports)
 
 	// Act
 	actual = ConvertToServiceEndpointContract(endpoints, service)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 }
 
 func TestConvertToPodContract(t *testing.T) {
@@ -138,7 +138,7 @@ func TestConvertToPodContract(t *testing.T) {
 	actual := ConvertToPodContract(pod)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 
 	// Arrange - with network defined
 	pod.Labels = map[string]string{
@@ -150,7 +150,7 @@ func TestConvertToPodContract(t *testing.T) {
 	actual = ConvertToPodContract(pod)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 }
 
 func TestConvertToNodeContract(t *testing.T) {
@@ -168,7 +168,7 @@ func TestConvertToNodeContract(t *testing.T) {
 	actual := ConvertToNodeContract(node)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 
 	// Arrange - with non InternalIP
 	node.Status = v1.NodeStatus{
@@ -184,7 +184,7 @@ func TestConvertToNodeContract(t *testing.T) {
 	actual = ConvertToNodeContract(node)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 
 	// Arrange - with InternalIP
 	internalAddress := v1.NodeAddress{
@@ -198,5 +198,5 @@ func TestConvertToNodeContract(t *testing.T) {
 	actual = ConvertToNodeContract(node)
 
 	// Assert
-	TestCheckEqual(t, expected, actual)
+	testCheckEqual(t, expected, actual)
 }

@@ -13,6 +13,7 @@ go_library(
         "mizar-arktos-network-controller.go",
         "mizar-endpoints-controller.go",
         "mizar-node-controller.go",
+        "mizar_node_controller_test.go",
         "mizar-pod-controller.go",
         "mizar-service-controller.go",
         "mizar-starter-controller.go",
