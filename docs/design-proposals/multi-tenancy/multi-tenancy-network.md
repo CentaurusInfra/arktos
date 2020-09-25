@@ -257,9 +257,9 @@ Network object specifies service IPAM as *external*:
     metadata:
       name: default
     spec:
-      type: flat
+      type: mizar
       service:
-        ipam: external
+        ipam: External
 
 (**TBD: consider support for user can provide hints about service IP address**)
 

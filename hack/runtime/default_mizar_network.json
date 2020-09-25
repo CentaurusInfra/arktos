@@ -1,0 +1,10 @@
+{
+    "metadata": {
+        "name": "default",
+        "finalizers": ["arktos.futurewei.com/network"]
+    },
+    "spec": {
+        "type": "mizar",
+        "vpcID": "{{.}}-default-network"
+    }
+}
