@@ -19,7 +19,7 @@ Also, please ensure the hostname and its ip address in /etc/hosts. For instance,
 ```
 If this machine will be used as the master of a multi-node cluster, please set adequate permissive security groups. Fro AWS VM in this lab, we allowed inbound rule of ALL-Traffic 0.0.0.0/0.
 
-If mizar cni plugin is to be used, please replace containerd following the instruction of [multi-tansnt aware containerd](https://github.com/futurewei-cloud/containerd/releases/tag/tenant-cni-args).
+If mizar cni plugin is to be used, please replace containerd following the instruction of [multi-tenant aware containerd](https://github.com/futurewei-cloud/containerd/releases/tag/tenant-cni-args).
 
 2. Clean up some left-over network plugin and binaries.
 Delete all the files under the following directories:
