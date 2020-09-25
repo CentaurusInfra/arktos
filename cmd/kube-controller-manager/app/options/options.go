@@ -66,7 +66,6 @@ type KubeControllerManagerOptions struct {
 	DaemonSetController              *DaemonSetControllerOptions
 	DeploymentController             *DeploymentControllerOptions
 	DeprecatedFlags                  *DeprecatedControllerOptions
-	EndpointController               *EndpointControllerOptions
 	GarbageCollectorController       *GarbageCollectorControllerOptions
 	HPAController                    *HPAControllerOptions
 	JobController                    *JobControllerOptions
@@ -119,9 +118,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		DeprecatedFlags: &DeprecatedControllerOptions{
 			&componentConfig.DeprecatedController,
-		},
-		EndpointController: &EndpointControllerOptions{
-			&componentConfig.EndpointController,
 		},
 		GarbageCollectorController: &GarbageCollectorControllerOptions{
 			&componentConfig.GarbageCollectorController,
@@ -224,7 +220,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.DeploymentController.AddFlags(fss.FlagSet("deployment controller"))
 	s.DaemonSetController.AddFlags(fss.FlagSet("daemonset controller"))
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
-	s.EndpointController.AddFlags(fss.FlagSet("endpoint controller"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.HPAController.AddFlags(fss.FlagSet("horizontalpodautoscaling controller"))
 	s.JobController.AddFlags(fss.FlagSet("job controller"))
@@ -269,9 +264,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.DeprecatedFlags.ApplyTo(&c.ComponentConfig.DeprecatedController); err != nil {
-		return err
-	}
-	if err := s.EndpointController.ApplyTo(&c.ComponentConfig.EndpointController); err != nil {
 		return err
 	}
 	if err := s.GarbageCollectorController.ApplyTo(&c.ComponentConfig.GarbageCollectorController); err != nil {
@@ -353,7 +345,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.DaemonSetController.Validate()...)
 	errs = append(errs, s.DeploymentController.Validate()...)
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
-	errs = append(errs, s.EndpointController.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
 	errs = append(errs, s.HPAController.Validate()...)
 	errs = append(errs, s.JobController.Validate()...)

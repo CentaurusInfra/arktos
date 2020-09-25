@@ -106,9 +106,6 @@ type KubeControllerManagerConfiguration struct {
 	// DeprecatedControllerConfiguration holds configuration for some deprecated
 	// features.
 	DeprecatedController DeprecatedControllerConfiguration
-	// EndpointControllerConfiguration holds configuration for EndpointController
-	// related features.
-	EndpointController EndpointControllerConfiguration
 	// GarbageCollectorControllerConfiguration holds configuration for
 	// GarbageCollectorController related features.
 	GarbageCollectorController GarbageCollectorControllerConfiguration
@@ -275,14 +272,6 @@ type DeprecatedControllerConfiguration struct {
 	// registerRetryCount is the number of retries for initial node registration.
 	// Retry interval equals node-sync-period.
 	RegisterRetryCount int32
-}
-
-// EndpointControllerConfiguration contains elements describing EndpointController.
-type EndpointControllerConfiguration struct {
-	// concurrentEndpointSyncs is the number of endpoint syncing operations
-	// that will be done concurrently. Larger number = faster endpoint updating,
-	// but more CPU (and network) load.
-	ConcurrentEndpointSyncs int32
 }
 
 // GarbageCollectorControllerConfiguration contains elements describing GarbageCollectorController.

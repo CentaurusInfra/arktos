@@ -42,7 +42,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/controller"
 	cloudcontroller "k8s.io/kubernetes/pkg/controller/cloud"
-	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	networkcontroller "k8s.io/kubernetes/pkg/controller/network"
@@ -263,16 +262,6 @@ func startVolumeExpandController(ctx ControllerContext) (http.Handler, bool, err
 		return nil, true, nil
 	}
 	return nil, false, nil
-}
-
-func startEndpointController(ctx ControllerContext) (http.Handler, bool, error) {
-	go endpointcontroller.NewEndpointController(
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.InformerFactory.Core().V1().Services(),
-		ctx.InformerFactory.Core().V1().Endpoints(),
-		ctx.ClientBuilder.ClientOrDie("endpoint-controller"),
-	).Run(int(ctx.ComponentConfig.EndpointController.ConcurrentEndpointSyncs), ctx.Stop)
-	return nil, true, nil
 }
 
 func startReplicationController(ctx ControllerContext) (http.Handler, bool, error) {
