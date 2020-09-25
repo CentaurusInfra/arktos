@@ -75,8 +75,6 @@ type KubeControllerManagerOptions struct {
 	PersistentVolumeBinderController *PersistentVolumeBinderControllerOptions
 	PodGCController                  *PodGCControllerOptions
 	ReplicaSetController             *ReplicaSetControllerOptions
-	ReplicationController            *ReplicationControllerOptions
-	ResourceQuotaController          *ResourceQuotaControllerOptions
 	SAController                     *SAControllerOptions
 	TenantController                 *TenantControllerOptions
 	TTLAfterFinishedController       *TTLAfterFinishedControllerOptions
@@ -145,12 +143,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		ReplicaSetController: &ReplicaSetControllerOptions{
 			&componentConfig.ReplicaSetController,
-		},
-		ReplicationController: &ReplicationControllerOptions{
-			&componentConfig.ReplicationController,
-		},
-		ResourceQuotaController: &ResourceQuotaControllerOptions{
-			&componentConfig.ResourceQuotaController,
 		},
 		SAController: &SAControllerOptions{
 			&componentConfig.SAController,
@@ -229,8 +221,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.PersistentVolumeBinderController.AddFlags(fss.FlagSet("persistentvolume-binder controller"))
 	s.PodGCController.AddFlags(fss.FlagSet("podgc controller"))
 	s.ReplicaSetController.AddFlags(fss.FlagSet("replicaset controller"))
-	s.ReplicationController.AddFlags(fss.FlagSet("replicationcontroller"))
-	s.ResourceQuotaController.AddFlags(fss.FlagSet("resourcequota controller"))
 	s.SAController.AddFlags(fss.FlagSet("serviceaccount controller"))
 	s.TenantController.AddFlags(fss.FlagSet("tenant controller"))
 	s.TTLAfterFinishedController.AddFlags(fss.FlagSet("ttl-after-finished controller"))
@@ -293,12 +283,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.ReplicaSetController.ApplyTo(&c.ComponentConfig.ReplicaSetController); err != nil {
 		return err
 	}
-	if err := s.ReplicationController.ApplyTo(&c.ComponentConfig.ReplicationController); err != nil {
-		return err
-	}
-	if err := s.ResourceQuotaController.ApplyTo(&c.ComponentConfig.ResourceQuotaController); err != nil {
-		return err
-	}
 	if err := s.SAController.ApplyTo(&c.ComponentConfig.SAController); err != nil {
 		return err
 	}
@@ -354,8 +338,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.PersistentVolumeBinderController.Validate()...)
 	errs = append(errs, s.PodGCController.Validate()...)
 	errs = append(errs, s.ReplicaSetController.Validate()...)
-	errs = append(errs, s.ReplicationController.Validate()...)
-	errs = append(errs, s.ResourceQuotaController.Validate()...)
 	errs = append(errs, s.SAController.Validate()...)
 	errs = append(errs, s.ServiceController.Validate()...)
 	errs = append(errs, s.TenantController.Validate()...)

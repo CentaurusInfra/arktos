@@ -29,8 +29,6 @@ limitations under the License.
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/podautoscaler/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/podgc/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/replicaset/config/v1alpha1
-// +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/replication/config/v1alpha1
-// +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/resourcequota/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/service/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/serviceaccount/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/tenant/config/v1alpha1

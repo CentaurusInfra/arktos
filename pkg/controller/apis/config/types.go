@@ -31,8 +31,6 @@ import (
 	poautosclerconfig "k8s.io/kubernetes/pkg/controller/podautoscaler/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
-	replicationconfig "k8s.io/kubernetes/pkg/controller/replication/config"
-	resourcequotaconfig "k8s.io/kubernetes/pkg/controller/resourcequota/config"
 	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
@@ -92,12 +90,6 @@ type KubeControllerManagerConfiguration struct {
 	PodGCController podgcconfig.PodGCControllerConfiguration
 	// ReplicaSetControllerConfiguration holds configuration for ReplicaSet related features.
 	ReplicaSetController replicasetconfig.ReplicaSetControllerConfiguration
-	// ReplicationControllerConfiguration holds configuration for
-	// ReplicationController related features.
-	ReplicationController replicationconfig.ReplicationControllerConfiguration
-	// ResourceQuotaControllerConfiguration holds configuration for
-	// ResourceQuotaController related features.
-	ResourceQuotaController resourcequotaconfig.ResourceQuotaControllerConfiguration
 	// SAControllerConfiguration holds configuration for ServiceAccountController
 	// related features.
 	SAController serviceaccountconfig.SAControllerConfiguration

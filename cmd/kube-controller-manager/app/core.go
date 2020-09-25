@@ -40,7 +40,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/controller"
+	// "k8s.io/kubernetes/pkg/controller"
 	cloudcontroller "k8s.io/kubernetes/pkg/controller/cloud"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
@@ -49,8 +49,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam"
 	lifecyclecontroller "k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	"k8s.io/kubernetes/pkg/controller/podgc"
-	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
-	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
@@ -64,9 +62,9 @@ import (
 	"k8s.io/kubernetes/pkg/controller/volume/pvcprotection"
 	"k8s.io/kubernetes/pkg/controller/volume/pvprotection"
 	"k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/quota/v1/generic"
-	quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
-	"k8s.io/kubernetes/pkg/util/metrics"
+	// "k8s.io/kubernetes/pkg/quota/v1/generic"
+	// quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
+	// "k8s.io/kubernetes/pkg/util/metrics"
 )
 
 func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -264,16 +262,6 @@ func startVolumeExpandController(ctx ControllerContext) (http.Handler, bool, err
 	return nil, false, nil
 }
 
-func startReplicationController(ctx ControllerContext) (http.Handler, bool, error) {
-	go replicationcontroller.NewReplicationManager(
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.InformerFactory.Core().V1().ReplicationControllers(),
-		ctx.ClientBuilder.ClientOrDie("replication-controller"),
-		replicationcontroller.BurstReplicas,
-	).Run(int(ctx.ComponentConfig.ReplicationController.ConcurrentRCSyncs), ctx.Stop)
-	return nil, true, nil
-}
-
 func startPodGCController(ctx ControllerContext) (http.Handler, bool, error) {
 	go podgc.NewPodGC(
 		ctx.ClientBuilder.ClientOrDie("pod-garbage-collector"),
@@ -288,41 +276,6 @@ func startVMPodController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.ClientBuilder.ClientOrDie("vm-pod-controller"),
 		ctx.InformerFactory.Core().V1().Pods(),
 	).Run(ctx.Stop)
-	return nil, true, nil
-}
-
-func startResourceQuotaController(ctx ControllerContext) (http.Handler, bool, error) {
-	resourceQuotaControllerClient := ctx.ClientBuilder.ClientOrDie("resourcequota-controller")
-	discoveryFunc := resourceQuotaControllerClient.Discovery().ServerPreferredNamespacedResources
-	listerFuncForResource := generic.ListerFuncForResourceFunc(ctx.InformerFactory.ForResource)
-	quotaConfiguration := quotainstall.NewQuotaConfigurationForControllers(listerFuncForResource)
-
-	resourceQuotaControllerOptions := &resourcequotacontroller.ResourceQuotaControllerOptions{
-		QuotaClient:               resourceQuotaControllerClient.CoreV1(),
-		ResourceQuotaInformer:     ctx.InformerFactory.Core().V1().ResourceQuotas(),
-		ResyncPeriod:              controller.StaticResyncPeriodFunc(ctx.ComponentConfig.ResourceQuotaController.ResourceQuotaSyncPeriod.Duration),
-		InformerFactory:           ctx.GenericInformerFactory,
-		ReplenishmentResyncPeriod: ctx.ResyncPeriod,
-		DiscoveryFunc:             discoveryFunc,
-		IgnoredResourcesFunc:      quotaConfiguration.IgnoredResources,
-		InformersStarted:          ctx.InformersStarted,
-		Registry:                  generic.NewRegistry(quotaConfiguration.Evaluators()),
-	}
-	if resourceQuotaControllerClient.CoreV1().RESTClient().GetRateLimiter() != nil {
-		if err := metrics.RegisterMetricAndTrackRateLimiterUsage("resource_quota_controller", resourceQuotaControllerClient.CoreV1().RESTClient().GetRateLimiter()); err != nil {
-			return nil, true, err
-		}
-	}
-
-	resourceQuotaController, err := resourcequotacontroller.NewResourceQuotaController(resourceQuotaControllerOptions)
-	if err != nil {
-		return nil, false, err
-	}
-	go resourceQuotaController.Run(int(ctx.ComponentConfig.ResourceQuotaController.ConcurrentResourceQuotaSyncs), ctx.Stop)
-
-	// Periodically the quota controller to detect new resource types
-	go resourceQuotaController.Sync(discoveryFunc, 30*time.Second, ctx.Stop)
-
 	return nil, true, nil
 }
 

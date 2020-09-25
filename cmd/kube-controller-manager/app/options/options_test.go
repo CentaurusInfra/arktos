@@ -43,8 +43,6 @@ import (
 	poautosclerconfig "k8s.io/kubernetes/pkg/controller/podautoscaler/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
-	replicationconfig "k8s.io/kubernetes/pkg/controller/replication/config"
-	resourcequotaconfig "k8s.io/kubernetes/pkg/controller/resourcequota/config"
 	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
@@ -75,10 +73,8 @@ func TestAddFlags(t *testing.T) {
 		"--concurrent-gc-syncs=30",
 		"--concurrent-namespace-syncs=20",
 		"--concurrent-replicaset-syncs=10",
-		"--concurrent-resource-quota-syncs=10",
 		"--concurrent-service-syncs=2",
 		"--concurrent-serviceaccount-token-syncs=10",
-		"--concurrent_rc_syncs=10",
 		"--configure-cloud-routes=false",
 		"--contention-profiling=true",
 		"--controller-start-interval=2m",
@@ -124,7 +120,6 @@ func TestAddFlags(t *testing.T) {
 		"--pv-recycler-minimum-timeout-nfs=200",
 		"--pv-recycler-timeout-increment-hostpath=45",
 		"--pvclaimbinder-sync-period=30s",
-		"--resource-quota-sync-period=10m",
 		"--route-reconciliation-period=30s",
 		"--secondary-node-eviction-rate=0.05",
 		"--service-account-private-key-file=/service-account-private-key",
@@ -298,17 +293,6 @@ func TestAddFlags(t *testing.T) {
 		ReplicaSetController: &ReplicaSetControllerOptions{
 			&replicasetconfig.ReplicaSetControllerConfiguration{
 				ConcurrentRSSyncs: 10,
-			},
-		},
-		ReplicationController: &ReplicationControllerOptions{
-			&replicationconfig.ReplicationControllerConfiguration{
-				ConcurrentRCSyncs: 10,
-			},
-		},
-		ResourceQuotaController: &ResourceQuotaControllerOptions{
-			&resourcequotaconfig.ResourceQuotaControllerConfiguration{
-				ResourceQuotaSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
-				ConcurrentResourceQuotaSyncs: 10,
 			},
 		},
 		SAController: &SAControllerOptions{

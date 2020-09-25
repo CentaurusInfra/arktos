@@ -130,12 +130,6 @@ type KubeControllerManagerConfiguration struct {
 	PodGCController PodGCControllerConfiguration
 	// ReplicaSetControllerConfiguration holds configuration for ReplicaSet related features.
 	ReplicaSetController ReplicaSetControllerConfiguration
-	// ReplicationControllerConfiguration holds configuration for
-	// ReplicationController related features.
-	ReplicationController ReplicationControllerConfiguration
-	// ResourceQuotaControllerConfiguration holds configuration for
-	// ResourceQuotaController related features.
-	ResourceQuotaController ResourceQuotaControllerConfiguration
 	// SAControllerConfiguration holds configuration for ServiceAccountController
 	// related features.
 	SAController SAControllerConfiguration
@@ -392,25 +386,6 @@ type ReplicaSetControllerConfiguration struct {
 	// concurrently. Larger number = more responsive replica  management, but more
 	// CPU (and network) load.
 	ConcurrentRSSyncs int32
-}
-
-// ReplicationControllerConfiguration contains elements describing ReplicationController.
-type ReplicationControllerConfiguration struct {
-	// concurrentRCSyncs is the number of replication controllers that are
-	// allowed to sync concurrently. Larger number = more responsive replica
-	// management, but more CPU (and network) load.
-	ConcurrentRCSyncs int32
-}
-
-// ResourceQuotaControllerConfiguration contains elements describing ResourceQuotaController.
-type ResourceQuotaControllerConfiguration struct {
-	// resourceQuotaSyncPeriod is the period for syncing quota usage status
-	// in the system.
-	ResourceQuotaSyncPeriod metav1.Duration
-	// concurrentResourceQuotaSyncs is the number of resource quotas that are
-	// allowed to sync concurrently. Larger number = more responsive quota
-	// management, but more CPU (and network) load.
-	ConcurrentResourceQuotaSyncs int32
 }
 
 // SAControllerConfiguration contains elements describing ServiceAccountController.
