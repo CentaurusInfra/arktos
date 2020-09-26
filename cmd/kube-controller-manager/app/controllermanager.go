@@ -388,7 +388,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["garbagecollector"] = startGarbageCollectorController
 	//controllers["deployment"] = startDeploymentController
 	//controllers["replicaset"] = startReplicaSetController
-	controllers["horizontalpodautoscaling"] = startHPAController
 	controllers["disruption"] = startDisruptionController
 	controllers["statefulset"] = startStatefulSetController
 	controllers["csrsigning"] = startCSRSigningController

@@ -66,7 +66,6 @@ type KubeControllerManagerOptions struct {
 	DeploymentController             *DeploymentControllerOptions
 	DeprecatedFlags                  *DeprecatedControllerOptions
 	GarbageCollectorController       *GarbageCollectorControllerOptions
-	HPAController                    *HPAControllerOptions
 	NamespaceController              *NamespaceControllerOptions
 	PersistentVolumeBinderController *PersistentVolumeBinderControllerOptions
 	PodGCController                  *PodGCControllerOptions
@@ -111,9 +110,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		GarbageCollectorController: &GarbageCollectorControllerOptions{
 			&componentConfig.GarbageCollectorController,
-		},
-		HPAController: &HPAControllerOptions{
-			&componentConfig.HPAController,
 		},
 		NamespaceController: &NamespaceControllerOptions{
 			&componentConfig.NamespaceController,
@@ -192,7 +188,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.DeploymentController.AddFlags(fss.FlagSet("deployment controller"))
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
-	s.HPAController.AddFlags(fss.FlagSet("horizontalpodautoscaling controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
 	s.PersistentVolumeBinderController.AddFlags(fss.FlagSet("persistentvolume-binder controller"))
 	s.PodGCController.AddFlags(fss.FlagSet("podgc controller"))
@@ -229,9 +224,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.GarbageCollectorController.ApplyTo(&c.ComponentConfig.GarbageCollectorController); err != nil {
-		return err
-	}
-	if err := s.HPAController.ApplyTo(&c.ComponentConfig.HPAController); err != nil {
 		return err
 	}
 	if err := s.NamespaceController.ApplyTo(&c.ComponentConfig.NamespaceController); err != nil {
@@ -289,7 +281,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.DeploymentController.Validate()...)
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
-	errs = append(errs, s.HPAController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
 	errs = append(errs, s.PersistentVolumeBinderController.Validate()...)
 	errs = append(errs, s.PodGCController.Validate()...)

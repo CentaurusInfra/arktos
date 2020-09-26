@@ -36,7 +36,6 @@ import (
 	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
-	poautosclerconfig "k8s.io/kubernetes/pkg/controller/podautoscaler/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
 	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
@@ -81,12 +80,6 @@ func TestAddFlags(t *testing.T) {
 		"--enable-hostpath-provisioner=true",
 		"--experimental-cluster-signing-duration=10h",
 		"--flex-volume-plugin-dir=/flex-volume-plugin",
-		"--horizontal-pod-autoscaler-downscale-delay=2m",
-		"--horizontal-pod-autoscaler-sync-period=45s",
-		"--horizontal-pod-autoscaler-upscale-delay=1m",
-		"--horizontal-pod-autoscaler-downscale-stabilization=3m",
-		"--horizontal-pod-autoscaler-cpu-initialization-period=90s",
-		"--horizontal-pod-autoscaler-initial-readiness-delay=50s",
 		"--http2-max-streams-per-connection=47",
 		"--kube-api-burst=100",
 		"--kube-api-content-type=application/json",
@@ -206,18 +199,6 @@ func TestAddFlags(t *testing.T) {
 					{Group: "", Resource: "events"},
 				},
 				EnableGarbageCollector: false,
-			},
-		},
-		HPAController: &HPAControllerOptions{
-			&poautosclerconfig.HPAControllerConfiguration{
-				HorizontalPodAutoscalerSyncPeriod:                   metav1.Duration{Duration: 45 * time.Second},
-				HorizontalPodAutoscalerUpscaleForbiddenWindow:       metav1.Duration{Duration: 1 * time.Minute},
-				HorizontalPodAutoscalerDownscaleForbiddenWindow:     metav1.Duration{Duration: 2 * time.Minute},
-				HorizontalPodAutoscalerDownscaleStabilizationWindow: metav1.Duration{Duration: 3 * time.Minute},
-				HorizontalPodAutoscalerCPUInitializationPeriod:      metav1.Duration{Duration: 90 * time.Second},
-				HorizontalPodAutoscalerInitialReadinessDelay:        metav1.Duration{Duration: 50 * time.Second},
-				HorizontalPodAutoscalerTolerance:                    0.1,
-				HorizontalPodAutoscalerUseRESTClients:               true,
 			},
 		},
 		NamespaceController: &NamespaceControllerOptions{
