@@ -57,8 +57,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach"
 	"k8s.io/kubernetes/pkg/controller/volume/expand"
 	persistentvolumecontroller "k8s.io/kubernetes/pkg/controller/volume/persistentvolume"
-	"k8s.io/kubernetes/pkg/controller/volume/pvcprotection"
-	"k8s.io/kubernetes/pkg/controller/volume/pvprotection"
 	"k8s.io/kubernetes/pkg/features"
 	// "k8s.io/kubernetes/pkg/quota/v1/generic"
 	// quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
@@ -414,25 +412,6 @@ func startGarbageCollectorController(ctx ControllerContext) (http.Handler, bool,
 	go garbageCollector.Sync(gcClientset.Discovery(), 30*time.Second, ctx.Stop)
 
 	return garbagecollector.NewDebugHandler(garbageCollector), true, nil
-}
-
-func startPVCProtectionController(ctx ControllerContext) (http.Handler, bool, error) {
-	go pvcprotection.NewPVCProtectionController(
-		ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ClientBuilder.ClientOrDie("pvc-protection-controller"),
-		utilfeature.DefaultFeatureGate.Enabled(features.StorageObjectInUseProtection),
-	).Run(1, ctx.Stop)
-	return nil, true, nil
-}
-
-func startPVProtectionController(ctx ControllerContext) (http.Handler, bool, error) {
-	go pvprotection.NewPVProtectionController(
-		ctx.InformerFactory.Core().V1().PersistentVolumes(),
-		ctx.ClientBuilder.ClientOrDie("pv-protection-controller"),
-		utilfeature.DefaultFeatureGate.Enabled(features.StorageObjectInUseProtection),
-	).Run(1, ctx.Stop)
-	return nil, true, nil
 }
 
 func startNetworkController(ctx ControllerContext) (http.Handler, bool, error) {
