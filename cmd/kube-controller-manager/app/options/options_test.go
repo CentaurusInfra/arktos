@@ -36,7 +36,6 @@ import (
 	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
-	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
 	poautosclerconfig "k8s.io/kubernetes/pkg/controller/podautoscaler/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
@@ -80,7 +79,6 @@ func TestAddFlags(t *testing.T) {
 		"--enable-dynamic-provisioning=false",
 		"--enable-garbage-collector=false",
 		"--enable-hostpath-provisioner=true",
-		"--enable-taint-manager=false",
 		"--experimental-cluster-signing-duration=10h",
 		"--flex-volume-plugin-dir=/flex-volume-plugin",
 		"--horizontal-pod-autoscaler-downscale-delay=2m",
@@ -94,7 +92,6 @@ func TestAddFlags(t *testing.T) {
 		"--kube-api-content-type=application/json",
 		"--kube-api-qps=50.0",
 		"--kubeconfig=/kubeconfig",
-		"--large-cluster-size-threshold=100",
 		"--leader-elect=false",
 		"--leader-elect-lease-duration=30s",
 		"--leader-elect-renew-deadline=15s",
@@ -103,11 +100,7 @@ func TestAddFlags(t *testing.T) {
 		"--master=192.168.4.20",
 		"--min-resync-period=8h",
 		"--namespace-sync-period=10m",
-		"--node-eviction-rate=0.2",
-		"--node-monitor-grace-period=30s",
 		"--node-monitor-period=10s",
-		"--node-startup-grace-period=30s",
-		"--pod-eviction-timeout=2m",
 		"--port=10000",
 		"--profiling=false",
 		"--pv-recycler-increment-timeout-nfs=45",
@@ -116,10 +109,8 @@ func TestAddFlags(t *testing.T) {
 		"--pv-recycler-timeout-increment-hostpath=45",
 		"--pvclaimbinder-sync-period=30s",
 		"--route-reconciliation-period=30s",
-		"--secondary-node-eviction-rate=0.05",
 		"--service-account-private-key-file=/service-account-private-key",
 		"--terminated-pod-gc-threshold=12000",
-		"--unhealthy-zone-threshold=0.6",
 		"--use-service-account-credentials=true",
 		"--cert-dir=/a/b/c",
 		"--bind-address=192.168.4.21",
@@ -233,18 +224,6 @@ func TestAddFlags(t *testing.T) {
 			&namespaceconfig.NamespaceControllerConfiguration{
 				NamespaceSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
 				ConcurrentNamespaceSyncs: 20,
-			},
-		},
-		NodeLifecycleController: &NodeLifecycleControllerOptions{
-			&nodelifecycleconfig.NodeLifecycleControllerConfiguration{
-				EnableTaintManager:        false,
-				NodeEvictionRate:          0.2,
-				SecondaryNodeEvictionRate: 0.05,
-				NodeMonitorGracePeriod:    metav1.Duration{Duration: 30 * time.Second},
-				NodeStartupGracePeriod:    metav1.Duration{Duration: 30 * time.Second},
-				PodEvictionTimeout:        metav1.Duration{Duration: 2 * time.Minute},
-				LargeClusterSizeThreshold: 100,
-				UnhealthyZoneThreshold:    0.6,
 			},
 		},
 		PersistentVolumeBinderController: &PersistentVolumeBinderControllerOptions{

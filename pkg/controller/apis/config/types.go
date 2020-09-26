@@ -24,7 +24,6 @@ import (
 	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
-	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
 	poautosclerconfig "k8s.io/kubernetes/pkg/controller/podautoscaler/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
@@ -67,9 +66,6 @@ type KubeControllerManagerConfiguration struct {
 	// NamespaceControllerConfiguration holds configuration for NamespaceController
 	// related features.
 	NamespaceController namespaceconfig.NamespaceControllerConfiguration
-	// NodeLifecycleControllerConfiguration holds configuration for
-	// NodeLifecycleController related features.
-	NodeLifecycleController nodelifecycleconfig.NodeLifecycleControllerConfiguration
 	// PersistentVolumeBinderControllerConfiguration holds configuration for
 	// PersistentVolumeBinderController related features.
 	PersistentVolumeBinderController persistentvolumeconfig.PersistentVolumeBinderControllerConfiguration

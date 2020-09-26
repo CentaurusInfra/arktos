@@ -68,7 +68,6 @@ type KubeControllerManagerOptions struct {
 	GarbageCollectorController       *GarbageCollectorControllerOptions
 	HPAController                    *HPAControllerOptions
 	NamespaceController              *NamespaceControllerOptions
-	NodeLifecycleController          *NodeLifecycleControllerOptions
 	PersistentVolumeBinderController *PersistentVolumeBinderControllerOptions
 	PodGCController                  *PodGCControllerOptions
 	ReplicaSetController             *ReplicaSetControllerOptions
@@ -118,9 +117,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		NamespaceController: &NamespaceControllerOptions{
 			&componentConfig.NamespaceController,
-		},
-		NodeLifecycleController: &NodeLifecycleControllerOptions{
-			&componentConfig.NodeLifecycleController,
 		},
 		PersistentVolumeBinderController: &PersistentVolumeBinderControllerOptions{
 			&componentConfig.PersistentVolumeBinderController,
@@ -198,7 +194,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.HPAController.AddFlags(fss.FlagSet("horizontalpodautoscaling controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
-	s.NodeLifecycleController.AddFlags(fss.FlagSet("nodelifecycle controller"))
 	s.PersistentVolumeBinderController.AddFlags(fss.FlagSet("persistentvolume-binder controller"))
 	s.PodGCController.AddFlags(fss.FlagSet("podgc controller"))
 	s.ReplicaSetController.AddFlags(fss.FlagSet("replicaset controller"))
@@ -240,9 +235,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.NamespaceController.ApplyTo(&c.ComponentConfig.NamespaceController); err != nil {
-		return err
-	}
-	if err := s.NodeLifecycleController.ApplyTo(&c.ComponentConfig.NodeLifecycleController); err != nil {
 		return err
 	}
 	if err := s.PersistentVolumeBinderController.ApplyTo(&c.ComponentConfig.PersistentVolumeBinderController); err != nil {
@@ -299,7 +291,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
 	errs = append(errs, s.HPAController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
-	errs = append(errs, s.NodeLifecycleController.Validate()...)
 	errs = append(errs, s.PersistentVolumeBinderController.Validate()...)
 	errs = append(errs, s.PodGCController.Validate()...)
 	errs = append(errs, s.ReplicaSetController.Validate()...)

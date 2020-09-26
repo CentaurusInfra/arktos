@@ -28,7 +28,6 @@ import (
 	deploymentconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/deployment/config/v1alpha1"
 	garbagecollectorconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/garbagecollector/config/v1alpha1"
 	namespaceconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/namespace/config/v1alpha1"
-	nodelifecycleconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/nodelifecycle/config/v1alpha1"
 	poautosclerconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/podautoscaler/config/v1alpha1"
 	podgcconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/podgc/config/v1alpha1"
 	replicasetconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/replicaset/config/v1alpha1"
@@ -72,8 +71,6 @@ func SetDefaults_KubeControllerManagerConfiguration(obj *kubectrlmgrconfigv1alph
 	namespaceconfigv1alpha1.RecommendedDefaultNamespaceControllerConfiguration(&obj.NamespaceController)
 	// Use the default RecommendedDefaultHPAControllerConfiguration options
 	poautosclerconfigv1alpha1.RecommendedDefaultHPAControllerConfiguration(&obj.HPAController)
-	// Use the default RecommendedDefaultNodeLifecycleControllerConfiguration options
-	nodelifecycleconfigv1alpha1.RecommendedDefaultNodeLifecycleControllerConfiguration(&obj.NodeLifecycleController)
 	// Use the default RecommendedDefaultPodGCControllerConfiguration options
 	podgcconfigv1alpha1.RecommendedDefaultPodGCControllerConfiguration(&obj.PodGCController)
 	// Use the default RecommendedDefaultReplicaSetControllerConfiguration options

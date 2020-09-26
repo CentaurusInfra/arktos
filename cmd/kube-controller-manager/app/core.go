@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"k8s.io/klog"
@@ -45,7 +44,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	networkcontroller "k8s.io/kubernetes/pkg/controller/network"
-	lifecyclecontroller "k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	"k8s.io/kubernetes/pkg/controller/podgc"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
@@ -76,33 +74,6 @@ func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
 		return nil, false, nil
 	}
 	go serviceController.Run(ctx.Stop, int(ctx.ComponentConfig.ServiceController.ConcurrentServiceSyncs))
-	return nil, true, nil
-}
-
-func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
-	lifecycleController, err := lifecyclecontroller.NewNodeLifecycleController(
-		ctx.InformerFactory.Coordination().V1beta1().Leases(),
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.InformerFactory.Apps().V1().DaemonSets(),
-		// node lifecycle controller uses existing cluster role from node-controller
-		ctx.ClientBuilder.ClientOrDie("node-controller"),
-		ctx.ComponentConfig.KubeCloudShared.NodeMonitorPeriod.Duration,
-		ctx.ComponentConfig.NodeLifecycleController.NodeStartupGracePeriod.Duration,
-		ctx.ComponentConfig.NodeLifecycleController.NodeMonitorGracePeriod.Duration,
-		ctx.ComponentConfig.NodeLifecycleController.PodEvictionTimeout.Duration,
-		ctx.ComponentConfig.NodeLifecycleController.NodeEvictionRate,
-		ctx.ComponentConfig.NodeLifecycleController.SecondaryNodeEvictionRate,
-		ctx.ComponentConfig.NodeLifecycleController.LargeClusterSizeThreshold,
-		ctx.ComponentConfig.NodeLifecycleController.UnhealthyZoneThreshold,
-		ctx.ComponentConfig.NodeLifecycleController.EnableTaintManager,
-		utilfeature.DefaultFeatureGate.Enabled(features.TaintBasedEvictions),
-		utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition),
-	)
-	if err != nil {
-		return nil, true, err
-	}
-	go lifecycleController.Run(ctx.Stop)
 	return nil, true, nil
 }
 
