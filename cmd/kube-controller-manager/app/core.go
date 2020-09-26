@@ -53,7 +53,6 @@ import (
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
-	ttlcontroller "k8s.io/kubernetes/pkg/controller/ttl"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach"
 	"k8s.io/kubernetes/pkg/controller/volume/expand"
@@ -371,14 +370,6 @@ func startServiceAccountController(ctx ControllerContext) (http.Handler, bool, e
 		return nil, true, fmt.Errorf("error creating ServiceAccount controller: %v", err)
 	}
 	go sac.Run(1, ctx.Stop)
-	return nil, true, nil
-}
-
-func startTTLController(ctx ControllerContext) (http.Handler, bool, error) {
-	go ttlcontroller.NewTTLController(
-		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.ClientBuilder.ClientOrDie("ttl-controller"),
-	).Run(5, ctx.Stop)
 	return nil, true, nil
 }
 
