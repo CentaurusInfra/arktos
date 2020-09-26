@@ -108,8 +108,6 @@ type KubeControllerManagerConfiguration struct {
 	GarbageCollectorController GarbageCollectorControllerConfiguration
 	// HPAControllerConfiguration holds configuration for HPAController related features.
 	HPAController HPAControllerConfiguration
-	// JobControllerConfiguration holds configuration for JobController related features.
-	JobController JobControllerConfiguration
 	// NamespaceControllerConfiguration holds configuration for NamespaceController
 	// related features.
 	NamespaceController NamespaceControllerConfiguration
@@ -136,9 +134,6 @@ type KubeControllerManagerConfiguration struct {
 	// TenantControllerConfiguration holds configuration for TenantController
 	// related features.
 	TenantController TenantControllerConfiguration `json:"tenantController,omitempty"`
-	// TTLAfterFinishedControllerConfiguration holds configuration for
-	// TTLAfterFinishedController related features.
-	TTLAfterFinishedController TTLAfterFinishedControllerConfiguration
 }
 
 // GenericControllerManagerConfiguration holds configuration for a generic controller-manager.
@@ -299,14 +294,6 @@ type HPAControllerConfiguration struct {
 	HorizontalPodAutoscalerInitialReadinessDelay metav1.Duration
 }
 
-// JobControllerConfiguration contains elements describing JobController.
-type JobControllerConfiguration struct {
-	// concurrentJobSyncs is the number of job objects that are
-	// allowed to sync concurrently. Larger number = more responsive jobs,
-	// but more CPU (and network) load.
-	ConcurrentJobSyncs int32
-}
-
 // NamespaceControllerConfiguration contains elements describing NamespaceController.
 type NamespaceControllerConfiguration struct {
 	// namespaceSyncPeriod is the period for syncing namespace life-cycle
@@ -408,11 +395,4 @@ type TenantControllerConfiguration struct {
 	ConcurrentTenantSyncs int32 `json:"concurrentTenantSyncs,omitempty"`
 	// DefaultNetworkTemplatePath is the path to json-formatted template file of default network in tenant space
 	DefaultNetworkTemplatePath string `json:"defaultNetworkTemplatePath,omitempty"`
-}
-
-// TTLAfterFinishedControllerConfiguration contains elements describing TTLAfterFinishedController.
-type TTLAfterFinishedControllerConfiguration struct {
-	// concurrentTTLSyncs is the number of TTL-after-finished collector workers that are
-	// allowed to sync concurrently.
-	ConcurrentTTLSyncs int32
 }

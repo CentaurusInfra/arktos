@@ -23,7 +23,6 @@ import (
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
 	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
-	jobconfig "k8s.io/kubernetes/pkg/controller/job/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	nodeipamconfig "k8s.io/kubernetes/pkg/controller/nodeipam/config"
 	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
@@ -33,7 +32,6 @@ import (
 	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
-	ttlafterfinishedconfig "k8s.io/kubernetes/pkg/controller/ttlafterfinished/config"
 	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
 	persistentvolumeconfig "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config"
 )
@@ -67,8 +65,6 @@ type KubeControllerManagerConfiguration struct {
 	GarbageCollectorController garbagecollectorconfig.GarbageCollectorControllerConfiguration
 	// HPAControllerConfiguration holds configuration for HPAController related features.
 	HPAController poautosclerconfig.HPAControllerConfiguration
-	// JobControllerConfiguration holds configuration for JobController related features.
-	JobController jobconfig.JobControllerConfiguration
 	// NamespaceControllerConfiguration holds configuration for NamespaceController
 	// related features.
 	NamespaceController namespaceconfig.NamespaceControllerConfiguration
@@ -95,9 +91,6 @@ type KubeControllerManagerConfiguration struct {
 	// TenantControllerConfiguration holds configuration for TenantController
 	// related features.
 	TenantController tenantconfig.TenantControllerConfiguration
-	// TTLAfterFinishedControllerConfiguration holds configuration for
-	// TTLAfterFinishedController related features.
-	TTLAfterFinishedController ttlafterfinishedconfig.TTLAfterFinishedControllerConfiguration
 }
 
 // GenericControllerManagerConfiguration holds configuration for a generic controller-manager

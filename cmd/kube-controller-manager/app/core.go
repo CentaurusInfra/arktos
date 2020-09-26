@@ -54,7 +54,6 @@ import (
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	ttlcontroller "k8s.io/kubernetes/pkg/controller/ttl"
-	"k8s.io/kubernetes/pkg/controller/ttlafterfinished"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach"
 	"k8s.io/kubernetes/pkg/controller/volume/expand"
@@ -442,17 +441,6 @@ func startPVProtectionController(ctx ControllerContext) (http.Handler, bool, err
 		ctx.ClientBuilder.ClientOrDie("pv-protection-controller"),
 		utilfeature.DefaultFeatureGate.Enabled(features.StorageObjectInUseProtection),
 	).Run(1, ctx.Stop)
-	return nil, true, nil
-}
-
-func startTTLAfterFinishedController(ctx ControllerContext) (http.Handler, bool, error) {
-	if !utilfeature.DefaultFeatureGate.Enabled(features.TTLAfterFinished) {
-		return nil, false, nil
-	}
-	go ttlafterfinished.New(
-		ctx.InformerFactory.Batch().V1().Jobs(),
-		ctx.ClientBuilder.ClientOrDie("ttl-after-finished-controller"),
-	).Run(int(ctx.ComponentConfig.TTLAfterFinishedController.ConcurrentTTLSyncs), ctx.Stop)
 	return nil, true, nil
 }
 

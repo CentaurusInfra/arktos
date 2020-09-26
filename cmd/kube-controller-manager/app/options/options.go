@@ -67,7 +67,6 @@ type KubeControllerManagerOptions struct {
 	DeprecatedFlags                  *DeprecatedControllerOptions
 	GarbageCollectorController       *GarbageCollectorControllerOptions
 	HPAController                    *HPAControllerOptions
-	JobController                    *JobControllerOptions
 	NamespaceController              *NamespaceControllerOptions
 	NodeIPAMController               *NodeIPAMControllerOptions
 	NodeLifecycleController          *NodeLifecycleControllerOptions
@@ -76,7 +75,6 @@ type KubeControllerManagerOptions struct {
 	ReplicaSetController             *ReplicaSetControllerOptions
 	SAController                     *SAControllerOptions
 	TenantController                 *TenantControllerOptions
-	TTLAfterFinishedController       *TTLAfterFinishedControllerOptions
 
 	SecureServing *apiserveroptions.SecureServingOptionsWithLoopback
 	// TODO: remove insecure serving mode
@@ -119,9 +117,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		HPAController: &HPAControllerOptions{
 			&componentConfig.HPAController,
 		},
-		JobController: &JobControllerOptions{
-			&componentConfig.JobController,
-		},
 		NamespaceController: &NamespaceControllerOptions{
 			&componentConfig.NamespaceController,
 		},
@@ -145,9 +140,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		TenantController: &TenantControllerOptions{
 			&componentConfig.TenantController,
-		},
-		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{
-			&componentConfig.TTLAfterFinishedController,
 		},
 		SecureServing: apiserveroptions.NewSecureServingOptions().WithLoopback(),
 		InsecureServing: (&apiserveroptions.DeprecatedInsecureServingOptions{
@@ -209,7 +201,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.HPAController.AddFlags(fss.FlagSet("horizontalpodautoscaling controller"))
-	s.JobController.AddFlags(fss.FlagSet("job controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
 	s.NodeIPAMController.AddFlags(fss.FlagSet("nodeipam controller"))
 	s.NodeLifecycleController.AddFlags(fss.FlagSet("nodelifecycle controller"))
@@ -218,7 +209,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.ReplicaSetController.AddFlags(fss.FlagSet("replicaset controller"))
 	s.SAController.AddFlags(fss.FlagSet("serviceaccount controller"))
 	s.TenantController.AddFlags(fss.FlagSet("tenant controller"))
-	s.TTLAfterFinishedController.AddFlags(fss.FlagSet("ttl-after-finished controller"))
 
 	fs := fss.FlagSet("misc")
 	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
@@ -254,9 +244,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.HPAController.ApplyTo(&c.ComponentConfig.HPAController); err != nil {
 		return err
 	}
-	if err := s.JobController.ApplyTo(&c.ComponentConfig.JobController); err != nil {
-		return err
-	}
 	if err := s.NamespaceController.ApplyTo(&c.ComponentConfig.NamespaceController); err != nil {
 		return err
 	}
@@ -282,9 +269,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.TenantController.ApplyTo(&c.ComponentConfig.TenantController); err != nil {
-		return err
-	}
-	if err := s.TTLAfterFinishedController.ApplyTo(&c.ComponentConfig.TTLAfterFinishedController); err != nil {
 		return err
 	}
 	if err := s.InsecureServing.ApplyTo(&c.InsecureServing, &c.LoopbackClientConfig); err != nil {
@@ -322,7 +306,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
 	errs = append(errs, s.HPAController.Validate()...)
-	errs = append(errs, s.JobController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
 	errs = append(errs, s.NodeIPAMController.Validate()...)
 	errs = append(errs, s.NodeLifecycleController.Validate()...)
@@ -332,7 +315,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.SAController.Validate()...)
 	errs = append(errs, s.ServiceController.Validate()...)
 	errs = append(errs, s.TenantController.Validate()...)
-	errs = append(errs, s.TTLAfterFinishedController.Validate()...)
 	errs = append(errs, s.SecureServing.Validate()...)
 	errs = append(errs, s.InsecureServing.Validate()...)
 	errs = append(errs, s.Authentication.Validate()...)

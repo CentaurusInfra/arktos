@@ -35,7 +35,6 @@ import (
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
 	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
-	jobconfig "k8s.io/kubernetes/pkg/controller/job/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	nodeipamconfig "k8s.io/kubernetes/pkg/controller/nodeipam/config"
 	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
@@ -45,7 +44,6 @@ import (
 	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
-	ttlafterfinishedconfig "k8s.io/kubernetes/pkg/controller/ttlafterfinished/config"
 	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
 	persistentvolumeconfig "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config"
 )
@@ -128,7 +126,6 @@ func TestAddFlags(t *testing.T) {
 		"--cert-dir=/a/b/c",
 		"--bind-address=192.168.4.21",
 		"--secure-port=10001",
-		"--concurrent-ttl-after-finished-syncs=8",
 		"--concurrent-tenant-syncs=20",
 		"--tenant-sync-period=10m",
 	}
@@ -234,11 +231,6 @@ func TestAddFlags(t *testing.T) {
 				HorizontalPodAutoscalerUseRESTClients:               true,
 			},
 		},
-		JobController: &JobControllerOptions{
-			&jobconfig.JobControllerConfiguration{
-				ConcurrentJobSyncs: 5,
-			},
-		},
 		NamespaceController: &NamespaceControllerOptions{
 			&namespaceconfig.NamespaceControllerConfiguration{
 				NamespaceSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
@@ -299,11 +291,6 @@ func TestAddFlags(t *testing.T) {
 			&tenantconfig.TenantControllerConfiguration{
 				TenantSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
 				ConcurrentTenantSyncs: 20,
-			},
-		},
-		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{
-			&ttlafterfinishedconfig.TTLAfterFinishedControllerConfiguration{
-				ConcurrentTTLSyncs: 8,
 			},
 		},
 		SecureServing: (&apiserveroptions.SecureServingOptions{

@@ -386,13 +386,11 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["tenant"] = startTenantController
 	controllers["serviceaccount"] = startServiceAccountController
 	controllers["garbagecollector"] = startGarbageCollectorController
-	controllers["job"] = startJobController
 	//controllers["deployment"] = startDeploymentController
 	//controllers["replicaset"] = startReplicaSetController
 	controllers["horizontalpodautoscaling"] = startHPAController
 	controllers["disruption"] = startDisruptionController
 	controllers["statefulset"] = startStatefulSetController
-	controllers["cronjob"] = startCronJobController
 	controllers["csrsigning"] = startCSRSigningController
 	controllers["csrapproving"] = startCSRApprovingController
 	controllers["csrcleaner"] = startCSRCleanerController
@@ -413,7 +411,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["clusterrole-aggregation"] = startClusterRoleAggregrationController
 	controllers["pvc-protection"] = startPVCProtectionController
 	controllers["pv-protection"] = startPVProtectionController
-	controllers["ttl-after-finished"] = startTTLAfterFinishedController
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
 	controllers["network"] = startNetworkController
 
