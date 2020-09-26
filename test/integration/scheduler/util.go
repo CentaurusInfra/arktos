@@ -49,7 +49,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/controller/disruption"
 	"k8s.io/kubernetes/pkg/scheduler"
 	schedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 
@@ -243,39 +242,6 @@ func initTestSchedulerWithOptions(
 	datapartition.GetAPIServerConfigManagerMock()
 
 	return context
-}
-
-// initDisruptionController initializes and runs a Disruption Controller to properly
-// update PodDisuptionBudget objects.
-func initDisruptionController(t *testing.T, context *testContext) *disruption.DisruptionController {
-	informers := informers.NewSharedInformerFactory(context.clientSet, 12*time.Hour)
-
-	discoveryClient := cacheddiscovery.NewMemCacheClient(context.clientSet.Discovery())
-	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
-
-	kubeConfig := restclient.KubeConfig{Host: context.httpServer.URL}
-	configs := restclient.NewAggregatedConfig(&kubeConfig)
-	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(context.clientSet.Discovery())
-	scaleClient, err := scale.NewForConfig(configs, mapper, dynamic.LegacyAPIPathResolverFunc, scaleKindResolver)
-	if err != nil {
-		t.Fatalf("Error in create scaleClient: %v", err)
-	}
-
-	dc := disruption.NewDisruptionController(
-		informers.Core().V1().Pods(),
-		informers.Policy().V1beta1().PodDisruptionBudgets(),
-		informers.Core().V1().ReplicationControllers(),
-		informers.Apps().V1().ReplicaSets(),
-		informers.Apps().V1().Deployments(),
-		informers.Apps().V1().StatefulSets(),
-		context.clientSet,
-		mapper,
-		scaleClient)
-
-	informers.Start(context.schedulerConfig.StopEverything)
-	informers.WaitForCacheSync(context.schedulerConfig.StopEverything)
-	go dc.Run(context.schedulerConfig.StopEverything)
-	return dc
 }
 
 // initTest initializes a test environment and creates master and scheduler with default
